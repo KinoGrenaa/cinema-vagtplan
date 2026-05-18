@@ -1,0 +1,564 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
+import ShiftForm from './components/ShiftForm';
+import ShiftTimeline from './components/ShiftTimeline';
+import MovieProgram from './components/MovieProgram';
+
+type User = {
+  id: number;
+  firstName: string;
+  lastName: string;
+};
+
+type WorkType = {
+  id: number;
+  name: string;
+  color: string;
+};
+
+type Shift = {
+  id: number;
+  startTime: string;
+  endTime: string;
+  note?: string | null;
+  userId: number;
+  workTypeId: number;
+  user: User;
+  workType: WorkType;
+};
+
+type MovieShowing = {
+  id: number;
+  title: string;
+  hall: string;
+  startTime: string;
+  endTime: string;
+  soldSeats: number;
+  freeSeats: number;
+};
+
+type LeaveRequest = {
+  id: number;
+  startDate: string;
+  endDate: string;
+  reason?: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  user: {
+    firstName: string;
+    lastName: string;
+  };
+};
+
+type LoggedInUser = {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  cinemaId: number;
+};
+
+export default function SchedulePage() {
+  const todayDefault = new Date().toISOString().slice(0, 10);
+
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
+  const [movieShowings, setMovieShowings] = useState<MovieShowing[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(todayDefault);
+  const [currentUser, setCurrentUser] = useState<LoggedInUser | null>(null);
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+
+  const [startTime, setStartTime] = useState(`${todayDefault}T14:00`);
+  const [endTime, setEndTime] = useState(`${todayDefault}T22:00`);
+  const [note, setNote] = useState('');
+  const [userId, setUserId] = useState(2);
+  const [workTypeId, setWorkTypeId] = useState(1);
+  const [formError, setFormError] = useState('');
+
+  function getToken() {
+    return localStorage.getItem('token');
+  }
+
+  function getLoggedInUser(): LoggedInUser | null {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  }
+
+  const fetchUsers = useCallback(async () => {
+    const response = await fetch('http://localhost:3001/users', {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    const data: User[] = await response.json();
+    setUsers(data);
+
+    if (data.length > 0) {
+      setUserId(data[0].id);
+    }
+  }, []);
+
+  const fetchWorkTypes = useCallback(async () => {
+    const response = await fetch('http://localhost:3001/work-types', {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    const data: WorkType[] = await response.json();
+    setWorkTypes(data);
+
+    if (data.length > 0) {
+      setWorkTypeId(data[0].id);
+    }
+  }, []);
+
+  const fetchShifts = useCallback(async () => {
+    const response = await fetch(
+      `http://localhost:3001/shifts?date=${selectedDate}`,
+      {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      },
+    );
+
+    const data: Shift[] = await response.json();
+    setShifts(data);
+    setLoading(false);
+  }, [selectedDate]);
+
+  const fetchMovieShowings = useCallback(async () => {
+    const response = await fetch(
+      `http://localhost:3001/movie-showings?date=${selectedDate}`,
+      {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      },
+    );
+
+    const data: MovieShowing[] = await response.json();
+    setMovieShowings(data);
+  }, [selectedDate]);
+
+  const fetchLeaveRequests = useCallback(async () => {
+    const response = await fetch('http://localhost:3001/leave-requests', {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    const data: LeaveRequest[] = await response.json();
+    setLeaveRequests(data);
+  }, []);
+
+  const refreshDayData = useCallback(async () => {
+    await fetchShifts();
+    await fetchMovieShowings();
+    await fetchLeaveRequests();
+  }, [fetchShifts, fetchMovieShowings, fetchLeaveRequests]);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+
+    if (!savedUser) {
+      window.location.href = '/';
+      return;
+    }
+
+    setCurrentUser(JSON.parse(savedUser));
+    fetchUsers();
+    fetchWorkTypes();
+  }, [fetchUsers, fetchWorkTypes]);
+
+  useEffect(() => {
+    refreshDayData();
+  }, [refreshDayData]);
+
+  useEffect(() => {
+    const socket = io('http://localhost:3001');
+
+    socket.on('shiftsUpdated', () => {
+      refreshDayData();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [refreshDayData]);
+
+  function leaveIsOnSelectedDate(request: LeaveRequest) {
+    const current = new Date(`${selectedDate}T12:00:00`);
+    const start = new Date(request.startDate);
+    const end = new Date(request.endDate);
+
+    return current >= start && current <= end;
+  }
+
+  function getLeaveStyle(status: LeaveRequest['status']) {
+    if (status === 'APPROVED') {
+      return 'bg-green-100 text-green-800 border-green-300';
+    }
+
+    if (status === 'REJECTED') {
+      return 'bg-red-100 text-red-800 border-red-300';
+    }
+
+    return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+  }
+
+  const selectedDateLeaveRequests =
+    leaveRequests.filter(leaveIsOnSelectedDate);
+
+  function clearForm() {
+    setSelectedShift(null);
+    setStartTime(`${selectedDate}T14:00`);
+    setEndTime(`${selectedDate}T22:00`);
+    setNote('');
+    setFormError('');
+  }
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setFormError('');
+
+    const parsedUser = getLoggedInUser();
+
+    const body = {
+      startTime,
+      endTime,
+      note,
+      cinemaId: parsedUser?.cinemaId || 1,
+      userId,
+      workTypeId,
+    };
+
+    const url = selectedShift
+      ? `http://localhost:3001/shifts/${selectedShift.id}`
+      : 'http://localhost:3001/shifts';
+
+    const method = selectedShift ? 'PATCH' : 'POST';
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setFormError(data.message || 'Der opstod en fejl');
+      return;
+    }
+
+    clearForm();
+    await refreshDayData();
+  }
+
+  async function handleDelete() {
+    if (!selectedShift) return;
+
+    await fetch(`http://localhost:3001/shifts/${selectedShift.id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    clearForm();
+    await refreshDayData();
+  }
+
+  function handleSelectShift(shift: Shift) {
+    setSelectedShift(shift);
+    setStartTime(shift.startTime.slice(0, 16));
+    setEndTime(shift.endTime.slice(0, 16));
+    setNote(shift.note || '');
+    setUserId(shift.userId);
+    setWorkTypeId(shift.workTypeId);
+    setFormError('');
+  }
+
+  function changeDate(days: number) {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + days);
+
+    const nextDate = date.toISOString().slice(0, 10);
+
+    setSelectedDate(nextDate);
+    setStartTime(`${nextDate}T14:00`);
+    setEndTime(`${nextDate}T22:00`);
+    setSelectedShift(null);
+    setFormError('');
+  }
+
+  function goToToday() {
+    const today = new Date().toISOString().slice(0, 10);
+
+    setSelectedDate(today);
+    setStartTime(`${today}T14:00`);
+    setEndTime(`${today}T22:00`);
+    setSelectedShift(null);
+    setFormError('');
+  }
+
+  async function handleMoveShift(
+    shift: Shift,
+    newStartHour: number,
+    newStartMinute: number,
+  ) {
+    const oldStart = new Date(shift.startTime);
+    const oldEnd = new Date(shift.endTime);
+    const durationMs = oldEnd.getTime() - oldStart.getTime();
+
+    const newStart = new Date(oldStart);
+    newStart.setHours(newStartHour, newStartMinute, 0, 0);
+
+    const newEnd = new Date(newStart.getTime() + durationMs);
+
+    await fetch(`http://localhost:3001/shifts/${shift.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({
+        startTime: newStart.toISOString(),
+        endTime: newEnd.toISOString(),
+        note: shift.note,
+        userId: shift.userId,
+        workTypeId: shift.workTypeId,
+      }),
+    });
+
+    await refreshDayData();
+  }
+
+  async function handleChangeShiftUser(shift: Shift, newUserId: number) {
+    await fetch(`http://localhost:3001/shifts/${shift.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        note: shift.note,
+        userId: newUserId,
+        workTypeId: shift.workTypeId,
+      }),
+    });
+
+    await refreshDayData();
+  }
+
+  async function handleResizeShift(
+    shift: Shift,
+    newStartHour: number,
+    newStartMinute: number,
+    newEndHour: number,
+    newEndMinute: number,
+  ) {
+    const oldStart = new Date(shift.startTime);
+
+    const newStart = new Date(oldStart);
+    newStart.setHours(newStartHour, newStartMinute, 0, 0);
+
+    const newEnd = new Date(oldStart);
+    newEnd.setHours(newEndHour, newEndMinute, 0, 0);
+
+    await fetch(`http://localhost:3001/shifts/${shift.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({
+        startTime: newStart.toISOString(),
+        endTime: newEnd.toISOString(),
+        note: shift.note,
+        userId: shift.userId,
+        workTypeId: shift.workTypeId,
+      }),
+    });
+
+    await refreshDayData();
+  }
+
+  async function handleOfferTrade() {
+    if (!selectedShift) return;
+
+    const parsedUser = getLoggedInUser();
+
+    if (!parsedUser) return;
+
+    await fetch('http://localhost:3001/shift-trades', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({
+        shiftId: selectedShift.id,
+        offeredByUserId: selectedShift.userId,
+        cinemaId: parsedUser.cinemaId,
+        message: '',
+      }),
+    });
+
+    alert('Vagten er sendt i byttepuljen');
+  }
+
+  const canManageShifts =
+    currentUser?.role === 'ADMIN' || currentUser?.role === 'MASTER';
+
+  if (loading) {
+    return <p className="p-10">Indlæser vagter...</p>;
+  }
+
+  return (
+    <>
+      <div className="bg-white rounded-xl shadow p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Vagtplan</h1>
+          <p className="text-gray-500">Valgt dato: {selectedDate}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => changeDate(-1)}
+            className="bg-gray-200 px-4 py-2 rounded-lg"
+          >
+            Forrige dag
+          </button>
+
+          <button
+            onClick={goToToday}
+            className="bg-black text-white px-4 py-2 rounded-lg"
+          >
+            I dag
+          </button>
+
+          <button
+            onClick={() => changeDate(1)}
+            className="bg-gray-200 px-4 py-2 rounded-lg"
+          >
+            Næste dag
+          </button>
+        </div>
+      </div>
+
+      {canManageShifts && (
+        <>
+          <div className="bg-white rounded-xl shadow p-6 mb-6">
+            <h2 className="text-2xl font-bold mb-4">Fravær denne dag</h2>
+
+            <div className="space-y-2">
+              {selectedDateLeaveRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className={`border rounded-lg p-3 ${getLeaveStyle(
+                    request.status,
+                  )}`}
+                >
+                  <div className="font-bold">
+                    {request.user.firstName} {request.user.lastName}
+                  </div>
+
+                  <div className="text-sm">Status: {request.status}</div>
+
+                  {request.reason && (
+                    <div className="text-sm mt-1">
+                      Årsag: {request.reason}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {selectedDateLeaveRequests.length === 0 && (
+                <div className="text-gray-500">Ingen fravær denne dag.</div>
+              )}
+            </div>
+          </div>
+
+          <ShiftForm
+            users={users}
+            workTypes={workTypes}
+            startTime={startTime}
+            setStartTime={setStartTime}
+            endTime={endTime}
+            setEndTime={setEndTime}
+            note={note}
+            setNote={setNote}
+            userId={userId}
+            setUserId={setUserId}
+            workTypeId={workTypeId}
+            setWorkTypeId={setWorkTypeId}
+            selectedShift={selectedShift}
+            onSubmit={handleSubmit}
+            onDelete={handleDelete}
+            onCancel={clearForm}
+            onOfferTrade={handleOfferTrade}
+          />
+        </>
+      )}
+
+      <div className="bg-white rounded-xl shadow p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Dagens vagter</h1>
+            <p className="text-gray-500">
+              {canManageShifts
+                ? 'Administrer, flyt og resize vagter'
+                : 'Se dagens vagtplan'}
+            </p>
+          </div>
+        </div>
+
+        <ShiftTimeline
+          shifts={shifts}
+          users={users}
+          selectedDate={selectedDate}
+          onSelectShift={canManageShifts ? handleSelectShift : () => {}}
+          onMoveShift={canManageShifts ? handleMoveShift : () => {}}
+          onChangeShiftUser={canManageShifts ? handleChangeShiftUser : () => {}}
+          onResizeShift={canManageShifts ? handleResizeShift : () => {}}
+        />
+      </div>
+
+      {formError && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-2xl font-bold mb-4 text-red-600">
+              Konflikt fundet
+            </h2>
+
+            <p className="text-gray-700 mb-6">{formError}</p>
+
+            <button
+              onClick={() => setFormError('')}
+              className="w-full bg-black text-white py-3 rounded-xl"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      <MovieProgram movieShowings={movieShowings} />
+    </>
+  );
+}
