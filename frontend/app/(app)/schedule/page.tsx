@@ -81,8 +81,23 @@ export default function SchedulePage() {
   const [workTypeId, setWorkTypeId] = useState(1);
   const [formError, setFormError] = useState('');
 
+  const [showClockModal, setShowClockModal] = useState(false);
+  const [clockShiftId, setClockShiftId] = useState<number | null>(null);
+  const [clockInTime, setClockInTime] = useState('');
+  const [clockOutTime, setClockOutTime] = useState('');
+  const [clockNote, setClockNote] = useState('');
+
   function getToken() {
     return localStorage.getItem('token');
+  }
+
+  function toInputDateTime(value: string) {
+    const date = new Date(value);
+    const offset = date.getTimezoneOffset();
+
+    return new Date(date.getTime() - offset * 60 * 1000)
+      .toISOString()
+      .slice(0, 16);
   }
 
   function getLoggedInUser(): LoggedInUser | null {
@@ -224,6 +239,60 @@ export default function SchedulePage() {
     setEndTime(`${selectedDate}T22:00`);
     setNote('');
     setFormError('');
+  }
+
+  function resetClockModal() {
+    setShowClockModal(false);
+    setClockShiftId(null);
+    setClockInTime('');
+    setClockOutTime('');
+    setClockNote('');
+  }
+
+  async function submitManualTime() {
+    const shift = shifts.find((s) => s.id === clockShiftId);
+
+    if (!shift || !currentUser) {
+      alert('Vælg en vagt først');
+      return;
+    }
+
+    const plannedStart = toInputDateTime(shift.startTime);
+    const plannedEnd = toInputDateTime(shift.endTime);
+
+    const hasDeviation =
+      plannedStart !== clockInTime || plannedEnd !== clockOutTime;
+
+    if (hasDeviation && !clockNote.trim()) {
+      alert('Du skal skrive en note ved afvigelse fra vagtplanen');
+      return;
+    }
+
+    const response = await fetch('http://localhost:3001/time-entries/manual', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({
+        userId: currentUser.id,
+        cinemaId: currentUser.cinemaId,
+        shiftId: clockShiftId,
+        clockIn: clockInTime,
+        clockOut: clockOutTime,
+        note: clockNote,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.message || 'Kunne ikke registrere timer');
+      return;
+    }
+
+    alert('Timer sendt til godkendelse');
+    resetClockModal();
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -439,6 +508,13 @@ export default function SchedulePage() {
 
         <div className="flex flex-wrap gap-2">
           <button
+            onClick={() => setShowClockModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg"
+          >
+            Registrer tid
+          </button>
+
+          <button
             onClick={() => changeDate(-1)}
             className="bg-gray-200 px-4 py-2 rounded-lg"
           >
@@ -538,6 +614,136 @@ export default function SchedulePage() {
           onResizeShift={canManageShifts ? handleResizeShift : () => {}}
         />
       </div>
+
+      {showClockModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xl mx-4">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">
+                Registrer møde- og fyraftstid
+              </h2>
+
+              <button onClick={resetClockModal} className="text-2xl">
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Vælg vagt
+                </label>
+
+                <select
+                  value={clockShiftId || ''}
+                  onChange={(event) => {
+                    const shiftId = Number(event.target.value);
+
+                    setClockShiftId(shiftId);
+
+                    const shift = shifts.find((s) => s.id === shiftId);
+
+                    if (!shift) return;
+
+                    setClockInTime(toInputDateTime(shift.startTime));
+                    setClockOutTime(toInputDateTime(shift.endTime));
+                    setClockNote('');
+                  }}
+                  className="border rounded-lg px-3 py-2 w-full"
+                >
+                  <option value="">Vælg vagt</option>
+
+                  {shifts
+                    .filter((shift) => shift.userId === currentUser?.id)
+                    .map((shift) => (
+                      <option key={shift.id} value={shift.id}>
+                        {shift.workType.name} ·{' '}
+                        {new Date(shift.startTime).toLocaleTimeString(
+                          'da-DK',
+                          {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          },
+                        )}
+                        {' - '}
+                        {new Date(shift.endTime).toLocaleTimeString(
+                          'da-DK',
+                          {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          },
+                        )}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {clockShiftId && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Mødetid
+                      </label>
+
+                      <input
+                        type="datetime-local"
+                        value={clockInTime}
+                        onChange={(event) =>
+                          setClockInTime(event.target.value)
+                        }
+                        className="border rounded-lg px-3 py-2 w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Fyraften
+                      </label>
+
+                      <input
+                        type="datetime-local"
+                        value={clockOutTime}
+                        onChange={(event) =>
+                          setClockOutTime(event.target.value)
+                        }
+                        className="border rounded-lg px-3 py-2 w-full"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Note ved afvigelse
+                    </label>
+
+                    <textarea
+                      value={clockNote}
+                      onChange={(event) => setClockNote(event.target.value)}
+                      className="border rounded-lg px-3 py-2 w-full min-h-24"
+                      placeholder="Udfyldes kun hvis møde- eller fyraftstid afviger fra vagtplanen"
+                    />
+                  </div>
+
+                  <button
+                    onClick={submitManualTime}
+                    className="w-full bg-black text-white py-3 rounded-xl"
+                  >
+                    Send til godkendelse
+                  </button>
+                </>
+              )}
+
+              {shifts.filter((shift) => shift.userId === currentUser?.id)
+                .length === 0 && (
+                <div className="text-gray-500">
+                  Du har ingen vagter på den valgte dato.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {formError && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
