@@ -78,13 +78,19 @@ export default function DashboardPage() {
         }),
       ]);
 
-      setShifts(await shiftsRes.json());
-      setTimeEntries(await timeEntriesRes.json());
-      setLeaveRequests(await leaveRequestsRes.json());
-      setShiftTrades(await shiftTradesRes.json());
-      setMovies(await moviesRes.json());
-    },
-    [today],
+      const shiftsData = await shiftsRes.json();
+      const timeEntriesData = await timeEntriesRes.json();
+      const leaveRequestsData = await leaveRequestsRes.json();
+      const shiftTradesData = await shiftTradesRes.json();
+      const moviesData = await moviesRes.json();
+
+      setShifts(Array.isArray(shiftsData) ? shiftsData : []);
+      setTimeEntries(Array.isArray(timeEntriesData) ? timeEntriesData : []);
+      setLeaveRequests(Array.isArray(leaveRequestsData) ? leaveRequestsData : []);
+      setShiftTrades(Array.isArray(shiftTradesData) ? shiftTradesData : []);
+      setMovies(Array.isArray(moviesData) ? moviesData : []);
+      },
+      [today],
   );
 
   useEffect(() => {

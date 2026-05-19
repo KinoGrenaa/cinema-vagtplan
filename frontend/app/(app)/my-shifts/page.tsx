@@ -36,8 +36,15 @@ export default function MyShiftsPage() {
       },
     });
 
-    const data: Shift[] = await response.json();
-    setShifts(data);
+    const data = await response.json();
+
+    setShifts(
+     Array.isArray(data)
+    ? data
+    : Array.isArray(data.shifts)
+      ? data.shifts
+      : []
+);
   }, []);
 
   useEffect(() => {
