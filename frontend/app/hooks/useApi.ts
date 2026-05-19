@@ -1,36 +1,39 @@
 "use client";
 
+import { useCallback } from "react";
 import { useAuth } from "../providers/AuthProvider";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = "http://localhost:3001";
 
 export function useApi() {
-  const { token, logout } = useAuth();
+  const { logout } = useAuth();
 
-  async function apiFetch(path: string, options: RequestInit = {}) {
-    const headers = new Headers(options.headers);
+  const apiFetch = useCallback(
+    async (path: string, options: RequestInit = {}) => {
+      const token = localStorage.getItem("token");
 
-    if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
-      headers.set("Content-Type", "application/json");
-    }
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      };
 
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
 
-    const response = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers,
-    });
+      const response = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers,
+      });
 
-    if (response.status === 401) {
-      logout();
-    }
+      if (response.status === 401) {
+        console.warn("401 fra API:", path);
+      }
 
-    return response;
-  }
+      return response;
+    },
+    [],
+  );
 
-  return {
-    apiFetch,
-  };
+  return { apiFetch };
 }

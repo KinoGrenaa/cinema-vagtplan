@@ -31,7 +31,7 @@ export default function HomePage() {
         return;
       }
 
-      login(data.token, data.user);
+      login(data.access_token, data.user);
 
       window.location.href = "/dashboard";
     } catch {

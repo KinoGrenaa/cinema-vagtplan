@@ -84,8 +84,14 @@ export default function SchedulePage() {
   const fetchUsers = useCallback(async () => {
     const response = await apiFetch("/users");
 
-    const data: User[] = await response.json();
-    setUsers(data);
+    const data = await response.json();
+    const usersArray = Array.isArray(data) ? data : [];
+
+setUsers(usersArray);
+
+if (usersArray.length > 0) {
+  setUserId(usersArray[0].id);
+}
 
     if (data.length > 0) {
       setUserId(data[0].id);
@@ -95,8 +101,14 @@ export default function SchedulePage() {
   const fetchWorkTypes = useCallback(async () => {
     const response = await apiFetch("/work-types");
 
-    const data: WorkType[] = await response.json();
-    setWorkTypes(data);
+    const data = await response.json();
+    const workTypesArray = Array.isArray(data) ? data : [];
+
+    setWorkTypes(workTypesArray);
+
+if (workTypesArray.length > 0) {
+  setWorkTypeId(workTypesArray[0].id);
+}
 
     if (data.length > 0) {
       setWorkTypeId(data[0].id);
@@ -106,23 +118,23 @@ export default function SchedulePage() {
   const fetchShifts = useCallback(async () => {
     const response = await apiFetch(`/shifts?date=${selectedDate}`);
 
-    const data: Shift[] = await response.json();
-    setShifts(data);
+    const data = await response.json();
+    setShifts(Array.isArray(data) ? data : []);
     setLoading(false);
   }, [apiFetch, selectedDate]);
 
   const fetchMovieShowings = useCallback(async () => {
     const response = await apiFetch(`/movie-showings?date=${selectedDate}`);
 
-    const data: MovieShowing[] = await response.json();
-    setMovieShowings(data);
+    const data = await response.json();
+    setMovieShowings(Array.isArray(data) ? data : []);
   }, [apiFetch, selectedDate]);
 
   const fetchLeaveRequests = useCallback(async () => {
     const response = await apiFetch("/leave-requests");
 
-    const data: LeaveRequest[] = await response.json();
-    setLeaveRequests(data);
+    const data = await response.json();
+    setLeaveRequests(Array.isArray(data) ? data : []);
   }, [apiFetch]);
 
   const refreshDayData = useCallback(async () => {
