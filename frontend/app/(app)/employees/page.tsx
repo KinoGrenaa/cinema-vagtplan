@@ -151,7 +151,8 @@ export default function EmployeesPage() {
 
     if (!currentUser) return;
 
-    const payload = {
+    const payload = selectedUser
+  ? {
       email,
       password,
       firstName,
@@ -166,6 +167,15 @@ export default function EmployeesPage() {
       hireDate: hireDate || null,
       skills,
       notes,
+    }
+  : {
+      email,
+      password,
+      firstName,
+      lastName,
+      phone,
+      role,
+      cinemaId: currentUser.cinemaId,
     };
 
     const url = selectedUser
