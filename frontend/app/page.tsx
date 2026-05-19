@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "../providers/AuthProvider";
+import { useAuth } from "./providers/AuthProvider";
 
 export default function HomePage() {
   const [email, setEmail] = useState("admin@test.dk");

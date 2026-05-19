@@ -1,0 +1,45 @@
+services:
+  database:
+    image: postgres:16
+    container_name: cinema-vagtplan-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cinema
+      POSTGRES_PASSWORD: cinema123
+      POSTGRES_DB: cinema_vagtplan
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    container_name: cinema-vagtplan-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+      - "5555:5555"
+    environment:
+      DATABASE_URL: postgresql://cinema:cinema123@database:5432/cinema_vagtplan
+    depends_on:
+      - database
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: cinema-vagtplan-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
