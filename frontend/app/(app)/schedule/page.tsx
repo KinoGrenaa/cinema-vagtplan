@@ -5,15 +5,12 @@ import { io } from 'socket.io-client';
 import ShiftForm from './components/ShiftForm';
 import ShiftTimeline from './components/ShiftTimeline';
 import MovieProgram from './components/MovieProgram';
+import { useApi } from '../../hooks/useApi';
 import type {
   Shift,
   User,
   WorkType,
 } from '../../../../shared/types';
-
-const [shifts, setShifts] = useState<Shift[]>([]);
-const [users, setUsers] = useState<User[]>([]);
-const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
 
 type MovieShowing = {
   id: number;
@@ -47,6 +44,7 @@ type LoggedInUser = {
 };
 
 export default function SchedulePage() {
+  const { apiFetch } = useApi();
   const todayDefault = new Date().toISOString().slice(0, 10);
 
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -73,9 +71,6 @@ export default function SchedulePage() {
   const [clockOutTime, setClockOutTime] = useState('');
   const [clockNote, setClockNote] = useState('');
 
-  function getToken() {
-    return localStorage.getItem('token');
-  }
 
   function toInputDateTime(value: string) {
     const date = new Date(value);
@@ -92,11 +87,7 @@ export default function SchedulePage() {
   }
 
   const fetchUsers = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/users', {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+    const response = await apiFetch('/users');
 
     const data: User[] = await response.json();
     setUsers(data);
@@ -104,14 +95,10 @@ export default function SchedulePage() {
     if (data.length > 0) {
       setUserId(data[0].id);
     }
-  }, []);
+  }, [apiFetch]);
 
   const fetchWorkTypes = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/work-types', {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+    const response = await apiFetch('/work-types');
 
     const data: WorkType[] = await response.json();
     setWorkTypes(data);
@@ -119,47 +106,29 @@ export default function SchedulePage() {
     if (data.length > 0) {
       setWorkTypeId(data[0].id);
     }
-  }, []);
+  }, [apiFetch]);
 
   const fetchShifts = useCallback(async () => {
-    const response = await fetch(
-      `http://localhost:3001/shifts?date=${selectedDate}`,
-      {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      },
-    );
+    const response = await apiFetch(`/shifts?date=${selectedDate}`);
 
     const data: Shift[] = await response.json();
     setShifts(data);
     setLoading(false);
-  }, [selectedDate]);
+  }, [apiFetch, selectedDate]);
 
   const fetchMovieShowings = useCallback(async () => {
-    const response = await fetch(
-      `http://localhost:3001/movie-showings?date=${selectedDate}`,
-      {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      },
-    );
+    const response = await apiFetch(`/movie-showings?date=${selectedDate}`);
 
     const data: MovieShowing[] = await response.json();
     setMovieShowings(data);
-  }, [selectedDate]);
+  }, [apiFetch, selectedDate]);
 
   const fetchLeaveRequests = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/leave-requests', {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+    const response = await apiFetch('/leave-requests');
 
     const data: LeaveRequest[] = await response.json();
     setLeaveRequests(data);
-  }, []);
+  }, [apiFetch]);
 
   const refreshDayData = useCallback(async () => {
     await fetchShifts();
@@ -254,12 +223,8 @@ export default function SchedulePage() {
       return;
     }
 
-    const response = await fetch('http://localhost:3001/time-entries/manual', {
+    const response = await apiFetch('/time-entries/manual', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
-      },
       body: JSON.stringify({
         userId: currentUser.id,
         cinemaId: currentUser.cinemaId,
@@ -296,20 +261,16 @@ export default function SchedulePage() {
       workTypeId,
     };
 
-    const url = selectedShift
-      ? `http://localhost:3001/shifts/${selectedShift.id}`
-      : 'http://localhost:3001/shifts';
 
     const method = selectedShift ? 'PATCH' : 'POST';
 
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
+    const response = await apiFetch(
+      selectedShift ? `/shifts/${selectedShift.id}` : '/shifts',
+      {
+        method,
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+    );
 
     const data = await response.json();
 
@@ -325,11 +286,8 @@ export default function SchedulePage() {
   async function handleDelete() {
     if (!selectedShift) return;
 
-    await fetch(`http://localhost:3001/shifts/${selectedShift.id}`, {
+    await apiFetch(`/shifts/${selectedShift.id}`, {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
     });
 
     clearForm();
@@ -383,12 +341,8 @@ export default function SchedulePage() {
 
     const newEnd = new Date(newStart.getTime() + durationMs);
 
-    await fetch(`http://localhost:3001/shifts/${shift.id}`, {
+    await apiFetch(`/shifts/${shift.id}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
-      },
       body: JSON.stringify({
         startTime: newStart.toISOString(),
         endTime: newEnd.toISOString(),
@@ -402,12 +356,8 @@ export default function SchedulePage() {
   }
 
   async function handleChangeShiftUser(shift: Shift, newUserId: number) {
-    await fetch(`http://localhost:3001/shifts/${shift.id}`, {
+    await apiFetch(`/shifts/${shift.id}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
-      },
       body: JSON.stringify({
         startTime: shift.startTime,
         endTime: shift.endTime,
@@ -435,12 +385,8 @@ export default function SchedulePage() {
     const newEnd = new Date(oldStart);
     newEnd.setHours(newEndHour, newEndMinute, 0, 0);
 
-    await fetch(`http://localhost:3001/shifts/${shift.id}`, {
+    await apiFetch(`/shifts/${shift.id}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
-      },
       body: JSON.stringify({
         startTime: newStart.toISOString(),
         endTime: newEnd.toISOString(),
@@ -460,12 +406,8 @@ export default function SchedulePage() {
 
     if (!parsedUser) return;
 
-    await fetch('http://localhost:3001/shift-trades', {
+    await apiFetch('/shift-trades', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
-      },
       body: JSON.stringify({
         shiftId: selectedShift.id,
         offeredByUserId: selectedShift.userId,

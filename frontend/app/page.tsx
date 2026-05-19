@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '../providers/AuthProvider';
 
 export default function HomePage() {
   const [email, setEmail] = useState('admin@test.dk');
   const [password, setPassword] = useState('test123');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault();
@@ -29,8 +31,7 @@ export default function HomePage() {
         return;
       }
 
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      login(data.token, data.user);
 
       window.location.href = '/dashboard';
     } catch {
