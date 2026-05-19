@@ -5,14 +5,10 @@ import { join } from 'path';
 import * as express from 'express';
 
 async function bootstrap() {
-  const app =
-  await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors();
-  app.use(
-  '/uploads',
-  express.static(join(process.cwd(), 'uploads')),
-);
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
   await app.listen(3001);
 }
 bootstrap();

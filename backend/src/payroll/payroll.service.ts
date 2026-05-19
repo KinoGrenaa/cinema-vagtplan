@@ -29,28 +29,28 @@ export class PayrollService {
       },
     });
 
-    const grouped = new Map<number, {
-      userId: number;
-      name: string;
-      email: string;
-      totalHours: number;
-      entries: {
-        date: string;
-        clockIn: string;
-        clockOut: string;
-        hours: number;
-        workType: string;
-      }[];
-    }>();
+    const grouped = new Map<
+      number,
+      {
+        userId: number;
+        name: string;
+        email: string;
+        totalHours: number;
+        entries: {
+          date: string;
+          clockIn: string;
+          clockOut: string;
+          hours: number;
+          workType: string;
+        }[];
+      }
+    >();
 
     for (const entry of entries) {
       if (!entry.clockOut) continue;
 
       const hours =
-        (entry.clockOut.getTime() - entry.clockIn.getTime()) /
-        1000 /
-        60 /
-        60;
+        (entry.clockOut.getTime() - entry.clockIn.getTime()) / 1000 / 60 / 60;
 
       if (!grouped.has(entry.userId)) {
         grouped.set(entry.userId, {

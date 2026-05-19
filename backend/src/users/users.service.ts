@@ -126,62 +126,62 @@ export class UsersService {
       data: updateData,
     });
   }
-async updateOwnProfile(
-  id: number,
-  data: {
-    email: string;
-    phone?: string;
-    password?: string;
-    profileImage?: string;
-    address?: string;
-    birthDate?: string | null;
-    emergencyPhone?: string;
-    skills?: string;
-  },
-) {
-  const existingUser = await this.prisma.user.findFirst({
-    where: {
-      email: data.email,
-      id: {
-        not: id,
-      },
+  async updateOwnProfile(
+    id: number,
+    data: {
+      email: string;
+      phone?: string;
+      password?: string;
+      profileImage?: string;
+      address?: string;
+      birthDate?: string | null;
+      emergencyPhone?: string;
+      skills?: string;
     },
-  });
+  ) {
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        email: data.email,
+        id: {
+          not: id,
+        },
+      },
+    });
 
-  if (existingUser) {
-    throw new BadRequestException(
-      'Der findes allerede en anden bruger med denne email',
-    );
+    if (existingUser) {
+      throw new BadRequestException(
+        'Der findes allerede en anden bruger med denne email',
+      );
+    }
+
+    const updateData: {
+      email: string;
+      phone?: string;
+      password?: string;
+      profileImage?: string;
+      address?: string;
+      birthDate?: Date | null;
+      emergencyPhone?: string;
+      skills?: string;
+    } = {
+      email: data.email,
+      phone: data.phone,
+      profileImage: data.profileImage,
+      address: data.address,
+      birthDate: data.birthDate ? new Date(data.birthDate) : null,
+      emergencyPhone: data.emergencyPhone,
+      skills: data.skills,
+    };
+
+    if (data.password && data.password.trim() !== '') {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: updateData,
+    });
   }
-
-  const updateData: {
-    email: string;
-    phone?: string;
-    password?: string;
-    profileImage?: string;
-    address?: string;
-    birthDate?: Date | null;
-    emergencyPhone?: string;
-    skills?: string;
-  } = {
-    email: data.email,
-    phone: data.phone,
-    profileImage: data.profileImage,
-    address: data.address,
-    birthDate: data.birthDate ? new Date(data.birthDate) : null,
-    emergencyPhone: data.emergencyPhone,
-    skills: data.skills,
-  };
-
-  if (data.password && data.password.trim() !== '') {
-    updateData.password = await bcrypt.hash(data.password, 10);
-  }
-
-  return this.prisma.user.update({
-    where: { id },
-    data: updateData,
-  });
-}
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: {

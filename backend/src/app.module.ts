@@ -32,11 +32,11 @@ import { ThrottlerModule } from '@nestjs/throttler';
     PushModule,
     EmployeeDocumentsModule,
     ThrottlerModule.forRoot([
-  {
-    ttl: 60000,
-    limit: 100,
-  },
-]),
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
   ],
 })
 export class AppModule {}

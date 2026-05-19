@@ -21,9 +21,7 @@ import { RolesGuard } from '../auth/roles/roles.guard';
 
 @Controller('employee-documents')
 export class EmployeeDocumentsController {
-  constructor(
-    private employeeDocumentsService: EmployeeDocumentsService,
-  ) {}
+  constructor(private employeeDocumentsService: EmployeeDocumentsService) {}
 
   @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
   @Get('user/:userId')
@@ -38,8 +36,7 @@ export class EmployeeDocumentsController {
       storage: diskStorage({
         destination: './uploads/employee-documents',
         filename: (_, file, callback) => {
-          const uniqueName =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
           callback(null, `${uniqueName}${extname(file.originalname)}`);
         },

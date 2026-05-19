@@ -90,9 +90,7 @@ export class UsersController {
     },
   ) {
     if (Number(req.user?.id) !== Number(id)) {
-      throw new ForbiddenException(
-        'Du kan kun redigere din egen profil',
-      );
+      throw new ForbiddenException('Du kan kun redigere din egen profil');
     }
 
     return this.usersService.updateOwnProfile(Number(id), body);
@@ -105,8 +103,7 @@ export class UsersController {
       storage: diskStorage({
         destination: './uploads/profile-images',
         filename: (_, file, callback) => {
-          const uniqueName =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
           callback(null, `${uniqueName}${extname(file.originalname)}`);
         },
@@ -115,11 +112,7 @@ export class UsersController {
         fileSize: 2 * 1024 * 1024,
       },
       fileFilter: (_, file, callback) => {
-        const allowedTypes = [
-          'image/jpeg',
-          'image/png',
-          'image/webp',
-        ];
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
         if (!allowedTypes.includes(file.mimetype)) {
           return callback(

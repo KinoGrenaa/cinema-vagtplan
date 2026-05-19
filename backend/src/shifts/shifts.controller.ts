@@ -21,7 +21,7 @@ export class ShiftsController {
   @UseGuards(JwtGuard)
   @Get()
   getAllShifts(@Query('date') date?: string) {
-  return this.shiftsService.findAll(date);
+    return this.shiftsService.findAll(date);
   }
 
   @UseGuards(JwtGuard)
