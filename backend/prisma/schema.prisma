@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MASTER
+  ADMIN
+  EMPLOYEE
+}
+
+model Cinema {
+  id            Int            @id @default(autoincrement())
+  name          String
+  createdAt     DateTime       @default(now())
+  movieShowings MovieShowing[]
+  leaveRequests LeaveRequest[]
+  shiftTrades   ShiftTrade[]
+  users         User[]
+  workTypes     WorkType[]
+  shifts        Shift[]
+  messages      Message[]
+  timeEntries   TimeEntry[]
+}
+
+model User {
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  password       String
+  firstName      String
+  lastName       String
+  phone          String?
+  profileImage   String?
+  address        String?
+  birthDate      DateTime?
+  emergencyPhone String?
+  hireDate       DateTime?
+  skills         String?
+  notes          String?
+  role           Role      @default(EMPLOYEE)
+  createdAt      DateTime  @default(now())
+
+  cinemaId          Int
+  cinema            Cinema             @relation(fields: [cinemaId], references: [id])
+  shifts            Shift[]
+  leaveRequests     LeaveRequest[]
+  offeredTrades     ShiftTrade[]       @relation("OfferedTrades")
+  acceptedTrades    ShiftTrade[]       @relation("AcceptedTrades")
+  sentMessages      Message[]          @relation("SentMessages")
+  receivedMessages  Message[]          @relation("ReceivedMessages")
+  timeEntries       TimeEntry[]
+  pushSubscriptions PushSubscription[]
+  documents         EmployeeDocument[]
+}
+
+model WorkType {
+  id        Int      @id @default(autoincrement())
+  name      String
+  color     String   @default("#2563eb")
+  createdAt DateTime @default(now())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  shifts Shift[]
+}
+
+model Shift {
+  id        Int      @id @default(autoincrement())
+  startTime DateTime
+  endTime   DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  workTypeId Int
+  workType   WorkType @relation(fields: [workTypeId], references: [id])
+
+  trades      ShiftTrade[]
+  timeEntries TimeEntry[]
+}
+
+model MovieShowing {
+  id        Int      @id @default(autoincrement())
+  title     String
+  hall      String
+  startTime DateTime
+  endTime   DateTime
+  soldSeats Int      @default(0)
+  freeSeats Int      @default(0)
+  createdAt DateTime @default(now())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LeaveRequest {
+  id        Int         @id @default(autoincrement())
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  status    LeaveStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+}
+
+enum ShiftTradeStatus {
+  OPEN
+  ACCEPTED
+  CANCELLED
+}
+
+model ShiftTrade {
+  id        Int              @id @default(autoincrement())
+  status    ShiftTradeStatus @default(OPEN)
+  message   String?
+  createdAt DateTime         @default(now())
+
+  shiftId Int
+  shift   Shift @relation(fields: [shiftId], references: [id])
+
+  offeredByUserId Int
+  offeredByUser   User @relation("OfferedTrades", fields: [offeredByUserId], references: [id])
+
+  acceptedByUserId Int?
+  acceptedByUser   User? @relation("AcceptedTrades", fields: [acceptedByUserId], references: [id])
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+}
+
+model Message {
+  id        Int       @id @default(autoincrement())
+  subject   String
+  body      String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  senderId Int
+  sender   User @relation("SentMessages", fields: [senderId], references: [id])
+
+  receiverId Int?
+  receiver   User? @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  isBroadcast Boolean @default(false)
+}
+
+enum TimeEntryStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model TimeEntry {
+  id        Int       @id @default(autoincrement())
+  clockIn   DateTime
+  clockOut  DateTime?
+  createdAt DateTime  @default(now())
+
+  status TimeEntryStatus @default(PENDING)
+  note String?
+  adminNote String?
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  shiftId Int?
+  shift   Shift? @relation(fields: [shiftId], references: [id])
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+}
+
+model EmployeeDocument {
+  id        Int      @id @default(autoincrement())
+  title     String
+  fileUrl   String
+  fileName  String
+  fileType  String?
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+}
