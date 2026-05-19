@@ -20,6 +20,8 @@ import { extname } from 'path';
 import { UsersService } from './users.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles/roles.guard';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -34,16 +36,7 @@ export class UsersController {
   @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
   @Post()
   createUser(
-    @Body()
-    body: {
-      email: string;
-      password: string;
-      firstName: string;
-      lastName: string;
-      phone?: string;
-      role?: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-      cinemaId: number;
-    },
+    @Body() body: CreateUserDto,
   ) {
     return this.usersService.createUser(body);
   }
@@ -52,22 +45,7 @@ export class UsersController {
   @Patch(':id')
   updateUser(
     @Param('id') id: string,
-    @Body()
-    body: {
-      email: string;
-      firstName: string;
-      lastName: string;
-      phone?: string;
-      role?: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-      password?: string;
-      profileImage?: string;
-      address?: string;
-      birthDate?: string | null;
-      emergencyPhone?: string;
-      hireDate?: string | null;
-      skills?: string;
-      notes?: string;
-    },
+    @Body() body: UpdateUserDto,
   ) {
     return this.usersService.updateUser(Number(id), body);
   }

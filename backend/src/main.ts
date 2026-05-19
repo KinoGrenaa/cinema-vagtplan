@@ -3,9 +3,21 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import * as express from 'express';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app =
+  await NestFactory.create<NestExpressApplication>(
+    AppModule,
+  );
+
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+);
 
   app.enableCors();
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));

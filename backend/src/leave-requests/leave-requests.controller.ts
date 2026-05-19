@@ -10,6 +10,8 @@ import {
 import { LeaveRequestsService } from './leave-requests.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles/roles.guard';
+import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
+import { UpdateLeaveStatusDto } from './dto/update-leave-status.dto';
 
 @Controller('leave-requests')
 export class LeaveRequestsController {
@@ -24,24 +26,20 @@ export class LeaveRequestsController {
   @UseGuards(JwtGuard)
   @Post()
   createLeaveRequest(
-    @Body()
-    body: {
-      startDate: string;
-      endDate: string;
-      reason?: string;
-      cinemaId: number;
-      userId: number;
-    },
+    @Body() body: CreateLeaveRequestDto,
   ) {
     return this.leaveRequestsService.create(body);
   }
 
   @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
-  @Patch(':id/status')
-  updateStatus(
-    @Param('id') id: string,
-    @Body() body: { status: 'APPROVED' | 'REJECTED' },
-  ) {
-    return this.leaveRequestsService.updateStatus(Number(id), body.status);
-  }
+@Patch(':id/status')
+updateStatus(
+  @Param('id') id: string,
+  @Body() body: UpdateLeaveStatusDto,
+) {
+  return this.leaveRequestsService.updateStatus(
+    Number(id),
+    body.status,
+  );
+}
 }

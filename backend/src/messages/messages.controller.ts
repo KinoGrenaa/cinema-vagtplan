@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import { CreateMessageDto } from './dto/create-message.dto';
 
 @Controller('messages')
 export class MessagesController {
@@ -28,20 +29,10 @@ export class MessagesController {
   }
 
   @UseGuards(JwtGuard)
-  @Post()
-  createMessage(
-    @Body()
-    body: {
-      subject: string;
-      body: string;
-      cinemaId: number;
-      senderId: number;
-      receiverId?: number | null;
-      isBroadcast: boolean;
-    },
-  ) {
-    return this.messagesService.create(body);
-  }
+@Post()
+createMessage(@Body() body: CreateMessageDto) {
+  return this.messagesService.create(body);
+}
 
   @UseGuards(JwtGuard)
   @Patch(':id/read')

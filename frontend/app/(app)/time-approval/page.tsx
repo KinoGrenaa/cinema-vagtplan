@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { apiFetch } from '../../lib/api';
 
 type TimeEntryStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -34,7 +35,7 @@ export default function TimeApprovalPage() {
   }
 
   const fetchEntries = useCallback(async () => {
-  const response = await fetch('http://localhost:3001/time-entries', {
+  const response = await apiFetch('/time-entries', {
     headers: {
       Authorization: `Bearer ${getToken()}`,
     },
@@ -99,7 +100,7 @@ export default function TimeApprovalPage() {
   }
 
   async function approve(id: number) {
-    await fetch(`http://localhost:3001/time-entries/${id}/approve`, {
+    await apiFetch(`/time-entries/${id}/approve`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${getToken()}`,

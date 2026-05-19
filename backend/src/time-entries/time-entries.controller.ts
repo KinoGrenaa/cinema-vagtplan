@@ -12,6 +12,9 @@ import {
 import { TimeEntriesService } from './time-entries.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles/roles.guard';
+import { ManualTimeEntryDto } from './dto/manual-time-entry.dto';
+import { UpdateTimeEntryDto } from './dto/update-time-entry.dto';
+import { RejectTimeEntryDto } from './dto/reject-time-entry.dto';
 
 @Controller('time-entries')
 export class TimeEntriesController {
@@ -34,20 +37,12 @@ export class TimeEntriesController {
   }
 
   @UseGuards(JwtGuard)
-  @Post('manual')
-  submitManualEntry(
-    @Body()
-    body: {
-      userId: number;
-      cinemaId: number;
-      shiftId: number;
-      clockIn: string;
-      clockOut: string;
-      note?: string;
-    },
-  ) {
-    return this.timeEntriesService.submitManualEntry(body);
-  }
+@Post('manual')
+submitManualEntry(
+  @Body() body: ManualTimeEntryDto,
+) {
+  return this.timeEntriesService.submitManualEntry(body);
+}
 
   @UseGuards(JwtGuard)
   @Post('clock-in')
@@ -84,10 +79,7 @@ export class TimeEntriesController {
   @Patch(':id/reject')
   rejectEntry(
     @Param('id') id: string,
-    @Body()
-    body: {
-      adminNote?: string;
-    },
+    @Body() body: RejectTimeEntryDto,
   ) {
     return this.timeEntriesService.rejectEntry(Number(id), body.adminNote);
   }
@@ -96,12 +88,7 @@ export class TimeEntriesController {
   @Patch(':id')
   updateEntry(
     @Param('id') id: string,
-    @Body()
-    body: {
-      clockIn: string;
-      clockOut?: string | null;
-      adminNote?: string;
-    },
+    @Body() body: UpdateTimeEntryDto,
   ) {
     return this.timeEntriesService.updateEntry(Number(id), body);
   }
