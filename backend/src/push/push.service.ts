@@ -6,9 +6,10 @@ import * as webPush from 'web-push';
 export class PushService {
   constructor(private prisma: PrismaService) {
     webPush.setVapidDetails(
-      'mailto:post@kinogrenaa.dk',
-      'BIVekJ5qQNKd6suPpzSFvMDFfA1hS6skf142fzpL-FBF9RXcTqRgH9vX3-_Yxg55E-xvpNgjIY-kAh3zcmjnSi8',
-      'l6JX2GW4pLKwn-Q0ProjnbGkFQ5n0QGZlrrphGnePug',
+  process.env.VAPID_EMAIL || 'mailto:post@kinogrenaa.dk',
+  process.env.VAPID_PUBLIC_KEY || '',
+  process.env.VAPID_PRIVATE_KEY || '',
+);
     );
   }
 

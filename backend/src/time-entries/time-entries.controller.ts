@@ -17,7 +17,7 @@ import { RolesGuard } from '../auth/roles/roles.guard';
 export class TimeEntriesController {
   constructor(private timeEntriesService: TimeEntriesService) {}
 
-  @UseGuards(JwtGuard)
+  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
   @Get()
   getEntries(@Query('userId') userId?: string) {
     if (userId) {
