@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -40,18 +41,61 @@ export class EmployeeDocumentsController {
           const uniqueName =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
 
-          callback(
-            null,
-            `${uniqueName}${extname(file.originalname)}`,
-          );
+          callback(null, `${uniqueName}${extname(file.originalname)}`);
         },
       }),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+      fileFilter: (_, file, callback) => {
+        const allowedTypes = [
+          'application/pdf',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+        ];
+
+        const blockedExtensions = [
+          '.exe',
+          '.js',
+          '.html',
+          '.htm',
+          '.svg',
+          '.docm',
+          '.xlsm',
+          '.bat',
+          '.cmd',
+          '.ps1',
+        ];
+
+        const extension = extname(file.originalname).toLowerCase();
+
+        if (
+          !allowedTypes.includes(file.mimetype) ||
+          blockedExtensions.includes(extension)
+        ) {
+          return callback(
+            new BadRequestException(
+              'Kun PDF, DOCX, XLSX, JPG, PNG og WEBP er tilladt',
+            ),
+            false,
+          );
+        }
+
+        callback(null, true);
+      },
     }),
   )
   uploadDocument(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { userId: string; title: string },
   ) {
+    if (!file) {
+      throw new BadRequestException('Ingen fil uploadet');
+    }
+
     return this.employeeDocumentsService.create({
       userId: Number(body.userId),
       title: body.title,

@@ -6,10 +6,9 @@ import * as webPush from 'web-push';
 export class PushService {
   constructor(private prisma: PrismaService) {
     webPush.setVapidDetails(
-  process.env.VAPID_EMAIL || 'mailto:post@kinogrenaa.dk',
-  process.env.VAPID_PUBLIC_KEY || '',
-  process.env.VAPID_PRIVATE_KEY || '',
-);
+      process.env.VAPID_EMAIL || 'mailto:post@kinogrenaa.dk',
+      process.env.VAPID_PUBLIC_KEY || '',
+      process.env.VAPID_PRIVATE_KEY || '',
     );
   }
 
@@ -65,12 +64,14 @@ export class PushService {
             JSON.stringify(payload),
           )
           .catch(async () => {
-  await this.prisma.pushSubscription.delete({
-    where: {
-      endpoint: subscription.endpoint,
-    },
-  }).catch(() => null);
-}),
+            await this.prisma.pushSubscription
+              .delete({
+                where: {
+                  endpoint: subscription.endpoint,
+                },
+              })
+              .catch(() => null);
+          }),
       ),
     );
 
@@ -78,11 +79,12 @@ export class PushService {
       sent: subscriptions.length,
     };
   }
+
   async deleteSubscriptionsForUser(userId: number) {
-  return this.prisma.pushSubscription.deleteMany({
-    where: {
-      userId,
-    },
-  });
-}
+    return this.prisma.pushSubscription.deleteMany({
+      where: {
+        userId,
+      },
+    });
+  }
 }

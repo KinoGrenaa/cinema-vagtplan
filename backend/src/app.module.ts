@@ -13,6 +13,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { PushModule } from './push/push.module';
 import { EmployeeDocumentsModule } from './employee-documents/employee-documents.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -30,6 +31,12 @@ import { EmployeeDocumentsModule } from './employee-documents/employee-documents
     PayrollModule,
     PushModule,
     EmployeeDocumentsModule,
+    ThrottlerModule.forRoot([
+  {
+    ttl: 60000,
+    limit: 100,
+  },
+]),
   ],
 })
 export class AppModule {}
