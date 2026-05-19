@@ -2,26 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '../../lib/api';
-
-type TimeEntryStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-
-type TimeEntry = {
-  id: number;
-  clockIn: string;
-  clockOut?: string | null;
-  status: TimeEntryStatus;
-  adminNote?: string | null;
-  user: {
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  shift?: {
-    workType?: {
-      name: string;
-    };
-  } | null;
-};
+import type {
+  TimeEntry,
+  TimeEntryStatus,
+} from '../../../../shared/types';
 
 export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);

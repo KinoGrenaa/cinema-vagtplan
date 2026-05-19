@@ -1,34 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-
-type CurrentUser = {
-  id: number;
-  role: string;
-  cinemaId: number;
-};
-
-type Shift = {
-  id: number;
-  startTime: string;
-  endTime: string;
-  workType?: {
-    name: string;
-  };
-};
-
-type TimeEntry = {
-  id: number;
-  clockIn: string;
-  clockOut?: string | null;
-  note?: string | null;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  shift?: {
-    workType?: {
-      name: string;
-    };
-  } | null;
-};
+import type {
+  CurrentUser,
+  Shift,
+  TimeEntry,
+} from '../../../../shared/types';
 
 export default function ClockPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);

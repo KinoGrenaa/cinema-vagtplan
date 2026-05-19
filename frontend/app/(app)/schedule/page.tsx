@@ -5,29 +5,15 @@ import { io } from 'socket.io-client';
 import ShiftForm from './components/ShiftForm';
 import ShiftTimeline from './components/ShiftTimeline';
 import MovieProgram from './components/MovieProgram';
+import type {
+  Shift,
+  User,
+  WorkType,
+} from '../../../../shared/types';
 
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
-};
-
-type WorkType = {
-  id: number;
-  name: string;
-  color: string;
-};
-
-type Shift = {
-  id: number;
-  startTime: string;
-  endTime: string;
-  note?: string | null;
-  userId: number;
-  workTypeId: number;
-  user: User;
-  workType: WorkType;
-};
+const [shifts, setShifts] = useState<Shift[]>([]);
+const [users, setUsers] = useState<User[]>([]);
+const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
 
 type MovieShowing = {
   id: number;
