@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import AppMenu from '../../components/AppMenu';
-import { io } from 'socket.io-client';
+import { useCallback, useEffect, useState } from "react";
+import AppMenu from "../../components/AppMenu";
+import { io } from "socket.io-client";
 
 type User = {
   id: number;
@@ -48,7 +48,7 @@ export default function LivePage() {
   const today = new Date().toISOString().slice(0, 10);
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   const fetchData = useCallback(async () => {
@@ -57,7 +57,7 @@ export default function LivePage() {
     };
 
     const [usersRes, shiftsRes, moviesRes] = await Promise.all([
-      fetch('http://localhost:3001/users', { headers }),
+      fetch("http://localhost:3001/users", { headers }),
       fetch(`http://localhost:3001/shifts?date=${today}`, { headers }),
       fetch(`http://localhost:3001/movie-showings?date=${today}`, { headers }),
     ]);
@@ -100,20 +100,20 @@ export default function LivePage() {
   }, [fetchData]);
 
   useEffect(() => {
-  const socket = io('http://localhost:3001');
+    const socket = io("http://localhost:3001");
 
-  socket.on('timeEntriesUpdated', () => {
-    fetchData();
-  });
+    socket.on("timeEntriesUpdated", () => {
+      fetchData();
+    });
 
-  return () => {
-    socket.disconnect();
-  };
-}, [fetchData]);
+    return () => {
+      socket.disconnect();
+    };
+  }, [fetchData]);
 
   function getUserName(userId: number) {
     const user = users.find((item) => item.id === userId);
-    return user ? `${user.firstName} ${user.lastName}` : 'Ukendt';
+    return user ? `${user.firstName} ${user.lastName}` : "Ukendt";
   }
 
   function isShiftActive(shift: Shift) {
@@ -137,7 +137,6 @@ export default function LivePage() {
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-
       <div className="bg-white rounded-xl shadow p-6 mb-6">
         <h1 className="text-3xl font-bold">Live driftsskærm</h1>
         <p className="text-gray-500">
@@ -154,7 +153,7 @@ export default function LivePage() {
               <div key={entry.id} className="border rounded-lg p-4 bg-green-50">
                 <div className="font-bold">{getUserName(entry.userId)}</div>
                 <div className="text-sm text-gray-600">
-                  Siden {new Date(entry.clockIn).toLocaleTimeString('da-DK')}
+                  Siden {new Date(entry.clockIn).toLocaleTimeString("da-DK")}
                 </div>
               </div>
             ))}
@@ -178,14 +177,14 @@ export default function LivePage() {
                 <div className="text-sm">{shift.workType.name}</div>
 
                 <div className="text-sm text-gray-600">
-                  {new Date(shift.startTime).toLocaleTimeString('da-DK', {
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  {new Date(shift.startTime).toLocaleTimeString("da-DK", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
-                  {' - '}
-                  {new Date(shift.endTime).toLocaleTimeString('da-DK', {
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  {" - "}
+                  {new Date(shift.endTime).toLocaleTimeString("da-DK", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </div>
               </div>

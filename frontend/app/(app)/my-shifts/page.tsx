@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type CurrentUser = {
   id: number;
@@ -23,14 +23,14 @@ type Shift = {
 export default function MyShiftsPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState('2026-05');
+  const [selectedMonth, setSelectedMonth] = useState("2026-05");
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   const fetchShifts = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/shifts', {
+    const response = await fetch("http://localhost:3001/shifts", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -41,7 +41,7 @@ export default function MyShiftsPage() {
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
@@ -56,10 +56,7 @@ export default function MyShiftsPage() {
     return shifts.filter((shift) => {
       const shiftMonth = shift.startTime.slice(0, 7);
 
-      return (
-        shift.userId === currentUser.id &&
-        shiftMonth === selectedMonth
-      );
+      return shift.userId === currentUser.id && shiftMonth === selectedMonth;
     });
   }, [shifts, currentUser, selectedMonth]);
 
@@ -82,14 +79,11 @@ export default function MyShiftsPage() {
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-
       <div className="bg-white rounded-xl shadow p-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Mine vagter</h1>
-            <p className="text-gray-500">
-              Oversigt over dine vagter pr. måned
-            </p>
+            <p className="text-gray-500">Oversigt over dine vagter pr. måned</p>
           </div>
 
           <div className="flex gap-2">
@@ -115,19 +109,13 @@ export default function MyShiftsPage() {
       </div>
 
       <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-2">
-          Samlet timer
-        </h2>
+        <h2 className="text-2xl font-bold mb-2">Samlet timer</h2>
 
-        <div className="text-4xl font-bold">
-          {totalHours.toFixed(2)} timer
-        </div>
+        <div className="text-4xl font-bold">{totalHours.toFixed(2)} timer</div>
       </div>
 
       <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-2xl font-bold mb-4">
-          Vagter
-        </h2>
+        <h2 className="text-2xl font-bold mb-4">Vagter</h2>
 
         <div className="space-y-3">
           {myMonthShifts.map((shift) => (
@@ -137,28 +125,26 @@ export default function MyShiftsPage() {
             >
               <div>
                 <div className="font-bold text-lg">
-                  {new Date(shift.startTime).toLocaleDateString('da-DK', {
-                    weekday: 'long',
-                    day: '2-digit',
-                    month: 'long',
+                  {new Date(shift.startTime).toLocaleDateString("da-DK", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "long",
                   })}
                 </div>
 
                 <div className="text-sm text-gray-600">
-                  {new Date(shift.startTime).toLocaleTimeString('da-DK', {
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  {new Date(shift.startTime).toLocaleTimeString("da-DK", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
-                  {' - '}
-                  {new Date(shift.endTime).toLocaleTimeString('da-DK', {
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  {" - "}
+                  {new Date(shift.endTime).toLocaleTimeString("da-DK", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </div>
 
-                <div className="text-sm mt-1">
-                  {shift.workType.name}
-                </div>
+                <div className="text-sm mt-1">{shift.workType.name}</div>
 
                 {shift.note && (
                   <div className="text-sm text-gray-500 mt-1">
@@ -177,16 +163,14 @@ export default function MyShiftsPage() {
                   1000 /
                   60 /
                   60
-                ).toFixed(2)}
-                {' '}timer
+                ).toFixed(2)}{" "}
+                timer
               </div>
             </div>
           ))}
 
           {myMonthShifts.length === 0 && (
-            <div className="text-gray-500">
-              Ingen vagter i denne måned.
-            </div>
+            <div className="text-gray-500">Ingen vagter i denne måned.</div>
           )}
         </div>
       </div>

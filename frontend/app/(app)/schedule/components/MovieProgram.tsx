@@ -21,15 +21,15 @@ export default function MovieProgram({ movieShowings }: MovieProgramProps) {
             <div className="p-3 border-r font-medium">{movie.title}</div>
             <div className="p-3 border-r">{movie.hall}</div>
             <div className="p-3 border-r">
-              {new Date(movie.startTime).toLocaleTimeString('da-DK', {
-                hour: '2-digit',
-                minute: '2-digit',
+              {new Date(movie.startTime).toLocaleTimeString("da-DK", {
+                hour: "2-digit",
+                minute: "2-digit",
               })}
             </div>
             <div className="p-3 border-r">
-              {new Date(movie.endTime).toLocaleTimeString('da-DK', {
-                hour: '2-digit',
-                minute: '2-digit',
+              {new Date(movie.endTime).toLocaleTimeString("da-DK", {
+                hour: "2-digit",
+                minute: "2-digit",
               })}
             </div>
             <div className="p-3">

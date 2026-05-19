@@ -40,7 +40,7 @@ export default function ShiftForm({
   return (
     <div className="bg-white rounded-xl shadow p-6 mb-6">
       <h1 className="text-3xl font-bold mb-4">
-        {selectedShift ? 'Rediger vagt' : 'Opret vagt'}
+        {selectedShift ? "Rediger vagt" : "Opret vagt"}
       </h1>
 
       <form
@@ -112,7 +112,7 @@ export default function ShiftForm({
             type="submit"
             className="w-full bg-black text-white py-3 rounded-lg"
           >
-            {selectedShift ? 'Gem ændringer' : 'Opret vagt'}
+            {selectedShift ? "Gem ændringer" : "Opret vagt"}
           </button>
         </div>
       </form>
@@ -135,9 +135,9 @@ export default function ShiftForm({
           <button
             onClick={onOfferTrade}
             className="bg-blue-600 text-white px-5 py-2 rounded-lg"
-            >
+          >
             Send i byttepulje
-</button>
+          </button>
         </div>
       )}
     </div>

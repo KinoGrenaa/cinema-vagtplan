@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 type User = {
   id: number;
@@ -8,7 +8,7 @@ type User = {
   firstName: string;
   lastName: string;
   phone?: string | null;
-  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+  role: "MASTER" | "ADMIN" | "EMPLOYEE";
   profileImage?: string | null;
   address?: string | null;
   birthDate?: string | null;
@@ -38,34 +38,32 @@ export default function EmployeesPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('test123');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'MASTER' | 'ADMIN' | 'EMPLOYEE'>(
-    'EMPLOYEE',
-  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("test123");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState<"MASTER" | "ADMIN" | "EMPLOYEE">("EMPLOYEE");
 
-  const [profileImage, setProfileImage] = useState('');
-  const [address, setAddress] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
-  const [hireDate, setHireDate] = useState('');
-  const [skills, setSkills] = useState('');
-  const [notes, setNotes] = useState('');
-  const [message, setMessage] = useState('');
+  const [profileImage, setProfileImage] = useState("");
+  const [address, setAddress] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [hireDate, setHireDate] = useState("");
+  const [skills, setSkills] = useState("");
+  const [notes, setNotes] = useState("");
+  const [message, setMessage] = useState("");
 
   const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
-  const [documentTitle, setDocumentTitle] = useState('');
+  const [documentTitle, setDocumentTitle] = useState("");
   const [documentFile, setDocumentFile] = useState<File | null>(null);
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   const fetchUsers = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/users', {
+    const response = await fetch("http://localhost:3001/users", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -90,10 +88,10 @@ export default function EmployeesPage() {
   }
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (!savedUser) {
-      window.location.href = '/';
+      window.location.href = "/";
       return;
     }
 
@@ -104,52 +102,52 @@ export default function EmployeesPage() {
   }, [fetchUsers]);
 
   function formatDateForInput(value?: string | null) {
-    return value ? value.slice(0, 10) : '';
+    return value ? value.slice(0, 10) : "";
   }
 
   function resetForm() {
     setSelectedUser(null);
-    setEmail('');
-    setPassword('test123');
-    setFirstName('');
-    setLastName('');
-    setPhone('');
-    setRole('EMPLOYEE');
-    setProfileImage('');
-    setAddress('');
-    setBirthDate('');
-    setEmergencyPhone('');
-    setHireDate('');
-    setSkills('');
-    setNotes('');
-    setMessage('');
+    setEmail("");
+    setPassword("test123");
+    setFirstName("");
+    setLastName("");
+    setPhone("");
+    setRole("EMPLOYEE");
+    setProfileImage("");
+    setAddress("");
+    setBirthDate("");
+    setEmergencyPhone("");
+    setHireDate("");
+    setSkills("");
+    setNotes("");
+    setMessage("");
     setDocuments([]);
-    setDocumentTitle('');
+    setDocumentTitle("");
     setDocumentFile(null);
   }
 
   function startEdit(user: User) {
     setSelectedUser(user);
     setEmail(user.email);
-    setPassword('');
+    setPassword("");
     setFirstName(user.firstName);
     setLastName(user.lastName);
-    setPhone(user.phone || '');
+    setPhone(user.phone || "");
     setRole(user.role);
-    setProfileImage(user.profileImage || '');
-    setAddress(user.address || '');
+    setProfileImage(user.profileImage || "");
+    setAddress(user.address || "");
     setBirthDate(formatDateForInput(user.birthDate));
-    setEmergencyPhone(user.emergencyPhone || '');
+    setEmergencyPhone(user.emergencyPhone || "");
     setHireDate(formatDateForInput(user.hireDate));
-    setSkills(user.skills || '');
-    setNotes(user.notes || '');
-    setMessage('');
+    setSkills(user.skills || "");
+    setNotes(user.notes || "");
+    setMessage("");
     fetchDocuments(user.id);
   }
 
   async function saveEmployee(event: React.FormEvent) {
     event.preventDefault();
-    setMessage('');
+    setMessage("");
 
     if (!currentUser) return;
 
@@ -172,14 +170,14 @@ export default function EmployeesPage() {
 
     const url = selectedUser
       ? `http://localhost:3001/users/${selectedUser.id}`
-      : 'http://localhost:3001/users';
+      : "http://localhost:3001/users";
 
-    const method = selectedUser ? 'PATCH' : 'POST';
+    const method = selectedUser ? "PATCH" : "POST";
 
     const response = await fetch(url, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify(payload),
@@ -188,43 +186,46 @@ export default function EmployeesPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setMessage(data.message || 'Der opstod en fejl');
+      setMessage(data.message || "Der opstod en fejl");
       return;
     }
 
-    setMessage(selectedUser ? 'Medarbejder opdateret' : 'Medarbejder oprettet');
+    setMessage(selectedUser ? "Medarbejder opdateret" : "Medarbejder oprettet");
     resetForm();
     await fetchUsers();
   }
 
   async function uploadDocument() {
     if (!selectedUser || !documentFile) {
-      setMessage('Vælg en fil først');
+      setMessage("Vælg en fil først");
       return;
     }
 
     const formData = new FormData();
-    formData.append('userId', String(selectedUser.id));
-    formData.append('title', documentTitle || documentFile.name);
-    formData.append('file', documentFile);
+    formData.append("userId", String(selectedUser.id));
+    formData.append("title", documentTitle || documentFile.name);
+    formData.append("file", documentFile);
 
-    const response = await fetch('http://localhost:3001/employee-documents/upload', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
+    const response = await fetch(
+      "http://localhost:3001/employee-documents/upload",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: formData,
       },
-      body: formData,
-    });
+    );
 
     if (!response.ok) {
       const data = await response.json();
-      setMessage(data.message || 'Upload fejlede');
+      setMessage(data.message || "Upload fejlede");
       return;
     }
 
-    setDocumentTitle('');
+    setDocumentTitle("");
     setDocumentFile(null);
-    setMessage('Dokument uploadet');
+    setMessage("Dokument uploadet");
 
     await fetchDocuments(selectedUser.id);
   }
@@ -233,7 +234,7 @@ export default function EmployeesPage() {
     if (!selectedUser) return;
 
     await fetch(`http://localhost:3001/employee-documents/${documentId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -243,7 +244,7 @@ export default function EmployeesPage() {
   }
 
   const canManageEmployees =
-    currentUser?.role === 'ADMIN' || currentUser?.role === 'MASTER';
+    currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
   return (
     <>
@@ -257,7 +258,7 @@ export default function EmployeesPage() {
       {canManageEmployees && (
         <div className="bg-white rounded-xl shadow p-6 mb-6">
           <h2 className="text-2xl font-bold mb-4">
-            {selectedUser ? 'Rediger medarbejder' : 'Opret medarbejder'}
+            {selectedUser ? "Rediger medarbejder" : "Opret medarbejder"}
           </h2>
 
           <form
@@ -307,8 +308,8 @@ export default function EmployeesPage() {
             <div>
               <label className="block mb-1 font-medium">
                 {selectedUser
-                  ? 'Ny adgangskode (valgfri)'
-                  : 'Midlertidig adgangskode'}
+                  ? "Ny adgangskode (valgfri)"
+                  : "Midlertidig adgangskode"}
               </label>
               <input
                 className="w-full border rounded-lg px-3 py-2"
@@ -317,8 +318,8 @@ export default function EmployeesPage() {
                 required={!selectedUser}
                 placeholder={
                   selectedUser
-                    ? 'Lad feltet være tomt for at beholde adgangskoden'
-                    : ''
+                    ? "Lad feltet være tomt for at beholde adgangskoden"
+                    : ""
                 }
               />
             </div>
@@ -329,7 +330,7 @@ export default function EmployeesPage() {
                 className="w-full border rounded-lg px-3 py-2"
                 value={role}
                 onChange={(e) =>
-                  setRole(e.target.value as 'MASTER' | 'ADMIN' | 'EMPLOYEE')
+                  setRole(e.target.value as "MASTER" | "ADMIN" | "EMPLOYEE")
                 }
               >
                 <option value="EMPLOYEE">Medarbejder</option>
@@ -343,7 +344,9 @@ export default function EmployeesPage() {
             </div>
 
             <div>
-              <label className="block mb-1 font-medium">Profilbillede URL</label>
+              <label className="block mb-1 font-medium">
+                Profilbillede URL
+              </label>
               <input
                 className="w-full border rounded-lg px-3 py-2"
                 value={profileImage}
@@ -465,13 +468,13 @@ export default function EmployeesPage() {
                           type="button"
                           onClick={() => {
                             const confirmed = window.confirm(
-                            'Er du sikker på at du vil slette dokumentet?',
+                              "Er du sikker på at du vil slette dokumentet?",
                             );
 
-                        if (confirmed) {
-                        deleteDocument(document.id);
-                        }
-                        }}
+                            if (confirmed) {
+                              deleteDocument(document.id);
+                            }
+                          }}
                           className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm"
                         >
                           Slet
@@ -494,7 +497,7 @@ export default function EmployeesPage() {
                 type="submit"
                 className="flex-1 bg-black text-white py-3 rounded-lg"
               >
-                {selectedUser ? 'Gem ændringer' : 'Opret medarbejder'}
+                {selectedUser ? "Gem ændringer" : "Opret medarbejder"}
               </button>
 
               {selectedUser && (
@@ -544,7 +547,7 @@ export default function EmployeesPage() {
                   </div>
                   <div className="text-sm text-gray-500">{user.email}</div>
                   <div className="text-sm text-gray-500">
-                    {user.phone || 'Ingen telefon'}
+                    {user.phone || "Ingen telefon"}
                   </div>
                   {user.skills && (
                     <div className="text-sm text-gray-500">

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
+import { useCallback, useEffect, useState } from "react";
+import { io } from "socket.io-client";
 
 type User = {
   id: number;
@@ -31,17 +31,17 @@ export default function MessagesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [receiverId, setReceiverId] = useState<number | ''>('');
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [receiverId, setReceiverId] = useState<number | "">("");
   const [isBroadcast, setIsBroadcast] = useState(false);
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   const fetchUsers = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/users', {
+    const response = await fetch("http://localhost:3001/users", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -66,10 +66,10 @@ export default function MessagesPage() {
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (!savedUser) {
-      window.location.href = '/';
+      window.location.href = "/";
       return;
     }
 
@@ -84,9 +84,9 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!currentUser) return;
 
-    const socket = io('http://localhost:3001');
+    const socket = io("http://localhost:3001");
 
-    socket.on('messagesUpdated', () => {
+    socket.on("messagesUpdated", () => {
       fetchMessages(currentUser);
     });
 
@@ -100,10 +100,10 @@ export default function MessagesPage() {
 
     if (!currentUser) return;
 
-    await fetch('http://localhost:3001/messages', {
-      method: 'POST',
+    await fetch("http://localhost:3001/messages", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify({
@@ -116,9 +116,9 @@ export default function MessagesPage() {
       }),
     });
 
-    setSubject('');
-    setBody('');
-    setReceiverId('');
+    setSubject("");
+    setBody("");
+    setReceiverId("");
     setIsBroadcast(false);
 
     await fetchMessages(currentUser);
@@ -128,7 +128,7 @@ export default function MessagesPage() {
     if (!currentUser) return;
 
     await fetch(`http://localhost:3001/messages/${messageId}/read`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -193,7 +193,6 @@ export default function MessagesPage() {
               checked={isBroadcast}
               onChange={(e) => setIsBroadcast(e.target.checked)}
             />
-
             Send til alle
           </label>
 
@@ -208,10 +207,7 @@ export default function MessagesPage() {
             />
           </div>
 
-          <button
-            type="submit"
-            className="bg-black text-white py-3 rounded-lg"
-          >
+          <button type="submit" className="bg-black text-white py-3 rounded-lg">
             Send besked
           </button>
         </form>
@@ -222,43 +218,35 @@ export default function MessagesPage() {
 
         <div className="space-y-4">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className="border rounded-xl p-4 bg-gray-50"
-            >
+            <div key={message.id} className="border rounded-xl p-4 bg-gray-50">
               <div className="flex flex-col md:flex-row md:justify-between gap-2">
                 <div>
                   <h3 className="text-lg font-bold">{message.subject}</h3>
 
                   <p className="text-sm text-gray-600">
-                    Fra: {message.sender.firstName}{' '}
-                    {message.sender.lastName}
+                    Fra: {message.sender.firstName} {message.sender.lastName}
                   </p>
 
                   <p className="text-sm text-gray-600">
-                    Til:{' '}
+                    Til:{" "}
                     {message.isBroadcast
-                      ? 'Alle'
+                      ? "Alle"
                       : message.receiver
                         ? `${message.receiver.firstName} ${message.receiver.lastName}`
-                        : '-'}
+                        : "-"}
                   </p>
                 </div>
 
                 <div className="text-sm text-gray-500">
-                  {new Date(message.createdAt).toLocaleString('da-DK')}
+                  {new Date(message.createdAt).toLocaleString("da-DK")}
                 </div>
               </div>
 
-              <p className="mt-4 whitespace-pre-wrap">
-                {message.body}
-              </p>
+              <p className="mt-4 whitespace-pre-wrap">{message.body}</p>
 
               <div className="mt-4 flex gap-2 items-center">
                 {message.readAt ? (
-                  <span className="text-green-700 text-sm">
-                    Læst
-                  </span>
+                  <span className="text-green-700 text-sm">Læst</span>
                 ) : (
                   <button
                     onClick={() => markAsRead(message.id)}
@@ -272,9 +260,7 @@ export default function MessagesPage() {
           ))}
 
           {messages.length === 0 && (
-            <div className="text-gray-500">
-              Ingen beskeder endnu.
-            </div>
+            <div className="text-gray-500">Ingen beskeder endnu.</div>
           )}
         </div>
       </div>

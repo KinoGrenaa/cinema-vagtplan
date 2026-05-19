@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 type PayrollEntry = {
   date: string;
@@ -19,13 +19,13 @@ type PayrollUser = {
 };
 
 export default function PayrollPage() {
-  const [startDate, setStartDate] = useState('2026-05-01');
-  const [endDate, setEndDate] = useState('2026-05-31');
+  const [startDate, setStartDate] = useState("2026-05-01");
+  const [endDate, setEndDate] = useState("2026-05-31");
   const [report, setReport] = useState<PayrollUser[]>([]);
   const [loading, setLoading] = useState(false);
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   async function fetchReport() {
@@ -47,7 +47,15 @@ export default function PayrollPage() {
 
   function exportCsv() {
     const rows = [
-      ['Medarbejder', 'Email', 'Dato', 'Clock ind', 'Clock ud', 'Timer', 'Arbejdstype'],
+      [
+        "Medarbejder",
+        "Email",
+        "Dato",
+        "Clock ind",
+        "Clock ud",
+        "Timer",
+        "Arbejdstype",
+      ],
     ];
 
     report.forEach((user) => {
@@ -56,8 +64,8 @@ export default function PayrollPage() {
           user.name,
           user.email,
           entry.date,
-          new Date(entry.clockIn).toLocaleString('da-DK'),
-          new Date(entry.clockOut).toLocaleString('da-DK'),
+          new Date(entry.clockIn).toLocaleString("da-DK"),
+          new Date(entry.clockOut).toLocaleString("da-DK"),
           entry.hours.toFixed(2),
           entry.workType,
         ]);
@@ -65,15 +73,15 @@ export default function PayrollPage() {
     });
 
     const csvContent = rows
-      .map((row) => row.map((cell) => `"${cell}"`).join(';'))
-      .join('\n');
+      .map((row) => row.map((cell) => `"${cell}"`).join(";"))
+      .join("\n");
 
     const blob = new Blob([csvContent], {
-      type: 'text/csv;charset=utf-8;',
+      type: "text/csv;charset=utf-8;",
     });
 
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
 
     link.href = url;
     link.download = `loenrapport-${startDate}-til-${endDate}.csv`;
@@ -118,7 +126,7 @@ export default function PayrollPage() {
               onClick={fetchReport}
               className="w-full bg-black text-white py-3 rounded-lg"
             >
-              {loading ? 'Henter...' : 'Hent rapport'}
+              {loading ? "Henter..." : "Hent rapport"}
             </button>
           </div>
 
@@ -164,17 +172,18 @@ export default function PayrollPage() {
                 </div>
 
                 {user.entries.map((entry, index) => (
-                  <div key={index} className="grid grid-cols-5 border-t text-sm">
+                  <div
+                    key={index}
+                    className="grid grid-cols-5 border-t text-sm"
+                  >
                     <div className="p-3 border-r">{entry.date}</div>
                     <div className="p-3 border-r">
-                      {new Date(entry.clockIn).toLocaleString('da-DK')}
+                      {new Date(entry.clockIn).toLocaleString("da-DK")}
                     </div>
                     <div className="p-3 border-r">
-                      {new Date(entry.clockOut).toLocaleString('da-DK')}
+                      {new Date(entry.clockOut).toLocaleString("da-DK")}
                     </div>
-                    <div className="p-3 border-r">
-                      {entry.hours.toFixed(2)}
-                    </div>
+                    <div className="p-3 border-r">{entry.hours.toFixed(2)}</div>
                     <div className="p-3">{entry.workType}</div>
                   </div>
                 ))}
@@ -183,9 +192,7 @@ export default function PayrollPage() {
           ))}
 
           {report.length === 0 && (
-            <div className="text-gray-500">
-              Ingen rapport hentet endnu.
-            </div>
+            <div className="text-gray-500">Ingen rapport hentet endnu.</div>
           )}
         </div>
       </div>

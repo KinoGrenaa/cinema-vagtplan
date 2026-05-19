@@ -1,16 +1,12 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
-import ShiftForm from './components/ShiftForm';
-import ShiftTimeline from './components/ShiftTimeline';
-import MovieProgram from './components/MovieProgram';
-import { useApi } from '../../hooks/useApi';
-import type {
-  Shift,
-  User,
-  WorkType,
-} from '../../../../shared/types';
+import { useCallback, useEffect, useState } from "react";
+import { io } from "socket.io-client";
+import ShiftForm from "./components/ShiftForm";
+import ShiftTimeline from "./components/ShiftTimeline";
+import MovieProgram from "./components/MovieProgram";
+import { useApi } from "../../hooks/useApi";
+import type { Shift, User, WorkType } from "../../../../shared/types";
 
 type MovieShowing = {
   id: number;
@@ -27,7 +23,7 @@ type LeaveRequest = {
   startDate: string;
   endDate: string;
   reason?: string | null;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: "PENDING" | "APPROVED" | "REJECTED";
   user: {
     firstName: string;
     lastName: string;
@@ -60,17 +56,16 @@ export default function SchedulePage() {
 
   const [startTime, setStartTime] = useState(`${todayDefault}T14:00`);
   const [endTime, setEndTime] = useState(`${todayDefault}T22:00`);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState("");
   const [userId, setUserId] = useState(2);
   const [workTypeId, setWorkTypeId] = useState(1);
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useState("");
 
   const [showClockModal, setShowClockModal] = useState(false);
   const [clockShiftId, setClockShiftId] = useState<number | null>(null);
-  const [clockInTime, setClockInTime] = useState('');
-  const [clockOutTime, setClockOutTime] = useState('');
-  const [clockNote, setClockNote] = useState('');
-
+  const [clockInTime, setClockInTime] = useState("");
+  const [clockOutTime, setClockOutTime] = useState("");
+  const [clockNote, setClockNote] = useState("");
 
   function toInputDateTime(value: string) {
     const date = new Date(value);
@@ -82,12 +77,12 @@ export default function SchedulePage() {
   }
 
   function getLoggedInUser(): LoggedInUser | null {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
   }
 
   const fetchUsers = useCallback(async () => {
-    const response = await apiFetch('/users');
+    const response = await apiFetch("/users");
 
     const data: User[] = await response.json();
     setUsers(data);
@@ -98,7 +93,7 @@ export default function SchedulePage() {
   }, [apiFetch]);
 
   const fetchWorkTypes = useCallback(async () => {
-    const response = await apiFetch('/work-types');
+    const response = await apiFetch("/work-types");
 
     const data: WorkType[] = await response.json();
     setWorkTypes(data);
@@ -124,7 +119,7 @@ export default function SchedulePage() {
   }, [apiFetch, selectedDate]);
 
   const fetchLeaveRequests = useCallback(async () => {
-    const response = await apiFetch('/leave-requests');
+    const response = await apiFetch("/leave-requests");
 
     const data: LeaveRequest[] = await response.json();
     setLeaveRequests(data);
@@ -137,10 +132,10 @@ export default function SchedulePage() {
   }, [fetchShifts, fetchMovieShowings, fetchLeaveRequests]);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (!savedUser) {
-      window.location.href = '/';
+      window.location.href = "/";
       return;
     }
 
@@ -154,9 +149,9 @@ export default function SchedulePage() {
   }, [refreshDayData]);
 
   useEffect(() => {
-    const socket = io('http://localhost:3001');
+    const socket = io("http://localhost:3001");
 
-    socket.on('shiftsUpdated', () => {
+    socket.on("shiftsUpdated", () => {
       refreshDayData();
     });
 
@@ -173,42 +168,41 @@ export default function SchedulePage() {
     return current >= start && current <= end;
   }
 
-  function getLeaveStyle(status: LeaveRequest['status']) {
-    if (status === 'APPROVED') {
-      return 'bg-green-100 text-green-800 border-green-300';
+  function getLeaveStyle(status: LeaveRequest["status"]) {
+    if (status === "APPROVED") {
+      return "bg-green-100 text-green-800 border-green-300";
     }
 
-    if (status === 'REJECTED') {
-      return 'bg-red-100 text-red-800 border-red-300';
+    if (status === "REJECTED") {
+      return "bg-red-100 text-red-800 border-red-300";
     }
 
-    return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return "bg-yellow-100 text-yellow-800 border-yellow-300";
   }
 
-  const selectedDateLeaveRequests =
-    leaveRequests.filter(leaveIsOnSelectedDate);
+  const selectedDateLeaveRequests = leaveRequests.filter(leaveIsOnSelectedDate);
 
   function clearForm() {
     setSelectedShift(null);
     setStartTime(`${selectedDate}T14:00`);
     setEndTime(`${selectedDate}T22:00`);
-    setNote('');
-    setFormError('');
+    setNote("");
+    setFormError("");
   }
 
   function resetClockModal() {
     setShowClockModal(false);
     setClockShiftId(null);
-    setClockInTime('');
-    setClockOutTime('');
-    setClockNote('');
+    setClockInTime("");
+    setClockOutTime("");
+    setClockNote("");
   }
 
   async function submitManualTime() {
     const shift = shifts.find((s) => s.id === clockShiftId);
 
     if (!shift || !currentUser) {
-      alert('Vælg en vagt først');
+      alert("Vælg en vagt først");
       return;
     }
 
@@ -219,12 +213,12 @@ export default function SchedulePage() {
       plannedStart !== clockInTime || plannedEnd !== clockOutTime;
 
     if (hasDeviation && !clockNote.trim()) {
-      alert('Du skal skrive en note ved afvigelse fra vagtplanen');
+      alert("Du skal skrive en note ved afvigelse fra vagtplanen");
       return;
     }
 
-    const response = await apiFetch('/time-entries/manual', {
-      method: 'POST',
+    const response = await apiFetch("/time-entries/manual", {
+      method: "POST",
       body: JSON.stringify({
         userId: currentUser.id,
         cinemaId: currentUser.cinemaId,
@@ -238,17 +232,17 @@ export default function SchedulePage() {
     const data = await response.json();
 
     if (!response.ok) {
-      alert(data.message || 'Kunne ikke registrere timer');
+      alert(data.message || "Kunne ikke registrere timer");
       return;
     }
 
-    alert('Timer sendt til godkendelse');
+    alert("Timer sendt til godkendelse");
     resetClockModal();
   }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setFormError('');
+    setFormError("");
 
     const parsedUser = getLoggedInUser();
 
@@ -261,11 +255,10 @@ export default function SchedulePage() {
       workTypeId,
     };
 
-
-    const method = selectedShift ? 'PATCH' : 'POST';
+    const method = selectedShift ? "PATCH" : "POST";
 
     const response = await apiFetch(
-      selectedShift ? `/shifts/${selectedShift.id}` : '/shifts',
+      selectedShift ? `/shifts/${selectedShift.id}` : "/shifts",
       {
         method,
         body: JSON.stringify(body),
@@ -275,7 +268,7 @@ export default function SchedulePage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setFormError(data.message || 'Der opstod en fejl');
+      setFormError(data.message || "Der opstod en fejl");
       return;
     }
 
@@ -287,7 +280,7 @@ export default function SchedulePage() {
     if (!selectedShift) return;
 
     await apiFetch(`/shifts/${selectedShift.id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
 
     clearForm();
@@ -298,10 +291,10 @@ export default function SchedulePage() {
     setSelectedShift(shift);
     setStartTime(shift.startTime.slice(0, 16));
     setEndTime(shift.endTime.slice(0, 16));
-    setNote(shift.note || '');
+    setNote(shift.note || "");
     setUserId(shift.userId);
     setWorkTypeId(shift.workTypeId);
-    setFormError('');
+    setFormError("");
   }
 
   function changeDate(days: number) {
@@ -314,7 +307,7 @@ export default function SchedulePage() {
     setStartTime(`${nextDate}T14:00`);
     setEndTime(`${nextDate}T22:00`);
     setSelectedShift(null);
-    setFormError('');
+    setFormError("");
   }
 
   function goToToday() {
@@ -324,7 +317,7 @@ export default function SchedulePage() {
     setStartTime(`${today}T14:00`);
     setEndTime(`${today}T22:00`);
     setSelectedShift(null);
-    setFormError('');
+    setFormError("");
   }
 
   async function handleMoveShift(
@@ -342,7 +335,7 @@ export default function SchedulePage() {
     const newEnd = new Date(newStart.getTime() + durationMs);
 
     await apiFetch(`/shifts/${shift.id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify({
         startTime: newStart.toISOString(),
         endTime: newEnd.toISOString(),
@@ -357,7 +350,7 @@ export default function SchedulePage() {
 
   async function handleChangeShiftUser(shift: Shift, newUserId: number) {
     await apiFetch(`/shifts/${shift.id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify({
         startTime: shift.startTime,
         endTime: shift.endTime,
@@ -386,7 +379,7 @@ export default function SchedulePage() {
     newEnd.setHours(newEndHour, newEndMinute, 0, 0);
 
     await apiFetch(`/shifts/${shift.id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify({
         startTime: newStart.toISOString(),
         endTime: newEnd.toISOString(),
@@ -406,21 +399,21 @@ export default function SchedulePage() {
 
     if (!parsedUser) return;
 
-    await apiFetch('/shift-trades', {
-      method: 'POST',
+    await apiFetch("/shift-trades", {
+      method: "POST",
       body: JSON.stringify({
         shiftId: selectedShift.id,
         offeredByUserId: selectedShift.userId,
         cinemaId: parsedUser.cinemaId,
-        message: '',
+        message: "",
       }),
     });
 
-    alert('Vagten er sendt i byttepuljen');
+    alert("Vagten er sendt i byttepuljen");
   }
 
   const canManageShifts =
-    currentUser?.role === 'ADMIN' || currentUser?.role === 'MASTER';
+    currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
   if (loading) {
     return <p className="p-10">Indlæser vagter...</p>;
@@ -485,9 +478,7 @@ export default function SchedulePage() {
                   <div className="text-sm">Status: {request.status}</div>
 
                   {request.reason && (
-                    <div className="text-sm mt-1">
-                      Årsag: {request.reason}
-                    </div>
+                    <div className="text-sm mt-1">Årsag: {request.reason}</div>
                   )}
                 </div>
               ))}
@@ -526,8 +517,8 @@ export default function SchedulePage() {
             <h1 className="text-3xl font-bold">Dagens vagter</h1>
             <p className="text-gray-500">
               {canManageShifts
-                ? 'Administrer, flyt og resize vagter'
-                : 'Se dagens vagtplan'}
+                ? "Administrer, flyt og resize vagter"
+                : "Se dagens vagtplan"}
             </p>
           </div>
         </div>
@@ -563,7 +554,7 @@ export default function SchedulePage() {
                 </label>
 
                 <select
-                  value={clockShiftId || ''}
+                  value={clockShiftId || ""}
                   onChange={(event) => {
                     const shiftId = Number(event.target.value);
 
@@ -575,7 +566,7 @@ export default function SchedulePage() {
 
                     setClockInTime(toInputDateTime(shift.startTime));
                     setClockOutTime(toInputDateTime(shift.endTime));
-                    setClockNote('');
+                    setClockNote("");
                   }}
                   className="border rounded-lg px-3 py-2 w-full"
                 >
@@ -585,22 +576,16 @@ export default function SchedulePage() {
                     .filter((shift) => shift.userId === currentUser?.id)
                     .map((shift) => (
                       <option key={shift.id} value={shift.id}>
-                        {shift.workType.name} ·{' '}
-                        {new Date(shift.startTime).toLocaleTimeString(
-                          'da-DK',
-                          {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          },
-                        )}
-                        {' - '}
-                        {new Date(shift.endTime).toLocaleTimeString(
-                          'da-DK',
-                          {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          },
-                        )}
+                        {shift.workType.name} ·{" "}
+                        {new Date(shift.startTime).toLocaleTimeString("da-DK", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {" - "}
+                        {new Date(shift.endTime).toLocaleTimeString("da-DK", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </option>
                     ))}
                 </select>
@@ -617,9 +602,7 @@ export default function SchedulePage() {
                       <input
                         type="datetime-local"
                         value={clockInTime}
-                        onChange={(event) =>
-                          setClockInTime(event.target.value)
-                        }
+                        onChange={(event) => setClockInTime(event.target.value)}
                         className="border rounded-lg px-3 py-2 w-full"
                       />
                     </div>
@@ -683,7 +666,7 @@ export default function SchedulePage() {
             <p className="text-gray-700 mb-6">{formError}</p>
 
             <button
-              onClick={() => setFormError('')}
+              onClick={() => setFormError("")}
               className="w-full bg-black text-white py-3 rounded-xl"
             >
               OK

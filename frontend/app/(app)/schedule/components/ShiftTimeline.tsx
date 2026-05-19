@@ -1,7 +1,7 @@
-import ShiftCard from './ShiftCard';
+import ShiftCard from "./ShiftCard";
 
 const hours = Array.from({ length: 25 }, (_, i) =>
-  i.toString().padStart(2, '0'),
+  i.toString().padStart(2, "0"),
 );
 
 const TIMELINE_WIDTH = 2400;
@@ -13,15 +13,19 @@ type ShiftTimelineProps = {
   users: any[];
   selectedDate: string;
   onSelectShift: (shift: any) => void;
-  onMoveShift: (shift: any, newStartHour: number, newStartMinute: number) => void;
+  onMoveShift: (
+    shift: any,
+    newStartHour: number,
+    newStartMinute: number,
+  ) => void;
   onChangeShiftUser: (shift: any, newUserId: number) => void;
   onResizeShift: (
-  shift: any,
-  newStartHour: number,
-  newStartMinute: number,
-  newEndHour: number,
-  newEndMinute: number,
-) => void;
+    shift: any,
+    newStartHour: number,
+    newStartMinute: number,
+    newEndHour: number,
+    newEndMinute: number,
+  ) => void;
 };
 
 export default function ShiftTimeline({

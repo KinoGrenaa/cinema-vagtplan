@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { Rnd } from 'react-rnd';
+import { Rnd } from "react-rnd";
 
 type ShiftCardProps = {
   shift: any;
@@ -110,14 +110,14 @@ export default function ShiftCard({
         <div className="text-xs">{shift.workType.name}</div>
 
         <div className="text-xs">
-          {new Date(shift.startTime).toLocaleTimeString('da-DK', {
-            hour: '2-digit',
-            minute: '2-digit',
+          {new Date(shift.startTime).toLocaleTimeString("da-DK", {
+            hour: "2-digit",
+            minute: "2-digit",
           })}
-          {' - '}
-          {new Date(shift.endTime).toLocaleTimeString('da-DK', {
-            hour: '2-digit',
-            minute: '2-digit',
+          {" - "}
+          {new Date(shift.endTime).toLocaleTimeString("da-DK", {
+            hour: "2-digit",
+            minute: "2-digit",
           })}
         </div>
 

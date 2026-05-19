@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type User = {
   id: number;
@@ -13,7 +13,7 @@ type LeaveRequest = {
   startDate: string;
   endDate: string;
   reason?: string | null;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: "PENDING" | "APPROVED" | "REJECTED";
   user: User;
 };
 
@@ -24,11 +24,11 @@ export default function AbsenceCalendarPage() {
   );
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   const fetchRequests = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/leave-requests', {
+    const response = await fetch("http://localhost:3001/leave-requests", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -43,12 +43,12 @@ export default function AbsenceCalendarPage() {
   }, [fetchRequests]);
 
   const daysInMonth = useMemo(() => {
-    const [year, month] = selectedMonth.split('-').map(Number);
+    const [year, month] = selectedMonth.split("-").map(Number);
     const lastDay = new Date(year, month, 0).getDate();
 
     return Array.from({ length: lastDay }, (_, index) => {
       const day = index + 1;
-      return `${selectedMonth}-${String(day).padStart(2, '0')}`;
+      return `${selectedMonth}-${String(day).padStart(2, "0")}`;
     });
   }, [selectedMonth]);
 
@@ -66,11 +66,12 @@ export default function AbsenceCalendarPage() {
     return current >= start && current <= end;
   }
 
-  function getStatusStyle(status: LeaveRequest['status']) {
-    if (status === 'APPROVED') return 'bg-green-100 text-green-800 border-green-300';
-    if (status === 'REJECTED') return 'bg-red-100 text-red-800 border-red-300';
+  function getStatusStyle(status: LeaveRequest["status"]) {
+    if (status === "APPROVED")
+      return "bg-green-100 text-green-800 border-green-300";
+    if (status === "REJECTED") return "bg-red-100 text-red-800 border-red-300";
 
-    return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return "bg-yellow-100 text-yellow-800 border-yellow-300";
   }
 
   return (
@@ -119,9 +120,9 @@ export default function AbsenceCalendarPage() {
                 className="border rounded-xl p-3 min-h-32 bg-gray-50"
               >
                 <div className="font-bold mb-2">
-                  {new Date(`${date}T12:00:00`).toLocaleDateString('da-DK', {
-                    weekday: 'short',
-                    day: '2-digit',
+                  {new Date(`${date}T12:00:00`).toLocaleDateString("da-DK", {
+                    weekday: "short",
+                    day: "2-digit",
                   })}
                 </div>
 

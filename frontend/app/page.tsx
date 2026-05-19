@@ -1,25 +1,25 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAuth } from '../providers/AuthProvider';
+import { useState } from "react";
+import { useAuth } from "../providers/AuthProvider";
 
 export default function HomePage() {
-  const [email, setEmail] = useState('admin@test.dk');
-  const [password, setPassword] = useState('test123');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("admin@test.dk");
+  const [password, setPassword] = useState("test123");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/auth/login', {
-        method: 'POST',
+      const response = await fetch("http://localhost:3001/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
@@ -27,15 +27,15 @@ export default function HomePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || 'Login fejlede');
+        setError(data.message || "Login fejlede");
         return;
       }
 
       login(data.token, data.user);
 
-      window.location.href = '/dashboard';
+      window.location.href = "/dashboard";
     } catch {
-      setError('Kunne ikke forbinde til serveren');
+      setError("Kunne ikke forbinde til serveren");
     } finally {
       setLoading(false);
     }
@@ -44,9 +44,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-10 rounded-xl shadow-lg w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          Cinema Vagtplan
-        </h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Cinema Vagtplan</h1>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -69,18 +67,14 @@ export default function HomePage() {
             />
           </div>
 
-          {error && (
-            <p className="text-red-600 text-sm">
-              {error}
-            </p>
-          )}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 disabled:bg-gray-400"
           >
-            {loading ? 'Logger ind...' : 'Log ind'}
+            {loading ? "Logger ind..." : "Log ind"}
           </button>
         </form>
       </div>

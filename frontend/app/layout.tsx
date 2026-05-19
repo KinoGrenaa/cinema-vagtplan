@@ -1,31 +1,31 @@
-import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
-import './globals.css';
-import { AuthProvider } from './providers/AuthProvider';
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from "./providers/AuthProvider";
 
 const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: 'Cinema Vagtplan',
-  description: 'Vagtplan og medarbejderportal til biografer',
-  manifest: '/manifest.json',
+  title: "Cinema Vagtplan",
+  description: "Vagtplan og medarbejderportal til biografer",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: 'Vagtplan',
-    statusBarStyle: 'black',
+    title: "Vagtplan",
+    statusBarStyle: "black",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -39,9 +39,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-gray-100">
-        <AuthProvider>
-        {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

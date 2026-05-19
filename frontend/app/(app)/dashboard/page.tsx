@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import AppMenu from '../../components/AppMenu';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import AppMenu from "../../components/AppMenu";
 
 type CurrentUser = {
   id: number;
@@ -26,12 +26,12 @@ type TimeEntry = {
 
 type LeaveRequest = {
   id: number;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: "PENDING" | "APPROVED" | "REJECTED";
 };
 
 type ShiftTrade = {
   id: number;
-  status: 'OPEN' | 'ACCEPTED' | 'CANCELLED';
+  status: "OPEN" | "ACCEPTED" | "CANCELLED";
 };
 
 type MovieShowing = {
@@ -51,44 +51,47 @@ export default function DashboardPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
-  const fetchDashboardData = useCallback(async (user: CurrentUser) => {
-    const headers = {
-      Authorization: `Bearer ${getToken()}`,
-    };
+  const fetchDashboardData = useCallback(
+    async (user: CurrentUser) => {
+      const headers = {
+        Authorization: `Bearer ${getToken()}`,
+      };
 
-    const [
-      shiftsRes,
-      timeEntriesRes,
-      leaveRequestsRes,
-      shiftTradesRes,
-      moviesRes,
-    ] = await Promise.all([
-      fetch(`http://localhost:3001/shifts?date=${today}`, { headers }),
-      fetch(`http://localhost:3001/time-entries?userId=${user.id}`, {
-        headers,
-      }),
-      fetch('http://localhost:3001/leave-requests', { headers }),
-      fetch('http://localhost:3001/shift-trades', { headers }),
-      fetch(`http://localhost:3001/movie-showings?date=${today}`, {
-        headers,
-      }),
-    ]);
+      const [
+        shiftsRes,
+        timeEntriesRes,
+        leaveRequestsRes,
+        shiftTradesRes,
+        moviesRes,
+      ] = await Promise.all([
+        fetch(`http://localhost:3001/shifts?date=${today}`, { headers }),
+        fetch(`http://localhost:3001/time-entries?userId=${user.id}`, {
+          headers,
+        }),
+        fetch("http://localhost:3001/leave-requests", { headers }),
+        fetch("http://localhost:3001/shift-trades", { headers }),
+        fetch(`http://localhost:3001/movie-showings?date=${today}`, {
+          headers,
+        }),
+      ]);
 
-    setShifts(await shiftsRes.json());
-    setTimeEntries(await timeEntriesRes.json());
-    setLeaveRequests(await leaveRequestsRes.json());
-    setShiftTrades(await shiftTradesRes.json());
-    setMovies(await moviesRes.json());
-  }, [today]);
+      setShifts(await shiftsRes.json());
+      setTimeEntries(await timeEntriesRes.json());
+      setLeaveRequests(await leaveRequestsRes.json());
+      setShiftTrades(await shiftTradesRes.json());
+      setMovies(await moviesRes.json());
+    },
+    [today],
+  );
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (!savedUser) {
-      window.location.href = '/';
+      window.location.href = "/";
       return;
     }
 
@@ -118,11 +121,11 @@ export default function DashboardPage() {
   }, [timeEntries]);
 
   const pendingLeaveRequests = leaveRequests.filter(
-    (request) => request.status === 'PENDING',
+    (request) => request.status === "PENDING",
   ).length;
 
   const openShiftTrades = shiftTrades.filter(
-    (trade) => trade.status === 'OPEN',
+    (trade) => trade.status === "OPEN",
   ).length;
 
   const soldSeatsToday = movies.reduce(
@@ -138,7 +141,7 @@ export default function DashboardPage() {
   const occupancy =
     totalCapacityToday > 0
       ? ((soldSeatsToday / totalCapacityToday) * 100).toFixed(1)
-      : '0.0';
+      : "0.0";
 
   if (!currentUser) {
     return <p className="p-10">Indlæser...</p>;
@@ -146,7 +149,6 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-
       <div className="bg-white rounded-xl shadow p-6 mb-6">
         <h1 className="text-3xl font-bold">
           Velkommen, {currentUser.firstName}
@@ -174,16 +176,12 @@ export default function DashboardPage() {
 
         <div className="bg-white rounded-xl shadow p-6">
           <div className="text-sm text-gray-500">Afventende fridage</div>
-          <div className="text-4xl font-bold mt-2">
-            {pendingLeaveRequests}
-          </div>
+          <div className="text-4xl font-bold mt-2">{pendingLeaveRequests}</div>
         </div>
 
         <div className="bg-white rounded-xl shadow p-6">
           <div className="text-sm text-gray-500">Åbne vagtbytter</div>
-          <div className="text-4xl font-bold mt-2">
-            {openShiftTrades}
-          </div>
+          <div className="text-4xl font-bold mt-2">{openShiftTrades}</div>
         </div>
       </div>
 

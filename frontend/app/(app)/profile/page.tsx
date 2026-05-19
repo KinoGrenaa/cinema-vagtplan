@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 type User = {
   id: number;
@@ -8,7 +8,7 @@ type User = {
   firstName: string;
   lastName: string;
   phone?: string | null;
-  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+  role: "MASTER" | "ADMIN" | "EMPLOYEE";
   profileImage?: string | null;
   address?: string | null;
   birthDate?: string | null;
@@ -28,49 +28,49 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<User | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [editing, setEditing] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [profileImage, setProfileImage] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [profileImage, setProfileImage] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [address, setAddress] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
-  const [skills, setSkills] = useState('');
+  const [address, setAddress] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [skills, setSkills] = useState("");
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   function formatDateForInput(value?: string | null) {
-    return value ? value.slice(0, 10) : '';
+    return value ? value.slice(0, 10) : "";
   }
 
   function fillForm(user: User) {
     setEmail(user.email);
-    setPassword('');
-    setPhone(user.phone || '');
-    setProfileImage(user.profileImage || '');
-    setAddress(user.address || '');
+    setPassword("");
+    setPhone(user.phone || "");
+    setProfileImage(user.profileImage || "");
+    setAddress(user.address || "");
     setBirthDate(formatDateForInput(user.birthDate));
-    setEmergencyPhone(user.emergencyPhone || '');
-    setSkills(user.skills || '');
+    setEmergencyPhone(user.emergencyPhone || "");
+    setSkills(user.skills || "");
   }
 
   const fetchProfile = useCallback(async () => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (!savedUser) {
-      window.location.href = '/';
+      window.location.href = "/";
       return;
     }
 
     const parsedUser: CurrentUser = JSON.parse(savedUser);
     setCurrentUser(parsedUser);
 
-    const response = await fetch('http://localhost:3001/users', {
+    const response = await fetch("http://localhost:3001/users", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -91,53 +91,53 @@ export default function ProfilePage() {
   }, [fetchProfile]);
 
   function formatDate(value?: string | null) {
-    if (!value) return '-';
-    return new Date(value).toLocaleDateString('da-DK');
+    if (!value) return "-";
+    return new Date(value).toLocaleDateString("da-DK");
   }
-async function uploadProfileImage(file: File) {
-  if (!currentUser) return;
+  async function uploadProfileImage(file: File) {
+    if (!currentUser) return;
 
-  setUploading(true);
-  setMessage('');
+    setUploading(true);
+    setMessage("");
 
-  const formData = new FormData();
-  formData.append('file', file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-  const response = await fetch(
-    `http://localhost:3001/users/${currentUser.id}/profile-image`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
+    const response = await fetch(
+      `http://localhost:3001/users/${currentUser.id}/profile-image`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: formData,
       },
-      body: formData,
-    },
-  );
+    );
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    setMessage(data.message || 'Upload fejlede');
+    if (!response.ok) {
+      setMessage(data.message || "Upload fejlede");
+      setUploading(false);
+      return;
+    }
+
+    setProfileImage(data.imageUrl);
+    setMessage("Billede uploadet. Husk at gemme profilen.");
     setUploading(false);
-    return;
   }
-
-  setProfileImage(data.imageUrl);
-  setMessage('Billede uploadet. Husk at gemme profilen.');
-  setUploading(false);
-}
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault();
-    setMessage('');
+    setMessage("");
 
     if (!currentUser) return;
 
     const response = await fetch(
       `http://localhost:3001/users/${currentUser.id}/profile`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({
@@ -156,28 +156,26 @@ async function uploadProfileImage(file: File) {
     const data = await response.json();
 
     if (!response.ok) {
-      setMessage(data.message || 'Der opstod en fejl');
+      setMessage(data.message || "Der opstod en fejl");
       return;
     }
 
     localStorage.setItem(
-      'user',
+      "user",
       JSON.stringify({
         ...currentUser,
         email: data.email,
       }),
     );
 
-    setMessage('Profil opdateret');
+    setMessage("Profil opdateret");
     setEditing(false);
     await fetchProfile();
   }
 
   if (!profile) {
     return (
-      <div className="bg-white rounded-xl shadow p-6">
-        Indlæser profil...
-      </div>
+      <div className="bg-white rounded-xl shadow p-6">Indlæser profil...</div>
     );
   }
 
@@ -192,19 +190,17 @@ async function uploadProfileImage(file: File) {
         <button
           onClick={() => {
             setEditing(!editing);
-            setMessage('');
+            setMessage("");
             fillForm(profile);
           }}
           className="bg-black text-white px-5 py-3 rounded-lg"
         >
-          {editing ? 'Annuller' : 'Rediger profil'}
+          {editing ? "Annuller" : "Rediger profil"}
         </button>
       </div>
 
       {message && (
-        <div className="bg-gray-100 rounded-xl p-4 mb-6">
-          {message}
-        </div>
+        <div className="bg-gray-100 rounded-xl p-4 mb-6">{message}</div>
       )}
 
       {editing && (
@@ -227,9 +223,7 @@ async function uploadProfileImage(file: File) {
             </div>
 
             <div>
-              <label className="block mb-1 font-medium">
-                Ny adgangskode
-              </label>
+              <label className="block mb-1 font-medium">Ny adgangskode</label>
               <input
                 type="password"
                 className="w-full border rounded-lg px-3 py-2"
@@ -278,39 +272,35 @@ async function uploadProfileImage(file: File) {
 
             <div>
               <div>
-  <label className="block mb-1 font-medium">
-    Profilbillede
-  </label>
+                <label className="block mb-1 font-medium">Profilbillede</label>
 
-  <input
-    type="file"
-    accept="image/*"
-    className="w-full border rounded-lg px-3 py-2"
-    onChange={(e) => {
-      const file = e.target.files?.[0];
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full border rounded-lg px-3 py-2"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
 
-      if (file) {
-        uploadProfileImage(file);
-      }
-    }}
-  />
+                    if (file) {
+                      uploadProfileImage(file);
+                    }
+                  }}
+                />
 
-  {uploading && (
-    <div className="text-sm text-gray-500 mt-2">
-      Uploader...
-    </div>
-  )}
+                {uploading && (
+                  <div className="text-sm text-gray-500 mt-2">Uploader...</div>
+                )}
 
-  {profileImage && (
-    <div className="mt-3">
-      <img
-        src={profileImage}
-        alt="Profilbillede preview"
-        className="w-24 h-24 rounded-full object-cover border"
-      />
-    </div>
-  )}
-</div>
+                {profileImage && (
+                  <div className="mt-3">
+                    <img
+                      src={profileImage}
+                      alt="Profilbillede preview"
+                      className="w-24 h-24 rounded-full object-cover border"
+                    />
+                  </div>
+                )}
+              </div>
               <input
                 className="w-full border rounded-lg px-3 py-2"
                 value={profileImage}
@@ -365,16 +355,16 @@ async function uploadProfileImage(file: File) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Info label="Email" value={profile.email} />
-              <Info label="Telefon" value={profile.phone || '-'} />
-              <Info label="Adresse" value={profile.address || '-'} />
+              <Info label="Telefon" value={profile.phone || "-"} />
+              <Info label="Adresse" value={profile.address || "-"} />
               <Info label="Fødselsdato" value={formatDate(profile.birthDate)} />
-              <Info label="Nødtelefon" value={profile.emergencyPhone || '-'} />
+              <Info label="Nødtelefon" value={profile.emergencyPhone || "-"} />
               <Info
                 label="Ansættelsesdato"
                 value={formatDate(profile.hireDate)}
               />
-              <Info label="Kompetencer" value={profile.skills || '-'} />
-              <Info label="Noter" value={profile.notes || '-'} />
+              <Info label="Kompetencer" value={profile.skills || "-"} />
+              <Info label="Noter" value={profile.notes || "-"} />
             </div>
           </div>
         </div>

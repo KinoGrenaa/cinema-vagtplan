@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 const PUBLIC_VAPID_KEY =
-  'BIVekJ5qQNKd6suPpzSFvMDFfA1hS6skf142fzpL-FBF9RXcTqRgH9vX3-_Yxg55E-xvpNgjIY-kAh3zcmjnSi8';
+  "BIVekJ5qQNKd6suPpzSFvMDFfA1hS6skf142fzpL-FBF9RXcTqRgH9vX3-_Yxg55E-xvpNgjIY-kAh3zcmjnSi8";
 
 type CurrentUser = {
   id: number;
@@ -12,11 +12,11 @@ type CurrentUser = {
 };
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
 
   const base64 = (base64String + padding)
-    .replaceAll('-', '+')
-    .replaceAll('_', '/');
+    .replaceAll("-", "+")
+    .replaceAll("_", "/");
 
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
@@ -29,46 +29,46 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 }
 
 export default function PushPage() {
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   function getCurrentUser(): CurrentUser | null {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
   }
 
   async function enablePush() {
     try {
-      setMessage('');
+      setMessage("");
 
-      if (!('serviceWorker' in navigator)) {
-        setMessage('Service workers understøttes ikke.');
+      if (!("serviceWorker" in navigator)) {
+        setMessage("Service workers understøttes ikke.");
         return;
       }
 
-      if (!('PushManager' in window)) {
-        setMessage('Push understøttes ikke.');
+      if (!("PushManager" in window)) {
+        setMessage("Push understøttes ikke.");
         return;
       }
 
       const user = getCurrentUser();
 
       if (!user) {
-        setMessage('Du skal være logget ind.');
+        setMessage("Du skal være logget ind.");
         return;
       }
 
       const permission = await Notification.requestPermission();
 
-      if (permission !== 'granted') {
-        setMessage('Notifikationer blev ikke tilladt.');
+      if (permission !== "granted") {
+        setMessage("Notifikationer blev ikke tilladt.");
         return;
       }
 
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      const registration = await navigator.serviceWorker.register("/sw.js");
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -77,10 +77,10 @@ export default function PushPage() {
 
       const json = subscription.toJSON();
 
-      await fetch('http://localhost:3001/push/subscribe', {
-        method: 'POST',
+      await fetch("http://localhost:3001/push/subscribe", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({
@@ -91,10 +91,10 @@ export default function PushPage() {
         }),
       });
 
-      setMessage('Push-notifikationer aktiveret.');
+      setMessage("Push-notifikationer aktiveret.");
     } catch (error) {
       console.error(error);
-      setMessage('Der opstod en fejl.');
+      setMessage("Der opstod en fejl.");
     }
   }
 
@@ -102,14 +102,14 @@ export default function PushPage() {
     const user = getCurrentUser();
 
     if (!user) {
-      setMessage('Du skal være logget ind.');
+      setMessage("Du skal være logget ind.");
       return;
     }
 
-    await fetch('http://localhost:3001/push/test', {
-      method: 'POST',
+    await fetch("http://localhost:3001/push/test", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify({
@@ -117,39 +117,39 @@ export default function PushPage() {
       }),
     });
 
-    setMessage('Test-notifikation sendt.');
+    setMessage("Test-notifikation sendt.");
   }
-async function resetPush() {
-  const user = getCurrentUser();
+  async function resetPush() {
+    const user = getCurrentUser();
 
-  if (!user) {
-    setMessage('Du skal være logget ind.');
-    return;
-  }
-
-  await fetch('http://localhost:3001/push/unsubscribe', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getToken()}`,
-    },
-    body: JSON.stringify({
-      userId: user.id,
-    }),
-  });
-
-  const registration = await navigator.serviceWorker.getRegistration();
-
-  if (registration) {
-    const subscription = await registration.pushManager.getSubscription();
-
-    if (subscription) {
-      await subscription.unsubscribe();
+    if (!user) {
+      setMessage("Du skal være logget ind.");
+      return;
     }
-  }
 
-  setMessage('Push-notifikationer er nulstillet. Aktivér dem igen.');
-}
+    await fetch("http://localhost:3001/push/unsubscribe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({
+        userId: user.id,
+      }),
+    });
+
+    const registration = await navigator.serviceWorker.getRegistration();
+
+    if (registration) {
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
+    }
+
+    setMessage("Push-notifikationer er nulstillet. Aktivér dem igen.");
+  }
   return (
     <>
       <div className="bg-white rounded-xl shadow p-6 mb-6">
@@ -178,9 +178,9 @@ async function resetPush() {
           <button
             onClick={resetPush}
             className="bg-red-600 text-white px-6 py-3 rounded-lg"
->
-  Nulstil push
-</button>
+          >
+            Nulstil push
+          </button>
         </div>
 
         {message && (

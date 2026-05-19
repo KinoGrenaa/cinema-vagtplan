@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 type LeaveRequest = {
   id: number;
   startDate: string;
   endDate: string;
   reason?: string | null;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: "PENDING" | "APPROVED" | "REJECTED";
   user: {
     firstName: string;
     lastName: string;
@@ -24,16 +24,16 @@ export default function LeaveRequestsPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
-  const [startDate, setStartDate] = useState('2026-05-15');
-  const [endDate, setEndDate] = useState('2026-05-15');
-  const [reason, setReason] = useState('');
+  const [startDate, setStartDate] = useState("2026-05-15");
+  const [endDate, setEndDate] = useState("2026-05-15");
+  const [reason, setReason] = useState("");
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   const fetchRequests = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/leave-requests', {
+    const response = await fetch("http://localhost:3001/leave-requests", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -44,7 +44,7 @@ export default function LeaveRequestsPage() {
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
@@ -58,10 +58,10 @@ export default function LeaveRequestsPage() {
 
     if (!currentUser) return;
 
-    await fetch('http://localhost:3001/leave-requests', {
-      method: 'POST',
+    await fetch("http://localhost:3001/leave-requests", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify({
@@ -73,18 +73,18 @@ export default function LeaveRequestsPage() {
       }),
     });
 
-    setReason('');
+    setReason("");
     await fetchRequests();
   }
 
   async function updateStatus(
     requestId: number,
-    status: 'APPROVED' | 'REJECTED',
+    status: "APPROVED" | "REJECTED",
   ) {
     await fetch(`http://localhost:3001/leave-requests/${requestId}/status`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify({ status }),
@@ -94,7 +94,7 @@ export default function LeaveRequestsPage() {
   }
 
   const canApprove =
-    currentUser?.role === 'ADMIN' || currentUser?.role === 'MASTER';
+    currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 md:p-8">
@@ -180,29 +180,29 @@ export default function LeaveRequestsPage() {
               </div>
 
               <div className="p-3 border-r">
-                {new Date(request.startDate).toLocaleDateString('da-DK')}
+                {new Date(request.startDate).toLocaleDateString("da-DK")}
               </div>
 
               <div className="p-3 border-r">
-                {new Date(request.endDate).toLocaleDateString('da-DK')}
+                {new Date(request.endDate).toLocaleDateString("da-DK")}
               </div>
 
-              <div className="p-3 border-r">{request.reason || '-'}</div>
+              <div className="p-3 border-r">{request.reason || "-"}</div>
 
               <div className="p-3 border-r">{request.status}</div>
 
               <div className="p-3 flex gap-2">
-                {canApprove && request.status === 'PENDING' ? (
+                {canApprove && request.status === "PENDING" ? (
                   <>
                     <button
-                      onClick={() => updateStatus(request.id, 'APPROVED')}
+                      onClick={() => updateStatus(request.id, "APPROVED")}
                       className="bg-green-600 text-white px-3 py-1 rounded"
                     >
                       Godkend
                     </button>
 
                     <button
-                      onClick={() => updateStatus(request.id, 'REJECTED')}
+                      onClick={() => updateStatus(request.id, "REJECTED")}
                       className="bg-red-600 text-white px-3 py-1 rounded"
                     >
                       Afvis

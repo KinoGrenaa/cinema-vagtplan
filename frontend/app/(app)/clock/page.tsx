@@ -1,11 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import type {
-  CurrentUser,
-  Shift,
-  TimeEntry,
-} from '../../../../shared/types';
+import { useCallback, useEffect, useState } from "react";
+import type { CurrentUser, Shift, TimeEntry } from "../../../../shared/types";
 
 export default function ClockPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -15,12 +11,12 @@ export default function ClockPage() {
 
   const [selectedShiftId, setSelectedShiftId] = useState<number | null>(null);
 
-  const [clockIn, setClockIn] = useState('');
-  const [clockOut, setClockOut] = useState('');
-  const [note, setNote] = useState('');
+  const [clockIn, setClockIn] = useState("");
+  const [clockOut, setClockOut] = useState("");
+  const [note, setNote] = useState("");
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   function toInputDateTime(value: string) {
@@ -48,16 +44,13 @@ export default function ClockPage() {
   }, []);
 
   const fetchTodayShifts = useCallback(async (userId: number) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
 
-    const response = await fetch(
-      `http://localhost:3001/shifts?date=${today}`,
-      {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
+    const response = await fetch(`http://localhost:3001/shifts?date=${today}`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
       },
-    );
+    });
 
     const data = await response.json();
 
@@ -69,10 +62,10 @@ export default function ClockPage() {
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (!savedUser) {
-      window.location.href = '/';
+      window.location.href = "/";
       return;
     }
 
@@ -93,73 +86,67 @@ export default function ClockPage() {
 
     setClockIn(toInputDateTime(shift.startTime));
     setClockOut(toInputDateTime(shift.endTime));
-    setNote('');
+    setNote("");
   }
 
   async function submit() {
     if (!currentUser || !selectedShiftId) {
-      alert('Vælg en vagt');
+      alert("Vælg en vagt");
       return;
     }
 
     const shift = todayShifts.find((s) => s.id === selectedShiftId);
 
     if (!shift) {
-      alert('Vagten blev ikke fundet');
+      alert("Vagten blev ikke fundet");
       return;
     }
 
     const plannedStart = toInputDateTime(shift.startTime);
     const plannedEnd = toInputDateTime(shift.endTime);
 
-    const hasDeviation =
-      plannedStart !== clockIn || plannedEnd !== clockOut;
+    const hasDeviation = plannedStart !== clockIn || plannedEnd !== clockOut;
 
     if (hasDeviation && !note.trim()) {
-      alert(
-        'Du skal skrive en note, når tiderne afviger fra vagtplanen',
-      );
+      alert("Du skal skrive en note, når tiderne afviger fra vagtplanen");
       return;
     }
 
-    const response = await fetch(
-      'http://localhost:3001/time-entries/manual',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          cinemaId: currentUser.cinemaId,
-          shiftId: selectedShiftId,
-          clockIn,
-          clockOut,
-          note,
-        }),
+    const response = await fetch("http://localhost:3001/time-entries/manual", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
       },
-    );
+      body: JSON.stringify({
+        userId: currentUser.id,
+        cinemaId: currentUser.cinemaId,
+        shiftId: selectedShiftId,
+        clockIn,
+        clockOut,
+        note,
+      }),
+    });
 
     const data = await response.json();
 
     if (!response.ok) {
-      alert(data.message || 'Kunne ikke indsende timer');
+      alert(data.message || "Kunne ikke indsende timer");
       return;
     }
 
-    alert('Timer sendt til godkendelse');
+    alert("Timer sendt til godkendelse");
 
     setSelectedShiftId(null);
-    setClockIn('');
-    setClockOut('');
-    setNote('');
+    setClockIn("");
+    setClockOut("");
+    setNote("");
 
     await fetchEntries(currentUser.id);
   }
 
   function calculateHours(entry: TimeEntry) {
-    if (!entry.clockOut) return '-';
+    if (!entry.clockOut) return "-";
 
     const start = new Date(entry.clockIn);
     const end = new Date(entry.clockOut);
@@ -186,44 +173,34 @@ export default function ClockPage() {
               key={shift.id}
               onClick={() => selectShift(shift.id)}
               className={`w-full border rounded-xl p-4 text-left ${
-                selectedShiftId === shift.id
-                  ? 'border-black bg-gray-50'
-                  : ''
+                selectedShiftId === shift.id ? "border-black bg-gray-50" : ""
               }`}
             >
-              <div className="font-bold">
-                {shift.workType?.name || 'Vagt'}
+              <div className="font-bold">{shift.workType?.name || "Vagt"}</div>
+
+              <div className="text-sm text-gray-500">
+                {new Date(shift.startTime).toLocaleString("da-DK")}
               </div>
 
               <div className="text-sm text-gray-500">
-                {new Date(shift.startTime).toLocaleString('da-DK')}
-              </div>
-
-              <div className="text-sm text-gray-500">
-                {new Date(shift.endTime).toLocaleString('da-DK')}
+                {new Date(shift.endTime).toLocaleString("da-DK")}
               </div>
             </button>
           ))}
 
           {todayShifts.length === 0 && (
-            <div className="text-gray-500">
-              Ingen vagter i dag.
-            </div>
+            <div className="text-gray-500">Ingen vagter i dag.</div>
           )}
         </div>
       </div>
 
       {selectedShiftId && (
         <div className="bg-white rounded-xl shadow p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">
-            Indsend timer
-          </h2>
+          <h2 className="text-2xl font-bold mb-4">Indsend timer</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Mødetid
-              </label>
+              <label className="block text-sm font-medium mb-1">Mødetid</label>
 
               <input
                 type="datetime-local"
@@ -234,9 +211,7 @@ export default function ClockPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Fyraften
-              </label>
+              <label className="block text-sm font-medium mb-1">Fyraften</label>
 
               <input
                 type="datetime-local"
@@ -273,31 +248,23 @@ export default function ClockPage() {
 
         <div className="space-y-3">
           {entries.map((entry) => (
-            <div
-              key={entry.id}
-              className="border rounded-xl p-4"
-            >
+            <div key={entry.id} className="border rounded-xl p-4">
               <div className="font-medium">
-                {entry.shift?.workType?.name || 'Vagt'}
+                {entry.shift?.workType?.name || "Vagt"}
               </div>
 
               <div className="text-sm text-gray-500">
-                Ind:
-                {' '}
-                {new Date(entry.clockIn).toLocaleString('da-DK')}
+                Ind: {new Date(entry.clockIn).toLocaleString("da-DK")}
               </div>
 
               <div className="text-sm text-gray-500">
-                Ud:
-                {' '}
+                Ud:{" "}
                 {entry.clockOut
-                  ? new Date(entry.clockOut).toLocaleString('da-DK')
-                  : '-'}
+                  ? new Date(entry.clockOut).toLocaleString("da-DK")
+                  : "-"}
               </div>
 
-              <div className="text-sm mt-1">
-                Timer: {calculateHours(entry)}
-              </div>
+              <div className="text-sm mt-1">Timer: {calculateHours(entry)}</div>
 
               {entry.note && (
                 <div className="text-sm text-gray-600 mt-2">
@@ -312,9 +279,7 @@ export default function ClockPage() {
           ))}
 
           {entries.length === 0 && (
-            <div className="text-gray-500">
-              Ingen registreringer endnu.
-            </div>
+            <div className="text-gray-500">Ingen registreringer endnu.</div>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 type CurrentUser = {
   id: number;
@@ -10,7 +10,7 @@ type CurrentUser = {
 
 type ShiftTrade = {
   id: number;
-  status: 'OPEN' | 'ACCEPTED' | 'CANCELLED';
+  status: "OPEN" | "ACCEPTED" | "CANCELLED";
   message?: string | null;
   offeredByUser: {
     firstName: string;
@@ -41,11 +41,11 @@ export default function ShiftTradesPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   function getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem("token");
   }
 
   const fetchTrades = useCallback(async () => {
-    const response = await fetch('http://localhost:3001/shift-trades', {
+    const response = await fetch("http://localhost:3001/shift-trades", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -56,7 +56,7 @@ export default function ShiftTradesPage() {
   }, []);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
 
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
@@ -69,9 +69,9 @@ export default function ShiftTradesPage() {
     if (!currentUser) return;
 
     await fetch(`http://localhost:3001/shift-trades/${tradeId}/accept`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify({
@@ -84,7 +84,7 @@ export default function ShiftTradesPage() {
 
   async function cancelTrade(tradeId: number) {
     await fetch(`http://localhost:3001/shift-trades/${tradeId}/cancel`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -128,21 +128,21 @@ export default function ShiftTradesPage() {
                 </div>
 
                 <div className="text-sm text-gray-600">
-                  {new Date(trade.shift.startTime).toLocaleDateString('da-DK')}{' '}
-                  kl.{' '}
-                  {new Date(trade.shift.startTime).toLocaleTimeString('da-DK', {
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  {new Date(trade.shift.startTime).toLocaleDateString("da-DK")}{" "}
+                  kl.{" "}
+                  {new Date(trade.shift.startTime).toLocaleTimeString("da-DK", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
-                  {' - '}
-                  {new Date(trade.shift.endTime).toLocaleTimeString('da-DK', {
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  {" - "}
+                  {new Date(trade.shift.endTime).toLocaleTimeString("da-DK", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </div>
 
                 <div className="text-sm mt-1">
-                  Udbydes af: {trade.offeredByUser.firstName}{' '}
+                  Udbydes af: {trade.offeredByUser.firstName}{" "}
                   {trade.offeredByUser.lastName}
                 </div>
 
@@ -153,25 +153,23 @@ export default function ShiftTradesPage() {
                 )}
 
                 <div className="text-sm mt-1">
-                  Status:{' '}
-                  <span className="font-semibold">
-                    {trade.status}
-                  </span>
+                  Status: <span className="font-semibold">{trade.status}</span>
                 </div>
 
                 {trade.acceptedByUser && (
                   <div className="text-sm mt-1">
-                    Taget af: {trade.acceptedByUser.firstName}{' '}
+                    Taget af: {trade.acceptedByUser.firstName}{" "}
                     {trade.acceptedByUser.lastName}
                   </div>
                 )}
               </div>
 
               <div className="flex gap-2">
-                {trade.status === 'OPEN' &&
+                {trade.status === "OPEN" &&
                   currentUser &&
-                  trade.offeredByUser.firstName + trade.offeredByUser.lastName !==
-                    '' && (
+                  trade.offeredByUser.firstName +
+                    trade.offeredByUser.lastName !==
+                    "" && (
                     <button
                       onClick={() => acceptTrade(trade.id)}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg"
@@ -180,7 +178,7 @@ export default function ShiftTradesPage() {
                     </button>
                   )}
 
-                {trade.status === 'OPEN' && (
+                {trade.status === "OPEN" && (
                   <button
                     onClick={() => cancelTrade(trade.id)}
                     className="bg-red-600 text-white px-4 py-2 rounded-lg"
