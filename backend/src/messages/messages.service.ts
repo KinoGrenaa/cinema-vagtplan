@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PushService } from '../push/push.service';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 
 @Injectable()
 export class MessagesService {
@@ -96,9 +97,12 @@ export class MessagesService {
 async getUnreadCount(userId: number, cinemaId: number) {
   const count = await this.prisma.message.count({
     where: {
-      userId,
       cinemaId,
       isRead: false,
+      OR: [
+        { receiverId: userId },
+        { isBroadcast: true },
+      ],
     },
   });
 
