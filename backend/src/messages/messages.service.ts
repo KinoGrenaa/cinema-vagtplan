@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PushService } from '../push/push.service';
@@ -15,7 +20,13 @@ export class MessagesService {
     return this.prisma.message.findMany({
       where: {
         cinemaId,
-        OR: [{ receiverId: userId }, { isBroadcast: true }, { senderId: userId }],
+        archivedAt: null,
+        recalledAt: null,
+        OR: [
+          { receiverId: userId },
+          { isBroadcast: true },
+          { senderId: userId },
+        ],
       },
       include: {
         sender: true,
@@ -31,8 +42,13 @@ export class MessagesService {
     const count = await this.prisma.message.count({
       where: {
         cinemaId,
+        archivedAt: null,
+        recalledAt: null,
         readAt: null,
-        OR: [{ receiverId: userId }, { isBroadcast: true }],
+        OR: [
+          { receiverId: userId },
+          { isBroadcast: true },
+        ],
       },
     });
 
@@ -46,9 +62,20 @@ export class MessagesService {
     senderId: number;
     receiverId?: number | null;
     isBroadcast: boolean;
+    systemType?: string | null;
+    relatedShiftTradeId?: number | null;
   }) {
     const message = await this.prisma.message.create({
-      data,
+      data: {
+        subject: data.subject,
+        body: data.body,
+        cinemaId: data.cinemaId,
+        senderId: data.senderId,
+        receiverId: data.receiverId ?? null,
+        isBroadcast: data.isBroadcast,
+        systemType: data.systemType ?? null,
+        relatedShiftTradeId: data.relatedShiftTradeId ?? null,
+      },
       include: {
         sender: true,
         receiver: true,
@@ -61,7 +88,9 @@ export class MessagesService {
       const users = await this.prisma.user.findMany({
         where: {
           cinemaId: data.cinemaId,
-          id: { not: data.senderId },
+          id: {
+            not: data.senderId,
+          },
         },
       });
 
@@ -87,7 +116,9 @@ export class MessagesService {
 
   async markAsRead(id: number) {
     const message = await this.prisma.message.update({
-      where: { id },
+      where: {
+        id,
+      },
       data: {
         readAt: new Date(),
       },
@@ -97,4 +128,129 @@ export class MessagesService {
 
     return message;
   }
+
+  async archiveMessage(id: number, userId: number) {
+    const message = await this.prisma.message.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!message) {
+      throw new NotFoundException('Beskeden blev ikke fundet');
+    }
+
+    const canArchive =
+      message.receiverId === userId ||
+      message.senderId === userId ||
+      message.isBroadcast;
+
+    if (!canArchive) {
+      throw new ForbiddenException('Du har ikke adgang til denne besked');
+    }
+
+    const updatedMessage = await this.prisma.message.update({
+      where: {
+        id,
+      },
+      data: {
+        archivedAt: new Date(),
+      },
+      include: {
+        sender: true,
+        receiver: true,
+      },
+    });
+
+    this.realtime.notifyAll('messagesUpdated', updatedMessage);
+
+    return updatedMessage;
+  }
+
+  async recallMessage(id: number, userId: number) {
+    const message = await this.prisma.message.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!message) {
+      throw new NotFoundException('Beskeden blev ikke fundet');
+    }
+
+    if (message.senderId !== userId) {
+      throw new ForbiddenException('Du kan kun fortryde dine egne beskeder');
+    }
+
+    if (message.readAt) {
+      throw new ForbiddenException(
+        'Du kan ikke fortryde en besked, der allerede er læst',
+      );
+    }
+
+    const updatedMessage = await this.prisma.message.update({
+      where: {
+        id,
+      },
+      data: {
+        recalledAt: new Date(),
+        recalledByUserId: userId,
+      },
+      include: {
+        sender: true,
+        receiver: true,
+      },
+    });
+
+    this.realtime.notifyAll('messagesUpdated', updatedMessage);
+
+    return updatedMessage;
+  }
+
+  async recallMessagesForShiftTrade(shiftTradeId: number, userId: number) {
+    const updated = await this.prisma.message.updateMany({
+      where: {
+        relatedShiftTradeId: shiftTradeId,
+        recalledAt: null,
+      },
+      data: {
+        recalledAt: new Date(),
+        recalledByUserId: userId,
+      },
+    });
+
+    this.realtime.notifyAll('messagesUpdated', {
+      relatedShiftTradeId: shiftTradeId,
+      recalledByUserId: userId,
+    });
+
+    return updated;
+  }
+
+  async findArchivedForUser(
+  userId: number,
+  cinemaId: number,
+) {
+  return this.prisma.message.findMany({
+    where: {
+      cinemaId,
+      archivedAt: {
+        not: null,
+      },
+      recalledAt: null,
+      OR: [
+        { receiverId: userId },
+        { isBroadcast: true },
+        { senderId: userId },
+      ],
+    },
+    include: {
+      sender: true,
+      receiver: true,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+}
 }

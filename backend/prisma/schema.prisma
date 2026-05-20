@@ -182,6 +182,14 @@ model Message {
 
   isBroadcast Boolean @default(false)
   isRead Boolean @default(false)
+
+  archivedAt DateTime?
+
+  recalledAt       DateTime?
+  recalledByUserId Int?
+
+  systemType          String?
+  relatedShiftTradeId Int?
 }
 
 enum TimeEntryStatus {

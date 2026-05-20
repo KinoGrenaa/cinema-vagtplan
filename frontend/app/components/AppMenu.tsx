@@ -10,115 +10,79 @@ type CurrentUser = {
 
 export default function AppMenu() {
   const [open, setOpen] = useState(false);
-
   const [adminOpen, setAdminOpen] = useState(false);
-
   const [systemOpen, setSystemOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
 
-  const [currentUser, setCurrentUser] =
-    useState<CurrentUser | null>(null);
-
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-
   const [poolCount, setPoolCount] = useState(0);
-
   const [directCount, setDirectCount] = useState(0);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-    }
+    if (savedUser) setCurrentUser(JSON.parse(savedUser));
   }, []);
 
   async function fetchUnreadCount() {
     const savedUser = localStorage.getItem("user");
-
     const token = localStorage.getItem("token");
-
     if (!savedUser) return;
 
     const user: CurrentUser = JSON.parse(savedUser);
-
     if (!user?.id || !user?.cinemaId) return;
 
     const response = await fetch(
       `http://localhost:3001/messages/unread-count?userId=${user.id}&cinemaId=${user.cinemaId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     const data = await response.json();
-
     setUnreadCount(data.count || 0);
   }
 
   async function fetchPoolCount() {
     const savedUser = localStorage.getItem("user");
-
     const token = localStorage.getItem("token");
-
     if (!savedUser) return;
 
     const user: CurrentUser = JSON.parse(savedUser);
-
     if (!user?.cinemaId || !user?.id) return;
 
     const response = await fetch(
       `http://localhost:3001/shift-trades/pool-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     const data = await response.json();
-
     setPoolCount(data.count || 0);
   }
 
   async function fetchDirectCount() {
     const savedUser = localStorage.getItem("user");
-
     const token = localStorage.getItem("token");
-
     if (!savedUser) return;
 
     const user: CurrentUser = JSON.parse(savedUser);
-
     if (!user?.cinemaId || !user?.id) return;
 
     const response = await fetch(
       `http://localhost:3001/shift-trades/direct-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     const data = await response.json();
-
     setDirectCount(data.count || 0);
   }
 
   useEffect(() => {
     fetchUnreadCount();
-
     fetchPoolCount();
-
     fetchDirectCount();
 
     const interval = setInterval(() => {
       fetchUnreadCount();
-
       fetchPoolCount();
-
       fetchDirectCount();
     }, 5000);
 
@@ -127,102 +91,38 @@ export default function AppMenu() {
 
   function logout() {
     localStorage.clear();
-
     window.location.href = "/";
   }
 
   const mainLinks = [
-    {
-      href: "/dashboard",
-      label: "Dashboard",
-    },
-
-    {
-      href: "/my-shifts",
-      label: "Mine vagter",
-    },
-
-    {
-      href: "/schedule",
-      label: "Vagtplan",
-    },
-
-    {
-      href: "/shift-trades",
-      label: "Vagtpulje",
-    },
-
-    {
-      href: "/colleagues",
-      label: "Kollegaer",
-    },
-
-    {
-      href: "/messages",
-      label: "Beskeder",
-    },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/my-shifts", label: "Mine vagter" },
+    { href: "/schedule", label: "Vagtplan" },
+    { href: "/shift-trades", label: "Vagtpulje" },
+    { href: "/colleagues", label: "Kollegaer" },
   ];
 
   const adminLinks = [
-    {
-      href: "/employees",
-      label: "Medarbejdere",
-    },
-
-    {
-      href: "/time-approval",
-      label: "Godkend timer",
-    },
-
-    {
-      href: "/absence-calendar",
-      label: "Fraværskalender",
-    },
-
-    {
-      href: "/payroll",
-      label: "Løn-export",
-    },
-
-    {
-      href: "/clock",
-      label: "Clock ind/ud",
-    },
+    { href: "/employees", label: "Medarbejdere" },
+    { href: "/time-approval", label: "Godkend timer" },
+    { href: "/absence-calendar", label: "Fraværskalender" },
+    { href: "/payroll", label: "Løn-export" },
+    { href: "/clock", label: "Clock ind/ud" },
   ];
 
   const systemLinks = [
-    {
-      href: "/profile",
-      label: "Min profil",
-    },
-
-    {
-      href: "/push",
-      label: "Notifikationer",
-    },
-
-    {
-      href: "/live",
-      label: "Live drift",
-    },
+    { href: "/profile", label: "Min profil" },
+    { href: "/push", label: "Push setup" },
+    { href: "/live", label: "Live drift" },
   ];
 
   function getBadgeCount(href: string) {
-    if (href === "/messages") return unreadCount;
-
     if (href === "/shift-trades") return poolCount;
-
     if (href === "/my-shifts") return directCount;
-
     return 0;
   }
 
-  function renderLinks(
-    links: {
-      href: string;
-      label: string;
-    }[]
-  ) {
+  function renderLinks(links: { href: string; label: string }[]) {
     return links.map((link) => {
       const badgeCount = getBadgeCount(link.href);
 
@@ -245,8 +145,7 @@ export default function AppMenu() {
   }
 
   const isAdmin =
-    currentUser?.role === "ADMIN" ||
-    currentUser?.role === "MASTER";
+    currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
   return (
     <>
@@ -273,21 +172,73 @@ export default function AppMenu() {
               </p>
 
               {renderLinks(mainLinks)}
+
+              <div className="border-t pt-2 mt-2">
+                <button
+                  onClick={() => setMessagesOpen(!messagesOpen)}
+                  className="w-full flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-semibold"
+                >
+                  <span>Beskeder</span>
+
+                  <span className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <span className="bg-red-600 text-white text-xs rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+                        {unreadCount}
+                      </span>
+                    )}
+
+                    <span>{messagesOpen ? "▲" : "▼"}</span>
+                  </span>
+                </button>
+
+                {messagesOpen && (
+                  <div className="flex flex-col pl-2">
+                    <a
+                      href="/messages"
+                      className="relative px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
+                    >
+                      Modtaget
+
+                      {unreadCount > 0 && (
+                        <span className="absolute top-1 right-2 bg-red-600 text-white text-xs rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </a>
+
+                    <a
+                      href="/messages/send"
+                      className="px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
+                    >
+                      Send ny
+                    </a>
+
+                    <a
+                      href="/messages/sent"
+                      className="px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
+                    >
+                      Sendte
+                    </a>
+
+                    <a
+                      href="/messages/archive"
+                      className="px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
+                    >
+                      Arkiv
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
 
             {isAdmin && (
               <div className="border-t pt-2">
                 <button
-                  onClick={() =>
-                    setAdminOpen(!adminOpen)
-                  }
+                  onClick={() => setAdminOpen(!adminOpen)}
                   className="w-full flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-semibold"
                 >
                   <span>Administration</span>
-
-                  <span>
-                    {adminOpen ? "▲" : "▼"}
-                  </span>
+                  <span>{adminOpen ? "▲" : "▼"}</span>
                 </button>
 
                 {adminOpen && (
@@ -300,16 +251,11 @@ export default function AppMenu() {
 
             <div className="border-t pt-2">
               <button
-                onClick={() =>
-                  setSystemOpen(!systemOpen)
-                }
+                onClick={() => setSystemOpen(!systemOpen)}
                 className="w-full flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-semibold"
               >
                 <span>System</span>
-
-                <span>
-                  {systemOpen ? "▲" : "▼"}
-                </span>
+                <span>{systemOpen ? "▲" : "▼"}</span>
               </button>
 
               {systemOpen && (

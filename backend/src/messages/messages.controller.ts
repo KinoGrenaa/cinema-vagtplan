@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+
 import { MessagesService } from './messages.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { CreateMessageDto } from './dto/create-message.dto';
@@ -22,8 +23,23 @@ export class MessagesController {
     @Query('userId') userId: string,
     @Query('cinemaId') cinemaId: string,
   ) {
-    return this.messagesService.getUnreadCount(Number(userId), Number(cinemaId));
+    return this.messagesService.getUnreadCount(
+      Number(userId),
+      Number(cinemaId),
+    );
   }
+
+  @UseGuards(JwtGuard)
+    @Get('archive')
+    getArchivedMessages(
+    @Query('userId') userId: string,
+    @Query('cinemaId') cinemaId: string,
+    ) {
+    return this.messagesService.findArchivedForUser(
+    Number(userId),
+    Number(cinemaId),
+  );
+}
 
   @UseGuards(JwtGuard)
   @Get()
@@ -31,7 +47,10 @@ export class MessagesController {
     @Query('userId') userId: string,
     @Query('cinemaId') cinemaId: string,
   ) {
-    return this.messagesService.findAllForUser(Number(userId), Number(cinemaId));
+    return this.messagesService.findAllForUser(
+      Number(userId),
+      Number(cinemaId),
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -44,5 +63,29 @@ export class MessagesController {
   @Patch(':id/read')
   markAsRead(@Param('id') id: string) {
     return this.messagesService.markAsRead(Number(id));
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch(':id/archive')
+  archiveMessage(
+    @Param('id') id: string,
+    @Body() body: { userId: number },
+  ) {
+    return this.messagesService.archiveMessage(
+      Number(id),
+      body.userId,
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch(':id/recall')
+  recallMessage(
+    @Param('id') id: string,
+    @Body() body: { userId: number },
+  ) {
+    return this.messagesService.recallMessage(
+      Number(id),
+      body.userId,
+    );
   }
 }
