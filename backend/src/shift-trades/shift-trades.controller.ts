@@ -18,9 +18,15 @@ export class ShiftTradesController {
 
   @UseGuards(JwtGuard)
   @Get('pool-count')
-  getPoolCount(@Query('cinemaId') cinemaId: string) {
-    return this.shiftTradesService.getPoolCount(Number(cinemaId));
-  }
+    getPoolCount(
+    @Query('cinemaId') cinemaId: string,
+    @Query('userId') userId: string,
+    )  {
+    return this.shiftTradesService.getPoolCount(
+    Number(cinemaId),
+    Number(userId),
+  );
+}
 
   @UseGuards(JwtGuard)
   @Get()

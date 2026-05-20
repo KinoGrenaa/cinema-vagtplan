@@ -1,14 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ShiftTradeStatus, ShiftTradeType } from '@prisma/client';
 
 @Injectable()
 export class ShiftTradesService {
-  constructor(
-    private prisma: PrismaService,
-    private realtime: RealtimeGateway,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   findAll() {
     return this.prisma.shiftTrade.findMany({
@@ -29,22 +25,25 @@ export class ShiftTradesService {
     });
   }
 
-  async getPoolCount(cinemaId: number) {
-    const count = await this.prisma.shiftTrade.count({
-      where: {
-        cinemaId,
-        status: ShiftTradeStatus.OPEN,
-        type: ShiftTradeType.POOL,
-        shift: {
-          startTime: {
-            gt: new Date(),
-          },
+  async getPoolCount(cinemaId: number, userId: number) {
+  const count = await this.prisma.shiftTrade.count({
+    where: {
+      cinemaId,
+      status: ShiftTradeStatus.OPEN,
+      type: ShiftTradeType.POOL,
+      offeredByUserId: {
+        not: userId,
+      },
+      shift: {
+        startTime: {
+          gt: new Date(),
         },
       },
-    });
+    },
+  });
 
-    return { count };
-  }
+  return { count };
+}
 
   async create(data: {
     shiftId: number;
@@ -54,7 +53,7 @@ export class ShiftTradesService {
     targetUserId?: number;
     message?: string;
   }) {
-    const trade = await this.prisma.shiftTrade.create({
+    return this.prisma.shiftTrade.create({
       data: {
         shiftId: data.shiftId,
         offeredByUserId: data.offeredByUserId,
@@ -63,30 +62,12 @@ export class ShiftTradesService {
         targetUserId: data.targetUserId ?? null,
         message: data.message ?? null,
       },
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-      },
     });
-
-    this.realtime.notifyAll('shiftTradesUpdated', trade);
-
-    return trade;
   }
 
   async acceptTrade(id: number, acceptedByUserId: number) {
     const trade = await this.prisma.shiftTrade.findUnique({
       where: { id },
-      include: {
-        shift: true,
-      },
     });
 
     if (!trade) {
@@ -99,17 +80,6 @@ export class ShiftTradesService {
         status: ShiftTradeStatus.ACCEPTED,
         acceptedByUserId,
       },
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-      },
     });
 
     await this.prisma.shift.update({
@@ -121,57 +91,24 @@ export class ShiftTradesService {
       },
     });
 
-    this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
-    this.realtime.notifyAll('shiftsUpdated', updatedTrade.shift);
-
     return updatedTrade;
   }
 
   async rejectTrade(id: number) {
-    const trade = await this.prisma.shiftTrade.update({
+    return this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: ShiftTradeStatus.REJECTED,
       },
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-      },
     });
-
-    this.realtime.notifyAll('shiftTradesUpdated', trade);
-
-    return trade;
   }
 
   async cancelTrade(id: number) {
-    const trade = await this.prisma.shiftTrade.update({
+    return this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: ShiftTradeStatus.CANCELLED,
       },
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-      },
     });
-
-    this.realtime.notifyAll('shiftTradesUpdated', trade);
-
-    return trade;
   }
 }

@@ -46,7 +46,7 @@ export default function AppMenu() {
     if (!user?.cinemaId) return;
 
     const response = await fetch(
-      `http://localhost:3001/shift-trades/pool-count?cinemaId=${user.cinemaId}`,
+      `http://localhost:3001/shift-trades/pool-count?cinemaId=${user.cinemaId}&userId=${user.id}`
       {
         headers: {
           Authorization: `Bearer ${token}`,
