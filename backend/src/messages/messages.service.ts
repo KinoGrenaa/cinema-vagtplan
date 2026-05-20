@@ -92,3 +92,15 @@ export class MessagesService {
     return message;
   }
 }
+
+async getUnreadCount(userId: number, cinemaId: number) {
+  const count = await this.prisma.message.count({
+    where: {
+      userId,
+      cinemaId,
+      isRead: false,
+    },
+  });
+
+  return { count };
+}

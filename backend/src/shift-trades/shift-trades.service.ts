@@ -29,6 +29,45 @@ export class ShiftTradesService {
     });
   }
 
+  private formatShiftInfo(shift: {
+    startTime: Date;
+    endTime: Date;
+    workType?: { name: string } | null;
+  }) {
+    const start = new Date(shift.startTime);
+    const end = new Date(shift.endTime);
+
+    return `${shift.workType?.name ?? 'Vagt'} ${start.toLocaleDateString(
+      'da-DK',
+    )} kl. ${start.toLocaleTimeString('da-DK', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })} - ${end.toLocaleTimeString('da-DK', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+  }
+
+  private async createMessage(data: {
+    cinemaId: number;
+    senderId: number;
+    receiverId?: number | null;
+    subject: string;
+    body: string;
+    isBroadcast?: boolean;
+  }) {
+    return this.prisma.message.create({
+      data: {
+        cinemaId: data.cinemaId,
+        senderId: data.senderId,
+        receiverId: data.receiverId ?? null,
+        subject: data.subject,
+        body: data.body,
+        isBroadcast: data.isBroadcast ?? false,
+      },
+    });
+  }
+
   private async hasShiftConflict(userId: number, shiftId: number) {
     const shift = await this.prisma.shift.findUnique({
       where: { id: shiftId },
@@ -88,6 +127,9 @@ export class ShiftTradesService {
 
     const shift = await this.prisma.shift.findUnique({
       where: { id: data.shiftId },
+      include: {
+        workType: true,
+      },
     });
 
     if (!shift) {
@@ -117,7 +159,7 @@ export class ShiftTradesService {
       );
     }
 
-    return this.prisma.shiftTrade.create({
+    const trade = await this.prisma.shiftTrade.create({
       data: {
         shiftId: data.shiftId,
         offeredByUserId: data.offeredByUserId,
@@ -127,13 +169,44 @@ export class ShiftTradesService {
         message: data.message,
       },
     });
+
+    if (type === ShiftTradeType.DIRECT && data.targetUserId) {
+      await this.createMessage({
+        cinemaId: data.cinemaId,
+        senderId: data.offeredByUserId,
+        receiverId: data.targetUserId,
+        subject: 'Du har fået tilbudt en vagt',
+        body: `Du har fået tilbudt vagten: ${this.formatShiftInfo(shift)}.`,
+      });
+    }
+
+    if (type === ShiftTradeType.POOL) {
+      await this.createMessage({
+        cinemaId: data.cinemaId,
+        senderId: data.offeredByUserId,
+        subject: 'Ny vagt i fælles pulje',
+        body: `Der er lagt en ny vagt i fælles pulje: ${this.formatShiftInfo(
+          shift,
+        )}.`,
+        isBroadcast: true,
+      });
+    }
+
+    return trade;
   }
 
   async acceptTrade(id: number, acceptedByUserId: number) {
     const trade = await this.prisma.shiftTrade.findUnique({
       where: { id },
       include: {
-        shift: true,
+        shift: {
+          include: {
+            workType: true,
+          },
+        },
+        offeredByUser: true,
+        acceptedByUser: true,
+        targetUser: true,
       },
     });
 
@@ -180,30 +253,110 @@ export class ShiftTradesService {
       },
     });
 
-    return this.prisma.shiftTrade.update({
+    const updatedTrade = await this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: 'ACCEPTED',
         acceptedByUserId,
       },
     });
+
+    const acceptingUser = await this.prisma.user.findUnique({
+      where: { id: acceptedByUserId },
+    });
+
+    await this.createMessage({
+      cinemaId: trade.cinemaId,
+      senderId: acceptedByUserId,
+      receiverId: trade.offeredByUserId,
+      subject: 'Din vagt er blevet accepteret',
+      body: `${
+        acceptingUser
+          ? `${acceptingUser.firstName} ${acceptingUser.lastName}`
+          : 'En kollega'
+      } har accepteret vagten: ${this.formatShiftInfo(trade.shift)}.`,
+    });
+
+    return updatedTrade;
   }
 
-  rejectTrade(id: number) {
-    return this.prisma.shiftTrade.update({
+  async rejectTrade(id: number) {
+    const trade = await this.prisma.shiftTrade.findUnique({
+      where: { id },
+      include: {
+        shift: {
+          include: {
+            workType: true,
+          },
+        },
+        targetUser: true,
+      },
+    });
+
+    if (!trade) {
+      throw new NotFoundException('Vagtbytte blev ikke fundet');
+    }
+
+    const updatedTrade = await this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: 'REJECTED',
       },
     });
+
+    if (trade.targetUserId) {
+      await this.createMessage({
+        cinemaId: trade.cinemaId,
+        senderId: trade.targetUserId,
+        receiverId: trade.offeredByUserId,
+        subject: 'Dit vagt-tilbud blev afvist',
+        body: `${
+          trade.targetUser
+            ? `${trade.targetUser.firstName} ${trade.targetUser.lastName}`
+            : 'Kollegaen'
+        } har afvist vagten: ${this.formatShiftInfo(trade.shift)}.`,
+      });
+    }
+
+    return updatedTrade;
   }
 
-  cancelTrade(id: number) {
-    return this.prisma.shiftTrade.update({
+  async cancelTrade(id: number) {
+    const trade = await this.prisma.shiftTrade.findUnique({
+      where: { id },
+      include: {
+        shift: {
+          include: {
+            workType: true,
+          },
+        },
+        targetUser: true,
+      },
+    });
+
+    if (!trade) {
+      throw new NotFoundException('Vagtbytte blev ikke fundet');
+    }
+
+    const updatedTrade = await this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: 'CANCELLED',
       },
     });
+
+    if (trade.type === ShiftTradeType.DIRECT && trade.targetUserId) {
+      await this.createMessage({
+        cinemaId: trade.cinemaId,
+        senderId: trade.offeredByUserId,
+        receiverId: trade.targetUserId,
+        subject: 'Vagt-tilbud annulleret',
+        body: `Vagten er blevet annulleret: ${this.formatShiftInfo(
+          trade.shift,
+        )}.`,
+      });
+    }
+
+    return updatedTrade;
   }
 }

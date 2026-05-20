@@ -181,6 +181,7 @@ model Message {
   receiver   User? @relation("ReceivedMessages", fields: [receiverId], references: [id])
 
   isBroadcast Boolean @default(false)
+  isRead Boolean @default(false)
 }
 
 enum TimeEntryStatus {

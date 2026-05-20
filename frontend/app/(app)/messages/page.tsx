@@ -1,16 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { io } from "socket.io-client";
-
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
-};
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type CurrentUser = {
   id: number;
+  firstName: string;
+  lastName: string;
   role: string;
   cinemaId: number;
 };
@@ -22,248 +17,218 @@ type Message = {
   createdAt: string;
   readAt?: string | null;
   isBroadcast: boolean;
-  sender: User;
-  receiver?: User | null;
+  sender?: {
+    firstName: string;
+    lastName: string;
+  };
+  receiver?: {
+    firstName: string;
+    lastName: string;
+  } | null;
 };
 
 export default function MessagesPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [statusMessage, setStatusMessage] = useState("");
 
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [receiverId, setReceiverId] = useState<number | "">("");
-  const [isBroadcast, setIsBroadcast] = useState(false);
-
-  function getToken() {
-    return localStorage.getItem("token");
+  function getHeaders() {
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    };
   }
 
-  const fetchUsers = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/users", {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+  const fetchMessages = useCallback(async () => {
+    const savedUser = localStorage.getItem("user");
 
-    const data: User[] = await response.json();
-    setUsers(data);
-  }, []);
+if (!savedUser) {
+  return;
+}
 
-  const fetchMessages = useCallback(async (user: CurrentUser) => {
-    const response = await fetch(
-      `http://localhost:3001/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      },
-    );
+const user: CurrentUser = JSON.parse(savedUser);
 
-    const data: Message[] = await response.json();
-    setMessages(data);
+const response = await fetch(
+  `http://localhost:3001/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
+  {
+    headers: getHeaders(),
+  },
+);
+
+    const data = await response.json();
+    setMessages(Array.isArray(data) ? data : []);
   }, []);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
 
-    if (!savedUser) {
-      window.location.href = "/";
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
+    }
+
+    fetchMessages();
+  }, [fetchMessages]);
+
+  const visibleMessages = useMemo(() => {
+    if (!currentUser) return [];
+
+    return messages.filter((message) => {
+      if (message.isBroadcast) return true;
+      return message.receiver?.id === currentUser.id || !message.receiver;
+    });
+  }, [messages, currentUser]);
+
+  const unreadMessages = useMemo(() => {
+    return visibleMessages.filter((message) => !message.readAt);
+  }, [visibleMessages]);
+
+  const readMessages = useMemo(() => {
+    return visibleMessages.filter((message) => message.readAt);
+  }, [visibleMessages]);
+
+  async function markAsRead(messageId: number) {
+    const response = await fetch(
+      `http://localhost:3001/messages/${messageId}/read`,
+      {
+        method: "PATCH",
+        headers: getHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      setStatusMessage("Kunne ikke markere beskeden som læst");
       return;
     }
 
-    const parsedUser: CurrentUser = JSON.parse(savedUser);
-
-    setCurrentUser(parsedUser);
-
-    fetchUsers();
-    fetchMessages(parsedUser);
-  }, [fetchUsers, fetchMessages]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const socket = io("http://localhost:3001");
-
-    socket.on("messagesUpdated", () => {
-      fetchMessages(currentUser);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [currentUser, fetchMessages]);
-
-  async function sendMessage(event: React.FormEvent) {
-    event.preventDefault();
-
-    if (!currentUser) return;
-
-    await fetch("http://localhost:3001/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
-      },
-      body: JSON.stringify({
-        subject,
-        body,
-        cinemaId: currentUser.cinemaId,
-        senderId: currentUser.id,
-        receiverId: isBroadcast ? null : receiverId,
-        isBroadcast,
-      }),
-    });
-
-    setSubject("");
-    setBody("");
-    setReceiverId("");
-    setIsBroadcast(false);
-
-    await fetchMessages(currentUser);
+    setStatusMessage("Besked markeret som læst");
+    await fetchMessages();
   }
 
-  async function markAsRead(messageId: number) {
-    if (!currentUser) return;
+  function isShiftTradeMessage(message: Message) {
+    const text = `${message.subject} ${message.body}`.toLowerCase();
 
-    await fetch(`http://localhost:3001/messages/${messageId}/read`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
-
-    await fetchMessages(currentUser);
+    return (
+      text.includes("vagt") ||
+      text.includes("vagtbytte") ||
+      text.includes("pulje")
+    );
   }
 
-  return (
-    <>
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <h1 className="text-3xl font-bold mb-2">Beskeder</h1>
+  function renderMessage(message: Message) {
+    const unread = !message.readAt;
+    const shiftTrade = isShiftTradeMessage(message);
 
-        <p className="text-gray-500">
-          Send beskeder til kollegaer eller alle medarbejdere.
-        </p>
-      </div>
-
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-4">Ny besked</h2>
-
-        <form
-          onSubmit={sendMessage}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
-        >
+    return (
+      <div
+        key={message.id}
+        className={`border rounded-xl p-4 ${
+          unread ? "bg-blue-50 border-blue-200" : "bg-white"
+        }`}
+      >
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
-            <label className="block mb-1 font-medium">Emne</label>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              {unread && (
+                <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                  Ulæst
+                </span>
+              )}
 
-            <input
-              className="w-full border rounded-lg px-3 py-2"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              required
-            />
-          </div>
+              {message.isBroadcast && (
+                <span className="bg-gray-800 text-white text-xs px-2 py-1 rounded-full">
+                  Alle
+                </span>
+              )}
 
-          <div>
-            <label className="block mb-1 font-medium">Modtager</label>
-
-            <select
-              className="w-full border rounded-lg px-3 py-2"
-              value={receiverId}
-              onChange={(e) => setReceiverId(Number(e.target.value))}
-              disabled={isBroadcast}
-              required={!isBroadcast}
-            >
-              <option value="">Vælg modtager</option>
-
-              {users
-                .filter((user) => user.id !== currentUser?.id)
-                .map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.firstName} {user.lastName}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          <label className="md:col-span-2 flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={isBroadcast}
-              onChange={(e) => setIsBroadcast(e.target.checked)}
-            />
-            Send til alle
-          </label>
-
-          <div className="md:col-span-2">
-            <label className="block mb-1 font-medium">Besked</label>
-
-            <textarea
-              className="w-full border rounded-lg px-3 py-2 min-h-32"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              required
-            />
-          </div>
-
-          <button type="submit" className="bg-black text-white py-3 rounded-lg">
-            Send besked
-          </button>
-        </form>
-      </div>
-
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-2xl font-bold mb-4">Mine beskeder</h2>
-
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div key={message.id} className="border rounded-xl p-4 bg-gray-50">
-              <div className="flex flex-col md:flex-row md:justify-between gap-2">
-                <div>
-                  <h3 className="text-lg font-bold">{message.subject}</h3>
-
-                  <p className="text-sm text-gray-600">
-                    Fra: {message.sender.firstName} {message.sender.lastName}
-                  </p>
-
-                  <p className="text-sm text-gray-600">
-                    Til:{" "}
-                    {message.isBroadcast
-                      ? "Alle"
-                      : message.receiver
-                        ? `${message.receiver.firstName} ${message.receiver.lastName}`
-                        : "-"}
-                  </p>
-                </div>
-
-                <div className="text-sm text-gray-500">
-                  {new Date(message.createdAt).toLocaleString("da-DK")}
-                </div>
-              </div>
-
-              <p className="mt-4 whitespace-pre-wrap">{message.body}</p>
-
-              <div className="mt-4 flex gap-2 items-center">
-                {message.readAt ? (
-                  <span className="text-green-700 text-sm">Læst</span>
-                ) : (
-                  <button
-                    onClick={() => markAsRead(message.id)}
-                    className="bg-gray-200 px-3 py-1 rounded text-sm"
-                  >
-                    Marker som læst
-                  </button>
-                )}
-              </div>
+              {shiftTrade && (
+                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
+                  Vagtbytte
+                </span>
+              )}
             </div>
-          ))}
 
-          {messages.length === 0 && (
-            <div className="text-gray-500">Ingen beskeder endnu.</div>
+            <h2 className="text-xl font-bold">{message.subject}</h2>
+
+            <div className="text-sm text-gray-500 mt-1">
+              Fra:{" "}
+              <strong>
+                {message.sender
+                  ? `${message.sender.firstName} ${message.sender.lastName}`
+                  : "System"}
+              </strong>
+              {" · "}
+              Til:{" "}
+              <strong>
+                {message.isBroadcast
+                  ? "Alle"
+                  : message.receiver
+                    ? `${message.receiver.firstName} ${message.receiver.lastName}`
+                    : "Ukendt"}
+              </strong>
+              {" · "}
+              {new Date(message.createdAt).toLocaleString("da-DK")}
+            </div>
+
+            <p className="mt-4 whitespace-pre-line">{message.body}</p>
+          </div>
+
+          {unread && (
+            <button
+              onClick={() => markAsRead(message.id)}
+              className="bg-black text-white px-4 py-2 rounded-lg min-w-36"
+            >
+              Marker som læst
+            </button>
           )}
         </div>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
+      <div className="bg-white rounded-xl shadow p-6 mb-6">
+        <h1 className="text-3xl font-bold">Beskeder</h1>
+        <p className="text-gray-500">
+          Her kan du se beskeder, notifikationer og vagtbytte-opdateringer.
+        </p>
+      </div>
+
+      {statusMessage && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          {statusMessage}
+        </div>
+      )}
+
+      <section className="bg-white rounded-xl shadow p-6 mb-6">
+        <h2 className="text-2xl font-bold mb-4">
+          Ulæste beskeder ({unreadMessages.length})
+        </h2>
+
+        <div className="space-y-3">
+          {unreadMessages.map(renderMessage)}
+
+          {unreadMessages.length === 0 && (
+            <div className="text-gray-500">Du har ingen ulæste beskeder.</div>
+          )}
+        </div>
+      </section>
+
+      <section className="bg-white rounded-xl shadow p-6">
+        <h2 className="text-2xl font-bold mb-4">
+          Tidligere beskeder ({readMessages.length})
+        </h2>
+
+        <div className="space-y-3">
+          {readMessages.map(renderMessage)}
+
+          {readMessages.length === 0 && (
+            <div className="text-gray-500">
+              Du har ingen tidligere beskeder.
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
   );
 }

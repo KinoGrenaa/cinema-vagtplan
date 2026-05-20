@@ -40,3 +40,14 @@ createMessage(@Body() body: CreateMessageDto) {
     return this.messagesService.markAsRead(Number(id));
   }
 }
+
+@Get('unread-count')
+async getUnreadCount(
+  @Query('userId') userId: string,
+  @Query('cinemaId') cinemaId: string,
+) {
+  return this.messagesService.getUnreadCount(
+    Number(userId),
+    Number(cinemaId),
+  );
+}
