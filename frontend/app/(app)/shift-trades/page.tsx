@@ -8,35 +8,29 @@ type CurrentUser = {
   cinemaId: number;
 };
 
+type User = {
+  id: number;
+  firstName: string;
+  lastName: string;
+};
+
 type ShiftTrade = {
   id: number;
-  type: "POOL" | "DIRECT";
   status: "OPEN" | "ACCEPTED" | "REJECTED" | "CANCELLED";
+  type: "POOL" | "DIRECT";
   message?: string | null;
   offeredByUserId: number;
   acceptedByUserId?: number | null;
   targetUserId?: number | null;
-  offeredByUser: {
-    firstName: string;
-    lastName: string;
-  };
-  acceptedByUser?: {
-    firstName: string;
-    lastName: string;
-  } | null;
-  targetUser?: {
-    firstName: string;
-    lastName: string;
-  } | null;
+  offeredByUser: User;
+  targetUser?: User | null;
+  acceptedByUser?: User | null;
   shift: {
     id: number;
     startTime: string;
     endTime: string;
     userId: number;
-    user: {
-      firstName: string;
-      lastName: string;
-    };
+    user: User;
     workType: {
       name: string;
       color: string;
@@ -75,18 +69,39 @@ export default function ShiftTradesPage() {
     fetchTrades();
   }, [fetchTrades]);
 
-  async function acceptTrade(tradeId: number) {
+  const poolTrades = useMemo(() => {
+    if (!currentUser) return [];
+
+    return trades.filter((trade) => {
+      const isFutureShift = new Date(trade.shift.startTime) > new Date();
+
+      return (
+        trade.status === "OPEN" &&
+        trade.type === "POOL" &&
+        trade.offeredByUserId !== currentUser.id &&
+        isFutureShift
+      );
+    });
+  }, [trades, currentUser]);
+
+  async function acceptTrade(trade: ShiftTrade) {
     if (!currentUser) return;
 
+    const confirmed = window.confirm(
+      `Er du sikker på, at du vil acceptere vagten fra ${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}?`
+    );
+
+    if (!confirmed) return;
+
     const response = await fetch(
-      `http://localhost:3001/shift-trades/${tradeId}/accept`,
+      `http://localhost:3001/shift-trades/${trade.id}/accept`,
       {
         method: "PATCH",
         headers: getHeaders(),
         body: JSON.stringify({
           acceptedByUserId: currentUser.id,
         }),
-      },
+      }
     );
 
     const data = await response.json();
@@ -100,285 +115,100 @@ export default function ShiftTradesPage() {
     await fetchTrades();
   }
 
-  async function rejectTrade(tradeId: number) {
-    const response = await fetch(
-      `http://localhost:3001/shift-trades/${tradeId}/reject`,
-      {
-        method: "PATCH",
-        headers: getHeaders(),
-      },
-    );
-
-    if (!response.ok) {
-      const data = await response.json();
-      setMessage(data.message || "Kunne ikke afvise vagten");
-      return;
-    }
-
-    setMessage("Vagten er afvist.");
-    await fetchTrades();
-  }
-
-  async function cancelTrade(tradeId: number) {
-    const response = await fetch(
-      `http://localhost:3001/shift-trades/${tradeId}/cancel`,
-      {
-        method: "PATCH",
-        headers: getHeaders(),
-      },
-    );
-
-    if (!response.ok) {
-      const data = await response.json();
-      setMessage(data.message || "Kunne ikke annullere vagtbyttet");
-      return;
-    }
-
-    setMessage("Vagtbyttet er annulleret.");
-    await fetchTrades();
-  }
-
-  function hasConflict(trade: ShiftTrade) {
-    if (!currentUser) return false;
-
-    const tradeStart = new Date(trade.shift.startTime).getTime();
-    const tradeEnd = new Date(trade.shift.endTime).getTime();
-
-    return trades.some((otherTrade) => {
-      if (otherTrade.shift.id === trade.shift.id) return false;
-      if (otherTrade.shift.userId !== currentUser.id) return false;
-
-      const otherStart = new Date(otherTrade.shift.startTime).getTime();
-      const otherEnd = new Date(otherTrade.shift.endTime).getTime();
-
-      return otherStart < tradeEnd && otherEnd > tradeStart;
-    });
-  }
-
-  const poolTrades = useMemo(() => {
-    return trades.filter(
-      (trade) => trade.type === "POOL" && trade.status === "OPEN",
-    );
-  }, [trades]);
-
-  const directTradesForMe = useMemo(() => {
-    if (!currentUser) return [];
-
-    return trades.filter(
-      (trade) =>
-        trade.type === "DIRECT" &&
-        trade.status === "OPEN" &&
-        trade.targetUserId === currentUser.id,
-    );
-  }, [trades, currentUser]);
-
-  const myActiveTrades = useMemo(() => {
-    if (!currentUser) return [];
-
-    return trades.filter(
-      (trade) =>
-        trade.status === "OPEN" &&
-        trade.offeredByUserId === currentUser.id,
-    );
-  }, [trades, currentUser]);
-
-  function renderTradeCard(
-    trade: ShiftTrade,
-    options: {
-      canAccept?: boolean;
-      canReject?: boolean;
-      canCancel?: boolean;
-    },
-  ) {
-    const conflict = hasConflict(trade);
-    const isOwnTrade = currentUser?.id === trade.offeredByUserId;
-    const canAccept =
-      options.canAccept && !conflict && !isOwnTrade && trade.status === "OPEN";
-
-    return (
-      <div
-        key={trade.id}
-        className={`border rounded-xl p-4 ${
-          conflict ? "bg-gray-100 opacity-70" : "bg-white"
-        }`}
-      >
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div>
-            <div className="font-bold text-lg">{trade.shift.workType.name}</div>
-
-            <div className="text-sm text-gray-600 mt-1">
-              {new Date(trade.shift.startTime).toLocaleDateString("da-DK", {
-                weekday: "long",
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })}{" "}
-              kl.{" "}
-              {new Date(trade.shift.startTime).toLocaleTimeString("da-DK", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-              {" - "}
-              {new Date(trade.shift.endTime).toLocaleTimeString("da-DK", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </div>
-
-            <div className="text-sm mt-2">
-              Udbydes af:{" "}
-              <strong>
-                {trade.offeredByUser.firstName} {trade.offeredByUser.lastName}
-              </strong>
-            </div>
-
-            {trade.type === "DIRECT" && trade.targetUser && (
-              <div className="text-sm mt-1">
-                Sendt til:{" "}
-                <strong>
-                  {trade.targetUser.firstName} {trade.targetUser.lastName}
-                </strong>
-              </div>
-            )}
-
-            {trade.message && (
-              <div className="text-sm text-gray-500 mt-2">
-                Besked: {trade.message}
-              </div>
-            )}
-
-            {conflict && (
-              <div className="text-sm text-red-600 mt-3">
-                Du har allerede vagt i dette tidsrum
-              </div>
-            )}
-
-            {isOwnTrade && (
-              <div className="text-sm text-gray-500 mt-3">
-                Dette er din egen udsendte vagt
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2 min-w-40">
-            {canAccept && (
-              <button
-  onClick={() => {
-    const confirmed = window.confirm(
-  `Er du sikker på, at du vil acceptere vagten:\n\n${trade.shift.workType.name}\n${new Date(
-    trade.shift.startTime,
-  ).toLocaleDateString("da-DK")} kl. ${new Date(
-    trade.shift.startTime,
-  ).toLocaleTimeString("da-DK", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })} - ${new Date(trade.shift.endTime).toLocaleTimeString("da-DK", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}?`,
-);
-
-    if (confirmed) {
-      acceptTrade(trade.id);
-    }
-  }}
-  className="bg-green-600 text-white px-4 py-2 rounded-lg"
->
-  Accepter vagt
-</button>
-            )}
-
-            {options.canReject && (
-              <button
-                onClick={() => rejectTrade(trade.id)}
-                className="bg-gray-700 text-white px-4 py-2 rounded-lg"
-              >
-                Afvis
-              </button>
-            )}
-
-            {options.canCancel && (
-              <button
-                onClick={() => cancelTrade(trade.id)}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg"
-              >
-                Annuller
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <h1 className="text-3xl font-bold">Vagtbytte</h1>
-        <p className="text-gray-500">
-          Se fælles pulje, direkte tilbud og dine egne udsendte vagter.
+    <main className="p-6 max-w-5xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Vagtpulje</h1>
+        <p className="text-gray-600">
+          Se åbne vagter som andre medarbejdere har lagt i puljen.
         </p>
       </div>
 
+      <a
+        href="/dashboard"
+        className="inline-block bg-gray-200 px-4 py-2 rounded-lg"
+      >
+        Dashboard
+      </a>
+
       {message && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+        <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
           {message}
         </div>
       )}
 
-      <section className="bg-white rounded-xl shadow p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-4">Fælles pulje</h2>
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold">
+          Åbne vagter i puljen ({poolTrades.length})
+        </h2>
 
-        <div className="space-y-3">
-          {poolTrades.map((trade) =>
-            renderTradeCard(trade, {
-              canAccept: true,
-            }),
-          )}
+        {poolTrades.map((trade) => (
+          <div
+            key={trade.id}
+            className="bg-white border rounded-xl p-4 shadow-sm space-y-3"
+          >
+            <div>
+              <div className="flex gap-2 mb-2">
+                <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded-full">
+                  Vagtpulje
+                </span>
 
-          {poolTrades.length === 0 && (
-            <div className="text-gray-500">
-              Der er ingen åbne vagter i fælles pulje.
+                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
+                  Åben
+                </span>
+              </div>
+
+              <h3 className="text-lg font-bold">{trade.shift.workType.name}</h3>
+
+              <p>
+                {new Date(trade.shift.startTime).toLocaleDateString("da-DK", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+
+              <p>
+                {new Date(trade.shift.startTime).toLocaleTimeString("da-DK", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                -{" "}
+                {new Date(trade.shift.endTime).toLocaleTimeString("da-DK", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+
+              <p className="text-sm text-gray-600">
+                Udbydes af:{" "}
+                <strong>
+                  {trade.offeredByUser.firstName} {trade.offeredByUser.lastName}
+                </strong>
+              </p>
+
+              {trade.message && (
+                <p className="bg-gray-100 rounded-lg p-3 text-sm">
+                  Besked: {trade.message}
+                </p>
+              )}
             </div>
-          )}
-        </div>
-      </section>
 
-      <section className="bg-white rounded-xl shadow p-6 mb-6">
-        <h2 className="text-2xl font-bold mb-4">Direkte tilbud til mig</h2>
+            <button
+              onClick={() => acceptTrade(trade)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg"
+            >
+              Accepter vagt
+            </button>
+          </div>
+        ))}
 
-        <div className="space-y-3">
-          {directTradesForMe.map((trade) =>
-            renderTradeCard(trade, {
-              canAccept: true,
-              canReject: true,
-            }),
-          )}
-
-          {directTradesForMe.length === 0 && (
-            <div className="text-gray-500">
-              Du har ingen direkte vagt-tilbud.
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-2xl font-bold mb-4">Mine aktive bytter</h2>
-
-        <div className="space-y-3">
-          {myActiveTrades.map((trade) =>
-            renderTradeCard(trade, {
-              canCancel: true,
-            }),
-          )}
-
-          {myActiveTrades.length === 0 && (
-            <div className="text-gray-500">
-              Du har ingen aktive udsendte vagter.
-            </div>
-          )}
-        </div>
+        {poolTrades.length === 0 && (
+          <div className="bg-white border rounded-xl p-4 shadow-sm">
+            Der er ingen åbne vagter i vagtpuljen lige nu.
+          </div>
+        )}
       </section>
     </main>
   );

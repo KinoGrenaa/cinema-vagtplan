@@ -111,4 +111,21 @@ export class ShiftTradesService {
       },
     });
   }
+  async getDirectCount(cinemaId: number, userId: number) {
+  const count = await this.prisma.shiftTrade.count({
+    where: {
+      cinemaId,
+      status: ShiftTradeStatus.OPEN,
+      type: ShiftTradeType.DIRECT,
+      targetUserId: userId,
+      shift: {
+        startTime: {
+          gt: new Date(),
+        },
+      },
+    },
+  });
+
+  return { count };
+}
 }

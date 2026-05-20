@@ -28,6 +28,16 @@ export class ShiftTradesController {
   );
 }
 
+  @Get('direct-count')
+  getDirectCount(
+    @Query('cinemaId') cinemaId: string,
+    @Query('userId') userId: string,
+    ) {
+    return this.shiftTradesService.getDirectCount(
+    Number(cinemaId),
+    Number(userId),
+  );
+}
   @UseGuards(JwtGuard)
   @Get()
   getAllTrades() {

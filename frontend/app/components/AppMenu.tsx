@@ -11,6 +11,7 @@ export default function AppMenu() {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [poolCount, setPoolCount] = useState(0);
+  const [directCount, setDirectCount] = useState(0);
 
   async function fetchUnreadCount() {
     const savedUser = localStorage.getItem("user");
@@ -43,10 +44,10 @@ export default function AppMenu() {
 
     const user: CurrentUser = JSON.parse(savedUser);
 
-    if (!user?.cinemaId) return;
+    if (!user?.cinemaId || !user?.id) return;
 
     const response = await fetch(
-      `http://localhost:3001/shift-trades/pool-count?cinemaId=${user.cinemaId}&userId=${user.id}`
+      `http://localhost:3001/shift-trades/pool-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -58,13 +59,38 @@ export default function AppMenu() {
     setPoolCount(data.count || 0);
   }
 
+  async function fetchDirectCount() {
+    const savedUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
+
+    if (!savedUser) return;
+
+    const user: CurrentUser = JSON.parse(savedUser);
+
+    if (!user?.cinemaId || !user?.id) return;
+
+    const response = await fetch(
+      `http://localhost:3001/shift-trades/direct-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+    setDirectCount(data.count || 0);
+  }
+
   useEffect(() => {
     fetchUnreadCount();
     fetchPoolCount();
+    fetchDirectCount();
 
     const interval = setInterval(() => {
       fetchUnreadCount();
       fetchPoolCount();
+      fetchDirectCount();
     }, 5000);
 
     return () => clearInterval(interval);
@@ -96,6 +122,7 @@ export default function AppMenu() {
   function getBadgeCount(href: string) {
     if (href === "/messages") return unreadCount;
     if (href === "/shift-trades") return poolCount;
+    if (href === "/my-shifts") return directCount;
     return 0;
   }
 
