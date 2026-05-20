@@ -1,15 +1,11 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { ShiftTradesController } from './shift-trades.controller';
 import { ShiftTradesService } from './shift-trades.service';
+import { ShiftTradesController } from './shift-trades.controller';
+import { PrismaModule } from '../prisma/prisma.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
-  imports: [
-    JwtModule.register({
-      secret: 'super-secret-key-change-later',
-      signOptions: { expiresIn: '7d' },
-    }),
-  ],
+  imports: [PrismaModule, RealtimeModule],
   controllers: [ShiftTradesController],
   providers: [ShiftTradesService],
 })

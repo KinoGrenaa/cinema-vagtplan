@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ShiftTradesService } from './shift-trades.service';
@@ -14,6 +15,12 @@ import { ShiftTradeType } from '@prisma/client';
 @Controller('shift-trades')
 export class ShiftTradesController {
   constructor(private shiftTradesService: ShiftTradesService) {}
+
+  @UseGuards(JwtGuard)
+  @Get('pool-count')
+  getPoolCount(@Query('cinemaId') cinemaId: string) {
+    return this.shiftTradesService.getPoolCount(Number(cinemaId));
+  }
 
   @UseGuards(JwtGuard)
   @Get()
@@ -48,11 +55,13 @@ export class ShiftTradesController {
       body.acceptedByUserId,
     );
   }
+
   @UseGuards(JwtGuard)
   @Patch(':id/reject')
   rejectTrade(@Param('id') id: string) {
-  return this.shiftTradesService.rejectTrade(Number(id));
-}
+    return this.shiftTradesService.rejectTrade(Number(id));
+  }
+
   @UseGuards(JwtGuard)
   @Patch(':id/cancel')
   cancelTrade(@Param('id') id: string) {

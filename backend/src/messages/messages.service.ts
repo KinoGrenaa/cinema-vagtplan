@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PushService } from '../push/push.service';
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 
 @Injectable()
 export class MessagesService {
@@ -16,11 +15,7 @@ export class MessagesService {
     return this.prisma.message.findMany({
       where: {
         cinemaId,
-        OR: [
-          { receiverId: userId },
-          { isBroadcast: true },
-          { senderId: userId },
-        ],
+        OR: [{ receiverId: userId }, { isBroadcast: true }, { senderId: userId }],
       },
       include: {
         sender: true,
@@ -30,6 +25,18 @@ export class MessagesService {
         createdAt: 'desc',
       },
     });
+  }
+
+  async getUnreadCount(userId: number, cinemaId: number) {
+    const count = await this.prisma.message.count({
+      where: {
+        cinemaId,
+        readAt: null,
+        OR: [{ receiverId: userId }, { isBroadcast: true }],
+      },
+    });
+
+    return { count };
   }
 
   async create(data: {
@@ -54,9 +61,7 @@ export class MessagesService {
       const users = await this.prisma.user.findMany({
         where: {
           cinemaId: data.cinemaId,
-          id: {
-            not: data.senderId,
-          },
+          id: { not: data.senderId },
         },
       });
 
@@ -92,19 +97,4 @@ export class MessagesService {
 
     return message;
   }
-}
-
-async getUnreadCount(userId: number, cinemaId: number) {
-  const count = await this.prisma.message.count({
-    where: {
-      cinemaId,
-      isRead: false,
-      OR: [
-        { receiverId: userId },
-        { isBroadcast: true },
-      ],
-    },
-  });
-
-  return { count };
 }
