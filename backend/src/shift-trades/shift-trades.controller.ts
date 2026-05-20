@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ShiftTradesService } from './shift-trades.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import { ShiftTradeType } from '@prisma/client';
 
 @Controller('shift-trades')
 export class ShiftTradesController {
@@ -28,6 +29,8 @@ export class ShiftTradesController {
       shiftId: number;
       offeredByUserId: number;
       cinemaId: number;
+      type?: ShiftTradeType;
+      targetUserId?: number;
       message?: string;
     },
   ) {
@@ -45,7 +48,11 @@ export class ShiftTradesController {
       body.acceptedByUserId,
     );
   }
-
+  @UseGuards(JwtGuard)
+  @Patch(':id/reject')
+  rejectTrade(@Param('id') id: string) {
+  return this.shiftTradesService.rejectTrade(Number(id));
+}
   @UseGuards(JwtGuard)
   @Patch(':id/cancel')
   cancelTrade(@Param('id') id: string) {

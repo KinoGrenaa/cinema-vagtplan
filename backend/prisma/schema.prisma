@@ -25,6 +25,8 @@ model Cinema {
   shifts        Shift[]
   messages      Message[]
   timeEntries   TimeEntry[]
+  allowShiftTradePool   Boolean @default(false)
+  allowShiftTradeDirect Boolean @default(false)
 }
 
 model User {
@@ -43,6 +45,7 @@ model User {
   notes          String?
   role           Role      @default(EMPLOYEE)
   createdAt      DateTime  @default(now())
+  targetedTrades ShiftTrade[] @relation("TargetedTrades")
 
   cinemaId          Int
   cinema            Cinema             @relation(fields: [cinemaId], references: [id])
@@ -127,12 +130,18 @@ model LeaveRequest {
 enum ShiftTradeStatus {
   OPEN
   ACCEPTED
+  REJECTED
   CANCELLED
+}
+
+enum ShiftTradeType {
+  POOL
+  DIRECT
 }
 
 model ShiftTrade {
   id        Int              @id @default(autoincrement())
-  status    ShiftTradeStatus @default(OPEN)
+  status ShiftTradeStatus @default(OPEN)
   message   String?
   createdAt DateTime         @default(now())
 
@@ -147,6 +156,12 @@ model ShiftTrade {
 
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
+  
+  type ShiftTradeType @default(POOL)
+
+  targetUserId Int?
+  targetUser   User? @relation("TargetedTrades", fields: [targetUserId], references: [id])
+  
 }
 
 model Message {
