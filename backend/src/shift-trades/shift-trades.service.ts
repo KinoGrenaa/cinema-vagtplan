@@ -1,6 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ShiftTradeType } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ShiftTradesService {
@@ -90,21 +94,28 @@ export class ShiftTradesService {
       throw new NotFoundException('Vagten blev ikke fundet');
     }
 
+    if (shift.startTime <= new Date()) {
+      throw new BadRequestException(
+        'Du kan ikke sende en vagt til bytte, når vagten allerede er startet eller ligger i fortiden',
+      );
+    }
+
     if (shift.userId !== data.offeredByUserId) {
       throw new BadRequestException('Du kan kun sende dine egne vagter');
     }
+
     const existingOpenTrade = await this.prisma.shiftTrade.findFirst({
       where: {
-      shiftId: data.shiftId,
-      status: 'OPEN',
-    },
-});
+        shiftId: data.shiftId,
+        status: 'OPEN',
+      },
+    });
 
-if (existingOpenTrade) {
-  throw new BadRequestException(
-    'Denne vagt er allerede sendt til vagtbytte',
-  );
-}
+    if (existingOpenTrade) {
+      throw new BadRequestException(
+        'Denne vagt er allerede sendt til vagtbytte',
+      );
+    }
 
     return this.prisma.shiftTrade.create({
       data: {
@@ -130,19 +141,33 @@ if (existingOpenTrade) {
       throw new NotFoundException('Vagtbytte blev ikke fundet');
     }
 
+    if (trade.shift.startTime <= new Date()) {
+      throw new BadRequestException(
+        'Du kan ikke acceptere en vagt, der allerede er startet eller ligger i fortiden',
+      );
+    }
+
     if (trade.status !== 'OPEN') {
       throw new BadRequestException('Vagtbyttet er ikke åbent');
     }
 
-    if (trade.type === ShiftTradeType.DIRECT && trade.targetUserId !== acceptedByUserId) {
-      throw new BadRequestException('Denne vagt er sendt til en anden medarbejder');
+    if (
+      trade.type === ShiftTradeType.DIRECT &&
+      trade.targetUserId !== acceptedByUserId
+    ) {
+      throw new BadRequestException(
+        'Denne vagt er sendt til en anden medarbejder',
+      );
     }
 
     if (trade.offeredByUserId === acceptedByUserId) {
       throw new BadRequestException('Du kan ikke acceptere din egen vagt');
     }
 
-    const hasConflict = await this.hasShiftConflict(acceptedByUserId, trade.shiftId);
+    const hasConflict = await this.hasShiftConflict(
+      acceptedByUserId,
+      trade.shiftId,
+    );
 
     if (hasConflict) {
       throw new BadRequestException('Du har allerede vagt i dette tidsrum');
