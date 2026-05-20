@@ -1,205 +1,196 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
+type Message = {
+  id: string;
+  subject?: string;
+  title?: string;
+  body?: string;
+  message?: string;
+  content?: string;
+  createdAt?: string;
+  recipients?: { name?: string; email?: string }[];
+  recipientNames?: string[];
 };
 
-type CurrentUser = {
-  id: number;
-  cinemaId: number;
-};
-
-function SendMessageContent() {
-  const searchParams = useSearchParams();
-
-  const [users, setUsers] = useState<User[]>([]);
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [receiverId, setReceiverId] = useState("");
-  const [isBroadcast, setIsBroadcast] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-
-  function getHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
-
-  const fetchUsers = useCallback(async () => {
-    const savedUser = localStorage.getItem("user");
-    if (!savedUser) return;
-
-    const user: CurrentUser = JSON.parse(savedUser);
-
-    const response = await fetch(
-      `http://localhost:3001/users?cinemaId=${user.cinemaId}`,
-      { headers: getHeaders() }
-    );
-
-    const data = await response.json();
-    setUsers(Array.isArray(data) ? data : []);
-  }, []);
+export default function SentMessagesPage() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUsers();
+    const loadMessages = async () => {
+      try {
+        const savedUser = localStorage.getItem("user");
+        const token = localStorage.getItem("token");
 
-    const replyTo = searchParams.get("replyTo");
-    const replySubject = searchParams.get("subject");
+        if (!savedUser || !token) {
+          setMessages([]);
+          return;
+        }
 
-    if (replyTo) {
-      setReceiverId(replyTo);
-    }
+        const response = await fetch("http://localhost:3001/messages", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-    if (replySubject) {
-      setSubject(replySubject);
-    }
-  }, [fetchUsers, searchParams]);
+        if (!response.ok) {
+        const errorText = await response.text();
 
-  async function sendMessage() {
-    const savedUser = localStorage.getItem("user");
-    if (!savedUser) return;
+        console.log("Fejl fra backend:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+        });
 
-    const currentUser: CurrentUser = JSON.parse(savedUser);
+        setMessages([]);
+        return;
+        }
 
-    if (!subject.trim() || !body.trim()) {
-      setStatusMessage("Udfyld både emne og besked.");
-      return;
-    }
+        const data = await response.json();
 
-    if (!isBroadcast && !receiverId) {
-      setStatusMessage("Vælg en modtager eller send til alle.");
-      return;
-    }
+        setMessages(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error(error);
+        setMessages([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const response = await fetch("http://localhost:3001/messages", {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        subject,
-        body,
-        cinemaId: currentUser.cinemaId,
-        senderId: currentUser.id,
-        receiverId: isBroadcast ? null : Number(receiverId),
-        isBroadcast,
-      }),
+    loadMessages();
+  }, []);
+
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort((a, b) => {
+      const dateA = new Date(a.createdAt ?? 0).getTime();
+      const dateB = new Date(b.createdAt ?? 0).getTime();
+      return dateB - dateA;
     });
+  }, [messages]);
 
-    if (!response.ok) {
-      setStatusMessage("Beskeden kunne ikke sendes.");
-      return;
+  const getTitle = (message: Message) =>
+    message.subject || message.title || "Uden emne";
+
+  const getBody = (message: Message) =>
+    message.body || message.message || message.content || "";
+
+  const getPreview = (text: string) => {
+    const cleaned = text.replace(/\s+/g, " ").trim();
+    return cleaned.length > 110 ? `${cleaned.slice(0, 110)}...` : cleaned;
+  };
+
+  const getRecipients = (message: Message) => {
+    if (message.recipients?.length) {
+      return message.recipients
+        .map((r) => r.name || r.email)
+        .filter(Boolean)
+        .join(", ");
     }
 
-    setSubject("");
-    setBody("");
-    setReceiverId("");
-    setIsBroadcast(false);
-    setStatusMessage("Besked sendt.");
+    if (message.recipientNames?.length) {
+      return message.recipientNames.join(", ");
+    }
+
+    return "Ukendte modtagere";
+  };
+
+  if (loading) {
+    return <div className="p-6">Henter sendte beskeder...</div>;
   }
 
-  const isReply = Boolean(searchParams.get("replyTo"));
-
   return (
-    <main className="p-6 max-w-3xl mx-auto space-y-6">
-      <div className="bg-white rounded-xl shadow p-6">
-        <h1 className="text-3xl font-bold">
-          {isReply ? "Svar på besked" : "Send ny besked"}
-        </h1>
-
-        <p className="text-gray-500 mt-2">
-          {isReply
-            ? "Du svarer på en modtaget besked."
-            : "Send beskeder til medarbejdere eller hele biografen."}
+    <div className="mx-auto max-w-4xl p-4 md:p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Sendte beskeder</h1>
+        <p className="text-sm text-gray-500">
+          Her kan du se beskeder, du tidligere har sendt.
         </p>
       </div>
 
-      {statusMessage && (
-        <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
-          {statusMessage}
+      {sortedMessages.length === 0 ? (
+        <div className="rounded-xl border bg-white p-6 text-gray-500">
+          Du har ikke sendt nogen beskeder endnu.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sortedMessages.map((message) => {
+            const isExpanded = expandedId === message.id;
+            const body = getBody(message);
+
+            return (
+              <div
+                key={message.id}
+                className="rounded-xl border bg-white shadow-sm transition hover:shadow-md"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedId(isExpanded ? null : message.id)
+                  }
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start justify-between gap-4 p-4">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-base font-semibold">
+                        {getTitle(message)}
+                      </h2>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        Til: {getRecipients(message)}
+                      </p>
+
+                      {!isExpanded && (
+                        <p className="mt-2 line-clamp-1 text-sm text-gray-700">
+                          {getPreview(body)}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <div className="text-xs text-gray-400">
+                        {message.createdAt
+                          ? new Date(message.createdAt).toLocaleString("da-DK")
+                          : ""}
+                      </div>
+
+                      <div className="mt-2 text-sm font-medium text-blue-600">
+                        {isExpanded ? "Skjul" : "Vis mere"}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="border-t px-4 pb-4 pt-3">
+                    <div className="whitespace-pre-wrap rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-800">
+                      {body || "Ingen beskedtekst"}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                      >
+                        Send igen
+                      </button>
+
+                      <button
+                        type="button"
+                        className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"
+                      >
+                        Kopier tekst
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-
-      <div className="bg-white rounded-xl shadow p-6 space-y-4">
-        <div>
-          <label className="block font-medium mb-1">Emne</label>
-
-          <input
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="w-full border rounded-lg p-3"
-            placeholder="Skriv emne..."
-          />
-        </div>
-
-        <div>
-          <label className="block font-medium mb-1">Besked</label>
-
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            className="w-full border rounded-lg p-3 min-h-40"
-            placeholder="Skriv besked..."
-          />
-        </div>
-
-        {!isReply && (
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={isBroadcast}
-              onChange={(e) => setIsBroadcast(e.target.checked)}
-            />
-            Send til alle medarbejdere
-          </label>
-        )}
-
-        {!isBroadcast && (
-          <div>
-            <label className="block font-medium mb-1">Modtager</label>
-
-            <select
-              value={receiverId}
-              onChange={(e) => setReceiverId(e.target.value)}
-              className="w-full border rounded-lg p-3"
-              disabled={isReply}
-            >
-              <option value="">Vælg modtager</option>
-
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName}
-                </option>
-              ))}
-            </select>
-
-            {isReply && (
-              <p className="text-sm text-gray-500 mt-2">
-                Modtager er valgt automatisk fra den oprindelige besked.
-              </p>
-            )}
-          </div>
-        )}
-
-        <button
-          onClick={sendMessage}
-          className="bg-black text-white px-5 py-3 rounded-lg"
-        >
-          {isReply ? "Send svar" : "Send besked"}
-        </button>
-      </div>
-    </main>
-  );
-}
-
-export default function SendMessagePage() {
-  return (
-    <Suspense fallback={null}>
-      <SendMessageContent />
-    </Suspense>
+    </div>
   );
 }
