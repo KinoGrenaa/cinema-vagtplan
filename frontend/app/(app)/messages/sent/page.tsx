@@ -2,16 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type CurrentUser = {
-  id: number;
-  cinemaId: number;
-};
-
 type User = {
   id: number;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
+  firstName: string;
+  lastName: string;
 };
 
 type Message = {
@@ -19,89 +13,54 @@ type Message = {
   subject: string;
   body: string;
   createdAt: string;
-  readAt?: string | null;
-  archivedAt?: string | null;
-  recalledAt?: string | null;
-
-  systemType?: string | null;
-  relatedShiftTradeId?: number | null;
-
-  isBroadcast?: boolean;
-  senderId?: number;
-  receiverId?: number | null;
-
   sender?: User | null;
   receiver?: User | null;
-  systemType?: string | null;
-  relatedShiftTradeId?: number | null;
+  isBroadcast: boolean;
+};
+
+type CurrentUser = {
+  id: number;
+  cinemaId: number;
 };
 
 export default function SentMessagesPage() {
-  const [currentUser, setCurrentUser] =
-    useState<CurrentUser | null>(null);
-
   const [messages, setMessages] = useState<Message[]>([]);
-  const [expandedId, setExpandedId] =
-    useState<number | null>(null);
-
+  const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
-
-  const [statusMessage, setStatusMessage] =
-    useState("");
 
   function getHeaders() {
     return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem(
-        "token"
-      )}`,
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
     };
   }
 
   const fetchMessages = useCallback(async () => {
     try {
-      const savedUser =
-        localStorage.getItem("user");
+      setLoading(true);
+
+      const savedUser = localStorage.getItem("user");
 
       if (!savedUser) {
         setMessages([]);
         return;
       }
 
-      const user: CurrentUser =
-        JSON.parse(savedUser);
-
-      setCurrentUser(user);
+      const user: CurrentUser = JSON.parse(savedUser);
 
       const response = await fetch(
-        `http://localhost:3001/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
+        `http://localhost:3001/messages/sent?userId=${user.id}&cinemaId=${user.cinemaId}`,
         {
           headers: getHeaders(),
         }
       );
 
-      if (!response.ok) {
-        setMessages([]);
-        return;
-      }
-
       const data = await response.json();
 
-      const sentOnly = Array.isArray(data)
-        ? data.filter(
-            (message: Message) =>
-              message.senderId === user.id ||
-              message.sender?.id === user.id
-          )
-        : [];
-
-      setMessages(sentOnly);
+      setMessages(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.log(
-        "Kunne ikke hente sendte beskeder:",
-        error
-      );
-
+      console.error("Kunne ikke hente sendte beskeder", error);
       setMessages([]);
     } finally {
       setLoading(false);
@@ -112,281 +71,172 @@ export default function SentMessagesPage() {
     fetchMessages();
   }, [fetchMessages]);
 
-  async function recallMessage(
-    messageId: number
-  ) {
-    if (!currentUser) return;
-
-    const confirmed = window.confirm(
-      "Er du sikker på, at du vil fortryde afsendelsen? Beskeden kan kun trækkes tilbage, hvis modtageren ikke har læst den."
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+  }, [messages]);
 
-    if (!confirmed) return;
+  function getUserName(user?: User | null) {
+    if (!user) return null;
+    return `${user.firstName} ${user.lastName}`;
+  }
 
-    const response = await fetch(
-      `http://localhost:3001/messages/${messageId}/recall`,
-      {
-        method: "PATCH",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          userId: currentUser.id,
-        }),
-      }
-    );
+  function getShortBody(body: string) {
+    if (!body) return "Ingen beskedtekst.";
+    return body.length > 120 ? `${body.slice(0, 120)}...` : body;
+  }
 
-    const data = await response
-      .json()
-      .catch(() => null);
+  async function archiveMessage(messageId: number) {
+  const confirmed = confirm("Vil du arkivere denne besked?");
 
-    if (!response.ok) {
-      setStatusMessage(
-        data?.message ||
-          "Beskeden kunne ikke trækkes tilbage."
-      );
+  if (!confirmed) return;
 
+  try {
+    const savedUser = localStorage.getItem("user");
+
+    if (!savedUser) {
+      alert("Bruger ikke fundet.");
       return;
     }
 
-    setStatusMessage(
-      "Beskeden er trukket tilbage."
-    );
-
-    await fetchMessages();
-  }
-
-  async function archiveMessage(
-    messageId: number
-  ) {
-    if (!currentUser) return;
-
-    const confirmed = window.confirm(
-      "Er du sikker på, at du vil arkivere denne besked?"
-    );
-
-    if (!confirmed) return;
+    const user: CurrentUser = JSON.parse(savedUser);
 
     const response = await fetch(
       `http://localhost:3001/messages/${messageId}/archive`,
       {
         method: "PATCH",
-        headers: getHeaders(),
+        headers: {
+          ...getHeaders(),
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          userId: currentUser.id,
+          userId: user.id,
         }),
       }
     );
 
-    const data = await response
-      .json()
-      .catch(() => null);
-
     if (!response.ok) {
-      setStatusMessage(
-        data?.message ||
-          "Kunne ikke arkivere beskeden."
-      );
-
-      return;
+      throw new Error("Kunne ikke arkivere beskeden");
     }
 
-    setStatusMessage(
-      "Beskeden er arkiveret."
+    setMessages((currentMessages) =>
+      currentMessages.filter((message) => message.id !== messageId)
     );
 
-    await fetchMessages();
-  }
-
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() -
-        new Date(a.createdAt).getTime()
-    );
-  }, [messages]);
-
-  function getReceiverName(
-    message: Message
-  ) {
-    if (message.isBroadcast) {
-      return "Alle medarbejdere";
+    if (expandedMessageId === messageId) {
+      setExpandedMessageId(null);
     }
-
-    if (!message.receiver) {
-      return "Ukendt modtager";
-    }
-
-    const fullName = `${message.receiver.firstName ?? ""} ${
-      message.receiver.lastName ?? ""
-    }`.trim();
-
-    return (
-      fullName ||
-      message.receiver.email ||
-      "Ukendt modtager"
-    );
+  } catch (error) {
+    console.error(error);
+    alert("Beskeden kunne ikke arkiveres.");
   }
-
-  function getPreview(text: string) {
-    const cleanText = text
-      .replace(/\s+/g, " ")
-      .trim();
-
-    return cleanText.length > 120
-      ? `${cleanText.substring(0, 120)}...`
-      : cleanText;
-  }
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        Henter sendte beskeder...
-      </div>
-    );
-  }
+}
 
   return (
-    <div className="mx-auto max-w-4xl p-4 md:p-6">
-      <h1 className="mb-2 text-2xl font-bold">
-        Sendte beskeder
-      </h1>
+    <main className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className="bg-white rounded-xl shadow p-6">
+        <h1 className="text-3xl font-bold">Sendte beskeder</h1>
 
-      <p className="mb-6 text-sm text-gray-500">
-        Her kan du se de beskeder, du har sendt.
-      </p>
+        <p className="text-gray-500 mt-2">
+          Her kan du se beskeder, du selv har sendt.
+        </p>
+      </div>
 
-      {statusMessage && (
-        <div className="mb-4 rounded-lg border bg-gray-50 p-3 text-sm">
-          {statusMessage}
+      {loading && (
+        <div className="bg-white rounded-xl shadow p-6 text-gray-500">
+          Henter sendte beskeder...
         </div>
       )}
 
-      {sortedMessages.length === 0 ? (
-        <div className="rounded-xl border bg-white p-6 text-gray-500">
-          Du har ikke sendt nogen beskeder endnu.
+      {!loading && sortedMessages.length === 0 && (
+        <div className="bg-white rounded-xl shadow p-6 text-gray-500">
+          Ingen sendte beskeder.
         </div>
-      ) : (
+      )}
+
+      {!loading && sortedMessages.length > 0 && (
         <div className="space-y-3">
           {sortedMessages.map((message) => {
-            const isExpanded =
-              expandedId === message.id;
-
-            const isRead =
-              !!message.readAt;
-
-            const isShiftMessage =
-            !!message.relatedShiftTradeId ||
-            message.systemType === "SHIFT_TRADE" ||
-            message.systemType === "SHIFT_TRANSFER" ||
-            message.subject?.toLowerCase().includes("vagt");
+            const isExpanded = expandedMessageId === message.id;
 
             return (
               <div
                 key={message.id}
-                className="rounded-xl border bg-white shadow-sm"
+                className="bg-white rounded-xl shadow overflow-hidden"
               >
                 <button
                   type="button"
                   onClick={() =>
-                    setExpandedId(
-                      isExpanded
-                        ? null
-                        : message.id
-                    )
+                    setExpandedMessageId(isExpanded ? null : message.id)
                   }
-                  className="w-full p-4 text-left"
+                  className="w-full text-left p-5 hover:bg-gray-50 transition"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate font-semibold">
-                          {message.subject ||
-                            "Uden emne"}
-                        </h2>
-
-                        {isRead ? (
-                          <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                            Læst
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
-                            Ikke læst
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {message.isBroadcast && (
+                          <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                            Sendt til alle
                           </span>
                         )}
+                    
                       </div>
 
-                      <p className="mt-1 text-sm text-gray-500">
+                      <h2 className="text-lg font-bold truncate">
+                        {message.subject}
+                      </h2>
+
+                      <p className="text-sm text-gray-500 mt-1">
                         Til:{" "}
-                        {getReceiverName(
-                          message
-                        )}
+                        {message.isBroadcast
+                          ? "Alle"
+                          : getUserName(message.receiver) || "Ukendt"}
                       </p>
 
                       {!isExpanded && (
-                        <p className="mt-2 line-clamp-1 text-sm text-gray-700">
-                          {getPreview(
-                            message.body || ""
-                          )}
+                        <p className="text-sm text-gray-600 mt-2 line-clamp-1">
+                          {getShortBody(message.body)}
                         </p>
                       )}
                     </div>
 
-                    <div className="shrink-0 text-right">
-                      <div className="text-xs text-gray-400">
-                        {new Date(
-                          message.createdAt
-                        ).toLocaleString(
-                          "da-DK"
-                        )}
-                      </div>
-
-                      <div className="mt-2 text-sm font-medium text-blue-600">
-                        {isExpanded
-                          ? "Skjul"
-                          : "Vis mere"}
-                      </div>
+                    <div className="text-sm text-gray-400 md:text-right shrink-0">
+                      {new Date(message.createdAt).toLocaleString("da-DK")}
                     </div>
                   </div>
                 </button>
 
                 {isExpanded && (
-                  <div className="border-t px-4 pb-4 pt-3">
-                    <div className="whitespace-pre-wrap rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-800">
-                      {message.body ||
-                        "Ingen beskedtekst"}
+                  <div className="border-t p-5 space-y-4">
+                    <div className="grid gap-1 text-sm text-gray-500">
+                      <div>
+                        Fra: {getUserName(message.sender) || "Dig"}
+                      </div>
+
+                      <div>
+                        Til:{" "}
+                        {message.isBroadcast
+                          ? "Alle"
+                          : getUserName(message.receiver) || "Ukendt"}
+                      </div>
+
+                      <div>
+                        Sendt:{" "}
+                        {new Date(message.createdAt).toLocaleString("da-DK")}
+                      </div>
                     </div>
 
-                    <div className="mt-4 flex items-center gap-2">
-                       {!isShiftMessage && !isRead ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            recallMessage(
-                              message.id
-                            )
-                          }
-                          className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100"
-                        >
-                          Fortryd afsendelse
-                        </button>
-                      ) : isShiftMessage ? (
-                        <div className="rounded-md bg-gray-100 px-3 py-1.5 text-xs text-gray-500">
-                          Vagtbesked kan ikke
-                          trækkes tilbage
-                        </div>
-                      ) : (
-                        <div className="rounded-md bg-gray-100 px-3 py-1.5 text-xs text-gray-500">
-                          Allerede læst
-                        </div>
-                      )}
+                    <div className="whitespace-pre-wrap text-gray-800">
+                      {message.body || "Ingen beskedtekst."}
+                    </div>
 
+                    <div className="flex justify-end pt-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          archiveMessage(
-                            message.id
-                          )
-                        }
-                        className="rounded-md border border-gray-300 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-gray-400 hover:bg-gray-200 hover:text-black"
+                        onClick={() => archiveMessage(message.id)}
+                        className="rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
                       >
                         Arkiver
                       </button>
@@ -398,6 +248,6 @@ export default function SentMessagesPage() {
           })}
         </div>
       )}
-    </div>
+    </main>
   );
 }

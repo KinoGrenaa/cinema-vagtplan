@@ -30,12 +30,24 @@ export class MessagesController {
   }
 
   @UseGuards(JwtGuard)
-    @Get('archive')
-    getArchivedMessages(
+  @Get('archive')
+  getArchivedMessages(
     @Query('userId') userId: string,
     @Query('cinemaId') cinemaId: string,
-    ) {
+  ) {
     return this.messagesService.findArchivedForUser(
+      Number(userId),
+      Number(cinemaId),
+    );
+  }
+
+  @UseGuards(JwtGuard)
+@Get('sent')
+getSentMessages(
+  @Query('userId') userId: string,
+  @Query('cinemaId') cinemaId: string,
+) {
+  return this.messagesService.findSentForUser(
     Number(userId),
     Number(cinemaId),
   );
@@ -75,6 +87,12 @@ export class MessagesController {
       Number(id),
       body.userId,
     );
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch(':id/unarchive')
+  unarchiveMessage(@Param('id') id: string) {
+    return this.messagesService.unarchiveMessage(Number(id));
   }
 
   @UseGuards(JwtGuard)

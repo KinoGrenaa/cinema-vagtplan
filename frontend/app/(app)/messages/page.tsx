@@ -1,14 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-type CurrentUser = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  role: string;
-  cinemaId: number;
-};
+import { useRealtimeMessages } from "../../hooks/useRealtimeMessages";
 
 type User = {
   id: number;
@@ -21,205 +14,334 @@ type Message = {
   subject: string;
   body: string;
   createdAt: string;
-  readAt?: string | null;
-  archivedAt?: string | null;
-  recalledAt?: string | null;
-  isBroadcast: boolean;
-  senderId: number;
-  receiverId?: number | null;
+  isRead?: boolean;
   sender?: User | null;
   receiver?: User | null;
+  isBroadcast: boolean;
 };
 
-export default function MessagesInboxPage() {
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+type CurrentUser = {
+  id: number;
+  cinemaId: number;
+};
+
+export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [statusMessage, setStatusMessage] = useState("");
+  const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
 
   function getHeaders() {
     return {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${localStorage.getItem("token")}`,
     };
   }
 
   const fetchMessages = useCallback(async () => {
-    const savedUser = localStorage.getItem("user");
-    if (!savedUser) return;
+    try {
+      setLoading(true);
 
-    const user: CurrentUser = JSON.parse(savedUser);
-    setCurrentUser(user);
+      const savedUser = localStorage.getItem("user");
 
-    const response = await fetch(
-      `http://localhost:3001/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
-      { headers: getHeaders() }
-    );
+      if (!savedUser) {
+        setMessages([]);
+        return;
+      }
 
-    const data = await response.json();
-    setMessages(Array.isArray(data) ? data : []);
+      const user: CurrentUser = JSON.parse(savedUser);
+
+      const response = await fetch(
+        `http://localhost:3001/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      const data = await response.json();
+
+      setMessages(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Kunne ikke hente beskeder", error);
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
 
-  async function markAsRead(messageId: number) {
-    const response = await fetch(
-      `http://localhost:3001/messages/${messageId}/read`,
-      {
-        method: "PATCH",
-        headers: getHeaders(),
-      }
+  useRealtimeMessages({
+    onNewMessage: fetchMessages,
+    onMessageRead: fetchMessages,
+    onMessageArchived: fetchMessages,
+    onMessagesUpdated: fetchMessages,
+    onMessageRecalled: fetchMessages,
+  });
+
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() -
+        new Date(a.createdAt).getTime()
     );
+  }, [messages]);
 
-    if (!response.ok) {
-      setStatusMessage("Kunne ikke markere beskeden som læst");
-      return;
+  function getUserName(user?: User | null) {
+    if (!user) return null;
+    return `${user.firstName} ${user.lastName}`;
+  }
+
+  function getShortBody(body: string) {
+    if (!body) return "Ingen beskedtekst.";
+    return body.length > 120
+      ? `${body.slice(0, 120)}...`
+      : body;
+  }
+
+  async function markAsRead(messageId: number) {
+    try {
+      const response = await fetch(
+        `http://localhost:3001/messages/${messageId}/read`,
+        {
+          method: "PATCH",
+          headers: getHeaders(),
+        }
+      );
+
+      if (!response.ok) return;
+
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                isRead: true,
+              }
+            : message
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Kunne ikke markere besked som læst",
+        error
+      );
     }
-
-    setStatusMessage("Besked markeret som læst");
-    await fetchMessages();
   }
 
   async function archiveMessage(messageId: number) {
-    if (!currentUser) return;
-
-    const confirmed = window.confirm(
-      "Er du sikker på, at du vil arkivere denne besked?"
+    const confirmed = confirm(
+      "Vil du arkivere denne besked?"
     );
 
     if (!confirmed) return;
 
-    const response = await fetch(
-      `http://localhost:3001/messages/${messageId}/archive`,
-      {
-        method: "PATCH",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          userId: currentUser.id,
-        }),
+    try {
+      const savedUser = localStorage.getItem("user");
+
+      if (!savedUser) {
+        alert("Bruger ikke fundet.");
+        return;
       }
-    );
 
-    const data = await response.json();
+      const user: CurrentUser = JSON.parse(savedUser);
 
-    if (!response.ok) {
-      setStatusMessage(data.message || "Kunne ikke arkivere beskeden");
-      return;
-    }
-
-    setStatusMessage("Beskeden er arkiveret.");
-    await fetchMessages();
-  }
-
-  const receivedMessages = useMemo(() => {
-    if (!currentUser) return [];
-
-    return messages.filter((message) => {
-      if (message.archivedAt || message.recalledAt) return false;
-      if (message.senderId === currentUser.id) return false;
-
-      return (
-        message.receiverId === currentUser.id ||
-        message.receiver?.id === currentUser.id ||
-        message.isBroadcast
+      const response = await fetch(
+        `http://localhost:3001/messages/${messageId}/archive`,
+        {
+          method: "PATCH",
+          headers: {
+            ...getHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user.id,
+          }),
+        }
       );
-    });
-  }, [messages, currentUser]);
 
-  const unreadMessages = receivedMessages.filter((message) => !message.readAt);
-  const readMessages = receivedMessages.filter((message) => message.readAt);
+      if (!response.ok) {
+        throw new Error(
+          "Kunne ikke arkivere beskeden"
+        );
+      }
 
-  function renderMessage(message: Message) {
-    const unread = !message.readAt;
+      setMessages((currentMessages) =>
+        currentMessages.filter(
+          (message) => message.id !== messageId
+        )
+      );
 
-    return (
-      <div key={message.id} className="bg-white border rounded-xl p-4 shadow-sm">
-        <div className="flex flex-wrap gap-2 mb-2">
-          {unread && (
-            <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full">
-              Ulæst
-            </span>
-          )}
-
-          {message.isBroadcast && (
-            <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-              Alle
-            </span>
-          )}
-        </div>
-
-        <h3 className="text-lg font-bold">{message.subject}</h3>
-
-        <p className="text-sm text-gray-600 mb-3">
-          Fra:{" "}
-          {message.sender
-            ? `${message.sender.firstName} ${message.sender.lastName}`
-            : "System"}{" "}
-          · {new Date(message.createdAt).toLocaleString("da-DK")}
-        </p>
-
-        <p className="whitespace-pre-wrap mb-4">{message.body}</p>
-
-        <div className="flex flex-wrap gap-2">
-          {unread && (
-            <button
-              onClick={() => markAsRead(message.id)}
-              className="bg-black text-white px-4 py-2 rounded-lg"
-            >
-              Marker som læst
-            </button>
-          )}
-
-          <a
-            href={`/messages/send?replyTo=${message.senderId}&subject=${encodeURIComponent(
-              `Re: ${message.subject}`
-            )}`}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-          >
-            Svar
-          </a>
-
-          <button
-            onClick={() => archiveMessage(message.id)}
-            className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg"
-          >
-            Arkiver
-          </button>
-        </div>
-      </div>
-    );
+      if (expandedMessageId === messageId) {
+        setExpandedMessageId(null);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Beskeden kunne ikke arkiveres.");
+    }
   }
 
   return (
-    <main className="p-6 max-w-4xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold">Modtagne beskeder</h1>
+    <main className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className="bg-white rounded-xl shadow p-6">
+        <h1 className="text-3xl font-bold">
+          Indbakke
+        </h1>
 
-      {statusMessage && (
-        <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
-          {statusMessage}
+        <p className="text-gray-500 mt-2">
+          Her kan du se beskeder, der er sendt til
+          dig.
+        </p>
+      </div>
+
+      {loading && (
+        <div className="bg-white rounded-xl shadow p-6 text-gray-500">
+          Henter beskeder...
         </div>
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-bold">
-          Ulæste beskeder ({unreadMessages.length})
-        </h2>
+      {!loading && sortedMessages.length === 0 && (
+        <div className="bg-white rounded-xl shadow p-6 text-gray-500">
+          Ingen beskeder.
+        </div>
+      )}
 
-        {unreadMessages.map(renderMessage)}
+      {!loading && sortedMessages.length > 0 && (
+        <div className="space-y-3">
+          {sortedMessages.map((message) => {
+            const isExpanded =
+              expandedMessageId === message.id;
 
-        {unreadMessages.length === 0 && <p>Du har ingen ulæste beskeder.</p>}
-      </section>
+            return (
+              <div
+                key={message.id}
+                className={`rounded-xl shadow overflow-hidden ${
+                  message.isRead
+                    ? "bg-white"
+                    : "bg-blue-50"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      !isExpanded &&
+                      !message.isRead
+                    ) {
+                      markAsRead(message.id);
+                    }
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-bold">
-          Læste beskeder ({readMessages.length})
-        </h2>
+                    setExpandedMessageId(
+                      isExpanded ? null : message.id
+                    );
+                  }}
+                  className="w-full text-left p-5 hover:bg-gray-50 transition"
+                >
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {!message.isRead && (
+                          <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full">
+                            Ulæst
+                          </span>
+                        )}
 
-        {readMessages.map(renderMessage)}
+                        {message.isBroadcast && (
+                          <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                            Sendt til alle
+                          </span>
+                        )}
 
-        {readMessages.length === 0 && <p>Du har ingen læste beskeder.</p>}
-      </section>
+                        </div>
+
+                      <h2
+                        className={`text-lg truncate ${
+                          message.isRead
+                            ? "font-medium text-gray-700"
+                            : "font-bold text-black"
+                        }`}
+                      >
+                        {message.subject}
+                      </h2>
+
+                      <p className="text-sm text-gray-500 mt-1">
+                        Fra:{" "}
+                        {getUserName(
+                          message.sender
+                        ) || "System"}
+                      </p>
+
+                      {!isExpanded && (
+                        <p className="text-sm text-gray-600 mt-2 line-clamp-1">
+                          {getShortBody(
+                            message.body
+                          )}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="text-sm text-gray-400 md:text-right shrink-0">
+                      {new Date(
+                        message.createdAt
+                      ).toLocaleString("da-DK")}
+                    </div>
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="border-t p-5 space-y-4 bg-white">
+                    <div className="grid gap-1 text-sm text-gray-500">
+                      <div>
+                        Fra:{" "}
+                        {getUserName(
+                          message.sender
+                        ) || "System"}
+                      </div>
+
+                      <div>
+                        Til:{" "}
+                        {message.isBroadcast
+                          ? "Alle"
+                          : getUserName(
+                              message.receiver
+                            ) || "Dig"}
+                      </div>
+
+                      <div>
+                        Sendt:{" "}
+                        {new Date(
+                          message.createdAt
+                        ).toLocaleString("da-DK")}
+                      </div>
+                    </div>
+
+                    <div className="whitespace-pre-wrap text-gray-800">
+                      {message.body ||
+                        "Ingen beskedtekst."}
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          archiveMessage(
+                            message.id
+                          )
+                        }
+                        className="rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+                      >
+                        Arkiver
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }

@@ -1,281 +1,223 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRealtimeMessages } from "../hooks/useRealtimeMessages";
 
 type CurrentUser = {
   id: number;
   cinemaId: number;
-  role: "MASTER" | "ADMIN" | "EMPLOYEE";
+  firstName?: string;
+  lastName?: string;
+  role?: "MASTER" | "ADMIN" | "EMPLOYEE";
 };
 
 export default function AppMenu() {
   const [open, setOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(true);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [systemOpen, setSystemOpen] = useState(false);
-  const [messagesOpen, setMessagesOpen] = useState(false);
-
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [poolCount, setPoolCount] = useState(0);
-  const [directCount, setDirectCount] = useState(0);
+  const [user, setUser] = useState<CurrentUser | null>(null);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) setCurrentUser(JSON.parse(savedUser));
-  }, []);
+  const isAdmin = user?.role === "ADMIN" || user?.role === "MASTER";
 
+  useRealtimeMessages({
+  onNewMessage: fetchUnreadCount,
+  onMessageRead: fetchUnreadCount,
+  onMessageArchived: fetchUnreadCount,
+  onMessagesUpdated: fetchUnreadCount,
+  onMessageRecalled: fetchUnreadCount,
+});
   async function fetchUnreadCount() {
-    const savedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
-    if (!savedUser) return;
+    try {
+      const token = localStorage.getItem("token");
+      const savedUser = localStorage.getItem("user");
 
-    const user: CurrentUser = JSON.parse(savedUser);
-    if (!user?.id || !user?.cinemaId) return;
+      if (!token || !savedUser) return;
 
-    const response = await fetch(
-      `http://localhost:3001/messages/unread-count?userId=${user.id}&cinemaId=${user.cinemaId}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+      const parsedUser: CurrentUser = JSON.parse(savedUser);
+      setUser(parsedUser);
 
-    const data = await response.json();
-    setUnreadCount(data.count || 0);
-  }
+      const response = await fetch(
+        `http://127.0.0.1:3001/messages/unread-count?userId=${parsedUser.id}&cinemaId=${parsedUser.cinemaId}`
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-  async function fetchPoolCount() {
-    const savedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
-    if (!savedUser) return;
+      if (!response.ok) return;
 
-    const user: CurrentUser = JSON.parse(savedUser);
-    if (!user?.cinemaId || !user?.id) return;
-
-    const response = await fetch(
-      `http://localhost:3001/shift-trades/pool-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    const data = await response.json();
-    setPoolCount(data.count || 0);
-  }
-
-  async function fetchDirectCount() {
-    const savedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
-    if (!savedUser) return;
-
-    const user: CurrentUser = JSON.parse(savedUser);
-    if (!user?.cinemaId || !user?.id) return;
-
-    const response = await fetch(
-      `http://localhost:3001/shift-trades/direct-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    const data = await response.json();
-    setDirectCount(data.count || 0);
+      const data = await response.json();
+      setUnreadCount(typeof data === "number" ? data : data.count || 0);
+    } catch (error) {
+      console.error("Kunne ikke hente unread count", error);
+    }
   }
 
   useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+
     fetchUnreadCount();
-    fetchPoolCount();
-    fetchDirectCount();
 
-    const interval = setInterval(() => {
-      fetchUnreadCount();
-      fetchPoolCount();
-      fetchDirectCount();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
+    }, []);
 
   function logout() {
-    localStorage.clear();
-    window.location.href = "/";
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
   }
-
-  const mainLinks = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/my-shifts", label: "Mine vagter" },
-    { href: "/schedule", label: "Vagtplan" },
-    { href: "/shift-trades", label: "Vagtpulje" },
-    { href: "/colleagues", label: "Kollegaer" },
-  ];
-
-  const adminLinks = [
-    { href: "/employees", label: "Medarbejdere" },
-    { href: "/time-approval", label: "Godkend timer" },
-    { href: "/absence-calendar", label: "Fraværskalender" },
-    { href: "/payroll", label: "Løn-export" },
-    { href: "/clock", label: "Clock ind/ud" },
-  ];
-
-  const systemLinks = [
-    { href: "/profile", label: "Min profil" },
-    { href: "/push", label: "Push setup" },
-    { href: "/live", label: "Live drift" },
-  ];
-
-  function getBadgeCount(href: string) {
-    if (href === "/shift-trades") return poolCount;
-    if (href === "/my-shifts") return directCount;
-    return 0;
-  }
-
-  function renderLinks(links: { href: string; label: string }[]) {
-    return links.map((link) => {
-      const badgeCount = getBadgeCount(link.href);
-
-      return (
-        <a
-          key={link.href}
-          href={link.href}
-          className="relative px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
-        >
-          {link.label}
-
-          {badgeCount > 0 && (
-            <span className="absolute top-1 right-2 bg-red-600 text-white text-xs rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
-              {badgeCount}
-            </span>
-          )}
-        </a>
-      );
-    });
-  }
-
-  const isAdmin =
-    currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
   return (
     <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed top-3 left-3 z-50 flex h-10 w-10 items-center justify-center rounded-lg bg-black text-xl text-white shadow-lg"
+      >
+        ☰
+      </button>
+
       {open && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setOpen(false)}
-        />
-      )}
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setOpen(false)}
+          />
 
-      <div className="fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setOpen(!open)}
-          className="bg-black text-white px-4 py-2 rounded-lg"
-        >
-          ☰
-        </button>
+          <aside className="fixed top-0 left-0 h-full w-80 bg-white shadow-2xl z-50 flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b">
+              <h2 className="text-xl font-bold">Vagtplanssystem</h2>
 
-        {open && (
-          <div className="relative z-50 mt-2 bg-white shadow-xl rounded-2xl p-3 flex flex-col gap-2 min-w-64 max-h-[80vh] overflow-y-auto border">
-            <div className="flex flex-col">
-              <p className="text-xs uppercase text-gray-500 px-3 mb-1">
-                Hovedmenu
-              </p>
-
-              {renderLinks(mainLinks)}
-
-              <div className="border-t pt-2 mt-2">
-                <button
-                  onClick={() => setMessagesOpen(!messagesOpen)}
-                  className="w-full flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-semibold"
-                >
-                  <span>Beskeder</span>
-
-                  <span className="flex items-center gap-2">
-                    {unreadCount > 0 && (
-                      <span className="bg-red-600 text-white text-xs rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
-                        {unreadCount}
-                      </span>
-                    )}
-
-                    <span>{messagesOpen ? "▲" : "▼"}</span>
-                  </span>
-                </button>
-
-                {messagesOpen && (
-                  <div className="flex flex-col pl-2">
-                    <a
-                      href="/messages"
-                      className="relative px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
-                    >
-                      Modtaget
-
-                      {unreadCount > 0 && (
-                        <span className="absolute top-1 right-2 bg-red-600 text-white text-xs rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </a>
-
-                    <a
-                      href="/messages/send"
-                      className="px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
-                    >
-                      Send ny
-                    </a>
-
-                    <a
-                      href="/messages/sent"
-                      className="px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
-                    >
-                      Sendte
-                    </a>
-
-                    <a
-                      href="/messages/archive"
-                      className="px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
-                    >
-                      Arkiv
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {isAdmin && (
-              <div className="border-t pt-2">
-                <button
-                  onClick={() => setAdminOpen(!adminOpen)}
-                  className="w-full flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-semibold"
-                >
-                  <span>Administration</span>
-                  <span>{adminOpen ? "▲" : "▼"}</span>
-                </button>
-
-                {adminOpen && (
-                  <div className="flex flex-col pl-2">
-                    {renderLinks(adminLinks)}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="border-t pt-2">
               <button
-                onClick={() => setSystemOpen(!systemOpen)}
-                className="w-full flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-100 text-sm font-semibold"
+                type="button"
+                onClick={() => setOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 text-2xl"
               >
-                <span>System</span>
-                <span>{systemOpen ? "▲" : "▼"}</span>
+                ×
               </button>
-
-              {systemOpen && (
-                <div className="flex flex-col pl-2">
-                  {renderLinks(systemLinks)}
-                </div>
-              )}
             </div>
 
-            <div className="border-t pt-2">
-              <button
-                onClick={logout}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 text-sm font-medium"
+            <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+              <MenuLink href="/dashboard" icon="🏠" label="Dashboard" onClick={() => setOpen(false)} />
+              <MenuLink href="/schedule" icon="📅" label="Vagtplan" onClick={() => setOpen(false)} />
+              <MenuLink href="/my-shifts" icon="⏱️" label="Mine vagter" onClick={() => setOpen(false)} />
+              <MenuLink href="/profile" icon="👤" label="Profil" onClick={() => setOpen(false)} />
+
+              {isAdmin && (
+                <Dropdown
+                  title="Administration"
+                  open={adminOpen}
+                  onToggle={() => setAdminOpen(!adminOpen)}
+                >
+                  <MenuLink href="/admin/users" icon="👥" label="Medarbejdere" onClick={() => setOpen(false)} />
+                  <MenuLink href="/admin/work-types" icon="🎨" label="Vagttyper" onClick={() => setOpen(false)} />
+                  <MenuLink href="/admin/leave-requests" icon="🌴" label="Fridagsønsker" onClick={() => setOpen(false)} />
+                  <MenuLink href="/admin/time-entries" icon="🕒" label="Tidsregistrering" onClick={() => setOpen(false)} />
+                  <MenuLink href="/admin/settings" icon="⚙️" label="Indstillinger" onClick={() => setOpen(false)} />
+                </Dropdown>
+              )}
+
+              <Dropdown
+                title="Beskeder"
+                open={messagesOpen}
+                onToggle={() => setMessagesOpen(!messagesOpen)}
+                badge={unreadCount}
               >
+                <MenuLink href="/messages" icon="💬" label="Indbakke" badge={unreadCount} onClick={() => setOpen(false)} />
+                <MenuLink href="/messages/send" icon="✉️" label="Send besked" onClick={() => setOpen(false)} />
+                <MenuLink href="/messages/sent" icon="📤" label="Sendte beskeder" onClick={() => setOpen(false)} />
+                <MenuLink href="/messages/archive" icon="📦" label="Arkiv" onClick={() => setOpen(false)} />
+              </Dropdown>
+            </nav>
+
+            <div className="border-t p-4">
+              <button
+                type="button"
+                onClick={logout}
+                className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-red-600 hover:bg-red-50"
+              >
+                <span>🚪</span>
                 Log ud
               </button>
             </div>
-          </div>
-        )}
-      </div>
+          </aside>
+        </>
+      )}
     </>
+  );
+}
+
+type DropdownProps = {
+  title: string;
+  open: boolean;
+  badge?: number;
+  children: React.ReactNode;
+  onToggle: () => void;
+};
+
+function Dropdown({
+  title,
+  open,
+  badge,
+  children,
+  onToggle,
+}: DropdownProps) {
+  return (
+    <div className="pt-4">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:bg-gray-100"
+      >
+        <span>{title}</span>
+
+        <div className="flex items-center gap-2">
+          {!!badge && badge > 0 && (
+            <span className="min-w-5 h-5 px-1.5 flex items-center justify-center rounded-full bg-red-600 text-white text-xs font-bold">
+              {badge}
+            </span>
+          )}
+
+          <span>{open ? "▲" : "▼"}</span>
+        </div>
+      </button>
+
+      {open && <div className="mt-2 space-y-2">{children}</div>}
+    </div>
+  );
+}
+
+type MenuLinkProps = {
+  href: string;
+  icon: string;
+  label: string;
+  badge?: number;
+  onClick?: () => void;
+};
+
+function MenuLink({ href, icon, label, badge, onClick }: MenuLinkProps) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="flex items-center justify-between rounded-xl px-4 py-3 hover:bg-gray-100 transition"
+    >
+      <div className="flex items-center gap-3">
+        <span className="w-6 text-center text-base">{icon}</span>
+        <span>{label}</span>
+      </div>
+
+      {!!badge && badge > 0 && (
+        <span className="min-w-6 h-6 px-2 flex items-center justify-center rounded-full bg-red-600 text-white text-xs font-bold">
+          {badge}
+        </span>
+      )}
+    </Link>
   );
 }
