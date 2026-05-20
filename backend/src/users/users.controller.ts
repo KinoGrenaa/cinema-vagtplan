@@ -19,7 +19,8 @@ import { extname } from 'path';
 
 import { UsersService } from './users.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
-import { RolesGuard } from '../auth/roles/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -33,20 +34,17 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Post()
-  createUser(
-    @Body() body: CreateUserDto,
-  ) {
+  createUser(@Body() body: CreateUserDto) {
     return this.usersService.createUser(body);
   }
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Patch(':id')
-  updateUser(
-    @Param('id') id: string,
-    @Body() body: UpdateUserDto,
-  ) {
+  updateUser(@Param('id') id: string, @Body() body: UpdateUserDto) {
     return this.usersService.updateUser(Number(id), body);
   }
 

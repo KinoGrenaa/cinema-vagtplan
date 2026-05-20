@@ -11,7 +11,9 @@ import {
 
 import { TimeEntriesService } from './time-entries.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
-import { RolesGuard } from '../auth/roles/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
+
 import { ManualTimeEntryDto } from './dto/manual-time-entry.dto';
 import { UpdateTimeEntryDto } from './dto/update-time-entry.dto';
 import { RejectTimeEntryDto } from './dto/reject-time-entry.dto';
@@ -20,7 +22,8 @@ import { RejectTimeEntryDto } from './dto/reject-time-entry.dto';
 export class TimeEntriesController {
   constructor(private timeEntriesService: TimeEntriesService) {}
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Get()
   getEntries(@Query('userId') userId?: string) {
     if (userId) {
@@ -37,12 +40,10 @@ export class TimeEntriesController {
   }
 
   @UseGuards(JwtGuard)
-@Post('manual')
-submitManualEntry(
-  @Body() body: ManualTimeEntryDto,
-) {
-  return this.timeEntriesService.submitManualEntry(body);
-}
+  @Post('manual')
+  submitManualEntry(@Body() body: ManualTimeEntryDto) {
+    return this.timeEntriesService.submitManualEntry(body);
+  }
 
   @UseGuards(JwtGuard)
   @Post('clock-in')
@@ -63,33 +64,43 @@ submitManualEntry(
     return this.timeEntriesService.clockOut(Number(id));
   }
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Patch(':id/approve')
   approveEntry(@Param('id') id: string) {
     return this.timeEntriesService.approveEntry(Number(id));
   }
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Patch(':id/unapprove')
   unapproveEntry(@Param('id') id: string) {
     return this.timeEntriesService.unapproveEntry(Number(id));
   }
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Patch(':id/reject')
   rejectEntry(
     @Param('id') id: string,
     @Body() body: RejectTimeEntryDto,
   ) {
-    return this.timeEntriesService.rejectEntry(Number(id), body.adminNote);
+    return this.timeEntriesService.rejectEntry(
+      Number(id),
+      body.adminNote,
+    );
   }
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Patch(':id')
   updateEntry(
     @Param('id') id: string,
     @Body() body: UpdateTimeEntryDto,
   ) {
-    return this.timeEntriesService.updateEntry(Number(id), body);
+    return this.timeEntriesService.updateEntry(
+      Number(id),
+      body,
+    );
   }
 }
