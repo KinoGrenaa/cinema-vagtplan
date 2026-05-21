@@ -61,7 +61,7 @@ export default function NotificationBell() {
       ),
 
       fetch(
-        "${process.env.NEXT_PUBLIC_API_URL}/shift-trades",
+        `${process.env.NEXT_PUBLIC_API_URL}/shift-trades`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

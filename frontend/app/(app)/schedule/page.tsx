@@ -81,6 +81,10 @@ export default function SchedulePage() {
       .slice(0, 16);
   }
 
+  function localDateTimeToISOString(value: string) {
+    return new Date(value).toISOString();
+  }
+
   const fetchUsers = useCallback(async () => {
     try {
       const response = await apiFetch("/users");
@@ -311,15 +315,15 @@ export default function SchedulePage() {
     resetClockModal();
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
 
     const parsedUser = getLoggedInUser();
 
     const body = {
-      startTime,
-      endTime,
+      startTime: localDateTimeToISOString(startTime),
+      endTime: localDateTimeToISOString(endTime),
       note,
       cinemaId: parsedUser?.cinemaId || 1,
       userId,
@@ -358,8 +362,8 @@ export default function SchedulePage() {
 
   function handleSelectShift(shift: Shift) {
     setSelectedShift(shift);
-    setStartTime(shift.startTime.slice(0, 16));
-    setEndTime(shift.endTime.slice(0, 16));
+    setStartTime(toInputDateTime(shift.startTime));
+    setEndTime(toInputDateTime(shift.endTime));
     setNote(shift.note || "");
     setUserId(shift.userId);
     setWorkTypeId(shift.workTypeId);
