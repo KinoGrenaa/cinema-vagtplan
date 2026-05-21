@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type CurrentUser = {
   id: number;
@@ -43,21 +46,21 @@ export default function ShiftTradesPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [message, setMessage] = useState("");
 
-  function getHeaders() {
+  const getHeaders = useCallback(() => {
     return {
       "Content-Type": "application/json",
       Authorization: `Bearer ${localStorage.getItem("token")}`,
     };
-  }
+  }, []);
 
   const fetchTrades = useCallback(async () => {
-    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/shift-trades", {
+    const response = await fetch(`${API_URL}/shift-trades`, {
       headers: getHeaders(),
     });
 
     const data = await response.json();
     setTrades(Array.isArray(data) ? data : []);
-  }, []);
+  }, [getHeaders]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -68,6 +71,11 @@ export default function ShiftTradesPage() {
 
     fetchTrades();
   }, [fetchTrades]);
+
+  useRealtimeShifts({
+    onShiftTradesUpdated: fetchTrades,
+    onShiftsUpdated: fetchTrades,
+  });
 
   const poolTrades = useMemo(() => {
     if (!currentUser) return [];
@@ -88,21 +96,18 @@ export default function ShiftTradesPage() {
     if (!currentUser) return;
 
     const confirmed = window.confirm(
-      `Er du sikker på, at du vil acceptere vagten fra ${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}?`
+      `Er du sikker på, at du vil acceptere vagten fra ${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}?`,
     );
 
     if (!confirmed) return;
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/shift-trades/${trade.id}/accept`,
-      {
-        method: "PATCH",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          acceptedByUserId: currentUser.id,
-        }),
-      }
-    );
+    const response = await fetch(`${API_URL}/shift-trades/${trade.id}/accept`, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        acceptedByUserId: currentUser.id,
+      }),
+    });
 
     const data = await response.json();
 

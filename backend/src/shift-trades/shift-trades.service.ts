@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ShiftTradeStatus, ShiftTradeType } from '@prisma/client';
 
 @Injectable()
 export class ShiftTradesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private realtime: RealtimeGateway,
+  ) {}
 
   findAll() {
     return this.prisma.shiftTrade.findMany({
@@ -26,24 +30,42 @@ export class ShiftTradesService {
   }
 
   async getPoolCount(cinemaId: number, userId: number) {
-  const count = await this.prisma.shiftTrade.count({
-    where: {
-      cinemaId,
-      status: ShiftTradeStatus.OPEN,
-      type: ShiftTradeType.POOL,
-      offeredByUserId: {
-        not: userId,
-      },
-      shift: {
-        startTime: {
-          gt: new Date(),
+    const count = await this.prisma.shiftTrade.count({
+      where: {
+        cinemaId,
+        status: ShiftTradeStatus.OPEN,
+        type: ShiftTradeType.POOL,
+        offeredByUserId: {
+          not: userId,
+        },
+        shift: {
+          startTime: {
+            gt: new Date(),
+          },
         },
       },
-    },
-  });
+    });
 
-  return { count };
-}
+    return { count };
+  }
+
+  async getDirectCount(cinemaId: number, userId: number) {
+    const count = await this.prisma.shiftTrade.count({
+      where: {
+        cinemaId,
+        status: ShiftTradeStatus.OPEN,
+        type: ShiftTradeType.DIRECT,
+        targetUserId: userId,
+        shift: {
+          startTime: {
+            gt: new Date(),
+          },
+        },
+      },
+    });
+
+    return { count };
+  }
 
   async create(data: {
     shiftId: number;
@@ -53,7 +75,7 @@ export class ShiftTradesService {
     targetUserId?: number;
     message?: string;
   }) {
-    return this.prisma.shiftTrade.create({
+    const trade = await this.prisma.shiftTrade.create({
       data: {
         shiftId: data.shiftId,
         offeredByUserId: data.offeredByUserId,
@@ -63,6 +85,10 @@ export class ShiftTradesService {
         message: data.message ?? null,
       },
     });
+
+    this.realtime.notifyAll('shiftTradesUpdated', trade);
+
+    return trade;
   }
 
   async acceptTrade(id: number, acceptedByUserId: number) {
@@ -91,41 +117,38 @@ export class ShiftTradesService {
       },
     });
 
+    this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
+    this.realtime.notifyAll('shiftsUpdated', {
+      shiftId: trade.shiftId,
+      acceptedByUserId,
+    });
+
     return updatedTrade;
   }
 
   async rejectTrade(id: number) {
-    return this.prisma.shiftTrade.update({
+    const trade = await this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: ShiftTradeStatus.REJECTED,
       },
     });
+
+    this.realtime.notifyAll('shiftTradesUpdated', trade);
+
+    return trade;
   }
 
   async cancelTrade(id: number) {
-    return this.prisma.shiftTrade.update({
+    const trade = await this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: ShiftTradeStatus.CANCELLED,
       },
     });
-  }
-  async getDirectCount(cinemaId: number, userId: number) {
-  const count = await this.prisma.shiftTrade.count({
-    where: {
-      cinemaId,
-      status: ShiftTradeStatus.OPEN,
-      type: ShiftTradeType.DIRECT,
-      targetUserId: userId,
-      shift: {
-        startTime: {
-          gt: new Date(),
-        },
-      },
-    },
-  });
 
-  return { count };
-}
+    this.realtime.notifyAll('shiftTradesUpdated', trade);
+
+    return trade;
+  }
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { io } from "socket.io-client";
 import ShiftForm from "./components/ShiftForm";
 import ShiftTimeline from "./components/ShiftTimeline";
 import MovieProgram from "./components/MovieProgram";
 import { useApi } from "../../hooks/useApi";
+import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import type { Shift, User, WorkType } from "../../../../shared/types";
 
 type MovieShowing = {
@@ -83,57 +83,47 @@ export default function SchedulePage() {
 
   const fetchUsers = useCallback(async () => {
     const response = await apiFetch("/users");
-
     const data = await response.json();
+
     const usersArray = Array.isArray(data) ? data : [];
+    setUsers(usersArray);
 
-setUsers(usersArray);
-
-if (usersArray.length > 0) {
-  setUserId(usersArray[0].id);
-}
-
-    if (data.length > 0) {
-      setUserId(data[0].id);
+    if (usersArray.length > 0) {
+      setUserId(usersArray[0].id);
     }
   }, [apiFetch]);
 
   const fetchWorkTypes = useCallback(async () => {
     const response = await apiFetch("/work-types");
-
     const data = await response.json();
-    const workTypesArray = Array.isArray(data) ? data : [];
 
+    const workTypesArray = Array.isArray(data) ? data : [];
     setWorkTypes(workTypesArray);
 
-if (workTypesArray.length > 0) {
-  setWorkTypeId(workTypesArray[0].id);
-}
-
-    if (data.length > 0) {
-      setWorkTypeId(data[0].id);
+    if (workTypesArray.length > 0) {
+      setWorkTypeId(workTypesArray[0].id);
     }
   }, [apiFetch]);
 
   const fetchShifts = useCallback(async () => {
     const response = await apiFetch(`/shifts?date=${selectedDate}`);
-
     const data = await response.json();
+
     setShifts(Array.isArray(data) ? data : []);
     setLoading(false);
   }, [apiFetch, selectedDate]);
 
   const fetchMovieShowings = useCallback(async () => {
     const response = await apiFetch(`/movie-showings?date=${selectedDate}`);
-
     const data = await response.json();
+
     setMovieShowings(Array.isArray(data) ? data : []);
   }, [apiFetch, selectedDate]);
 
   const fetchLeaveRequests = useCallback(async () => {
     const response = await apiFetch("/leave-requests");
-
     const data = await response.json();
+
     setLeaveRequests(Array.isArray(data) ? data : []);
   }, [apiFetch]);
 
@@ -160,17 +150,10 @@ if (workTypesArray.length > 0) {
     refreshDayData();
   }, [refreshDayData]);
 
-  useEffect(() => {
-    const socket = io("${process.env.NEXT_PUBLIC_API_URL}");
-
-    socket.on("shiftsUpdated", () => {
-      refreshDayData();
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [refreshDayData]);
+  useRealtimeShifts({
+    onShiftsUpdated: refreshDayData,
+    onShiftTradesUpdated: refreshDayData,
+  });
 
   function leaveIsOnSelectedDate(request: LeaveRequest) {
     const current = new Date(`${selectedDate}T12:00:00`);
@@ -422,6 +405,7 @@ if (workTypesArray.length > 0) {
     });
 
     alert("Vagten er sendt i byttepuljen");
+    await refreshDayData();
   }
 
   const canManageShifts =
@@ -569,11 +553,9 @@ if (workTypesArray.length > 0) {
                   value={clockShiftId || ""}
                   onChange={(event) => {
                     const shiftId = Number(event.target.value);
-
                     setClockShiftId(shiftId);
 
                     const shift = shifts.find((s) => s.id === shiftId);
-
                     if (!shift) return;
 
                     setClockInTime(toInputDateTime(shift.startTime));
