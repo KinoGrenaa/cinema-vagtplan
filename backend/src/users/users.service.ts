@@ -189,4 +189,10 @@ export class UsersService {
       },
     });
   }
+  async updateTheme(id: number, theme: string) {
+  return this.prisma.user.update({
+    where: { id },
+    data: { theme },
+  });
+  }
 }

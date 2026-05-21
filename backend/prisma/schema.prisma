@@ -43,6 +43,7 @@ model User {
   hireDate       DateTime?
   skills         String?
   notes          String?
+  theme String @default("light")
   role           Role      @default(EMPLOYEE)
   createdAt      DateTime  @default(now())
   targetedTrades ShiftTrade[] @relation("TargetedTrades")

@@ -120,4 +120,11 @@ export class UsersController {
       imageUrl: `${process.env.NEXT_PUBLIC_API_URL}/uploads/profile-images/${file.filename}`,
     };
   }
+    @Patch(":id/theme")
+    updateTheme(
+    @Param("id") id: string,
+    @Body() body: { theme: string },
+    ) {
+    return this.usersService.updateTheme(Number(id), body.theme);
+  }
 }

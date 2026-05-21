@@ -207,6 +207,16 @@ export default function AppMenu() {
       ],
     },
     {
+      label: "Indstillinger",
+      children: [
+     {
+      href: "/settings",
+      label: "Systemindstillinger",
+      },
+      ],
+      },
+    {
+      
       label: "Administration",
       adminOnly: true,
       children: [

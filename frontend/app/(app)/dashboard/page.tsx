@@ -163,45 +163,45 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
+    <main className="min-h-screen bg-gray-100 p-4 md:p-8 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm mb-6 transition-colors dark:border-gray-800 dark:bg-gray-900">
         <h1 className="text-3xl font-bold">
           Velkommen, {currentUser.firstName}
         </h1>
 
-        <p className="text-gray-500">
+        <p className="text-gray-500 dark:text-gray-400">
           Rolle: {currentUser.role} · Dagens overblik
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="text-sm text-gray-500">Planlagte timer i dag</div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <div className="text-sm text-gray-500 dark:text-gray-400">Planlagte timer i dag</div>
           <div className="text-4xl font-bold mt-2">
             {todayPlannedHours.toFixed(1)}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="text-sm text-gray-500">Mine registrerede timer</div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <div className="text-sm text-gray-500 dark:text-gray-400">Mine registrerede timer</div>
           <div className="text-4xl font-bold mt-2">
             {myRegisteredHours.toFixed(1)}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="text-sm text-gray-500">Afventende fridage</div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <div className="text-sm  text-gray-500 dark:text-gray-400">Afventende fridage</div>
           <div className="text-4xl font-bold mt-2">{pendingLeaveRequests}</div>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="text-sm text-gray-500">Åbne vagtbytter</div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <div className="text-sm text-gray-500 dark:text-gray-400">Åbne vagtbytter</div>
           <div className="text-4xl font-bold mt-2">{openShiftTrades}</div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <h2 className="text-2xl font-bold mb-4">Biograf i dag</h2>
 
           <div className="space-y-3">
@@ -227,7 +227,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <h2 className="text-2xl font-bold mb-4">Genveje</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
