@@ -41,6 +41,7 @@ type MovieShowing = {
 };
 
 export default function DashboardPage() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL!;
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -61,22 +62,30 @@ export default function DashboardPage() {
       };
 
       const [
-        shiftsRes,
-        timeEntriesRes,
-        leaveRequestsRes,
-        shiftTradesRes,
-        moviesRes,
-      ] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/shifts?date=${today}`, { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/time-entries?userId=${user.id}`, {
-          headers,
-        }),
-        fetch("${process.env.NEXT_PUBLIC_API_URL}/leave-requests", { headers }),
-        fetch("${process.env.NEXT_PUBLIC_API_URL}/shift-trades", { headers }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/movie-showings?date=${today}`, {
-          headers,
-        }),
-      ]);
+  shiftsRes,
+  timeEntriesRes,
+  leaveRequestsRes,
+  shiftTradesRes,
+  moviesRes,
+] = await Promise.all([
+  fetch(`${API_URL}/shifts?date=${today}`, { headers }),
+
+  fetch(`${API_URL}/time-entries?userId=${user.id}`, {
+    headers,
+  }),
+
+  fetch(`${API_URL}/leave-requests`, {
+    headers,
+  }),
+
+  fetch(`${API_URL}/shift-trades`, {
+    headers,
+  }),
+
+  fetch(`${API_URL}/movie-showings?date=${today}`, {
+    headers,
+  }),
+]);
 
       const shiftsData = await shiftsRes.json();
       const timeEntriesData = await timeEntriesRes.json();

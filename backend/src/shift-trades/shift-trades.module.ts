@@ -10,7 +10,8 @@ import { RealtimeModule } from '../realtime/realtime.module';
     PrismaModule,
     RealtimeModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'dev-secret',
+      secret: 'super-secret-key-change-later',
+      signOptions: { expiresIn: '7d' },
     }),
   ],
   controllers: [ShiftTradesController],

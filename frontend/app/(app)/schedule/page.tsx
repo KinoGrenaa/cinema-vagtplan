@@ -57,7 +57,7 @@ export default function SchedulePage() {
   const [startTime, setStartTime] = useState(`${todayDefault}T14:00`);
   const [endTime, setEndTime] = useState(`${todayDefault}T22:00`);
   const [note, setNote] = useState("");
-  const [userId, setUserId] = useState(2);
+  const [userId, setUserId] = useState(1);
   const [workTypeId, setWorkTypeId] = useState(1);
   const [formError, setFormError] = useState("");
 
@@ -66,6 +66,11 @@ export default function SchedulePage() {
   const [clockInTime, setClockInTime] = useState("");
   const [clockOutTime, setClockOutTime] = useState("");
   const [clockNote, setClockNote] = useState("");
+
+  function getLoggedInUser(): LoggedInUser | null {
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  }
 
   function toInputDateTime(value: string) {
     const date = new Date(value);
@@ -76,61 +81,140 @@ export default function SchedulePage() {
       .slice(0, 16);
   }
 
-  function getLoggedInUser(): LoggedInUser | null {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  }
-
   const fetchUsers = useCallback(async () => {
-    const response = await apiFetch("/users");
-    const data = await response.json();
+    try {
+      const response = await apiFetch("/users");
 
-    const usersArray = Array.isArray(data) ? data : [];
-    setUsers(usersArray);
+      if (!response.ok) {
+        const errorText = await response.text();
 
-    if (usersArray.length > 0) {
-      setUserId(usersArray[0].id);
+        console.error(
+          `Kunne ikke hente medarbejdere. Status: ${response.status}. Body: ${errorText}`,
+        );
+
+        setUsers([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      const usersArray = Array.isArray(data)
+        ? data
+        : Array.isArray(data.users)
+          ? data.users
+          : [];
+
+      setUsers(usersArray);
+
+      if (usersArray.length > 0) {
+        setUserId(usersArray[0].id);
+      }
+    } catch (error) {
+      console.error("Fejl ved hentning af medarbejdere:", error);
+      setUsers([]);
     }
   }, [apiFetch]);
 
   const fetchWorkTypes = useCallback(async () => {
-    const response = await apiFetch("/work-types");
-    const data = await response.json();
+    try {
+      const response = await apiFetch("/work-types");
 
-    const workTypesArray = Array.isArray(data) ? data : [];
-    setWorkTypes(workTypesArray);
+      if (!response.ok) {
+        const errorText = await response.text();
 
-    if (workTypesArray.length > 0) {
-      setWorkTypeId(workTypesArray[0].id);
+        console.error(
+          `Kunne ikke hente vagttyper. Status: ${response.status}. Body: ${errorText}`,
+        );
+
+        setWorkTypes([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      const workTypesArray = Array.isArray(data)
+        ? data
+        : Array.isArray(data.workTypes)
+          ? data.workTypes
+          : [];
+
+      setWorkTypes(workTypesArray);
+
+      if (workTypesArray.length > 0) {
+        setWorkTypeId(workTypesArray[0].id);
+      }
+    } catch (error) {
+      console.error("Fejl ved hentning af vagttyper:", error);
+      setWorkTypes([]);
     }
   }, [apiFetch]);
 
   const fetchShifts = useCallback(async () => {
-    const response = await apiFetch(`/shifts?date=${selectedDate}`);
-    const data = await response.json();
+    try {
+      const response = await apiFetch(`/shifts?date=${selectedDate}`);
 
-    setShifts(Array.isArray(data) ? data : []);
-    setLoading(false);
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        console.error(
+          `Kunne ikke hente vagter. Status: ${response.status}. Body: ${errorText}`,
+        );
+
+        setShifts([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      setShifts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Kunne ikke hente vagter:", error);
+      setShifts([]);
+    } finally {
+      setLoading(false);
+    }
   }, [apiFetch, selectedDate]);
 
   const fetchMovieShowings = useCallback(async () => {
-    const response = await apiFetch(`/movie-showings?date=${selectedDate}`);
-    const data = await response.json();
+    try {
+      const response = await apiFetch(`/movie-showings?date=${selectedDate}`);
 
-    setMovieShowings(Array.isArray(data) ? data : []);
+      if (!response.ok) {
+        setMovieShowings([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      setMovieShowings(Array.isArray(data) ? data : []);
+    } catch {
+      setMovieShowings([]);
+    }
   }, [apiFetch, selectedDate]);
 
   const fetchLeaveRequests = useCallback(async () => {
-    const response = await apiFetch("/leave-requests");
-    const data = await response.json();
+    try {
+      const response = await apiFetch("/leave-requests");
 
-    setLeaveRequests(Array.isArray(data) ? data : []);
+      if (!response.ok) {
+        setLeaveRequests([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      setLeaveRequests(Array.isArray(data) ? data : []);
+    } catch {
+      setLeaveRequests([]);
+    }
   }, [apiFetch]);
 
   const refreshDayData = useCallback(async () => {
-    await fetchShifts();
-    await fetchMovieShowings();
-    await fetchLeaveRequests();
+    await Promise.all([
+      fetchShifts(),
+      fetchMovieShowings(),
+      fetchLeaveRequests(),
+    ]);
   }, [fetchShifts, fetchMovieShowings, fetchLeaveRequests]);
 
   useEffect(() => {
@@ -164,14 +248,8 @@ export default function SchedulePage() {
   }
 
   function getLeaveStyle(status: LeaveRequest["status"]) {
-    if (status === "APPROVED") {
-      return "bg-green-100 text-green-800 border-green-300";
-    }
-
-    if (status === "REJECTED") {
-      return "bg-red-100 text-red-800 border-red-300";
-    }
-
+    if (status === "APPROVED") return "bg-green-100 text-green-800 border-green-300";
+    if (status === "REJECTED") return "bg-red-100 text-red-800 border-red-300";
     return "bg-yellow-100 text-yellow-800 border-yellow-300";
   }
 
@@ -203,9 +281,7 @@ export default function SchedulePage() {
 
     const plannedStart = toInputDateTime(shift.startTime);
     const plannedEnd = toInputDateTime(shift.endTime);
-
-    const hasDeviation =
-      plannedStart !== clockInTime || plannedEnd !== clockOutTime;
+    const hasDeviation = plannedStart !== clockInTime || plannedEnd !== clockOutTime;
 
     if (hasDeviation && !clockNote.trim()) {
       alert("Du skal skrive en note ved afvigelse fra vagtplanen");
@@ -250,12 +326,10 @@ export default function SchedulePage() {
       workTypeId,
     };
 
-    const method = selectedShift ? "PATCH" : "POST";
-
     const response = await apiFetch(
       selectedShift ? `/shifts/${selectedShift.id}` : "/shifts",
       {
-        method,
+        method: selectedShift ? "PATCH" : "POST",
         body: JSON.stringify(body),
       },
     );
@@ -303,6 +377,7 @@ export default function SchedulePage() {
     setEndTime(`${nextDate}T22:00`);
     setSelectedShift(null);
     setFormError("");
+    setLoading(true);
   }
 
   function goToToday() {
@@ -313,13 +388,10 @@ export default function SchedulePage() {
     setEndTime(`${today}T22:00`);
     setSelectedShift(null);
     setFormError("");
+    setLoading(true);
   }
 
-  async function handleMoveShift(
-    shift: Shift,
-    newStartHour: number,
-    newStartMinute: number,
-  ) {
+  async function handleMoveShift(shift: Shift, newStartHour: number, newStartMinute: number) {
     const oldStart = new Date(shift.startTime);
     const oldEnd = new Date(shift.endTime);
     const durationMs = oldEnd.getTime() - oldStart.getTime();
@@ -391,7 +463,6 @@ export default function SchedulePage() {
     if (!selectedShift) return;
 
     const parsedUser = getLoggedInUser();
-
     if (!parsedUser) return;
 
     await apiFetch("/shift-trades", {
@@ -424,31 +495,19 @@ export default function SchedulePage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setShowClockModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg"
-          >
+          <button onClick={() => setShowClockModal(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg">
             Registrer tid
           </button>
 
-          <button
-            onClick={() => changeDate(-1)}
-            className="bg-gray-200 px-4 py-2 rounded-lg"
-          >
+          <button onClick={() => changeDate(-1)} className="bg-gray-200 px-4 py-2 rounded-lg">
             Forrige dag
           </button>
 
-          <button
-            onClick={goToToday}
-            className="bg-black text-white px-4 py-2 rounded-lg"
-          >
+          <button onClick={goToToday} className="bg-black text-white px-4 py-2 rounded-lg">
             I dag
           </button>
 
-          <button
-            onClick={() => changeDate(1)}
-            className="bg-gray-200 px-4 py-2 rounded-lg"
-          >
+          <button onClick={() => changeDate(1)} className="bg-gray-200 px-4 py-2 rounded-lg">
             Næste dag
           </button>
         </div>
@@ -461,21 +520,12 @@ export default function SchedulePage() {
 
             <div className="space-y-2">
               {selectedDateLeaveRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className={`border rounded-lg p-3 ${getLeaveStyle(
-                    request.status,
-                  )}`}
-                >
+                <div key={request.id} className={`border rounded-lg p-3 ${getLeaveStyle(request.status)}`}>
                   <div className="font-bold">
                     {request.user.firstName} {request.user.lastName}
                   </div>
-
                   <div className="text-sm">Status: {request.status}</div>
-
-                  {request.reason && (
-                    <div className="text-sm mt-1">Årsag: {request.reason}</div>
-                  )}
+                  {request.reason && <div className="text-sm mt-1">Årsag: {request.reason}</div>}
                 </div>
               ))}
 
@@ -508,16 +558,10 @@ export default function SchedulePage() {
       )}
 
       <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Dagens vagter</h1>
-            <p className="text-gray-500">
-              {canManageShifts
-                ? "Administrer, flyt og resize vagter"
-                : "Se dagens vagtplan"}
-            </p>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold">Dagens vagter</h1>
+        <p className="text-gray-500 mb-6">
+          {canManageShifts ? "Administrer, flyt og resize vagter" : "Se dagens vagtplan"}
+        </p>
 
         <ShiftTimeline
           shifts={shifts}
@@ -534,116 +578,64 @@ export default function SchedulePage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xl mx-4">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">
-                Registrer møde- og fyraftstid
-              </h2>
-
-              <button onClick={resetClockModal} className="text-2xl">
-                ×
-              </button>
+              <h2 className="text-2xl font-bold">Registrer møde- og fyraftstid</h2>
+              <button onClick={resetClockModal} className="text-2xl">×</button>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Vælg vagt
-                </label>
+              <select
+                value={clockShiftId || ""}
+                onChange={(event) => {
+                  const shiftId = Number(event.target.value);
+                  setClockShiftId(shiftId);
 
-                <select
-                  value={clockShiftId || ""}
-                  onChange={(event) => {
-                    const shiftId = Number(event.target.value);
-                    setClockShiftId(shiftId);
+                  const shift = shifts.find((s) => s.id === shiftId);
+                  if (!shift) return;
 
-                    const shift = shifts.find((s) => s.id === shiftId);
-                    if (!shift) return;
+                  setClockInTime(toInputDateTime(shift.startTime));
+                  setClockOutTime(toInputDateTime(shift.endTime));
+                  setClockNote("");
+                }}
+                className="border rounded-lg px-3 py-2 w-full"
+              >
+                <option value="">Vælg vagt</option>
 
-                    setClockInTime(toInputDateTime(shift.startTime));
-                    setClockOutTime(toInputDateTime(shift.endTime));
-                    setClockNote("");
-                  }}
-                  className="border rounded-lg px-3 py-2 w-full"
-                >
-                  <option value="">Vælg vagt</option>
-
-                  {shifts
-                    .filter((shift) => shift.userId === currentUser?.id)
-                    .map((shift) => (
-                      <option key={shift.id} value={shift.id}>
-                        {shift.workType.name} ·{" "}
-                        {new Date(shift.startTime).toLocaleTimeString("da-DK", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                        {" - "}
-                        {new Date(shift.endTime).toLocaleTimeString("da-DK", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </option>
-                    ))}
-                </select>
-              </div>
+                {shifts
+                  .filter((shift) => shift.userId === currentUser?.id)
+                  .map((shift) => (
+                    <option key={shift.id} value={shift.id}>
+                      {shift.workType.name}
+                    </option>
+                  ))}
+              </select>
 
               {clockShiftId && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Mødetid
-                      </label>
+                  <input
+                    type="datetime-local"
+                    value={clockInTime}
+                    onChange={(event) => setClockInTime(event.target.value)}
+                    className="border rounded-lg px-3 py-2 w-full"
+                  />
 
-                      <input
-                        type="datetime-local"
-                        value={clockInTime}
-                        onChange={(event) => setClockInTime(event.target.value)}
-                        className="border rounded-lg px-3 py-2 w-full"
-                      />
-                    </div>
+                  <input
+                    type="datetime-local"
+                    value={clockOutTime}
+                    onChange={(event) => setClockOutTime(event.target.value)}
+                    className="border rounded-lg px-3 py-2 w-full"
+                  />
 
-                    <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Fyraften
-                      </label>
+                  <textarea
+                    value={clockNote}
+                    onChange={(event) => setClockNote(event.target.value)}
+                    className="border rounded-lg px-3 py-2 w-full min-h-24"
+                    placeholder="Note ved afvigelse"
+                  />
 
-                      <input
-                        type="datetime-local"
-                        value={clockOutTime}
-                        onChange={(event) =>
-                          setClockOutTime(event.target.value)
-                        }
-                        className="border rounded-lg px-3 py-2 w-full"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Note ved afvigelse
-                    </label>
-
-                    <textarea
-                      value={clockNote}
-                      onChange={(event) => setClockNote(event.target.value)}
-                      className="border rounded-lg px-3 py-2 w-full min-h-24"
-                      placeholder="Udfyldes kun hvis møde- eller fyraftstid afviger fra vagtplanen"
-                    />
-                  </div>
-
-                  <button
-                    onClick={submitManualTime}
-                    className="w-full bg-black text-white py-3 rounded-xl"
-                  >
+                  <button onClick={submitManualTime} className="w-full bg-black text-white py-3 rounded-xl">
                     Send til godkendelse
                   </button>
                 </>
-              )}
-
-              {shifts.filter((shift) => shift.userId === currentUser?.id)
-                .length === 0 && (
-                <div className="text-gray-500">
-                  Du har ingen vagter på den valgte dato.
-                </div>
               )}
             </div>
           </div>
@@ -653,16 +645,9 @@ export default function SchedulePage() {
       {formError && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-2xl font-bold mb-4 text-red-600">
-              Konflikt fundet
-            </h2>
-
+            <h2 className="text-2xl font-bold mb-4 text-red-600">Konflikt fundet</h2>
             <p className="text-gray-700 mb-6">{formError}</p>
-
-            <button
-              onClick={() => setFormError("")}
-              className="w-full bg-black text-white py-3 rounded-xl"
-            >
+            <button onClick={() => setFormError("")} className="w-full bg-black text-white py-3 rounded-xl">
               OK
             </button>
           </div>

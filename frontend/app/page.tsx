@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useAuth } from "./providers/AuthProvider";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+
 export default function HomePage() {
   const [email, setEmail] = useState("admin@test.dk");
   const [password, setPassword] = useState("test123");
@@ -16,7 +18,7 @@ export default function HomePage() {
     setLoading(true);
 
     try {
-      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/auth/login", {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,7 +46,9 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-10 rounded-xl shadow-lg w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-6 text-center">Cinema Vagtplan</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          Cinema Vagtplan
+        </h1>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
