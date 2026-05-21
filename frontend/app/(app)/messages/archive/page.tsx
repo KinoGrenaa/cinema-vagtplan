@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRealtimeMessages } from "../../../hooks/useRealtimeMessages";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type User = {
   id: number;
@@ -24,10 +25,10 @@ type CurrentUser = {
   cinemaId: number;
 };
 
-export default function MessageArchivePage() {
+export default function ArchivedMessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
 
@@ -51,11 +52,16 @@ export default function MessageArchivePage() {
       const user: CurrentUser = JSON.parse(savedUser);
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/messages/archive?userId=${user.id}&cinemaId=${user.cinemaId}`,
+        `${API_URL}/messages/archive?userId=${user.id}&cinemaId=${user.cinemaId}`,
         {
           headers: getHeaders(),
-        }
+        },
       );
+
+      if (!response.ok) {
+        setMessages([]);
+        return;
+      }
 
       const data = await response.json();
 
@@ -72,18 +78,10 @@ export default function MessageArchivePage() {
     fetchMessages();
   }, [fetchMessages]);
 
-  useRealtimeMessages({
-    onNewMessage: fetchMessages,
-    onMessageRead: fetchMessages,
-    onMessageArchived: fetchMessages,
-    onMessagesUpdated: fetchMessages,
-    onMessageRecalled: fetchMessages,
-  });
-
   const sortedMessages = useMemo(() => {
     return [...messages].sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }, [messages]);
 
@@ -97,149 +95,122 @@ export default function MessageArchivePage() {
     return body.length > 120 ? `${body.slice(0, 120)}...` : body;
   }
 
-  async function unarchiveMessage(messageId: number) {
-    const confirmed = confirm("Vil du gendanne denne besked fra arkivet?");
-
-    if (!confirmed) return;
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/messages/${messageId}/unarchive`,
-        {
-          method: "PATCH",
-          headers: getHeaders(),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Kunne ikke gendanne beskeden");
-      }
-
-      setMessages((currentMessages) =>
-        currentMessages.filter((message) => message.id !== messageId)
-      );
-
-      if (expandedMessageId === messageId) {
-        setExpandedMessageId(null);
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Beskeden kunne ikke gendannes.");
-    }
-  }
-
   return (
-    <main className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="bg-white rounded-xl shadow p-6">
-        <h1 className="text-3xl font-bold">Beskedarkiv</h1>
+    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <h1 className="text-3xl font-bold">Arkiverede beskeder</h1>
 
-        <p className="text-gray-500 mt-2">
-          Arkiverede beskeder gemmes stadig i systemet.
-        </p>
-      </div>
-
-      {loading && (
-        <div className="bg-white rounded-xl shadow p-6 text-gray-500">
-          Henter arkiverede beskeder...
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
+            Her kan du se beskeder, du tidligere har arkiveret.
+          </p>
         </div>
-      )}
 
-      {!loading && sortedMessages.length === 0 && (
-        <div className="bg-white rounded-xl shadow p-6 text-gray-500">
-          Ingen arkiverede beskeder.
-        </div>
-      )}
+        {loading && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            Henter arkiverede beskeder...
+          </div>
+        )}
 
-      {!loading && sortedMessages.length > 0 && (
-        <div className="space-y-3">
-          {sortedMessages.map((message) => {
-            const isExpanded = expandedMessageId === message.id;
+        {!loading && sortedMessages.length === 0 && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            <div className="mb-2 text-4xl">🗂️</div>
 
-            return (
-              <div
-                key={message.id}
-                className="bg-white rounded-xl shadow overflow-hidden"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setExpandedMessageId(isExpanded ? null : message.id)
-                  }
-                  className="w-full text-left p-5 hover:bg-gray-50 transition"
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              Intet arkiv endnu
+            </h2>
+
+            <p className="mt-2">
+              Du har endnu ikke arkiveret nogen beskeder.
+            </p>
+          </div>
+        )}
+
+        {!loading && sortedMessages.length > 0 && (
+          <div className="space-y-3">
+            {sortedMessages.map((message) => {
+              const isExpanded = expandedMessageId === message.id;
+
+              return (
+                <div
+                  key={message.id}
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
                 >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {message.isBroadcast && (
-                          <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                            Sendt til alle
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedMessageId(
+                        isExpanded ? null : message.id,
+                      )
+                    }
+                    className="w-full p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-gray-700 px-2 py-1 text-xs font-semibold text-white dark:bg-gray-600">
+                            Arkiveret
                           </span>
-                        )}
 
-                        <span className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">
-                          Arkiveret
-                        </span>
-                      </div>
+                          {message.isBroadcast && (
+                            <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
+                              Sendt til alle
+                            </span>
+                          )}
+                        </div>
 
-                      <h2 className="text-lg font-bold truncate">
-                        {message.subject}
-                      </h2>
+                        <h2 className="truncate text-lg font-bold text-black dark:text-white">
+                          {message.subject}
+                        </h2>
 
-                      <p className="text-sm text-gray-500 mt-1">
-                        Fra: {getUserName(message.sender) || "System"}
-                      </p>
-
-                      {!isExpanded && (
-                        <p className="text-sm text-gray-600 mt-2 line-clamp-1">
-                          {getShortBody(message.body)}
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          Fra: {getUserName(message.sender) || "System"}
                         </p>
-                      )}
-                    </div>
 
-                    <div className="text-sm text-gray-400 md:text-right shrink-0">
-                      {new Date(message.createdAt).toLocaleString("da-DK")}
-                    </div>
-                  </div>
-                </button>
-
-                {isExpanded && (
-                  <div className="border-t p-5 space-y-4">
-                    <div className="grid gap-1 text-sm text-gray-500">
-                      <div>Fra: {getUserName(message.sender) || "System"}</div>
-
-                      <div>
-                        Til:{" "}
-                        {message.isBroadcast
-                          ? "Alle"
-                          : getUserName(message.receiver) || "Ukendt"}
+                        {!isExpanded && (
+                          <p className="mt-2 line-clamp-1 text-sm text-gray-600 dark:text-gray-300">
+                            {getShortBody(message.body)}
+                          </p>
+                        )}
                       </div>
 
-                      <div>
-                        Sendt:{" "}
+                      <div className="shrink-0 text-sm text-gray-400 dark:text-gray-500 md:text-right">
                         {new Date(message.createdAt).toLocaleString("da-DK")}
                       </div>
                     </div>
+                  </button>
 
-                    <div className="whitespace-pre-wrap text-gray-800">
-                      {message.body || "Ingen beskedtekst."}
-                    </div>
+                  {isExpanded && (
+                    <div className="space-y-4 border-t border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+                      <div className="grid gap-1 text-sm text-gray-500 dark:text-gray-400">
+                        <div>
+                          Fra: {getUserName(message.sender) || "System"}
+                        </div>
 
-                    <div className="flex justify-end pt-2">
-                      <button
-                        type="button"
-                        onClick={() => unarchiveMessage(message.id)}
-                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
-                      >
-                        Gendan besked
-                      </button>
+                        <div>
+                          Til:{" "}
+                          {message.isBroadcast
+                            ? "Alle"
+                            : getUserName(message.receiver) || "Dig"}
+                        </div>
+
+                        <div>
+                          Sendt:{" "}
+                          {new Date(message.createdAt).toLocaleString("da-DK")}
+                        </div>
+                      </div>
+
+                      <div className="whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+                        {message.body || "Ingen beskedtekst."}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </main>
   );
 }

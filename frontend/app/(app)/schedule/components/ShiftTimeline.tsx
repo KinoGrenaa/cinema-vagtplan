@@ -58,66 +58,87 @@ export default function ShiftTimeline({
   }
 
   return (
-    <div className="border rounded-lg overflow-x-auto">
-      <div style={{ width: TIMELINE_WIDTH }} className="relative">
-        <div
-          className="grid bg-gray-50 border-b text-xs text-gray-600"
-          style={{ gridTemplateColumns: `repeat(${hours.length}, 1fr)` }}
-        >
-          {hours.map((hour) => (
-            <div key={hour} className="p-2 border-r text-center">
-              {hour}:00
-            </div>
-          ))}
-        </div>
-
-        <div className="relative h-96 bg-white">
-          {Array.from({ length: 25 }).map((_, index) => (
-            <div
-              key={`hour-${index}`}
-              className="absolute top-0 bottom-0 border-l border-gray-300 z-0"
-              style={{ left: `${(index / 24) * TIMELINE_WIDTH}px` }}
-            />
-          ))}
-
-          {Array.from({ length: 24 }).map((_, index) => (
-            <div
-              key={`half-${index}`}
-              className="absolute top-0 bottom-0 border-l border-gray-100 z-0"
-              style={{
-                left: `${((index + 0.5) / 24) * TIMELINE_WIDTH}px`,
-              }}
-            />
-          ))}
-
-          {showNowLine && (
-            <div
-              className="absolute top-0 bottom-0 border-l-2 border-red-500 z-40"
-              style={{ left: `${nowLeft}px` }}
-            >
-              <div className="bg-red-500 text-white text-xs px-2 py-1 rounded ml-1">
-                Nu
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+      <div className="overflow-x-auto">
+        <div style={{ width: TIMELINE_WIDTH }} className="relative">
+          <div
+            className="sticky top-0 z-30 grid border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"
+            style={{ gridTemplateColumns: `repeat(${hours.length}, 1fr)` }}
+          >
+            {hours.map((hour) => (
+              <div
+                key={hour}
+                className="border-r border-gray-200 p-2 text-center dark:border-gray-800"
+              >
+                {hour}:00
               </div>
-            </div>
-          )}
+            ))}
+          </div>
 
-          {shifts.map((shift, index) => (
-            <ShiftCard
-              key={shift.id}
-              shift={shift}
-              index={index}
-              users={users}
-              calculateLeft={calculateLeft}
-              calculateWidth={calculateWidth}
-              timelineWidth={TIMELINE_WIDTH}
-              totalHours={TOTAL_HOURS}
-              startHour={START_HOUR}
-              onClick={() => onSelectShift(shift)}
-              onMove={onMoveShift}
-              onChangeUser={onChangeShiftUser}
-              onResize={onResizeShift}
-            />
-          ))}
+          <div className="relative h-[520px] bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
+            {Array.from({ length: 25 }).map((_, index) => (
+              <div
+                key={`hour-${index}`}
+                className="absolute bottom-0 top-0 z-0 border-l border-gray-300 dark:border-gray-800"
+                style={{ left: `${(index / 24) * TIMELINE_WIDTH}px` }}
+              />
+            ))}
+
+            {Array.from({ length: 24 }).map((_, index) => (
+              <div
+                key={`half-${index}`}
+                className="absolute bottom-0 top-0 z-0 border-l border-dashed border-gray-200 dark:border-gray-900"
+                style={{
+                  left: `${((index + 0.5) / 24) * TIMELINE_WIDTH}px`,
+                }}
+              />
+            ))}
+
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div
+                key={`lane-${index}`}
+                className="absolute left-0 right-0 z-0 border-t border-gray-100 dark:border-gray-900"
+                style={{
+                  top: `${30 + index * 84}px`,
+                }}
+              />
+            ))}
+
+            {showNowLine && (
+              <div
+                className="absolute bottom-0 top-0 z-40 border-l-2 border-red-500"
+                style={{ left: `${nowLeft}px` }}
+              >
+                <div className="ml-1 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
+                  Nu
+                </div>
+              </div>
+            )}
+
+            {shifts.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                Ingen vagter på denne dag.
+              </div>
+            )}
+
+            {shifts.map((shift, index) => (
+              <ShiftCard
+                key={shift.id}
+                shift={shift}
+                index={index}
+                users={users}
+                calculateLeft={calculateLeft}
+                calculateWidth={calculateWidth}
+                timelineWidth={TIMELINE_WIDTH}
+                totalHours={TOTAL_HOURS}
+                startHour={START_HOUR}
+                onClick={() => onSelectShift(shift)}
+                onMove={onMoveShift}
+                onChangeUser={onChangeShiftUser}
+                onResize={onResizeShift}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

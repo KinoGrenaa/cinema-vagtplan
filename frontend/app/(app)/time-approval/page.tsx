@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+
 import AdminGuard from "@/app/components/AdminGuard";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -23,22 +26,55 @@ type TimeEntry = {
   } | null;
 };
 
+function getStatusLabel(status: TimeEntryStatus) {
+  if (status === "APPROVED") return "Godkendt";
+  if (status === "REJECTED") return "Afvist";
+  return "Afventer";
+}
+
+function getStatusClass(status: TimeEntryStatus) {
+  if (status === "APPROVED") {
+    return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
+  }
+
+  if (status === "REJECTED") {
+    return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
+  }
+
+  return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
+}
+
 export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   function getToken() {
     return localStorage.getItem("token");
   }
 
   const fetchEntries = useCallback(async () => {
-    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/time-entries", {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+    try {
+      setLoading(true);
 
-    const data = await response.json();
-    setEntries(Array.isArray(data) ? data : []);
+      const response = await fetch(`${API_URL}/time-entries`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      if (!response.ok) {
+        setEntries([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      setEntries(Array.isArray(data) ? data : []);
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -57,26 +93,8 @@ export default function TimeApprovalPage() {
     return hours.toFixed(2);
   }
 
-  function getStatusLabel(status: TimeEntryStatus) {
-    if (status === "APPROVED") return "Godkendt";
-    if (status === "REJECTED") return "Afvist";
-    return "Afventer";
-  }
-
-  function getStatusClass(status: TimeEntryStatus) {
-    if (status === "APPROVED") {
-      return "bg-green-100 text-green-800";
-    }
-
-    if (status === "REJECTED") {
-      return "bg-red-100 text-red-800";
-    }
-
-    return "bg-yellow-100 text-yellow-800";
-  }
-
   async function approve(id: number) {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/time-entries/${id}/approve`, {
+    await fetch(`${API_URL}/time-entries/${id}/approve`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${getToken()}`,
@@ -87,7 +105,7 @@ export default function TimeApprovalPage() {
   }
 
   async function unapprove(id: number) {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/time-entries/${id}/unapprove`, {
+    await fetch(`${API_URL}/time-entries/${id}/unapprove`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${getToken()}`,
@@ -101,7 +119,7 @@ export default function TimeApprovalPage() {
     const adminNote =
       window.prompt("Skriv evt. årsag til afvisning") || "";
 
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/time-entries/${id}/reject`, {
+    await fetch(`${API_URL}/time-entries/${id}/reject`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -117,97 +135,143 @@ export default function TimeApprovalPage() {
 
   return (
     <AdminGuard>
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <h1 className="text-3xl font-bold">Godkend timer</h1>
 
-      <main className="p-6 max-w-7xl mx-auto space-y-6">
-        <div className="bg-white rounded-xl shadow p-6">
-          <h1 className="text-3xl font-bold">Godkend timer</h1>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">
+              Gennemgå, godkend eller afvis clock ind/ud.
+            </p>
+          </div>
 
-          <p className="text-gray-500">
-            Gennemgå, godkend eller afvis clock ind/ud.
-          </p>
-        </div>
+          {loading && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+              Henter tidsregistreringer...
+            </div>
+          )}
 
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="space-y-3">
-            {entries.map((entry) => (
-              <div key={entry.id} className="border rounded-xl p-4">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div>
-                    <div className="font-bold">
-                      {entry.user.firstName} {entry.user.lastName}
-                    </div>
-
-                    <div className="text-sm text-gray-500">
-                      {entry.user.email}
-                    </div>
-
-                    <div className="text-sm text-gray-500 mt-1">
-                      Type: {entry.shift?.workType?.name || "-"}
-                    </div>
-
-                    <div className="mt-3 text-sm">
+          {!loading && entries.length > 0 && (
+            <div className="space-y-4">
+              {entries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
+                >
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-3">
                       <div>
-                        Clock ind:{" "}
-                        {new Date(entry.clockIn).toLocaleString("da-DK")}
+                        <h2 className="text-xl font-bold">
+                          {entry.user.firstName}{" "}
+                          {entry.user.lastName}
+                        </h2>
+
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {entry.user.email}
+                        </p>
                       </div>
 
-                      <div>
-                        Clock ud:{" "}
-                        {entry.clockOut
-                          ? new Date(entry.clockOut).toLocaleString("da-DK")
-                          : "-"}
-                      </div>
+                      <div className="grid gap-2 text-sm">
+                        <div>
+                          <span className="font-semibold">
+                            Arbejdstype:
+                          </span>{" "}
+                          {entry.shift?.workType?.name || "-"}
+                        </div>
 
-                      <div>Timer: {getHours(entry)}</div>
+                        <div>
+                          <span className="font-semibold">
+                            Clock ind:
+                          </span>{" "}
+                          {new Date(
+                            entry.clockIn,
+                          ).toLocaleString("da-DK")}
+                        </div>
+
+                        <div>
+                          <span className="font-semibold">
+                            Clock ud:
+                          </span>{" "}
+                          {entry.clockOut
+                            ? new Date(
+                                entry.clockOut,
+                              ).toLocaleString("da-DK")
+                            : "-"}
+                        </div>
+
+                        <div>
+                          <span className="font-semibold">
+                            Timer:
+                          </span>{" "}
+                          {getHours(entry)}
+                        </div>
+
+                        {entry.adminNote && (
+                          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
+                            <span className="font-semibold">
+                              Admin note:
+                            </span>{" "}
+                            {entry.adminNote}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {entry.adminNote && (
-                      <div className="mt-3 text-sm bg-gray-100 rounded-lg p-2">
-                        Admin-note: {entry.adminNote}
-                      </div>
-                    )}
-
-                    <div className="mt-3">
+                    <div className="flex flex-col items-start gap-3 lg:items-end">
                       <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusClass(
-                          entry.status
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                          entry.status,
                         )}`}
                       >
                         {getStatusLabel(entry.status)}
                       </span>
+
+                      <div className="flex flex-wrap gap-2">
+                        {entry.status !== "APPROVED" && (
+                          <button
+                            onClick={() => approve(entry.id)}
+                            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+                          >
+                            Godkend
+                          </button>
+                        )}
+
+                        {entry.status === "APPROVED" && (
+                          <button
+                            onClick={() => unapprove(entry.id)}
+                            className="rounded-xl bg-yellow-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-700"
+                          >
+                            Fjern godkendelse
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => reject(entry.id)}
+                          className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                        >
+                          Afvis
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => approve(entry.id)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg"
-                    >
-                      Godkend
-                    </button>
-
-                    <button
-                      onClick={() => unapprove(entry.id)}
-                      className="bg-yellow-600 text-white px-4 py-2 rounded-lg"
-                    >
-                      Fortryd
-                    </button>
-
-                    <button
-                      onClick={() => reject(entry.id)}
-                      className="bg-red-600 text-white px-4 py-2 rounded-lg"
-                    >
-                      Afvis
-                    </button>
-                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
 
-            {entries.length === 0 && (
-              <p className="text-gray-500">Ingen timer fundet.</p>
-            )}
-          </div>
+          {!loading && entries.length === 0 && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <div className="mb-2 text-4xl">⏱️</div>
+
+              <h2 className="text-xl font-bold">
+                Ingen tidsregistreringer
+              </h2>
+
+              <p className="mt-2 text-gray-500 dark:text-gray-400">
+                Der er ingen registreringer at godkende lige nu.
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </AdminGuard>

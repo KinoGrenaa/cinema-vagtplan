@@ -13,6 +13,10 @@ type ThemeContextValue = {
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+function isTheme(value: unknown): value is Theme {
+  return value === "light" || value === "dark";
+}
+
 export default function ThemeProvider({
   children,
 }: {
@@ -22,52 +26,63 @@ export default function ThemeProvider({
 
   function applyTheme(nextTheme: Theme) {
     setThemeState(nextTheme);
+    localStorage.setItem("theme", nextTheme);
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
   }
 
   useEffect(() => {
-    async function loadTheme() {
-      const savedUser = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
+    try {
+      const savedTheme = localStorage.getItem("theme");
 
-      if (!savedUser || !token) {
-        applyTheme("light");
+      if (isTheme(savedTheme)) {
+        applyTheme(savedTheme);
         return;
       }
 
-      const user = JSON.parse(savedUser);
+      const savedUser = localStorage.getItem("user");
 
-      const userTheme = user.theme === "dark" ? "dark" : "light";
-      applyTheme(userTheme);
+      if (savedUser) {
+        const user = JSON.parse(savedUser);
+        const userTheme = isTheme(user.theme) ? user.theme : "light";
+
+        applyTheme(userTheme);
+        return;
+      }
+
+      applyTheme("light");
+    } catch {
+      applyTheme("light");
     }
-
-    loadTheme();
   }, []);
 
   async function saveThemeToUser(nextTheme: Theme) {
-    const savedUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
+    try {
+      const savedUser = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
 
-    if (!savedUser || !token) return;
+      if (!savedUser || !token) return;
 
-    const user = JSON.parse(savedUser);
+      const user = JSON.parse(savedUser);
 
-    const response = await fetch(`${API_URL}/users/${user.id}/theme`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        theme: nextTheme,
-      }),
-    });
+      const response = await fetch(`${API_URL}/users/${user.id}/theme`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          theme: nextTheme,
+        }),
+      });
 
-    if (!response.ok) return;
+      if (!response.ok) return;
 
-    const updatedUser = await response.json();
+      const updatedUser = await response.json();
 
-    localStorage.setItem("user", JSON.stringify(updatedUser));
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    } catch {
+      // Theme er allerede gemt lokalt, så vi fejler stille her.
+    }
   }
 
   function setTheme(nextTheme: Theme) {

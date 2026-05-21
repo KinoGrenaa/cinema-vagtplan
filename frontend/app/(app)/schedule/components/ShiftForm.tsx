@@ -12,11 +12,16 @@ type ShiftFormProps = {
   workTypeId: number;
   setWorkTypeId: (value: number) => void;
   selectedShift: any;
-  onSubmit: (event: React.FormEvent) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onDelete: () => void;
   onCancel: () => void;
   onOfferTrade: () => void;
 };
+
+const inputClass =
+  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
+
+const labelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 export default function ShiftForm({
   users,
@@ -38,39 +43,41 @@ export default function ShiftForm({
   onOfferTrade,
 }: ShiftFormProps) {
   return (
-    <div className="bg-white rounded-xl shadow p-6 mb-6">
-      <h1 className="text-3xl font-bold mb-4">
-        {selectedShift ? "Rediger vagt" : "Opret vagt"}
-      </h1>
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-2xl font-bold">
+          {selectedShift ? "Rediger vagt" : "Opret vagt"}
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Vælg tidspunkt, medarbejder og arbejdstype for vagten.
+        </p>
+      </div>
 
-      <form
-        onSubmit={onSubmit}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
+      <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
-          <label className="block mb-1 font-medium">Start</label>
+          <label className={labelClass}>Start</label>
           <input
             type="datetime-local"
-            className="w-full border rounded-lg px-3 py-2"
+            className={inputClass}
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">Slut</label>
+          <label className={labelClass}>Slut</label>
           <input
             type="datetime-local"
-            className="w-full border rounded-lg px-3 py-2"
+            className={inputClass}
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">Note</label>
+          <label className={labelClass}>Note</label>
           <input
-            className="w-full border rounded-lg px-3 py-2"
+            className={inputClass}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Fx aftenvagt"
@@ -78,9 +85,9 @@ export default function ShiftForm({
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">Medarbejder</label>
+          <label className={labelClass}>Medarbejder</label>
           <select
-            className="w-full border rounded-lg px-3 py-2"
+            className={inputClass}
             value={userId}
             onChange={(e) => setUserId(Number(e.target.value))}
           >
@@ -93,9 +100,9 @@ export default function ShiftForm({
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">Arbejdstype</label>
+          <label className={labelClass}>Arbejdstype</label>
           <select
-            className="w-full border rounded-lg px-3 py-2"
+            className={inputClass}
             value={workTypeId}
             onChange={(e) => setWorkTypeId(Number(e.target.value))}
           >
@@ -107,10 +114,10 @@ export default function ShiftForm({
           </select>
         </div>
 
-        <div className="flex items-end gap-2">
+        <div className="flex items-end">
           <button
             type="submit"
-            className="w-full bg-black text-white py-3 rounded-lg"
+            className="w-full rounded-xl bg-black py-3 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
           >
             {selectedShift ? "Gem ændringer" : "Opret vagt"}
           </button>
@@ -118,23 +125,24 @@ export default function ShiftForm({
       </form>
 
       {selectedShift && (
-        <div className="flex gap-3 mt-4">
+        <div className="flex flex-wrap gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
           <button
             onClick={onDelete}
-            className="bg-red-600 text-white px-5 py-2 rounded-lg"
+            className="rounded-xl bg-red-600 px-5 py-2 text-white transition hover:bg-red-700"
           >
             Slet vagt
           </button>
 
           <button
             onClick={onCancel}
-            className="bg-gray-200 px-5 py-2 rounded-lg"
+            className="rounded-xl bg-gray-200 px-5 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
           >
             Annuller
           </button>
+
           <button
             onClick={onOfferTrade}
-            className="bg-blue-600 text-white px-5 py-2 rounded-lg"
+            className="rounded-xl bg-blue-600 px-5 py-2 text-white transition hover:bg-blue-700"
           >
             Send i byttepulje
           </button>

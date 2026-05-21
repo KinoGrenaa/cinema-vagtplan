@@ -39,7 +39,7 @@ export default function ShiftCard({
 }: ShiftCardProps) {
   const x = calculateLeft(shift.startTime);
   const width = calculateWidth(shift.startTime, shift.endTime);
-  const y = 30 + index * 80;
+  const y = 30 + index * 84;
 
   function pixelsToTime(xPosition: number) {
     const minutesPerPixel = (totalHours * 60) / timelineWidth;
@@ -55,7 +55,7 @@ export default function ShiftCard({
   return (
     <Rnd
       position={{ x, y }}
-      size={{ width, height: 70 }}
+      size={{ width, height: 74 }}
       bounds="parent"
       dragAxis="x"
       enableResizing={{
@@ -68,7 +68,7 @@ export default function ShiftCard({
         bottomLeft: false,
         topLeft: false,
       }}
-      minWidth={25}
+      minWidth={35}
       onDragStop={(e, data) => {
         const newStart = pixelsToTime(data.x);
         onMove(shift, newStart.hour, newStart.minute);
@@ -88,41 +88,53 @@ export default function ShiftCard({
     >
       <div
         onDoubleClick={onClick}
-        className="relative w-full h-full text-white rounded-lg shadow px-3 py-2 text-left cursor-pointer"
+        className="group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl border border-white/30 px-3 py-2 text-left text-white shadow-lg ring-1 ring-black/10 transition hover:scale-[1.01] hover:shadow-xl dark:border-white/10 dark:ring-white/10"
         style={{
-          backgroundColor: shift.workType.color,
+          background: `linear-gradient(135deg, ${shift.workType.color}, ${shift.workType.color}dd)`,
         }}
       >
-        <select
-          value={shift.userId}
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onChange={(e) => onChangeUser(shift, Number(e.target.value))}
-          className="w-full mb-1 rounded px-2 py-1 text-sm text-black"
-        >
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.firstName} {user.lastName}
-            </option>
-          ))}
-        </select>
+        <div className="absolute inset-0 bg-black/5 transition group-hover:bg-black/10 dark:bg-black/20 dark:group-hover:bg-black/10" />
 
-        <div className="text-xs">{shift.workType.name}</div>
+        <div className="relative z-10 space-y-1">
+          <select
+            value={shift.userId}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onChange={(e) => onChangeUser(shift, Number(e.target.value))}
+            className="w-full rounded-lg border border-white/30 bg-white/90 px-2 py-1 text-sm font-medium text-black shadow-sm outline-none transition focus:ring-2 focus:ring-white/50 dark:bg-gray-950/90 dark:text-white"
+          >
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.firstName} {user.lastName}
+              </option>
+            ))}
+          </select>
 
-        <div className="text-xs">
-          {new Date(shift.startTime).toLocaleTimeString("da-DK", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-          {" - "}
-          {new Date(shift.endTime).toLocaleTimeString("da-DK", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          <div className="flex items-center justify-between gap-2">
+            <div className="truncate text-xs font-semibold uppercase tracking-wide text-white/90">
+              {shift.workType.name}
+            </div>
+
+            <div className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
+              Vagt
+            </div>
+          </div>
+
+          <div className="text-xs font-medium text-white/95">
+            {new Date(shift.startTime).toLocaleTimeString("da-DK", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {" - "}
+            {new Date(shift.endTime).toLocaleTimeString("da-DK", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
         </div>
 
-        <div className="absolute top-0 right-0 h-full w-2 cursor-ew-resize bg-white/20 rounded-r-lg" />
-        <div className="absolute top-0 left-0 h-full w-2 cursor-ew-resize bg-white/20 rounded-l-lg" />
+        <div className="absolute right-0 top-0 h-full w-2 cursor-ew-resize rounded-r-2xl bg-white/25 transition group-hover:bg-white/40" />
+        <div className="absolute left-0 top-0 h-full w-2 cursor-ew-resize rounded-l-2xl bg-white/25 transition group-hover:bg-white/40" />
       </div>
     </Rnd>
   );

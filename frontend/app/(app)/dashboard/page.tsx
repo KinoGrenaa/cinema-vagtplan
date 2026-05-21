@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import AppMenu from "../../components/AppMenu";
 
 type CurrentUser = {
   id: number;
@@ -40,14 +39,28 @@ type MovieShowing = {
   freeSeats: number;
 };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+
 export default function DashboardPage() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL!;
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [currentUser, setCurrentUser] =
+    useState<CurrentUser | null>(null);
+
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
-  const [movies, setMovies] = useState<MovieShowing[]>([]);
+
+  const [timeEntries, setTimeEntries] = useState<
+    TimeEntry[]
+  >([]);
+
+  const [leaveRequests, setLeaveRequests] =
+    useState<LeaveRequest[]>([]);
+
+  const [shiftTrades, setShiftTrades] = useState<
+    ShiftTrade[]
+  >([]);
+
+  const [movies, setMovies] = useState<MovieShowing[]>(
+    [],
+  );
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -57,49 +70,92 @@ export default function DashboardPage() {
 
   const fetchDashboardData = useCallback(
     async (user: CurrentUser) => {
-      const headers = {
-        Authorization: `Bearer ${getToken()}`,
-      };
+      try {
+        const headers = {
+          Authorization: `Bearer ${getToken()}`,
+        };
 
-      const [
-  shiftsRes,
-  timeEntriesRes,
-  leaveRequestsRes,
-  shiftTradesRes,
-  moviesRes,
-] = await Promise.all([
-  fetch(`${API_URL}/shifts?date=${today}`, { headers }),
+        const [
+          shiftsRes,
+          timeEntriesRes,
+          leaveRequestsRes,
+          shiftTradesRes,
+          moviesRes,
+        ] = await Promise.all([
+          fetch(`${API_URL}/shifts?date=${today}`, {
+            headers,
+          }),
 
-  fetch(`${API_URL}/time-entries?userId=${user.id}`, {
-    headers,
-  }),
+          fetch(
+            `${API_URL}/time-entries?userId=${user.id}`,
+            {
+              headers,
+            },
+          ),
 
-  fetch(`${API_URL}/leave-requests`, {
-    headers,
-  }),
+          fetch(`${API_URL}/leave-requests`, {
+            headers,
+          }),
 
-  fetch(`${API_URL}/shift-trades`, {
-    headers,
-  }),
+          fetch(`${API_URL}/shift-trades`, {
+            headers,
+          }),
 
-  fetch(`${API_URL}/movie-showings?date=${today}`, {
-    headers,
-  }),
-]);
+          fetch(
+            `${API_URL}/movie-showings?date=${today}`,
+            {
+              headers,
+            },
+          ),
+        ]);
 
-      const shiftsData = await shiftsRes.json();
-      const timeEntriesData = await timeEntriesRes.json();
-      const leaveRequestsData = await leaveRequestsRes.json();
-      const shiftTradesData = await shiftTradesRes.json();
-      const moviesData = await moviesRes.json();
+        const shiftsData = await shiftsRes.json();
 
-      setShifts(Array.isArray(shiftsData) ? shiftsData : []);
-      setTimeEntries(Array.isArray(timeEntriesData) ? timeEntriesData : []);
-      setLeaveRequests(Array.isArray(leaveRequestsData) ? leaveRequestsData : []);
-      setShiftTrades(Array.isArray(shiftTradesData) ? shiftTradesData : []);
-      setMovies(Array.isArray(moviesData) ? moviesData : []);
-      },
-      [today],
+        const timeEntriesData =
+          await timeEntriesRes.json();
+
+        const leaveRequestsData =
+          await leaveRequestsRes.json();
+
+        const shiftTradesData =
+          await shiftTradesRes.json();
+
+        const moviesData = await moviesRes.json();
+
+        setShifts(
+          Array.isArray(shiftsData) ? shiftsData : [],
+        );
+
+        setTimeEntries(
+          Array.isArray(timeEntriesData)
+            ? timeEntriesData
+            : [],
+        );
+
+        setLeaveRequests(
+          Array.isArray(leaveRequestsData)
+            ? leaveRequestsData
+            : [],
+        );
+
+        setShiftTrades(
+          Array.isArray(shiftTradesData)
+            ? shiftTradesData
+            : [],
+        );
+
+        setMovies(
+          Array.isArray(moviesData) ? moviesData : [],
+        );
+      } catch {
+        setShifts([]);
+        setTimeEntries([]);
+        setLeaveRequests([]);
+        setShiftTrades([]);
+        setMovies([]);
+      }
+    },
+    [today],
   );
 
   useEffect(() => {
@@ -110,17 +166,27 @@ export default function DashboardPage() {
       return;
     }
 
-    const parsedUser: CurrentUser = JSON.parse(savedUser);
+    const parsedUser: CurrentUser =
+      JSON.parse(savedUser);
+
     setCurrentUser(parsedUser);
+
     fetchDashboardData(parsedUser);
   }, [fetchDashboardData]);
 
   const todayPlannedHours = useMemo(() => {
     return shifts.reduce((total, shift) => {
       const start = new Date(shift.startTime);
+
       const end = new Date(shift.endTime);
 
-      return total + (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+      return (
+        total +
+        (end.getTime() - start.getTime()) /
+          1000 /
+          60 /
+          60
+      );
     }, 0);
   }, [shifts]);
 
@@ -129,15 +195,23 @@ export default function DashboardPage() {
       if (!entry.clockOut) return total;
 
       const start = new Date(entry.clockIn);
+
       const end = new Date(entry.clockOut);
 
-      return total + (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+      return (
+        total +
+        (end.getTime() - start.getTime()) /
+          1000 /
+          60 /
+          60
+      );
     }, 0);
   }, [timeEntries]);
 
-  const pendingLeaveRequests = leaveRequests.filter(
-    (request) => request.status === "PENDING",
-  ).length;
+  const pendingLeaveRequests =
+    leaveRequests.filter(
+      (request) => request.status === "PENDING",
+    ).length;
 
   const openShiftTrades = shiftTrades.filter(
     (trade) => trade.status === "OPEN",
@@ -149,112 +223,162 @@ export default function DashboardPage() {
   );
 
   const totalCapacityToday = movies.reduce(
-    (total, movie) => total + movie.soldSeats + movie.freeSeats,
+    (total, movie) =>
+      total + movie.soldSeats + movie.freeSeats,
     0,
   );
 
   const occupancy =
     totalCapacityToday > 0
-      ? ((soldSeatsToday / totalCapacityToday) * 100).toFixed(1)
+      ? (
+          (soldSeatsToday / totalCapacityToday) *
+          100
+        ).toFixed(1)
       : "0.0";
 
   if (!currentUser) {
-    return <p className="p-10">Indlæser...</p>;
+    return (
+      <main className="min-h-screen bg-gray-100 p-4 dark:bg-gray-950 md:p-8">
+        <div className="text-gray-500 dark:text-gray-400">
+          Indlæser...
+        </div>
+      </main>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 md:p-8 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm mb-6 transition-colors dark:border-gray-800 dark:bg-gray-900">
-        <h1 className="text-3xl font-bold">
-          Velkommen, {currentUser.firstName}
-        </h1>
-
-        <p className="text-gray-500 dark:text-gray-400">
-          Rolle: {currentUser.role} · Dagens overblik
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Planlagte timer i dag</div>
-          <div className="text-4xl font-bold mt-2">
-            {todayPlannedHours.toFixed(1)}
+          <h1 className="text-3xl font-bold">
+            Velkommen, {currentUser.firstName}
+          </h1>
+
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
+            Rolle: {currentUser.role} · Dagens overblik
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Planlagte timer i dag
+            </div>
+
+            <div className="mt-2 text-4xl font-bold">
+              {todayPlannedHours.toFixed(1)}
+            </div>
           </div>
-        </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Mine registrerede timer</div>
-          <div className="text-4xl font-bold mt-2">
-            {myRegisteredHours.toFixed(1)}
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Mine registrerede timer
+            </div>
+
+            <div className="mt-2 text-4xl font-bold">
+              {myRegisteredHours.toFixed(1)}
+            </div>
           </div>
-        </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm  text-gray-500 dark:text-gray-400">Afventende fridage</div>
-          <div className="text-4xl font-bold mt-2">{pendingLeaveRequests}</div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Åbne vagtbytter</div>
-          <div className="text-4xl font-bold mt-2">{openShiftTrades}</div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="text-2xl font-bold mb-4">Biograf i dag</h2>
-
-          <div className="space-y-3">
-            <div className="flex justify-between border-b pb-2">
-              <span>Filmvisninger</span>
-              <strong>{movies.length}</strong>
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Afventende fridage
             </div>
 
-            <div className="flex justify-between border-b pb-2">
-              <span>Solgte billetter</span>
-              <strong>{soldSeatsToday}</strong>
+            <div className="mt-2 text-4xl font-bold">
+              {pendingLeaveRequests}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Åbne vagtbytter
             </div>
 
-            <div className="flex justify-between border-b pb-2">
-              <span>Belægning</span>
-              <strong>{occupancy}%</strong>
-            </div>
-
-            <div className="flex justify-between">
-              <span>Vagter i dag</span>
-              <strong>{shifts.length}</strong>
+            <div className="mt-2 text-4xl font-bold">
+              {openShiftTrades}
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="text-2xl font-bold mb-4">Genveje</h2>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="mb-4 text-2xl font-bold">
+              Biograf i dag
+            </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <a href="/schedule" className="bg-gray-100 rounded-lg p-4">
-              Vagtplan
-            </a>
+            <div className="space-y-3">
+              <div className="flex justify-between border-b border-gray-200 pb-2 dark:border-gray-800">
+                <span>Filmvisninger</span>
+                <strong>{movies.length}</strong>
+              </div>
 
-            <a href="/my-shifts" className="bg-gray-100 rounded-lg p-4">
-              Mine vagter
-            </a>
+              <div className="flex justify-between border-b border-gray-200 pb-2 dark:border-gray-800">
+                <span>Solgte billetter</span>
+                <strong>{soldSeatsToday}</strong>
+              </div>
 
-            <a href="/clock" className="bg-gray-100 rounded-lg p-4">
-              Clock ind/ud
-            </a>
+              <div className="flex justify-between border-b border-gray-200 pb-2 dark:border-gray-800">
+                <span>Belægning</span>
+                <strong>{occupancy}%</strong>
+              </div>
 
-            <a href="/live" className="bg-gray-100 rounded-lg p-4">
-              Live drift
-            </a>
+              <div className="flex justify-between">
+                <span>Vagter i dag</span>
+                <strong>{shifts.length}</strong>
+              </div>
+            </div>
+          </section>
 
-            <a href="/leave-requests" className="bg-gray-100 rounded-lg p-4">
-              Fridage
-            </a>
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="mb-4 text-2xl font-bold">
+              Genveje
+            </h2>
 
-            <a href="/shift-trades" className="bg-gray-100 rounded-lg p-4">
-              Vagtpulje
-            </a>
-          </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <a
+                href="/schedule"
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-800"
+              >
+                Vagtplan
+              </a>
+
+              <a
+                href="/my-shifts"
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-800"
+              >
+                Mine vagter
+              </a>
+
+              <a
+                href="/clock"
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-800"
+              >
+                Clock ind/ud
+              </a>
+
+              <a
+                href="/notifications"
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-800"
+              >
+                Notifikationer
+              </a>
+
+              <a
+                href="/leave-requests"
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-800"
+              >
+                Fridage
+              </a>
+
+              <a
+                href="/shift-trades"
+                className="rounded-xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-800"
+              >
+                Vagtpulje
+              </a>
+            </div>
+          </section>
         </div>
       </div>
     </main>

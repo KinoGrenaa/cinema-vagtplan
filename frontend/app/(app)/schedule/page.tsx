@@ -90,18 +90,11 @@ export default function SchedulePage() {
       const response = await apiFetch("/users");
 
       if (!response.ok) {
-        const errorText = await response.text();
-
-        console.error(
-          `Kunne ikke hente medarbejdere. Status: ${response.status}. Body: ${errorText}`,
-        );
-
         setUsers([]);
         return;
       }
 
       const data = await response.json();
-
       const usersArray = Array.isArray(data)
         ? data
         : Array.isArray(data.users)
@@ -113,8 +106,7 @@ export default function SchedulePage() {
       if (usersArray.length > 0) {
         setUserId(usersArray[0].id);
       }
-    } catch (error) {
-      console.error("Fejl ved hentning af medarbejdere:", error);
+    } catch {
       setUsers([]);
     }
   }, [apiFetch]);
@@ -124,18 +116,11 @@ export default function SchedulePage() {
       const response = await apiFetch("/work-types");
 
       if (!response.ok) {
-        const errorText = await response.text();
-
-        console.error(
-          `Kunne ikke hente vagttyper. Status: ${response.status}. Body: ${errorText}`,
-        );
-
         setWorkTypes([]);
         return;
       }
 
       const data = await response.json();
-
       const workTypesArray = Array.isArray(data)
         ? data
         : Array.isArray(data.workTypes)
@@ -147,8 +132,7 @@ export default function SchedulePage() {
       if (workTypesArray.length > 0) {
         setWorkTypeId(workTypesArray[0].id);
       }
-    } catch (error) {
-      console.error("Fejl ved hentning af vagttyper:", error);
+    } catch {
       setWorkTypes([]);
     }
   }, [apiFetch]);
@@ -158,21 +142,13 @@ export default function SchedulePage() {
       const response = await apiFetch(`/shifts?date=${selectedDate}`);
 
       if (!response.ok) {
-        const errorText = await response.text();
-
-        console.error(
-          `Kunne ikke hente vagter. Status: ${response.status}. Body: ${errorText}`,
-        );
-
         setShifts([]);
         return;
       }
 
       const data = await response.json();
-
       setShifts(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Kunne ikke hente vagter:", error);
+    } catch {
       setShifts([]);
     } finally {
       setLoading(false);
@@ -189,7 +165,6 @@ export default function SchedulePage() {
       }
 
       const data = await response.json();
-
       setMovieShowings(Array.isArray(data) ? data : []);
     } catch {
       setMovieShowings([]);
@@ -206,7 +181,6 @@ export default function SchedulePage() {
       }
 
       const data = await response.json();
-
       setLeaveRequests(Array.isArray(data) ? data : []);
     } catch {
       setLeaveRequests([]);
@@ -252,9 +226,15 @@ export default function SchedulePage() {
   }
 
   function getLeaveStyle(status: LeaveRequest["status"]) {
-    if (status === "APPROVED") return "bg-green-100 text-green-800 border-green-300";
-    if (status === "REJECTED") return "bg-red-100 text-red-800 border-red-300";
-    return "bg-yellow-100 text-yellow-800 border-yellow-300";
+    if (status === "APPROVED") {
+      return "border-green-300 bg-green-100 text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200";
+    }
+
+    if (status === "REJECTED") {
+      return "border-red-300 bg-red-100 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200";
+    }
+
+    return "border-yellow-300 bg-yellow-100 text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-200";
   }
 
   const selectedDateLeaveRequests = leaveRequests.filter(leaveIsOnSelectedDate);
@@ -285,7 +265,9 @@ export default function SchedulePage() {
 
     const plannedStart = toInputDateTime(shift.startTime);
     const plannedEnd = toInputDateTime(shift.endTime);
-    const hasDeviation = plannedStart !== clockInTime || plannedEnd !== clockOutTime;
+
+    const hasDeviation =
+      plannedStart !== clockInTime || plannedEnd !== clockOutTime;
 
     if (hasDeviation && !clockNote.trim()) {
       alert("Du skal skrive en note ved afvigelse fra vagtplanen");
@@ -371,7 +353,7 @@ export default function SchedulePage() {
   }
 
   function changeDate(days: number) {
-    const date = new Date(selectedDate);
+    const date = new Date(`${selectedDate}T12:00:00`);
     date.setDate(date.getDate() + days);
 
     const nextDate = date.toISOString().slice(0, 10);
@@ -395,7 +377,11 @@ export default function SchedulePage() {
     setLoading(true);
   }
 
-  async function handleMoveShift(shift: Shift, newStartHour: number, newStartMinute: number) {
+  async function handleMoveShift(
+    shift: Shift,
+    newStartHour: number,
+    newStartMinute: number,
+  ) {
     const oldStart = new Date(shift.startTime);
     const oldEnd = new Date(shift.endTime);
     const durationMs = oldEnd.getTime() - oldStart.getTime();
@@ -487,103 +473,155 @@ export default function SchedulePage() {
     currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
   if (loading) {
-    return <p className="p-10">Indlæser vagter...</p>;
+    return (
+      <main className="min-h-screen bg-gray-100 p-10 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        Indlæser vagter...
+      </main>
+    );
   }
 
   return (
-    <>
-      <div className="bg-white rounded-xl shadow p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Vagtplan</h1>
-          <p className="text-gray-500">Valgt dato: {selectedDate}</p>
-        </div>
+    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+      <div className="mx-auto space-y-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Vagtplan</h1>
+              <p className="text-gray-500 dark:text-gray-400">
+                Valgt dato: {selectedDate}
+              </p>
+            </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setShowClockModal(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg">
-            Registrer tid
-          </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setShowClockModal(true)}
+                className="rounded-xl bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
+              >
+                Registrer tid
+              </button>
 
-          <button onClick={() => changeDate(-1)} className="bg-gray-200 px-4 py-2 rounded-lg">
-            Forrige dag
-          </button>
+              <button
+                onClick={() => changeDate(-1)}
+                className="rounded-xl bg-gray-200 px-4 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+              >
+                Forrige dag
+              </button>
 
-          <button onClick={goToToday} className="bg-black text-white px-4 py-2 rounded-lg">
-            I dag
-          </button>
+              <button
+                onClick={goToToday}
+                className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+              >
+                I dag
+              </button>
 
-          <button onClick={() => changeDate(1)} className="bg-gray-200 px-4 py-2 rounded-lg">
-            Næste dag
-          </button>
-        </div>
-      </div>
-
-      {canManageShifts && (
-        <>
-          <div className="bg-white rounded-xl shadow p-6 mb-6">
-            <h2 className="text-2xl font-bold mb-4">Fravær denne dag</h2>
-
-            <div className="space-y-2">
-              {selectedDateLeaveRequests.map((request) => (
-                <div key={request.id} className={`border rounded-lg p-3 ${getLeaveStyle(request.status)}`}>
-                  <div className="font-bold">
-                    {request.user.firstName} {request.user.lastName}
-                  </div>
-                  <div className="text-sm">Status: {request.status}</div>
-                  {request.reason && <div className="text-sm mt-1">Årsag: {request.reason}</div>}
-                </div>
-              ))}
-
-              {selectedDateLeaveRequests.length === 0 && (
-                <div className="text-gray-500">Ingen fravær denne dag.</div>
-              )}
+              <button
+                onClick={() => changeDate(1)}
+                className="rounded-xl bg-gray-200 px-4 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+              >
+                Næste dag
+              </button>
             </div>
           </div>
+        </div>
 
-          <ShiftForm
-            users={users}
-            workTypes={workTypes}
-            startTime={startTime}
-            setStartTime={setStartTime}
-            endTime={endTime}
-            setEndTime={setEndTime}
-            note={note}
-            setNote={setNote}
-            userId={userId}
-            setUserId={setUserId}
-            workTypeId={workTypeId}
-            setWorkTypeId={setWorkTypeId}
-            selectedShift={selectedShift}
-            onSubmit={handleSubmit}
-            onDelete={handleDelete}
-            onCancel={clearForm}
-            onOfferTrade={handleOfferTrade}
-          />
-        </>
-      )}
+        {canManageShifts && (
+          <>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+              <h2 className="mb-4 text-2xl font-bold">Fravær denne dag</h2>
 
-      <div className="bg-white rounded-xl shadow p-6">
-        <h1 className="text-3xl font-bold">Dagens vagter</h1>
-        <p className="text-gray-500 mb-6">
-          {canManageShifts ? "Administrer, flyt og resize vagter" : "Se dagens vagtplan"}
-        </p>
+              <div className="space-y-2">
+                {selectedDateLeaveRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className={`rounded-xl border p-3 ${getLeaveStyle(
+                      request.status,
+                    )}`}
+                  >
+                    <div className="font-bold">
+                      {request.user.firstName} {request.user.lastName}
+                    </div>
 
-        <ShiftTimeline
-          shifts={shifts}
-          users={users}
-          selectedDate={selectedDate}
-          onSelectShift={canManageShifts ? handleSelectShift : () => {}}
-          onMoveShift={canManageShifts ? handleMoveShift : () => {}}
-          onChangeShiftUser={canManageShifts ? handleChangeShiftUser : () => {}}
-          onResizeShift={canManageShifts ? handleResizeShift : () => {}}
-        />
+                    <div className="text-sm">Status: {request.status}</div>
+
+                    {request.reason && (
+                      <div className="mt-1 text-sm">
+                        Årsag: {request.reason}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {selectedDateLeaveRequests.length === 0 && (
+                  <div className="text-gray-500 dark:text-gray-400">
+                    Ingen fravær denne dag.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+              <ShiftForm
+                users={users}
+                workTypes={workTypes}
+                startTime={startTime}
+                setStartTime={setStartTime}
+                endTime={endTime}
+                setEndTime={setEndTime}
+                note={note}
+                setNote={setNote}
+                userId={userId}
+                setUserId={setUserId}
+                workTypeId={workTypeId}
+                setWorkTypeId={setWorkTypeId}
+                selectedShift={selectedShift}
+                onSubmit={handleSubmit}
+                onDelete={handleDelete}
+                onCancel={clearForm}
+                onOfferTrade={handleOfferTrade}
+              />
+            </div>
+          </>
+        )}
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold">Dagens vagter</h2>
+            <p className="text-gray-500 dark:text-gray-400">
+              {canManageShifts
+                ? "Administrer, flyt og resize vagter"
+                : "Se dagens vagtplan"}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-800 dark:bg-gray-950">
+            <ShiftTimeline
+              shifts={shifts}
+              users={users}
+              selectedDate={selectedDate}
+              onSelectShift={canManageShifts ? handleSelectShift : () => {}}
+              onMoveShift={canManageShifts ? handleMoveShift : () => {}}
+              onChangeShiftUser={
+                canManageShifts ? handleChangeShiftUser : () => {}
+              }
+              onResizeShift={canManageShifts ? handleResizeShift : () => {}}
+            />
+          </div>
+        </div>
+
+        <MovieProgram movieShowings={movieShowings} />
       </div>
 
       {showClockModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xl mx-4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Registrer møde- og fyraftstid</h2>
-              <button onClick={resetClockModal} className="text-2xl">×</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="mx-4 w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">
+                Registrer møde- og fyraftstid
+              </h2>
+
+              <button onClick={resetClockModal} className="text-2xl">
+                ×
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -600,7 +638,7 @@ export default function SchedulePage() {
                   setClockOutTime(toInputDateTime(shift.endTime));
                   setClockNote("");
                 }}
-                className="border rounded-lg px-3 py-2 w-full"
+                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
               >
                 <option value="">Vælg vagt</option>
 
@@ -619,24 +657,27 @@ export default function SchedulePage() {
                     type="datetime-local"
                     value={clockInTime}
                     onChange={(event) => setClockInTime(event.target.value)}
-                    className="border rounded-lg px-3 py-2 w-full"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
                   />
 
                   <input
                     type="datetime-local"
                     value={clockOutTime}
                     onChange={(event) => setClockOutTime(event.target.value)}
-                    className="border rounded-lg px-3 py-2 w-full"
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
                   />
 
                   <textarea
                     value={clockNote}
                     onChange={(event) => setClockNote(event.target.value)}
-                    className="border rounded-lg px-3 py-2 w-full min-h-24"
+                    className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
                     placeholder="Note ved afvigelse"
                   />
 
-                  <button onClick={submitManualTime} className="w-full bg-black text-white py-3 rounded-xl">
+                  <button
+                    onClick={submitManualTime}
+                    className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  >
                     Send til godkendelse
                   </button>
                 </>
@@ -647,18 +688,25 @@ export default function SchedulePage() {
       )}
 
       {formError && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-2xl font-bold mb-4 text-red-600">Konflikt fundet</h2>
-            <p className="text-gray-700 mb-6">{formError}</p>
-            <button onClick={() => setFormError("")} className="w-full bg-black text-white py-3 rounded-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="mb-4 text-2xl font-bold text-red-600 dark:text-red-400">
+              Konflikt fundet
+            </h2>
+
+            <p className="mb-6 text-gray-700 dark:text-gray-300">
+              {formError}
+            </p>
+
+            <button
+              onClick={() => setFormError("")}
+              className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+            >
               OK
             </button>
           </div>
         </div>
       )}
-
-      <MovieProgram movieShowings={movieShowings} />
-    </>
+    </main>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+
 type User = {
   id: number;
   firstName: string;
@@ -13,6 +15,12 @@ type CurrentUser = {
   id: number;
   cinemaId: number;
 };
+
+const inputClass =
+  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
+
+const labelClass =
+  "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 export default function SendMessagePage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -32,16 +40,22 @@ export default function SendMessagePage() {
     async function fetchUsers() {
       try {
         const savedUser = localStorage.getItem("user");
+
         if (!savedUser) return;
 
         const user: CurrentUser = JSON.parse(savedUser);
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users?cinemaId=${user.cinemaId}`,
+          `${API_URL}/users?cinemaId=${user.cinemaId}`,
           {
             headers: getHeaders(),
-          }
+          },
         );
+
+        if (!response.ok) {
+          setUsers([]);
+          return;
+        }
 
         const data = await response.json();
         setUsers(Array.isArray(data) ? data : []);
@@ -71,6 +85,7 @@ export default function SendMessagePage() {
       setSending(true);
 
       const savedUser = localStorage.getItem("user");
+
       if (!savedUser) {
         alert("Bruger ikke fundet.");
         return;
@@ -78,7 +93,7 @@ export default function SendMessagePage() {
 
       const user: CurrentUser = JSON.parse(savedUser);
 
-      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/messages", {
+      const response = await fetch(`${API_URL}/messages`, {
         method: "POST",
         headers: {
           ...getHeaders(),
@@ -113,96 +128,94 @@ export default function SendMessagePage() {
   }
 
   return (
-    <main className="p-6 max-w-3xl mx-auto space-y-6">
-      <div className="bg-white rounded-xl shadow p-6">
-        <h1 className="text-3xl font-bold">Send besked</h1>
+    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <h1 className="text-3xl font-bold">Send besked</h1>
 
-        <p className="text-gray-500 mt-2">
-          Send en besked til en medarbejder eller som broadcast.
-        </p>
-      </div>
-
-      <form
-        onSubmit={sendMessage}
-        className="bg-white rounded-xl shadow p-6 space-y-5"
-      >
-        <div className="flex items-center gap-3">
-          <input
-            id="broadcast"
-            type="checkbox"
-            checked={isBroadcast}
-            onChange={(event) => {
-              setIsBroadcast(event.target.checked);
-              if (event.target.checked) {
-                setReceiverId("");
-              }
-            }}
-            className="h-4 w-4"
-          />
-
-          <label htmlFor="broadcast" className="font-medium">
-            Send til alle
-          </label>
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
+            Send en besked til en medarbejder eller til hele biografen.
+          </p>
         </div>
 
-        {!isBroadcast && (
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Modtager
-            </label>
+        <form
+          onSubmit={sendMessage}
+          className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
+        >
+          <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+            <input
+              id="broadcast"
+              type="checkbox"
+              checked={isBroadcast}
+              onChange={(event) => {
+                setIsBroadcast(event.target.checked);
 
-            <select
-              value={receiverId}
-              onChange={(event) => setReceiverId(event.target.value)}
-              className="w-full rounded-lg border px-3 py-2"
+                if (event.target.checked) {
+                  setReceiverId("");
+                }
+              }}
+              className="h-4 w-4"
+            />
+
+            <label
+              htmlFor="broadcast"
+              className="font-medium text-gray-800 dark:text-gray-200"
             >
-              <option value="">Vælg modtager</option>
-
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName}
-                </option>
-              ))}
-            </select>
+              Send til alle medarbejdere
+            </label>
           </div>
-        )}
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Emne
-          </label>
+          {!isBroadcast && (
+            <div>
+              <label className={labelClass}>Modtager</label>
 
-          <input
-            value={subject}
-            onChange={(event) => setSubject(event.target.value)}
-            className="w-full rounded-lg border px-3 py-2"
-            placeholder="Skriv emne"
-          />
-        </div>
+              <select
+                value={receiverId}
+                onChange={(event) => setReceiverId(event.target.value)}
+                className={inputClass}
+              >
+                <option value="">Vælg medarbejder</option>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Besked
-          </label>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-          <textarea
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            className="min-h-40 w-full rounded-lg border px-3 py-2"
-            placeholder="Skriv beskeden her..."
-          />
-        </div>
+          <div>
+            <label className={labelClass}>Emne</label>
 
-        <div className="flex justify-end">
+            <input
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              className={inputClass}
+              placeholder="Skriv emne"
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>Besked</label>
+
+            <textarea
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              className="min-h-48 w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+              placeholder="Skriv din besked..."
+            />
+          </div>
+
           <button
             type="submit"
             disabled={sending}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="w-full rounded-xl bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
           >
-            {sending ? "Sender..." : "Send besked"}
+            {sending ? "Sender besked..." : "Send besked"}
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </main>
   );
 }
