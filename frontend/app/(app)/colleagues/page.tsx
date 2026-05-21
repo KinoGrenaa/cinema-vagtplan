@@ -20,7 +20,7 @@ export default function ColleaguesPage() {
   }
 
   const fetchUsers = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/users", {
+    const response = await fetch("process.env.NEXT_PUBLIC_API_URL!/users", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },

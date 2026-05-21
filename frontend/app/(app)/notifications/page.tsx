@@ -61,10 +61,10 @@ export default function NotificationsPage() {
 
     const [messagesResponse, tradesResponse] = await Promise.all([
       fetch(
-        `http://localhost:3001/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
         { headers: getHeaders() }
       ),
-      fetch("http://localhost:3001/shift-trades", {
+      fetch("${process.env.NEXT_PUBLIC_API_URL}/shift-trades", {
         headers: getHeaders(),
       }),
     ]);

@@ -30,7 +30,7 @@ export default function ClockPage() {
 
   const fetchEntries = useCallback(async (userId: number) => {
     const response = await fetch(
-      `http://localhost:3001/time-entries?userId=${userId}`,
+      `process.env.NEXT_PUBLIC_API_URL!/time-entries?userId=${userId}`,
       {
         headers: {
           Authorization: `Bearer ${getToken()}`,
@@ -46,7 +46,7 @@ export default function ClockPage() {
   const fetchTodayShifts = useCallback(async (userId: number) => {
     const today = new Date().toISOString().split("T")[0];
 
-    const response = await fetch(`http://localhost:3001/shifts?date=${today}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/shifts?date=${today}`, {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -112,7 +112,7 @@ export default function ClockPage() {
       return;
     }
 
-    const response = await fetch("http://localhost:3001/time-entries/manual", {
+    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/time-entries/manual", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

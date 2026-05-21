@@ -31,7 +31,7 @@ export default function TimeApprovalPage() {
   }
 
   const fetchEntries = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/time-entries", {
+    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/time-entries", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -76,7 +76,7 @@ export default function TimeApprovalPage() {
   }
 
   async function approve(id: number) {
-    await fetch(`http://localhost:3001/time-entries/${id}/approve`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/time-entries/${id}/approve`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${getToken()}`,
@@ -87,7 +87,7 @@ export default function TimeApprovalPage() {
   }
 
   async function unapprove(id: number) {
-    await fetch(`http://localhost:3001/time-entries/${id}/unapprove`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/time-entries/${id}/unapprove`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${getToken()}`,
@@ -101,7 +101,7 @@ export default function TimeApprovalPage() {
     const adminNote =
       window.prompt("Skriv evt. årsag til afvisning") || "";
 
-    await fetch(`http://localhost:3001/time-entries/${id}/reject`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/time-entries/${id}/reject`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

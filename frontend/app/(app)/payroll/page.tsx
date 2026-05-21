@@ -37,7 +37,7 @@ export default function PayrollPage() {
     setLoading(true);
 
     const response = await fetch(
-      `http://localhost:3001/payroll?startDate=${startDate}&endDate=${endDate}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/payroll?startDate=${startDate}&endDate=${endDate}`,
       {
         headers: {
           Authorization: `Bearer ${getToken()}`,

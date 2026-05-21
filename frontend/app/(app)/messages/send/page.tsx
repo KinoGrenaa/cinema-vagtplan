@@ -37,7 +37,7 @@ export default function SendMessagePage() {
         const user: CurrentUser = JSON.parse(savedUser);
 
         const response = await fetch(
-          `http://localhost:3001/users?cinemaId=${user.cinemaId}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/users?cinemaId=${user.cinemaId}`,
           {
             headers: getHeaders(),
           }
@@ -78,7 +78,7 @@ export default function SendMessagePage() {
 
       const user: CurrentUser = JSON.parse(savedUser);
 
-      const response = await fetch("http://localhost:3001/messages", {
+      const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/messages", {
         method: "POST",
         headers: {
           ...getHeaders(),

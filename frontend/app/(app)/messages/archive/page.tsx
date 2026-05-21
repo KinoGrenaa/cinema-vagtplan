@@ -51,7 +51,7 @@ export default function MessageArchivePage() {
       const user: CurrentUser = JSON.parse(savedUser);
 
       const response = await fetch(
-        `http://localhost:3001/messages/archive?userId=${user.id}&cinemaId=${user.cinemaId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/messages/archive?userId=${user.id}&cinemaId=${user.cinemaId}`,
         {
           headers: getHeaders(),
         }
@@ -104,7 +104,7 @@ export default function MessageArchivePage() {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/messages/${messageId}/unarchive`,
+        `${process.env.NEXT_PUBLIC_API_URL}/messages/${messageId}/unarchive`,
         {
           method: "PATCH",
           headers: getHeaders(),

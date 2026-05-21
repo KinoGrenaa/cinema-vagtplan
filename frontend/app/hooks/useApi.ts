@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useAuth } from "../providers/AuthProvider";
 
-const API_URL = "http://localhost:3001";
+const API_URL = "${process.env.NEXT_PUBLIC_API_URL}";
 
 export function useApi() {
   const { logout } = useAuth();

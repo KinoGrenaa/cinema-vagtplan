@@ -67,13 +67,13 @@ export default function DashboardPage() {
         shiftTradesRes,
         moviesRes,
       ] = await Promise.all([
-        fetch(`http://localhost:3001/shifts?date=${today}`, { headers }),
-        fetch(`http://localhost:3001/time-entries?userId=${user.id}`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/shifts?date=${today}`, { headers }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/time-entries?userId=${user.id}`, {
           headers,
         }),
-        fetch("http://localhost:3001/leave-requests", { headers }),
-        fetch("http://localhost:3001/shift-trades", { headers }),
-        fetch(`http://localhost:3001/movie-showings?date=${today}`, {
+        fetch("${process.env.NEXT_PUBLIC_API_URL}/leave-requests", { headers }),
+        fetch("${process.env.NEXT_PUBLIC_API_URL}/shift-trades", { headers }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/movie-showings?date=${today}`, {
           headers,
         }),
       ]);

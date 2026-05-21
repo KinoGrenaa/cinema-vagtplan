@@ -57,9 +57,9 @@ export default function LivePage() {
     };
 
     const [usersRes, shiftsRes, moviesRes] = await Promise.all([
-      fetch("http://localhost:3001/users", { headers }),
-      fetch(`http://localhost:3001/shifts?date=${today}`, { headers }),
-      fetch(`http://localhost:3001/movie-showings?date=${today}`, { headers }),
+      fetch("${process.env.NEXT_PUBLIC_API_URL}/users", { headers }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/shifts?date=${today}`, { headers }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/movie-showings?date=${today}`, { headers }),
     ]);
 
     const usersData: User[] = await usersRes.json();
@@ -74,7 +74,7 @@ export default function LivePage() {
 
     for (const user of usersData) {
       const res = await fetch(
-        `http://localhost:3001/time-entries/open?userId=${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/time-entries/open?userId=${user.id}`,
         { headers },
       );
 
@@ -100,7 +100,7 @@ export default function LivePage() {
   }, [fetchData]);
 
   useEffect(() => {
-    const socket = io("http://localhost:3001");
+    const socket = io("${process.env.NEXT_PUBLIC_API_URL}");
 
     socket.on("timeEntriesUpdated", () => {
       fetchData();

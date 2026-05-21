@@ -52,7 +52,7 @@ export default function NotificationBell() {
 
     const [messagesRes, tradesRes] = await Promise.all([
       fetch(
-        `http://localhost:3001/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -61,7 +61,7 @@ export default function NotificationBell() {
       ),
 
       fetch(
-        "http://localhost:3001/shift-trades",
+        "${process.env.NEXT_PUBLIC_API_URL}/shift-trades",
         {
           headers: {
             Authorization: `Bearer ${token}`,

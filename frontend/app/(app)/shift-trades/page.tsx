@@ -51,7 +51,7 @@ export default function ShiftTradesPage() {
   }
 
   const fetchTrades = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/shift-trades", {
+    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/shift-trades", {
       headers: getHeaders(),
     });
 
@@ -94,7 +94,7 @@ export default function ShiftTradesPage() {
     if (!confirmed) return;
 
     const response = await fetch(
-      `http://localhost:3001/shift-trades/${trade.id}/accept`,
+      `${process.env.NEXT_PUBLIC_API_URL}/shift-trades/${trade.id}/accept`,
       {
         method: "PATCH",
         headers: getHeaders(),

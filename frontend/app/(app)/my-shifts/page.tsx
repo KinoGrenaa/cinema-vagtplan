@@ -66,7 +66,7 @@ export default function MyShiftsPage() {
   }
 
   const fetchShifts = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/shifts", {
+    const response = await fetch("process.env.NEXT_PUBLIC_API_URL!/shifts", {
       headers: getHeaders(),
     });
 
@@ -82,7 +82,7 @@ export default function MyShiftsPage() {
   }, []);
 
   const fetchUsers = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/users", {
+    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/users", {
       headers: getHeaders(),
     });
 
@@ -92,7 +92,7 @@ export default function MyShiftsPage() {
   }, []);
 
   const fetchShiftTrades = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/shift-trades", {
+    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/shift-trades", {
       headers: getHeaders(),
     });
 
@@ -148,7 +148,7 @@ export default function MyShiftsPage() {
     if (!confirmed) return;
 
     const response = await fetch(
-      "http://localhost:3001/shift-trades",
+      "${process.env.NEXT_PUBLIC_API_URL}/shift-trades",
       {
         method: "POST",
         headers: getHeaders(),
@@ -198,7 +198,7 @@ export default function MyShiftsPage() {
     if (!confirmed) return;
 
     const response = await fetch(
-      "http://localhost:3001/shift-trades",
+      "${process.env.NEXT_PUBLIC_API_URL}/shift-trades",
       {
         method: "POST",
         headers: getHeaders(),
@@ -240,7 +240,7 @@ export default function MyShiftsPage() {
     if (!confirmed) return;
 
     const response = await fetch(
-      `http://localhost:3001/shift-trades/${tradeId}/accept`,
+      `${process.env.NEXT_PUBLIC_API_URL}/shift-trades/${tradeId}/accept`,
       {
         method: "PATCH",
         headers: getHeaders(),
@@ -274,7 +274,7 @@ export default function MyShiftsPage() {
     if (!confirmed) return;
 
     const response = await fetch(
-      `http://localhost:3001/shift-trades/${tradeId}/reject`,
+      `${process.env.NEXT_PUBLIC_API_URL}/shift-trades/${tradeId}/reject`,
       {
         method: "PATCH",
         headers: getHeaders(),
@@ -305,7 +305,7 @@ export default function MyShiftsPage() {
     if (!confirmed) return;
 
     const response = await fetch(
-      `http://localhost:3001/shift-trades/${tradeId}/cancel`,
+      `${process.env.NEXT_PUBLIC_API_URL}/shift-trades/${tradeId}/cancel`,
       {
         method: "PATCH",
         headers: getHeaders(),

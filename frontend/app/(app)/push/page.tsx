@@ -77,7 +77,7 @@ export default function PushPage() {
 
       const json = subscription.toJSON();
 
-      await fetch("http://localhost:3001/push/subscribe", {
+      await fetch("${process.env.NEXT_PUBLIC_API_URL}/push/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +106,7 @@ export default function PushPage() {
       return;
     }
 
-    await fetch("http://localhost:3001/push/test", {
+    await fetch("${process.env.NEXT_PUBLIC_API_URL}/push/test", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -127,7 +127,7 @@ export default function PushPage() {
       return;
     }
 
-    await fetch("http://localhost:3001/push/unsubscribe", {
+    await fetch("${process.env.NEXT_PUBLIC_API_URL}/push/unsubscribe", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

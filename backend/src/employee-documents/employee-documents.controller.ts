@@ -96,7 +96,7 @@ export class EmployeeDocumentsController {
     return this.employeeDocumentsService.create({
       userId: Number(body.userId),
       title: body.title,
-      fileUrl: `http://localhost:3001/uploads/employee-documents/${file.filename}`,
+      fileUrl: `${process.env.NEXT_PUBLIC_API_URL}/uploads/employee-documents/${file.filename}`,
       fileName: file.originalname,
       fileType: file.mimetype,
     });

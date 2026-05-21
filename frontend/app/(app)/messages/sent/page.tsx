@@ -50,7 +50,7 @@ export default function SentMessagesPage() {
       const user: CurrentUser = JSON.parse(savedUser);
 
       const response = await fetch(
-        `http://localhost:3001/messages/sent?userId=${user.id}&cinemaId=${user.cinemaId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/messages/sent?userId=${user.id}&cinemaId=${user.cinemaId}`,
         {
           headers: getHeaders(),
         }
@@ -104,7 +104,7 @@ export default function SentMessagesPage() {
     const user: CurrentUser = JSON.parse(savedUser);
 
     const response = await fetch(
-      `http://localhost:3001/messages/${messageId}/archive`,
+      `${process.env.NEXT_PUBLIC_API_URL}/messages/${messageId}/archive`,
       {
         method: "PATCH",
         headers: {

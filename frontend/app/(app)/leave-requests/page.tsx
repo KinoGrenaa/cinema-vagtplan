@@ -33,7 +33,7 @@ export default function LeaveRequestsPage() {
   }
 
   const fetchRequests = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/leave-requests", {
+    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/leave-requests", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -58,7 +58,7 @@ export default function LeaveRequestsPage() {
 
     if (!currentUser) return;
 
-    await fetch("http://localhost:3001/leave-requests", {
+    await fetch("${process.env.NEXT_PUBLIC_API_URL}/leave-requests", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -81,7 +81,7 @@ export default function LeaveRequestsPage() {
     requestId: number,
     status: "APPROVED" | "REJECTED",
   ) {
-    await fetch(`http://localhost:3001/leave-requests/${requestId}/status`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/leave-requests/${requestId}/status`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

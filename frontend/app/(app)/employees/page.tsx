@@ -24,7 +24,7 @@ export default function EmployeesPage() {
 
   const fetchUsers = useCallback(async () => {
     const response = await fetch(
-      "http://localhost:3001/users",
+      "${process.env.NEXT_PUBLIC_API_URL}/users",
       {
         headers: getHeaders(),
       }

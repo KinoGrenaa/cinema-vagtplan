@@ -22,7 +22,7 @@ export function useRealtimeMessages({
 }: UseRealtimeMessagesProps) {
   useEffect(() => {
     if (!socket) {
-      socket = io("http://127.0.0.1:3001", {
+      socket = io(process.env.NEXT_PUBLIC_API_URL!, {
         transports: ["websocket"],
         });
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRealtimeMessages } from "../hooks/useRealtimeMessages";
 
 type CurrentUser = {
@@ -21,14 +21,7 @@ export default function AppMenu() {
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "MASTER";
 
-  useRealtimeMessages({
-  onNewMessage: fetchUnreadCount,
-  onMessageRead: fetchUnreadCount,
-  onMessageArchived: fetchUnreadCount,
-  onMessagesUpdated: fetchUnreadCount,
-  onMessageRecalled: fetchUnreadCount,
-});
-  async function fetchUnreadCount() {
+  const fetchUnreadCount = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
@@ -38,8 +31,10 @@ export default function AppMenu() {
       const parsedUser: CurrentUser = JSON.parse(savedUser);
       setUser(parsedUser);
 
+      if (!parsedUser?.id || !parsedUser?.cinemaId) return;
+
       const response = await fetch(
-        `http://127.0.0.1:3001/messages/unread-count?userId=${parsedUser.id}&cinemaId=${parsedUser.cinemaId}`
+        `${process.env.NEXT_PUBLIC_API_URL}/messages/unread-count?userId=${parsedUser.id}&cinemaId=${parsedUser.cinemaId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -50,11 +45,20 @@ export default function AppMenu() {
       if (!response.ok) return;
 
       const data = await response.json();
+
       setUnreadCount(typeof data === "number" ? data : data.count || 0);
     } catch (error) {
       console.error("Kunne ikke hente unread count", error);
     }
-  }
+  }, []);
+
+  useRealtimeMessages({
+    onNewMessage: fetchUnreadCount,
+    onMessageRead: fetchUnreadCount,
+    onMessageArchived: fetchUnreadCount,
+    onMessagesUpdated: fetchUnreadCount,
+    onMessageRecalled: fetchUnreadCount,
+  });
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -64,8 +68,7 @@ export default function AppMenu() {
     }
 
     fetchUnreadCount();
-
-    }, []);
+  }, [fetchUnreadCount]);
 
   function logout() {
     localStorage.removeItem("token");

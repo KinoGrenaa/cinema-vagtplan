@@ -70,7 +70,7 @@ export default function ProfilePage() {
     const parsedUser: CurrentUser = JSON.parse(savedUser);
     setCurrentUser(parsedUser);
 
-    const response = await fetch("http://localhost:3001/users", {
+    const response = await fetch("${process.env.NEXT_PUBLIC_API_URL}/users", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -104,7 +104,7 @@ export default function ProfilePage() {
     formData.append("file", file);
 
     const response = await fetch(
-      `http://localhost:3001/users/${currentUser.id}/profile-image`,
+      `${process.env.NEXT_PUBLIC_API_URL}/users/${currentUser.id}/profile-image`,
       {
         method: "POST",
         headers: {
@@ -133,7 +133,7 @@ export default function ProfilePage() {
     if (!currentUser) return;
 
     const response = await fetch(
-      `http://localhost:3001/users/${currentUser.id}/profile`,
+      `${process.env.NEXT_PUBLIC_API_URL}/users/${currentUser.id}/profile`,
       {
         method: "PATCH",
         headers: {

@@ -34,7 +34,7 @@ export default function SettingsPage() {
 
     const user: CurrentUser = JSON.parse(savedUser);
 
-    const response = await fetch(`http://localhost:3001/cinemas/${user.cinemaId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cinemas/${user.cinemaId}`, {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
@@ -49,7 +49,7 @@ export default function SettingsPage() {
   async function saveSettings() {
     if (!currentUser) return;
 
-    const response = await fetch(`http://localhost:3001/cinemas/${currentUser.cinemaId}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cinemas/${currentUser.cinemaId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

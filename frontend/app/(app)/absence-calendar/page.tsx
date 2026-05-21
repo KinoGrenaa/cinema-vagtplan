@@ -31,7 +31,7 @@ export default function AbsenceCalendarPage() {
   }
 
   const fetchRequests = useCallback(async () => {
-    const response = await fetch("http://localhost:3001/leave-requests", {
+    const response = await fetch("process.env.NEXT_PUBLIC_API_URL!/leave-requests", {
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },

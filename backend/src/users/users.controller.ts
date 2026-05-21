@@ -117,7 +117,7 @@ export class UsersController {
     }
 
     return {
-      imageUrl: `http://localhost:3001/uploads/profile-images/${file.filename}`,
+      imageUrl: `${process.env.NEXT_PUBLIC_API_URL}/uploads/profile-images/${file.filename}`,
     };
   }
 }
