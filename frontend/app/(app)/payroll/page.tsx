@@ -1,20 +1,23 @@
 "use client";
 
-import { useState } from "react";
-
-import AdminGuard from "@/app/components/AdminGuard";
+import { useEffect, useMemo, useState } from "react";
+import PermissionGuard from "@/app/components/PermissionGuard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type PayrollEntry = {
+  id?: number;
   date: string;
   clockIn: string;
   clockOut: string;
   hours: number;
   workType: string;
+  status?: string;
+  note?: string | null;
+  adminNote?: string | null;
 };
 
-type PayrollUser = {
+type PayrollEmployee = {
   userId: number;
   name: string;
   email: string;
@@ -22,31 +25,118 @@ type PayrollUser = {
   entries: PayrollEntry[];
 };
 
-const inputClass =
-  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
+type User = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+};
 
-const labelClass =
-  "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function firstDayOfMonthIso() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("da-DK", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
 
 export default function PayrollPage() {
-  const [startDate, setStartDate] = useState("2026-05-01");
-
-  const [endDate, setEndDate] = useState("2026-05-31");
-
-  const [report, setReport] = useState<PayrollUser[]>([]);
-
+  const [startDate, setStartDate] = useState(firstDayOfMonthIso());
+  const [endDate, setEndDate] = useState(todayIso());
+  const [userId, setUserId] = useState("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [report, setReport] = useState<PayrollEmployee[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const totalHours = useMemo(() => {
+    return report.reduce((sum, employee) => sum + employee.totalHours, 0);
+  }, [report]);
 
   function getToken() {
     return localStorage.getItem("token");
+  }
+
+  useEffect(() => {
+    fetchUsers();
+    fetchReport();
+  }, []);
+
+  async function fetchUsers() {
+    try {
+      const response = await fetch(`${API_URL}/users`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+      setUsers([]);
+    }
   }
 
   async function fetchReport() {
     try {
       setLoading(true);
 
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+      });
+
+      if (userId) {
+        params.set("userId", userId);
+      }
+
+      const response = await fetch(`${API_URL}/payroll?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      if (!response.ok) {
+        setReport([]);
+        return;
+      }
+
+      const data = await response.json();
+      setReport(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+      setReport([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function downloadCsv() {
+    try {
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+      });
+
+      if (userId) {
+        params.set("userId", userId);
+      }
+
       const response = await fetch(
-        `${API_URL}/payroll?startDate=${startDate}&endDate=${endDate}`,
+        `${API_URL}/payroll/export/csv?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${getToken()}`,
@@ -55,220 +145,175 @@ export default function PayrollPage() {
       );
 
       if (!response.ok) {
-        setReport([]);
+        alert("Kunne ikke eksportere CSV");
         return;
       }
 
-      const data: PayrollUser[] = await response.json();
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
 
-      setReport(Array.isArray(data) ? data : []);
-    } catch {
-      setReport([]);
-    } finally {
-      setLoading(false);
+      link.href = url;
+      link.download = `loen-${startDate}-til-${endDate}.csv`;
+      link.click();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert("Fejl ved eksport");
     }
   }
 
-  function exportCsv() {
-    const rows = [
-      [
-        "Medarbejder",
-        "Email",
-        "Dato",
-        "Clock ind",
-        "Clock ud",
-        "Timer",
-        "Arbejdstype",
-      ],
-    ];
-
-    report.forEach((user) => {
-      user.entries.forEach((entry) => {
-        rows.push([
-          user.name,
-          user.email,
-          entry.date,
-          new Date(entry.clockIn).toLocaleString("da-DK"),
-          new Date(entry.clockOut).toLocaleString("da-DK"),
-          entry.hours.toFixed(2),
-          entry.workType,
-        ]);
-      });
-    });
-
-    const csvContent = rows
-      .map((row) => row.map((cell) => `"${cell}"`).join(";"))
-      .join("\n");
-
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-
-    link.href = url;
-
-    link.download = `loenrapport-${startDate}-til-${endDate}.csv`;
-
-    link.click();
-
-    URL.revokeObjectURL(url);
-  }
-
   return (
-    <AdminGuard>
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            <h1 className="text-3xl font-bold">Løn-export</h1>
-
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-              Hent medarbejdernes registrerede timer og eksporter til CSV.
+    <PermissionGuard permission="canManagePayroll">
+      <main className="p-6">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Løn / timer</h1>
+            <p className="text-gray-600">
+              Eksportér registrerede timer til løn.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <div>
-                <label className={labelClass}>Startdato</label>
+          <button
+            onClick={downloadCsv}
+            className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+          >
+            Eksportér CSV
+          </button>
+        </div>
 
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
+        <div className="mb-6 grid gap-4 rounded-xl bg-white p-4 shadow md:grid-cols-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Fra dato</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+              className="rounded-lg border p-3"
+            />
+          </label>
 
-              <div>
-                <label className={labelClass}>Slutdato</label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Til dato</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+              className="rounded-lg border p-3"
+            />
+          </label>
 
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Medarbejder</span>
+            <select
+              value={userId}
+              onChange={(event) => setUserId(event.target.value)}
+              className="rounded-lg border p-3"
+            >
+              <option value="">Alle medarbejdere</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.firstName} {user.lastName}
+                </option>
+              ))}
+            </select>
+          </label>
 
-              <div className="flex items-end">
-                <button
-                  onClick={fetchReport}
-                  className="w-full rounded-xl bg-black py-3 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                >
-                  {loading ? "Henter..." : "Hent rapport"}
-                </button>
-              </div>
+          <button
+            onClick={fetchReport}
+            disabled={loading}
+            className="mt-auto rounded-lg bg-black px-4 py-3 text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {loading ? "Henter..." : "Hent rapport"}
+          </button>
+        </div>
 
-              <div className="flex items-end">
-                <button
-                  onClick={exportCsv}
-                  disabled={report.length === 0}
-                  className="w-full rounded-xl bg-green-600 py-3 font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Eksporter CSV
-                </button>
-              </div>
-            </div>
+        <div className="mb-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl bg-white p-4 shadow">
+            <div className="text-sm text-gray-500">Medarbejdere</div>
+            <div className="text-2xl font-bold">{report.length}</div>
           </div>
 
+          <div className="rounded-xl bg-white p-4 shadow">
+            <div className="text-sm text-gray-500">Samlede timer</div>
+            <div className="text-2xl font-bold">{totalHours.toFixed(2)}</div>
+          </div>
+
+          <div className="rounded-xl bg-white p-4 shadow">
+            <div className="text-sm text-gray-500">Periode</div>
+            <div className="text-lg font-semibold">
+              {startDate} til {endDate}
+            </div>
+          </div>
+        </div>
+
+        {loading ? (
+          <div>Indlæser løndata...</div>
+        ) : report.length === 0 ? (
+          <div className="rounded-xl bg-white p-6 text-gray-600 shadow">
+            Ingen timer fundet i perioden.
+          </div>
+        ) : (
           <div className="space-y-6">
-            {report.map((user) => (
-              <div
-                key={user.userId}
-                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
+            {report.map((employee) => (
+              <section
+                key={employee.userId}
+                className="overflow-hidden rounded-xl bg-white shadow"
               >
-                <div className="border-b border-gray-200 p-6 dark:border-gray-800">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold">{user.name}</h2>
+                <div className="flex flex-col gap-2 border-b bg-gray-50 p-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">{employee.name}</h2>
+                    <p className="text-sm text-gray-600">{employee.email}</p>
+                  </div>
 
-                      <p className="text-gray-500 dark:text-gray-400">
-                        {user.email}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-black px-5 py-3 text-center text-white dark:bg-white dark:text-black">
-                      <div className="text-sm opacity-80">
-                        Registrerede timer
-                      </div>
-
-                      <div className="text-2xl font-bold">
-                        {user.totalHours.toFixed(2)}
-                      </div>
-                    </div>
+                  <div className="rounded-lg bg-black px-4 py-2 text-white">
+                    {employee.totalHours.toFixed(2)} timer
                   </div>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-950">
-                      <tr className="text-left text-sm text-gray-600 dark:text-gray-400">
-                        <th className="px-4 py-3">Dato</th>
-                        <th className="px-4 py-3">Clock ind</th>
-                        <th className="px-4 py-3">Clock ud</th>
-                        <th className="px-4 py-3">Timer</th>
-                        <th className="px-4 py-3">Arbejdstype</th>
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="p-3">Dato</th>
+                        <th className="p-3">Ind</th>
+                        <th className="p-3">Ud</th>
+                        <th className="p-3">Timer</th>
+                        <th className="p-3">Vagttype</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Note</th>
                       </tr>
                     </thead>
 
                     <tbody>
-                      {user.entries.map((entry, index) => (
-                        <tr
-                          key={index}
-                          className="border-t border-gray-200 text-sm dark:border-gray-800"
-                        >
-                          <td className="px-4 py-3">
-                            {new Date(entry.date).toLocaleDateString("da-DK")}
+                      {employee.entries.map((entry, index) => (
+                        <tr key={entry.id ?? index} className="border-t">
+                          <td className="p-3">{entry.date}</td>
+                          <td className="p-3">
+                            {formatDateTime(entry.clockIn)}
                           </td>
-
-                          <td className="px-4 py-3">
-                            {new Date(entry.clockIn).toLocaleString("da-DK")}
+                          <td className="p-3">
+                            {formatDateTime(entry.clockOut)}
                           </td>
-
-                          <td className="px-4 py-3">
-                            {new Date(entry.clockOut).toLocaleString("da-DK")}
+                          <td className="p-3 font-medium">
+                            {Number(entry.hours).toFixed(2)}
                           </td>
-
-                          <td className="px-4 py-3 font-semibold">
-                            {entry.hours.toFixed(2)}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {entry.workType}
+                          <td className="p-3">{entry.workType}</td>
+                          <td className="p-3">{entry.status || "-"}</td>
+                          <td className="p-3">
+                            {entry.adminNote || entry.note || "-"}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-
-                {user.entries.length === 0 && (
-                  <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-                    Ingen registreringer fundet i perioden.
-                  </div>
-                )}
-              </div>
+              </section>
             ))}
-
-            {!loading && report.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <div className="mb-2 text-4xl">📊</div>
-
-                <h2 className="text-xl font-bold">
-                  Ingen løndata endnu
-                </h2>
-
-                <p className="mt-2 text-gray-500 dark:text-gray-400">
-                  Vælg en periode og hent rapporten.
-                </p>
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </main>
-    </AdminGuard>
+    </PermissionGuard>
   );
 }

@@ -61,7 +61,6 @@ export class EmployeeDocumentsService {
     return this.prisma.employeeDocument.create({
       data: {
         ...data,
-        cinemaId: targetUser.cinemaId,
       },
     });
   }

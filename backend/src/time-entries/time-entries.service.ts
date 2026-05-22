@@ -242,9 +242,7 @@ export class TimeEntriesService {
   async approveEntry(id: number) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-      },
+      include: { user: true },
     });
 
     if (!existingEntry) {
@@ -278,9 +276,7 @@ export class TimeEntriesService {
   async unapproveEntry(id: number) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-      },
+      include: { user: true },
     });
 
     if (!existingEntry) {
@@ -314,9 +310,7 @@ export class TimeEntriesService {
   async rejectEntry(id: number, adminNote?: string) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-      },
+      include: { user: true },
     });
 
     if (!existingEntry) {
@@ -358,9 +352,7 @@ export class TimeEntriesService {
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-      },
+      include: { user: true },
     });
 
     if (!existingEntry) {
