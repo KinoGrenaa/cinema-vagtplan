@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 
 import { PayrollService } from './payroll.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
@@ -13,9 +13,10 @@ export class PayrollController {
   @Roles('ADMIN', 'MASTER')
   @Get()
   getPayrollReport(
+    @Req() req: any,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
   ) {
-    return this.payrollService.getPayrollReport(startDate, endDate);
+    return this.payrollService.getPayrollReport(req.user, startDate, endDate);
   }
 }

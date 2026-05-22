@@ -38,7 +38,11 @@ export default function AppMenu() {
     const savedUser = localStorage.getItem("user");
     if (!savedUser) return;
 
-    setUser(JSON.parse(savedUser));
+    try {
+      setUser(JSON.parse(savedUser));
+    } catch {
+      setUser(null);
+    }
   }, []);
 
   function handleLogout() {
@@ -151,7 +155,12 @@ export default function AppMenu() {
     },
   ];
 
-  const visibleNavItems = navItems.filter((item) => !item.adminOnly || isAdmin);
+  const visibleNavItems = navItems
+    .filter((item) => !item.adminOnly || isAdmin)
+    .map((item) => ({
+      ...item,
+      children: item.children?.filter((child) => !child.adminOnly || isAdmin),
+    }));
 
   function renderBadge(badge?: number, active = false) {
     if (!badge || badge <= 0) return null;
@@ -258,32 +267,34 @@ export default function AppMenu() {
                       : "text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
                   }`}
                 >
-                  <span>{item.label}</span>
-
                   <span className="flex items-center gap-2">
+                    {item.label}
                     {renderBadge(item.badge, groupActive)}
-                    <ChevronDown
-                      size={18}
-                      className={`transition-transform ${
-                        groupOpen ? "rotate-180" : ""
-                      }`}
-                    />
                   </span>
+
+                  <ChevronDown
+                    size={18}
+                    className={`transition-transform ${
+                      groupOpen ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
 
                 {groupOpen && (
-                  <div className="ml-4 mt-2 space-y-1 border-l border-gray-200 pl-3 dark:border-gray-800">
+                  <div className="mt-2 space-y-1 pl-3">
                     {item.children?.map((child) => {
-                      const childActive = pathname === child.href;
+                      if (!child.href) return null;
+
+                      const childActive = child.href === pathname;
 
                       return (
                         <Link
                           key={child.href}
-                          href={child.href || "#"}
+                          href={child.href}
                           onClick={() => setOpen(false)}
                           className={`flex items-center justify-between rounded-xl px-4 py-2 text-sm transition ${
                             childActive
-                              ? "bg-black text-white shadow-sm dark:bg-white dark:text-black"
+                              ? "bg-gray-900 text-white dark:bg-white dark:text-black"
                               : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                           }`}
                         >
@@ -302,7 +313,7 @@ export default function AppMenu() {
         <div className="border-t border-gray-200 p-4 dark:border-gray-800">
           <button
             onClick={handleLogout}
-            className="w-full rounded-2xl bg-red-600 py-3 font-medium text-white transition hover:bg-red-700"
+            className="w-full rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
           >
             Log ud
           </button>

@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   Post,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -18,18 +19,21 @@ import { extname } from 'path';
 import { EmployeeDocumentsService } from './employee-documents.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles/roles.guard';
+import { Roles } from '../auth/roles/roles.decorator';
 
 @Controller('employee-documents')
 export class EmployeeDocumentsController {
   constructor(private employeeDocumentsService: EmployeeDocumentsService) {}
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER', 'EMPLOYEE')
   @Get('user/:userId')
-  findForUser(@Param('userId') userId: string) {
-    return this.employeeDocumentsService.findForUser(Number(userId));
+  findForUser(@Req() req: any, @Param('userId') userId: string) {
+    return this.employeeDocumentsService.findForUser(req.user, Number(userId));
   }
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER', 'EMPLOYEE')
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -41,9 +45,11 @@ export class EmployeeDocumentsController {
           callback(null, `${uniqueName}${extname(file.originalname)}`);
         },
       }),
+
       limits: {
         fileSize: 10 * 1024 * 1024,
       },
+
       fileFilter: (_, file, callback) => {
         const allowedTypes = [
           'application/pdf',
@@ -86,6 +92,7 @@ export class EmployeeDocumentsController {
     }),
   )
   uploadDocument(
+    @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { userId: string; title: string },
   ) {
@@ -93,7 +100,7 @@ export class EmployeeDocumentsController {
       throw new BadRequestException('Ingen fil uploadet');
     }
 
-    return this.employeeDocumentsService.create({
+    return this.employeeDocumentsService.create(req.user, {
       userId: Number(body.userId),
       title: body.title,
       fileUrl: `${process.env.NEXT_PUBLIC_API_URL}/uploads/employee-documents/${file.filename}`,
@@ -102,9 +109,10 @@ export class EmployeeDocumentsController {
     });
   }
 
-  @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER', 'EMPLOYEE')
   @Delete(':id')
-  deleteDocument(@Param('id') id: string) {
-    return this.employeeDocumentsService.delete(Number(id));
+  deleteDocument(@Req() req: any, @Param('id') id: string) {
+    return this.employeeDocumentsService.delete(req.user, Number(id));
   }
 }

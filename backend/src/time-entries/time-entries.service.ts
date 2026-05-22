@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
@@ -8,6 +13,16 @@ export class TimeEntriesService {
     private prisma: PrismaService,
     private realtime: RealtimeGateway,
   ) {}
+
+  private getCinemaFilter(user?: any) {
+    if (!user || user.role === 'MASTER') {
+      return {};
+    }
+
+    return {
+      cinemaId: user.cinemaId,
+    };
+  }
 
   findForUser(userId: number) {
     return this.prisma.timeEntry.findMany({
@@ -26,15 +41,17 @@ export class TimeEntriesService {
     });
   }
 
-  findAll() {
+  findAll(user?: any) {
     return this.prisma.timeEntry.findMany({
+      where:
+        user?.role === 'EMPLOYEE'
+          ? {
+              userId: user.sub,
+              ...this.getCinemaFilter(user),
+            }
+          : this.getCinemaFilter(user),
       include: {
         user: true,
-        shift: {
-          include: {
-            workType: true,
-          },
-        },
       },
       orderBy: {
         clockIn: 'desc',
@@ -42,10 +59,11 @@ export class TimeEntriesService {
     });
   }
 
-  findOpenEntry(userId: number) {
+  findOpenEntry(userId: number, cinemaId?: number) {
     return this.prisma.timeEntry.findFirst({
       where: {
         userId,
+        ...(cinemaId ? { cinemaId } : {}),
         clockOut: null,
       },
       orderBy: {
@@ -62,8 +80,11 @@ export class TimeEntriesService {
     clockOut: string;
     note?: string;
   }) {
-    const shift = await this.prisma.shift.findUnique({
-      where: { id: data.shiftId },
+    const shift = await this.prisma.shift.findFirst({
+      where: {
+        id: data.shiftId,
+        cinemaId: data.cinemaId,
+      },
     });
 
     if (!shift) {
@@ -101,6 +122,7 @@ export class TimeEntriesService {
       where: {
         userId: data.userId,
         shiftId: data.shiftId,
+        cinemaId: data.cinemaId,
       },
     });
 
@@ -122,7 +144,7 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyAll('timeEntriesUpdated', entry);
+    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
 
     return entry;
   }
@@ -132,7 +154,7 @@ export class TimeEntriesService {
     cinemaId: number;
     shiftId?: number | null;
   }) {
-    const openEntry = await this.findOpenEntry(data.userId);
+    const openEntry = await this.findOpenEntry(data.userId, data.cinemaId);
 
     if (openEntry) {
       return openEntry;
@@ -148,12 +170,20 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyAll('timeEntriesUpdated', entry);
+    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
 
     return entry;
   }
 
   async clockOut(id: number) {
+    const existingEntry = await this.prisma.timeEntry.findUnique({
+      where: { id },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
@@ -161,12 +191,20 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyAll('timeEntriesUpdated', entry);
+    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
 
     return entry;
   }
 
   async approveEntry(id: number) {
+    const existingEntry = await this.prisma.timeEntry.findUnique({
+      where: { id },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
@@ -174,12 +212,20 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyAll('timeEntriesUpdated', entry);
+    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
 
     return entry;
   }
 
   async unapproveEntry(id: number) {
+    const existingEntry = await this.prisma.timeEntry.findUnique({
+      where: { id },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
@@ -187,12 +233,20 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyAll('timeEntriesUpdated', entry);
+    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
 
     return entry;
   }
 
   async rejectEntry(id: number, adminNote?: string) {
+    const existingEntry = await this.prisma.timeEntry.findUnique({
+      where: { id },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
@@ -201,7 +255,7 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyAll('timeEntriesUpdated', entry);
+    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
 
     return entry;
   }
@@ -214,6 +268,14 @@ export class TimeEntriesService {
       adminNote?: string;
     },
   ) {
+    const existingEntry = await this.prisma.timeEntry.findUnique({
+      where: { id },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
     if (!data.adminNote || data.adminNote.trim() === '') {
       throw new BadRequestException(
         'Admin-note er påkrævet ved rettelse af timer',
@@ -230,7 +292,7 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyAll('timeEntriesUpdated', entry);
+    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
 
     return entry;
   }

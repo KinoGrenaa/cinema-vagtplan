@@ -26,7 +26,11 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
+    this.realtime.notifyCinema(
+      createdMessage.cinemaId,
+      'messagesUpdated',
+      createdMessage,
+    );
 
     return createdMessage;
   }
@@ -103,7 +107,11 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
+    this.realtime.notifyCinema(
+      updatedMessage.cinemaId,
+      'messagesUpdated',
+      updatedMessage,
+    );
 
     return updatedMessage;
   }
@@ -114,21 +122,8 @@ export class MessagesService {
         isRead: false,
         archivedAt: null,
         recalledAt: null,
-
-        ...(cinemaId
-          ? {
-              cinemaId,
-            }
-          : {}),
-
-        OR: [
-          {
-            receiverId: userId,
-          },
-          {
-            isBroadcast: true,
-          },
-        ],
+        ...(cinemaId ? { cinemaId } : {}),
+        OR: [{ receiverId: userId }, { isBroadcast: true }],
       },
     });
   }
@@ -160,7 +155,11 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
+    this.realtime.notifyCinema(
+      updatedMessage.cinemaId,
+      'messagesUpdated',
+      updatedMessage,
+    );
 
     return updatedMessage;
   }
@@ -177,7 +176,11 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
+    this.realtime.notifyCinema(
+      updatedMessage.cinemaId,
+      'messagesUpdated',
+      updatedMessage,
+    );
 
     return updatedMessage;
   }
@@ -207,7 +210,11 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
+    this.realtime.notifyCinema(
+      updatedMessage.cinemaId,
+      'messagesUpdated',
+      updatedMessage,
+    );
 
     return updatedMessage;
   }

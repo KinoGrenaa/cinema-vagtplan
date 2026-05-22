@@ -4,6 +4,7 @@ import {
   Param,
   Patch,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
@@ -11,9 +12,7 @@ import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(
-    private notificationsService: NotificationsService,
-  ) {}
+  constructor(private notificationsService: NotificationsService) {}
 
   @UseGuards(JwtGuard)
   @Get()
@@ -22,12 +21,11 @@ export class NotificationsController {
   }
 
   @UseGuards(JwtGuard)
-@Get('unread-count')
-async unreadCount(@Query('userId') userId: string) {
+  @UseGuards(JwtGuard)
+  @Get('unread-count')
+  async unreadCount(@Req() req: any) {
     return {
-      count: await this.notificationsService.unreadCount(
-        Number(userId),
-      ),
+      count: await this.notificationsService.unreadCount(req.user.sub),
     };
   }
 
@@ -40,8 +38,6 @@ async unreadCount(@Query('userId') userId: string) {
   @UseGuards(JwtGuard)
   @Patch('read-all')
   markAllAsRead(@Query('userId') userId: string) {
-    return this.notificationsService.markAllAsRead(
-      Number(userId),
-    );
+    return this.notificationsService.markAllAsRead(Number(userId));
   }
 }

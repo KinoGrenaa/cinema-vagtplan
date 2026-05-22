@@ -1,17 +1,34 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class PayrollService {
   constructor(private prisma: PrismaService) {}
 
-  async getPayrollReport(startDate: string, endDate: string) {
+  private getCinemaFilter(user: any) {
+    if (user.role === 'MASTER') {
+      return {};
+    }
+
+    return {
+      cinemaId: user.cinemaId,
+    };
+  }
+
+  async getPayrollReport(user: any, startDate: string, endDate: string) {
+    if (user.role === 'EMPLOYEE') {
+      throw new ForbiddenException('Du har ikke adgang til løndata');
+    }
+
     const entries = await this.prisma.timeEntry.findMany({
       where: {
+        ...this.getCinemaFilter(user),
+
         clockIn: {
           gte: new Date(`${startDate}T00:00:00.000Z`),
           lte: new Date(`${endDate}T23:59:59.999Z`),
         },
+
         clockOut: {
           not: null,
         },

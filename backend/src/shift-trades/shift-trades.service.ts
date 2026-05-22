@@ -265,11 +265,15 @@ export class ShiftTradesService {
     });
 
     this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
-    this.realtime.notifyCinema(
-      updatedTrade.cinemaId,
-      'shiftAccepted',
-      updatedTrade,
-    );
+    if (updatedTrade) {
+      if (updatedTrade) {
+        this.realtime.notifyCinema(
+          updatedTrade.cinemaId,
+          'shiftAccepted',
+          updatedTrade,
+        );
+      }
+    }
 
     await this.notifications.create({
       userId: trade.offeredByUserId,
