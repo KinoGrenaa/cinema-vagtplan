@@ -14,19 +14,19 @@ enum Role {
 }
 
 model Cinema {
-  id            Int            @id @default(autoincrement())
-  name          String
-  createdAt     DateTime       @default(now())
-  movieShowings MovieShowing[]
-  leaveRequests LeaveRequest[]
-  shiftTrades   ShiftTrade[]
-  users         User[]
-  workTypes     WorkType[]
-  shifts        Shift[]
-  messages      Message[]
-  timeEntries   TimeEntry[]
-  allowShiftTradePool   Boolean @default(false)
-  allowShiftTradeDirect Boolean @default(false)
+  id                    Int            @id @default(autoincrement())
+  name                  String
+  createdAt             DateTime       @default(now())
+  movieShowings         MovieShowing[]
+  leaveRequests         LeaveRequest[]
+  shiftTrades           ShiftTrade[]
+  users                 User[]
+  workTypes             WorkType[]
+  shifts                Shift[]
+  messages              Message[]
+  timeEntries           TimeEntry[]
+  allowShiftTradePool   Boolean        @default(false)
+  allowShiftTradeDirect Boolean        @default(false)
 }
 
 model User {
@@ -43,22 +43,24 @@ model User {
   hireDate       DateTime?
   skills         String?
   notes          String?
-  theme          String @default("light")
+  theme          String    @default("light")
   role           Role      @default(EMPLOYEE)
   createdAt      DateTime  @default(now())
-  targetedTrades ShiftTrade[] @relation("TargetedTrades")
 
-  cinemaId          Int
-  cinema            Cinema             @relation(fields: [cinemaId], references: [id])
-  shifts            Shift[]
-  leaveRequests     LeaveRequest[]
-  offeredTrades     ShiftTrade[]       @relation("OfferedTrades")
-  acceptedTrades    ShiftTrade[]       @relation("AcceptedTrades")
-  sentMessages      Message[]          @relation("SentMessages")
-  receivedMessages  Message[]          @relation("ReceivedMessages")
-  timeEntries       TimeEntry[]
-  pushSubscriptions PushSubscription[]
-  documents         EmployeeDocument[]
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  shifts              Shift[]
+  leaveRequests       LeaveRequest[]
+  offeredTrades       ShiftTrade[]       @relation("OfferedTrades")
+  acceptedTrades      ShiftTrade[]       @relation("AcceptedTrades")
+  rejectedTrades      ShiftTrade[]       @relation("RejectedTrades")
+  targetedTrades      ShiftTrade[]       @relation("TargetedTrades")
+  sentMessages        Message[]          @relation("SentMessages")
+  receivedMessages    Message[]          @relation("ReceivedMessages")
+  timeEntries         TimeEntry[]
+  pushSubscriptions   PushSubscription[]
+  documents           EmployeeDocument[]
 }
 
 model WorkType {
@@ -142,7 +144,7 @@ enum ShiftTradeType {
 
 model ShiftTrade {
   id        Int              @id @default(autoincrement())
-  status ShiftTradeStatus @default(OPEN)
+  status    ShiftTradeStatus @default(OPEN)
   message   String?
   createdAt DateTime         @default(now())
 
@@ -155,14 +157,16 @@ model ShiftTrade {
   acceptedByUserId Int?
   acceptedByUser   User? @relation("AcceptedTrades", fields: [acceptedByUserId], references: [id])
 
+  rejectedByUserId Int?
+  rejectedByUser   User? @relation("RejectedTrades", fields: [rejectedByUserId], references: [id])
+
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
-  
+
   type ShiftTradeType @default(POOL)
 
   targetUserId Int?
   targetUser   User? @relation("TargetedTrades", fields: [targetUserId], references: [id])
-  
 }
 
 model Message {
@@ -182,7 +186,7 @@ model Message {
   receiver   User? @relation("ReceivedMessages", fields: [receiverId], references: [id])
 
   isBroadcast Boolean @default(false)
-  isRead Boolean @default(false)
+  isRead      Boolean @default(false)
 
   archivedAt DateTime?
 
@@ -205,8 +209,8 @@ model TimeEntry {
   clockOut  DateTime?
   createdAt DateTime  @default(now())
 
-  status TimeEntryStatus @default(PENDING)
-  note String?
+  status    TimeEntryStatus @default(PENDING)
+  note      String?
   adminNote String?
 
   userId Int

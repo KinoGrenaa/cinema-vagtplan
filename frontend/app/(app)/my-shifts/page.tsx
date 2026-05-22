@@ -54,7 +54,7 @@ export default function MyShiftsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(() => {
-  return new Date().toISOString().slice(0, 7);
+    return new Date().toISOString().slice(0, 7);
   });
   const [message, setMessage] = useState("");
 
@@ -66,17 +66,16 @@ export default function MyShiftsPage() {
   }, []);
 
   const fetchShifts = useCallback(async () => {
-  const response = await fetch(`${API_URL}/shifts`, {
-    headers: getHeaders(),
-  });
+    const response = await fetch(`${API_URL}/shifts`, {
+      headers: getHeaders(),
+    });
 
-  const data = await response.json();
-  console.log("SHIFTS DATA:", data);
+    const data = await response.json();
 
-  setShifts(
-    Array.isArray(data) ? data : Array.isArray(data.shifts) ? data.shifts : [],
-  );
-}, [getHeaders]);
+    setShifts(
+      Array.isArray(data) ? data : Array.isArray(data.shifts) ? data.shifts : [],
+    );
+  }, [getHeaders]);
 
   const fetchUsers = useCallback(async () => {
     const response = await fetch(`${API_URL}/users`, {
@@ -265,6 +264,8 @@ export default function MyShiftsPage() {
   }
 
   async function rejectTrade(tradeId: number) {
+    if (!currentUser) return;
+
     if (!window.confirm("Er du sikker på, at du vil afvise denne vagt?")) {
       return;
     }
@@ -273,6 +274,9 @@ export default function MyShiftsPage() {
       const response = await fetch(`${API_URL}/shift-trades/${tradeId}/reject`, {
         method: "PATCH",
         headers: getHeaders(),
+        body: JSON.stringify({
+          rejectedByUserId: currentUser.id,
+        }),
       });
 
       const data = await response.json();

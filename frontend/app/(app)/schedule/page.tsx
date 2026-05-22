@@ -215,6 +215,7 @@ export default function SchedulePage() {
   useRealtimeShifts({
     onShiftsUpdated: refreshDayData,
     onShiftTradesUpdated: refreshDayData,
+    enableToasts: false,
   });
 
   function leaveIsOnSelectedDate(request: LeaveRequest) {
@@ -694,9 +695,7 @@ export default function SchedulePage() {
               Konflikt fundet
             </h2>
 
-            <p className="mb-6 text-gray-700 dark:text-gray-300">
-              {formError}
-            </p>
+            <p className="mb-6 text-gray-700 dark:text-gray-300">{formError}</p>
 
             <button
               onClick={() => setFormError("")}

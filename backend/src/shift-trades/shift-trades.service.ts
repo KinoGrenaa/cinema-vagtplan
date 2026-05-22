@@ -22,6 +22,7 @@ export class ShiftTradesService {
         offeredByUser: true,
         targetUser: true,
         acceptedByUser: true,
+        rejectedByUser: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -84,16 +85,28 @@ export class ShiftTradesService {
         targetUserId: data.targetUserId ?? null,
         message: data.message ?? null,
       },
+      include: {
+        shift: {
+          include: {
+            user: true,
+            workType: true,
+          },
+        },
+        offeredByUser: true,
+        targetUser: true,
+        acceptedByUser: true,
+        rejectedByUser: true,
+      },
     });
 
     this.realtime.notifyAll('shiftTradesUpdated', trade);
 
     if (trade.type === ShiftTradeType.POOL) {
-    this.realtime.notifyAll('newShiftTrade', trade);
+      this.realtime.notifyAll('newShiftTrade', trade);
     }
 
     if (trade.type === ShiftTradeType.DIRECT) {
-    this.realtime.notifyAll('newDirectShiftTrade', trade);
+      this.realtime.notifyAll('newDirectShiftTrade', trade);
     }
 
     return trade;
@@ -108,7 +121,7 @@ export class ShiftTradesService {
       throw new NotFoundException('Vagtbytte blev ikke fundet');
     }
 
-    const updatedTrade = await this.prisma.shiftTrade.update({
+    await this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: ShiftTradeStatus.ACCEPTED,
@@ -125,34 +138,96 @@ export class ShiftTradesService {
       },
     });
 
+    const updatedTrade = await this.prisma.shiftTrade.findUnique({
+      where: { id },
+      include: {
+        shift: {
+          include: {
+            user: true,
+            workType: true,
+          },
+        },
+        offeredByUser: true,
+        targetUser: true,
+        acceptedByUser: true,
+        rejectedByUser: true,
+      },
+    });
+
     this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
     this.realtime.notifyAll('shiftAccepted', updatedTrade);
     this.realtime.notifyAll('shiftsUpdated', {
-    shiftId: trade.shiftId,
-    acceptedByUserId,
+      shiftId: trade.shiftId,
+      acceptedByUserId,
     });
 
     return updatedTrade;
   }
 
-  async rejectTrade(id: number) {
-    const trade = await this.prisma.shiftTrade.update({
+  async rejectTrade(id: number, rejectedByUserId: number) {
+    const existingTrade = await this.prisma.shiftTrade.findUnique({
+      where: { id },
+    });
+
+    if (!existingTrade) {
+      throw new NotFoundException('Vagtbytte blev ikke fundet');
+    }
+
+    await this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: ShiftTradeStatus.REJECTED,
+        rejectedByUserId,
+      },
+    });
+
+    const trade = await this.prisma.shiftTrade.findUnique({
+      where: { id },
+      include: {
+        shift: {
+          include: {
+            user: true,
+            workType: true,
+          },
+        },
+        offeredByUser: true,
+        targetUser: true,
+        acceptedByUser: true,
+        rejectedByUser: true,
       },
     });
 
     this.realtime.notifyAll('shiftTradesUpdated', trade);
+    this.realtime.notifyAll('shiftRejected', trade);
 
     return trade;
   }
 
   async cancelTrade(id: number) {
+    const existingTrade = await this.prisma.shiftTrade.findUnique({
+      where: { id },
+    });
+
+    if (!existingTrade) {
+      throw new NotFoundException('Vagtbytte blev ikke fundet');
+    }
+
     const trade = await this.prisma.shiftTrade.update({
       where: { id },
       data: {
         status: ShiftTradeStatus.CANCELLED,
+      },
+      include: {
+        shift: {
+          include: {
+            user: true,
+            workType: true,
+          },
+        },
+        offeredByUser: true,
+        targetUser: true,
+        acceptedByUser: true,
+        rejectedByUser: true,
       },
     });
 

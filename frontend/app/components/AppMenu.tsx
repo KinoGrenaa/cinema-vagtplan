@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+import { useRealtimeBadges } from "@/app/hooks/useRealtimeBadges";
 
 type User = {
   id: number;
@@ -23,6 +22,7 @@ type NavItem = {
 
 export default function AppMenu() {
   const pathname = usePathname();
+  const { poolCount, directCount, unreadMessages } = useRealtimeBadges();
 
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -33,110 +33,12 @@ export default function AppMenu() {
     Administration: false,
   });
 
-  const [poolCount, setPoolCount] = useState(0);
-  const [directCount, setDirectCount] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0);
-
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (!savedUser) return;
 
     setUser(JSON.parse(savedUser));
   }, []);
-
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const savedUser = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
-      if (!savedUser || !token) return;
-
-      const parsedUser = JSON.parse(savedUser);
-
-      const response = await fetch(
-        `${API_URL}/messages/unread-count?userId=${parsedUser.id}&cinemaId=${parsedUser.cinemaId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      setUnreadCount(data.count ?? 0);
-    } catch {
-      setUnreadCount(0);
-    }
-  }, []);
-
-  const fetchPoolCount = useCallback(async () => {
-    try {
-      const savedUser = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
-      if (!savedUser || !token) return;
-
-      const parsedUser = JSON.parse(savedUser);
-
-      const response = await fetch(
-        `${API_URL}/shift-trades/pool-count?cinemaId=${parsedUser.cinemaId}&userId=${parsedUser.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      setPoolCount(data.count ?? 0);
-    } catch {
-      setPoolCount(0);
-    }
-  }, []);
-
-  const fetchDirectCount = useCallback(async () => {
-    try {
-      const savedUser = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
-      if (!savedUser || !token) return;
-
-      const parsedUser = JSON.parse(savedUser);
-
-      const response = await fetch(
-        `${API_URL}/shift-trades/direct-count?cinemaId=${parsedUser.cinemaId}&userId=${parsedUser.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      setDirectCount(data.count ?? 0);
-    } catch {
-      setDirectCount(0);
-    }
-  }, []);
-
-  const refreshCounts = useCallback(async () => {
-    await Promise.all([
-      fetchUnreadCount(),
-      fetchPoolCount(),
-      fetchDirectCount(),
-    ]);
-  }, [fetchUnreadCount, fetchPoolCount, fetchDirectCount]);
-
-  useEffect(() => {
-    refreshCounts();
-
-    const interval = setInterval(refreshCounts, 15000);
-
-    return () => clearInterval(interval);
-  }, [refreshCounts]);
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -161,6 +63,7 @@ export default function AppMenu() {
     },
     {
       label: "Vagtplan",
+      badge: totalTradeCount,
       children: [
         {
           href: "/schedule",
@@ -169,11 +72,12 @@ export default function AppMenu() {
         {
           href: "/my-shifts",
           label: "Mine vagter",
+          badge: directCount,
         },
         {
           href: "/shift-trades",
           label: "Vagtpulje",
-          badge: totalTradeCount,
+          badge: poolCount,
         },
         {
           href: "/leave-requests",
@@ -183,12 +87,12 @@ export default function AppMenu() {
     },
     {
       label: "Beskeder",
-      badge: unreadCount,
+      badge: unreadMessages,
       children: [
         {
           href: "/messages",
           label: "Indbakke",
-          badge: unreadCount,
+          badge: unreadMessages,
         },
         {
           href: "/messages/send",

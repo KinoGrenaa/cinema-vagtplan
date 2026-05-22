@@ -73,10 +73,16 @@ export class ShiftTradesController {
   }
 
   @UseGuards(JwtGuard)
-  @Patch(':id/reject')
-  rejectTrade(@Param('id') id: string) {
-    return this.shiftTradesService.rejectTrade(Number(id));
-  }
+@Patch(':id/reject')
+rejectTrade(
+  @Param('id') id: string,
+  @Body() body: { rejectedByUserId: number },
+) {
+  return this.shiftTradesService.rejectTrade(
+    Number(id),
+    body.rejectedByUserId,
+  );
+}
 
   @UseGuards(JwtGuard)
   @Patch(':id/cancel')
