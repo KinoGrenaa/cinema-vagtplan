@@ -14,6 +14,7 @@ export class PushService {
 
   async saveSubscription(data: {
     userId: number;
+    cinemaId: number;
     endpoint: string;
     p256dh: string;
     auth: string;
@@ -24,11 +25,13 @@ export class PushService {
       },
       update: {
         userId: data.userId,
+        cinemaId: data.cinemaId,
         p256dh: data.p256dh,
         auth: data.auth,
       },
       create: {
         userId: data.userId,
+        cinemaId: data.cinemaId,
         endpoint: data.endpoint,
         p256dh: data.p256dh,
         auth: data.auth,

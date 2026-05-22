@@ -5,11 +5,13 @@ import { ShiftTradesController } from './shift-trades.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PushModule } from '../push/push.module';
 
 @Module({
   imports: [
     NotificationsModule,
     PrismaModule,
+    PushModule,
     RealtimeModule,
     JwtModule.register({
       secret: 'super-secret-key-change-later',

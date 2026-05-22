@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+import {
+  enablePushNotifications,
+  disablePushNotifications,
+} from "@/app/hooks/usePushNotifications";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -50,6 +54,7 @@ type SystemNotification = {
   type: string;
   isRead: boolean;
   createdAt: string;
+  linkUrl?: string | null;
 };
 
 export default function NotificationsPage() {
@@ -59,6 +64,7 @@ export default function NotificationsPage() {
   const [systemNotifications, setSystemNotifications] = useState<
     SystemNotification[]
   >([]);
+  const [pushMessage, setPushMessage] = useState("");
 
   function getHeaders() {
     return {
@@ -125,6 +131,21 @@ export default function NotificationsPage() {
     await fetchData();
   }
 
+  async function handleEnablePush() {
+    const success = await enablePushNotifications();
+
+    setPushMessage(
+      success
+        ? "Push-notifikationer er aktiveret."
+        : "Push-notifikationer kunne ikke aktiveres.",
+    );
+  }
+
+  async function handleDisablePush() {
+    await disablePushNotifications();
+    setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
+  }
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -188,13 +209,35 @@ export default function NotificationsPage() {
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Notifikationer</h1>
 
               <p className="mt-2 text-gray-500 dark:text-gray-400">
                 Du har {totalCount} aktive notifikationer.
               </p>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  onClick={handleEnablePush}
+                  className="rounded-xl bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
+                >
+                  Aktivér push-notifikationer
+                </button>
+
+                <button
+                  onClick={handleDisablePush}
+                  className="rounded-xl bg-gray-700 px-4 py-2 text-white transition hover:bg-gray-800"
+                >
+                  Deaktivér push-notifikationer
+                </button>
+              </div>
+
+              {pushMessage && (
+                <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                  {pushMessage}
+                </p>
+              )}
             </div>
 
             {unreadSystemNotifications.length > 0 && (
@@ -219,9 +262,15 @@ export default function NotificationsPage() {
 
           <div className="space-y-3">
             {systemNotifications.map((notification) => (
-              <div
+              <a
                 key={notification.id}
-                className={`rounded-2xl border p-4 transition ${
+                href={notification.linkUrl || "/notifications"}
+                onClick={async () => {
+                  if (!notification.isRead) {
+                    await markNotificationAsRead(notification.id);
+                  }
+                }}
+                className={`block rounded-2xl border p-4 transition hover:scale-[1.01] ${
                   notification.isRead
                     ? "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
                     : "border-purple-300 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/40"
@@ -253,15 +302,12 @@ export default function NotificationsPage() {
                   </div>
 
                   {!notification.isRead && (
-                    <button
-                      onClick={() => markNotificationAsRead(notification.id)}
-                      className="rounded-xl bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700"
-                    >
-                      Marker som læst
-                    </button>
+                    <div className="rounded-full bg-purple-600 px-3 py-1 text-sm font-bold text-white">
+                      Ny
+                    </div>
                   )}
                 </div>
-              </div>
+              </a>
             ))}
 
             {systemNotifications.length === 0 && (

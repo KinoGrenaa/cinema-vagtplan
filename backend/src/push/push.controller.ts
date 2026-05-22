@@ -12,6 +12,7 @@ export class PushController {
     @Body()
     body: {
       userId: number;
+      cinemaId: number;
       endpoint: string;
       p256dh: string;
       auth: string;

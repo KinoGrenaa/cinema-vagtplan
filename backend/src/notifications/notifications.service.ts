@@ -15,6 +15,7 @@ export class NotificationsService {
     title: string;
     message: string;
     type: string;
+    linkUrl?: string;
   }) {
     const notification = await this.prisma.notification.create({
       data,

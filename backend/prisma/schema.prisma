@@ -14,9 +14,9 @@ enum Role {
 }
 
 model Cinema {
-  id                    Int            @id @default(autoincrement())
+  id                    Int                @id @default(autoincrement())
   name                  String
-  createdAt             DateTime       @default(now())
+  createdAt             DateTime           @default(now())
   movieShowings         MovieShowing[]
   leaveRequests         LeaveRequest[]
   shiftTrades           ShiftTrade[]
@@ -25,9 +25,10 @@ model Cinema {
   shifts                Shift[]
   messages              Message[]
   timeEntries           TimeEntry[]
-  allowShiftTradePool   Boolean        @default(false)
-  allowShiftTradeDirect Boolean        @default(false)
+  allowShiftTradePool   Boolean            @default(false)
+  allowShiftTradeDirect Boolean            @default(false)
   notifications         Notification[]
+  pushSubscriptions     PushSubscription[]
 }
 
 model User {
@@ -234,6 +235,9 @@ model PushSubscription {
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
 }
 
 model EmployeeDocument {
@@ -254,6 +258,7 @@ model Notification {
   message   String
   type      String
   isRead    Boolean  @default(false)
+  linkUrl   String?
   createdAt DateTime @default(now())
 
   userId Int

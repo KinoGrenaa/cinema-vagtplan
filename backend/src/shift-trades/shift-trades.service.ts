@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ShiftTradeStatus, ShiftTradeType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../push/push.service';
 
 @Injectable()
 export class ShiftTradesService {
@@ -10,6 +11,7 @@ export class ShiftTradesService {
     private prisma: PrismaService,
     private realtime: RealtimeGateway,
     private notifications: NotificationsService,
+    private push: PushService,
   ) {}
 
   findAll() {
@@ -113,6 +115,13 @@ export class ShiftTradesService {
           title: 'Ny direkte vagt',
           message: 'Du har fået tilbudt en vagt direkte',
           type: 'SHIFT_DIRECT',
+          linkUrl: '/my-shifts',
+        });
+
+        await this.push.sendToUser(trade.targetUserId, {
+          title: 'Ny direkte vagt',
+          body: 'Du har fået tilbudt en vagt direkte',
+          url: '/my-shifts',
         });
       }
     }
@@ -168,6 +177,7 @@ export class ShiftTradesService {
 
     this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
     this.realtime.notifyAll('shiftAccepted', updatedTrade);
+
     if (trade.offeredByUserId !== acceptedByUserId) {
       await this.notifications.create({
         userId: trade.offeredByUserId,
@@ -175,6 +185,13 @@ export class ShiftTradesService {
         title: 'Vagt accepteret',
         message: 'Din tilbudte vagt blev accepteret',
         type: 'SHIFT_ACCEPTED',
+        linkUrl: '/my-shifts',
+      });
+
+      await this.push.sendToUser(trade.offeredByUserId, {
+        title: 'Vagt accepteret',
+        body: 'Din tilbudte vagt blev accepteret',
+        url: '/my-shifts',
       });
     }
     this.realtime.notifyAll('shiftsUpdated', {
@@ -217,7 +234,9 @@ export class ShiftTradesService {
         rejectedByUser: true,
       },
     });
-
+    if (!trade) {
+      throw new NotFoundException('Vagtbytte blev ikke fundet');
+    }
     this.realtime.notifyAll('shiftTradesUpdated', trade);
     this.realtime.notifyAll('shiftRejected', trade);
     if (trade.offeredByUserId !== rejectedByUserId) {
@@ -227,6 +246,12 @@ export class ShiftTradesService {
         title: 'Vagt afvist',
         message: 'Din tilbudte vagt blev afvist',
         type: 'SHIFT_REJECTED',
+        linkUrl: '/my-shifts',
+      });
+      await this.push.sendToUser(trade.offeredByUserId, {
+        title: 'Vagt afvist',
+        body: 'Din tilbudte vagt blev afvist',
+        url: '/my-shifts',
       });
     }
 
