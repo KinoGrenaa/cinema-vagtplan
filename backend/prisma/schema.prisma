@@ -32,23 +32,29 @@ model Cinema {
 }
 
 model User {
-  id             Int            @id @default(autoincrement())
-  email          String         @unique
-  password       String
-  firstName      String
-  lastName       String
-  phone          String?
-  profileImage   String?
-  address        String?
-  birthDate      DateTime?
-  emergencyPhone String?
-  hireDate       DateTime?
-  skills         String?
-  notes          String?
-  theme          String         @default("light")
-  role           Role           @default(EMPLOYEE)
-  createdAt      DateTime       @default(now())
-  notifications  Notification[]
+  id                       Int            @id @default(autoincrement())
+  email                    String         @unique
+  password                 String
+  firstName                String
+  lastName                 String
+  phone                    String?
+  profileImage             String?
+  address                  String?
+  birthDate                DateTime?
+  emergencyPhone           String?
+  hireDate                 DateTime?
+  skills                   String?
+  notes                    String?
+  theme                    String         @default("light")
+  role                     Role           @default(EMPLOYEE)
+  createdAt                DateTime       @default(now())
+  canManageSchedule        Boolean        @default(false)
+  canManageUsers           Boolean        @default(false)
+  canManagePayroll         Boolean        @default(false)
+  canManageLeaveRequests   Boolean        @default(false)
+  canManageCinemaSettings  Boolean        @default(false)
+  canSendBroadcastMessages Boolean        @default(false)
+  notifications            Notification[]
 
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])

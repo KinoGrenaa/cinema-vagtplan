@@ -1,6 +1,17 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Req,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
+
 import { CinemasService } from './cinemas.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import { hasPermission } from '../auth/permissions';
 
 @Controller('cinemas')
 export class CinemasController {

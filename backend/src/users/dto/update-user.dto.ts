@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -54,4 +55,28 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageSchedule?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageUsers?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManagePayroll?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageLeaveRequests?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageCinemaSettings?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canSendBroadcastMessages?: boolean;
 }

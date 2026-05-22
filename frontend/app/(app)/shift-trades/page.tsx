@@ -40,13 +40,19 @@ type ShiftTrade = {
     };
   };
 };
-
+type CinemaSettings = {
+  allowShiftTradePool: boolean;
+  allowShiftTradeDirect: boolean;
+};
 export default function ShiftTradesPage() {
   const [trades, setTrades] = useState<ShiftTrade[]>([]);
-  const [currentUser, setCurrentUser] =
-    useState<CurrentUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   const [message, setMessage] = useState("");
+
+  const [cinemaSettings, setCinemaSettings] = useState<CinemaSettings | null>(
+    null,
+  );
 
   function getHeaders() {
     return {
@@ -57,14 +63,28 @@ export default function ShiftTradesPage() {
 
   const fetchTrades = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${API_URL}/shift-trades`,
-        {
-          headers: getHeaders(),
-        },
-      );
+      const response = await fetch(`${API_URL}/shift-trades`, {
+        headers: getHeaders(),
+      });
 
       const data = await response.json();
+
+      const savedUser = localStorage.getItem("user");
+
+      if (savedUser) {
+        const user = JSON.parse(savedUser);
+
+        const cinemaResponse = await fetch(
+          `${API_URL}/cinemas/${user.cinemaId}`,
+          {
+            headers: getHeaders(),
+          },
+        );
+
+        const cinemaData = await cinemaResponse.json();
+
+        setCinemaSettings(cinemaData);
+      }
 
       setTrades(Array.isArray(data) ? data : []);
     } catch {
@@ -89,32 +109,22 @@ export default function ShiftTradesPage() {
   async function acceptTrade(tradeId: number) {
     if (!currentUser) return;
 
-    if (
-      !window.confirm(
-        "Er du sikker på, at du vil acceptere denne vagt?",
-      )
-    ) {
+    if (!window.confirm("Er du sikker på, at du vil acceptere denne vagt?")) {
       return;
     }
 
-    const response = await fetch(
-      `${API_URL}/shift-trades/${tradeId}/accept`,
-      {
-        method: "PATCH",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          acceptedByUserId: currentUser.id,
-        }),
-      },
-    );
+    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/accept`, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        acceptedByUserId: currentUser.id,
+      }),
+    });
 
     const data = await response.json();
 
     if (!response.ok) {
-      setMessage(
-        data.message ||
-          "Kunne ikke acceptere vagten",
-      );
+      setMessage(data.message || "Kunne ikke acceptere vagten");
       return;
     }
 
@@ -123,28 +133,19 @@ export default function ShiftTradesPage() {
   }
 
   async function rejectTrade(tradeId: number) {
-    if (
-      !window.confirm(
-        "Er du sikker på, at du vil afvise denne vagt?",
-      )
-    ) {
+    if (!window.confirm("Er du sikker på, at du vil afvise denne vagt?")) {
       return;
     }
 
-    const response = await fetch(
-      `${API_URL}/shift-trades/${tradeId}/reject`,
-      {
-        method: "PATCH",
-        headers: getHeaders(),
-      },
-    );
+    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/reject`, {
+      method: "PATCH",
+      headers: getHeaders(),
+    });
 
     const data = await response.json();
 
     if (!response.ok) {
-      setMessage(
-        data.message || "Kunne ikke afvise vagten",
-      );
+      setMessage(data.message || "Kunne ikke afvise vagten");
       return;
     }
 
@@ -153,15 +154,33 @@ export default function ShiftTradesPage() {
   }
 
   const openTrades = useMemo(() => {
-    return trades.filter(
-      (trade) => trade.status === "OPEN",
-    );
-  }, [trades]);
+    return trades.filter((trade) => {
+      if (trade.status !== "OPEN") {
+        return false;
+      }
+
+      if (
+        trade.type === "POOL" &&
+        cinemaSettings &&
+        !cinemaSettings.allowShiftTradePool
+      ) {
+        return false;
+      }
+
+      if (
+        trade.type === "DIRECT" &&
+        cinemaSettings &&
+        !cinemaSettings.allowShiftTradeDirect
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [trades, cinemaSettings]);
 
   const historyTrades = useMemo(() => {
-    return trades.filter(
-      (trade) => trade.status !== "OPEN",
-    );
+    return trades.filter((trade) => trade.status !== "OPEN");
   }, [trades]);
 
   function getStatusBadge(status: string) {
@@ -181,14 +200,11 @@ export default function ShiftTradesPage() {
   }
 
   function getStatusText(status: string) {
-    if (status === "ACCEPTED")
-      return "Accepteret";
+    if (status === "ACCEPTED") return "Accepteret";
 
-    if (status === "REJECTED")
-      return "Afvist";
+    if (status === "REJECTED") return "Afvist";
 
-    if (status === "CANCELLED")
-      return "Annulleret";
+    if (status === "CANCELLED") return "Annulleret";
 
     return "Åben";
   }
@@ -196,13 +212,9 @@ export default function ShiftTradesPage() {
   function canAcceptTrade(trade: ShiftTrade) {
     if (!currentUser) return false;
 
-    if (trade.offeredByUserId === currentUser.id)
-      return false;
+    if (trade.offeredByUserId === currentUser.id) return false;
 
-    if (
-      trade.type === "DIRECT" &&
-      trade.targetUserId !== currentUser.id
-    ) {
+    if (trade.type === "DIRECT" && trade.targetUserId !== currentUser.id) {
       return false;
     }
 
@@ -213,9 +225,7 @@ export default function ShiftTradesPage() {
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-3xl font-bold">
-            Vagtbytter
-          </h1>
+          <h1 className="text-3xl font-bold">Vagtbytter</h1>
 
           <p className="mt-2 text-gray-500 dark:text-gray-400">
             Se åbne vagter og håndter bytteaftaler.
@@ -230,9 +240,7 @@ export default function ShiftTradesPage() {
 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">
-              Åbne vagter
-            </h2>
+            <h2 className="text-2xl font-bold">Åbne vagter</h2>
 
             <span className="rounded-full bg-yellow-500 px-3 py-1 text-sm font-semibold text-white">
               {openTrades.length}
@@ -247,8 +255,7 @@ export default function ShiftTradesPage() {
               <div
                 className="h-2 w-full"
                 style={{
-                  backgroundColor:
-                    trade.shift.workType.color,
+                  backgroundColor: trade.shift.workType.color,
                 }}
               />
 
@@ -261,16 +268,12 @@ export default function ShiftTradesPage() {
                           trade.status,
                         )}`}
                       >
-                        {getStatusText(
-                          trade.status,
-                        )}
+                        {getStatusText(trade.status)}
                       </span>
 
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold text-white ${
-                          trade.type === "POOL"
-                            ? "bg-green-600"
-                            : "bg-blue-600"
+                          trade.type === "POOL" ? "bg-green-600" : "bg-blue-600"
                         }`}
                       >
                         {trade.type === "POOL"
@@ -280,16 +283,11 @@ export default function ShiftTradesPage() {
                     </div>
 
                     <h3 className="text-2xl font-bold">
-                      {
-                        trade.shift.workType
-                          .name
-                      }
+                      {trade.shift.workType.name}
                     </h3>
 
                     <p className="mt-2 text-gray-600 dark:text-gray-400">
-                      {new Date(
-                        trade.shift.startTime,
-                      ).toLocaleDateString(
+                      {new Date(trade.shift.startTime).toLocaleDateString(
                         "da-DK",
                         {
                           weekday: "long",
@@ -300,9 +298,7 @@ export default function ShiftTradesPage() {
                     </p>
 
                     <p className="text-gray-600 dark:text-gray-400">
-                      {new Date(
-                        trade.shift.startTime,
-                      ).toLocaleTimeString(
+                      {new Date(trade.shift.startTime).toLocaleTimeString(
                         "da-DK",
                         {
                           hour: "2-digit",
@@ -310,9 +306,7 @@ export default function ShiftTradesPage() {
                         },
                       )}
                       {" - "}
-                      {new Date(
-                        trade.shift.endTime,
-                      ).toLocaleTimeString(
+                      {new Date(trade.shift.endTime).toLocaleTimeString(
                         "da-DK",
                         {
                           hour: "2-digit",
@@ -326,34 +320,20 @@ export default function ShiftTradesPage() {
                     <div>
                       Fra:{" "}
                       <strong>
-                        {
-                          trade.offeredByUser
-                            .firstName
-                        }{" "}
-                        {
-                          trade.offeredByUser
-                            .lastName
-                        }
+                        {trade.offeredByUser.firstName}{" "}
+                        {trade.offeredByUser.lastName}
                       </strong>
                     </div>
 
-                    {trade.type ===
-                      "DIRECT" &&
-                      trade.targetUser && (
-                        <div className="mt-1">
-                          Til:{" "}
-                          <strong>
-                            {
-                              trade.targetUser
-                                .firstName
-                            }{" "}
-                            {
-                              trade.targetUser
-                                .lastName
-                            }
-                          </strong>
-                        </div>
-                      )}
+                    {trade.type === "DIRECT" && trade.targetUser && (
+                      <div className="mt-1">
+                        Til:{" "}
+                        <strong>
+                          {trade.targetUser.firstName}{" "}
+                          {trade.targetUser.lastName}
+                        </strong>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -366,22 +346,14 @@ export default function ShiftTradesPage() {
                 {canAcceptTrade(trade) && (
                   <div className="flex flex-wrap gap-3">
                     <button
-                      onClick={() =>
-                        acceptTrade(
-                          trade.id,
-                        )
-                      }
+                      onClick={() => acceptTrade(trade.id)}
                       className="rounded-xl bg-green-600 px-5 py-3 font-medium text-white transition hover:bg-green-700"
                     >
                       Accepter vagt
                     </button>
 
                     <button
-                      onClick={() =>
-                        rejectTrade(
-                          trade.id,
-                        )
-                      }
+                      onClick={() => rejectTrade(trade.id)}
                       className="rounded-xl bg-red-600 px-5 py-3 font-medium text-white transition hover:bg-red-700"
                     >
                       Afvis vagt
@@ -401,9 +373,7 @@ export default function ShiftTradesPage() {
 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">
-              Historik
-            </h2>
+            <h2 className="text-2xl font-bold">Historik</h2>
 
             <span className="rounded-full bg-gray-600 px-3 py-1 text-sm font-semibold text-white">
               {historyTrades.length}
@@ -423,38 +393,24 @@ export default function ShiftTradesPage() {
                         trade.status,
                       )}`}
                     >
-                      {getStatusText(
-                        trade.status,
-                      )}
+                      {getStatusText(trade.status)}
                     </span>
                   </div>
 
                   <h3 className="text-xl font-bold">
-                    {
-                      trade.shift.workType
-                        .name
-                    }
+                    {trade.shift.workType.name}
                   </h3>
 
                   <p className="mt-1 text-gray-600 dark:text-gray-400">
-                    {new Date(
-                      trade.shift.startTime,
-                    ).toLocaleDateString(
+                    {new Date(trade.shift.startTime).toLocaleDateString(
                       "da-DK",
                     )}
                   </p>
                 </div>
 
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Fra{" "}
-                  {
-                    trade.offeredByUser
-                      .firstName
-                  }{" "}
-                  {
-                    trade.offeredByUser
-                      .lastName
-                  }
+                  Fra {trade.offeredByUser.firstName}{" "}
+                  {trade.offeredByUser.lastName}
                 </div>
               </div>
             </div>

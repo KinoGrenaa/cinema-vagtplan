@@ -71,6 +71,12 @@ export class UsersService {
       hireDate?: string | null;
       skills?: string;
       notes?: string;
+      canManageSchedule?: boolean;
+      canManageUsers?: boolean;
+      canManagePayroll?: boolean;
+      canManageLeaveRequests?: boolean;
+      canManageCinemaSettings?: boolean;
+      canSendBroadcastMessages?: boolean;
     },
   ) {
     const existingUser = await this.prisma.user.findFirst({
@@ -102,6 +108,12 @@ export class UsersService {
       hireDate?: Date | null;
       skills?: string;
       notes?: string;
+      canManageSchedule?: boolean;
+      canManageUsers?: boolean;
+      canManagePayroll?: boolean;
+      canManageLeaveRequests?: boolean;
+      canManageCinemaSettings?: boolean;
+      canSendBroadcastMessages?: boolean;
     } = {
       email: data.email,
       firstName: data.firstName,
@@ -115,6 +127,12 @@ export class UsersService {
       hireDate: data.hireDate ? new Date(data.hireDate) : null,
       skills: data.skills,
       notes: data.notes,
+      canManageSchedule: data.canManageSchedule,
+      canManageUsers: data.canManageUsers,
+      canManagePayroll: data.canManagePayroll,
+      canManageLeaveRequests: data.canManageLeaveRequests,
+      canManageCinemaSettings: data.canManageCinemaSettings,
+      canSendBroadcastMessages: data.canSendBroadcastMessages,
     };
 
     if (data.password && data.password.trim() !== '') {
@@ -126,6 +144,7 @@ export class UsersService {
       data: updateData,
     });
   }
+
   async updateOwnProfile(
     id: number,
     data: {
@@ -182,6 +201,7 @@ export class UsersService {
       data: updateData,
     });
   }
+
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: {
@@ -189,10 +209,11 @@ export class UsersService {
       },
     });
   }
+
   async updateTheme(id: number, theme: string) {
-  return this.prisma.user.update({
-    where: { id },
-    data: { theme },
-  });
+    return this.prisma.user.update({
+      where: { id },
+      data: { theme },
+    });
   }
 }

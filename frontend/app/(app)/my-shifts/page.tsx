@@ -48,6 +48,11 @@ type ShiftTrade = {
   };
 };
 
+type CinemaSettings = {
+  allowShiftTradePool: boolean;
+  allowShiftTradeDirect: boolean;
+};
+
 export default function MyShiftsPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -57,6 +62,9 @@ export default function MyShiftsPage() {
     return new Date().toISOString().slice(0, 7);
   });
   const [message, setMessage] = useState("");
+  const [cinemaSettings, setCinemaSettings] = useState<CinemaSettings | null>(
+    null,
+  );
 
   const getHeaders = useCallback(() => {
     return {
@@ -71,9 +79,12 @@ export default function MyShiftsPage() {
     });
 
     const data = await response.json();
-
     setShifts(
-      Array.isArray(data) ? data : Array.isArray(data.shifts) ? data.shifts : [],
+      Array.isArray(data)
+        ? data
+        : Array.isArray(data.shifts)
+          ? data.shifts
+          : [],
     );
   }, [getHeaders]);
 
@@ -95,9 +106,35 @@ export default function MyShiftsPage() {
     setShiftTrades(Array.isArray(data) ? data : []);
   }, [getHeaders]);
 
+  const fetchCinemaSettings = useCallback(async () => {
+    const savedUser = localStorage.getItem("user");
+
+    if (!savedUser) return;
+
+    const user = JSON.parse(savedUser);
+
+    const response = await fetch(`${API_URL}/cinemas/${user.cinemaId}`, {
+      headers: getHeaders(),
+    });
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+
+    setCinemaSettings({
+      allowShiftTradePool: Boolean(data.allowShiftTradePool),
+      allowShiftTradeDirect: Boolean(data.allowShiftTradeDirect),
+    });
+  }, [getHeaders]);
+
   const refreshData = useCallback(async () => {
-    await Promise.all([fetchShifts(), fetchUsers(), fetchShiftTrades()]);
-  }, [fetchShifts, fetchUsers, fetchShiftTrades]);
+    await Promise.all([
+      fetchShifts(),
+      fetchUsers(),
+      fetchShiftTrades(),
+      fetchCinemaSettings(),
+    ]);
+  }, [fetchShifts, fetchUsers, fetchShiftTrades, fetchCinemaSettings]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -152,38 +189,34 @@ export default function MyShiftsPage() {
   async function sendToPool(shiftId: number) {
     if (!currentUser) return;
 
-    if (!window.confirm("Er du sikker på, at du vil sende denne vagt i vagtpuljen?")) {
+    if (
+      !window.confirm(
+        "Er du sikker på, at du vil sende denne vagt i vagtpuljen?",
+      )
+    ) {
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/shift-trades`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          shiftId,
-          offeredByUserId: currentUser.id,
-          cinemaId: currentUser.cinemaId,
-          type: "POOL",
-        }),
-      });
+    const response = await fetch(`${API_URL}/shift-trades`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        shiftId,
+        offeredByUserId: currentUser.id,
+        cinemaId: currentUser.cinemaId,
+        type: "POOL",
+      }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok) {
-        const errorMessage = data.message || "Kunne ikke sende vagten til puljen";
-        setMessage(errorMessage);
-        showError(errorMessage);
-        return;
-      }
-
-      setMessage("Vagten er sendt til fælles pulje.");
-      showSuccess("Vagten er sendt til fælles pulje.");
-      await refreshData();
-    } catch {
-      setMessage("Der opstod en fejl ved afsendelse af vagten.");
-      showError("Der opstod en fejl ved afsendelse af vagten.");
+    if (!response.ok) {
+      setMessage(data.message || "Kunne ikke sende vagten til puljen");
+      return;
     }
+
+    setMessage("Vagten er sendt til fælles pulje.");
+    await refreshData();
   }
 
   async function sendDirect(shiftId: number, targetUserId: number) {
@@ -194,39 +227,35 @@ export default function MyShiftsPage() {
       ? `${targetUser.firstName} ${targetUser.lastName}`
       : "den valgte kollega";
 
-    if (!window.confirm(`Er du sikker på, at du vil sende denne vagt direkte til ${targetName}?`)) {
+    if (
+      !window.confirm(
+        `Er du sikker på, at du vil sende denne vagt direkte til ${targetName}?`,
+      )
+    ) {
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/shift-trades`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          shiftId,
-          offeredByUserId: currentUser.id,
-          cinemaId: currentUser.cinemaId,
-          type: "DIRECT",
-          targetUserId,
-        }),
-      });
+    const response = await fetch(`${API_URL}/shift-trades`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        shiftId,
+        offeredByUserId: currentUser.id,
+        cinemaId: currentUser.cinemaId,
+        type: "DIRECT",
+        targetUserId,
+      }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok) {
-        const errorMessage = data.message || "Kunne ikke sende vagten til kollegaen";
-        setMessage(errorMessage);
-        showError(errorMessage);
-        return;
-      }
-
-      setMessage(`Vagten er sendt direkte til ${targetName}.`);
-      showSuccess(`Vagten er sendt direkte til ${targetName}.`);
-      await refreshData();
-    } catch {
-      setMessage("Der opstod en fejl ved afsendelse af vagten.");
-      showError("Der opstod en fejl ved afsendelse af vagten.");
+    if (!response.ok) {
+      setMessage(data.message || "Kunne ikke sende vagten til kollegaen");
+      return;
     }
+
+    setMessage(`Vagten er sendt direkte til ${targetName}.`);
+    await refreshData();
   }
 
   async function acceptTrade(tradeId: number) {
@@ -236,94 +265,69 @@ export default function MyShiftsPage() {
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/shift-trades/${tradeId}/accept`, {
-        method: "PATCH",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          acceptedByUserId: currentUser.id,
-        }),
-      });
+    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/accept`, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        acceptedByUserId: currentUser.id,
+      }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok) {
-        const errorMessage = data.message || "Kunne ikke acceptere vagten";
-        setMessage(errorMessage);
-        showError(errorMessage);
-        return;
-      }
-
-      setMessage("Vagten er accepteret.");
-      showSuccess("Vagten er accepteret.");
-      await refreshData();
-    } catch {
-      setMessage("Der opstod en fejl ved accept af vagten.");
-      showError("Der opstod en fejl ved accept af vagten.");
+    if (!response.ok) {
+      setMessage(data.message || "Kunne ikke acceptere vagten");
+      return;
     }
+
+    setMessage("Vagten er accepteret.");
+    await refreshData();
   }
 
   async function rejectTrade(tradeId: number) {
-    if (!currentUser) return;
-
     if (!window.confirm("Er du sikker på, at du vil afvise denne vagt?")) {
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/shift-trades/${tradeId}/reject`, {
-        method: "PATCH",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          rejectedByUserId: currentUser.id,
-        }),
-      });
+    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/reject`, {
+      method: "PATCH",
+      headers: getHeaders(),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok) {
-        const errorMessage = data.message || "Kunne ikke afvise vagten";
-        setMessage(errorMessage);
-        showError(errorMessage);
-        return;
-      }
-
-      setMessage("Vagten er afvist.");
-      showSuccess("Vagten er afvist.");
-      await refreshData();
-    } catch {
-      setMessage("Der opstod en fejl ved afvisning af vagten.");
-      showError("Der opstod en fejl ved afvisning af vagten.");
-    }
-  }
-
-  async function cancelTrade(tradeId: number) {
-    if (!window.confirm("Er du sikker på, at du vil annullere udsendelsen af denne vagt?")) {
+    if (!response.ok) {
+      setMessage(data.message || "Kunne ikke afvise vagten");
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/shift-trades/${tradeId}/cancel`, {
-        method: "PATCH",
-        headers: getHeaders(),
-      });
+    setMessage("Vagten er afvist.");
+    await refreshData();
+  }
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMessage = data.message || "Kunne ikke annullere udsendelsen";
-        setMessage(errorMessage);
-        showError(errorMessage);
-        return;
-      }
-
-      setMessage("Udsendelsen er annulleret.");
-      showSuccess("Udsendelsen er annulleret.");
-      await refreshData();
-    } catch {
-      setMessage("Der opstod en fejl ved annullering.");
-      showError("Der opstod en fejl ved annullering.");
+  async function cancelTrade(tradeId: number) {
+    if (
+      !window.confirm(
+        "Er du sikker på, at du vil annullere udsendelsen af denne vagt?",
+      )
+    ) {
+      return;
     }
+
+    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/cancel`, {
+      method: "PATCH",
+      headers: getHeaders(),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMessage(data.message || "Kunne ikke annullere udsendelsen");
+      return;
+    }
+
+    setMessage("Udsendelsen er annulleret.");
+    await refreshData();
   }
 
   function changeMonth(direction: number) {
@@ -389,23 +393,32 @@ export default function MyShiftsPage() {
                 {trade.shift && (
                   <div className="mt-3 rounded-xl border border-blue-200 bg-white/70 p-3 text-sm dark:border-blue-900 dark:bg-gray-950/50">
                     <p>
-                      {new Date(trade.shift.startTime).toLocaleDateString("da-DK", {
-                        weekday: "long",
-                        day: "2-digit",
-                        month: "long",
-                      })}
+                      {new Date(trade.shift.startTime).toLocaleDateString(
+                        "da-DK",
+                        {
+                          weekday: "long",
+                          day: "2-digit",
+                          month: "long",
+                        },
+                      )}
                     </p>
 
                     <p>
-                      {new Date(trade.shift.startTime).toLocaleTimeString("da-DK", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}{" "}
+                      {new Date(trade.shift.startTime).toLocaleTimeString(
+                        "da-DK",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )}{" "}
                       -{" "}
-                      {new Date(trade.shift.endTime).toLocaleTimeString("da-DK", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {new Date(trade.shift.endTime).toLocaleTimeString(
+                        "da-DK",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        },
+                      )}
                     </p>
 
                     <p>{trade.shift.workType?.name}</p>
@@ -435,7 +448,9 @@ export default function MyShiftsPage() {
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <h2 className="text-xl font-bold">Samlet timer</h2>
           <p className="mt-2 text-4xl font-bold">{totalHours.toFixed(2)}</p>
-          <p className="text-gray-500 dark:text-gray-400">timer i valgt måned</p>
+          <p className="text-gray-500 dark:text-gray-400">
+            timer i valgt måned
+          </p>
         </section>
 
         <section className="space-y-4">
@@ -520,20 +535,32 @@ export default function MyShiftsPage() {
 
                   {canTrade && (
                     <div className="flex flex-wrap items-center gap-3">
-                      <button
-                        onClick={() => sendToPool(shift.id)}
-                        disabled={isSent}
-                        className={
-                          isSent
-                            ? "cursor-not-allowed rounded-xl bg-gray-300 px-4 py-2 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                            : "rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                        }
-                      >
-                        Send til fælles pulje
-                      </button>
+                      {cinemaSettings?.allowShiftTradePool ? (
+                        <button
+                          onClick={() => sendToPool(shift.id)}
+                          disabled={isSent}
+                          className={
+                            isSent
+                              ? "cursor-not-allowed rounded-xl bg-gray-300 px-4 py-2 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                              : "rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                          }
+                        >
+                          Send til fælles pulje
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          title="Vagtpulje er slået fra i biografindstillinger"
+                          className="cursor-not-allowed rounded-xl bg-gray-300 px-4 py-2 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                        >
+                          Vagtpulje deaktiveret
+                        </button>
+                      )}
 
                       <select
-                        disabled={isSent}
+                        disabled={
+                          isSent || !cinemaSettings?.allowShiftTradeDirect
+                        }
                         defaultValue=""
                         onChange={(e) => {
                           const targetUserId = Number(e.target.value);
@@ -544,12 +571,16 @@ export default function MyShiftsPage() {
                           }
                         }}
                         className={
-                          isSent
+                          isSent || !cinemaSettings?.allowShiftTradeDirect
                             ? "cursor-not-allowed rounded-xl border border-gray-300 bg-gray-200 p-2 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
                             : "rounded-xl border border-gray-300 bg-white p-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                         }
                       >
-                        <option value="">Send direkte til kollega</option>
+                        <option value="">
+                          {cinemaSettings?.allowShiftTradeDirect
+                            ? "Send direkte til kollega"
+                            : "Direkte vagtbytte deaktiveret"}
+                        </option>
 
                         {users
                           .filter((user) => user.id !== currentUser?.id)
@@ -560,14 +591,15 @@ export default function MyShiftsPage() {
                           ))}
                       </select>
 
-                      {openTrade && openTrade.offeredByUserId === currentUser?.id && (
-                        <button
-                          onClick={() => cancelTrade(openTrade.id)}
-                          className="rounded-xl bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
-                        >
-                          Annuller udsendelse
-                        </button>
-                      )}
+                      {openTrade &&
+                        openTrade.offeredByUserId === currentUser?.id && (
+                          <button
+                            onClick={() => cancelTrade(openTrade.id)}
+                            className="rounded-xl bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
+                          >
+                            Annuller udsendelse
+                          </button>
+                        )}
                     </div>
                   )}
                 </div>

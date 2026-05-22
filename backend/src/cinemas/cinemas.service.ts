@@ -24,9 +24,20 @@ export class CinemasService {
       allowShiftTradeDirect?: boolean;
     },
   ) {
+    const cinema = await this.prisma.cinema.findUnique({
+      where: { id },
+    });
+
+    if (!cinema) {
+      throw new NotFoundException('Biograf blev ikke fundet');
+    }
+
     return this.prisma.cinema.update({
       where: { id },
-      data,
+      data: {
+        allowShiftTradePool: data.allowShiftTradePool,
+        allowShiftTradeDirect: data.allowShiftTradeDirect,
+      },
     });
   }
 }

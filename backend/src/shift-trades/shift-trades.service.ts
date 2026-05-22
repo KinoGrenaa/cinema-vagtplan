@@ -80,6 +80,25 @@ export class ShiftTradesService {
     targetUserId?: number;
     message?: string;
   }) {
+    const cinema = await this.prisma.cinema.findUnique({
+      where: {
+        id: data.cinemaId,
+      },
+    });
+
+    if (!cinema) {
+      throw new NotFoundException('Biograf blev ikke fundet');
+    }
+
+    if (data.type === ShiftTradeType.POOL && !cinema.allowShiftTradePool) {
+      throw new NotFoundException('Vagtpulje er deaktiveret for denne biograf');
+    }
+
+    if (data.type === ShiftTradeType.DIRECT && !cinema.allowShiftTradeDirect) {
+      throw new NotFoundException(
+        'Direkte vagtbytte er deaktiveret for denne biograf',
+      );
+    }
     const trade = await this.prisma.shiftTrade.create({
       data: {
         shiftId: data.shiftId,

@@ -114,7 +114,7 @@ export default function AppMenu() {
       children: [
         {
           href: "/settings",
-          label: "Systemindstillinger",
+          label: "Brugerindstillinger",
         },
         {
           href: "/notifications",
@@ -144,7 +144,7 @@ export default function AppMenu() {
           label: "Løn / timer",
         },
         {
-          href: "/settings",
+          href: "/cinema-settings",
           label: "Biograf indstillinger",
         },
       ],

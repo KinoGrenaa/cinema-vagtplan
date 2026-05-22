@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-import { Moon, Sun } from "lucide-react";
+import { Bell, BellOff, CheckCircle2, Moon, Sun } from "lucide-react";
 
 import { useTheme } from "@/app/components/ThemeProvider";
+
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+} from "@/app/hooks/usePushNotifications";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -15,14 +20,16 @@ type CurrentUser = {
 };
 
 export default function SettingsPage() {
-  const [currentUser, setCurrentUser] =
-    useState<CurrentUser | null>(null);
-
-  const [allowPool, setAllowPool] = useState(false);
-
-  const [allowDirect, setAllowDirect] = useState(false);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   const [message, setMessage] = useState("");
+
+  const [permission, setPermission] =
+    useState<NotificationPermission>("default");
+
+  const [pushLoading, setPushLoading] = useState(false);
+
+  const [pushMessage, setPushMessage] = useState("");
 
   const { theme, setTheme } = useTheme();
 
@@ -37,66 +44,80 @@ export default function SettingsPage() {
       setCurrentUser(JSON.parse(savedUser));
     }
 
-    fetchSettings();
+    if ("Notification" in window) {
+      setPermission(Notification.permission);
+    }
   }, []);
 
-  async function fetchSettings() {
+  async function enableNotifications() {
     try {
-      const savedUser = localStorage.getItem("user");
+      setPushLoading(true);
+      setPushMessage("");
 
-      if (!savedUser) return;
+      const success = await enablePushNotifications();
 
-      const user: CurrentUser = JSON.parse(savedUser);
+      if ("Notification" in window) {
+        setPermission(Notification.permission);
+      }
 
-      const response = await fetch(
-        `${API_URL}/cinemas/${user.cinemaId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        },
+      setPushMessage(
+        success
+          ? "Push-notifikationer er aktiveret på denne browser."
+          : "Push-notifikationer kunne ikke aktiveres.",
       );
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-
-      setAllowPool(Boolean(data.allowShiftTradePool));
-
-      setAllowDirect(Boolean(data.allowShiftTradeDirect));
-    } catch {
-      setAllowPool(false);
-      setAllowDirect(false);
+    } finally {
+      setPushLoading(false);
     }
   }
 
-  async function saveSettings() {
-    if (!currentUser) return;
+  async function disableNotifications() {
+    try {
+      setPushLoading(true);
+      setPushMessage("");
 
-    setMessage("");
+      await disablePushNotifications();
 
-    const response = await fetch(
-      `${API_URL}/cinemas/${currentUser.cinemaId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({
-          allowShiftTradePool: allowPool,
-          allowShiftTradeDirect: allowDirect,
-        }),
-      },
-    );
+      if ("Notification" in window) {
+        setPermission(Notification.permission);
+      }
 
-    if (!response.ok) {
-      setMessage("Kunne ikke gemme indstillinger");
-      return;
+      setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
+    } finally {
+      setPushLoading(false);
+    }
+  }
+
+  function getPushStatus() {
+    if (permission === "granted") {
+      return {
+        title: "Aktiveret",
+        text: "Browseren har tilladelse til at modtage push-notifikationer.",
+        icon: <CheckCircle2 className="h-8 w-8 text-green-600" />,
+        className:
+          "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40",
+      };
     }
 
-    setMessage("Indstillinger gemt");
+    if (permission === "denied") {
+      return {
+        title: "Blokeret",
+        text: "Notifikationer er blokeret i browseren.",
+        icon: <BellOff className="h-8 w-8 text-red-600" />,
+        className:
+          "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40",
+      };
+    }
+
+    return {
+      title: "Ikke aktiveret",
+      text: "Du har endnu ikke aktiveret push-notifikationer.",
+      icon: <Bell className="h-8 w-8 text-yellow-600" />,
+      className:
+        "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40",
+    };
   }
+
+  const pushStatus = getPushStatus();
 
   if (!currentUser) {
     return (
@@ -106,25 +127,14 @@ export default function SettingsPage() {
     );
   }
 
-  if (
-    currentUser.role !== "ADMIN" &&
-    currentUser.role !== "MASTER"
-  ) {
-    return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        Ingen adgang
-      </main>
-    );
-  }
-
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-3xl font-bold">Indstillinger</h1>
+          <h1 className="text-3xl font-bold">Systemindstillinger</h1>
 
           <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Administrer systemets funktioner og udseende.
+            Administrer personlige indstillinger og appens udseende.
           </p>
         </div>
 
@@ -137,9 +147,7 @@ export default function SettingsPage() {
             )}
 
             <div>
-              <h2 className="text-2xl font-bold">
-                Tema
-              </h2>
+              <h2 className="text-2xl font-bold">Tema</h2>
 
               <p className="text-gray-500 dark:text-gray-400">
                 Vælg mellem lyst og mørkt tema.
@@ -152,8 +160,8 @@ export default function SettingsPage() {
               onClick={() => setTheme("light")}
               className={`rounded-xl px-5 py-3 font-medium transition ${
                 theme === "light"
-                  ? "bg-black text-white dark:bg-white dark:text-black"
-                  : "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                  ? "bg-yellow-500 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
               }`}
             >
               Lyst tema
@@ -163,8 +171,8 @@ export default function SettingsPage() {
               onClick={() => setTheme("dark")}
               className={`rounded-xl px-5 py-3 font-medium transition ${
                 theme === "dark"
-                  ? "bg-black text-white dark:bg-white dark:text-black"
-                  : "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                  ? "bg-gray-900 text-white dark:bg-white dark:text-black"
+                  : "bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
               }`}
             >
               Mørkt tema
@@ -173,69 +181,67 @@ export default function SettingsPage() {
         </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-2 text-2xl font-bold">
-            Vagtbytte
-          </h2>
+          <div className="mb-6 flex items-center gap-3">
+            <Bell className="h-6 w-6" />
 
-          <p className="mb-6 text-gray-500 dark:text-gray-400">
-            Styr hvilke vagtbytte-funktioner medarbejdere må bruge.
-          </p>
+            <div>
+              <h2 className="text-2xl font-bold">Push-notifikationer</h2>
 
-          <div className="space-y-4">
-            <label className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-4 transition dark:border-gray-800 dark:bg-gray-950">
-              <div>
-                <div className="font-medium">
-                  Fælles vagtpulje
-                </div>
-
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Medarbejdere kan sende vagter til fælles pulje.
-                </div>
-              </div>
-
-              <input
-                type="checkbox"
-                checked={allowPool}
-                onChange={(e) =>
-                  setAllowPool(e.target.checked)
-                }
-                className="h-5 w-5"
-              />
-            </label>
-
-            <label className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-4 transition dark:border-gray-800 dark:bg-gray-950">
-              <div>
-                <div className="font-medium">
-                  Direkte vagtbytte
-                </div>
-
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Medarbejdere kan sende vagter direkte til
-                  kollegaer.
-                </div>
-              </div>
-
-              <input
-                type="checkbox"
-                checked={allowDirect}
-                onChange={(e) =>
-                  setAllowDirect(e.target.checked)
-                }
-                className="h-5 w-5"
-              />
-            </label>
+              <p className="text-gray-500 dark:text-gray-400">
+                Modtag beskeder om vagter og systemopdateringer direkte på din
+                enhed.
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={saveSettings}
-            className="mt-6 rounded-xl bg-black px-6 py-3 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+          <div
+            className={`mb-6 rounded-2xl border p-4 ${pushStatus.className}`}
           >
-            Gem indstillinger
-          </button>
+            <div className="flex items-center gap-4">
+              {pushStatus.icon}
 
-          {message && (
-            <div className="mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
-              {message}
+              <div>
+                <div className="font-bold">{pushStatus.title}</div>
+
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  {pushStatus.text}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={enableNotifications}
+              disabled={pushLoading || permission === "granted"}
+              className="rounded-xl bg-green-600 px-5 py-3 font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {pushLoading
+                ? "Arbejder..."
+                : permission === "granted"
+                  ? "Push er aktiveret"
+                  : "Aktivér push-notifikationer"}
+            </button>
+
+            <button
+              onClick={disableNotifications}
+              disabled={pushLoading}
+              className="rounded-xl bg-gray-700 px-5 py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Deaktivér push-notifikationer
+            </button>
+          </div>
+
+          {pushMessage && (
+            <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
+              {pushMessage}
+            </div>
+          )}
+
+          {permission === "denied" && (
+            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+              Browseren har blokeret notifikationer. Du skal manuelt tillade dem
+              i browserens indstillinger.
             </div>
           )}
         </section>
