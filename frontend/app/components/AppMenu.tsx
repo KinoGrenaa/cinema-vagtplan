@@ -159,6 +159,10 @@ export default function AppMenu() {
           href: "/cinema-settings",
           label: "Biograf indstillinger",
         },
+        {
+          href: "/audit-log",
+          label: "Audit log",
+        },
       ],
     },
   ];

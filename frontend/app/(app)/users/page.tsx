@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import AdminGuard from "@/app/components/AdminGuard";
+import PermissionGuard from "@/app/components/PermissionGuard";
 
 type UserRole = "MASTER" | "ADMIN" | "EMPLOYEE";
 
@@ -12,6 +12,27 @@ type User = {
   email: string;
   phone?: string;
   role: UserRole;
+  canManageSchedule?: boolean;
+  canManageUsers?: boolean;
+  canManagePayroll?: boolean;
+  canManageLeaveRequests?: boolean;
+  canManageCinemaSettings?: boolean;
+  canSendBroadcastMessages?: boolean;
+};
+
+type UserFormData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password?: string;
+  phone?: string;
+  role: UserRole;
+  canManageSchedule?: boolean;
+  canManageUsers?: boolean;
+  canManagePayroll?: boolean;
+  canManageLeaveRequests?: boolean;
+  canManageCinemaSettings?: boolean;
+  canSendBroadcastMessages?: boolean;
 };
 
 export default function UsersPage() {
@@ -20,14 +41,22 @@ export default function UsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  const [newUser, setNewUser] = useState({
+  const emptyUser: UserFormData = {
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     phone: "",
-    role: "EMPLOYEE" as UserRole,
-  });
+    role: "EMPLOYEE",
+    canManageSchedule: false,
+    canManageUsers: false,
+    canManagePayroll: false,
+    canManageLeaveRequests: false,
+    canManageCinemaSettings: false,
+    canSendBroadcastMessages: false,
+  };
+
+  const [newUser, setNewUser] = useState<UserFormData>(emptyUser);
 
   useEffect(() => {
     fetchUsers();
@@ -43,12 +72,9 @@ export default function UsersPage() {
         },
       });
 
-      if (!response.ok) {
-        throw new Error("Kunne ikke hente brugere");
-      }
+      if (!response.ok) throw new Error("Kunne ikke hente brugere");
 
       const data = await response.json();
-
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
@@ -60,7 +86,6 @@ export default function UsersPage() {
   async function createUser() {
     try {
       const token = localStorage.getItem("token");
-
       const savedUser = localStorage.getItem("user");
 
       if (!savedUser) return;
@@ -79,24 +104,13 @@ export default function UsersPage() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Kunne ikke oprette bruger");
-      }
+      if (!response.ok) throw new Error("Kunne ikke oprette bruger");
 
       const createdUser = await response.json();
 
       setUsers((prev) => [...prev, createdUser]);
-
       setShowCreate(false);
-
-      setNewUser({
-        firstName: "",
-        lastName: "",
-        email: "",
-        password: "",
-        phone: "",
-        role: "EMPLOYEE",
-      });
+      setNewUser(emptyUser);
     } catch (error) {
       console.error(error);
       alert("Fejl ved oprettelse");
@@ -123,13 +137,17 @@ export default function UsersPage() {
             email: editingUser.email,
             phone: editingUser.phone,
             role: editingUser.role,
+            canManageSchedule: editingUser.canManageSchedule,
+            canManageUsers: editingUser.canManageUsers,
+            canManagePayroll: editingUser.canManagePayroll,
+            canManageLeaveRequests: editingUser.canManageLeaveRequests,
+            canManageCinemaSettings: editingUser.canManageCinemaSettings,
+            canSendBroadcastMessages: editingUser.canSendBroadcastMessages,
           }),
         },
       );
 
-      if (!response.ok) {
-        throw new Error("Kunne ikke opdatere bruger");
-      }
+      if (!response.ok) throw new Error("Kunne ikke opdatere bruger");
 
       const updatedUser = await response.json();
 
@@ -162,9 +180,7 @@ export default function UsersPage() {
         },
       );
 
-      if (!response.ok) {
-        throw new Error("Kunne ikke slette bruger");
-      }
+      if (!response.ok) throw new Error("Kunne ikke slette bruger");
 
       setUsers((prev) => prev.filter((user) => user.id !== id));
     } catch (error) {
@@ -175,16 +191,16 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <AdminGuard>
+      <PermissionGuard permission="canManageUsers">
         <div className="p-6">
           <p>Indlæser brugere...</p>
         </div>
-      </AdminGuard>
+      </PermissionGuard>
     );
   }
 
   return (
-    <AdminGuard>
+    <PermissionGuard permission="canManageUsers">
       <div className="p-6">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold">Brugere</h1>
@@ -238,7 +254,6 @@ export default function UsersPage() {
                   </td>
 
                   <td className="p-4">{user.email}</td>
-
                   <td className="p-4">{user.phone || "-"}</td>
 
                   <td className="p-4">
@@ -276,7 +291,7 @@ export default function UsersPage() {
           )}
         </div>
       </div>
-    </AdminGuard>
+    </PermissionGuard>
   );
 }
 
@@ -297,7 +312,7 @@ function UserModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-white p-6">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6">
         <h2 className="mb-4 text-2xl font-bold">{title}</h2>
 
         <div className="space-y-3">
@@ -305,12 +320,7 @@ function UserModal({
             type="text"
             placeholder="Fornavn"
             value={user.firstName}
-            onChange={(e) =>
-              setUser({
-                ...user,
-                firstName: e.target.value,
-              })
-            }
+            onChange={(e) => setUser({ ...user, firstName: e.target.value })}
             className="w-full rounded-lg border p-3"
           />
 
@@ -318,12 +328,7 @@ function UserModal({
             type="text"
             placeholder="Efternavn"
             value={user.lastName}
-            onChange={(e) =>
-              setUser({
-                ...user,
-                lastName: e.target.value,
-              })
-            }
+            onChange={(e) => setUser({ ...user, lastName: e.target.value })}
             className="w-full rounded-lg border p-3"
           />
 
@@ -331,12 +336,7 @@ function UserModal({
             type="email"
             placeholder="Email"
             value={user.email}
-            onChange={(e) =>
-              setUser({
-                ...user,
-                email: e.target.value,
-              })
-            }
+            onChange={(e) => setUser({ ...user, email: e.target.value })}
             className="w-full rounded-lg border p-3"
           />
 
@@ -344,13 +344,8 @@ function UserModal({
             <input
               type="password"
               placeholder="Password"
-              value={user.password}
-              onChange={(e) =>
-                setUser({
-                  ...user,
-                  password: e.target.value,
-                })
-              }
+              value={user.password || ""}
+              onChange={(e) => setUser({ ...user, password: e.target.value })}
               className="w-full rounded-lg border p-3"
             />
           )}
@@ -359,12 +354,7 @@ function UserModal({
             type="text"
             placeholder="Telefon"
             value={user.phone || ""}
-            onChange={(e) =>
-              setUser({
-                ...user,
-                phone: e.target.value,
-              })
-            }
+            onChange={(e) => setUser({ ...user, phone: e.target.value })}
             className="w-full rounded-lg border p-3"
           />
 
@@ -379,9 +369,60 @@ function UserModal({
             className="w-full rounded-lg border p-3"
           >
             <option value="EMPLOYEE">EMPLOYEE</option>
-
             <option value="ADMIN">ADMIN</option>
           </select>
+
+          <div className="space-y-3 rounded-xl border p-4">
+            <h3 className="font-semibold">Rettigheder</h3>
+
+            <PermissionCheckbox
+              label="Kan administrere vagtplan"
+              checked={!!user.canManageSchedule}
+              onChange={(checked) =>
+                setUser({ ...user, canManageSchedule: checked })
+              }
+            />
+
+            <PermissionCheckbox
+              label="Kan administrere brugere"
+              checked={!!user.canManageUsers}
+              onChange={(checked) =>
+                setUser({ ...user, canManageUsers: checked })
+              }
+            />
+
+            <PermissionCheckbox
+              label="Kan administrere løn"
+              checked={!!user.canManagePayroll}
+              onChange={(checked) =>
+                setUser({ ...user, canManagePayroll: checked })
+              }
+            />
+
+            <PermissionCheckbox
+              label="Kan administrere fravær"
+              checked={!!user.canManageLeaveRequests}
+              onChange={(checked) =>
+                setUser({ ...user, canManageLeaveRequests: checked })
+              }
+            />
+
+            <PermissionCheckbox
+              label="Kan administrere biografindstillinger"
+              checked={!!user.canManageCinemaSettings}
+              onChange={(checked) =>
+                setUser({ ...user, canManageCinemaSettings: checked })
+              }
+            />
+
+            <PermissionCheckbox
+              label="Kan sende broadcast beskeder"
+              checked={!!user.canSendBroadcastMessages}
+              onChange={(checked) =>
+                setUser({ ...user, canSendBroadcastMessages: checked })
+              }
+            />
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -401,5 +442,27 @@ function UserModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function PermissionCheckbox({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-3 text-sm">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+
+      <span>{label}</span>
+    </label>
   );
 }

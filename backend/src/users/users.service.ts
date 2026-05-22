@@ -1,12 +1,16 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 
 type UserRole = 'MASTER' | 'ADMIN' | 'EMPLOYEE';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLogsService: AuditLogsService,
+  ) {}
 
   async findAll() {
     return this.prisma.user.findMany({
@@ -42,7 +46,7 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    return this.prisma.user.create({
+    const createdUser = await this.prisma.user.create({
       data: {
         email: data.email,
         password: hashedPassword,
@@ -53,6 +57,16 @@ export class UsersService {
         cinemaId: data.cinemaId,
       },
     });
+
+    await this.auditLogsService.create({
+      action: 'CREATE_USER',
+      entityType: 'User',
+      entityId: createdUser.id,
+      description: `Oprettede bruger ${createdUser.firstName} ${createdUser.lastName}`,
+      cinemaId: createdUser.cinemaId,
+    });
+
+    return createdUser;
   }
 
   async updateUser(
@@ -139,13 +153,37 @@ export class UsersService {
       updateData.password = await bcrypt.hash(data.password, 10);
     }
 
-    return this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id },
       data: updateData,
     });
+
+    await this.auditLogsService.create({
+      action: 'UPDATE_USER',
+      entityType: 'User',
+      entityId: updatedUser.id,
+      description: `Opdaterede bruger ${updatedUser.firstName} ${updatedUser.lastName}`,
+      cinemaId: updatedUser.cinemaId,
+    });
+
+    return updatedUser;
   }
 
   async deleteUser(id: number) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!existingUser) return null;
+
+    await this.auditLogsService.create({
+      action: 'DELETE_USER',
+      entityType: 'User',
+      entityId: existingUser.id,
+      description: `Slettede bruger ${existingUser.firstName} ${existingUser.lastName}`,
+      cinemaId: existingUser.cinemaId,
+    });
+
     return this.prisma.user.delete({
       where: { id },
     });

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PushService } from '../push/push.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 
 type AuthUser = {
   sub: number;
@@ -19,8 +20,9 @@ type AuthUser = {
 export class ShiftsService {
   constructor(
     private prisma: PrismaService,
-    private realtime: RealtimeGateway,
+    private realtimeGateway: RealtimeGateway,
     private pushService: PushService,
+    private auditLogsService: AuditLogsService,
   ) {}
 
   private getCinemaFilter(user: AuthUser) {
@@ -191,7 +193,21 @@ export class ShiftsService {
       },
     });
 
-    this.realtime.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
+    await this.auditLogsService.create({
+      action: 'CREATE_SHIFT',
+      entityType: 'Shift',
+      entityId: shift.id,
+      description: `Oprettede vagt til ${shift.user.firstName} ${
+        shift.user.lastName
+      }: ${shift.workType.name} - ${this.formatShiftTime(
+        shift.startTime,
+        shift.endTime,
+      )}`,
+      userId: user.sub,
+      cinemaId: shift.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
 
     await this.pushService.sendToUser(data.userId, {
       title: 'Ny vagt',
@@ -217,6 +233,10 @@ export class ShiftsService {
       where: {
         id,
         ...this.getCinemaFilter(user),
+      },
+      include: {
+        user: true,
+        workType: true,
       },
     });
 
@@ -276,7 +296,21 @@ export class ShiftsService {
       },
     });
 
-    this.realtime.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
+    await this.auditLogsService.create({
+      action: 'UPDATE_SHIFT',
+      entityType: 'Shift',
+      entityId: shift.id,
+      description: `Opdaterede vagt fra ${oldShift.workType.name} - ${this.formatShiftTime(
+        oldShift.startTime,
+        oldShift.endTime,
+      )} til ${shift.user.firstName} ${shift.user.lastName}: ${
+        shift.workType.name
+      } - ${this.formatShiftTime(shift.startTime, shift.endTime)}`,
+      userId: user.sub,
+      cinemaId: shift.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
 
     await this.pushService.sendToUser(data.userId, {
       title: 'Vagt ændret',
@@ -303,6 +337,7 @@ export class ShiftsService {
       },
       include: {
         workType: true,
+        user: true,
       },
     });
 
@@ -316,7 +351,21 @@ export class ShiftsService {
       },
     });
 
-    this.realtime.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
+    await this.auditLogsService.create({
+      action: 'DELETE_SHIFT',
+      entityType: 'Shift',
+      entityId: shiftToDelete.id,
+      description: `Slettede vagt for ${shiftToDelete.user.firstName} ${
+        shiftToDelete.user.lastName
+      }: ${shiftToDelete.workType.name} - ${this.formatShiftTime(
+        shiftToDelete.startTime,
+        shiftToDelete.endTime,
+      )}`,
+      userId: user.sub,
+      cinemaId: shiftToDelete.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
 
     await this.pushService.sendToUser(shiftToDelete.userId, {
       title: 'Vagt slettet',

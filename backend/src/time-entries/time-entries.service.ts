@@ -1,17 +1,18 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 
 @Injectable()
 export class TimeEntriesService {
   constructor(
     private prisma: PrismaService,
-    private realtime: RealtimeGateway,
+    private realtimeGateway: RealtimeGateway,
+    private auditLogsService: AuditLogsService,
   ) {}
 
   private getCinemaFilter(user?: any) {
@@ -85,6 +86,9 @@ export class TimeEntriesService {
         id: data.shiftId,
         cinemaId: data.cinemaId,
       },
+      include: {
+        workType: true,
+      },
     });
 
     if (!shift) {
@@ -144,7 +148,20 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
+    await this.auditLogsService.create({
+      action: 'SUBMIT_MANUAL_TIME_ENTRY',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: `Indsendte manuel tidsregistrering for ${shift.workType.name}`,
+      userId: entry.userId,
+      cinemaId: entry.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      entry,
+    );
 
     return entry;
   }
@@ -170,7 +187,20 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
+    await this.auditLogsService.create({
+      action: 'CLOCK_IN',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: 'Medarbejder stemplede ind',
+      userId: entry.userId,
+      cinemaId: entry.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      entry,
+    );
 
     return entry;
   }
@@ -191,7 +221,20 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
+    await this.auditLogsService.create({
+      action: 'CLOCK_OUT',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: 'Medarbejder stemplede ud',
+      userId: entry.userId,
+      cinemaId: entry.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      entry,
+    );
 
     return entry;
   }
@@ -199,6 +242,9 @@ export class TimeEntriesService {
   async approveEntry(id: number) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
+      include: {
+        user: true,
+      },
     });
 
     if (!existingEntry) {
@@ -212,7 +258,19 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
+    await this.auditLogsService.create({
+      action: 'APPROVE_TIME_ENTRY',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: `Godkendte tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      cinemaId: entry.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      entry,
+    );
 
     return entry;
   }
@@ -220,6 +278,9 @@ export class TimeEntriesService {
   async unapproveEntry(id: number) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
+      include: {
+        user: true,
+      },
     });
 
     if (!existingEntry) {
@@ -233,7 +294,19 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
+    await this.auditLogsService.create({
+      action: 'UNAPPROVE_TIME_ENTRY',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: `Fjernede godkendelse af tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      cinemaId: entry.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      entry,
+    );
 
     return entry;
   }
@@ -241,6 +314,9 @@ export class TimeEntriesService {
   async rejectEntry(id: number, adminNote?: string) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
+      include: {
+        user: true,
+      },
     });
 
     if (!existingEntry) {
@@ -255,7 +331,19 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
+    await this.auditLogsService.create({
+      action: 'REJECT_TIME_ENTRY',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: `Afviste tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      cinemaId: entry.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      entry,
+    );
 
     return entry;
   }
@@ -270,6 +358,9 @@ export class TimeEntriesService {
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
+      include: {
+        user: true,
+      },
     });
 
     if (!existingEntry) {
@@ -292,7 +383,19 @@ export class TimeEntriesService {
       },
     });
 
-    this.realtime.notifyCinema(entry.cinemaId, 'timeEntriesUpdated', entry);
+    await this.auditLogsService.create({
+      action: 'UPDATE_TIME_ENTRY',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: `Rettede tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}. Note: ${data.adminNote}`,
+      cinemaId: entry.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      entry,
+    );
 
     return entry;
   }

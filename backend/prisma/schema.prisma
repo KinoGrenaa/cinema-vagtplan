@@ -29,6 +29,7 @@ model Cinema {
   allowShiftTradeDirect Boolean            @default(false)
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
+  auditLogs             AuditLog[]
 }
 
 model User {
@@ -55,6 +56,7 @@ model User {
   canManageCinemaSettings  Boolean        @default(false)
   canSendBroadcastMessages Boolean        @default(false)
   notifications            Notification[]
+  auditLogs                AuditLog[]
 
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
@@ -272,4 +274,20 @@ model Notification {
 
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
+}
+
+model AuditLog {
+  id          Int     @id @default(autoincrement())
+  action      String
+  entityType  String
+  entityId    Int?
+  description String?
+
+  createdAt DateTime @default(now())
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
+
+  cinemaId Int?
+  cinema   Cinema? @relation(fields: [cinemaId], references: [id])
 }
