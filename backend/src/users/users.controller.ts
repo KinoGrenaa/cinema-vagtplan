@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Param,
@@ -48,6 +49,13 @@ export class UsersController {
     return this.usersService.updateUser(Number(id), body);
   }
 
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
+  @Delete(':id')
+  deleteUser(@Param('id') id: string) {
+    return this.usersService.deleteUser(Number(id));
+  }
+
   @UseGuards(JwtGuard)
   @Patch(':id/profile')
   updateOwnProfile(
@@ -80,7 +88,6 @@ export class UsersController {
         destination: './uploads/profile-images',
         filename: (_, file, callback) => {
           const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
-
           callback(null, `${uniqueName}${extname(file.originalname)}`);
         },
       }),
@@ -120,11 +127,10 @@ export class UsersController {
       imageUrl: `${process.env.NEXT_PUBLIC_API_URL}/uploads/profile-images/${file.filename}`,
     };
   }
-    @Patch(":id/theme")
-    updateTheme(
-    @Param("id") id: string,
-    @Body() body: { theme: string },
-    ) {
+
+  @UseGuards(JwtGuard)
+  @Patch(':id/theme')
+  updateTheme(@Param('id') id: string, @Body() body: { theme: string }) {
     return this.usersService.updateTheme(Number(id), body.theme);
   }
 }

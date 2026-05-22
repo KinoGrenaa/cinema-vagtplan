@@ -136,8 +136,16 @@ export default function AppMenu() {
       adminOnly: true,
       children: [
         {
+          href: "/users",
+          label: "Brugere",
+        },
+        {
           href: "/employees",
           label: "Medarbejdere",
+        },
+        {
+          href: "/employee-documents",
+          label: "Medarbejderdokumenter",
         },
         {
           href: "/time-approval",

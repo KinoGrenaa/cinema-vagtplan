@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 type Cinema = {
   id: number;
@@ -11,11 +11,18 @@ type Cinema = {
   allowShiftTradeDirect: boolean;
 };
 
+type CurrentUser = {
+  id: number;
+  role: "MASTER" | "ADMIN" | "EMPLOYEE";
+  cinemaId: number;
+};
+
 export default function CinemaSettingsPage() {
   const [cinema, setCinema] = useState<Cinema | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [isAllowed, setIsAllowed] = useState(false);
 
   function getHeaders() {
     return {
@@ -26,21 +33,39 @@ export default function CinemaSettingsPage() {
 
   const fetchCinema = useCallback(async () => {
     try {
+      setLoading(true);
+      setMessage("");
+
       const savedUser = localStorage.getItem("user");
 
-      if (!savedUser) return;
+      if (!savedUser) {
+        setIsAllowed(false);
+        return;
+      }
 
-      const user = JSON.parse(savedUser);
+      const user: CurrentUser = JSON.parse(savedUser);
+
+      if (user.role !== "ADMIN" && user.role !== "MASTER") {
+        setIsAllowed(false);
+        return;
+      }
+
+      setIsAllowed(true);
 
       const response = await fetch(`${API_URL}/cinemas/${user.cinemaId}`, {
         headers: getHeaders(),
       });
+
+      if (!response.ok) {
+        throw new Error();
+      }
 
       const data = await response.json();
 
       setCinema(data);
     } catch {
       setMessage("Kunne ikke hente biografindstillinger.");
+      setCinema(null);
     } finally {
       setLoading(false);
     }
@@ -89,11 +114,21 @@ export default function CinemaSettingsPage() {
     );
   }
 
+  if (!isAllowed) {
+    return (
+      <main className="min-h-screen bg-gray-100 p-4 dark:bg-gray-950 md:p-8">
+        <div className="mx-auto max-w-4xl rounded-2xl border border-red-200 bg-white p-6 text-red-600 shadow-sm dark:border-red-900 dark:bg-gray-900">
+          Du har ikke adgang til biografindstillinger.
+        </div>
+      </main>
+    );
+  }
+
   if (!cinema) {
     return (
       <main className="min-h-screen bg-gray-100 p-4 dark:bg-gray-950 md:p-8">
-        <div className="mx-auto max-w-4xl text-red-600">
-          Kunne ikke hente biograf.
+        <div className="mx-auto max-w-4xl rounded-2xl border border-red-200 bg-white p-6 text-red-600 shadow-sm dark:border-red-900 dark:bg-gray-900">
+          {message || "Kunne ikke hente biograf."}
         </div>
       </main>
     );
@@ -107,6 +142,10 @@ export default function CinemaSettingsPage() {
 
           <p className="mt-2 text-gray-500 dark:text-gray-400">
             Administrer funktioner og regler for hele biografen.
+          </p>
+
+          <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            {cinema.name}
           </p>
         </div>
 

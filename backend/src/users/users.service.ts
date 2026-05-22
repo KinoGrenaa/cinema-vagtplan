@@ -145,6 +145,12 @@ export class UsersService {
     });
   }
 
+  async deleteUser(id: number) {
+    return this.prisma.user.delete({
+      where: { id },
+    });
+  }
+
   async updateOwnProfile(
     id: number,
     data: {
