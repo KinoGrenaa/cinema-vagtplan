@@ -6,13 +6,13 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 
 import { MessagesService } from './messages.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { CreateMessageDto } from './dto/create-message.dto';
-import { Req } from '@nestjs/common';
 
 @Controller('messages')
 export class MessagesController {

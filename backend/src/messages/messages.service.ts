@@ -26,7 +26,7 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyAll('newMessage', createdMessage);
+    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
 
     return createdMessage;
   }
@@ -103,7 +103,7 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyAll('messageRead', updatedMessage);
+    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
 
     return updatedMessage;
   }
@@ -160,7 +160,7 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyAll('messageArchived', updatedMessage);
+    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
 
     return updatedMessage;
   }
@@ -177,7 +177,7 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyAll('messagesUpdated', updatedMessage);
+    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
 
     return updatedMessage;
   }
@@ -207,7 +207,7 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyAll('messageRecalled', updatedMessage);
+    this.realtime.notifyCinema(message.cinemaId, 'messagesUpdated', message);
 
     return updatedMessage;
   }

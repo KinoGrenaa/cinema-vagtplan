@@ -75,6 +75,14 @@ export function useRealtimeBadges() {
       transports: ["websocket"],
     });
 
+    const savedUser = localStorage.getItem("user");
+
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+
+      socket.emit("joinCinema", user.cinemaId);
+    }
+
     socket.on("shiftTradesUpdated", refreshBadges);
     socket.on("newShiftTrade", refreshBadges);
     socket.on("newDirectShiftTrade", refreshBadges);

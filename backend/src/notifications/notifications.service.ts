@@ -21,7 +21,11 @@ export class NotificationsService {
       data,
     });
 
-    this.realtime.notifyAll('notificationsUpdated', notification);
+    this.realtime.notifyCinema(
+      notification.cinemaId,
+      'notificationsUpdated',
+      notification,
+    );
 
     return notification;
   }

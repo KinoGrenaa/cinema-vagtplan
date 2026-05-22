@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 type User = {
   id: number;
@@ -43,14 +43,9 @@ export default function SendMessagePage() {
 
         if (!savedUser) return;
 
-        const user: CurrentUser = JSON.parse(savedUser);
-
-        const response = await fetch(
-          `${API_URL}/users?cinemaId=${user.cinemaId}`,
-          {
-            headers: getHeaders(),
-          },
-        );
+        const response = await fetch(`${API_URL}/users`, {
+          headers: getHeaders(),
+        });
 
         if (!response.ok) {
           setUsers([]);
@@ -102,8 +97,6 @@ export default function SendMessagePage() {
         body: JSON.stringify({
           subject: subject.trim(),
           body: body.trim(),
-          cinemaId: user.cinemaId,
-          senderId: user.id,
           receiverId: isBroadcast ? null : Number(receiverId),
           isBroadcast,
         }),

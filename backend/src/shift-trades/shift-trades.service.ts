@@ -168,10 +168,10 @@ export class ShiftTradesService {
       },
     });
 
-    this.realtime.notifyAll('shiftTradesUpdated', trade);
+    this.realtime.notifyCinema(trade.cinemaId, 'shiftTradesUpdated', trade);
 
     if (trade.type === ShiftTradeType.DIRECT) {
-      this.realtime.notifyAll('newDirectShiftTrade', trade);
+      this.realtime.notifyCinema(trade.cinemaId, 'newDirectShiftTrade', trade);
 
       if (trade.targetUserId) {
         await this.notifications.create({
@@ -265,7 +265,11 @@ export class ShiftTradesService {
     });
 
     this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
-    this.realtime.notifyAll('shiftAccepted', updatedTrade);
+    this.realtime.notifyCinema(
+      updatedTrade.cinemaId,
+      'shiftAccepted',
+      updatedTrade,
+    );
 
     await this.notifications.create({
       userId: trade.offeredByUserId,
@@ -282,7 +286,7 @@ export class ShiftTradesService {
       url: '/my-shifts',
     });
 
-    this.realtime.notifyAll('shiftsUpdated', {
+    this.realtime.notifyCinema(trade.cinemaId, 'shiftsUpdated', {
       shiftId: trade.shiftId,
       acceptedByUserId,
     });
@@ -351,8 +355,8 @@ export class ShiftTradesService {
       throw new NotFoundException('Vagtbytte blev ikke fundet');
     }
 
-    this.realtime.notifyAll('shiftTradesUpdated', trade);
-    this.realtime.notifyAll('shiftRejected', trade);
+    this.realtime.notifyCinema(trade.cinemaId, 'shiftTradesUpdated', trade);
+    this.realtime.notifyCinema(trade.cinemaId, 'shiftRejected', trade);
 
     if (trade.offeredByUserId !== rejectedByUserId) {
       await this.notifications.create({
@@ -410,7 +414,7 @@ export class ShiftTradesService {
       },
     });
 
-    this.realtime.notifyAll('shiftTradesUpdated', trade);
+    this.realtime.notifyCinema(trade.cinemaId, 'shiftTradesUpdated', trade);
 
     return trade;
   }

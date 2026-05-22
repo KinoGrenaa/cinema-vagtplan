@@ -191,7 +191,7 @@ export class ShiftsService {
       },
     });
 
-    this.realtime.notifyAll('shiftsUpdated', shift);
+    this.realtime.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
 
     await this.pushService.sendToUser(data.userId, {
       title: 'Ny vagt',
@@ -276,7 +276,7 @@ export class ShiftsService {
       },
     });
 
-    this.realtime.notifyAll('shiftsUpdated', shift);
+    this.realtime.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
 
     await this.pushService.sendToUser(data.userId, {
       title: 'Vagt ændret',
@@ -316,7 +316,7 @@ export class ShiftsService {
       },
     });
 
-    this.realtime.notifyAll('shiftsUpdated', shift);
+    this.realtime.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
 
     await this.pushService.sendToUser(shiftToDelete.userId, {
       title: 'Vagt slettet',
