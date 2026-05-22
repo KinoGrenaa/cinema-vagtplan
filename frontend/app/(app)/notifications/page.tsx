@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -42,13 +43,22 @@ type ShiftTrade = {
   };
 };
 
+type SystemNotification = {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
 export default function NotificationsPage() {
-  const [currentUser, setCurrentUser] =
-    useState<CurrentUser | null>(null);
-
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
+  const [systemNotifications, setSystemNotifications] = useState<
+    SystemNotification[]
+  >([]);
 
   function getHeaders() {
     return {
@@ -60,47 +70,70 @@ export default function NotificationsPage() {
   const fetchData = useCallback(async () => {
     try {
       const savedUser = localStorage.getItem("user");
-
       if (!savedUser) return;
 
       const user: CurrentUser = JSON.parse(savedUser);
-
       setCurrentUser(user);
 
-      const [messagesResponse, tradesResponse] =
+      const [messagesResponse, tradesResponse, notificationsResponse] =
         await Promise.all([
           fetch(
             `${API_URL}/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
-            {
-              headers: getHeaders(),
-            },
+            { headers: getHeaders() },
           ),
-
           fetch(`${API_URL}/shift-trades`, {
+            headers: getHeaders(),
+          }),
+          fetch(`${API_URL}/notifications?userId=${user.id}`, {
             headers: getHeaders(),
           }),
         ]);
 
       const messagesData = await messagesResponse.json();
-
       const tradesData = await tradesResponse.json();
+      const notificationsData = await notificationsResponse.json();
 
       setMessages(Array.isArray(messagesData) ? messagesData : []);
-
       setShiftTrades(Array.isArray(tradesData) ? tradesData : []);
+      setSystemNotifications(
+        Array.isArray(notificationsData) ? notificationsData : [],
+      );
     } catch {
       setMessages([]);
       setShiftTrades([]);
+      setSystemNotifications([]);
     }
   }, []);
 
+  async function markNotificationAsRead(id: number) {
+    await fetch(`${API_URL}/notifications/${id}/read`, {
+      method: "PATCH",
+      headers: getHeaders(),
+    });
+
+    await fetchData();
+  }
+
+  async function markAllNotificationsAsRead() {
+    if (!currentUser) return;
+
+    await fetch(`${API_URL}/notifications/read-all?userId=${currentUser.id}`, {
+      method: "PATCH",
+      headers: getHeaders(),
+    });
+
+    await fetchData();
+  }
+
   useEffect(() => {
     fetchData();
-
-    const interval = setInterval(fetchData, 5000);
-
-    return () => clearInterval(interval);
   }, [fetchData]);
+
+  useRealtimeShifts({
+    onShiftsUpdated: fetchData,
+    onShiftTradesUpdated: fetchData,
+    enableToasts: false,
+  });
 
   const unreadMessages = useMemo(() => {
     if (!currentUser) return [];
@@ -116,6 +149,10 @@ export default function NotificationsPage() {
       return isUnread && isForMe;
     });
   }, [messages, currentUser]);
+
+  const unreadSystemNotifications = useMemo(() => {
+    return systemNotifications.filter((notification) => !notification.isRead);
+  }, [systemNotifications]);
 
   const directTrades = useMemo(() => {
     if (!currentUser) return [];
@@ -143,6 +180,7 @@ export default function NotificationsPage() {
 
   const totalCount =
     unreadMessages.length +
+    unreadSystemNotifications.length +
     directTrades.length +
     poolTrades.length;
 
@@ -150,18 +188,93 @@ export default function NotificationsPage() {
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-3xl font-bold">Notifikationer</h1>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Notifikationer</h1>
 
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Du har {totalCount} aktive notifikationer.
-          </p>
+              <p className="mt-2 text-gray-500 dark:text-gray-400">
+                Du har {totalCount} aktive notifikationer.
+              </p>
+            </div>
+
+            {unreadSystemNotifications.length > 0 && (
+              <button
+                onClick={markAllNotificationsAsRead}
+                className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+              >
+                Marker systemnotifikationer som læst
+              </button>
+            )}
+          </div>
         </div>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">
-              Ulæste beskeder
-            </h2>
+            <h2 className="text-xl font-bold">Systemnotifikationer</h2>
+
+            <span className="rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold text-white">
+              {unreadSystemNotifications.length}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {systemNotifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`rounded-2xl border p-4 transition ${
+                  notification.isRead
+                    ? "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
+                    : "border-purple-300 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/40"
+                }`}
+              >
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      {!notification.isRead && (
+                        <span className="rounded-full bg-purple-600 px-2 py-1 text-xs font-semibold text-white">
+                          Ny
+                        </span>
+                      )}
+
+                      <span className="rounded-full bg-gray-700 px-2 py-1 text-xs font-semibold text-white">
+                        {notification.type}
+                      </span>
+                    </div>
+
+                    <div className="font-bold">{notification.title}</div>
+
+                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                      {notification.message}
+                    </div>
+
+                    <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(notification.createdAt).toLocaleString("da-DK")}
+                    </div>
+                  </div>
+
+                  {!notification.isRead && (
+                    <button
+                      onClick={() => markNotificationAsRead(notification.id)}
+                      className="rounded-xl bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700"
+                    >
+                      Marker som læst
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {systemNotifications.length === 0 && (
+              <div className="text-gray-500 dark:text-gray-400">
+                Ingen systemnotifikationer endnu.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold">Ulæste beskeder</h2>
 
             <span className="rounded-full bg-blue-600 px-3 py-1 text-sm font-semibold text-white">
               {unreadMessages.length}
@@ -187,9 +300,7 @@ export default function NotificationsPage() {
                   )}
                 </div>
 
-                <div className="font-bold">
-                  {message.subject}
-                </div>
+                <div className="font-bold">{message.subject}</div>
 
                 <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   Fra:{" "}
@@ -214,9 +325,7 @@ export default function NotificationsPage() {
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">
-              Direkte vagtbytter
-            </h2>
+            <h2 className="text-xl font-bold">Direkte vagtbytter</h2>
 
             <span className="rounded-full bg-orange-600 px-3 py-1 text-sm font-semibold text-white">
               {directTrades.length}
@@ -248,9 +357,7 @@ export default function NotificationsPage() {
                 </div>
 
                 <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  {new Date(
-                    trade.shift.startTime,
-                  ).toLocaleString("da-DK")}
+                  {new Date(trade.shift.startTime).toLocaleString("da-DK")}
                 </div>
               </a>
             ))}
@@ -265,9 +372,7 @@ export default function NotificationsPage() {
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">
-              Vagtpulje
-            </h2>
+            <h2 className="text-xl font-bold">Vagtpulje</h2>
 
             <span className="rounded-full bg-green-600 px-3 py-1 text-sm font-semibold text-white">
               {poolTrades.length}
@@ -299,9 +404,7 @@ export default function NotificationsPage() {
                 </div>
 
                 <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  {new Date(
-                    trade.shift.startTime,
-                  ).toLocaleString("da-DK")}
+                  {new Date(trade.shift.startTime).toLocaleString("da-DK")}
                 </div>
               </a>
             ))}

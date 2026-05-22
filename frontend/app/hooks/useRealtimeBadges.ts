@@ -9,6 +9,7 @@ export function useRealtimeBadges() {
   const [poolCount, setPoolCount] = useState(0);
   const [directCount, setDirectCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const getUser = () => {
     const savedUser = localStorage.getItem("user");
@@ -25,27 +26,33 @@ export function useRealtimeBadges() {
     if (!user) return;
 
     try {
-      const [poolRes, directRes, messagesRes] = await Promise.all([
-        fetch(
-          `${API_URL}/shift-trades/pool-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
-          { headers: getHeaders() },
-        ),
-        fetch(
-          `${API_URL}/shift-trades/direct-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
-          { headers: getHeaders() },
-        ),
-        fetch(`${API_URL}/messages/unread-count?userId=${user.id}`, {
-          headers: getHeaders(),
-        }),
-      ]);
+      const [poolRes, directRes, messagesRes, notificationsRes] =
+        await Promise.all([
+          fetch(
+            `${API_URL}/shift-trades/pool-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
+            { headers: getHeaders() },
+          ),
+          fetch(
+            `${API_URL}/shift-trades/direct-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
+            { headers: getHeaders() },
+          ),
+          fetch(`${API_URL}/messages/unread-count?userId=${user.id}`, {
+            headers: getHeaders(),
+          }),
+          fetch(`${API_URL}/notifications/unread-count?userId=${user.id}`, {
+            headers: getHeaders(),
+          }),
+        ]);
 
       const poolData = await poolRes.json();
       const directData = await directRes.json();
       const messagesData = await messagesRes.json();
+      const notificationsData = await notificationsRes.json();
 
-      setPoolCount(poolData.count ?? 0);
-      setDirectCount(directData.count ?? 0);
-      setUnreadMessages(messagesData.count ?? 0);
+      setPoolCount(Number(poolData.count || 0));
+      setDirectCount(Number(directData.count || 0));
+      setUnreadMessages(Number(messagesData.count || 0));
+      setNotificationCount(Number(notificationsData.count || 0));
     } catch {
       // Undgå at crashe menuen hvis backend ikke svarer
     }
@@ -66,6 +73,7 @@ export function useRealtimeBadges() {
     socket.on("shiftsUpdated", refreshBadges);
     socket.on("messagesUpdated", refreshBadges);
     socket.on("newMessage", refreshBadges);
+    socket.on("notificationsUpdated", refreshBadges);
 
     return () => {
       socket.disconnect();
@@ -76,6 +84,7 @@ export function useRealtimeBadges() {
     poolCount,
     directCount,
     unreadMessages,
+    notificationCount,
     refreshBadges,
   };
 }

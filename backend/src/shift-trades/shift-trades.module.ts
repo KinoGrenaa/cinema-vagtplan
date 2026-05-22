@@ -4,9 +4,11 @@ import { ShiftTradesService } from './shift-trades.service';
 import { ShiftTradesController } from './shift-trades.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
+    NotificationsModule,
     PrismaModule,
     RealtimeModule,
     JwtModule.register({

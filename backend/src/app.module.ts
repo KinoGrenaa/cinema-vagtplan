@@ -15,6 +15,7 @@ import { PushModule } from './push/push.module';
 import { EmployeeDocumentsModule } from './employee-documents/employee-documents.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CinemasModule } from './cinemas/cinemas.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CinemasModule } from './cinemas/cinemas.module';
     PushModule,
     EmployeeDocumentsModule,
     CinemasModule,
+    NotificationsModule,
 
     ThrottlerModule.forRoot([
       {

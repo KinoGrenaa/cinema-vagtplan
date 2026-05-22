@@ -27,11 +27,12 @@ model Cinema {
   timeEntries           TimeEntry[]
   allowShiftTradePool   Boolean        @default(false)
   allowShiftTradeDirect Boolean        @default(false)
+  notifications         Notification[]
 }
 
 model User {
-  id             Int       @id @default(autoincrement())
-  email          String    @unique
+  id             Int            @id @default(autoincrement())
+  email          String         @unique
   password       String
   firstName      String
   lastName       String
@@ -43,24 +44,25 @@ model User {
   hireDate       DateTime?
   skills         String?
   notes          String?
-  theme          String    @default("light")
-  role           Role      @default(EMPLOYEE)
-  createdAt      DateTime  @default(now())
+  theme          String         @default("light")
+  role           Role           @default(EMPLOYEE)
+  createdAt      DateTime       @default(now())
+  notifications  Notification[]
 
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
 
-  shifts              Shift[]
-  leaveRequests       LeaveRequest[]
-  offeredTrades       ShiftTrade[]       @relation("OfferedTrades")
-  acceptedTrades      ShiftTrade[]       @relation("AcceptedTrades")
-  rejectedTrades      ShiftTrade[]       @relation("RejectedTrades")
-  targetedTrades      ShiftTrade[]       @relation("TargetedTrades")
-  sentMessages        Message[]          @relation("SentMessages")
-  receivedMessages    Message[]          @relation("ReceivedMessages")
-  timeEntries         TimeEntry[]
-  pushSubscriptions   PushSubscription[]
-  documents           EmployeeDocument[]
+  shifts            Shift[]
+  leaveRequests     LeaveRequest[]
+  offeredTrades     ShiftTrade[]       @relation("OfferedTrades")
+  acceptedTrades    ShiftTrade[]       @relation("AcceptedTrades")
+  rejectedTrades    ShiftTrade[]       @relation("RejectedTrades")
+  targetedTrades    ShiftTrade[]       @relation("TargetedTrades")
+  sentMessages      Message[]          @relation("SentMessages")
+  receivedMessages  Message[]          @relation("ReceivedMessages")
+  timeEntries       TimeEntry[]
+  pushSubscriptions PushSubscription[]
+  documents         EmployeeDocument[]
 }
 
 model WorkType {
@@ -244,4 +246,19 @@ model EmployeeDocument {
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
 }

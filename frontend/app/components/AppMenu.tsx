@@ -22,7 +22,8 @@ type NavItem = {
 
 export default function AppMenu() {
   const pathname = usePathname();
-  const { poolCount, directCount, unreadMessages } = useRealtimeBadges();
+  const { poolCount, directCount, unreadMessages, notificationCount } =
+    useRealtimeBadges();
 
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -118,6 +119,7 @@ export default function AppMenu() {
         {
           href: "/notifications",
           label: "Notifikationer",
+          badge: notificationCount,
         },
         {
           href: "/push",

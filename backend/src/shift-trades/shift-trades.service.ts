@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ShiftTradeStatus, ShiftTradeType } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ShiftTradesService {
   constructor(
     private prisma: PrismaService,
     private realtime: RealtimeGateway,
+    private notifications: NotificationsService,
   ) {}
 
   findAll() {
@@ -101,8 +103,18 @@ export class ShiftTradesService {
 
     this.realtime.notifyAll('shiftTradesUpdated', trade);
 
-    if (trade.type === ShiftTradeType.POOL) {
-      this.realtime.notifyAll('newShiftTrade', trade);
+    if (trade.type === ShiftTradeType.DIRECT) {
+      this.realtime.notifyAll('newDirectShiftTrade', trade);
+
+      if (trade.targetUserId) {
+        await this.notifications.create({
+          userId: trade.targetUserId,
+          cinemaId: trade.cinemaId,
+          title: 'Ny direkte vagt',
+          message: 'Du har fået tilbudt en vagt direkte',
+          type: 'SHIFT_DIRECT',
+        });
+      }
     }
 
     if (trade.type === ShiftTradeType.DIRECT) {
@@ -156,6 +168,15 @@ export class ShiftTradesService {
 
     this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
     this.realtime.notifyAll('shiftAccepted', updatedTrade);
+    if (trade.offeredByUserId !== acceptedByUserId) {
+      await this.notifications.create({
+        userId: trade.offeredByUserId,
+        cinemaId: trade.cinemaId,
+        title: 'Vagt accepteret',
+        message: 'Din tilbudte vagt blev accepteret',
+        type: 'SHIFT_ACCEPTED',
+      });
+    }
     this.realtime.notifyAll('shiftsUpdated', {
       shiftId: trade.shiftId,
       acceptedByUserId,
@@ -199,6 +220,15 @@ export class ShiftTradesService {
 
     this.realtime.notifyAll('shiftTradesUpdated', trade);
     this.realtime.notifyAll('shiftRejected', trade);
+    if (trade.offeredByUserId !== rejectedByUserId) {
+      await this.notifications.create({
+        userId: trade.offeredByUserId,
+        cinemaId: trade.cinemaId,
+        title: 'Vagt afvist',
+        message: 'Din tilbudte vagt blev afvist',
+        type: 'SHIFT_REJECTED',
+      });
+    }
 
     return trade;
   }
