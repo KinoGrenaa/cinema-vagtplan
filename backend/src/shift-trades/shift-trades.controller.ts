@@ -5,88 +5,63 @@ import {
   Param,
   Patch,
   Post,
-  Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
-import { ShiftTradesService } from './shift-trades.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import { ShiftTradesService } from './shift-trades.service';
 import { ShiftTradeType } from '@prisma/client';
 
 @Controller('shift-trades')
+@UseGuards(JwtGuard)
 export class ShiftTradesController {
   constructor(private shiftTradesService: ShiftTradesService) {}
 
-  @UseGuards(JwtGuard)
   @Get('pool-count')
-    getPoolCount(
-    @Query('cinemaId') cinemaId: string,
-    @Query('userId') userId: string,
-    )  {
+  getPoolCount(@Req() req: any) {
     return this.shiftTradesService.getPoolCount(
-    Number(cinemaId),
-    Number(userId),
-  );
-}
-
-  @Get('direct-count')
-  getDirectCount(
-    @Query('cinemaId') cinemaId: string,
-    @Query('userId') userId: string,
-    ) {
-    return this.shiftTradesService.getDirectCount(
-    Number(cinemaId),
-    Number(userId),
-  );
-}
-  @UseGuards(JwtGuard)
-  @Get()
-  getAllTrades() {
-    return this.shiftTradesService.findAll();
-  }
-
-  @UseGuards(JwtGuard)
-  @Post()
-  createTrade(
-    @Body()
-    body: {
-      shiftId: number;
-      offeredByUserId: number;
-      cinemaId: number;
-      type?: ShiftTradeType;
-      targetUserId?: number;
-      message?: string;
-    },
-  ) {
-    return this.shiftTradesService.create(body);
-  }
-
-  @UseGuards(JwtGuard)
-  @Patch(':id/accept')
-  acceptTrade(
-    @Param('id') id: string,
-    @Body() body: { acceptedByUserId: number },
-  ) {
-    return this.shiftTradesService.acceptTrade(
-      Number(id),
-      body.acceptedByUserId,
+      req.user.cinemaId,
+      req.user.sub,
     );
   }
 
-  @UseGuards(JwtGuard)
-@Patch(':id/reject')
-rejectTrade(
-  @Param('id') id: string,
-  @Body() body: { rejectedByUserId: number },
-) {
-  return this.shiftTradesService.rejectTrade(
-    Number(id),
-    body.rejectedByUserId,
-  );
-}
+  @Get('direct-count')
+  getDirectCount(@Req() req: any) {
+    return this.shiftTradesService.getDirectCount(
+      req.user.cinemaId,
+      req.user.sub,
+    );
+  }
 
-  @UseGuards(JwtGuard)
+  @Get()
+  findAll(@Req() req: any) {
+    return this.shiftTradesService.findAll(req.user);
+  }
+
+  @Post()
+  create(@Req() req: any, @Body() body: any) {
+    return this.shiftTradesService.create({
+      shiftId: Number(body.shiftId),
+      offeredByUserId: req.user.sub,
+      cinemaId: req.user.cinemaId,
+      type: body.type ?? ShiftTradeType.POOL,
+      targetUserId: body.targetUserId ? Number(body.targetUserId) : undefined,
+      message: body.message,
+    });
+  }
+
+  @Patch(':id/accept')
+  acceptTrade(@Req() req: any, @Param('id') id: string) {
+    return this.shiftTradesService.acceptTrade(Number(id), req.user.sub);
+  }
+
+  @Patch(':id/reject')
+  rejectTrade(@Req() req: any, @Param('id') id: string) {
+    return this.shiftTradesService.rejectTrade(Number(id), req.user.sub);
+  }
+
   @Patch(':id/cancel')
-  cancelTrade(@Param('id') id: string) {
-    return this.shiftTradesService.cancelTrade(Number(id));
+  cancelTrade(@Req() req: any, @Param('id') id: string) {
+    return this.shiftTradesService.cancelTrade(Number(id), req.user.sub);
   }
 }

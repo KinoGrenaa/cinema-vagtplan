@@ -308,7 +308,6 @@ export default function SchedulePage() {
       startTime: localDateTimeToISOString(startTime),
       endTime: localDateTimeToISOString(endTime),
       note,
-      cinemaId: parsedUser?.cinemaId || 1,
       userId,
       workTypeId,
     };

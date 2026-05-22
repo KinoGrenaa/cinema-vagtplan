@@ -19,8 +19,8 @@ export class MessagesService {
         senderId: data.senderId,
         receiverId: data.receiverId || null,
         isBroadcast: data.isBroadcast || false,
-        },
-        include: {
+      },
+      include: {
         sender: true,
         receiver: true,
       },
@@ -37,10 +37,7 @@ export class MessagesService {
         cinemaId,
         archivedAt: null,
         recalledAt: null,
-        OR: [
-          { receiverId: userId },
-          { isBroadcast: true },
-        ],
+        OR: [{ receiverId: userId }, { isBroadcast: true }],
       },
       include: {
         sender: true,
@@ -111,16 +108,26 @@ export class MessagesService {
     return updatedMessage;
   }
 
-  async getUnreadCount(userId: number, cinemaId: number) {
+  async getUnreadCount(userId: number, cinemaId?: number) {
     return this.prisma.message.count({
       where: {
-        cinemaId,
         isRead: false,
         archivedAt: null,
         recalledAt: null,
+
+        ...(cinemaId
+          ? {
+              cinemaId,
+            }
+          : {}),
+
         OR: [
-          { receiverId: userId },
-          { isBroadcast: true },
+          {
+            receiverId: userId,
+          },
+          {
+            isBroadcast: true,
+          },
         ],
       },
     });
@@ -136,8 +143,7 @@ export class MessagesService {
     }
 
     const allowed =
-      message.senderId === userId ||
-      message.receiverId === userId;
+      message.senderId === userId || message.receiverId === userId;
 
     if (!allowed) {
       throw new Error('Ingen adgang');
@@ -154,10 +160,7 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyAll(
-      'messageArchived',
-      updatedMessage,
-    );
+    this.realtime.notifyAll('messageArchived', updatedMessage);
 
     return updatedMessage;
   }
@@ -174,10 +177,7 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyAll(
-      'messagesUpdated',
-      updatedMessage,
-    );
+    this.realtime.notifyAll('messagesUpdated', updatedMessage);
 
     return updatedMessage;
   }
@@ -192,9 +192,7 @@ export class MessagesService {
     }
 
     if (message.senderId !== userId) {
-      throw new Error(
-        'Kun afsender kan tilbagekalde beskeden',
-      );
+      throw new Error('Kun afsender kan tilbagekalde beskeden');
     }
 
     const updatedMessage = await this.prisma.message.update({
@@ -209,10 +207,7 @@ export class MessagesService {
       },
     });
 
-    this.realtime.notifyAll(
-      'messageRecalled',
-      updatedMessage,
-    );
+    this.realtime.notifyAll('messageRecalled', updatedMessage);
 
     return updatedMessage;
   }

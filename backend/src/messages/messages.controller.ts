@@ -12,6 +12,7 @@ import {
 import { MessagesService } from './messages.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { Req } from '@nestjs/common';
 
 @Controller('messages')
 export class MessagesController {
@@ -19,14 +20,8 @@ export class MessagesController {
 
   @UseGuards(JwtGuard)
   @Get('unread-count')
-  getUnreadCount(
-    @Query('userId') userId: string,
-    @Query('cinemaId') cinemaId: string,
-  ) {
-    return this.messagesService.getUnreadCount(
-      Number(userId),
-      Number(cinemaId),
-    );
+  getUnreadCount(@Req() req: any) {
+    return this.messagesService.getUnreadCount(req.user.sub, req.user.cinemaId);
   }
 
   @UseGuards(JwtGuard)
@@ -42,16 +37,16 @@ export class MessagesController {
   }
 
   @UseGuards(JwtGuard)
-@Get('sent')
-getSentMessages(
-  @Query('userId') userId: string,
-  @Query('cinemaId') cinemaId: string,
-) {
-  return this.messagesService.findSentForUser(
-    Number(userId),
-    Number(cinemaId),
-  );
-}
+  @Get('sent')
+  getSentMessages(
+    @Query('userId') userId: string,
+    @Query('cinemaId') cinemaId: string,
+  ) {
+    return this.messagesService.findSentForUser(
+      Number(userId),
+      Number(cinemaId),
+    );
+  }
 
   @UseGuards(JwtGuard)
   @Get()
@@ -79,14 +74,8 @@ getSentMessages(
 
   @UseGuards(JwtGuard)
   @Patch(':id/archive')
-  archiveMessage(
-    @Param('id') id: string,
-    @Body() body: { userId: number },
-  ) {
-    return this.messagesService.archiveMessage(
-      Number(id),
-      body.userId,
-    );
+  archiveMessage(@Param('id') id: string, @Body() body: { userId: number }) {
+    return this.messagesService.archiveMessage(Number(id), body.userId);
   }
 
   @UseGuards(JwtGuard)
@@ -97,13 +86,7 @@ getSentMessages(
 
   @UseGuards(JwtGuard)
   @Patch(':id/recall')
-  recallMessage(
-    @Param('id') id: string,
-    @Body() body: { userId: number },
-  ) {
-    return this.messagesService.recallMessage(
-      Number(id),
-      body.userId,
-    );
+  recallMessage(@Param('id') id: string, @Body() body: { userId: number }) {
+    return this.messagesService.recallMessage(Number(id), body.userId);
   }
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export function useRealtimeBadges() {
   const [poolCount, setPoolCount] = useState(0);
@@ -11,50 +11,60 @@ export function useRealtimeBadges() {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
 
-  const getUser = () => {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  };
-
   const getHeaders = () => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${localStorage.getItem("token")}`,
   });
 
+  const getCount = (data: any) => {
+    if (typeof data === "number") return data;
+    return Number(data?.count || 0);
+  };
+
   const refreshBadges = useCallback(async () => {
-    const user = getUser();
-    if (!user) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
     try {
       const [poolRes, directRes, messagesRes, notificationsRes] =
         await Promise.all([
-          fetch(
-            `${API_URL}/shift-trades/pool-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
-            { headers: getHeaders() },
-          ),
-          fetch(
-            `${API_URL}/shift-trades/direct-count?cinemaId=${user.cinemaId}&userId=${user.id}`,
-            { headers: getHeaders() },
-          ),
-          fetch(`${API_URL}/messages/unread-count?userId=${user.id}`, {
+          fetch(`${API_URL}/shift-trades/pool-count`, {
             headers: getHeaders(),
           }),
-          fetch(`${API_URL}/notifications/unread-count?userId=${user.id}`, {
+          fetch(`${API_URL}/shift-trades/direct-count`, {
+            headers: getHeaders(),
+          }),
+          fetch(`${API_URL}/messages/unread-count`, {
+            headers: getHeaders(),
+          }),
+          fetch(`${API_URL}/notifications/unread-count`, {
             headers: getHeaders(),
           }),
         ]);
 
-      const poolData = await poolRes.json();
-      const directData = await directRes.json();
-      const messagesData = await messagesRes.json();
-      const notificationsData = await notificationsRes.json();
+      if (!poolRes.ok) setPoolCount(0);
+      if (!directRes.ok) setDirectCount(0);
+      if (!messagesRes.ok) setUnreadMessages(0);
+      if (!notificationsRes.ok) setNotificationCount(0);
 
-      setPoolCount(Number(poolData.count || 0));
-      setDirectCount(Number(directData.count || 0));
-      setUnreadMessages(Number(messagesData.count || 0));
-      setNotificationCount(Number(notificationsData.count || 0));
+      const poolData = poolRes.ok ? await poolRes.json() : { count: 0 };
+      const directData = directRes.ok ? await directRes.json() : { count: 0 };
+      const messagesData = messagesRes.ok
+        ? await messagesRes.json()
+        : { count: 0 };
+      const notificationsData = notificationsRes.ok
+        ? await notificationsRes.json()
+        : { count: 0 };
+
+      setPoolCount(getCount(poolData));
+      setDirectCount(getCount(directData));
+      setUnreadMessages(getCount(messagesData));
+      setNotificationCount(getCount(notificationsData));
     } catch {
-      // Undgå at crashe menuen hvis backend ikke svarer
+      setPoolCount(0);
+      setDirectCount(0);
+      setUnreadMessages(0);
+      setNotificationCount(0);
     }
   }, []);
 

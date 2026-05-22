@@ -7,12 +7,12 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
-
-import { RolesGuard } from '../auth/roles/roles.guard';
 import { ShiftsService } from './shifts.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import { RolesGuard } from '../auth/roles/roles.guard';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 
@@ -22,28 +22,29 @@ export class ShiftsController {
 
   @UseGuards(JwtGuard)
   @Get()
-  getAllShifts(@Query('date') date?: string) {
-    return this.shiftsService.findAll(date);
+  getAllShifts(@Req() req: any, @Query('date') date?: string) {
+    return this.shiftsService.findAll(req.user as any, date);
   }
 
   @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
   @Post()
-  createShift(@Body() body: CreateShiftDto) {
-    return this.shiftsService.createShift(body);
+  createShift(@Req() req: any, @Body() body: CreateShiftDto) {
+    return this.shiftsService.createShift(req.user as any, body);
   }
 
   @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
   @Patch(':id')
   updateShift(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: UpdateShiftDto,
   ) {
-    return this.shiftsService.updateShift(Number(id), body);
+    return this.shiftsService.updateShift(req.user as any, Number(id), body);
   }
 
   @UseGuards(JwtGuard, new RolesGuard(['ADMIN', 'MASTER']))
   @Delete(':id')
-  deleteShift(@Param('id') id: string) {
-    return this.shiftsService.deleteShift(Number(id));
+  deleteShift(@Req() req: any, @Param('id') id: string) {
+    return this.shiftsService.deleteShift(req.user as any, Number(id));
   }
 }

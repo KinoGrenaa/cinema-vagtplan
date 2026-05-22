@@ -21,7 +21,18 @@ type ShiftFormProps = {
 const inputClass =
   "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
 
-const labelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
+const labelClass =
+  "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
+
+function openDateTimePicker(id: string) {
+  const input = document.getElementById(id) as HTMLInputElement | null;
+
+  if (input?.showPicker) {
+    input.showPicker();
+  } else {
+    input?.focus();
+  }
+}
 
 export default function ShiftForm({
   users,
@@ -53,25 +64,52 @@ export default function ShiftForm({
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <form
+        onSubmit={onSubmit}
+        className="grid grid-cols-1 gap-4 md:grid-cols-3"
+      >
         <div>
           <label className={labelClass}>Start</label>
-          <input
-            type="datetime-local"
-            className={inputClass}
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-          />
+          <div className="flex gap-2">
+            <input
+              id="shiftStartTime"
+              type="datetime-local"
+              className={inputClass}
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+
+            <button
+              type="button"
+              onClick={() => openDateTimePicker("shiftStartTime")}
+              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+              title="Vælg starttidspunkt"
+            >
+              📅
+            </button>
+          </div>
         </div>
 
         <div>
           <label className={labelClass}>Slut</label>
-          <input
-            type="datetime-local"
-            className={inputClass}
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-          />
+          <div className="flex gap-2">
+            <input
+              id="shiftEndTime"
+              type="datetime-local"
+              className={inputClass}
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
+
+            <button
+              type="button"
+              onClick={() => openDateTimePicker("shiftEndTime")}
+              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+              title="Vælg sluttidspunkt"
+            >
+              📅
+            </button>
+          </div>
         </div>
 
         <div>
@@ -127,6 +165,7 @@ export default function ShiftForm({
       {selectedShift && (
         <div className="flex flex-wrap gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
           <button
+            type="button"
             onClick={onDelete}
             className="rounded-xl bg-red-600 px-5 py-2 text-white transition hover:bg-red-700"
           >
@@ -134,6 +173,7 @@ export default function ShiftForm({
           </button>
 
           <button
+            type="button"
             onClick={onCancel}
             className="rounded-xl bg-gray-200 px-5 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
           >
@@ -141,6 +181,7 @@ export default function ShiftForm({
           </button>
 
           <button
+            type="button"
             onClick={onOfferTrade}
             className="rounded-xl bg-blue-600 px-5 py-2 text-white transition hover:bg-blue-700"
           >

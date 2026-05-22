@@ -1,8 +1,19 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PushService } from '../push/push.service';
+
+type AuthUser = {
+  sub: number;
+  email: string;
+  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+  cinemaId: number;
+};
 
 @Injectable()
 export class ShiftsService {
@@ -12,8 +23,15 @@ export class ShiftsService {
     private pushService: PushService,
   ) {}
 
-  async findAll(date?: string) {
-    const where: any = {};
+  private getCinemaFilter(user: AuthUser) {
+    if (user.role === 'MASTER') return {};
+    return { cinemaId: user.cinemaId };
+  }
+
+  async findAll(user: AuthUser, date?: string) {
+    const where: any = {
+      ...this.getCinemaFilter(user),
+    };
 
     if (date) {
       const start = new Date(`${date}T00:00:00.000Z`);
@@ -55,6 +73,7 @@ export class ShiftsService {
     startTime: Date;
     endTime: Date;
     userId: number;
+    cinemaId: number;
     ignoreShiftId?: number;
   }) {
     if (data.endTime <= data.startTime) {
@@ -65,6 +84,7 @@ export class ShiftsService {
 
     const overlappingShift = await this.prisma.shift.findFirst({
       where: {
+        cinemaId: data.cinemaId,
         userId: data.userId,
         id: data.ignoreShiftId
           ? {
@@ -88,6 +108,7 @@ export class ShiftsService {
 
     const leaveRequest = await this.prisma.leaveRequest.findFirst({
       where: {
+        cinemaId: data.cinemaId,
         userId: data.userId,
         status: 'APPROVED',
         startDate: {
@@ -106,14 +127,45 @@ export class ShiftsService {
     }
   }
 
-  async createShift(data: {
-    startTime: string;
-    endTime: string;
-    note?: string;
-    cinemaId: number;
-    userId: number;
-    workTypeId: number;
-  }) {
+  async createShift(
+    user: AuthUser,
+    data: {
+      startTime: string;
+      endTime: string;
+      note?: string;
+      cinemaId?: number;
+      userId: number;
+      workTypeId: number;
+    },
+  ) {
+    const cinemaId = user.role === 'MASTER' ? data.cinemaId : user.cinemaId;
+
+    if (!cinemaId) {
+      throw new BadRequestException('CinemaId mangler');
+    }
+
+    const shiftUser = await this.prisma.user.findFirst({
+      where: {
+        id: data.userId,
+        cinemaId,
+      },
+    });
+
+    if (!shiftUser) {
+      throw new ForbiddenException('Medarbejderen findes ikke i denne biograf');
+    }
+
+    const workType = await this.prisma.workType.findFirst({
+      where: {
+        id: data.workTypeId,
+        cinemaId,
+      },
+    });
+
+    if (!workType) {
+      throw new ForbiddenException('Vagttypen findes ikke i denne biograf');
+    }
+
     const startTime = new Date(data.startTime);
     const endTime = new Date(data.endTime);
 
@@ -121,6 +173,7 @@ export class ShiftsService {
       startTime,
       endTime,
       userId: data.userId,
+      cinemaId,
     });
 
     const shift = await this.prisma.shift.create({
@@ -128,7 +181,7 @@ export class ShiftsService {
         startTime,
         endTime,
         note: data.note,
-        cinemaId: data.cinemaId,
+        cinemaId,
         userId: data.userId,
         workTypeId: data.workTypeId,
       },
@@ -150,6 +203,7 @@ export class ShiftsService {
   }
 
   async updateShift(
+    user: AuthUser,
     id: number,
     data: {
       startTime: string;
@@ -159,9 +213,40 @@ export class ShiftsService {
       workTypeId: number;
     },
   ) {
-    const oldShift = await this.prisma.shift.findUnique({
-      where: { id },
+    const oldShift = await this.prisma.shift.findFirst({
+      where: {
+        id,
+        ...this.getCinemaFilter(user),
+      },
     });
+
+    if (!oldShift) {
+      throw new NotFoundException('Vagten blev ikke fundet');
+    }
+
+    const cinemaId = oldShift.cinemaId;
+
+    const shiftUser = await this.prisma.user.findFirst({
+      where: {
+        id: data.userId,
+        cinemaId,
+      },
+    });
+
+    if (!shiftUser) {
+      throw new ForbiddenException('Medarbejderen findes ikke i denne biograf');
+    }
+
+    const workType = await this.prisma.workType.findFirst({
+      where: {
+        id: data.workTypeId,
+        cinemaId,
+      },
+    });
+
+    if (!workType) {
+      throw new ForbiddenException('Vagttypen findes ikke i denne biograf');
+    }
 
     const startTime = new Date(data.startTime);
     const endTime = new Date(data.endTime);
@@ -170,11 +255,14 @@ export class ShiftsService {
       startTime,
       endTime,
       userId: data.userId,
+      cinemaId,
       ignoreShiftId: id,
     });
 
     const shift = await this.prisma.shift.update({
-      where: { id },
+      where: {
+        id,
+      },
       data: {
         startTime,
         endTime,
@@ -196,7 +284,7 @@ export class ShiftsService {
       url: '/my-shifts',
     });
 
-    if (oldShift && oldShift.userId !== data.userId) {
+    if (oldShift.userId !== data.userId) {
       await this.pushService.sendToUser(oldShift.userId, {
         title: 'Vagt fjernet',
         body: 'En vagt er blevet flyttet til en anden medarbejder.',
@@ -207,30 +295,37 @@ export class ShiftsService {
     return shift;
   }
 
-  async deleteShift(id: number) {
-    const shiftToDelete = await this.prisma.shift.findUnique({
-      where: { id },
+  async deleteShift(user: AuthUser, id: number) {
+    const shiftToDelete = await this.prisma.shift.findFirst({
+      where: {
+        id,
+        ...this.getCinemaFilter(user),
+      },
       include: {
         workType: true,
       },
     });
 
+    if (!shiftToDelete) {
+      throw new NotFoundException('Vagten blev ikke fundet');
+    }
+
     const shift = await this.prisma.shift.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     this.realtime.notifyAll('shiftsUpdated', shift);
 
-    if (shiftToDelete) {
-      await this.pushService.sendToUser(shiftToDelete.userId, {
-        title: 'Vagt slettet',
-        body: `${shiftToDelete.workType.name} - ${this.formatShiftTime(
-          shiftToDelete.startTime,
-          shiftToDelete.endTime,
-        )}`,
-        url: '/my-shifts',
-      });
-    }
+    await this.pushService.sendToUser(shiftToDelete.userId, {
+      title: 'Vagt slettet',
+      body: `${shiftToDelete.workType.name} - ${this.formatShiftTime(
+        shiftToDelete.startTime,
+        shiftToDelete.endTime,
+      )}`,
+      url: '/my-shifts',
+    });
 
     return shift;
   }
