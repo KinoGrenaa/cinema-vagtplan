@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+import { showSuccess, showError } from "@/app/lib/toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -52,7 +53,9 @@ export default function MyShiftsPage() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState("2026-05");
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+  return new Date().toISOString().slice(0, 7);
+  });
   const [message, setMessage] = useState("");
 
   const getHeaders = useCallback(() => {
@@ -63,13 +66,17 @@ export default function MyShiftsPage() {
   }, []);
 
   const fetchShifts = useCallback(async () => {
-    const response = await fetch(`${API_URL}/shifts`, {
-      headers: getHeaders(),
-    });
+  const response = await fetch(`${API_URL}/shifts`, {
+    headers: getHeaders(),
+  });
 
-    const data = await response.json();
-    setShifts(Array.isArray(data) ? data : Array.isArray(data.shifts) ? data.shifts : []);
-  }, [getHeaders]);
+  const data = await response.json();
+  console.log("SHIFTS DATA:", data);
+
+  setShifts(
+    Array.isArray(data) ? data : Array.isArray(data.shifts) ? data.shifts : [],
+  );
+}, [getHeaders]);
 
   const fetchUsers = useCallback(async () => {
     const response = await fetch(`${API_URL}/users`, {
@@ -150,26 +157,34 @@ export default function MyShiftsPage() {
       return;
     }
 
-    const response = await fetch(`${API_URL}/shift-trades`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        shiftId,
-        offeredByUserId: currentUser.id,
-        cinemaId: currentUser.cinemaId,
-        type: "POOL",
-      }),
-    });
+    try {
+      const response = await fetch(`${API_URL}/shift-trades`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          shiftId,
+          offeredByUserId: currentUser.id,
+          cinemaId: currentUser.cinemaId,
+          type: "POOL",
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke sende vagten til puljen");
-      return;
+      if (!response.ok) {
+        const errorMessage = data.message || "Kunne ikke sende vagten til puljen";
+        setMessage(errorMessage);
+        showError(errorMessage);
+        return;
+      }
+
+      setMessage("Vagten er sendt til fælles pulje.");
+      showSuccess("Vagten er sendt til fælles pulje.");
+      await refreshData();
+    } catch {
+      setMessage("Der opstod en fejl ved afsendelse af vagten.");
+      showError("Der opstod en fejl ved afsendelse af vagten.");
     }
-
-    setMessage("Vagten er sendt til fælles pulje.");
-    await refreshData();
   }
 
   async function sendDirect(shiftId: number, targetUserId: number) {
@@ -184,27 +199,35 @@ export default function MyShiftsPage() {
       return;
     }
 
-    const response = await fetch(`${API_URL}/shift-trades`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        shiftId,
-        offeredByUserId: currentUser.id,
-        cinemaId: currentUser.cinemaId,
-        type: "DIRECT",
-        targetUserId,
-      }),
-    });
+    try {
+      const response = await fetch(`${API_URL}/shift-trades`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          shiftId,
+          offeredByUserId: currentUser.id,
+          cinemaId: currentUser.cinemaId,
+          type: "DIRECT",
+          targetUserId,
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke sende vagten til kollegaen");
-      return;
+      if (!response.ok) {
+        const errorMessage = data.message || "Kunne ikke sende vagten til kollegaen";
+        setMessage(errorMessage);
+        showError(errorMessage);
+        return;
+      }
+
+      setMessage(`Vagten er sendt direkte til ${targetName}.`);
+      showSuccess(`Vagten er sendt direkte til ${targetName}.`);
+      await refreshData();
+    } catch {
+      setMessage("Der opstod en fejl ved afsendelse af vagten.");
+      showError("Der opstod en fejl ved afsendelse af vagten.");
     }
-
-    setMessage(`Vagten er sendt direkte til ${targetName}.`);
-    await refreshData();
   }
 
   async function acceptTrade(tradeId: number) {
@@ -214,23 +237,31 @@ export default function MyShiftsPage() {
       return;
     }
 
-    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/accept`, {
-      method: "PATCH",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        acceptedByUserId: currentUser.id,
-      }),
-    });
+    try {
+      const response = await fetch(`${API_URL}/shift-trades/${tradeId}/accept`, {
+        method: "PATCH",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          acceptedByUserId: currentUser.id,
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke acceptere vagten");
-      return;
+      if (!response.ok) {
+        const errorMessage = data.message || "Kunne ikke acceptere vagten";
+        setMessage(errorMessage);
+        showError(errorMessage);
+        return;
+      }
+
+      setMessage("Vagten er accepteret.");
+      showSuccess("Vagten er accepteret.");
+      await refreshData();
+    } catch {
+      setMessage("Der opstod en fejl ved accept af vagten.");
+      showError("Der opstod en fejl ved accept af vagten.");
     }
-
-    setMessage("Vagten er accepteret.");
-    await refreshData();
   }
 
   async function rejectTrade(tradeId: number) {
@@ -238,20 +269,28 @@ export default function MyShiftsPage() {
       return;
     }
 
-    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/reject`, {
-      method: "PATCH",
-      headers: getHeaders(),
-    });
+    try {
+      const response = await fetch(`${API_URL}/shift-trades/${tradeId}/reject`, {
+        method: "PATCH",
+        headers: getHeaders(),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke afvise vagten");
-      return;
+      if (!response.ok) {
+        const errorMessage = data.message || "Kunne ikke afvise vagten";
+        setMessage(errorMessage);
+        showError(errorMessage);
+        return;
+      }
+
+      setMessage("Vagten er afvist.");
+      showSuccess("Vagten er afvist.");
+      await refreshData();
+    } catch {
+      setMessage("Der opstod en fejl ved afvisning af vagten.");
+      showError("Der opstod en fejl ved afvisning af vagten.");
     }
-
-    setMessage("Vagten er afvist.");
-    await refreshData();
   }
 
   async function cancelTrade(tradeId: number) {
@@ -259,20 +298,28 @@ export default function MyShiftsPage() {
       return;
     }
 
-    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/cancel`, {
-      method: "PATCH",
-      headers: getHeaders(),
-    });
+    try {
+      const response = await fetch(`${API_URL}/shift-trades/${tradeId}/cancel`, {
+        method: "PATCH",
+        headers: getHeaders(),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke annullere udsendelsen");
-      return;
+      if (!response.ok) {
+        const errorMessage = data.message || "Kunne ikke annullere udsendelsen";
+        setMessage(errorMessage);
+        showError(errorMessage);
+        return;
+      }
+
+      setMessage("Udsendelsen er annulleret.");
+      showSuccess("Udsendelsen er annulleret.");
+      await refreshData();
+    } catch {
+      setMessage("Der opstod en fejl ved annullering.");
+      showError("Der opstod en fejl ved annullering.");
     }
-
-    setMessage("Udsendelsen er annulleret.");
-    await refreshData();
   }
 
   function changeMonth(direction: number) {

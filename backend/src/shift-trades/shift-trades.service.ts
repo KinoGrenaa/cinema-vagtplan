@@ -88,6 +88,14 @@ export class ShiftTradesService {
 
     this.realtime.notifyAll('shiftTradesUpdated', trade);
 
+    if (trade.type === ShiftTradeType.POOL) {
+    this.realtime.notifyAll('newShiftTrade', trade);
+    }
+
+    if (trade.type === ShiftTradeType.DIRECT) {
+    this.realtime.notifyAll('newDirectShiftTrade', trade);
+    }
+
     return trade;
   }
 
@@ -118,9 +126,10 @@ export class ShiftTradesService {
     });
 
     this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
+    this.realtime.notifyAll('shiftAccepted', updatedTrade);
     this.realtime.notifyAll('shiftsUpdated', {
-      shiftId: trade.shiftId,
-      acceptedByUserId,
+    shiftId: trade.shiftId,
+    acceptedByUserId,
     });
 
     return updatedTrade;

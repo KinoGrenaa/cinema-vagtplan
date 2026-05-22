@@ -1,52 +1,68 @@
 "use client";
 
 import { useEffect } from "react";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
+import { showInfo, showSuccess } from "@/app/lib/toast";
 
-type RealtimeShiftOptions = {
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+
+type UseRealtimeShiftsProps = {
   onShiftsUpdated?: () => void;
   onShiftTradesUpdated?: () => void;
+  enableToasts?: boolean;
 };
-
-let socket: Socket | null = null;
-
-function getSocket() {
-  if (!socket) {
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-    socket = io(apiUrl, {
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-    });
-  }
-
-  return socket;
-}
 
 export function useRealtimeShifts({
   onShiftsUpdated,
   onShiftTradesUpdated,
-}: RealtimeShiftOptions) {
+  enableToasts = true,
+}: UseRealtimeShiftsProps) {
   useEffect(() => {
-    const s = getSocket();
+    console.log("useRealtimeShifts hook starter");
 
-    const handleShiftsUpdated = () => {
+    const socket = io(API_URL, {
+      transports: ["websocket"],
+    });
+
+    socket.on("connect", () => {
+      console.log("Realtime connected:", socket.id);
+    });
+
+    socket.on("shiftsUpdated", () => {
       onShiftsUpdated?.();
-    };
 
-    const handleShiftTradesUpdated = () => {
+      if (enableToasts) {
+        showInfo("Vagtplanen er opdateret");
+      }
+    });
+
+    socket.on("shiftTradesUpdated", () => {
       onShiftTradesUpdated?.();
-    };
 
-    s.on("shiftsUpdated", handleShiftsUpdated);
-    s.on("shiftTradesUpdated", handleShiftTradesUpdated);
+      if (enableToasts) {
+        showInfo("Vagtbytte er opdateret");
+      }
+    });
+
+    socket.on("shiftAccepted", () => {
+      onShiftTradesUpdated?.();
+      onShiftsUpdated?.();
+
+      if (enableToasts) {
+        showSuccess("En vagt er blevet accepteret");
+      }
+    });
+
+    socket.on("newShiftTrade", () => {
+      onShiftTradesUpdated?.();
+
+      if (enableToasts) {
+        showInfo("Ny vagt i vagtpuljen");
+      }
+    });
 
     return () => {
-      s.off("shiftsUpdated", handleShiftsUpdated);
-      s.off("shiftTradesUpdated", handleShiftTradesUpdated);
+      socket.disconnect();
     };
-  }, [onShiftsUpdated, onShiftTradesUpdated]);
+  }, [onShiftsUpdated, onShiftTradesUpdated, enableToasts]);
 }
