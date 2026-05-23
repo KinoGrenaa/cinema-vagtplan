@@ -162,4 +162,28 @@ export class PayrollController {
 
     return res.send(buffer);
   }
+  @Get('export/uniconta')
+  async exportUniconta(
+    @Req() req,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('userId') userId?: string,
+    @Res() res?,
+  ) {
+    const csv = await this.payrollService.exportUnicontaCsv(
+      req.user,
+      startDate,
+      endDate,
+      userId,
+    );
+
+    res.setHeader('Content-Type', 'text/csv');
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="uniconta-payroll-${startDate}-${endDate}.csv"`,
+    );
+
+    return res.send(csv);
+  }
 }

@@ -12,6 +12,9 @@ type PayrollEntry = {
   clockOut: string;
   hours: number;
   workType: string;
+  payrollCode?: string;
+  exportCode?: string;
+  payrollName?: string;
   status?: string;
   note?: string | null;
   adminNote?: string | null;
@@ -24,6 +27,8 @@ type PayrollEmployee = {
   userId: number;
   name: string;
   email: string;
+  employeeNumber?: string | null;
+  payrollEmployeeId?: string | null;
   totalHours: number;
   entries: PayrollEntry[];
 };
@@ -46,21 +51,15 @@ type PayrollPeriod = {
 
 type PayrollAuditHistory = {
   id: number;
-
   status: "OPEN" | "LOCKED" | "EXPORTED" | "UNLOCKED";
-
   startDate: string;
   endDate: string;
-
   lockedAt?: string | null;
   lockedByUserId?: number | null;
-
   exportedAt?: string | null;
   exportedByUserId?: number | null;
-
   unlockedAt?: string | null;
   unlockedByUserId?: number | null;
-
   unlockNote?: string | null;
 };
 
@@ -70,15 +69,25 @@ function todayIso() {
 
 function firstDayOfMonthIso() {
   const now = new Date();
+
   return new Date(now.getFullYear(), now.getMonth(), 1)
     .toISOString()
     .slice(0, 10);
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+
   return new Date(value).toLocaleString("da-DK", {
     dateStyle: "short",
     timeStyle: "short",
+  });
+}
+
+function formatHours(value: number) {
+  return value.toLocaleString("da-DK", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
@@ -86,29 +95,38 @@ export default function PayrollPage() {
   const [startDate, setStartDate] = useState(firstDayOfMonthIso());
   const [endDate, setEndDate] = useState(todayIso());
   const [userId, setUserId] = useState("");
+
   const [users, setUsers] = useState<User[]>([]);
   const [report, setReport] = useState<PayrollEmployee[]>([]);
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
+  const [auditHistory, setAuditHistory] = useState<PayrollAuditHistory[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [locking, setLocking] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
-
-  const [auditHistory, setAuditHistory] = useState<PayrollAuditHistory[]>([]);
+  const [exporting, setExporting] = useState(false);
 
   const totalHours = useMemo(() => {
     return report.reduce((sum, employee) => sum + employee.totalHours, 0);
   }, [report]);
 
   function getToken() {
-    return localStorage.getItem("token");
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("token") || "";
   }
 
-  useEffect(() => {
-    fetchUsers();
-    fetchReport();
-    fetchPeriod();
-    fetchAuditHistory();
-  }, []);
+  function buildParams(includeUser = true) {
+    const params = new URLSearchParams({
+      startDate,
+      endDate,
+    });
+
+    if (includeUser && userId) {
+      params.set("userId", userId);
+    }
+
+    return params;
+  }
 
   async function fetchUsers() {
     try {
@@ -118,7 +136,10 @@ export default function PayrollPage() {
         },
       });
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        setUsers([]);
+        return;
+      }
 
       const data = await response.json();
       setUsers(Array.isArray(data) ? data : []);
@@ -132,20 +153,14 @@ export default function PayrollPage() {
     try {
       setLoading(true);
 
-      const params = new URLSearchParams({
-        startDate,
-        endDate,
-      });
-
-      if (userId) {
-        params.set("userId", userId);
-      }
-
-      const response = await fetch(`${API_URL}/payroll?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
+      const response = await fetch(
+        `${API_URL}/payroll?${buildParams().toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         setReport([]);
@@ -164,13 +179,8 @@ export default function PayrollPage() {
 
   async function fetchPeriod() {
     try {
-      const params = new URLSearchParams({
-        startDate,
-        endDate,
-      });
-
       const response = await fetch(
-        `${API_URL}/payroll/period?${params.toString()}`,
+        `${API_URL}/payroll/period?${buildParams(false).toString()}`,
         {
           headers: {
             Authorization: `Bearer ${getToken()}`,
@@ -193,13 +203,8 @@ export default function PayrollPage() {
 
   async function fetchAuditHistory() {
     try {
-      const params = new URLSearchParams({
-        startDate,
-        endDate,
-      });
-
       const response = await fetch(
-        `${API_URL}/payroll/audit-history?${params.toString()}`,
+        `${API_URL}/payroll/audit-history?${buildParams(false).toString()}`,
         {
           headers: {
             Authorization: `Bearer ${getToken()}`,
@@ -213,7 +218,6 @@ export default function PayrollPage() {
       }
 
       const data = await response.json();
-
       setAuditHistory(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
@@ -227,173 +231,68 @@ export default function PayrollPage() {
     await fetchAuditHistory();
   }
 
-  async function downloadCsv() {
+  async function downloadExport(type: "csv" | "xlsx" | "pdf" | "uniconta") {
     try {
-      const params = new URLSearchParams({
-        startDate,
-        endDate,
+      setExporting(true);
+
+      const endpoint =
+        type === "uniconta"
+          ? `${API_URL}/payroll/export/uniconta`
+          : `${API_URL}/payroll/export/${type}`;
+
+      const response = await fetch(`${endpoint}?${buildParams().toString()}`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
       });
 
-      if (userId) {
-        params.set("userId", userId);
-      }
-
-      const response = await fetch(
-        `${API_URL}/payroll/export/csv?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        },
-      );
-
       if (!response.ok) {
-        let message = "Kunne ikke eksportere CSV";
-
-        try {
-          const errorData = await response.json();
-
-          if (errorData?.message) {
-            message = errorData.message;
-          }
-        } catch {}
-
-        alert(message);
+        const errorText = await response.text();
+        alert(errorText || "Eksport fejlede");
         return;
       }
 
       const blob = await response.blob();
+
+      const extension =
+        type === "xlsx" ? "xlsx" : type === "pdf" ? "pdf" : "csv";
+
+      const filename =
+        type === "uniconta"
+          ? `uniconta-payroll-${startDate}-${endDate}.csv`
+          : `payroll-${startDate}-${endDate}.${extension}`;
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
 
       link.href = url;
-      link.download = `loen-${startDate}-til-${endDate}.csv`;
+      link.download = filename;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
 
       window.URL.revokeObjectURL(url);
 
       await refreshPayroll();
     } catch (error) {
       console.error(error);
-      alert("Fejl ved eksport");
-    }
-  }
-  async function downloadXlsx() {
-    try {
-      const params = new URLSearchParams({
-        startDate,
-        endDate,
-      });
-
-      if (userId) {
-        params.set("userId", userId);
-      }
-
-      const response = await fetch(
-        `${API_URL}/payroll/export/xlsx?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        let message = "Kunne ikke eksportere XLSX";
-
-        try {
-          const errorData = await response.json();
-
-          if (errorData?.message) {
-            message = errorData.message;
-          }
-        } catch {}
-
-        alert(message);
-        return;
-      }
-
-      const blob = await response.blob();
-
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-
-      link.href = url;
-
-      link.download = `loen-${startDate}-til-${endDate}.xlsx`;
-
-      link.click();
-
-      window.URL.revokeObjectURL(url);
-
-      await refreshPayroll();
-    } catch (error) {
-      console.error(error);
-      alert("Fejl ved XLSX eksport");
-    }
-  }
-  async function downloadPdf() {
-    try {
-      const params = new URLSearchParams({
-        startDate,
-        endDate,
-      });
-
-      if (userId) {
-        params.set("userId", userId);
-      }
-
-      const response = await fetch(
-        `${API_URL}/payroll/export/pdf?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        let message = "Kunne ikke eksportere PDF";
-
-        try {
-          const errorData = await response.json();
-
-          if (errorData?.message) {
-            message = errorData.message;
-          }
-        } catch {}
-
-        alert(message);
-        return;
-      }
-
-      const blob = await response.blob();
-
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-
-      link.href = url;
-
-      link.download = `loen-${startDate}-til-${endDate}.pdf`;
-
-      link.click();
-
-      window.URL.revokeObjectURL(url);
-
-      await refreshPayroll();
-    } catch (error) {
-      console.error(error);
-      alert("Fejl ved PDF eksport");
+      alert("Eksport fejlede");
+    } finally {
+      setExporting(false);
     }
   }
 
   async function lockPeriod() {
+    const confirmed = window.confirm(
+      `Er du sikker på, at du vil låse lønperioden ${startDate} til ${endDate}?`,
+    );
+
+    if (!confirmed) return;
+
     try {
       setLocking(true);
 
-      const response = await fetch(`${API_URL}/payroll/period/lock`, {
+      const response = await fetch(`${API_URL}/payroll/lock`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -406,372 +305,354 @@ export default function PayrollPage() {
       });
 
       if (!response.ok) {
-        alert("Kunne ikke låse lønperiode");
+        const errorText = await response.text();
+        alert(errorText || "Låsning fejlede");
         return;
       }
 
       await refreshPayroll();
-      alert("Lønperiode låst");
     } catch (error) {
       console.error(error);
-      alert("Fejl ved låsning");
+      alert("Låsning fejlede");
     } finally {
       setLocking(false);
     }
   }
-  async function unlockPeriod() {
-    if (!period) return;
 
-    const note = prompt("Skriv note til hvorfor lønperioden låses op:");
+  async function unlockPeriod() {
+    if (!period?.id) return;
+
+    const note = window.prompt("Skriv årsag til oplåsning:");
+
+    if (note === null) return;
 
     try {
       setUnlocking(true);
 
-      const response = await fetch(
-        `${API_URL}/payroll/period/${period.id}/unlock`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({
-            note,
-          }),
+      const response = await fetch(`${API_URL}/payroll/unlock/${period.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
         },
-      );
+        body: JSON.stringify({
+          note,
+        }),
+      });
 
       if (!response.ok) {
-        alert("Kunne ikke låse lønperiode op");
+        const errorText = await response.text();
+        alert(errorText || "Oplåsning fejlede");
         return;
       }
 
       await refreshPayroll();
-
-      alert("Lønperiode låst op");
     } catch (error) {
       console.error(error);
-      alert("Fejl ved unlock");
+      alert("Oplåsning fejlede");
     } finally {
       setUnlocking(false);
     }
   }
-  async function unlockTimeEntry(entryId: number) {
-    const note = prompt("Skriv note til hvorfor tidsregistreringen låses op:");
 
-    try {
-      const response = await fetch(
-        `${API_URL}/payroll/time-entry/${entryId}/unlock`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({
-            note,
-          }),
-        },
-      );
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-      if (!response.ok) {
-        alert("Kunne ikke låse tidsregistrering op");
-        return;
-      }
-
-      await refreshPayroll();
-
-      alert("Tidsregistrering låst op");
-    } catch (error) {
-      console.error(error);
-      alert("Fejl ved unlock");
-    }
-  }
+  useEffect(() => {
+    refreshPayroll();
+  }, [startDate, endDate, userId]);
 
   return (
-    <PermissionGuard permission="canManagePayroll">
-      <main className="p-6">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Løn / timer</h1>
-            <p className="text-gray-600">
-              Eksportér registrerede timer til løn.
-            </p>
-          </div>
+    <PermissionGuard roles={["MASTER", "ADMIN"]}>
+      <div className="space-y-6 p-6">
+        <div>
+          <h1 className="text-3xl font-bold">Løn / Payroll</h1>
+          <p className="text-sm text-gray-600">
+            Se timer, lås lønperioder og eksportér til lønbehandling.
+          </p>
+        </div>
 
-          <div className="flex flex-wrap gap-3">
-            {period && (
-              <div
-                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
-                  period.status === "LOCKED"
-                    ? "bg-orange-500"
-                    : period.status === "EXPORTED"
-                      ? "bg-blue-600"
-                      : period.status === "UNLOCKED"
-                        ? "bg-yellow-600"
-                        : "bg-green-600"
-                }`}
+        <div className="rounded-xl bg-white p-4 shadow">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Startdato
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+                className="w-full rounded border p-2"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Slutdato</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                className="w-full rounded border p-2"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Medarbejder
+              </label>
+              <select
+                value={userId}
+                onChange={(event) => setUserId(event.target.value)}
+                className="w-full rounded border p-2"
               >
-                Status: {period.status}
-              </div>
-            )}
+                <option value="">Alle medarbejdere</option>
 
-            <button
-              onClick={lockPeriod}
-              disabled={locking}
-              className="rounded-lg bg-black px-4 py-2 text-white hover:bg-gray-800 disabled:opacity-50"
-            >
-              {locking ? "Låser..." : "Lås lønperiode"}
-            </button>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            {period && (
+            <div className="flex items-end">
               <button
-                onClick={unlockPeriod}
-                disabled={unlocking}
-                className="rounded-lg bg-yellow-600 px-4 py-2 text-white hover:bg-yellow-700 disabled:opacity-50"
+                onClick={refreshPayroll}
+                disabled={loading}
+                className="w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {unlocking ? "Låser op..." : "MASTER Unlock"}
+                {loading ? "Henter..." : "Opdater"}
               </button>
-            )}
-
-            <button
-              onClick={downloadCsv}
-              className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
-            >
-              Eksportér CSV
-            </button>
-            <button
-              onClick={downloadXlsx}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-            >
-              Eksportér XLSX
-            </button>
-
-            <button
-              onClick={downloadPdf}
-              className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-            >
-              Eksportér PDF
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-6 grid gap-4 rounded-xl bg-white p-4 shadow md:grid-cols-4">
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Fra dato</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-              className="rounded-lg border p-3"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Til dato</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-              className="rounded-lg border p-3"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Medarbejder</span>
-            <select
-              value={userId}
-              onChange={(event) => setUserId(event.target.value)}
-              className="rounded-lg border p-3"
-            >
-              <option value="">Alle medarbejdere</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <button
-            onClick={refreshPayroll}
-            disabled={loading}
-            className="mt-auto rounded-lg bg-black px-4 py-3 text-white hover:bg-gray-800 disabled:opacity-50"
-          >
-            {loading ? "Henter..." : "Hent rapport"}
-          </button>
-        </div>
-
-        <div className="mb-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl bg-white p-4 shadow">
-            <div className="text-sm text-gray-500">Medarbejdere</div>
-            <div className="text-2xl font-bold">{report.length}</div>
-          </div>
-
-          <div className="rounded-xl bg-white p-4 shadow">
-            <div className="text-sm text-gray-500">Samlede timer</div>
-            <div className="text-2xl font-bold">{totalHours.toFixed(2)}</div>
-          </div>
-
-          <div className="rounded-xl bg-white p-4 shadow">
-            <div className="text-sm text-gray-500">Periode</div>
-            <div className="text-lg font-semibold">
-              {startDate} til {endDate}
             </div>
           </div>
         </div>
 
-        {loading ? (
-          <div>Indlæser løndata...</div>
-        ) : report.length === 0 ? (
-          <div className="rounded-xl bg-white p-6 text-gray-600 shadow">
-            Ingen timer fundet i perioden.
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {report.map((employee) => (
-              <section
-                key={employee.userId}
-                className="overflow-hidden rounded-xl bg-white shadow"
+        <div className="rounded-xl bg-white p-4 shadow">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-sm text-gray-600">Lønperiode status</div>
+              <div className="text-xl font-bold">
+                {period?.status || "OPEN"}
+              </div>
+              {period?.lockedAt && (
+                <div className="text-xs text-gray-500">
+                  Låst: {formatDateTime(period.lockedAt)}
+                </div>
+              )}
+              {period?.exportedAt && (
+                <div className="text-xs text-gray-500">
+                  Eksporteret: {formatDateTime(period.exportedAt)}
+                </div>
+              )}
+              {period?.unlockedAt && (
+                <div className="text-xs text-gray-500">
+                  Låst op: {formatDateTime(period.unlockedAt)}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={lockPeriod}
+                disabled={locking || period?.status === "LOCKED"}
+                className="rounded bg-yellow-600 px-4 py-2 text-white hover:bg-yellow-700 disabled:opacity-50"
               >
-                <div className="flex flex-col gap-2 border-b bg-gray-50 p-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold">{employee.name}</h2>
-                    <p className="text-sm text-gray-600">{employee.email}</p>
-                  </div>
+                {locking ? "Låser..." : "Lås periode"}
+              </button>
 
-                  <div className="rounded-lg bg-black px-4 py-2 text-white">
-                    {employee.totalHours.toFixed(2)} timer
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="p-3">Dato</th>
-                        <th className="p-3">Ind</th>
-                        <th className="p-3">Ud</th>
-                        <th className="p-3">Timer</th>
-                        <th className="p-3">Vagttype</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Note</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {employee.entries.map((entry, index) => (
-                        <tr key={entry.id ?? index} className="border-t">
-                          <td className="p-3">{entry.date}</td>
-                          <td className="p-3">
-                            {formatDateTime(entry.clockIn)}
-                          </td>
-                          <td className="p-3">
-                            {formatDateTime(entry.clockOut)}
-                          </td>
-                          <td className="p-3 font-medium">
-                            {Number(entry.hours).toFixed(2)}
-                          </td>
-                          <td className="p-3">{entry.workType}</td>
-                          <td className="p-3">
-                            <div className="flex flex-wrap gap-2">
-                              <span>{entry.status || "-"}</span>
-
-                              {entry.payrollLocked && (
-                                <span className="rounded bg-red-100 px-2 py-1 text-xs font-semibold text-red-700">
-                                  LÅST
-                                </span>
-                              )}
-
-                              {entry.payrollUnlockedByMaster && (
-                                <span className="rounded bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700">
-                                  MASTER UNLOCK
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <div className="flex flex-col gap-2">
-                              <span>
-                                {entry.adminNote || entry.note || "-"}
-                              </span>
-
-                              {entry.payrollLocked && entry.id && (
-                                <button
-                                  onClick={() => unlockTimeEntry(entry.id!)}
-                                  className="w-fit rounded bg-yellow-600 px-2 py-1 text-xs font-semibold text-white hover:bg-yellow-700"
-                                >
-                                  MASTER Unlock
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ))}
+              {period && (
+                <button
+                  onClick={unlockPeriod}
+                  disabled={unlocking}
+                  className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {unlocking ? "Låser op..." : "Lås periode op"}
+                </button>
+              )}
+            </div>
           </div>
-        )}
-        <div className="mt-10 rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-4 text-2xl font-bold">Payroll historik</h2>
+        </div>
 
-          {auditHistory.length === 0 ? (
-            <div className="text-gray-500">Ingen payroll historik fundet.</div>
+        <div className="rounded-xl bg-white p-4 shadow">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold">Rapport</h2>
+              <p className="text-sm text-gray-600">
+                Timer i alt: {formatHours(totalHours)}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => downloadExport("csv")}
+                disabled={exporting}
+                className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                Eksporter CSV
+              </button>
+
+              <button
+                onClick={() => downloadExport("xlsx")}
+                disabled={exporting}
+                className="rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                Eksporter XLSX
+              </button>
+
+              <button
+                onClick={() => downloadExport("pdf")}
+                disabled={exporting}
+                className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                Eksporter PDF
+              </button>
+
+              <button
+                onClick={() => downloadExport("uniconta")}
+                disabled={exporting}
+                className="rounded bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 disabled:opacity-50"
+              >
+                Eksporter Uniconta CSV
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="py-8 text-center text-gray-500">Indlæser...</div>
+          ) : report.length === 0 ? (
+            <div className="py-8 text-center text-gray-500">
+              Ingen tidsregistreringer i perioden.
+            </div>
           ) : (
-            <div className="space-y-4">
-              {auditHistory.map((item) => (
-                <div key={item.id} className="rounded-xl border p-4">
-                  <div className="mb-2 flex flex-wrap items-center gap-3">
-                    <span
-                      className={`rounded px-3 py-1 text-sm font-semibold text-white ${
-                        item.status === "LOCKED"
-                          ? "bg-orange-500"
-                          : item.status === "EXPORTED"
-                            ? "bg-blue-600"
-                            : item.status === "UNLOCKED"
-                              ? "bg-yellow-600"
-                              : "bg-green-600"
-                      }`}
-                    >
-                      {item.status}
-                    </span>
+            <div className="space-y-6">
+              {report.map((employee) => (
+                <div key={employee.userId} className="rounded-lg border">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-gray-50 p-3">
+                    <div>
+                      <div className="font-bold">{employee.name}</div>
+                      <div className="text-sm text-gray-600">
+                        {employee.email}
+                      </div>
+                      {(employee.employeeNumber ||
+                        employee.payrollEmployeeId) && (
+                        <div className="text-xs text-gray-500">
+                          {employee.employeeNumber &&
+                            `Medarbejdernummer: ${employee.employeeNumber}`}
+                          {employee.employeeNumber &&
+                            employee.payrollEmployeeId &&
+                            " · "}
+                          {employee.payrollEmployeeId &&
+                            `Løn ID: ${employee.payrollEmployeeId}`}
+                        </div>
+                      )}
+                    </div>
 
-                    <span className="font-medium">
-                      {new Date(item.startDate).toLocaleDateString("da-DK")}
-                      {" → "}
-                      {new Date(item.endDate).toLocaleDateString("da-DK")}
-                    </span>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-600">Timer</div>
+                      <div className="text-lg font-bold">
+                        {formatHours(employee.totalHours)}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid gap-2 text-sm text-gray-700 md:grid-cols-2">
-                    <div>
-                      <strong>Låst:</strong>{" "}
-                      {item.lockedAt ? formatDateTime(item.lockedAt) : "-"}
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1000px] text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50 text-left">
+                          <th className="p-2">Dato</th>
+                          <th className="p-2">Ind</th>
+                          <th className="p-2">Ud</th>
+                          <th className="p-2 text-right">Timer</th>
+                          <th className="p-2">Arbejdstype</th>
+                          <th className="p-2">Lønart</th>
+                          <th className="p-2">Eksportkode</th>
+                          <th className="p-2">Løntype</th>
+                          <th className="p-2">Status</th>
+                          <th className="p-2">Låst</th>
+                        </tr>
+                      </thead>
 
-                    <div>
-                      <strong>Eksporteret:</strong>{" "}
-                      {item.exportedAt ? formatDateTime(item.exportedAt) : "-"}
-                    </div>
-
-                    <div>
-                      <strong>Låst op:</strong>{" "}
-                      {item.unlockedAt ? formatDateTime(item.unlockedAt) : "-"}
-                    </div>
-
-                    <div>
-                      <strong>Unlock note:</strong> {item.unlockNote || "-"}
-                    </div>
+                      <tbody>
+                        {employee.entries.map((entry, index) => (
+                          <tr
+                            key={entry.id || `${employee.userId}-${index}`}
+                            className="border-b"
+                          >
+                            <td className="p-2">{entry.date}</td>
+                            <td className="p-2">
+                              {formatDateTime(entry.clockIn)}
+                            </td>
+                            <td className="p-2">
+                              {formatDateTime(entry.clockOut)}
+                            </td>
+                            <td className="p-2 text-right">
+                              {formatHours(entry.hours)}
+                            </td>
+                            <td className="p-2">{entry.workType}</td>
+                            <td className="p-2">{entry.payrollCode || "-"}</td>
+                            <td className="p-2">{entry.exportCode || "-"}</td>
+                            <td className="p-2">{entry.payrollName || "-"}</td>
+                            <td className="p-2">{entry.status || "-"}</td>
+                            <td className="p-2">
+                              {entry.payrollLocked ? "Ja" : "Nej"}
+                              {entry.payrollUnlockedByMaster ? " / oplåst" : ""}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </main>
+
+        <div className="rounded-xl bg-white p-4 shadow">
+          <h2 className="mb-4 text-xl font-bold">Payroll audit history</h2>
+
+          {auditHistory.length === 0 ? (
+            <div className="text-sm text-gray-500">
+              Ingen historik for perioden.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[800px] text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50 text-left">
+                    <th className="p-2">Status</th>
+                    <th className="p-2">Start</th>
+                    <th className="p-2">Slut</th>
+                    <th className="p-2">Låst</th>
+                    <th className="p-2">Eksporteret</th>
+                    <th className="p-2">Oplåst</th>
+                    <th className="p-2">Note</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {auditHistory.map((item) => (
+                    <tr key={item.id} className="border-b">
+                      <td className="p-2 font-medium">{item.status}</td>
+                      <td className="p-2">
+                        {new Date(item.startDate).toLocaleDateString("da-DK")}
+                      </td>
+                      <td className="p-2">
+                        {new Date(item.endDate).toLocaleDateString("da-DK")}
+                      </td>
+                      <td className="p-2">{formatDateTime(item.lockedAt)}</td>
+                      <td className="p-2">{formatDateTime(item.exportedAt)}</td>
+                      <td className="p-2">{formatDateTime(item.unlockedAt)}</td>
+                      <td className="p-2">{item.unlockNote || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </PermissionGuard>
   );
 }

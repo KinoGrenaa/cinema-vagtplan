@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
+import { PayrollRulesService } from './payroll-rules.service';
 
 type AuthUser = {
   sub: number;
@@ -16,15 +17,33 @@ type AuthUser = {
   canManagePayroll?: boolean;
 };
 
+type PayrollData = {
+  payrollCode: string;
+  exportCode: string;
+  payrollName: string;
+};
+
 @Injectable()
 export class PayrollService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private payrollRulesService: PayrollRulesService,
+  ) {}
 
   private ensurePayrollAccess(user: AuthUser) {
     if (user.role === 'MASTER') return;
     if (user.role === 'ADMIN') return;
+    if (user.canManagePayroll) return;
 
     throw new ForbiddenException('Du har ikke adgang til løndata');
+  }
+
+  private ensurePayrollExportAccess(user: AuthUser) {
+    if (user.role === 'MASTER') return;
+    if (user.role === 'ADMIN') return;
+    if (user.canManagePayroll) return;
+
+    throw new ForbiddenException('Du har ikke adgang til eksport');
   }
 
   private ensureMaster(user: AuthUser) {
@@ -42,6 +61,38 @@ export class PayrollService {
     return {
       start: new Date(`${startDate}T00:00:00.000Z`),
       end: new Date(`${endDate}T23:59:59.999Z`),
+    };
+  }
+
+  private resolvePayrollData(timeEntry: any): PayrollData {
+    const directPayrollType = timeEntry.payrollType;
+
+    if (directPayrollType) {
+      return {
+        payrollCode: directPayrollType.payrollCode,
+        exportCode:
+          directPayrollType.exportCode || directPayrollType.payrollCode,
+        payrollName: directPayrollType.name,
+      };
+    }
+
+    const workTypePayrollType = timeEntry.shift?.workType?.payrollType;
+
+    if (workTypePayrollType) {
+      return {
+        payrollCode: workTypePayrollType.payrollCode,
+        exportCode:
+          workTypePayrollType.exportCode || workTypePayrollType.payrollCode,
+        payrollName: workTypePayrollType.name,
+      };
+    }
+
+    const fallbackName = timeEntry.shift?.workType?.name || 'Standard';
+
+    return {
+      payrollCode: fallbackName.toUpperCase(),
+      exportCode: fallbackName.toUpperCase(),
+      payrollName: fallbackName,
     };
   }
 
@@ -70,9 +121,14 @@ export class PayrollService {
       include: {
         user: true,
         payrollPeriod: true,
+        payrollType: true,
         shift: {
           include: {
-            workType: true,
+            workType: {
+              include: {
+                payrollType: true,
+              },
+            },
           },
         },
       },
@@ -87,6 +143,8 @@ export class PayrollService {
         userId: number;
         name: string;
         email: string;
+        employeeNumber: string | null;
+        payrollEmployeeId: string | null;
         totalHours: number;
         entries: {
           id: number;
@@ -95,6 +153,9 @@ export class PayrollService {
           clockOut: string;
           hours: number;
           workType: string;
+          payrollCode: string;
+          exportCode: string;
+          payrollName: string;
           status: string;
           note: string | null;
           adminNote: string | null;
@@ -116,6 +177,8 @@ export class PayrollService {
           userId: entry.userId,
           name: `${entry.user.firstName} ${entry.user.lastName}`,
           email: entry.user.email,
+          employeeNumber: entry.user.employeeNumber,
+          payrollEmployeeId: entry.user.payrollEmployeeId,
           totalHours: 0,
           entries: [],
         });
@@ -123,6 +186,8 @@ export class PayrollService {
 
       const userGroup = grouped.get(entry.userId);
       if (!userGroup) continue;
+
+      const payrollData = this.resolvePayrollData(entry);
 
       userGroup.totalHours += hours;
 
@@ -133,6 +198,9 @@ export class PayrollService {
         clockOut: entry.clockOut.toISOString(),
         hours: Number(hours.toFixed(2)),
         workType: entry.shift?.workType?.name || '-',
+        payrollCode: payrollData.payrollCode,
+        exportCode: payrollData.exportCode,
+        payrollName: payrollData.payrollName,
         status: entry.status,
         note: entry.note,
         adminNote: entry.adminNote,
@@ -168,13 +236,21 @@ export class PayrollService {
   async lockPeriod(user: AuthUser, startDate: string, endDate: string) {
     this.ensurePayrollAccess(user);
 
-    if (user.role !== 'MASTER' && user.role !== 'ADMIN') {
+    if (
+      user.role !== 'MASTER' &&
+      user.role !== 'ADMIN' &&
+      !user.canManagePayroll
+    ) {
       throw new ForbiddenException(
         'Du har ikke adgang til at låse lønperioder',
       );
     }
 
     const { start, end } = this.getPeriodDates(startDate, endDate);
+
+    if (!user.cinemaId) {
+      throw new BadRequestException('Der mangler cinemaId på brugeren');
+    }
 
     const cinemaId = user.cinemaId;
 
@@ -204,6 +280,18 @@ export class PayrollService {
           not: null,
         },
       },
+      include: {
+        payrollType: true,
+        shift: {
+          include: {
+            workType: {
+              include: {
+                payrollType: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     const period = existingPeriod
@@ -213,6 +301,8 @@ export class PayrollService {
             status: 'LOCKED',
             lockedAt: new Date(),
             lockedByUserId: user.sub,
+            exportedAt: null,
+            exportedByUserId: null,
             unlockedAt: null,
             unlockedByUserId: null,
             unlockNote: null,
@@ -229,20 +319,34 @@ export class PayrollService {
           },
         });
 
-    await this.prisma.timeEntry.updateMany({
-      where: {
-        id: {
-          in: entries.map((entry) => entry.id),
+    for (const entry of entries) {
+      const payrollData = this.resolvePayrollData(entry);
+
+      const payrollType =
+        entry.payrollType ||
+        entry.shift?.workType?.payrollType ||
+        (await this.prisma.payrollType.findFirst({
+          where: {
+            cinemaId,
+            isDefault: true,
+            isActive: true,
+          },
+        }));
+
+      await this.prisma.timeEntry.update({
+        where: { id: entry.id },
+        data: {
+          payrollPeriodId: period.id,
+          payrollLocked: true,
+          payrollUnlockedByMaster: false,
+          payrollUnlockedAt: null,
+          payrollLockNote: null,
+          payrollTypeId: payrollType?.id || null,
         },
-      },
-      data: {
-        payrollPeriodId: period.id,
-        payrollLocked: true,
-        payrollUnlockedByMaster: false,
-        payrollUnlockedAt: null,
-        payrollLockNote: null,
-      },
-    });
+      });
+
+      void payrollData;
+    }
 
     return period;
   }
@@ -307,19 +411,12 @@ export class PayrollService {
     });
   }
 
-  async exportPayrollCsv(
+  private async ensureEntriesApproved(
     user: AuthUser,
     startDate: string,
     endDate: string,
     userId?: string,
   ) {
-    const report = await this.getPayrollReport(
-      user,
-      startDate,
-      endDate,
-      userId,
-    );
-
     const { start, end } = this.getPeriodDates(startDate, endDate);
 
     const unapprovedEntries = await this.prisma.timeEntry.findMany({
@@ -352,41 +449,72 @@ export class PayrollService {
         `Kan ikke eksportere. Der findes ${unapprovedEntries.length} ikke-godkendte tidsregistreringer i perioden: ${names}`,
       );
     }
+  }
 
-    if (user.role !== 'MASTER' && user.role !== 'ADMIN') {
-      throw new ForbiddenException('Du har ikke adgang til eksport');
-    }
+  private async markPeriodAsExported(
+    user: AuthUser,
+    startDate: string,
+    endDate: string,
+    userId?: string,
+  ) {
+    if (userId) return;
+    if (!user.cinemaId) return;
 
-    if (!userId) {
-      const period = await this.prisma.payrollPeriod.findFirst({
-        where: {
-          cinemaId: user.cinemaId,
-          startDate: start,
-          endDate: end,
-        },
-      });
+    const { start, end } = this.getPeriodDates(startDate, endDate);
 
-      if (period) {
-        await this.prisma.payrollPeriod.update({
-          where: { id: period.id },
-          data: {
-            status: 'EXPORTED',
-            exportedAt: new Date(),
-            exportedByUserId: user.sub,
-          },
-        });
-      }
-    }
+    const period = await this.prisma.payrollPeriod.findFirst({
+      where: {
+        cinemaId: user.cinemaId,
+        startDate: start,
+        endDate: end,
+      },
+    });
+
+    if (!period) return;
+
+    await this.prisma.payrollPeriod.update({
+      where: { id: period.id },
+      data: {
+        status: 'EXPORTED',
+        exportedAt: new Date(),
+        exportedByUserId: user.sub,
+      },
+    });
+  }
+
+  async exportPayrollCsv(
+    user: AuthUser,
+    startDate: string,
+    endDate: string,
+    userId?: string,
+  ) {
+    this.ensurePayrollExportAccess(user);
+
+    await this.ensureEntriesApproved(user, startDate, endDate, userId);
+
+    const report = await this.getPayrollReport(
+      user,
+      startDate,
+      endDate,
+      userId,
+    );
+
+    await this.markPeriodAsExported(user, startDate, endDate, userId);
 
     const rows = [
       [
         'Medarbejder',
+        'Medarbejdernummer',
+        'Løn medarbejder ID',
         'Email',
         'Dato',
         'Ind',
         'Ud',
         'Timer',
         'Arbejdstype',
+        'Lønart',
+        'Eksportkode',
+        'Løntype',
         'Status',
         'Note',
         'Admin note',
@@ -397,19 +525,67 @@ export class PayrollService {
 
     for (const employee of report) {
       for (const entry of employee.entries) {
+        const segments = this.payrollRulesService.calculateSegments(entry);
+
+        for (const segment of segments) {
+          rows.push([
+            employee.payrollEmployeeId ||
+              employee.employeeNumber ||
+              employee.email,
+
+            segment.exportCode,
+
+            entry.date,
+
+            segment.hours.toFixed(2).replace('.', ','),
+
+            `${entry.workType} - ${segment.payrollName}`,
+          ]);
+        }
+      }
+    }
+
+    return rows
+      .map((row) =>
+        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(';'),
+      )
+      .join('\n');
+  }
+  async exportUnicontaCsv(
+    user: AuthUser,
+    startDate: string,
+    endDate: string,
+    userId?: string,
+  ) {
+    this.ensurePayrollExportAccess(user);
+
+    await this.ensureEntriesApproved(user, startDate, endDate, userId);
+
+    const report = await this.getPayrollReport(
+      user,
+      startDate,
+      endDate,
+      userId,
+    );
+
+    await this.markPeriodAsExported(user, startDate, endDate, userId);
+
+    const rows = [['Employee', 'PayrollCode', 'Date', 'Hours', 'Text']];
+
+    for (const employee of report) {
+      for (const entry of employee.entries) {
         rows.push([
-          employee.name,
-          employee.email,
+          employee.payrollEmployeeId ||
+            employee.employeeNumber ||
+            employee.email,
+
+          entry.exportCode,
+
           entry.date,
-          entry.clockIn,
-          entry.clockOut,
-          entry.hours.toString().replace('.', ','),
-          entry.workType,
-          entry.status,
-          entry.note || '',
-          entry.adminNote || '',
-          entry.payrollLocked ? 'Ja' : 'Nej',
-          entry.payrollUnlockedByMaster ? 'Ja' : 'Nej',
+
+          entry.hours.toFixed(2).replace('.', ','),
+
+          `${entry.workType} - ${entry.payrollName}`,
         ]);
       }
     }
@@ -420,12 +596,17 @@ export class PayrollService {
       )
       .join('\n');
   }
+
   async exportPayrollXlsx(
     user: AuthUser,
     startDate: string,
     endDate: string,
     userId?: string,
   ) {
+    this.ensurePayrollExportAccess(user);
+
+    await this.ensureEntriesApproved(user, startDate, endDate, userId);
+
     const report = await this.getPayrollReport(
       user,
       startDate,
@@ -433,38 +614,51 @@ export class PayrollService {
       userId,
     );
 
-    const workbook = new ExcelJS.Workbook();
+    await this.markPeriodAsExported(user, startDate, endDate, userId);
 
+    const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Payroll');
 
     sheet.columns = [
       { header: 'Medarbejder', key: 'employee', width: 30 },
+      { header: 'Medarbejdernummer', key: 'employeeNumber', width: 20 },
+      { header: 'Løn medarbejder ID', key: 'payrollEmployeeId', width: 20 },
       { header: 'Email', key: 'email', width: 30 },
       { header: 'Dato', key: 'date', width: 15 },
       { header: 'Ind', key: 'clockIn', width: 25 },
       { header: 'Ud', key: 'clockOut', width: 25 },
       { header: 'Timer', key: 'hours', width: 12 },
       { header: 'Arbejdstype', key: 'workType', width: 20 },
+      { header: 'Lønart', key: 'payrollCode', width: 16 },
+      { header: 'Eksportkode', key: 'exportCode', width: 16 },
+      { header: 'Løntype', key: 'payrollName', width: 20 },
       { header: 'Status', key: 'status', width: 15 },
       { header: 'Note', key: 'note', width: 30 },
       { header: 'Admin note', key: 'adminNote', width: 30 },
       { header: 'Låst', key: 'locked', width: 12 },
+      { header: 'Låst op af MASTER', key: 'unlockedByMaster', width: 20 },
     ];
 
     for (const employee of report) {
       for (const entry of employee.entries) {
         sheet.addRow({
           employee: employee.name,
+          employeeNumber: employee.employeeNumber || '',
+          payrollEmployeeId: employee.payrollEmployeeId || '',
           email: employee.email,
           date: entry.date,
           clockIn: entry.clockIn,
           clockOut: entry.clockOut,
           hours: entry.hours,
           workType: entry.workType,
+          payrollCode: entry.payrollCode,
+          exportCode: entry.exportCode,
+          payrollName: entry.payrollName,
           status: entry.status,
           note: entry.note || '',
           adminNote: entry.adminNote || '',
           locked: entry.payrollLocked ? 'Ja' : 'Nej',
+          unlockedByMaster: entry.payrollUnlockedByMaster ? 'Ja' : 'Nej',
         });
       }
     }
@@ -482,12 +676,18 @@ export class PayrollService {
     endDate: string,
     userId?: string,
   ): Promise<Buffer> {
+    this.ensurePayrollExportAccess(user);
+
+    await this.ensureEntriesApproved(user, startDate, endDate, userId);
+
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
     );
+
+    await this.markPeriodAsExported(user, startDate, endDate, userId);
 
     const chunks: Buffer[] = [];
 
@@ -505,7 +705,6 @@ export class PayrollService {
     doc.moveDown();
 
     doc.fontSize(11).text(`Periode: ${startDate} til ${endDate}`);
-
     doc.text(`Eksporteret: ${new Date().toLocaleString('da-DK')}`);
 
     doc.moveDown();
@@ -517,6 +716,14 @@ export class PayrollService {
 
       doc.fontSize(10).text(employee.email);
 
+      if (employee.employeeNumber) {
+        doc.text(`Medarbejdernummer: ${employee.employeeNumber}`);
+      }
+
+      if (employee.payrollEmployeeId) {
+        doc.text(`Løn medarbejder ID: ${employee.payrollEmployeeId}`);
+      }
+
       doc.text(`Timer i alt: ${employee.totalHours.toFixed(2)}`);
 
       doc.moveDown(0.5);
@@ -525,9 +732,7 @@ export class PayrollService {
         doc
           .fontSize(9)
           .text(
-            `${entry.date} | ${entry.hours.toFixed(
-              2,
-            )} timer | ${entry.workType} | ${entry.status}`,
+            `${entry.date} | ${entry.hours.toFixed(2)} timer | ${entry.workType} | ${entry.payrollName} | ${entry.exportCode} | ${entry.status}`,
           );
 
         if (entry.note || entry.adminNote) {

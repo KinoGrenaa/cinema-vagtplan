@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PayrollController } from './payroll.controller';
 import { PayrollService } from './payroll.service';
+import { PayrollRulesService } from './payroll-rules.service';
 
 @Module({
   imports: [
@@ -11,6 +12,6 @@ import { PayrollService } from './payroll.service';
     }),
   ],
   controllers: [PayrollController],
-  providers: [PayrollService],
+  providers: [PayrollService, PayrollRulesService],
 })
 export class PayrollModule {}
