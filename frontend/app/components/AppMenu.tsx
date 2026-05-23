@@ -164,7 +164,7 @@ export default function AppMenu() {
           label: "Audit log",
         },
         {
-          href = "/cinema-settings/payroll-types",
+          href: "/cinema-settings/payroll-types",
           label: "Løn setup",
         },
       ],

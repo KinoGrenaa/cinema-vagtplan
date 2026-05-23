@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 
 type UserRole = 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+type EmploymentType = 'HOURLY' | 'SALARIED';
 
 @Injectable()
 export class UsersService {
@@ -30,6 +31,7 @@ export class UsersService {
     lastName: string;
     phone?: string;
     role?: UserRole;
+    employmentType?: EmploymentType;
     cinemaId: number;
   }) {
     const existingUser = await this.prisma.user.findUnique({
@@ -54,6 +56,7 @@ export class UsersService {
         lastName: data.lastName,
         phone: data.phone,
         role: data.role || 'EMPLOYEE',
+        employmentType: data.employmentType || 'HOURLY',
         cinemaId: data.cinemaId,
       },
     });
@@ -77,6 +80,7 @@ export class UsersService {
       lastName: string;
       phone?: string;
       role?: UserRole;
+      employmentType?: EmploymentType;
       password?: string;
       profileImage?: string;
       address?: string;
@@ -108,32 +112,13 @@ export class UsersService {
       );
     }
 
-    const updateData: {
-      email: string;
-      firstName: string;
-      lastName: string;
-      phone?: string;
-      role?: UserRole;
-      password?: string;
-      profileImage?: string;
-      address?: string;
-      birthDate?: Date | null;
-      emergencyPhone?: string;
-      hireDate?: Date | null;
-      skills?: string;
-      notes?: string;
-      canManageSchedule?: boolean;
-      canManageUsers?: boolean;
-      canManagePayroll?: boolean;
-      canManageLeaveRequests?: boolean;
-      canManageCinemaSettings?: boolean;
-      canSendBroadcastMessages?: boolean;
-    } = {
+    const updateData: any = {
       email: data.email,
       firstName: data.firstName,
       lastName: data.lastName,
       phone: data.phone,
       role: data.role,
+      employmentType: data.employmentType,
       profileImage: data.profileImage,
       address: data.address,
       birthDate: data.birthDate ? new Date(data.birthDate) : null,
@@ -217,16 +202,7 @@ export class UsersService {
       );
     }
 
-    const updateData: {
-      email: string;
-      phone?: string;
-      password?: string;
-      profileImage?: string;
-      address?: string;
-      birthDate?: Date | null;
-      emergencyPhone?: string;
-      skills?: string;
-    } = {
+    const updateData: any = {
       email: data.email,
       phone: data.phone,
       profileImage: data.profileImage,

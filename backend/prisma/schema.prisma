@@ -13,6 +13,11 @@ enum Role {
   EMPLOYEE
 }
 
+enum EmploymentType {
+  HOURLY
+  SALARIED
+}
+
 enum LeaveStatus {
   PENDING
   APPROVED
@@ -51,6 +56,16 @@ model Cinema {
   allowShiftTradePool   Boolean  @default(false)
   allowShiftTradeDirect Boolean  @default(false)
 
+  payrollRulesEnabled Boolean @default(false)
+
+  payrollOvertimeEnabled Boolean @default(false)
+  plannedOvertimeEnabled Boolean @default(true)
+  dailyOvertimeEnabled   Boolean @default(false)
+  weeklyOvertimeEnabled  Boolean @default(false)
+
+  dailyOvertimeThreshold  Float @default(8)
+  weeklyOvertimeThreshold Float @default(37)
+
   movieShowings     MovieShowing[]
   leaveRequests     LeaveRequest[]
   shiftTrades       ShiftTrade[]
@@ -86,6 +101,7 @@ model User {
 
   employeeNumber    String?
   payrollEmployeeId String?
+  employmentType    EmploymentType @default(HOURLY)
 
   canManageSchedule        Boolean @default(false)
   canManageUsers           Boolean @default(false)

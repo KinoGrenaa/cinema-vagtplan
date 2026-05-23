@@ -23,6 +23,12 @@ type PayrollData = {
   payrollName: string;
 };
 
+type PayrollExportSegment = {
+  hours: number;
+  exportCode: string;
+  payrollName: string;
+};
+
 @Injectable()
 export class PayrollService {
   constructor(
@@ -94,6 +100,32 @@ export class PayrollService {
       exportCode: fallbackName.toUpperCase(),
       payrollName: fallbackName,
     };
+  }
+
+  private async getPayrollRulesEnabled(user: AuthUser): Promise<boolean> {
+    if (!user.cinemaId) return false;
+
+    const cinema = await this.prisma.cinema.findUnique({
+      where: {
+        id: user.cinemaId,
+      },
+    });
+
+    return Boolean((cinema as any)?.payrollRulesEnabled);
+  }
+
+  private getSimplePayrollSegment(entry: {
+    hours: number;
+    exportCode: string;
+    payrollName: string;
+  }): PayrollExportSegment[] {
+    return [
+      {
+        hours: entry.hours,
+        exportCode: entry.exportCode,
+        payrollName: entry.payrollName,
+      },
+    ];
   }
 
   async getPayrollReport(
@@ -319,19 +351,19 @@ export class PayrollService {
           },
         });
 
-    for (const entry of entries) {
-      const payrollData = this.resolvePayrollData(entry);
+    const defaultPayrollType = await this.prisma.payrollType.findFirst({
+      where: {
+        cinemaId,
+        isDefault: true,
+        isActive: true,
+      },
+    });
 
+    for (const entry of entries) {
       const payrollType =
         entry.payrollType ||
         entry.shift?.workType?.payrollType ||
-        (await this.prisma.payrollType.findFirst({
-          where: {
-            cinemaId,
-            isDefault: true,
-            isActive: true,
-          },
-        }));
+        defaultPayrollType;
 
       await this.prisma.timeEntry.update({
         where: { id: entry.id },
@@ -344,8 +376,6 @@ export class PayrollService {
           payrollTypeId: payrollType?.id || null,
         },
       });
-
-      void payrollData;
     }
 
     return period;
@@ -525,23 +555,25 @@ export class PayrollService {
 
     for (const employee of report) {
       for (const entry of employee.entries) {
-        const segments = this.payrollRulesService.calculateSegments(entry);
-
-        for (const segment of segments) {
-          rows.push([
-            employee.payrollEmployeeId ||
-              employee.employeeNumber ||
-              employee.email,
-
-            segment.exportCode,
-
-            entry.date,
-
-            segment.hours.toFixed(2).replace('.', ','),
-
-            `${entry.workType} - ${segment.payrollName}`,
-          ]);
-        }
+        rows.push([
+          employee.name,
+          employee.employeeNumber || '',
+          employee.payrollEmployeeId || '',
+          employee.email,
+          entry.date,
+          entry.clockIn,
+          entry.clockOut,
+          entry.hours.toString().replace('.', ','),
+          entry.workType,
+          entry.payrollCode,
+          entry.exportCode,
+          entry.payrollName,
+          entry.status,
+          entry.note || '',
+          entry.adminNote || '',
+          entry.payrollLocked ? 'Ja' : 'Nej',
+          entry.payrollUnlockedByMaster ? 'Ja' : 'Nej',
+        ]);
       }
     }
 
@@ -551,6 +583,7 @@ export class PayrollService {
       )
       .join('\n');
   }
+
   async exportUnicontaCsv(
     user: AuthUser,
     startDate: string,
@@ -570,23 +603,26 @@ export class PayrollService {
 
     await this.markPeriodAsExported(user, startDate, endDate, userId);
 
+    const usePayrollRules = await this.getPayrollRulesEnabled(user);
     const rows = [['Employee', 'PayrollCode', 'Date', 'Hours', 'Text']];
 
     for (const employee of report) {
       for (const entry of employee.entries) {
-        rows.push([
-          employee.payrollEmployeeId ||
-            employee.employeeNumber ||
-            employee.email,
+        const segments = usePayrollRules
+          ? this.payrollRulesService.calculateSegments(entry)
+          : this.getSimplePayrollSegment(entry);
 
-          entry.exportCode,
-
-          entry.date,
-
-          entry.hours.toFixed(2).replace('.', ','),
-
-          `${entry.workType} - ${entry.payrollName}`,
-        ]);
+        for (const segment of segments) {
+          rows.push([
+            employee.payrollEmployeeId ||
+              employee.employeeNumber ||
+              employee.email,
+            segment.exportCode,
+            entry.date,
+            segment.hours.toFixed(2).replace('.', ','),
+            `${entry.workType} - ${segment.payrollName}`,
+          ]);
+        }
       }
     }
 

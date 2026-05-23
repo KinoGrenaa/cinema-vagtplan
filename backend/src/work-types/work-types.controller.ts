@@ -1,4 +1,5 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+
 import { WorkTypesService } from './work-types.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 
@@ -8,7 +9,7 @@ export class WorkTypesController {
 
   @UseGuards(JwtGuard)
   @Get()
-  getAllWorkTypes() {
-    return this.workTypesService.findAll();
+  findAll(@Req() req) {
+    return this.workTypesService.findAll(req.user);
   }
 }

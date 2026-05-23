@@ -22,6 +22,7 @@ export class CinemasService {
     data: {
       allowShiftTradePool?: boolean;
       allowShiftTradeDirect?: boolean;
+      payrollRulesEnabled?: boolean;
     },
   ) {
     const cinema = await this.prisma.cinema.findUnique({
@@ -37,6 +38,7 @@ export class CinemasService {
       data: {
         allowShiftTradePool: data.allowShiftTradePool,
         allowShiftTradeDirect: data.allowShiftTradeDirect,
+        payrollRulesEnabled: data.payrollRulesEnabled,
       },
     });
   }

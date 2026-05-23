@@ -1,6 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import PermissionGuard from "@/app/components/PermissionGuard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -110,6 +124,117 @@ export default function PayrollPage() {
     return report.reduce((sum, employee) => sum + employee.totalHours, 0);
   }, [report]);
 
+  const overtimeHours = useMemo(() => {
+    return report.reduce((sum, employee) => {
+      return (
+        sum +
+        employee.entries.reduce((entrySum, entry) => {
+          const code = entry.payrollCode || "";
+
+          if (code.includes("OVERTIME")) {
+            return entrySum + entry.hours;
+          }
+
+          return entrySum;
+        }, 0)
+      );
+    }, 0);
+  }, [report]);
+
+  const weekendHours = useMemo(() => {
+    return report.reduce((sum, employee) => {
+      return (
+        sum +
+        employee.entries.reduce((entrySum, entry) => {
+          const code = entry.payrollCode || "";
+
+          if (code.includes("WEEKEND")) {
+            return entrySum + entry.hours;
+          }
+
+          return entrySum;
+        }, 0)
+      );
+    }, 0);
+  }, [report]);
+
+  const eveningHours = useMemo(() => {
+    return report.reduce((sum, employee) => {
+      return (
+        sum +
+        employee.entries.reduce((entrySum, entry) => {
+          const code = entry.payrollCode || "";
+
+          if (code.includes("EVENING")) {
+            return entrySum + entry.hours;
+          }
+
+          return entrySum;
+        }, 0)
+      );
+    }, 0);
+  }, [report]);
+
+  const nightHours = useMemo(() => {
+    return report.reduce((sum, employee) => {
+      return (
+        sum +
+        employee.entries.reduce((entrySum, entry) => {
+          const code = entry.payrollCode || "";
+
+          if (code.includes("NIGHT")) {
+            return entrySum + entry.hours;
+          }
+
+          return entrySum;
+        }, 0)
+      );
+    }, 0);
+  }, [report]);
+
+  const payrollDistributionData = useMemo(() => {
+    const totals: Record<string, number> = {};
+
+    report.forEach((employee) => {
+      employee.entries.forEach((entry) => {
+        const key = entry.payrollCode || "STANDARD";
+        totals[key] = (totals[key] || 0) + entry.hours;
+      });
+    });
+
+    return Object.entries(totals).map(([name, value]) => ({
+      name,
+      value: Number(value.toFixed(2)),
+    }));
+  }, [report]);
+
+  const employeeLoadData = useMemo(() => {
+    return report
+      .map((employee) => ({
+        name: employee.name,
+        hours: Number(employee.totalHours.toFixed(2)),
+      }))
+      .sort((a, b) => b.hours - a.hours)
+      .slice(0, 10);
+  }, [report]);
+
+  const dailyHoursData = useMemo(() => {
+    const totals: Record<string, number> = {};
+
+    report.forEach((employee) => {
+      employee.entries.forEach((entry) => {
+        totals[entry.date] = (totals[entry.date] || 0) + entry.hours;
+      });
+    });
+
+    return Object.entries(totals)
+      .map(([date, hours]) => ({
+        date,
+        hours: Number(hours.toFixed(2)),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [report]);
+
   function getToken() {
     if (typeof window === "undefined") return "";
     return localStorage.getItem("token") || "";
@@ -193,7 +318,14 @@ export default function PayrollPage() {
         return;
       }
 
-      const data = await response.json();
+      const text = await response.text();
+
+      if (!text) {
+        setPeriod(null);
+        return;
+      }
+
+      const data = JSON.parse(text);
       setPeriod(data || null);
     } catch (error) {
       console.error(error);
@@ -292,7 +424,7 @@ export default function PayrollPage() {
     try {
       setLocking(true);
 
-      const response = await fetch(`${API_URL}/payroll/lock`, {
+      const response = await fetch(`${API_URL}/payroll/period/lock`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -329,16 +461,19 @@ export default function PayrollPage() {
     try {
       setUnlocking(true);
 
-      const response = await fetch(`${API_URL}/payroll/unlock/${period.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
+      const response = await fetch(
+        `${API_URL}/payroll/period/${period.id}/unlock`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({
+            note,
+          }),
         },
-        body: JSON.stringify({
-          note,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -424,6 +559,210 @@ export default function PayrollPage() {
               >
                 {loading ? "Henter..." : "Opdater"}
               </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-5">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="text-sm text-gray-500">Totale timer</div>
+            <div className="mt-2 text-3xl font-bold">
+              {formatHours(totalHours)}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
+            <div className="text-sm text-gray-500">Overtid</div>
+            <div className="mt-2 text-3xl font-bold text-red-600">
+              {formatHours(overtimeHours)}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-purple-200 bg-white p-5 shadow-sm">
+            <div className="text-sm text-gray-500">Weekend</div>
+            <div className="mt-2 text-3xl font-bold text-purple-600">
+              {formatHours(weekendHours)}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
+            <div className="text-sm text-gray-500">Aften</div>
+            <div className="mt-2 text-3xl font-bold text-orange-600">
+              {formatHours(eveningHours)}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
+            <div className="text-sm text-gray-500">Nat</div>
+            <div className="mt-2 text-3xl font-bold text-blue-600">
+              {formatHours(nightHours)}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Medarbejder summeringer</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Payroll oversigt pr medarbejder.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr className="text-left text-sm text-gray-500">
+                  <th className="pb-3 pr-4">Medarbejder</th>
+                  <th className="pb-3 pr-4">Timer</th>
+                  <th className="pb-3 pr-4">Overtid</th>
+                  <th className="pb-3 pr-4">Weekend</th>
+                  <th className="pb-3 pr-4">Aften</th>
+                  <th className="pb-3 pr-4">Nat</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-gray-100">
+                {report.map((employee) => {
+                  const total = employee.entries.reduce(
+                    (sum, entry) => sum + entry.hours,
+                    0,
+                  );
+
+                  const overtime = employee.entries.reduce((sum, entry) => {
+                    const code = entry.payrollCode || "";
+                    return code.includes("OVERTIME") ? sum + entry.hours : sum;
+                  }, 0);
+
+                  const weekend = employee.entries.reduce((sum, entry) => {
+                    const code = entry.payrollCode || "";
+                    return code.includes("WEEKEND") ? sum + entry.hours : sum;
+                  }, 0);
+
+                  const evening = employee.entries.reduce((sum, entry) => {
+                    const code = entry.payrollCode || "";
+                    return code.includes("EVENING") ? sum + entry.hours : sum;
+                  }, 0);
+
+                  const night = employee.entries.reduce((sum, entry) => {
+                    const code = entry.payrollCode || "";
+                    return code.includes("NIGHT") ? sum + entry.hours : sum;
+                  }, 0);
+
+                  return (
+                    <tr key={employee.userId}>
+                      <td className="py-3 pr-4 font-medium">{employee.name}</td>
+                      <td className="py-3 pr-4">{formatHours(total)}</td>
+                      <td className="py-3 pr-4 font-medium text-red-600">
+                        {formatHours(overtime)}
+                      </td>
+                      <td className="py-3 pr-4 font-medium text-purple-600">
+                        {formatHours(weekend)}
+                      </td>
+                      <td className="py-3 pr-4 font-medium text-orange-600">
+                        {formatHours(evening)}
+                      </td>
+                      <td className="py-3 pr-4 font-medium text-blue-600">
+                        {formatHours(night)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold">Timer pr dag</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Arbejdstimer i den valgte lønperiode.
+              </p>
+            </div>
+
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dailyHoursData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="hours"
+                    stroke="#2563eb"
+                    strokeWidth={3}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold">Payroll fordeling</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Fordeling af lønarter.
+              </p>
+            </div>
+
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={payrollDistributionData}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={110}
+                    label
+                  >
+                    {payrollDistributionData.map((entry, index) => {
+                      const colors = [
+                        "#2563eb",
+                        "#dc2626",
+                        "#7c3aed",
+                        "#ea580c",
+                        "#0891b2",
+                        "#16a34a",
+                      ];
+
+                      return (
+                        <Cell
+                          key={entry.name}
+                          fill={colors[index % colors.length]}
+                        />
+                      );
+                    })}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm xl:col-span-2">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold">
+                Mest belastede medarbejdere
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Top medarbejdere baseret på timer.
+              </p>
+            </div>
+
+            <div className="h-[360px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={employeeLoadData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="hours" fill="#16a34a" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
@@ -534,18 +873,6 @@ export default function PayrollPage() {
                       <div className="text-sm text-gray-600">
                         {employee.email}
                       </div>
-                      {(employee.employeeNumber ||
-                        employee.payrollEmployeeId) && (
-                        <div className="text-xs text-gray-500">
-                          {employee.employeeNumber &&
-                            `Medarbejdernummer: ${employee.employeeNumber}`}
-                          {employee.employeeNumber &&
-                            employee.payrollEmployeeId &&
-                            " · "}
-                          {employee.payrollEmployeeId &&
-                            `Løn ID: ${employee.payrollEmployeeId}`}
-                        </div>
-                      )}
                     </div>
 
                     <div className="text-right">

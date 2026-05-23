@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import PermissionGuard from "@/app/components/PermissionGuard";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 type UserRole = "MASTER" | "ADMIN" | "EMPLOYEE";
+type EmploymentType = "HOURLY" | "SALARIED";
 
 type User = {
   id: number;
@@ -12,6 +15,7 @@ type User = {
   email: string;
   phone?: string;
   role: UserRole;
+  employmentType?: EmploymentType;
   canManageSchedule?: boolean;
   canManageUsers?: boolean;
   canManagePayroll?: boolean;
@@ -27,6 +31,7 @@ type UserFormData = {
   password?: string;
   phone?: string;
   role: UserRole;
+  employmentType: EmploymentType;
   canManageSchedule?: boolean;
   canManageUsers?: boolean;
   canManagePayroll?: boolean;
@@ -34,6 +39,11 @@ type UserFormData = {
   canManageCinemaSettings?: boolean;
   canSendBroadcastMessages?: boolean;
 };
+
+function getEmploymentTypeLabel(employmentType?: EmploymentType) {
+  if (employmentType === "SALARIED") return "Fastlønnet";
+  return "Timelønnet";
+}
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -48,6 +58,7 @@ export default function UsersPage() {
     password: "",
     phone: "",
     role: "EMPLOYEE",
+    employmentType: "HOURLY",
     canManageSchedule: false,
     canManageUsers: false,
     canManagePayroll: false,
@@ -62,22 +73,34 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
+  function getToken() {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("token") || "";
+  }
+
   async function fetchUsers() {
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
+      const response = await fetch(`${API_URL}/users`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${getToken()}`,
         },
       });
 
       if (!response.ok) throw new Error("Kunne ikke hente brugere");
 
       const data = await response.json();
-      setUsers(Array.isArray(data) ? data : []);
+
+      const normalizedUsers = Array.isArray(data)
+        ? data.map((user) => ({
+            ...user,
+            employmentType: user.employmentType || "HOURLY",
+          }))
+        : [];
+
+      setUsers(normalizedUsers);
     } catch (error) {
       console.error(error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -85,21 +108,21 @@ export default function UsersPage() {
 
   async function createUser() {
     try {
-      const token = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
 
       if (!savedUser) return;
 
       const currentUser = JSON.parse(savedUser);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
+      const response = await fetch(`${API_URL}/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({
           ...newUser,
+          employmentType: newUser.employmentType || "HOURLY",
           cinemaId: currentUser.cinemaId,
         }),
       });
@@ -108,7 +131,14 @@ export default function UsersPage() {
 
       const createdUser = await response.json();
 
-      setUsers((prev) => [...prev, createdUser]);
+      setUsers((prev) => [
+        ...prev,
+        {
+          ...createdUser,
+          employmentType: createdUser.employmentType || "HOURLY",
+        },
+      ]);
+
       setShowCreate(false);
       setNewUser(emptyUser);
     } catch (error) {
@@ -121,38 +151,41 @@ export default function UsersPage() {
     if (!editingUser) return;
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${editingUser.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            firstName: editingUser.firstName,
-            lastName: editingUser.lastName,
-            email: editingUser.email,
-            phone: editingUser.phone,
-            role: editingUser.role,
-            canManageSchedule: editingUser.canManageSchedule,
-            canManageUsers: editingUser.canManageUsers,
-            canManagePayroll: editingUser.canManagePayroll,
-            canManageLeaveRequests: editingUser.canManageLeaveRequests,
-            canManageCinemaSettings: editingUser.canManageCinemaSettings,
-            canSendBroadcastMessages: editingUser.canSendBroadcastMessages,
-          }),
+      const response = await fetch(`${API_URL}/users/${editingUser.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
         },
-      );
+        body: JSON.stringify({
+          firstName: editingUser.firstName,
+          lastName: editingUser.lastName,
+          email: editingUser.email,
+          phone: editingUser.phone,
+          role: editingUser.role,
+          employmentType: editingUser.employmentType || "HOURLY",
+          canManageSchedule: editingUser.canManageSchedule,
+          canManageUsers: editingUser.canManageUsers,
+          canManagePayroll: editingUser.canManagePayroll,
+          canManageLeaveRequests: editingUser.canManageLeaveRequests,
+          canManageCinemaSettings: editingUser.canManageCinemaSettings,
+          canSendBroadcastMessages: editingUser.canSendBroadcastMessages,
+        }),
+      });
 
       if (!response.ok) throw new Error("Kunne ikke opdatere bruger");
 
       const updatedUser = await response.json();
 
       setUsers((prev) =>
-        prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
+        prev.map((user) =>
+          user.id === updatedUser.id
+            ? {
+                ...updatedUser,
+                employmentType: updatedUser.employmentType || "HOURLY",
+              }
+            : user,
+        ),
       );
 
       setEditingUser(null);
@@ -168,17 +201,12 @@ export default function UsersPage() {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${API_URL}/users/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
         },
-      );
+      });
 
       if (!response.ok) throw new Error("Kunne ikke slette bruger");
 
@@ -227,7 +255,10 @@ export default function UsersPage() {
         {editingUser && (
           <UserModal
             title="Rediger bruger"
-            user={editingUser}
+            user={{
+              ...editingUser,
+              employmentType: editingUser.employmentType || "HOURLY",
+            }}
             setUser={setEditingUser}
             onClose={() => setEditingUser(null)}
             onSave={updateUser}
@@ -242,6 +273,7 @@ export default function UsersPage() {
                 <th className="p-4">Email</th>
                 <th className="p-4">Telefon</th>
                 <th className="p-4">Rolle</th>
+                <th className="p-4">Ansættelse</th>
                 <th className="p-4">Handlinger</th>
               </tr>
             </thead>
@@ -263,9 +295,20 @@ export default function UsersPage() {
                   </td>
 
                   <td className="p-4">
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700">
+                      {getEmploymentTypeLabel(user.employmentType)}
+                    </span>
+                  </td>
+
+                  <td className="p-4">
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setEditingUser(user)}
+                        onClick={() =>
+                          setEditingUser({
+                            ...user,
+                            employmentType: user.employmentType || "HOURLY",
+                          })
+                        }
                         className="rounded-lg bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-800"
                       >
                         Rediger
@@ -304,7 +347,7 @@ function UserModal({
   showPassword = false,
 }: {
   title: string;
-  user: any;
+  user: UserFormData | User;
   setUser: any;
   onClose: () => void;
   onSave: () => void;
@@ -344,7 +387,7 @@ function UserModal({
             <input
               type="password"
               placeholder="Password"
-              value={user.password || ""}
+              value={(user as UserFormData).password || ""}
               onChange={(e) => setUser({ ...user, password: e.target.value })}
               className="w-full rounded-lg border p-3"
             />
@@ -368,8 +411,23 @@ function UserModal({
             }
             className="w-full rounded-lg border p-3"
           >
-            <option value="EMPLOYEE">EMPLOYEE</option>
-            <option value="ADMIN">ADMIN</option>
+            <option value="EMPLOYEE">Medarbejder</option>
+            <option value="ADMIN">Admin</option>
+            <option value="MASTER">Master</option>
+          </select>
+
+          <select
+            value={user.employmentType || "HOURLY"}
+            onChange={(e) =>
+              setUser({
+                ...user,
+                employmentType: e.target.value as EmploymentType,
+              })
+            }
+            className="w-full rounded-lg border p-3"
+          >
+            <option value="HOURLY">Timelønnet</option>
+            <option value="SALARIED">Fastlønnet</option>
           </select>
 
           <div className="space-y-3 rounded-xl border p-4">

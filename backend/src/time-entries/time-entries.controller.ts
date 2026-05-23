@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 
@@ -88,7 +89,11 @@ export class TimeEntriesController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id')
-  updateEntry(@Param('id') id: string, @Body() body: UpdateTimeEntryDto) {
+  updateEntry(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body: UpdateTimeEntryDto,
+  ) {
     return this.timeEntriesService.updateEntry(req.user, Number(id), body);
   }
 }
