@@ -18,6 +18,7 @@ import { CinemasModule } from './cinemas/cinemas.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PushSubscriptionsModule } from './push-subscriptions/push-subscriptions.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { PayrollTypesModule } from './payroll-types/payroll-types.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
         limit: 100,
       },
     ]),
+    PayrollTypesModule,
   ],
 })
 export class AppModule {}

@@ -81,26 +81,14 @@ export class TimeEntriesController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id/reject')
-  rejectEntry(
-    @Param('id') id: string,
-    @Body() body: RejectTimeEntryDto,
-  ) {
-    return this.timeEntriesService.rejectEntry(
-      Number(id),
-      body.adminNote,
-    );
+  rejectEntry(@Param('id') id: string, @Body() body: RejectTimeEntryDto) {
+    return this.timeEntriesService.rejectEntry(Number(id), body.adminNote);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id')
-  updateEntry(
-    @Param('id') id: string,
-    @Body() body: UpdateTimeEntryDto,
-  ) {
-    return this.timeEntriesService.updateEntry(
-      Number(id),
-      body,
-    );
+  updateEntry(@Param('id') id: string, @Body() body: UpdateTimeEntryDto) {
+    return this.timeEntriesService.updateEntry(req.user, Number(id), body);
   }
 }

@@ -13,50 +13,86 @@ enum Role {
   EMPLOYEE
 }
 
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ShiftTradeStatus {
+  OPEN
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum ShiftTradeType {
+  POOL
+  DIRECT
+}
+
+enum TimeEntryStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PayrollPeriodStatus {
+  OPEN
+  LOCKED
+  EXPORTED
+  UNLOCKED
+}
+
 model Cinema {
-  id                    Int                @id @default(autoincrement())
+  id                    Int      @id @default(autoincrement())
   name                  String
-  createdAt             DateTime           @default(now())
-  movieShowings         MovieShowing[]
-  leaveRequests         LeaveRequest[]
-  shiftTrades           ShiftTrade[]
-  users                 User[]
-  workTypes             WorkType[]
-  shifts                Shift[]
-  messages              Message[]
-  timeEntries           TimeEntry[]
-  allowShiftTradePool   Boolean            @default(false)
-  allowShiftTradeDirect Boolean            @default(false)
-  notifications         Notification[]
-  pushSubscriptions     PushSubscription[]
-  auditLogs             AuditLog[]
+  createdAt             DateTime @default(now())
+  allowShiftTradePool   Boolean  @default(false)
+  allowShiftTradeDirect Boolean  @default(false)
+
+  movieShowings     MovieShowing[]
+  leaveRequests     LeaveRequest[]
+  shiftTrades       ShiftTrade[]
+  users             User[]
+  workTypes         WorkType[]
+  shifts            Shift[]
+  messages          Message[]
+  timeEntries       TimeEntry[]
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
+  auditLogs         AuditLog[]
+  payrollPeriods    PayrollPeriod[]
+  payrollTypes      PayrollType[]
 }
 
 model User {
-  id                       Int            @id @default(autoincrement())
-  email                    String         @unique
-  password                 String
-  firstName                String
-  lastName                 String
-  phone                    String?
-  profileImage             String?
-  address                  String?
-  birthDate                DateTime?
-  emergencyPhone           String?
-  hireDate                 DateTime?
-  skills                   String?
-  notes                    String?
-  theme                    String         @default("light")
-  role                     Role           @default(EMPLOYEE)
-  createdAt                DateTime       @default(now())
-  canManageSchedule        Boolean        @default(false)
-  canManageUsers           Boolean        @default(false)
-  canManagePayroll         Boolean        @default(false)
-  canManageLeaveRequests   Boolean        @default(false)
-  canManageCinemaSettings  Boolean        @default(false)
-  canSendBroadcastMessages Boolean        @default(false)
-  notifications            Notification[]
-  auditLogs                AuditLog[]
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  password       String
+  firstName      String
+  lastName       String
+  phone          String?
+  profileImage   String?
+  address        String?
+  birthDate      DateTime?
+  emergencyPhone String?
+  hireDate       DateTime?
+  skills         String?
+  notes          String?
+  theme          String    @default("light")
+  role           Role      @default(EMPLOYEE)
+  createdAt      DateTime  @default(now())
+
+  employeeNumber    String?
+  payrollEmployeeId String?
+
+  canManageSchedule        Boolean @default(false)
+  canManageUsers           Boolean @default(false)
+  canManagePayroll         Boolean @default(false)
+  canManageLeaveRequests   Boolean @default(false)
+  canManageCinemaSettings  Boolean @default(false)
+  canSendBroadcastMessages Boolean @default(false)
 
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
@@ -72,6 +108,8 @@ model User {
   timeEntries       TimeEntry[]
   pushSubscriptions PushSubscription[]
   documents         EmployeeDocument[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
 }
 
 model WorkType {
@@ -82,6 +120,9 @@ model WorkType {
 
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  payrollTypeId Int?
+  payrollType   PayrollType? @relation(fields: [payrollTypeId], references: [id])
 
   shifts Shift[]
 }
@@ -120,12 +161,6 @@ model MovieShowing {
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
 }
 
-enum LeaveStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 model LeaveRequest {
   id        Int         @id @default(autoincrement())
   startDate DateTime
@@ -139,18 +174,6 @@ model LeaveRequest {
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
-}
-
-enum ShiftTradeStatus {
-  OPEN
-  ACCEPTED
-  REJECTED
-  CANCELLED
-}
-
-enum ShiftTradeType {
-  POOL
-  DIRECT
 }
 
 model ShiftTrade {
@@ -171,13 +194,13 @@ model ShiftTrade {
   rejectedByUserId Int?
   rejectedByUser   User? @relation("RejectedTrades", fields: [rejectedByUserId], references: [id])
 
+  targetUserId Int?
+  targetUser   User? @relation("TargetedTrades", fields: [targetUserId], references: [id])
+
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
 
   type ShiftTradeType @default(POOL)
-
-  targetUserId Int?
-  targetUser   User? @relation("TargetedTrades", fields: [targetUserId], references: [id])
 }
 
 model Message {
@@ -208,12 +231,6 @@ model Message {
   relatedShiftTradeId Int?
 }
 
-enum TimeEntryStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 model TimeEntry {
   id        Int       @id @default(autoincrement())
   clockIn   DateTime
@@ -232,6 +249,17 @@ model TimeEntry {
 
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  payrollPeriodId Int?
+  payrollPeriod   PayrollPeriod? @relation(fields: [payrollPeriodId], references: [id])
+
+  payrollLocked           Boolean   @default(false)
+  payrollUnlockedByMaster Boolean   @default(false)
+  payrollUnlockedAt       DateTime?
+  payrollLockNote         String?
+
+  payrollTypeId Int?
+  payrollType   PayrollType? @relation(fields: [payrollTypeId], references: [id])
 }
 
 model PushSubscription {
@@ -290,4 +318,64 @@ model AuditLog {
 
   cinemaId Int?
   cinema   Cinema? @relation(fields: [cinemaId], references: [id])
+}
+
+model PayrollPeriod {
+  id Int @id @default(autoincrement())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  startDate DateTime
+  endDate   DateTime
+
+  status PayrollPeriodStatus @default(OPEN)
+
+  lockedAt       DateTime?
+  lockedByUserId Int?
+
+  exportedAt       DateTime?
+  exportedByUserId Int?
+
+  unlockedAt       DateTime?
+  unlockedByUserId Int?
+  unlockNote       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timeEntries TimeEntry[]
+
+  @@unique([cinemaId, startDate, endDate])
+  @@index([cinemaId])
+  @@index([startDate, endDate])
+  @@index([status])
+}
+
+model PayrollType {
+  id Int @id @default(autoincrement())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  name String
+
+  payrollCode String
+  exportCode  String?
+
+  description String?
+
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  color String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workTypes   WorkType[]
+  timeEntries TimeEntry[]
+
+  @@index([cinemaId])
+  @@index([payrollCode])
 }

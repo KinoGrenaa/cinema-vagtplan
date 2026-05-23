@@ -25,16 +25,35 @@ export class TimeEntriesService {
     };
   }
 
+  private ensureEntryEditable(entry: any, user?: any) {
+    if (!entry.payrollLocked) {
+      return;
+    }
+
+    if (user?.role === 'MASTER' && entry.payrollUnlockedByMaster) {
+      return;
+    }
+
+    throw new BadRequestException(
+      'Denne tidsregistrering er låst af lønsystemet',
+    );
+  }
+
   findForUser(userId: number) {
     return this.prisma.timeEntry.findMany({
       where: { userId },
       include: {
+        user: true,
+        payrollType: true,
         shift: {
           include: {
-            workType: true,
+            workType: {
+              include: {
+                payrollType: true,
+              },
+            },
           },
         },
-        user: true,
       },
       orderBy: {
         clockIn: 'desc',
@@ -53,6 +72,16 @@ export class TimeEntriesService {
           : this.getCinemaFilter(user),
       include: {
         user: true,
+        payrollType: true,
+        shift: {
+          include: {
+            workType: {
+              include: {
+                payrollType: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         clockIn: 'desc',
@@ -141,6 +170,7 @@ export class TimeEntriesService {
         userId: data.userId,
         cinemaId: data.cinemaId,
         shiftId: data.shiftId,
+        payrollTypeId: shift.workType?.payrollTypeId || null,
         clockIn,
         clockOut,
         note: data.note,
@@ -177,11 +207,28 @@ export class TimeEntriesService {
       return openEntry;
     }
 
+    let payrollTypeId: number | null = null;
+
+    if (data.shiftId) {
+      const shift = await this.prisma.shift.findFirst({
+        where: {
+          id: data.shiftId,
+          cinemaId: data.cinemaId,
+        },
+        include: {
+          workType: true,
+        },
+      });
+
+      payrollTypeId = shift?.workType?.payrollTypeId || null;
+    }
+
     const entry = await this.prisma.timeEntry.create({
       data: {
         userId: data.userId,
         cinemaId: data.cinemaId,
         shiftId: data.shiftId || null,
+        payrollTypeId,
         clockIn: new Date(),
         status: 'PENDING',
       },
@@ -213,6 +260,8 @@ export class TimeEntriesService {
     if (!existingEntry) {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
+
+    this.ensureEntryEditable(existingEntry);
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
@@ -249,6 +298,8 @@ export class TimeEntriesService {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
 
+    this.ensureEntryEditable(existingEntry);
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
@@ -282,6 +333,8 @@ export class TimeEntriesService {
     if (!existingEntry) {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
+
+    this.ensureEntryEditable(existingEntry);
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
@@ -317,6 +370,8 @@ export class TimeEntriesService {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
 
+    this.ensureEntryEditable(existingEntry);
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
@@ -343,6 +398,7 @@ export class TimeEntriesService {
   }
 
   async updateEntry(
+    user: any,
     id: number,
     data: {
       clockIn: string;
@@ -358,6 +414,8 @@ export class TimeEntriesService {
     if (!existingEntry) {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
+
+    this.ensureEntryEditable(existingEntry, user);
 
     if (!data.adminNote || data.adminNote.trim() === '') {
       throw new BadRequestException(

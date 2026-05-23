@@ -1,13 +1,17 @@
 import {
+  Body,
   Controller,
   Get,
   Header,
+  Param,
+  Post,
   Query,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { Buffer } from 'buffer';
 
 import { PayrollService } from './payroll.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
@@ -35,6 +39,55 @@ export class PayrollController {
     );
   }
 
+  @Get('period')
+  getPeriod(
+    @Req() req: any,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.payrollService.getPeriod(req.user, startDate, endDate);
+  }
+
+  @Get('audit-history')
+  getAuditHistory(
+    @Req() req: any,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.payrollService.getPayrollAuditHistory(
+      req.user,
+      startDate,
+      endDate,
+    );
+  }
+
+  @Post('period/lock')
+  lockPeriod(
+    @Req() req: any,
+    @Body('startDate') startDate: string,
+    @Body('endDate') endDate: string,
+  ) {
+    return this.payrollService.lockPeriod(req.user, startDate, endDate);
+  }
+
+  @Post('period/:id/unlock')
+  unlockPeriod(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('note') note?: string,
+  ) {
+    return this.payrollService.unlockPeriod(req.user, Number(id), note);
+  }
+
+  @Post('time-entry/:id/unlock')
+  unlockTimeEntry(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body('note') note?: string,
+  ) {
+    return this.payrollService.unlockTimeEntry(req.user, Number(id), note);
+  }
+
   @Get('export/csv')
   @Header('Content-Type', 'text/csv; charset=utf-8')
   async exportCsv(
@@ -57,5 +110,56 @@ export class PayrollController {
     );
 
     return res.send('\uFEFF' + csv);
+  }
+
+  @Get('export/xlsx')
+  @Header(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  )
+  async exportXlsx(
+    @Req() req: any,
+    @Res() res: Response,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('userId') userId?: string,
+  ) {
+    const buffer = await this.payrollService.exportPayrollXlsx(
+      req.user,
+      startDate,
+      endDate,
+      userId,
+    );
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="payroll-${startDate}-til-${endDate}.xlsx"`,
+    );
+
+    return res.send(Buffer.from(buffer));
+  }
+
+  @Get('export/pdf')
+  @Header('Content-Type', 'application/pdf')
+  async exportPdf(
+    @Req() req: any,
+    @Res() res: Response,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('userId') userId?: string,
+  ) {
+    const buffer = await this.payrollService.exportPayrollPdf(
+      req.user,
+      startDate,
+      endDate,
+      userId,
+    );
+
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="payroll-${startDate}-til-${endDate}.pdf"`,
+    );
+
+    return res.send(buffer);
   }
 }
