@@ -1,15 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useApi } from "@/app/hooks/useApi";
+import { useAuth } from "@/app/providers/AuthProvider";
+import { useConfirm } from "@/app/hooks/useConfirm";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-type CurrentUser = {
-  id: number;
-  role: string;
-  cinemaId: number;
-};
 
 type User = {
   id: number;
@@ -36,829 +33,378 @@ type ShiftTrade = {
     user: User;
     workType: {
       name: string;
-      color: string;
+      color?: string | null;
     };
   };
 };
 
-type CinemaSettings = {
-  allowShiftTradePool: boolean;
-  allowShiftTradeDirect: boolean;
-};
+function formatShiftDate(value: string) {
+  return new Date(value).toLocaleDateString("da-DK", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
 
-type FatigueScore = {
-  score: number;
-  level: "LOW" | "MEDIUM" | "HIGH";
-};
+function formatShiftTime(startTime: string, endTime: string) {
+  const start = new Date(startTime).toLocaleTimeString("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const end = new Date(endTime).toLocaleTimeString("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return `${start} - ${end}`;
+}
 
 export default function ShiftTradesPage() {
+  const { apiFetch } = useApi();
+  const { user } = useAuth();
+  const confirmModal = useConfirm();
+
   const [trades, setTrades] = useState<ShiftTrade[]>([]);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [message, setMessage] = useState("");
-
-  const [autoFillSuggestions, setAutoFillSuggestions] = useState<
-    Record<number, string[]>
-  >({});
-
-  const [autoAssignLoading, setAutoAssignLoading] = useState<number | null>(
-    null,
-  );
-
-  const [staffingScores, setStaffingScores] = useState<Record<number, number>>(
-    {},
-  );
-
-  const [fatigueWarnings, setFatigueWarnings] = useState<
-    Record<number, string[]>
-  >({});
-
-  const [fatigueScores, setFatigueScores] = useState<
-    Record<number, FatigueScore>
-  >({});
-
-  const [recoveryWarnings, setRecoveryWarnings] = useState<
-    Record<number, string[]>
-  >({});
-
-  const [cinemaSettings, setCinemaSettings] = useState<CinemaSettings | null>(
-    null,
-  );
-
-  function getHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
-
-  const tradeUsers = useMemo(() => {
-    const allUsers = trades
-      .flatMap((trade) => [
-        trade.offeredByUser,
-        trade.targetUser,
-        trade.acceptedByUser,
-      ])
-      .filter(Boolean) as User[];
-
-    return allUsers.filter(
-      (user, index, self) =>
-        index === self.findIndex((item) => item.id === user.id),
-    );
-  }, [trades]);
+  const [loading, setLoading] = useState(true);
 
   const fetchTrades = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/shift-trades`, {
-        headers: getHeaders(),
-      });
+      setLoading(true);
 
-      const data = await response.json();
+      const response = await apiFetch("/shift-trades");
 
-      const savedUser = localStorage.getItem("user");
-
-      if (savedUser) {
-        const user = JSON.parse(savedUser);
-
-        const cinemaResponse = await fetch(
-          `${API_URL}/cinemas/${user.cinemaId}`,
-          {
-            headers: getHeaders(),
-          },
-        );
-
-        if (cinemaResponse.ok) {
-          const cinemaData = await cinemaResponse.json();
-          setCinemaSettings(cinemaData);
-        }
+      if (!response.ok) {
+        setTrades([]);
+        return;
       }
 
+      const data = await response.json();
       setTrades(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (error) {
+      console.error("Kunne ikke hente vagtbytter", error);
       setTrades([]);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [apiFetch]);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-    }
-
     fetchTrades();
   }, [fetchTrades]);
 
   useRealtimeShifts({
     onShiftTradesUpdated: fetchTrades,
+    onShiftsUpdated: fetchTrades,
   });
 
-  async function acceptTrade(tradeId: number) {
-    if (!currentUser) return;
+  const poolTrades = useMemo(() => {
+    if (!user) return [];
 
-    if (!window.confirm("Er du sikker på, at du vil acceptere denne vagt?")) {
-      return;
-    }
-
-    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/accept`, {
-      method: "PATCH",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        acceptedByUserId: currentUser.id,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke acceptere vagten");
-      return;
-    }
-
-    setMessage("Vagten er accepteret.");
-    await fetchTrades();
-  }
-
-  async function rejectTrade(tradeId: number) {
-    if (!window.confirm("Er du sikker på, at du vil afvise denne vagt?")) {
-      return;
-    }
-
-    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/reject`, {
-      method: "PATCH",
-      headers: getHeaders(),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke afvise vagten");
-      return;
-    }
-
-    setMessage("Vagten er afvist.");
-    await fetchTrades();
-  }
-
-  const openTrades = useMemo(() => {
     return trades.filter((trade) => {
-      if (trade.status !== "OPEN") return false;
+      const isFutureShift = new Date(trade.shift.startTime) > new Date();
 
-      if (
+      return (
+        trade.status === "OPEN" &&
         trade.type === "POOL" &&
-        cinemaSettings &&
-        !cinemaSettings.allowShiftTradePool
-      ) {
-        return false;
-      }
-
-      if (
-        trade.type === "DIRECT" &&
-        cinemaSettings &&
-        !cinemaSettings.allowShiftTradeDirect
-      ) {
-        return false;
-      }
-
-      return true;
+        trade.offeredByUserId !== user.id &&
+        isFutureShift
+      );
     });
-  }, [trades, cinemaSettings]);
+  }, [trades, user]);
+
+  const directTrades = useMemo(() => {
+    if (!user) return [];
+
+    return trades.filter((trade) => {
+      const isFutureShift = new Date(trade.shift.startTime) > new Date();
+
+      return (
+        trade.status === "OPEN" &&
+        trade.type === "DIRECT" &&
+        trade.targetUserId === user.id &&
+        isFutureShift
+      );
+    });
+  }, [trades, user]);
 
   const historyTrades = useMemo(() => {
-    return trades.filter((trade) => trade.status !== "OPEN");
-  }, [trades]);
+    if (!user) return [];
 
-  const generateAutoFillSuggestions = useCallback(() => {
-    const suggestions: Record<number, string[]> = {};
+    return trades.filter((trade) => {
+      return (
+        trade.status !== "OPEN" &&
+        (trade.offeredByUserId === user.id ||
+          trade.acceptedByUserId === user.id ||
+          trade.targetUserId === user.id)
+      );
+    });
+  }, [trades, user]);
 
-    openTrades.forEach((trade) => {
-      const recommended = tradeUsers
-        .filter(
-          (user) =>
-            user.id !== trade.offeredByUserId && user.id !== trade.shift.userId,
-        )
-        .slice(0, 3)
-        .map((user) => {
-          return `${user.firstName} ${user.lastName} (lav belastning anbefalet)`;
+  function acceptTrade(trade: ShiftTrade) {
+    if (!user) return;
+
+    const offeredBy = `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`;
+    const shiftInfo = `${trade.shift.workType.name} - ${formatShiftDate(
+      trade.shift.startTime,
+    )} kl. ${formatShiftTime(trade.shift.startTime, trade.shift.endTime)}`;
+
+    confirmModal.confirm({
+      title: "Accepter vagt",
+      description: `Er du sikker på, at du vil acceptere denne vagt fra ${offeredBy}?\n\n${shiftInfo}`,
+      onConfirm: async () => {
+        const response = await apiFetch(`/shift-trades/${trade.id}/accept`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            acceptedByUserId: user.id,
+          }),
         });
 
-      suggestions[trade.id] = recommended;
-    });
-
-    setAutoFillSuggestions(suggestions);
-  }, [openTrades, tradeUsers]);
-
-  const calculateStaffingScores = useCallback(() => {
-    const scores: Record<number, number> = {};
-
-    tradeUsers.forEach((user) => {
-      const userTrades = trades.filter(
-        (trade) =>
-          trade.offeredByUserId === user.id ||
-          trade.acceptedByUserId === user.id,
-      );
-
-      const loadPenalty = userTrades.length * 8;
-      const overtimePenalty = userTrades.length >= 5 ? 20 : 0;
-
-      const score = 100 - loadPenalty - overtimePenalty;
-
-      scores[user.id] = Math.max(score, 1);
-    });
-
-    setStaffingScores(scores);
-  }, [trades, tradeUsers]);
-
-  const calculateFatigueWarnings = useCallback(() => {
-    const warnings: Record<number, string[]> = {};
-
-    tradeUsers.forEach((user) => {
-      const userTrades = trades.filter(
-        (trade) =>
-          trade.offeredByUserId === user.id ||
-          trade.acceptedByUserId === user.id,
-      );
-
-      const userWarnings: string[] = [];
-
-      if (userTrades.length >= 5) {
-        userWarnings.push("Høj samlet belastning registreret.");
-      }
-
-      if (userTrades.length >= 3) {
-        userWarnings.push("Risiko for for mange vagter i træk.");
-      }
-
-      const lateShifts = userTrades.filter((trade) => {
-        const endHour = new Date(trade.shift.endTime).getHours();
-
-        return endHour >= 22;
-      });
-
-      if (lateShifts.length >= 2) {
-        userWarnings.push("Mange sene/aften vagter registreret.");
-      }
-
-      warnings[user.id] = userWarnings;
-    });
-
-    setFatigueWarnings(warnings);
-  }, [trades, tradeUsers]);
-
-  const calculateFatigueScores = useCallback(() => {
-    const scores: Record<number, FatigueScore> = {};
-
-    tradeUsers.forEach((user) => {
-      const userTrades = trades.filter(
-        (trade) =>
-          trade.offeredByUserId === user.id ||
-          trade.acceptedByUserId === user.id,
-      );
-
-      let fatigueScore = 0;
-
-      fatigueScore += userTrades.length * 10;
-
-      const lateShifts = userTrades.filter((trade) => {
-        const endHour = new Date(trade.shift.endTime).getHours();
-
-        return endHour >= 22;
-      });
-
-      fatigueScore += lateShifts.length * 12;
-
-      const weekendShifts = userTrades.filter((trade) => {
-        const day = new Date(trade.shift.startTime).getDay();
-
-        return day === 0 || day === 6;
-      });
-
-      fatigueScore += weekendShifts.length * 8;
-
-      if (userTrades.length >= 5) {
-        fatigueScore += 25;
-      }
-
-      let level: "LOW" | "MEDIUM" | "HIGH" = "LOW";
-
-      if (fatigueScore >= 70) {
-        level = "HIGH";
-      } else if (fatigueScore >= 35) {
-        level = "MEDIUM";
-      }
-
-      scores[user.id] = {
-        score: fatigueScore,
-        level,
-      };
-    });
-
-    setFatigueScores(scores);
-  }, [trades, tradeUsers]);
-
-  const calculateRecoveryWarnings = useCallback(() => {
-    const warnings: Record<number, string[]> = {};
-
-    tradeUsers.forEach((user) => {
-      const userTrades = trades
-        .filter(
-          (trade) =>
-            trade.offeredByUserId === user.id ||
-            trade.acceptedByUserId === user.id,
-        )
-        .sort(
-          (a, b) =>
-            new Date(a.shift.startTime).getTime() -
-            new Date(b.shift.startTime).getTime(),
-        );
-
-      const userWarnings: string[] = [];
-
-      for (let index = 1; index < userTrades.length; index++) {
-        const previousShift = userTrades[index - 1];
-        const currentShift = userTrades[index];
-
-        const previousEnd = new Date(previousShift.shift.endTime);
-        const currentStart = new Date(currentShift.shift.startTime);
-
-        const restHours =
-          (currentStart.getTime() - previousEnd.getTime()) / 1000 / 60 / 60;
-
-        if (restHours < 11) {
-          userWarnings.push(
-            `Kun ${restHours.toFixed(1)} timers hvile mellem vagter.`,
-          );
-        }
-
-        if (previousEnd.getHours() >= 22 && currentStart.getHours() <= 8) {
-          userWarnings.push(
-            "Lukkevagt efterfulgt af tidlig åbnevagt registreret.",
-          );
-        }
-      }
-
-      if (userTrades.length >= 6) {
-        userWarnings.push("Mange vagter i træk registreret.");
-      }
-
-      warnings[user.id] = userWarnings;
-    });
-
-    setRecoveryWarnings(warnings);
-  }, [trades, tradeUsers]);
-
-  const autoAssignBestEmployee = useCallback(
-    async (trade: ShiftTrade) => {
-      try {
-        setAutoAssignLoading(trade.id);
-
-        const candidates = tradeUsers
-          .filter(
-            (user) =>
-              user.id !== trade.offeredByUserId &&
-              user.id !== trade.shift.userId,
-          )
-          .sort((a, b) => {
-            const scoreA = staffingScores[a.id] || 0;
-            const scoreB = staffingScores[b.id] || 0;
-
-            return scoreB - scoreA;
-          });
-
-        const bestUser = candidates[0];
-
-        if (!bestUser) {
-          alert("Ingen egnet medarbejder fundet.");
-          return;
-        }
-
-        const response = await fetch(
-          `${API_URL}/shift-trades/${trade.id}/accept`,
-          {
-            method: "PATCH",
-            headers: getHeaders(),
-            body: JSON.stringify({
-              acceptedByUserId: bestUser.id,
-            }),
-          },
-        );
+        const data = await response.json().catch(() => null);
 
         if (!response.ok) {
-          alert("Auto assign fejlede.");
+          setMessage(data?.message || "Kunne ikke acceptere vagten");
           return;
         }
 
+        setMessage("Vagten er accepteret.");
         await fetchTrades();
-
-        alert(
-          `${bestUser.firstName} ${bestUser.lastName} blev automatisk valgt.`,
-        );
-      } catch (error) {
-        console.error(error);
-        alert("Auto assign fejlede.");
-      } finally {
-        setAutoAssignLoading(null);
-      }
-    },
-    [fetchTrades, staffingScores, tradeUsers],
-  );
-
-  useEffect(() => {
-    generateAutoFillSuggestions();
-  }, [generateAutoFillSuggestions]);
-
-  useEffect(() => {
-    calculateStaffingScores();
-  }, [calculateStaffingScores]);
-
-  useEffect(() => {
-    calculateFatigueWarnings();
-  }, [calculateFatigueWarnings]);
-
-  useEffect(() => {
-    calculateFatigueScores();
-  }, [calculateFatigueScores]);
-
-  useEffect(() => {
-    calculateRecoveryWarnings();
-  }, [calculateRecoveryWarnings]);
-
-  function getStatusBadge(status: string) {
-    if (status === "ACCEPTED") {
-      return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
-    }
-
-    if (status === "REJECTED") {
-      return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
-    }
-
-    if (status === "CANCELLED") {
-      return "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
-    }
-
-    return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
+      },
+    });
   }
 
-  function getStatusText(status: string) {
-    if (status === "ACCEPTED") return "Accepteret";
-    if (status === "REJECTED") return "Afvist";
-    if (status === "CANCELLED") return "Annulleret";
+  function rejectTrade(trade: ShiftTrade) {
+    const shiftInfo = `${trade.shift.workType.name} - ${formatShiftDate(
+      trade.shift.startTime,
+    )} kl. ${formatShiftTime(trade.shift.startTime, trade.shift.endTime)}`;
 
-    return "Åben";
+    confirmModal.confirm({
+      title: "Afvis vagt",
+      description: `Er du sikker på, at du vil afvise denne vagt?\n\n${shiftInfo}`,
+      onConfirm: async () => {
+        const response = await apiFetch(`/shift-trades/${trade.id}/reject`, {
+          method: "PATCH",
+        });
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          setMessage(data?.message || "Kunne ikke afvise vagten");
+          return;
+        }
+
+        setMessage("Vagten er afvist.");
+        await fetchTrades();
+      },
+    });
   }
 
-  function canAcceptTrade(trade: ShiftTrade) {
-    if (!currentUser) return false;
-    if (trade.offeredByUserId === currentUser.id) return false;
-
-    if (trade.type === "DIRECT" && trade.targetUserId !== currentUser.id) {
-      return false;
-    }
-
-    return true;
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-100 p-10 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        Henter vagtbytter...
+      </main>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-3xl font-bold">Vagtbytter</h1>
+    <>
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">Vagtpulje</h1>
 
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Se åbne vagter og håndter bytteaftaler.
-          </p>
-        </div>
-
-        {message && (
-          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
-            {message}
-          </div>
-        )}
-
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Åbne vagter</h2>
-
-            <span className="rounded-full bg-yellow-500 px-3 py-1 text-sm font-semibold text-white">
-              {openTrades.length}
-            </span>
-          </div>
-
-          {openTrades.map((trade) => (
-            <div
-              key={trade.id}
-              className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
-            >
-              <div
-                className="h-2 w-full"
-                style={{
-                  backgroundColor: trade.shift.workType.color,
-                }}
-              />
-
-              <div className="space-y-5 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="mb-2 flex flex-wrap gap-2">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
-                          trade.status,
-                        )}`}
-                      >
-                        {getStatusText(trade.status)}
-                      </span>
-
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold text-white ${
-                          trade.type === "POOL" ? "bg-green-600" : "bg-blue-600"
-                        }`}
-                      >
-                        {trade.type === "POOL"
-                          ? "Fælles pulje"
-                          : "Direkte bytte"}
-                      </span>
-                    </div>
-
-                    <h3 className="text-2xl font-bold">
-                      {trade.shift.workType.name}
-                    </h3>
-
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                      {new Date(trade.shift.startTime).toLocaleDateString(
-                        "da-DK",
-                        {
-                          weekday: "long",
-                          day: "2-digit",
-                          month: "long",
-                        },
-                      )}
-                    </p>
-
-                    <p className="text-gray-600 dark:text-gray-400">
-                      {new Date(trade.shift.startTime).toLocaleTimeString(
-                        "da-DK",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
-                      {" - "}
-                      {new Date(trade.shift.endTime).toLocaleTimeString(
-                        "da-DK",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        },
-                      )}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-gray-100 px-4 py-3 text-sm dark:bg-gray-950">
-                    <div>
-                      Fra:{" "}
-                      <strong>
-                        {trade.offeredByUser.firstName}{" "}
-                        {trade.offeredByUser.lastName}
-                      </strong>
-                    </div>
-
-                    {trade.type === "DIRECT" && trade.targetUser && (
-                      <div className="mt-1">
-                        Til:{" "}
-                        <strong>
-                          {trade.targetUser.firstName}{" "}
-                          {trade.targetUser.lastName}
-                        </strong>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {trade.message && (
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-800 dark:bg-gray-950">
-                    {trade.message}
-                  </div>
-                )}
-
-                <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
-                  <div className="mb-2 flex items-center gap-2">
-                    <div className="text-lg">🤖</div>
-
-                    <div className="text-sm font-semibold text-green-700 dark:text-green-300">
-                      Auto-fill forslag
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {(autoFillSuggestions[trade.id] || []).map(
-                      (suggestion, index) => {
-                        const matchedUser = tradeUsers.find((user) =>
-                          suggestion.includes(
-                            `${user.firstName} ${user.lastName}`,
-                          ),
-                        );
-
-                        const score = matchedUser
-                          ? staffingScores[matchedUser.id]
-                          : null;
-
-                        const fatigueScore = matchedUser
-                          ? fatigueScores[matchedUser.id]
-                          : null;
-
-                        return (
-                          <div
-                            key={index}
-                            className="rounded-lg bg-white px-3 py-2 text-sm text-green-700 dark:bg-gray-900 dark:text-green-300"
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <span>{suggestion}</span>
-
-                              <div className="flex flex-wrap gap-2">
-                                {score && (
-                                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-950 dark:text-green-300">
-                                    Score: {score}
-                                  </span>
-                                )}
-
-                                {fatigueScore && (
-                                  <span
-                                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                                      fatigueScore.level === "LOW"
-                                        ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
-                                        : fatigueScore.level === "MEDIUM"
-                                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
-                                          : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
-                                    }`}
-                                  >
-                                    Fatigue: {fatigueScore.level} •{" "}
-                                    {fatigueScore.score}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {matchedUser &&
-                              fatigueWarnings[matchedUser.id]?.length > 0 && (
-                                <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-900 dark:bg-orange-950">
-                                  <div className="mb-2 text-xs font-bold text-orange-700 dark:text-orange-300">
-                                    ⚠️ Fatigue warnings
-                                  </div>
-
-                                  <div className="space-y-1">
-                                    {fatigueWarnings[matchedUser.id].map(
-                                      (warning, warningIndex) => (
-                                        <div
-                                          key={warningIndex}
-                                          className="text-xs text-orange-700 dark:text-orange-300"
-                                        >
-                                          • {warning}
-                                        </div>
-                                      ),
-                                    )}
-                                  </div>
-
-                                  <button
-                                    className="mt-3 rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-700"
-                                    onClick={() => {
-                                      alert(
-                                        "Fatigue warning ignoreret af admin.",
-                                      );
-                                    }}
-                                  >
-                                    Ignorer og fortsæt
-                                  </button>
-                                </div>
-                              )}
-
-                            {matchedUser &&
-                              recoveryWarnings[matchedUser.id]?.length > 0 && (
-                                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
-                                  <div className="mb-2 text-xs font-bold text-red-700 dark:text-red-300">
-                                    🛌 Recovery warnings
-                                  </div>
-
-                                  <div className="space-y-1">
-                                    {recoveryWarnings[matchedUser.id].map(
-                                      (warning, warningIndex) => (
-                                        <div
-                                          key={warningIndex}
-                                          className="text-xs text-red-700 dark:text-red-300"
-                                        >
-                                          • {warning}
-                                        </div>
-                                      ),
-                                    )}
-                                  </div>
-
-                                  <button
-                                    className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
-                                    onClick={() => {
-                                      alert(
-                                        "Recovery warning ignoreret af admin.",
-                                      );
-                                    }}
-                                  >
-                                    Ignorer og fortsæt
-                                  </button>
-                                </div>
-                              )}
-                          </div>
-                        );
-                      },
-                    )}
-                  </div>
-                </div>
-
-                {canAcceptTrade(trade) && (
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() => acceptTrade(trade.id)}
-                      className="rounded-xl bg-green-600 px-5 py-3 font-medium text-white transition hover:bg-green-700"
-                    >
-                      Accepter vagt
-                    </button>
-
-                    <button
-                      onClick={() => rejectTrade(trade.id)}
-                      className="rounded-xl bg-red-600 px-5 py-3 font-medium text-white transition hover:bg-red-700"
-                    >
-                      Afvis vagt
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => autoAssignBestEmployee(trade)}
-                  disabled={autoAssignLoading === trade.id}
-                  className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  {autoAssignLoading === trade.id
-                    ? "Auto assigning..."
-                    : "🤖 Auto assign bedste medarbejder"}
-                </button>
+                <p className="mt-2 text-gray-500 dark:text-gray-400">
+                  Se åbne vagter som andre medarbejdere har lagt i puljen.
+                </p>
               </div>
+
+              <Link
+                href="/dashboard"
+                className="rounded-xl bg-black px-4 py-2 text-center font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+              >
+                Dashboard
+              </Link>
             </div>
-          ))}
 
-          {openTrades.length === 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-              Ingen åbne vagter lige nu.
+            {message && (
+              <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300">
+                {message}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="mb-4 text-2xl font-bold">
+              Direkte tilbud ({directTrades.length})
+            </h2>
+
+            <div className="space-y-4">
+              {directTrades.map((trade) => (
+                <TradeCard
+                  key={trade.id}
+                  trade={trade}
+                  onAccept={() => acceptTrade(trade)}
+                  onReject={() => rejectTrade(trade)}
+                  actionLabel="Accepter vagt"
+                />
+              ))}
+
+              {directTrades.length === 0 && (
+                <div className="text-gray-500 dark:text-gray-400">
+                  Du har ingen direkte vagtbytter lige nu.
+                </div>
+              )}
             </div>
-          )}
-        </section>
+          </section>
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Historik</h2>
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="mb-4 text-2xl font-bold">
+              Åbne vagter i puljen ({poolTrades.length})
+            </h2>
 
-            <span className="rounded-full bg-gray-600 px-3 py-1 text-sm font-semibold text-white">
-              {historyTrades.length}
-            </span>
-          </div>
+            <div className="space-y-4">
+              {poolTrades.map((trade) => (
+                <TradeCard
+                  key={trade.id}
+                  trade={trade}
+                  onAccept={() => acceptTrade(trade)}
+                  actionLabel="Accepter vagt"
+                />
+              ))}
 
-          {historyTrades.map((trade) => (
-            <div
-              key={trade.id}
-              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
-                        trade.status,
-                      )}`}
-                    >
-                      {getStatusText(trade.status)}
+              {poolTrades.length === 0 && (
+                <div className="text-gray-500 dark:text-gray-400">
+                  Der er ingen åbne vagter i vagtpuljen lige nu.
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="mb-4 text-2xl font-bold">
+              Historik ({historyTrades.length})
+            </h2>
+
+            <div className="space-y-4">
+              {historyTrades.map((trade) => (
+                <div
+                  key={trade.id}
+                  className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950"
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-gray-700 px-2 py-1 text-xs font-semibold text-white">
+                      {trade.type === "POOL" ? "Vagtpulje" : "Direkte"}
+                    </span>
+
+                    <span className="rounded-full bg-gray-500 px-2 py-1 text-xs font-semibold text-white">
+                      {trade.status}
                     </span>
                   </div>
 
-                  <h3 className="text-xl font-bold">
-                    {trade.shift.workType.name}
-                  </h3>
-
-                  <p className="mt-1 text-gray-600 dark:text-gray-400">
-                    {new Date(trade.shift.startTime).toLocaleDateString(
-                      "da-DK",
+                  <div className="font-bold">{trade.shift.workType.name}</div>
+                  <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {formatShiftDate(trade.shift.startTime)} ·{" "}
+                    {formatShiftTime(
+                      trade.shift.startTime,
+                      trade.shift.endTime,
                     )}
-                  </p>
+                  </div>
                 </div>
+              ))}
 
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Fra {trade.offeredByUser.firstName}{" "}
-                  {trade.offeredByUser.lastName}
+              {historyTrades.length === 0 && (
+                <div className="text-gray-500 dark:text-gray-400">
+                  Ingen historik endnu.
                 </div>
-              </div>
+              )}
             </div>
-          ))}
+          </section>
+        </div>
+      </main>
 
-          {historyTrades.length === 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-              Ingen historik endnu.
-            </div>
-          )}
-        </section>
+      <ConfirmModal
+        open={confirmModal.open}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        loading={confirmModal.loading}
+        confirmText="Ja"
+        cancelText="Nej"
+        confirmVariant="success"
+        onConfirm={confirmModal.handleConfirm}
+        onCancel={confirmModal.handleCancel}
+      />
+    </>
+  );
+}
+
+type TradeCardProps = {
+  trade: ShiftTrade;
+  actionLabel: string;
+  onAccept: () => void;
+  onReject?: () => void;
+};
+
+function TradeCard({ trade, actionLabel, onAccept, onReject }: TradeCardProps) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-950">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
+          {trade.type === "POOL" ? "Vagtpulje" : "Direkte"}
+        </span>
+
+        <span className="rounded-full bg-green-600 px-2 py-1 text-xs font-semibold text-white">
+          Åben
+        </span>
       </div>
-    </main>
+
+      <h3 className="text-xl font-bold">{trade.shift.workType.name}</h3>
+
+      <div className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+        <div>{formatShiftDate(trade.shift.startTime)}</div>
+        <div>{formatShiftTime(trade.shift.startTime, trade.shift.endTime)}</div>
+        <div>
+          Udbydes af: {trade.offeredByUser.firstName}{" "}
+          {trade.offeredByUser.lastName}
+        </div>
+
+        {trade.targetUser && (
+          <div>
+            Tilbudt til: {trade.targetUser.firstName}{" "}
+            {trade.targetUser.lastName}
+          </div>
+        )}
+      </div>
+
+      {trade.message && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+          Besked: {trade.message}
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={onAccept}
+          className="rounded-xl bg-green-600 px-4 py-2 font-semibold text-white transition hover:bg-green-700"
+        >
+          {actionLabel}
+        </button>
+
+        {onReject && (
+          <button
+            type="button"
+            onClick={onReject}
+            className="rounded-xl bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-700"
+          >
+            Afvis vagt
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
