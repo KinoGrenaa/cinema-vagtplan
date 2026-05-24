@@ -40,10 +40,10 @@ export async function fetchDashboardOverview(input: {
     ]);
 
   return {
-    shifts,
-    timeEntries,
-    leaveRequests,
-    shiftTrades,
-    movies,
+    shifts: shifts ?? [],
+    timeEntries: timeEntries ?? [],
+    leaveRequests: leaveRequests ?? [],
+    shiftTrades: shiftTrades ?? [],
+    movies: movies ?? [],
   };
 }

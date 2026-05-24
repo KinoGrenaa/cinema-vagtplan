@@ -45,3 +45,5 @@ export type MovieShowing = {
   soldSeats: number;
   freeSeats: number;
 };
+
+export type StaffingHealth = "STABLE" | "HIGH_PRESSURE" | "CRITICAL";

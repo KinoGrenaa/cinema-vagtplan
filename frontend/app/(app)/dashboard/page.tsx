@@ -1,63 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import AiStaffingHeatmap from "../../components/dashboard/AiStaffingHeatmap";
 import AiLearningAnalytics from "../../components/dashboard/AiLearningAnalytics";
 import AiPatternInsights from "../../components/dashboard/AiPatternInsights";
 import AiOperationsCommandCenter from "../../components/dashboard/AiOperationsCommandCenter";
 import OperationsStatus from "../../components/dashboard/OperationsStatus";
-
-type CurrentUser = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  role: string;
-  cinemaId: number;
-};
-
-type Shift = {
-  id: number;
-  startTime: string;
-  endTime: string;
-  userId: number;
-  user?: {
-    firstName: string;
-    lastName: string;
-  };
-  workType?: {
-    name: string;
-  };
-};
-
-type TimeEntry = {
-  id: number;
-  clockIn: string;
-  clockOut?: string | null;
-};
-
-type LeaveRequest = {
-  id: number;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-};
-
-type ShiftTrade = {
-  id: number;
-  status: "OPEN" | "ACCEPTED" | "CANCELLED";
-};
-
-type MovieShowing = {
-  id: number;
-  title?: string;
-  hall?: string;
-  startTime?: string;
-  endTime?: string;
-  soldSeats: number;
-  freeSeats: number;
-};
-
-type StaffingHealth = "STABLE" | "HIGH_PRESSURE" | "CRITICAL";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { useDashboard } from "../../hooks/useDashboard";
 
 function formatHours(value: number) {
   return value.toLocaleString("da-DK", {
@@ -67,442 +15,35 @@ function formatHours(value: number) {
 }
 
 export default function DashboardPage() {
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
-  const [movies, setMovies] = useState<MovieShowing[]>([]);
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  function getToken() {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("token") || "";
-  }
-
-  async function safeJson(response: Response) {
-    try {
-      return await response.json();
-    } catch {
-      return null;
-    }
-  }
-
-  const fetchDashboardData = useCallback(
-    async (user: CurrentUser) => {
-      try {
-        const headers = {
-          Authorization: `Bearer ${getToken()}`,
-        };
-
-        const [
-          shiftsRes,
-          timeEntriesRes,
-          leaveRequestsRes,
-          shiftTradesRes,
-          moviesRes,
-        ] = await Promise.all([
-          fetch(`${API_URL}/shifts?date=${today}`, { headers }),
-          fetch(`${API_URL}/time-entries?userId=${user.id}`, { headers }),
-          fetch(`${API_URL}/leave-requests`, { headers }),
-          fetch(`${API_URL}/shift-trades`, { headers }),
-          fetch(`${API_URL}/movie-showings?date=${today}`, { headers }),
-        ]);
-
-        const shiftsData = await safeJson(shiftsRes);
-        const timeEntriesData = await safeJson(timeEntriesRes);
-        const leaveRequestsData = await safeJson(leaveRequestsRes);
-        const shiftTradesData = await safeJson(shiftTradesRes);
-        const moviesData = await safeJson(moviesRes);
-
-        setShifts(Array.isArray(shiftsData) ? shiftsData : []);
-        setTimeEntries(Array.isArray(timeEntriesData) ? timeEntriesData : []);
-        setLeaveRequests(
-          Array.isArray(leaveRequestsData) ? leaveRequestsData : [],
-        );
-        setShiftTrades(Array.isArray(shiftTradesData) ? shiftTradesData : []);
-        setMovies(Array.isArray(moviesData) ? moviesData : []);
-      } catch {
-        setShifts([]);
-        setTimeEntries([]);
-        setLeaveRequests([]);
-        setShiftTrades([]);
-        setMovies([]);
-      }
-    },
-    [today],
-  );
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (!savedUser) {
-      window.location.href = "/";
-      return;
-    }
-
-    const parsedUser: CurrentUser = JSON.parse(savedUser);
-
-    setCurrentUser(parsedUser);
-    fetchDashboardData(parsedUser);
-  }, [fetchDashboardData]);
-
-  const todayPlannedHours = useMemo(() => {
-    return shifts.reduce((total, shift) => {
-      const start = new Date(shift.startTime);
-      const end = new Date(shift.endTime);
-
-      return total + (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-    }, 0);
-  }, [shifts]);
-
-  const myRegisteredHours = useMemo(() => {
-    return timeEntries.reduce((total, entry) => {
-      if (!entry.clockOut) return total;
-
-      const start = new Date(entry.clockIn);
-      const end = new Date(entry.clockOut);
-
-      return total + (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-    }, 0);
-  }, [timeEntries]);
-
-  const pendingLeaveRequests = leaveRequests.filter(
-    (request) => request.status === "PENDING",
-  ).length;
-
-  const openShiftTrades = shiftTrades.filter(
-    (trade) => trade.status === "OPEN",
-  ).length;
-
-  const soldSeatsToday = movies.reduce(
-    (total, movie) => total + movie.soldSeats,
-    0,
-  );
-
-  const totalCapacityToday = movies.reduce(
-    (total, movie) => total + movie.soldSeats + movie.freeSeats,
-    0,
-  );
-
-  const seatLoadPercent =
-    totalCapacityToday > 0
-      ? Math.round((soldSeatsToday / totalCapacityToday) * 100)
-      : 0;
-
-  const staffingWarnings = useMemo(() => {
-    const warnings: string[] = [];
-
-    const todaysShiftCount = shifts.length;
-
-    const totalSoldSeats = movies.reduce(
-      (sum, movie) => sum + movie.soldSeats,
-      0,
-    );
-
-    const averageLoad =
-      todaysShiftCount > 0 ? totalSoldSeats / todaysShiftCount : totalSoldSeats;
-
-    if (todaysShiftCount <= 2 && totalSoldSeats >= 150) {
-      warnings.push(
-        "Høj biografbelastning men meget få medarbejdere på arbejde.",
-      );
-    }
-
-    if (averageLoad >= 60) {
-      warnings.push("Høj belastning pr medarbejder registreret i dag.");
-    }
-
-    const overtimeRisk = shifts.some((shift) => {
-      const start = new Date(shift.startTime);
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 8;
-    });
-
-    if (overtimeRisk) {
-      warnings.push("Der er vagter i dag med overtime-risiko.");
-    }
-
-    return warnings;
-  }, [movies, shifts]);
-
-  const operationsHealth = useMemo(() => {
-    const activeShiftCount = shifts.length;
-
-    const highFatigueEmployees = shifts.filter((shift) => {
-      const start = new Date(shift.startTime);
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 8;
-    }).length;
-
-    const moviePressure = movies.reduce(
-      (sum, movie) => sum + movie.soldSeats,
-      0,
-    );
-
-    let staffingHealth: StaffingHealth = "STABLE";
-
-    if (moviePressure >= 400 || highFatigueEmployees >= 4) {
-      staffingHealth = "HIGH_PRESSURE";
-    }
-
-    if (moviePressure >= 600 || highFatigueEmployees >= 6) {
-      staffingHealth = "CRITICAL";
-    }
-
-    return {
-      activeShiftCount,
-      highFatigueEmployees,
-      moviePressure,
-      staffingHealth,
-    };
-  }, [movies, shifts]);
-
-  const operationalRecommendations = useMemo(() => {
-    const recommendations: string[] = [];
-
-    if (operationsHealth.staffingHealth === "HIGH_PRESSURE") {
-      recommendations.push(
-        "🤖 AI anbefaler ekstra staffing mellem peak-timerne.",
-      );
-    }
-
-    if (operationsHealth.staffingHealth === "CRITICAL") {
-      recommendations.push(
-        "🚨 Kritisk staffing pressure registreret — emergency staffing anbefales.",
-      );
-    }
-
-    if (operationsHealth.highFatigueEmployees >= 3) {
-      recommendations.push(
-        "🤖 Flere medarbejdere nærmer sig fatigue-grænser — overvej omfordeling.",
-      );
-    }
-
-    if (operationsHealth.moviePressure >= 500) {
-      recommendations.push(
-        "🤖 Høj movie pressure registreret — foyer og billetsalg bør styrkes.",
-      );
-    }
-
-    if (
-      operationsHealth.activeShiftCount <= 3 &&
-      operationsHealth.moviePressure >= 300
-    ) {
-      recommendations.push("🚨 Risiko for underbemanding registreret.");
-    }
-
-    if (recommendations.length === 0) {
-      recommendations.push(
-        "✅ AI-systemet vurderer at driften er stabil lige nu.",
-      );
-    }
-
-    return recommendations;
-  }, [operationsHealth]);
-
-  const staffingHeatmap = useMemo(() => {
-    return shifts.map((shift) => {
-      const start = new Date(shift.startTime);
-
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      let risk = "LOW";
-
-      if (hours >= 8) {
-        risk = "MEDIUM";
-      }
-
-      if (hours >= 10) {
-        risk = "HIGH";
-      }
-
-      return {
-        id: shift.id,
-        employee: shift.user?.firstName + " " + shift.user?.lastName,
-        workType: shift.workType?.name,
-        risk,
-        hours: hours.toFixed(1),
-      };
-    });
-  }, [shifts]);
-
-  const liveOperationsStatus = useMemo(() => {
-    const moviePressure = operationsHealth.moviePressure;
-
-    const fatigue = operationsHealth.highFatigueEmployees;
-
-    const staffingHealth = operationsHealth.staffingHealth;
-
-    let status = "NORMAL";
-
-    if (
-      staffingHealth === "HIGH_PRESSURE" ||
-      fatigue >= 4 ||
-      moviePressure >= 400
-    ) {
-      status = "WARNING";
-    }
-
-    if (staffingHealth === "CRITICAL" || fatigue >= 6 || moviePressure >= 600) {
-      status = "CRITICAL";
-    }
-
-    return status;
-  }, [operationsHealth]);
-
-  const predictiveStaffing = useMemo(() => {
-    const predictions: string[] = [];
-
-    const eveningMovies = movies.filter((movie) => {
-      if (!movie.startTime) return false;
-
-      const hour = new Date(movie.startTime).getHours();
-
-      return hour >= 18 && hour <= 22;
-    });
-
-    const eveningSoldSeats = eveningMovies.reduce(
-      (sum, movie) => sum + movie.soldSeats,
-      0,
-    );
-
-    const eveningShiftCount = shifts.filter((shift) => {
-      const hour = new Date(shift.startTime).getHours();
-
-      return hour >= 18 && hour <= 22;
-    }).length;
-
-    if (eveningSoldSeats >= 200 && eveningShiftCount <= 4) {
-      predictions.push(
-        "📈 Fredag/lørdag aften forventes høj staffing pressure.",
-      );
-    }
-
-    if (eveningSoldSeats >= 300 && eveningShiftCount <= 5) {
-      predictions.push("📈 Risiko for underbemanding i peak timer 18-22.");
-    }
-
-    const overtimeRisk = shifts.some((shift) => {
-      const start = new Date(shift.startTime);
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 8;
-    });
-
-    if (overtimeRisk) {
-      predictions.push(
-        "📈 Høj sandsynlighed for overtime belastning i denne uge.",
-      );
-    }
-
-    const totalSoldSeats = movies.reduce(
-      (sum, movie) => sum + movie.soldSeats,
-      0,
-    );
-
-    if (totalSoldSeats >= 500) {
-      predictions.push("📈 Biografen forventes at få en travl dag.");
-    }
-
-    return predictions;
-  }, [movies, shifts]);
-
-  const aiLearningAnalytics = useMemo(() => {
-    const emergencyEvents = movies.filter(
-      (movie) => movie.soldSeats >= 200,
-    ).length;
-
-    const fatigueTrend = shifts.filter((shift) => {
-      const start = new Date(shift.startTime);
-
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 8;
-    }).length;
-
-    const overtimeTrend = shifts.filter((shift) => {
-      const start = new Date(shift.startTime);
-
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 10;
-    }).length;
-
-    const aiInterventions = staffingWarnings.length + predictiveStaffing.length;
-
-    return {
-      emergencyEvents,
-      fatigueTrend,
-      overtimeTrend,
-      aiInterventions,
-    };
-  }, [movies, predictiveStaffing, shifts, staffingWarnings]);
-
-  const aiPatternInsights = useMemo(() => {
-    const weekdayMap: Record<string, number> = {};
-
-    const peakHourMap: Record<string, number> = {};
-
-    shifts.forEach((shift) => {
-      const start = new Date(shift.startTime);
-
-      const weekday = start.toLocaleDateString("da-DK", {
-        weekday: "long",
-      });
-
-      const hour = start.getHours();
-
-      weekdayMap[weekday] = (weekdayMap[weekday] || 0) + 1;
-
-      peakHourMap[hour] = (peakHourMap[hour] || 0) + 1;
-    });
-
-    const busiestDay = Object.entries(weekdayMap).sort(
-      (a, b) => b[1] - a[1],
-    )[0];
-
-    const busiestHour = Object.entries(peakHourMap).sort(
-      (a, b) => b[1] - a[1],
-    )[0];
-
-    const highFatigueEmployees = staffingHeatmap.filter(
-      (item) => item.risk === "HIGH",
-    ).length;
-
-    return {
-      busiestDay: busiestDay?.[0] || "Ingen data",
-
-      busiestDayCount: busiestDay?.[1] || 0,
-
-      busiestHour: busiestHour?.[0] || "Ingen data",
-
-      busiestHourCount: busiestHour?.[1] || 0,
-
-      highFatigueEmployees,
-    };
-  }, [shifts, staffingHeatmap]);
-
-  if (!currentUser) {
+  const {
+    loading,
+    currentUser,
+    shifts,
+    movies,
+
+    todayPlannedHours,
+    myRegisteredHours,
+    pendingLeaveRequests,
+    openShiftTrades,
+    soldSeatsToday,
+    seatLoadPercent,
+
+    staffingWarnings,
+    operationsHealth,
+    operationalRecommendations,
+
+    staffingHeatmap,
+    liveOperationsStatus,
+    predictiveStaffing,
+
+    aiLearningAnalytics,
+    aiPatternInsights,
+  } = useDashboard();
+
+  if (loading || !currentUser) {
     return (
-      <main className="min-h-screen bg-gray-100 p-6">
-        <div className="text-gray-600">Indlæser...</div>
+      <main className="min-h-screen bg-gray-100 p-6 dark:bg-gray-950">
+        <div className="text-gray-600 dark:text-gray-300">Indlæser...</div>
       </main>
     );
   }
@@ -699,6 +240,8 @@ export default function DashboardPage() {
             </div>
           </div>
         </section>
+
+        <AiPatternInsights aiPatternInsights={aiPatternInsights} />
       </div>
     </main>
   );
