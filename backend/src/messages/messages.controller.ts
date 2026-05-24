@@ -5,7 +5,6 @@ import {
   Param,
   Patch,
   Post,
-  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -21,49 +20,47 @@ export class MessagesController {
   @UseGuards(JwtGuard)
   @Get('unread-count')
   getUnreadCount(@Req() req: any) {
-    return this.messagesService.getUnreadCount(req.user.sub, req.user.cinemaId);
+    return this.messagesService.getUnreadCount(
+      Number(req.user.sub),
+      Number(req.user.cinemaId),
+    );
   }
 
   @UseGuards(JwtGuard)
   @Get('archive')
-  getArchivedMessages(
-    @Query('userId') userId: string,
-    @Query('cinemaId') cinemaId: string,
-  ) {
+  getArchivedMessages(@Req() req: any) {
     return this.messagesService.findArchivedForUser(
-      Number(userId),
-      Number(cinemaId),
+      Number(req.user.sub),
+      Number(req.user.cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
   @Get('sent')
-  getSentMessages(
-    @Query('userId') userId: string,
-    @Query('cinemaId') cinemaId: string,
-  ) {
+  getSentMessages(@Req() req: any) {
     return this.messagesService.findSentForUser(
-      Number(userId),
-      Number(cinemaId),
+      Number(req.user.sub),
+      Number(req.user.cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
   @Get()
-  getMessages(
-    @Query('userId') userId: string,
-    @Query('cinemaId') cinemaId: string,
-  ) {
+  getMessages(@Req() req: any) {
     return this.messagesService.findAllForUser(
-      Number(userId),
-      Number(cinemaId),
+      Number(req.user.sub),
+      Number(req.user.cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
   @Post()
-  createMessage(@Body() body: CreateMessageDto) {
-    return this.messagesService.create(body);
+  createMessage(@Req() req: any, @Body() body: CreateMessageDto) {
+    return this.messagesService.create({
+      ...body,
+      senderId: Number(req.user.sub),
+      cinemaId: Number(req.user.cinemaId),
+    });
   }
 
   @UseGuards(JwtGuard)
@@ -74,8 +71,11 @@ export class MessagesController {
 
   @UseGuards(JwtGuard)
   @Patch(':id/archive')
-  archiveMessage(@Param('id') id: string, @Body() body: { userId: number }) {
-    return this.messagesService.archiveMessage(Number(id), body.userId);
+  archiveMessage(@Req() req: any, @Param('id') id: string) {
+    return this.messagesService.archiveMessage(
+      Number(id),
+      Number(req.user.sub),
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -86,7 +86,7 @@ export class MessagesController {
 
   @UseGuards(JwtGuard)
   @Patch(':id/recall')
-  recallMessage(@Param('id') id: string, @Body() body: { userId: number }) {
-    return this.messagesService.recallMessage(Number(id), body.userId);
+  recallMessage(@Req() req: any, @Param('id') id: string) {
+    return this.messagesService.recallMessage(Number(id), Number(req.user.sub));
   }
 }

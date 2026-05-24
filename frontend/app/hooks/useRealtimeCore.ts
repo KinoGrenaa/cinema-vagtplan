@@ -40,11 +40,8 @@ type UseRealtimeCoreInput = {
   onTimeEntry?: () => void;
 
   onShiftAccepted?: (payload: RealtimeShiftTradePayload) => void;
-
   onNewShiftTrade?: (payload: RealtimeShiftTradePayload) => void;
-
   onNewDirectShiftTrade?: (payload: RealtimeShiftTradePayload) => void;
-
   onShiftRejected?: (payload: RealtimeShiftTradePayload) => void;
 };
 
@@ -60,7 +57,6 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
 
     const socket = io(SOCKET_URL, {
       transports: ["websocket"],
-
       auth: {
         token,
       },
@@ -68,13 +64,8 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
 
     socketRef.current = socket;
 
-    socket.emit("joinCinema", {
-      cinemaId: user.cinemaId,
-    });
-
-    socket.emit("joinUser", {
-      userId: user.id,
-    });
+    socket.emit("joinCinema", user.cinemaId);
+    socket.emit("joinUser", user.id);
 
     const triggerShiftUpdated = () => {
       input.onShiftUpdated?.();
@@ -96,7 +87,6 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
     socket.on("shiftsUpdated", triggerShiftUpdated);
 
     socket.on("shiftTradeUpdated", triggerShiftTradeUpdated);
-
     socket.on("shiftTradesUpdated", triggerShiftTradeUpdated);
 
     socket.on("notificationCreated", () => {
@@ -138,7 +128,6 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
 
     return () => {
       socket.removeAllListeners();
-
       socket.disconnect();
 
       socketRef.current = null;

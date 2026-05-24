@@ -9,6 +9,18 @@ import { PrismaService } from '../prisma/prisma.service';
 export class EmployeeDocumentsService {
   constructor(private prisma: PrismaService) {}
 
+  private getUserCinemaFilter(user: any) {
+    if (user.role === 'MASTER') {
+      return {};
+    }
+
+    return {
+      user: {
+        cinemaId: user.cinemaId,
+      },
+    };
+  }
+
   private getCinemaFilter(user: any) {
     if (user.role === 'MASTER') {
       return {};
@@ -23,7 +35,7 @@ export class EmployeeDocumentsService {
     return this.prisma.employeeDocument.findMany({
       where: {
         userId: user.role === 'EMPLOYEE' ? user.sub : userId,
-        ...this.getCinemaFilter(user),
+        ...this.getUserCinemaFilter(user),
       },
       orderBy: {
         createdAt: 'desc',
@@ -60,7 +72,11 @@ export class EmployeeDocumentsService {
 
     return this.prisma.employeeDocument.create({
       data: {
-        ...data,
+        userId: data.userId,
+        title: data.title,
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        fileType: data.fileType,
       },
     });
   }
@@ -69,7 +85,7 @@ export class EmployeeDocumentsService {
     const document = await this.prisma.employeeDocument.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user),
+        ...this.getUserCinemaFilter(user),
       },
     });
 

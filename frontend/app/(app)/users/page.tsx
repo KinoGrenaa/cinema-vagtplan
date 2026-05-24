@@ -220,8 +220,10 @@ export default function UsersPage() {
   if (loading) {
     return (
       <PermissionGuard permission="canManageUsers">
-        <div className="p-6">
-          <p>Indlæser brugere...</p>
+        <div className="p-6 text-gray-900 dark:text-gray-100">
+          <p className="text-gray-600 dark:text-gray-300">
+            Indlæser brugere...
+          </p>
         </div>
       </PermissionGuard>
     );
@@ -229,9 +231,11 @@ export default function UsersPage() {
 
   return (
     <PermissionGuard permission="canManageUsers">
-      <div className="p-6">
+      <div className="p-6 text-gray-900 dark:text-gray-100">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Brugere</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            Brugere
+          </h1>
 
           <button
             onClick={() => setShowCreate(true)}
@@ -265,9 +269,9 @@ export default function UsersPage() {
           />
         )}
 
-        <div className="overflow-hidden rounded-xl bg-white shadow">
+        <div className="overflow-hidden rounded-xl bg-white shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
           <table className="w-full">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
               <tr className="text-left">
                 <th className="p-4">Navn</th>
                 <th className="p-4">Email</th>
@@ -280,7 +284,10 @@ export default function UsersPage() {
 
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-t">
+                <tr
+                  key={user.id}
+                  className="border-t border-gray-200 text-gray-900 dark:border-gray-800 dark:text-gray-100"
+                >
                   <td className="p-4">
                     {user.firstName} {user.lastName}
                   </td>
@@ -289,13 +296,13 @@ export default function UsersPage() {
                   <td className="p-4">{user.phone || "-"}</td>
 
                   <td className="p-4">
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
                       {user.role}
                     </span>
                   </td>
 
                   <td className="p-4">
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700">
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                       {getEmploymentTypeLabel(user.employmentType)}
                     </span>
                   </td>
@@ -328,7 +335,7 @@ export default function UsersPage() {
           </table>
 
           {users.length === 0 && (
-            <div className="p-6 text-center text-gray-500">
+            <div className="p-6 text-center text-gray-500 dark:text-gray-400">
               Ingen brugere fundet
             </div>
           )}
@@ -354,9 +361,11 @@ function UserModal({
   showPassword?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6">
-        <h2 className="mb-4 text-2xl font-bold">{title}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 text-gray-900 shadow-2xl dark:bg-gray-900 dark:text-gray-100 dark:ring-1 dark:ring-gray-800">
+        <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
+          {title}
+        </h2>
 
         <div className="space-y-3">
           <input
@@ -364,7 +373,7 @@ function UserModal({
             placeholder="Fornavn"
             value={user.firstName}
             onChange={(e) => setUser({ ...user, firstName: e.target.value })}
-            className="w-full rounded-lg border p-3"
+            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
 
           <input
@@ -372,7 +381,7 @@ function UserModal({
             placeholder="Efternavn"
             value={user.lastName}
             onChange={(e) => setUser({ ...user, lastName: e.target.value })}
-            className="w-full rounded-lg border p-3"
+            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
 
           <input
@@ -380,7 +389,7 @@ function UserModal({
             placeholder="Email"
             value={user.email}
             onChange={(e) => setUser({ ...user, email: e.target.value })}
-            className="w-full rounded-lg border p-3"
+            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
 
           {showPassword && (
@@ -389,7 +398,7 @@ function UserModal({
               placeholder="Password"
               value={(user as UserFormData).password || ""}
               onChange={(e) => setUser({ ...user, password: e.target.value })}
-              className="w-full rounded-lg border p-3"
+              className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
             />
           )}
 
@@ -398,7 +407,7 @@ function UserModal({
             placeholder="Telefon"
             value={user.phone || ""}
             onChange={(e) => setUser({ ...user, phone: e.target.value })}
-            className="w-full rounded-lg border p-3"
+            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
 
           <select
@@ -409,7 +418,7 @@ function UserModal({
                 role: e.target.value as UserRole,
               })
             }
-            className="w-full rounded-lg border p-3"
+            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
           >
             <option value="EMPLOYEE">Medarbejder</option>
             <option value="ADMIN">Admin</option>
@@ -424,14 +433,16 @@ function UserModal({
                 employmentType: e.target.value as EmploymentType,
               })
             }
-            className="w-full rounded-lg border p-3"
+            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
           >
             <option value="HOURLY">Timelønnet</option>
             <option value="SALARIED">Fastlønnet</option>
           </select>
 
-          <div className="space-y-3 rounded-xl border p-4">
-            <h3 className="font-semibold">Rettigheder</h3>
+          <div className="space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+              Rettigheder
+            </h3>
 
             <PermissionCheckbox
               label="Kan administrere vagtplan"
@@ -486,14 +497,14 @@ function UserModal({
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="rounded-lg bg-gray-200 px-4 py-2"
+            className="rounded-lg bg-gray-200 px-4 py-2 text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
           >
             Annuller
           </button>
 
           <button
             onClick={onSave}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Gem
           </button>
@@ -513,11 +524,12 @@ function PermissionCheckbox({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-3 text-sm">
+    <label className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-blue-600"
       />
 
       <span>{label}</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchDashboardOverview } from "../services/dashboardService";
+import { fetchDashboardOverview } from "../services/dashboard.service";
 import type {
   CurrentUser,
   LeaveRequest,

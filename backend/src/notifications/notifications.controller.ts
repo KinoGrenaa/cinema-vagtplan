@@ -1,12 +1,5 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { NotificationsService } from './notifications.service';
 
@@ -16,16 +9,15 @@ export class NotificationsController {
 
   @UseGuards(JwtGuard)
   @Get()
-  getForUser(@Query('userId') userId: string) {
-    return this.notificationsService.findForUser(Number(userId));
+  getForUser(@Req() req: any) {
+    return this.notificationsService.findForUser(Number(req.user.sub));
   }
 
-  @UseGuards(JwtGuard)
   @UseGuards(JwtGuard)
   @Get('unread-count')
   async unreadCount(@Req() req: any) {
     return {
-      count: await this.notificationsService.unreadCount(req.user.sub),
+      count: await this.notificationsService.unreadCount(Number(req.user.sub)),
     };
   }
 
@@ -37,7 +29,7 @@ export class NotificationsController {
 
   @UseGuards(JwtGuard)
   @Patch('read-all')
-  markAllAsRead(@Query('userId') userId: string) {
-    return this.notificationsService.markAllAsRead(Number(userId));
+  markAllAsRead(@Req() req: any) {
+    return this.notificationsService.markAllAsRead(Number(req.user.sub));
   }
 }
