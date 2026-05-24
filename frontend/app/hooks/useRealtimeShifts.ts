@@ -11,27 +11,43 @@ type UseRealtimeShiftsProps = {
   enableToasts?: boolean;
 };
 
-type ShiftTradeEvent = {
-  acceptedByUserId?: number;
-  offeredByUserId?: number;
-  rejectedByUserId?: number;
-  targetUserId?: number;
-  shift?: {
-    startTime?: string;
-    endTime?: string;
-    workType?: {
-      name?: string;
-    };
-  };
-  offeredByUser?: {
-    firstName: string;
-    lastName: string;
-  };
-  rejectedByUser?: {
-    firstName: string;
-    lastName: string;
+type RealtimeShiftTradeUser = {
+  firstName: string;
+  lastName: string;
+};
+
+type RealtimeShiftTradeShift = {
+  startTime?: string;
+  endTime?: string;
+  workType?: {
+    name?: string;
   };
 };
+
+type ShiftTradeEvent = {
+  acceptedByUserId?: number | string | null;
+  offeredByUserId?: number | string | null;
+  rejectedByUserId?: number | string | null;
+  targetUserId?: number | string | null;
+  shift?: RealtimeShiftTradeShift | null;
+  offeredByUser?: RealtimeShiftTradeUser | null;
+  rejectedByUser?: RealtimeShiftTradeUser | null;
+};
+
+function isSameUser(
+  leftUserId?: number | string | null,
+  rightUserId?: number | string | null,
+) {
+  if (!leftUserId || !rightUserId) return false;
+
+  return Number(leftUserId) === Number(rightUserId);
+}
+
+function formatUserName(user?: RealtimeShiftTradeUser | null) {
+  if (!user) return null;
+
+  return `${user.firstName} ${user.lastName}`.trim();
+}
 
 function formatShiftText(trade: ShiftTradeEvent) {
   const start = trade.shift?.startTime ? new Date(trade.shift.startTime) : null;
@@ -79,7 +95,7 @@ export function useRealtimeShifts({
       if (
         enableToasts &&
         user &&
-        Number(trade.acceptedByUserId) !== Number(user.id)
+        !isSameUser(trade.acceptedByUserId, user.id)
       ) {
         showSuccess(`En vagt er blevet accepteret: ${formatShiftText(trade)}`);
       }
@@ -91,11 +107,7 @@ export function useRealtimeShifts({
     (trade: ShiftTradeEvent) => {
       onShiftTradesUpdated?.();
 
-      if (
-        enableToasts &&
-        user &&
-        Number(trade.offeredByUserId) !== Number(user.id)
-      ) {
+      if (enableToasts && user && !isSameUser(trade.offeredByUserId, user.id)) {
         showInfo(`Ny vagt i vagtpuljen: ${formatShiftText(trade)}`);
       }
     },
@@ -106,14 +118,8 @@ export function useRealtimeShifts({
     (trade: ShiftTradeEvent) => {
       onShiftTradesUpdated?.();
 
-      if (
-        enableToasts &&
-        user &&
-        Number(trade.targetUserId) === Number(user.id)
-      ) {
-        const sender = trade.offeredByUser
-          ? `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`
-          : "En kollega";
+      if (enableToasts && user && isSameUser(trade.targetUserId, user.id)) {
+        const sender = formatUserName(trade.offeredByUser) || "En kollega";
 
         showInfo(`${sender} har tilbudt dig vagten ${formatShiftText(trade)}`);
       }
@@ -125,14 +131,8 @@ export function useRealtimeShifts({
     (trade: ShiftTradeEvent) => {
       onShiftTradesUpdated?.();
 
-      if (
-        enableToasts &&
-        user &&
-        Number(trade.offeredByUserId) === Number(user.id)
-      ) {
-        const rejectedBy = trade.rejectedByUser
-          ? `${trade.rejectedByUser.firstName} ${trade.rejectedByUser.lastName}`
-          : "En bruger";
+      if (enableToasts && user && isSameUser(trade.offeredByUserId, user.id)) {
+        const rejectedBy = formatUserName(trade.rejectedByUser) || "En bruger";
 
         showInfo(`${rejectedBy} afviste vagten ${formatShiftText(trade)}`);
       }

@@ -14,12 +14,13 @@ import { useRealtimeCore } from "./useRealtimeCore";
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-
   const [loading, setLoading] = useState(true);
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
 
       const data = await fetchNotifications();
 
@@ -29,7 +30,9 @@ export function useNotifications() {
 
       setNotifications([]);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -38,7 +41,7 @@ export function useNotifications() {
   }, [loadNotifications]);
 
   useRealtimeCore({
-    onNotification: loadNotifications,
+    onNotification: () => loadNotifications(false),
   });
 
   const unreadCount = useMemo(() => {
@@ -47,6 +50,8 @@ export function useNotifications() {
 
   const markAsRead = useCallback(
     async (notificationId: number) => {
+      const previousNotifications = notifications;
+
       try {
         setNotifications((current) =>
           current.map((notification) =>
@@ -63,13 +68,17 @@ export function useNotifications() {
       } catch (error) {
         console.error(error);
 
-        loadNotifications();
+        setNotifications(previousNotifications);
+
+        await loadNotifications(false);
       }
     },
-    [loadNotifications],
+    [loadNotifications, notifications],
   );
 
   const markAllAsRead = useCallback(async () => {
+    const previousNotifications = notifications;
+
     try {
       setNotifications((current) =>
         current.map((notification) => ({
@@ -82,9 +91,11 @@ export function useNotifications() {
     } catch (error) {
       console.error(error);
 
-      loadNotifications();
+      setNotifications(previousNotifications);
+
+      await loadNotifications(false);
     }
-  }, [loadNotifications]);
+  }, [loadNotifications, notifications]);
 
   return {
     loading,

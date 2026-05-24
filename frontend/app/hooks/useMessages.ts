@@ -19,34 +19,40 @@ type UseMessagesInput = {
 
 export function useMessages(input: UseMessagesInput) {
   const [messages, setMessages] = useState<Message[]>([]);
-
   const [loading, setLoading] = useState(true);
 
-  const loadMessages = useCallback(async () => {
-    try {
-      setLoading(true);
+  const loadMessages = useCallback(
+    async (showLoading = true) => {
+      try {
+        if (showLoading) {
+          setLoading(true);
+        }
 
-      const data =
-        input.mode === "sent"
-          ? await fetchSentMessages()
-          : await fetchInboxMessages();
+        const data =
+          input.mode === "sent"
+            ? await fetchSentMessages()
+            : await fetchInboxMessages();
 
-      setMessages(data);
-    } catch (error) {
-      console.error("Failed to load messages", error);
+        setMessages(data);
+      } catch (error) {
+        console.error("Failed to load messages", error);
 
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [input.mode]);
+        setMessages([]);
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [input.mode],
+  );
 
   useEffect(() => {
     loadMessages();
   }, [loadMessages]);
 
   useRealtimeCore({
-    onMessage: loadMessages,
+    onMessage: () => loadMessages(false),
   });
 
   const sortedMessages = useMemo(() => {
@@ -63,6 +69,8 @@ export function useMessages(input: UseMessagesInput) {
 
   const markAsRead = useCallback(
     async (messageId: number) => {
+      const previousMessages = messages;
+
       try {
         setMessages((current) =>
           current.map((message) =>
@@ -80,14 +88,18 @@ export function useMessages(input: UseMessagesInput) {
       } catch (error) {
         console.error(error);
 
-        loadMessages();
+        setMessages(previousMessages);
+
+        await loadMessages(false);
       }
     },
-    [loadMessages],
+    [loadMessages, messages],
   );
 
   const archive = useCallback(
     async (messageId: number) => {
+      const previousMessages = messages;
+
       try {
         setMessages((current) =>
           current.filter((message) => message.id !== messageId),
@@ -97,10 +109,12 @@ export function useMessages(input: UseMessagesInput) {
       } catch (error) {
         console.error(error);
 
-        loadMessages();
+        setMessages(previousMessages);
+
+        await loadMessages(false);
       }
     },
-    [loadMessages],
+    [loadMessages, messages],
   );
 
   return {

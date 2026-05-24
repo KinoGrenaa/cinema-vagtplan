@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useApi } from "./useApi";
 import { useAuth } from "../providers/AuthProvider";
-import type { Shift, User, WorkType } from "../../../shared/types";
+
+import type {
+  Shift,
+  User,
+  WorkType,
+  LeaveRequest,
+} from "../../../shared/types";
 
 type MovieShowing = {
   id: number;
@@ -15,27 +21,41 @@ type MovieShowing = {
   freeSeats: number;
 };
 
-type LeaveRequest = {
-  id: number;
-  startDate: string;
-  endDate: string;
-  reason?: string | null;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  user: {
-    firstName: string;
-    lastName: string;
-  };
+type CreateShiftInput = {
+  startTime: string;
+  endTime: string;
+  note?: string;
+  userId: number;
+  workTypeId: number;
+};
+
+type UpdateShiftInput = {
+  startTime: string;
+  endTime: string;
+  note?: string | null;
+  userId: number;
+  workTypeId: number;
+};
+
+type ManualTimeInput = {
+  shiftId: number;
+  clockIn: string;
+  clockOut: string;
+  note: string;
 };
 
 export function useSchedule(selectedDate: string) {
   const { apiFetch } = useApi();
+
   const { user, loading: authLoading, isAdmin } = useAuth();
 
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
   const [movieShowings, setMovieShowings] = useState<MovieShowing[]>([]);
+
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+
   const [loading, setLoading] = useState(true);
 
   const canManageShifts = isAdmin;
@@ -51,7 +71,7 @@ export function useSchedule(selectedDate: string) {
 
       const data = await response.json();
 
-      const usersArray = Array.isArray(data)
+      const usersArray: User[] = Array.isArray(data)
         ? data
         : Array.isArray(data.users)
           ? data.users
@@ -74,7 +94,7 @@ export function useSchedule(selectedDate: string) {
 
       const data = await response.json();
 
-      const workTypesArray = Array.isArray(data)
+      const workTypesArray: WorkType[] = Array.isArray(data)
         ? data
         : Array.isArray(data.workTypes)
           ? data.workTypes
@@ -97,7 +117,9 @@ export function useSchedule(selectedDate: string) {
 
       const data = await response.json();
 
-      setShifts(Array.isArray(data) ? data : []);
+      const shiftsArray: Shift[] = Array.isArray(data) ? data : [];
+
+      setShifts(shiftsArray);
     } catch {
       setShifts([]);
     }
@@ -114,7 +136,11 @@ export function useSchedule(selectedDate: string) {
 
       const data = await response.json();
 
-      setMovieShowings(Array.isArray(data) ? data : []);
+      const movieShowingsArray: MovieShowing[] = Array.isArray(data)
+        ? data
+        : [];
+
+      setMovieShowings(movieShowingsArray);
     } catch {
       setMovieShowings([]);
     }
@@ -131,7 +157,11 @@ export function useSchedule(selectedDate: string) {
 
       const data = await response.json();
 
-      setLeaveRequests(Array.isArray(data) ? data : []);
+      const leaveRequestsArray: LeaveRequest[] = Array.isArray(data)
+        ? data
+        : [];
+
+      setLeaveRequests(leaveRequestsArray);
     } catch {
       setLeaveRequests([]);
     }
@@ -170,13 +200,7 @@ export function useSchedule(selectedDate: string) {
   }, [authLoading, refreshDayData, user]);
 
   const createShift = useCallback(
-    async (input: {
-      startTime: string;
-      endTime: string;
-      note?: string;
-      userId: number;
-      workTypeId: number;
-    }) => {
+    async (input: CreateShiftInput) => {
       const response = await apiFetch("/shifts", {
         method: "POST",
         body: JSON.stringify(input),
@@ -184,6 +208,7 @@ export function useSchedule(selectedDate: string) {
 
       if (!response.ok) {
         const data = await response.json();
+
         throw new Error(data.message || "Kunne ikke oprette vagt");
       }
 
@@ -193,16 +218,7 @@ export function useSchedule(selectedDate: string) {
   );
 
   const updateShift = useCallback(
-    async (
-      shiftId: number,
-      input: {
-        startTime: string;
-        endTime: string;
-        note?: string | null;
-        userId: number;
-        workTypeId: number;
-      },
-    ) => {
+    async (shiftId: number, input: UpdateShiftInput) => {
       const response = await apiFetch(`/shifts/${shiftId}`, {
         method: "PATCH",
         body: JSON.stringify(input),
@@ -210,6 +226,7 @@ export function useSchedule(selectedDate: string) {
 
       if (!response.ok) {
         const data = await response.json();
+
         throw new Error(data.message || "Kunne ikke opdatere vagt");
       }
 
@@ -257,12 +274,7 @@ export function useSchedule(selectedDate: string) {
   );
 
   const submitManualTime = useCallback(
-    async (input: {
-      shiftId: number;
-      clockIn: string;
-      clockOut: string;
-      note: string;
-    }) => {
+    async (input: ManualTimeInput) => {
       if (!user) return;
 
       const response = await apiFetch("/time-entries/manual", {
@@ -301,10 +313,13 @@ export function useSchedule(selectedDate: string) {
     setWorkTypes,
 
     refreshDayData,
+
     createShift,
     updateShift,
     deleteShift,
+
     offerShiftTrade,
+
     submitManualTime,
   };
 }

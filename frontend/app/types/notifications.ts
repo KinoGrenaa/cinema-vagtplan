@@ -7,7 +7,13 @@ export type NotificationType =
   | "STAFFING_ALERT"
   | "SYSTEM";
 
-export type Notification = {
+export type NotificationRelationIds = {
+  relatedShiftId?: number | null;
+  relatedShiftTradeId?: number | null;
+  relatedMessageId?: number | null;
+};
+
+export type Notification = NotificationRelationIds & {
   id: number;
 
   title: string;
@@ -21,8 +27,4 @@ export type Notification = {
 
   userId: number;
   cinemaId: number;
-
-  relatedShiftId?: number | null;
-  relatedShiftTradeId?: number | null;
-  relatedMessageId?: number | null;
 };

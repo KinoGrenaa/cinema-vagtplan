@@ -1,26 +1,38 @@
+"use client";
+
+import { memo, useCallback, useMemo } from "react";
+import type { Shift, User } from "../../../../../shared/types";
 import ShiftCard from "./ShiftCard";
 
-const hours = Array.from({ length: 25 }, (_, i) =>
+const HOURS = Array.from({ length: 25 }, (_, i) =>
   i.toString().padStart(2, "0"),
 );
+
+const HOUR_LINES = Array.from({ length: 25 }, (_, index) => index);
+const HALF_HOUR_LINES = Array.from({ length: 24 }, (_, index) => index);
+const LANES = Array.from({ length: 8 }, (_, index) => index);
 
 const TIMELINE_WIDTH = 2400;
 const START_HOUR = 0;
 const TOTAL_HOURS = 24;
 
 type ShiftTimelineProps = {
-  shifts: any[];
-  users: any[];
+  shifts: Shift[];
+  users: User[];
   selectedDate: string;
-  onSelectShift: (shift: any) => void;
+
+  onSelectShift: (shift: Shift) => void;
+
   onMoveShift: (
-    shift: any,
+    shift: Shift,
     newStartHour: number,
     newStartMinute: number,
   ) => void;
-  onChangeShiftUser: (shift: any, newUserId: number) => void;
+
+  onChangeShiftUser: (shift: Shift, newUserId: number) => void;
+
   onResizeShift: (
-    shift: any,
+    shift: Shift,
     newStartHour: number,
     newStartMinute: number,
     newEndHour: number,
@@ -28,7 +40,7 @@ type ShiftTimelineProps = {
   ) => void;
 };
 
-export default function ShiftTimeline({
+function ShiftTimelineComponent({
   shifts,
   users,
   selectedDate,
@@ -37,25 +49,32 @@ export default function ShiftTimeline({
   onChangeShiftUser,
   onResizeShift,
 }: ShiftTimelineProps) {
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const showNowLine = selectedDate === today;
+  const nowMeta = useMemo(() => {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
 
-  const nowLeft =
-    ((now.getHours() * 60 + now.getMinutes()) / (24 * 60)) * TIMELINE_WIDTH;
+    return {
+      showNowLine: selectedDate === today,
+      nowLeft:
+        ((now.getHours() * 60 + now.getMinutes()) / (24 * 60)) * TIMELINE_WIDTH,
+    };
+  }, [selectedDate]);
 
-  function calculateLeft(startTime: string) {
+  const calculateLeft = useCallback((startTime: string) => {
     const date = new Date(startTime);
     const minutes = date.getHours() * 60 + date.getMinutes();
-    return (minutes / (TOTAL_HOURS * 60)) * TIMELINE_WIDTH;
-  }
 
-  function calculateWidth(startTime: string, endTime: string) {
+    return (minutes / (TOTAL_HOURS * 60)) * TIMELINE_WIDTH;
+  }, []);
+
+  const calculateWidth = useCallback((startTime: string, endTime: string) => {
     const start = new Date(startTime);
     const end = new Date(endTime);
+
     const durationMinutes = (end.getTime() - start.getTime()) / 1000 / 60;
+
     return (durationMinutes / (TOTAL_HOURS * 60)) * TIMELINE_WIDTH;
-  }
+  }, []);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
@@ -63,9 +82,11 @@ export default function ShiftTimeline({
         <div style={{ width: TIMELINE_WIDTH }} className="relative">
           <div
             className="sticky top-0 z-30 grid border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"
-            style={{ gridTemplateColumns: `repeat(${hours.length}, 1fr)` }}
+            style={{
+              gridTemplateColumns: `repeat(${HOURS.length}, 1fr)`,
+            }}
           >
-            {hours.map((hour) => (
+            {HOURS.map((hour) => (
               <div
                 key={hour}
                 className="border-r border-gray-200 p-2 text-center dark:border-gray-800"
@@ -76,15 +97,17 @@ export default function ShiftTimeline({
           </div>
 
           <div className="relative h-[520px] bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
-            {Array.from({ length: 25 }).map((_, index) => (
+            {HOUR_LINES.map((index) => (
               <div
                 key={`hour-${index}`}
                 className="absolute bottom-0 top-0 z-0 border-l border-gray-300 dark:border-gray-800"
-                style={{ left: `${(index / 24) * TIMELINE_WIDTH}px` }}
+                style={{
+                  left: `${(index / 24) * TIMELINE_WIDTH}px`,
+                }}
               />
             ))}
 
-            {Array.from({ length: 24 }).map((_, index) => (
+            {HALF_HOUR_LINES.map((index) => (
               <div
                 key={`half-${index}`}
                 className="absolute bottom-0 top-0 z-0 border-l border-dashed border-gray-200 dark:border-gray-900"
@@ -94,7 +117,7 @@ export default function ShiftTimeline({
               />
             ))}
 
-            {Array.from({ length: 8 }).map((_, index) => (
+            {LANES.map((index) => (
               <div
                 key={`lane-${index}`}
                 className="absolute left-0 right-0 z-0 border-t border-gray-100 dark:border-gray-900"
@@ -104,10 +127,12 @@ export default function ShiftTimeline({
               />
             ))}
 
-            {showNowLine && (
+            {nowMeta.showNowLine && (
               <div
                 className="absolute bottom-0 top-0 z-40 border-l-2 border-red-500"
-                style={{ left: `${nowLeft}px` }}
+                style={{
+                  left: `${nowMeta.nowLeft}px`,
+                }}
               >
                 <div className="ml-1 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
                   Nu
@@ -144,3 +169,7 @@ export default function ShiftTimeline({
     </div>
   );
 }
+
+const ShiftTimeline = memo(ShiftTimelineComponent);
+
+export default ShiftTimeline;

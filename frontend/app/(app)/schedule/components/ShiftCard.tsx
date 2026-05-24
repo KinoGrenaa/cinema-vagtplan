@@ -1,29 +1,31 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import { Rnd } from "react-rnd";
+import type { Shift, User } from "../../../../../shared/types";
 
 type ShiftCardProps = {
-  shift: any;
+  shift: Shift;
   index: number;
-  users: any[];
+  users: User[];
   calculateLeft: (startTime: string) => number;
   calculateWidth: (startTime: string, endTime: string) => number;
   timelineWidth: number;
   totalHours: number;
   startHour: number;
   onClick: () => void;
-  onMove: (shift: any, newStartHour: number, newStartMinute: number) => void;
+  onMove: (shift: Shift, newStartHour: number, newStartMinute: number) => void;
   onResize: (
-    shift: any,
+    shift: Shift,
     newStartHour: number,
     newStartMinute: number,
     newEndHour: number,
     newEndMinute: number,
   ) => void;
-  onChangeUser: (shift: any, newUserId: number) => void;
+  onChangeUser: (shift: Shift, newUserId: number) => void;
 };
 
-export default function ShiftCard({
+function ShiftCardComponent({
   shift,
   index,
   users,
@@ -41,16 +43,22 @@ export default function ShiftCard({
   const width = calculateWidth(shift.startTime, shift.endTime);
   const y = 30 + index * 84;
 
-  function pixelsToTime(xPosition: number) {
-    const minutesPerPixel = (totalHours * 60) / timelineWidth;
-    const rawMinutes = xPosition * minutesPerPixel;
-    const roundedMinutes = Math.round(rawMinutes / 15) * 15;
+  const workTypeColor = shift.workType?.color || "#3b82f6";
+  const workTypeName = shift.workType?.name || "Vagt";
 
-    return {
-      hour: startHour + Math.floor(roundedMinutes / 60),
-      minute: roundedMinutes % 60,
-    };
-  }
+  const pixelsToTime = useCallback(
+    (xPosition: number) => {
+      const minutesPerPixel = (totalHours * 60) / timelineWidth;
+      const rawMinutes = xPosition * minutesPerPixel;
+      const roundedMinutes = Math.round(rawMinutes / 15) * 15;
+
+      return {
+        hour: startHour + Math.floor(roundedMinutes / 60),
+        minute: roundedMinutes % 60,
+      };
+    },
+    [startHour, timelineWidth, totalHours],
+  );
 
   return (
     <Rnd
@@ -69,11 +77,12 @@ export default function ShiftCard({
         topLeft: false,
       }}
       minWidth={35}
-      onDragStop={(e, data) => {
+      onDragStop={(_, data) => {
         const newStart = pixelsToTime(data.x);
+
         onMove(shift, newStart.hour, newStart.minute);
       }}
-      onResizeStop={(e, direction, ref, delta, position) => {
+      onResizeStop={(_, __, ref, ___, position) => {
         const newStart = pixelsToTime(position.x);
         const newEnd = pixelsToTime(position.x + ref.offsetWidth);
 
@@ -90,7 +99,7 @@ export default function ShiftCard({
         onDoubleClick={onClick}
         className="group relative h-full w-full cursor-pointer overflow-hidden rounded-2xl border border-white/30 px-3 py-2 text-left text-white shadow-lg ring-1 ring-black/10 transition hover:scale-[1.01] hover:shadow-xl dark:border-white/10 dark:ring-white/10"
         style={{
-          background: `linear-gradient(135deg, ${shift.workType.color}, ${shift.workType.color}dd)`,
+          background: `linear-gradient(135deg, ${workTypeColor}, ${workTypeColor}dd)`,
         }}
       >
         <div className="absolute inset-0 bg-black/5 transition group-hover:bg-black/10 dark:bg-black/20 dark:group-hover:bg-black/10" />
@@ -98,9 +107,11 @@ export default function ShiftCard({
         <div className="relative z-10 space-y-1">
           <select
             value={shift.userId}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onChange={(e) => onChangeUser(shift, Number(e.target.value))}
+            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            onChange={(event) =>
+              onChangeUser(shift, Number(event.target.value))
+            }
             className="w-full rounded-lg border border-white/30 bg-white/90 px-2 py-1 text-sm font-medium text-black shadow-sm outline-none transition focus:ring-2 focus:ring-white/50 dark:bg-gray-950/90 dark:text-white"
           >
             {users.map((user) => (
@@ -112,7 +123,7 @@ export default function ShiftCard({
 
           <div className="flex items-center justify-between gap-2">
             <div className="truncate text-xs font-semibold uppercase tracking-wide text-white/90">
-              {shift.workType.name}
+              {workTypeName}
             </div>
 
             <div className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
@@ -139,3 +150,7 @@ export default function ShiftCard({
     </Rnd>
   );
 }
+
+const ShiftCard = memo(ShiftCardComponent);
+
+export default ShiftCard;

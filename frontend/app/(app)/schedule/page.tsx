@@ -48,14 +48,9 @@ export default function SchedulePage() {
 
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
-  const [startTime, setStartTime] = useState(`${todayDefault}T14:00`);
-  const [endTime, setEndTime] = useState(`${todayDefault}T22:00`);
-  const [note, setNote] = useState("");
   const [userId, setUserId] = useState(1);
   const [workTypeId, setWorkTypeId] = useState(1);
-  const [formError, setFormError] = useState("");
 
-  const [showClockModal, setShowClockModal] = useState(false);
   const {
     staffingWarnings,
     staffingSuggestions,
@@ -86,10 +81,6 @@ export default function SchedulePage() {
     movieShowings,
     createShift,
   });
-  const [clockShiftId, setClockShiftId] = useState<number | null>(null);
-  const [clockInTime, setClockInTime] = useState("");
-  const [clockOutTime, setClockOutTime] = useState("");
-  const [clockNote, setClockNote] = useState("");
 
   useEffect(() => {
     if (users.length > 0 && !users.some((user) => user.id === userId)) {

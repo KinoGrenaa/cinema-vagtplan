@@ -1,4 +1,4 @@
-export type MessageUser = {
+export type MessageParticipant = {
   id: number;
   firstName: string;
   lastName: string;
@@ -17,6 +17,6 @@ export type Message = {
 
   isBroadcast: boolean;
 
-  sender?: MessageUser | null;
-  receiver?: MessageUser | null;
+  sender?: MessageParticipant | null;
+  receiver?: MessageParticipant | null;
 };
