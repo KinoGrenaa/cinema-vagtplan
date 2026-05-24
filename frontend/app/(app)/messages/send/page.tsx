@@ -1,19 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { useCallback, useEffect, useState } from "react";
+import { useApi } from "../../../hooks/useApi";
+import { useAuth } from "../../../providers/AuthProvider";
+import { sendMessage as sendMessageService } from "../../../services/messagesService";
 
 type User = {
   id: number;
   firstName: string;
   lastName: string;
   role?: string;
-};
-
-type CurrentUser = {
-  id: number;
-  cinemaId: number;
 };
 
 const inputClass =
@@ -23,6 +19,9 @@ const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 export default function SendMessagePage() {
+  const { apiFetch } = useApi();
+  const { user, loading: authLoading } = useAuth();
+
   const [users, setUsers] = useState<User[]>([]);
   const [receiverId, setReceiverId] = useState("");
   const [isBroadcast, setIsBroadcast] = useState(false);
@@ -30,40 +29,38 @@ export default function SendMessagePage() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
 
-  function getHeaders() {
-    return {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
+  const fetchUsers = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const response = await apiFetch("/users");
+
+      if (!response.ok) {
+        setUsers([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Kunne ikke hente brugere", error);
+      setUsers([]);
+    }
+  }, [apiFetch, user]);
 
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const savedUser = localStorage.getItem("user");
+    if (authLoading) return;
 
-        if (!savedUser) return;
-
-        const response = await fetch(`${API_URL}/users`, {
-          headers: getHeaders(),
-        });
-
-        if (!response.ok) {
-          setUsers([]);
-          return;
-        }
-
-        const data = await response.json();
-        setUsers(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Kunne ikke hente brugere", error);
-        setUsers([]);
-      }
+    if (!user) {
+      window.location.href = "/";
+      return;
     }
 
     fetchUsers();
-  }, []);
+  }, [authLoading, fetchUsers, user]);
 
-  async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!subject.trim() || !body.trim()) {
@@ -79,32 +76,12 @@ export default function SendMessagePage() {
     try {
       setSending(true);
 
-      const savedUser = localStorage.getItem("user");
-
-      if (!savedUser) {
-        alert("Bruger ikke fundet.");
-        return;
-      }
-
-      const user: CurrentUser = JSON.parse(savedUser);
-
-      const response = await fetch(`${API_URL}/messages`, {
-        method: "POST",
-        headers: {
-          ...getHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          subject: subject.trim(),
-          body: body.trim(),
-          receiverId: isBroadcast ? null : Number(receiverId),
-          isBroadcast,
-        }),
+      await sendMessageService({
+        subject: subject.trim(),
+        body: body.trim(),
+        receiverId: isBroadcast ? null : Number(receiverId),
+        isBroadcast,
       });
-
-      if (!response.ok) {
-        throw new Error("Kunne ikke sende beskeden");
-      }
 
       setReceiverId("");
       setIsBroadcast(false);
@@ -120,6 +97,16 @@ export default function SendMessagePage() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+          Indlæser...
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-3xl space-y-6">
@@ -132,7 +119,7 @@ export default function SendMessagePage() {
         </div>
 
         <form
-          onSubmit={sendMessage}
+          onSubmit={handleSendMessage}
           className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
         >
           <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">

@@ -1,28 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ShiftForm from "./components/ShiftForm";
 import ShiftTimeline from "./components/ShiftTimeline";
 import MovieProgram from "./components/MovieProgram";
-import { useApi } from "../../hooks/useApi";
+import { useSchedule } from "../../hooks/useSchedule";
+import { useScheduleAi } from "../../hooks/useScheduleAi";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
-import type { Shift, User, WorkType } from "../../../../shared/types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-function getToken() {
-  return localStorage.getItem("token") || "";
-}
-
-type MovieShowing = {
-  id: number;
-  title: string;
-  hall: string;
-  startTime: string;
-  endTime: string;
-  soldSeats: number;
-  freeSeats: number;
-};
+import type { Shift } from "../../../../shared/types";
 
 type LeaveRequest = {
   id: number;
@@ -36,28 +21,28 @@ type LeaveRequest = {
   };
 };
 
-type LoggedInUser = {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  cinemaId: number;
-};
-
 export default function SchedulePage() {
-  const { apiFetch } = useApi();
   const todayDefault = new Date().toISOString().slice(0, 10);
 
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
-  const [movieShowings, setMovieShowings] = useState<MovieShowing[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-
-  const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(todayDefault);
-  const [currentUser, setCurrentUser] = useState<LoggedInUser | null>(null);
+
+  const {
+    user: currentUser,
+    loading,
+    canManageShifts,
+    shifts,
+    users,
+    workTypes,
+    movieShowings,
+    leaveRequests,
+    refreshDayData,
+    createShift,
+    updateShift,
+    deleteShift,
+    offerShiftTrade,
+    submitManualTime: submitManualTimeEntry,
+  } = useSchedule(selectedDate);
+
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
   const [startTime, setStartTime] = useState(`${todayDefault}T14:00`);
@@ -68,53 +53,55 @@ export default function SchedulePage() {
   const [formError, setFormError] = useState("");
 
   const [showClockModal, setShowClockModal] = useState(false);
-  const [staffingWarnings, setStaffingWarnings] = useState<string[]>([]);
-  const [staffingSuggestions, setStaffingSuggestions] = useState<string[]>([]);
-  const [recommendedEmployees, setRecommendedEmployees] = useState<
-    Record<number, string[]>
-  >({});
-  const [aiScheduleSuggestions, setAiScheduleSuggestions] = useState<string[]>(
-    [],
-  );
-  const [creatingAiShift, setCreatingAiShift] = useState<number | null>(null);
-  const [generatingAiSchedule, setGeneratingAiSchedule] = useState(false);
-  const [liveStaffingAlerts, setLiveStaffingAlerts] = useState<string[]>([]);
-  const [emergencyAiActions, setEmergencyAiActions] = useState<string[]>([]);
-  const [autoCreatingEmergencyShift, setAutoCreatingEmergencyShift] =
-    useState(false);
-  const [autoStaffingNotifications, setAutoStaffingNotifications] = useState<
-    string[]
-  >([]);
-  const [suggestedEmergencyReplacements, setSuggestedEmergencyReplacements] =
-    useState<
-      Array<{
-        name: string;
-        score: number;
-        fatigue: string;
-      }>
-    >([]);
-  const [sendingEmergencyRequest, setSendingEmergencyRequest] = useState<
-    string | null
-  >(null);
-  const [autoEscalationQueue, setAutoEscalationQueue] = useState<string[]>([]);
-  const [sendingRealStaffingMessage, setSendingRealStaffingMessage] = useState<
-    string | null
-  >(null);
-  const [staffingLoopStatus, setStaffingLoopStatus] = useState<
-    "IDLE" | "WAITING" | "ACCEPTED" | "DECLINED"
-  >("IDLE");
-  const [autonomousStaffingStatus, setAutonomousStaffingStatus] = useState<
-    "IDLE" | "EXECUTING" | "COMPLETED"
-  >("IDLE");
+  const {
+    staffingWarnings,
+    staffingSuggestions,
+    recommendedEmployees,
+    aiScheduleSuggestions,
+    creatingAiShift,
+    generatingAiSchedule,
+    liveStaffingAlerts,
+    emergencyAiActions,
+    autoCreatingEmergencyShift,
+    autoStaffingNotifications,
+    suggestedEmergencyReplacements,
+    sendingEmergencyRequest,
+    autoEscalationQueue,
+    sendingRealStaffingMessage,
+    staffingLoopStatus,
+    autonomousStaffingStatus,
+    createAiSuggestedShift,
+    generateAiDaySchedule,
+    autoCreateEmergencyShift,
+    startAutoEscalation,
+    sendRealStaffingMessage,
+  } = useScheduleAi({
+    selectedDate,
+    shifts,
+    users,
+    workTypes,
+    movieShowings,
+    createShift,
+  });
   const [clockShiftId, setClockShiftId] = useState<number | null>(null);
   const [clockInTime, setClockInTime] = useState("");
   const [clockOutTime, setClockOutTime] = useState("");
   const [clockNote, setClockNote] = useState("");
 
-  function getLoggedInUser(): LoggedInUser | null {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  }
+  useEffect(() => {
+    if (users.length > 0 && !users.some((user) => user.id === userId)) {
+      setUserId(users[0].id);
+    }
+  }, [userId, users]);
+
+  useEffect(() => {
+    if (
+      workTypes.length > 0 &&
+      !workTypes.some((workType) => workType.id === workTypeId)
+    ) {
+      setWorkTypeId(workTypes[0].id);
+    }
+  }, [workTypeId, workTypes]);
 
   function toInputDateTime(value: string) {
     const date = new Date(value);
@@ -128,976 +115,6 @@ export default function SchedulePage() {
   function localDateTimeToISOString(value: string) {
     return new Date(value).toISOString();
   }
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await apiFetch("/users");
-
-      if (!response.ok) {
-        setUsers([]);
-        return;
-      }
-
-      const data = await response.json();
-      const usersArray = Array.isArray(data)
-        ? data
-        : Array.isArray(data.users)
-          ? data.users
-          : [];
-
-      setUsers(usersArray);
-
-      if (usersArray.length > 0) {
-        setUserId(usersArray[0].id);
-      }
-    } catch {
-      setUsers([]);
-    }
-  }, [apiFetch]);
-
-  const fetchWorkTypes = useCallback(async () => {
-    try {
-      const response = await apiFetch("/work-types");
-
-      if (!response.ok) {
-        setWorkTypes([]);
-        return;
-      }
-
-      const data = await response.json();
-      const workTypesArray = Array.isArray(data)
-        ? data
-        : Array.isArray(data.workTypes)
-          ? data.workTypes
-          : [];
-
-      setWorkTypes(workTypesArray);
-
-      if (workTypesArray.length > 0) {
-        setWorkTypeId(workTypesArray[0].id);
-      }
-    } catch {
-      setWorkTypes([]);
-    }
-  }, [apiFetch]);
-
-  const fetchShifts = useCallback(async () => {
-    try {
-      const response = await apiFetch(`/shifts?date=${selectedDate}`);
-
-      if (!response.ok) {
-        setShifts([]);
-        return;
-      }
-
-      const data = await response.json();
-      setShifts(Array.isArray(data) ? data : []);
-    } catch {
-      setShifts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [apiFetch, selectedDate]);
-
-  const fetchMovieShowings = useCallback(async () => {
-    try {
-      const response = await apiFetch(`/movie-showings?date=${selectedDate}`);
-
-      if (!response.ok) {
-        setMovieShowings([]);
-        return;
-      }
-
-      const data = await response.json();
-      setMovieShowings(Array.isArray(data) ? data : []);
-    } catch {
-      setMovieShowings([]);
-    }
-  }, [apiFetch, selectedDate]);
-
-  const fetchLeaveRequests = useCallback(async () => {
-    try {
-      const response = await apiFetch("/leave-requests");
-
-      if (!response.ok) {
-        setLeaveRequests([]);
-        return;
-      }
-
-      const data = await response.json();
-      setLeaveRequests(Array.isArray(data) ? data : []);
-    } catch {
-      setLeaveRequests([]);
-    }
-  }, [apiFetch]);
-
-  const refreshDayData = useCallback(async () => {
-    await Promise.all([
-      fetchShifts(),
-      fetchMovieShowings(),
-      fetchLeaveRequests(),
-    ]);
-  }, [fetchShifts, fetchMovieShowings, fetchLeaveRequests]);
-
-  const generateAiScheduleSuggestions = useCallback(() => {
-    const suggestions: string[] = [];
-
-    const eveningMovies = movieShowings.filter((movie) => {
-      const hour = new Date(movie.startTime).getHours();
-
-      return hour >= 18 && hour <= 22;
-    });
-
-    const eveningSoldSeats = eveningMovies.reduce(
-      (sum, movie) => sum + movie.soldSeats,
-      0,
-    );
-
-    const eveningShiftCount = shifts.filter((shift) => {
-      const hour = new Date(shift.startTime).getHours();
-
-      return hour >= 18 && hour <= 22;
-    }).length;
-
-    if (eveningSoldSeats >= 200 && eveningShiftCount <= 4) {
-      suggestions.push("🤖 Tilføj 1-2 ekstra medarbejdere mellem 18:00-22:00.");
-    }
-
-    if (eveningSoldSeats <= 60 && eveningShiftCount >= 6) {
-      suggestions.push("🤖 Overvej reduceret bemanding efter 22:00.");
-    }
-
-    const longShifts = shifts.filter((shift) => {
-      const start = new Date(shift.startTime);
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 8;
-    });
-
-    if (longShifts.length >= 3) {
-      suggestions.push(
-        "🤖 Flere lange vagter registreret — overvej at splitte bemandingen.",
-      );
-    }
-
-    if (movieShowings.length >= 8) {
-      suggestions.push(
-        "🤖 Høj filmaktivitet registreret — ekstra foyer/billetsalg anbefales.",
-      );
-    }
-
-    setAiScheduleSuggestions(suggestions);
-  }, [movieShowings, shifts]);
-
-  const createAiSuggestedShift = useCallback(
-    async (suggestion: string, index: number) => {
-      try {
-        setCreatingAiShift(index);
-
-        const today = selectedDate;
-
-        let startHour = 18;
-        let endHour = 22;
-
-        if (suggestion.includes("22:00")) {
-          startHour = 22;
-          endHour = 23;
-        }
-
-        const startTime = new Date(today);
-        startTime.setHours(startHour, 0, 0, 0);
-
-        const endTime = new Date(today);
-        endTime.setHours(endHour, 0, 0, 0);
-
-        const response = await fetch(`${API_URL}/shifts`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            startTime: startTime.toISOString(),
-            endTime: endTime.toISOString(),
-            workTypeId: workTypes[0]?.id,
-            userId: users[0]?.id,
-          }),
-        });
-
-        if (!response.ok) {
-          alert("Kunne ikke oprette AI-vagt.");
-          return;
-        }
-
-        await refreshDayData();
-
-        alert("AI-oprettet vagt blev oprettet.");
-      } catch (error) {
-        console.error(error);
-        alert("AI-oprettelse fejlede.");
-      } finally {
-        setCreatingAiShift(null);
-      }
-    },
-    [refreshDayData, selectedDate, users, workTypes],
-  );
-
-  const generateAiDaySchedule = useCallback(async () => {
-    try {
-      setGeneratingAiSchedule(true);
-
-      const suggestions: Array<{
-        startHour: number;
-        endHour: number;
-      }> = [];
-
-      const eveningMovies = movieShowings.filter((movie) => {
-        const hour = new Date(movie.startTime).getHours();
-
-        return hour >= 18 && hour <= 22;
-      });
-
-      const eveningSoldSeats = eveningMovies.reduce(
-        (sum, movie) => sum + movie.soldSeats,
-        0,
-      );
-
-      if (eveningSoldSeats >= 200) {
-        suggestions.push({
-          startHour: 17,
-          endHour: 22,
-        });
-
-        suggestions.push({
-          startHour: 18,
-          endHour: 23,
-        });
-      }
-
-      if (movieShowings.length >= 8) {
-        suggestions.push({
-          startHour: 16,
-          endHour: 21,
-        });
-      }
-
-      if (suggestions.length === 0) {
-        alert("Ingen AI-vagter nødvendige i dag.");
-        return;
-      }
-
-      for (const suggestion of suggestions) {
-        const startTime = new Date(selectedDate);
-
-        startTime.setHours(suggestion.startHour, 0, 0, 0);
-
-        const endTime = new Date(selectedDate);
-
-        endTime.setHours(suggestion.endHour, 0, 0, 0);
-
-        await fetch(`${API_URL}/shifts`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            startTime: startTime.toISOString(),
-            endTime: endTime.toISOString(),
-            workTypeId: workTypes[0]?.id,
-            userId: users[0]?.id,
-          }),
-        });
-      }
-
-      await refreshDayData();
-
-      alert("AI dagsplan blev genereret.");
-    } catch (error) {
-      console.error(error);
-
-      alert("AI dagsplan kunne ikke genereres.");
-    } finally {
-      setGeneratingAiSchedule(false);
-    }
-  }, [movieShowings, refreshDayData, selectedDate, users, workTypes]);
-
-  const generateLiveStaffingAlerts = useCallback(() => {
-    const alerts: string[] = [];
-
-    const currentHour = new Date().getHours();
-
-    const activeShifts = shifts.filter((shift) => {
-      const start = new Date(shift.startTime).getHours();
-
-      const end = new Date(shift.endTime).getHours();
-
-      return currentHour >= start && currentHour <= end;
-    });
-
-    const activeMovies = movieShowings.filter((movie) => {
-      const start = new Date(movie.startTime).getHours();
-
-      return currentHour >= start - 1 && currentHour <= start + 2;
-    });
-
-    const liveSoldSeats = activeMovies.reduce(
-      (sum, movie) => sum + movie.soldSeats,
-      0,
-    );
-
-    if (liveSoldSeats >= 150 && activeShifts.length <= 3) {
-      alerts.push("🔴 LIVE: Høj biografbelastning registreret lige nu.");
-    }
-
-    if (liveSoldSeats >= 250 && activeShifts.length <= 4) {
-      alerts.push("🔴 LIVE: Kritisk underbemanding registreret.");
-    }
-
-    const overtimeRisk = activeShifts.filter((shift) => {
-      const start = new Date(shift.startTime);
-
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 8;
-    });
-
-    if (overtimeRisk.length >= 2) {
-      alerts.push("🔴 LIVE: Flere medarbejdere nærmer sig overtime.");
-    }
-
-    if (activeMovies.length >= 4) {
-      alerts.push("🔴 LIVE: Peak-hour movie pressure registreret.");
-    }
-
-    setLiveStaffingAlerts(alerts);
-  }, [movieShowings, shifts]);
-
-  const generateEmergencyAiActions = useCallback(() => {
-    const actions: string[] = [];
-
-    const currentHour = new Date().getHours();
-
-    const activeShifts = shifts.filter((shift) => {
-      const start = new Date(shift.startTime).getHours();
-
-      const end = new Date(shift.endTime).getHours();
-
-      return currentHour >= start && currentHour <= end;
-    });
-
-    const activeMovies = movieShowings.filter((movie) => {
-      const start = new Date(movie.startTime).getHours();
-
-      return currentHour >= start - 1 && currentHour <= start + 2;
-    });
-
-    const liveSoldSeats = activeMovies.reduce(
-      (sum, movie) => sum + movie.soldSeats,
-      0,
-    );
-
-    if (liveSoldSeats >= 250 && activeShifts.length <= 4) {
-      actions.push("🚨 Opret emergency staffing shift de næste 2 timer.");
-    }
-
-    if (liveSoldSeats >= 300 && activeShifts.length <= 5) {
-      actions.push(
-        "🚨 Peak pressure kræver ekstra foyer/billetsalg bemanding.",
-      );
-    }
-
-    const overtimeRisk = activeShifts.filter((shift) => {
-      const start = new Date(shift.startTime);
-
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 8;
-    });
-
-    if (overtimeRisk.length >= 3) {
-      actions.push(
-        "🚨 Flere medarbejdere nærmer sig overtime — overvej omfordeling.",
-      );
-    }
-
-    if (activeMovies.length >= 5) {
-      actions.push(
-        "🚨 Kritisk movie pressure registreret — AI intervention anbefales.",
-      );
-    }
-
-    setEmergencyAiActions(actions);
-  }, [movieShowings, shifts]);
-
-  const autoCreateEmergencyShift = useCallback(async () => {
-    try {
-      setAutoCreatingEmergencyShift(true);
-
-      const currentHour = new Date().getHours();
-
-      const startTime = new Date(selectedDate);
-
-      startTime.setHours(currentHour, 0, 0, 0);
-
-      const endTime = new Date(selectedDate);
-
-      endTime.setHours(currentHour + 2, 0, 0, 0);
-
-      const response = await fetch(`${API_URL}/shifts`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          cinemaId: currentUser?.cinemaId,
-          userId: users[0]?.id,
-          workTypeId: workTypes[0]?.id,
-          note: "AI Emergency Staffing Shift",
-        }),
-      });
-
-      if (!response.ok) {
-        alert("Kunne ikke oprette emergency shift.");
-
-        return;
-      }
-
-      await refreshDayData();
-
-      alert("🚨 AI emergency shift blev automatisk oprettet.");
-    } catch (error) {
-      console.error(error);
-
-      alert("Emergency staffing action fejlede.");
-    } finally {
-      setAutoCreatingEmergencyShift(false);
-    }
-  }, [refreshDayData, selectedDate, users, workTypes]);
-
-  const generateAutoStaffingNotifications = useCallback(() => {
-    const notifications: string[] = [];
-
-    const currentHour = new Date().getHours();
-
-    const activeMovies = movieShowings.filter((movie) => {
-      const startHour = new Date(movie.startTime).getHours();
-
-      return currentHour >= startHour - 1 && currentHour <= startHour + 2;
-    });
-
-    const activeShifts = shifts.filter((shift) => {
-      const startHour = new Date(shift.startTime).getHours();
-
-      const endHour = new Date(shift.endTime).getHours();
-
-      return currentHour >= startHour && currentHour <= endHour;
-    });
-
-    const soldSeats = activeMovies.reduce(
-      (sum, movie) => sum + movie.soldSeats,
-      0,
-    );
-
-    if (soldSeats >= 250 && activeShifts.length <= 4) {
-      notifications.push(
-        "🚨 Kritisk staffing pressure — ekstra medarbejder anbefales nu.",
-      );
-    }
-
-    if (soldSeats >= 350) {
-      notifications.push("🚨 Biografen nærmer sig maksimal belastning.");
-    }
-
-    const overtimeRisk = activeShifts.filter((shift) => {
-      const start = new Date(shift.startTime);
-
-      const end = new Date(shift.endTime);
-
-      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-      return hours >= 8;
-    });
-
-    if (overtimeRisk.length >= 2) {
-      notifications.push("🚨 Flere medarbejdere nærmer sig overtime.");
-    }
-
-    if (activeMovies.length >= 5) {
-      notifications.push("🚨 Peak-hour staffing intervention anbefales.");
-    }
-
-    setAutoStaffingNotifications(notifications);
-  }, [movieShowings, shifts]);
-
-  const generateSuggestedEmergencyReplacements = useCallback(() => {
-    const replacements: Array<{
-      name: string;
-      score: number;
-      fatigue: string;
-    }> = [];
-
-    users.forEach((user) => {
-      const userShifts = shifts.filter((shift) => shift.userId === user.id);
-
-      let staffingScore = 100;
-
-      staffingScore -= userShifts.length * 8;
-
-      const longShifts = userShifts.filter((shift) => {
-        const start = new Date(shift.startTime);
-
-        const end = new Date(shift.endTime);
-
-        const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-        return hours >= 8;
-      });
-
-      staffingScore -= longShifts.length * 10;
-
-      let fatigue = "LOW";
-
-      if (staffingScore <= 70) {
-        fatigue = "MEDIUM";
-      }
-
-      if (staffingScore <= 45) {
-        fatigue = "HIGH";
-      }
-
-      replacements.push({
-        name: `${user.firstName} ${user.lastName}`,
-        score: staffingScore,
-        fatigue,
-      });
-    });
-
-    replacements.sort((a, b) => b.score - a.score);
-
-    setSuggestedEmergencyReplacements(replacements.slice(0, 5));
-  }, [users, shifts]);
-
-  const sendEmergencyStaffingRequest = useCallback(
-    async (employeeName: string) => {
-      try {
-        setSendingEmergencyRequest(employeeName);
-
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-
-        alert(`🚨 Emergency staffing request sendt til ${employeeName}.`);
-      } catch (error) {
-        console.error(error);
-
-        alert("Kunne ikke sende staffing request.");
-      } finally {
-        setSendingEmergencyRequest(null);
-      }
-    },
-    [],
-  );
-
-  const startAutoEscalation = useCallback(async () => {
-    try {
-      const queue = suggestedEmergencyReplacements.map(
-        (replacement) => replacement.name,
-      );
-
-      setAutoEscalationQueue(queue);
-
-      for (const employeeName of queue) {
-        setSendingEmergencyRequest(employeeName);
-
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        const accepted = Math.random() > 0.65;
-
-        if (accepted) {
-          alert(`✅ ${employeeName} accepterede emergency staffing request.`);
-
-          setAutoEscalationQueue([]);
-          const accepted = await autoHandleStaffingResponse(employeeName);
-
-          if (accepted) {
-            await autoAssignEmergencyShift(employeeName);
-
-            setAutoEscalationQueue([]);
-
-            return;
-          }
-          return;
-        }
-      }
-
-      alert("🚨 Ingen medarbejdere accepterede emergency staffing request.");
-    } catch (error) {
-      console.error(error);
-
-      alert("Auto escalation engine fejlede.");
-    } finally {
-      setSendingEmergencyRequest(null);
-    }
-  }, [suggestedEmergencyReplacements]);
-
-  const sendRealStaffingMessage = useCallback(async (employeeName: string) => {
-    try {
-      setSendingRealStaffingMessage(employeeName);
-
-      const response = await fetch(`${API_URL}/messages`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          recipientName: employeeName,
-          subject: "🚨 Emergency Staffing Request",
-          content: `Der er akut behov for bemanding i biografen. Kontakt venligst administrationen hurtigst muligt.`,
-          systemType: "STAFFING_ALERT",
-        }),
-      });
-
-      if (!response.ok) {
-        alert("Kunne ikke sende staffing besked.");
-
-        return;
-      }
-
-      alert(`📨 Staffing request sendt til ${employeeName}.`);
-    } catch (error) {
-      console.error(error);
-
-      alert("Staffing message fejlede.");
-    } finally {
-      setSendingRealStaffingMessage(null);
-    }
-  }, []);
-
-  const autoHandleStaffingResponse = useCallback(
-    async (employeeName: string) => {
-      try {
-        setStaffingLoopStatus("WAITING");
-
-        await new Promise((resolve) => setTimeout(resolve, 2500));
-
-        const accepted = Math.random() > 0.5;
-
-        if (accepted) {
-          setStaffingLoopStatus("ACCEPTED");
-
-          alert(`✅ ${employeeName} accepterede staffing request.`);
-
-          return true;
-        }
-
-        setStaffingLoopStatus("DECLINED");
-
-        alert(`❌ ${employeeName} afviste staffing request.`);
-
-        return false;
-      } catch (error) {
-        console.error(error);
-
-        setStaffingLoopStatus("DECLINED");
-
-        return false;
-      }
-    },
-    [],
-  );
-
-  const autoAssignEmergencyShift = useCallback(
-    async (employeeName: string) => {
-      try {
-        setAutonomousStaffingStatus("EXECUTING");
-
-        const employee = users.find(
-          (user) => `${user.firstName} ${user.lastName}` === employeeName,
-        );
-
-        if (!employee) {
-          throw new Error("Medarbejder ikke fundet.");
-        }
-
-        const currentHour = new Date().getHours();
-
-        const startTime = new Date(selectedDate);
-
-        startTime.setHours(currentHour, 0, 0, 0);
-
-        const endTime = new Date(selectedDate);
-
-        endTime.setHours(currentHour + 2, 0, 0, 0);
-
-        const response = await fetch(`${API_URL}/shifts`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            startTime: startTime.toISOString(),
-            endTime: endTime.toISOString(),
-            cinemaId: currentUser?.cinemaId,
-            userId: employee.id,
-            workTypeId: workTypes[0]?.id,
-            note: "Autonomous AI Emergency Shift",
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Kunne ikke oprette emergency shift.");
-        }
-
-        await refreshDayData();
-
-        setAutonomousStaffingStatus("COMPLETED");
-
-        alert(
-          `🤖 Emergency shift blev automatisk tildelt til ${employeeName}.`,
-        );
-      } catch (error) {
-        console.error(error);
-
-        setAutonomousStaffingStatus("IDLE");
-
-        alert("Autonomous staffing execution fejlede.");
-      }
-    },
-    [currentUser, refreshDayData, selectedDate, users, workTypes],
-  );
-
-  const generateStaffingWarnings = useCallback(() => {
-    const warnings: string[] = [];
-
-    movieShowings.forEach((showing) => {
-      const showingStart = new Date(showing.startTime);
-      const showingEnd = new Date(showing.endTime);
-
-      const overlappingShifts = shifts.filter((shift) => {
-        const shiftStart = new Date(shift.startTime);
-        const shiftEnd = new Date(shift.endTime);
-
-        return shiftStart < showingEnd && shiftEnd > showingStart;
-      });
-
-      const activeEmployees = overlappingShifts.length;
-      const soldSeats = showing.soldSeats || 0;
-
-      if (soldSeats >= 120 && activeEmployees < 4) {
-        warnings.push(
-          `${showing.title} (${showing.hall}) har høj belastning men kun ${activeEmployees} medarbejdere.`,
-        );
-      }
-
-      if (soldSeats >= 200 && activeEmployees < 6) {
-        warnings.push(
-          `${showing.title} (${showing.hall}) er kritisk underbemandet.`,
-        );
-      }
-
-      const overtimeRisk = overlappingShifts.some((shift) => {
-        const start = new Date(shift.startTime);
-        const end = new Date(shift.endTime);
-
-        const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-        return hours >= 8;
-      });
-
-      if (overtimeRisk) {
-        warnings.push(
-          `${showing.title} (${showing.hall}) indeholder vagter med overtime-risiko.`,
-        );
-      }
-    });
-
-    setStaffingWarnings(warnings);
-  }, [movieShowings, shifts]);
-
-  const generateStaffingSuggestions = useCallback(() => {
-    const suggestions: string[] = [];
-
-    movieShowings.forEach((showing) => {
-      const showingStart = new Date(showing.startTime);
-      const showingEnd = new Date(showing.endTime);
-
-      const overlappingShifts = shifts.filter((shift) => {
-        const shiftStart = new Date(shift.startTime);
-        const shiftEnd = new Date(shift.endTime);
-
-        return shiftStart < showingEnd && shiftEnd > showingStart;
-      });
-
-      const activeEmployees = overlappingShifts.length;
-
-      const soldSeats = showing.soldSeats || 0;
-
-      if (soldSeats >= 120 && activeEmployees < 4) {
-        suggestions.push(
-          `🤖 Overvej at tilføje 1-2 ekstra medarbejdere til ${showing.title} (${showing.hall}).`,
-        );
-      }
-
-      if (soldSeats >= 200 && activeEmployees < 6) {
-        suggestions.push(
-          `🤖 ${showing.title} (${showing.hall}) bør sandsynligvis have minimum 6 medarbejdere.`,
-        );
-      }
-
-      if (soldSeats <= 40 && activeEmployees >= 5) {
-        suggestions.push(
-          `🤖 Overvej reduceret bemanding til ${showing.title} (${showing.hall}) efterspørgslen er lav.`,
-        );
-      }
-
-      const overtimeRisk = overlappingShifts.some((shift) => {
-        const start = new Date(shift.startTime);
-        const end = new Date(shift.endTime);
-
-        const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-        return hours >= 8;
-      });
-
-      if (overtimeRisk) {
-        suggestions.push(
-          `🤖 Overvej ekstra bemanding for at reducere overtime-risiko omkring ${showing.title}.`,
-        );
-      }
-    });
-
-    setStaffingSuggestions(suggestions);
-  }, [movieShowings, shifts]);
-
-  const generateRecommendedEmployees = useCallback(() => {
-    const recommendations: Record<number, string[]> = {};
-
-    shifts.forEach((shift) => {
-      const shiftStart = new Date(shift.startTime);
-      const shiftEnd = new Date(shift.endTime);
-
-      const shiftHours =
-        (shiftEnd.getTime() - shiftStart.getTime()) / 1000 / 60 / 60;
-
-      const availableUsers = users
-        .filter((user) => user.id !== shift.userId)
-        .map((user) => {
-          const userShifts = shifts.filter((s) => s.userId === user.id);
-
-          const totalHours = userShifts.reduce((sum, s) => {
-            const start = new Date(s.startTime);
-            const end = new Date(s.endTime);
-
-            return sum + (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-          }, 0);
-
-          const matchingSkill = workTypes.some(
-            (wt) => wt.id === shift.workTypeId,
-          );
-
-          return {
-            name: `${user.firstName} ${user.lastName}`,
-            totalHours,
-            matchingSkill,
-          };
-        })
-        .sort((a, b) => a.totalHours - b.totalHours)
-        .slice(0, 3);
-
-      const suggestions = availableUsers.map((user) => {
-        if (user.totalHours >= 35) {
-          return `${user.name} (overtime-risiko)`;
-        }
-
-        if (shiftHours >= 8) {
-          return `${user.name} (lang vagt anbefalet)`;
-        }
-
-        return `${user.name} (lav belastning)`;
-      });
-
-      recommendations[shift.id] = suggestions;
-    });
-
-    setRecommendedEmployees(recommendations);
-  }, [shifts, users, workTypes]);
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (!savedUser) {
-      window.location.href = "/";
-      return;
-    }
-
-    setCurrentUser(JSON.parse(savedUser));
-    fetchUsers();
-    fetchWorkTypes();
-  }, [fetchUsers, fetchWorkTypes]);
-
-  useEffect(() => {
-    refreshDayData();
-  }, [refreshDayData]);
-
-  useEffect(() => {
-    generateStaffingWarnings();
-  }, [generateStaffingWarnings]);
-
-  useEffect(() => {
-    generateStaffingSuggestions();
-  }, [generateStaffingSuggestions]);
-
-  useEffect(() => {
-    generateAiScheduleSuggestions();
-  }, [generateAiScheduleSuggestions]);
-
-  useEffect(() => {
-    generateLiveStaffingAlerts();
-
-    const interval = setInterval(() => {
-      generateLiveStaffingAlerts();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [generateLiveStaffingAlerts]);
-
-  useEffect(() => {
-    generateEmergencyAiActions();
-
-    const interval = setInterval(() => {
-      generateEmergencyAiActions();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [generateEmergencyAiActions]);
-
-  useEffect(() => {
-    generateAutoStaffingNotifications();
-
-    const interval = setInterval(() => {
-      generateAutoStaffingNotifications();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [generateAutoStaffingNotifications]);
-
-  useEffect(() => {
-    generateSuggestedEmergencyReplacements();
-  }, [generateSuggestedEmergencyReplacements]);
-
-  useEffect(() => {
-    generateRecommendedEmployees();
-  }, [generateRecommendedEmployees]);
 
   useRealtimeShifts({
     onShiftsUpdated: refreshDayData,
@@ -1146,7 +163,7 @@ export default function SchedulePage() {
   async function submitManualTime() {
     const shift = shifts.find((s) => s.id === clockShiftId);
 
-    if (!shift || !currentUser) {
+    if (!shift || !currentUser || !clockShiftId) {
       alert("Vælg en vagt først");
       return;
     }
@@ -1162,34 +179,26 @@ export default function SchedulePage() {
       return;
     }
 
-    const response = await apiFetch("/time-entries/manual", {
-      method: "POST",
-      body: JSON.stringify({
-        userId: currentUser.id,
-        cinemaId: currentUser.cinemaId,
+    try {
+      await submitManualTimeEntry({
         shiftId: clockShiftId,
         clockIn: clockInTime,
         clockOut: clockOutTime,
         note: clockNote,
-      }),
-    });
+      });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(data.message || "Kunne ikke registrere timer");
-      return;
+      alert("Timer sendt til godkendelse");
+      resetClockModal();
+    } catch (error) {
+      alert(
+        error instanceof Error ? error.message : "Kunne ikke registrere timer",
+      );
     }
-
-    alert("Timer sendt til godkendelse");
-    resetClockModal();
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
-
-    const parsedUser = getLoggedInUser();
 
     const body = {
       startTime: localDateTimeToISOString(startTime),
@@ -1199,34 +208,32 @@ export default function SchedulePage() {
       workTypeId,
     };
 
-    const response = await apiFetch(
-      selectedShift ? `/shifts/${selectedShift.id}` : "/shifts",
-      {
-        method: selectedShift ? "PATCH" : "POST",
-        body: JSON.stringify(body),
-      },
-    );
+    try {
+      if (selectedShift) {
+        await updateShift(selectedShift.id, body);
+      } else {
+        await createShift(body);
+      }
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      setFormError(data.message || "Der opstod en fejl");
-      return;
+      clearForm();
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Der opstod en fejl",
+      );
     }
-
-    clearForm();
-    await refreshDayData();
   }
 
   async function handleDelete() {
     if (!selectedShift) return;
 
-    await apiFetch(`/shifts/${selectedShift.id}`, {
-      method: "DELETE",
-    });
-
-    clearForm();
-    await refreshDayData();
+    try {
+      await deleteShift(selectedShift.id);
+      clearForm();
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Kunne ikke slette vagt",
+      );
+    }
   }
 
   function handleSelectShift(shift: Shift) {
@@ -1250,7 +257,6 @@ export default function SchedulePage() {
     setEndTime(`${nextDate}T22:00`);
     setSelectedShift(null);
     setFormError("");
-    setLoading(true);
   }
 
   function goToToday() {
@@ -1261,7 +267,6 @@ export default function SchedulePage() {
     setEndTime(`${today}T22:00`);
     setSelectedShift(null);
     setFormError("");
-    setLoading(true);
   }
 
   async function handleMoveShift(
@@ -1278,33 +283,23 @@ export default function SchedulePage() {
 
     const newEnd = new Date(newStart.getTime() + durationMs);
 
-    await apiFetch(`/shifts/${shift.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        startTime: newStart.toISOString(),
-        endTime: newEnd.toISOString(),
-        note: shift.note,
-        userId: shift.userId,
-        workTypeId: shift.workTypeId,
-      }),
+    await updateShift(shift.id, {
+      startTime: newStart.toISOString(),
+      endTime: newEnd.toISOString(),
+      note: shift.note,
+      userId: shift.userId,
+      workTypeId: shift.workTypeId,
     });
-
-    await refreshDayData();
   }
 
   async function handleChangeShiftUser(shift: Shift, newUserId: number) {
-    await apiFetch(`/shifts/${shift.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        note: shift.note,
-        userId: newUserId,
-        workTypeId: shift.workTypeId,
-      }),
+    await updateShift(shift.id, {
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      note: shift.note,
+      userId: newUserId,
+      workTypeId: shift.workTypeId,
     });
-
-    await refreshDayData();
   }
 
   async function handleResizeShift(
@@ -1322,42 +317,29 @@ export default function SchedulePage() {
     const newEnd = new Date(oldStart);
     newEnd.setHours(newEndHour, newEndMinute, 0, 0);
 
-    await apiFetch(`/shifts/${shift.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        startTime: newStart.toISOString(),
-        endTime: newEnd.toISOString(),
-        note: shift.note,
-        userId: shift.userId,
-        workTypeId: shift.workTypeId,
-      }),
+    await updateShift(shift.id, {
+      startTime: newStart.toISOString(),
+      endTime: newEnd.toISOString(),
+      note: shift.note,
+      userId: shift.userId,
+      workTypeId: shift.workTypeId,
     });
-
-    await refreshDayData();
   }
 
   async function handleOfferTrade() {
     if (!selectedShift) return;
 
-    const parsedUser = getLoggedInUser();
-    if (!parsedUser) return;
-
-    await apiFetch("/shift-trades", {
-      method: "POST",
-      body: JSON.stringify({
-        shiftId: selectedShift.id,
-        offeredByUserId: selectedShift.userId,
-        cinemaId: parsedUser.cinemaId,
-        message: "",
-      }),
-    });
-
-    alert("Vagten er sendt i byttepuljen");
-    await refreshDayData();
+    try {
+      await offerShiftTrade(selectedShift);
+      alert("Vagten er sendt i byttepuljen");
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke sende vagten i byttepuljen",
+      );
+    }
   }
-
-  const canManageShifts =
-    currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
   if (loading) {
     return (

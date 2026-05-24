@@ -1,60 +1,48 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { io } from "socket.io-client";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { useApi } from "./useApi";
+import { useAuth } from "../providers/AuthProvider";
+import { useRealtimeCore } from "./useRealtimeCore";
 
 export function useRealtimeBadges() {
+  const { apiFetch } = useApi();
+  const { token } = useAuth();
+
   const [poolCount, setPoolCount] = useState(0);
   const [directCount, setDirectCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
 
-  const getHeaders = () => ({
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
-  });
-
-  const getCount = (data: any) => {
+  const getCount = (data: unknown) => {
     if (typeof data === "number") return data;
-    return Number(data?.count || 0);
+
+    if (data && typeof data === "object" && "count" in data) {
+      return Number(data.count || 0);
+    }
+
+    return 0;
   };
 
   const refreshBadges = useCallback(async () => {
-    const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
       const [poolRes, directRes, messagesRes, notificationsRes] =
         await Promise.all([
-          fetch(`${API_URL}/shift-trades/pool-count`, {
-            headers: getHeaders(),
-          }),
-          fetch(`${API_URL}/shift-trades/direct-count`, {
-            headers: getHeaders(),
-          }),
-          fetch(`${API_URL}/messages/unread-count`, {
-            headers: getHeaders(),
-          }),
-          fetch(`${API_URL}/notifications/unread-count`, {
-            headers: getHeaders(),
-          }),
+          apiFetch("/shift-trades/pool-count"),
+          apiFetch("/shift-trades/direct-count"),
+          apiFetch("/messages/unread-count"),
+          apiFetch("/notifications/unread-count"),
         ]);
 
-      if (!poolRes.ok) setPoolCount(0);
-      if (!directRes.ok) setDirectCount(0);
-      if (!messagesRes.ok) setUnreadMessages(0);
-      if (!notificationsRes.ok) setNotificationCount(0);
-
-      const poolData = poolRes.ok ? await poolRes.json() : { count: 0 };
-      const directData = directRes.ok ? await directRes.json() : { count: 0 };
-      const messagesData = messagesRes.ok
-        ? await messagesRes.json()
-        : { count: 0 };
-      const notificationsData = notificationsRes.ok
-        ? await notificationsRes.json()
-        : { count: 0 };
+      const [poolData, directData, messagesData, notificationsData] =
+        await Promise.all([
+          poolRes.ok ? poolRes.json() : { count: 0 },
+          directRes.ok ? directRes.json() : { count: 0 },
+          messagesRes.ok ? messagesRes.json() : { count: 0 },
+          notificationsRes.ok ? notificationsRes.json() : { count: 0 },
+        ]);
 
       setPoolCount(getCount(poolData));
       setDirectCount(getCount(directData));
@@ -66,37 +54,18 @@ export function useRealtimeBadges() {
       setUnreadMessages(0);
       setNotificationCount(0);
     }
-  }, []);
+  }, [apiFetch, token]);
 
   useEffect(() => {
     refreshBadges();
-
-    const socket = io(API_URL, {
-      transports: ["websocket"],
-    });
-
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-
-      socket.emit("joinCinema", user.cinemaId);
-    }
-
-    socket.on("shiftTradesUpdated", refreshBadges);
-    socket.on("newShiftTrade", refreshBadges);
-    socket.on("newDirectShiftTrade", refreshBadges);
-    socket.on("shiftAccepted", refreshBadges);
-    socket.on("shiftRejected", refreshBadges);
-    socket.on("shiftsUpdated", refreshBadges);
-    socket.on("messagesUpdated", refreshBadges);
-    socket.on("newMessage", refreshBadges);
-    socket.on("notificationsUpdated", refreshBadges);
-
-    return () => {
-      socket.disconnect();
-    };
   }, [refreshBadges]);
+
+  useRealtimeCore({
+    onShiftUpdated: refreshBadges,
+    onShiftTradeUpdated: refreshBadges,
+    onNotification: refreshBadges,
+    onMessage: refreshBadges,
+  });
 
   return {
     poolCount,

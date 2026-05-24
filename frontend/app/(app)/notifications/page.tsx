@@ -1,18 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useApi } from "@/app/hooks/useApi";
+import { useAuth } from "@/app/providers/AuthProvider";
+import { useNotifications } from "@/app/hooks/useNotifications";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
   enablePushNotifications,
   disablePushNotifications,
 } from "@/app/hooks/usePushNotifications";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
-
-type CurrentUser = {
-  id: number;
-  cinemaId: number;
-};
 
 type User = {
   id: number;
@@ -47,89 +43,113 @@ type ShiftTrade = {
   };
 };
 
-type SystemNotification = {
-  id: number;
-  title: string;
-  message: string;
-  type: string;
-  isRead: boolean;
-  createdAt: string;
-  linkUrl?: string | null;
-};
-
 export default function NotificationsPage() {
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const { apiFetch } = useApi();
+  const { user, loading: authLoading } = useAuth();
+
+  const {
+    notifications,
+    unreadCount,
+    loading: notificationsLoading,
+    loadNotifications,
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
-  const [systemNotifications, setSystemNotifications] = useState<
-    SystemNotification[]
-  >([]);
   const [pushMessage, setPushMessage] = useState("");
+  const [extraLoading, setExtraLoading] = useState(true);
 
-  function getHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
+  const fetchExtraData = useCallback(async () => {
+    if (!user) return;
 
-  const fetchData = useCallback(async () => {
     try {
-      const savedUser = localStorage.getItem("user");
-      if (!savedUser) return;
+      setExtraLoading(true);
 
-      const user: CurrentUser = JSON.parse(savedUser);
-      setCurrentUser(user);
+      const [messagesResponse, tradesResponse] = await Promise.all([
+        apiFetch(`/messages?userId=${user.id}&cinemaId=${user.cinemaId}`),
+        apiFetch("/shift-trades"),
+      ]);
 
-      const [messagesResponse, tradesResponse, notificationsResponse] =
-        await Promise.all([
-          fetch(
-            `${API_URL}/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
-            { headers: getHeaders() },
-          ),
-          fetch(`${API_URL}/shift-trades`, {
-            headers: getHeaders(),
-          }),
-          fetch(`${API_URL}/notifications?userId=${user.id}`, {
-            headers: getHeaders(),
-          }),
-        ]);
-
-      const messagesData = await messagesResponse.json();
-      const tradesData = await tradesResponse.json();
-      const notificationsData = await notificationsResponse.json();
+      const [messagesData, tradesData] = await Promise.all([
+        messagesResponse.ok ? messagesResponse.json() : [],
+        tradesResponse.ok ? tradesResponse.json() : [],
+      ]);
 
       setMessages(Array.isArray(messagesData) ? messagesData : []);
       setShiftTrades(Array.isArray(tradesData) ? tradesData : []);
-      setSystemNotifications(
-        Array.isArray(notificationsData) ? notificationsData : [],
-      );
-    } catch {
+    } catch (error) {
+      console.error("Failed to load notification overview data", error);
+
       setMessages([]);
       setShiftTrades([]);
-      setSystemNotifications([]);
+    } finally {
+      setExtraLoading(false);
     }
-  }, []);
+  }, [apiFetch, user]);
 
-  async function markNotificationAsRead(id: number) {
-    await fetch(`${API_URL}/notifications/${id}/read`, {
-      method: "PATCH",
-      headers: getHeaders(),
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      window.location.href = "/";
+      return;
+    }
+
+    fetchExtraData();
+  }, [authLoading, fetchExtraData, user]);
+
+  useRealtimeShifts({
+    onShiftsUpdated: fetchExtraData,
+    onShiftTradesUpdated: fetchExtraData,
+    enableToasts: false,
+  });
+
+  const unreadMessages = useMemo(() => {
+    if (!user) return [];
+
+    return messages.filter((message) => {
+      const isUnread = !message.readAt;
+
+      const isForMe =
+        message.isBroadcast ||
+        message.receiver?.id === user.id ||
+        !message.receiver;
+
+      return isUnread && isForMe;
     });
+  }, [messages, user]);
 
-    await fetchData();
-  }
+  const directTrades = useMemo(() => {
+    if (!user) return [];
 
-  async function markAllNotificationsAsRead() {
-    if (!currentUser) return;
+    return shiftTrades.filter(
+      (trade) =>
+        trade.status === "OPEN" &&
+        trade.type === "DIRECT" &&
+        trade.targetUserId === user.id &&
+        new Date(trade.shift.startTime) > new Date(),
+    );
+  }, [shiftTrades, user]);
 
-    await fetch(`${API_URL}/notifications/read-all?userId=${currentUser.id}`, {
-      method: "PATCH",
-      headers: getHeaders(),
-    });
+  const poolTrades = useMemo(() => {
+    if (!user) return [];
 
-    await fetchData();
-  }
+    return shiftTrades.filter(
+      (trade) =>
+        trade.status === "OPEN" &&
+        trade.type === "POOL" &&
+        trade.offeredByUserId !== user.id &&
+        new Date(trade.shift.startTime) > new Date(),
+    );
+  }, [shiftTrades, user]);
+
+  const totalCount =
+    unreadMessages.length +
+    unreadCount +
+    directTrades.length +
+    poolTrades.length;
 
   async function handleEnablePush() {
     const success = await enablePushNotifications();
@@ -143,72 +163,34 @@ export default function NotificationsPage() {
 
   async function handleDisablePush() {
     await disablePushNotifications();
+
     setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
   }
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  async function handleMarkNotificationAsRead(notificationId: number) {
+    await markAsRead(notificationId);
+    await loadNotifications();
+  }
 
-  useRealtimeShifts({
-    onShiftsUpdated: fetchData,
-    onShiftTradesUpdated: fetchData,
-    enableToasts: false,
-  });
+  async function handleMarkAllNotificationsAsRead() {
+    await markAllAsRead();
+    await loadNotifications();
+  }
 
-  const unreadMessages = useMemo(() => {
-    if (!currentUser) return [];
+  const loading = authLoading || notificationsLoading || extraLoading;
 
-    return messages.filter((message) => {
-      const isUnread = !message.readAt;
-
-      const isForMe =
-        message.isBroadcast ||
-        message.receiver?.id === currentUser.id ||
-        !message.receiver;
-
-      return isUnread && isForMe;
-    });
-  }, [messages, currentUser]);
-
-  const unreadSystemNotifications = useMemo(() => {
-    return systemNotifications.filter((notification) => !notification.isRead);
-  }, [systemNotifications]);
-
-  const directTrades = useMemo(() => {
-    if (!currentUser) return [];
-
-    return shiftTrades.filter(
-      (trade) =>
-        trade.status === "OPEN" &&
-        trade.type === "DIRECT" &&
-        trade.targetUserId === currentUser.id &&
-        new Date(trade.shift.startTime) > new Date(),
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-100 p-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        Indlæser notifikationer...
+      </main>
     );
-  }, [shiftTrades, currentUser]);
-
-  const poolTrades = useMemo(() => {
-    if (!currentUser) return [];
-
-    return shiftTrades.filter(
-      (trade) =>
-        trade.status === "OPEN" &&
-        trade.type === "POOL" &&
-        trade.offeredByUserId !== currentUser.id &&
-        new Date(trade.shift.startTime) > new Date(),
-    );
-  }, [shiftTrades, currentUser]);
-
-  const totalCount =
-    unreadMessages.length +
-    unreadSystemNotifications.length +
-    directTrades.length +
-    poolTrades.length;
+  }
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Notifikationer</h1>
@@ -240,34 +222,34 @@ export default function NotificationsPage() {
               )}
             </div>
 
-            {unreadSystemNotifications.length > 0 && (
+            {unreadCount > 0 && (
               <button
-                onClick={markAllNotificationsAsRead}
+                onClick={handleMarkAllNotificationsAsRead}
                 className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
               >
                 Marker systemnotifikationer som læst
               </button>
             )}
           </div>
-        </div>
+        </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold">Systemnotifikationer</h2>
 
             <span className="rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold text-white">
-              {unreadSystemNotifications.length}
+              {unreadCount}
             </span>
           </div>
 
           <div className="space-y-3">
-            {systemNotifications.map((notification) => (
+            {notifications.map((notification) => (
               <a
                 key={notification.id}
-                href={notification.linkUrl || "/notifications"}
+                href="/notifications"
                 onClick={async () => {
                   if (!notification.isRead) {
-                    await markNotificationAsRead(notification.id);
+                    await handleMarkNotificationAsRead(notification.id);
                   }
                 }}
                 className={`block rounded-2xl border p-4 transition hover:scale-[1.01] ${
@@ -310,7 +292,7 @@ export default function NotificationsPage() {
               </a>
             ))}
 
-            {systemNotifications.length === 0 && (
+            {notifications.length === 0 && (
               <div className="text-gray-500 dark:text-gray-400">
                 Ingen systemnotifikationer endnu.
               </div>

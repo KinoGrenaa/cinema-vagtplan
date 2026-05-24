@@ -1,16 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useRealtimeBadges } from "@/app/hooks/useRealtimeBadges";
-
-type User = {
-  id: number;
-  role: string;
-  cinemaId: number;
-};
+import { useAuth } from "@/app/providers/AuthProvider";
 
 type NavItem = {
   href?: string;
@@ -22,34 +17,20 @@ type NavItem = {
 
 export default function AppMenu() {
   const pathname = usePathname();
+
   const { poolCount, directCount, unreadMessages, notificationCount } =
     useRealtimeBadges();
 
+  const { user, logout, isAdmin, isMaster } = useAuth();
+
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Vagtplan: true,
     Beskeder: false,
     Indstillinger: false,
     Administration: false,
   });
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (!savedUser) return;
-
-    try {
-      setUser(JSON.parse(savedUser));
-    } catch {
-      setUser(null);
-    }
-  }, []);
-
-  function handleLogout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "/";
-  }
 
   function toggleGroup(label: string) {
     setOpenGroups((current) => ({
@@ -58,7 +39,6 @@ export default function AppMenu() {
     }));
   }
 
-  const isAdmin = user?.role === "ADMIN" || user?.role === "MASTER";
   const totalTradeCount = poolCount + directCount;
 
   const navItems: NavItem[] = [
@@ -66,107 +46,139 @@ export default function AppMenu() {
       href: "/dashboard",
       label: "Dashboard",
     },
+
     {
       label: "Vagtplan",
       badge: totalTradeCount,
+
       children: [
         {
           href: "/schedule",
           label: "Vagtplan",
         },
+
         {
           href: "/my-shifts",
           label: "Mine vagter",
           badge: directCount,
         },
+
         {
           href: "/shift-trades",
           label: "Vagtpulje",
           badge: poolCount,
         },
+
         {
           href: "/leave-requests",
           label: "Mit fravær",
         },
       ],
     },
+
     {
       label: "Beskeder",
       badge: unreadMessages,
+
       children: [
         {
           href: "/messages",
           label: "Indbakke",
           badge: unreadMessages,
         },
+
         {
           href: "/messages/send",
           label: "Send besked",
         },
+
         {
           href: "/messages/sent",
           label: "Sendte beskeder",
         },
+
         {
           href: "/messages/archive",
           label: "Arkiv",
         },
       ],
     },
+
     {
       label: "Indstillinger",
+
       children: [
         {
           href: "/settings",
           label: "Brugerindstillinger",
         },
+
         {
           href: "/notifications",
           label: "Notifikationer",
           badge: notificationCount,
         },
+
         {
           href: "/push",
           label: "Push-notifikationer",
         },
       ],
     },
+
     {
       label: "Administration",
       adminOnly: true,
+
       children: [
         {
           href: "/users",
           label: "Brugere",
         },
+
         {
           href: "/employees",
           label: "Medarbejdere",
         },
+
         {
           href: "/employee-documents",
           label: "Medarbejderdokumenter",
         },
+
         {
           href: "/time-approval",
           label: "Tidsregistrering",
         },
+
         {
           href: "/payroll",
           label: "Løn / timer",
         },
+
         {
           href: "/cinema-settings",
           label: "Biograf indstillinger",
         },
+
         {
           href: "/audit-log",
           label: "Audit log",
         },
+
         {
           href: "/cinema-settings/payroll-types",
           label: "Løn setup",
         },
+
+        ...(isMaster
+          ? [
+              {
+                href: "/master",
+                label: "Master panel",
+              },
+            ]
+          : []),
       ],
     },
   ];
@@ -175,6 +187,7 @@ export default function AppMenu() {
     .filter((item) => !item.adminOnly || isAdmin)
     .map((item) => ({
       ...item,
+
       children: item.children?.filter((child) => !child.adminOnly || isAdmin),
     }));
 
@@ -228,13 +241,19 @@ export default function AppMenu() {
               <h2 className="text-xl font-bold">Cinema Vagtplan</h2>
 
               {user && (
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {user.role === "MASTER"
-                    ? "Master"
-                    : user.role === "ADMIN"
-                      ? "Administrator"
-                      : "Medarbejder"}
-                </p>
+                <div className="mt-2">
+                  <p className="text-sm font-medium">
+                    {user.firstName} {user.lastName}
+                  </p>
+
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {user.role === "MASTER"
+                      ? "Master"
+                      : user.role === "ADMIN"
+                        ? "Administrator"
+                        : "Medarbejder"}
+                  </p>
+                </div>
               )}
             </div>
 
@@ -251,8 +270,11 @@ export default function AppMenu() {
         <nav className="flex-1 space-y-2 overflow-y-auto p-4">
           {visibleNavItems.map((item) => {
             const hasChildren = !!item.children?.length;
+
             const active = item.href === pathname;
+
             const groupActive = isGroupActive(item);
+
             const groupOpen = openGroups[item.label] || groupActive;
 
             if (!hasChildren && item.href) {
@@ -268,6 +290,7 @@ export default function AppMenu() {
                   }`}
                 >
                   <span>{item.label}</span>
+
                   {renderBadge(item.badge, active)}
                 </Link>
               );
@@ -285,6 +308,7 @@ export default function AppMenu() {
                 >
                   <span className="flex items-center gap-2">
                     {item.label}
+
                     {renderBadge(item.badge, groupActive)}
                   </span>
 
@@ -315,6 +339,7 @@ export default function AppMenu() {
                           }`}
                         >
                           <span>{child.label}</span>
+
                           {renderBadge(child.badge, childActive)}
                         </Link>
                       );
@@ -328,7 +353,7 @@ export default function AppMenu() {
 
         <div className="border-t border-gray-200 p-4 dark:border-gray-800">
           <button
-            onClick={handleLogout}
+            onClick={logout}
             className="w-full rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
           >
             Log ud

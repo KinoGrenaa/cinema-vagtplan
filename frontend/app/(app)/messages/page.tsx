@@ -1,101 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRealtimeMessages } from "../../hooks/useRealtimeMessages";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
-
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
-};
-
-type Message = {
-  id: number;
-  subject: string;
-  body: string;
-  createdAt: string;
-  isRead?: boolean;
-  sender?: User | null;
-  receiver?: User | null;
-  isBroadcast: boolean;
-};
-
-type CurrentUser = {
-  id: number;
-  cinemaId: number;
-};
+import { useState } from "react";
+import { useMessages } from "../../hooks/useMessages";
+import type { MessageUser } from "../../types/messages";
 
 export default function MessagesPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
   );
-  const [loading, setLoading] = useState(true);
 
-  function getHeaders() {
-    return {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
-
-  const fetchMessages = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const savedUser = localStorage.getItem("user");
-
-      if (!savedUser) {
-        setMessages([]);
-        return;
-      }
-
-      const user: CurrentUser = JSON.parse(savedUser);
-
-      const response = await fetch(
-        `${API_URL}/messages?userId=${user.id}&cinemaId=${user.cinemaId}`,
-        {
-          headers: getHeaders(),
-        },
-      );
-
-      if (!response.ok) {
-        setMessages([]);
-        return;
-      }
-
-      const data = await response.json();
-
-      setMessages(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Kunne ikke hente beskeder", error);
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
-
-  useRealtimeMessages({
-    onNewMessage: fetchMessages,
-    onMessageRead: fetchMessages,
-    onMessageArchived: fetchMessages,
-    onMessagesUpdated: fetchMessages,
-    onMessageRecalled: fetchMessages,
+  const { loading, sortedMessages, markAsRead, archive } = useMessages({
+    mode: "inbox",
   });
 
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-  }, [messages]);
-
-  function getUserName(user?: User | null) {
+  function getUserName(user?: MessageUser | null) {
     if (!user) return null;
     return `${user.firstName} ${user.lastName}`;
   }
@@ -103,73 +21,6 @@ export default function MessagesPage() {
   function getShortBody(body: string) {
     if (!body) return "Ingen beskedtekst.";
     return body.length > 120 ? `${body.slice(0, 120)}...` : body;
-  }
-
-  async function markAsRead(messageId: number) {
-    try {
-      const response = await fetch(`${API_URL}/messages/${messageId}/read`, {
-        method: "PATCH",
-        headers: getHeaders(),
-      });
-
-      if (!response.ok) return;
-
-      setMessages((currentMessages) =>
-        currentMessages.map((message) =>
-          message.id === messageId
-            ? {
-                ...message,
-                isRead: true,
-              }
-            : message,
-        ),
-      );
-    } catch (error) {
-      console.error("Kunne ikke markere besked som læst", error);
-    }
-  }
-
-  async function archiveMessage(messageId: number) {
-    const confirmed = confirm("Vil du arkivere denne besked?");
-
-    if (!confirmed) return;
-
-    try {
-      const savedUser = localStorage.getItem("user");
-
-      if (!savedUser) {
-        alert("Bruger ikke fundet.");
-        return;
-      }
-
-      const user: CurrentUser = JSON.parse(savedUser);
-
-      const response = await fetch(`${API_URL}/messages/${messageId}/archive`, {
-        method: "PATCH",
-        headers: {
-          ...getHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: user.id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Kunne ikke arkivere beskeden");
-      }
-
-      setMessages((currentMessages) =>
-        currentMessages.filter((message) => message.id !== messageId),
-      );
-
-      if (expandedMessageId === messageId) {
-        setExpandedMessageId(null);
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Beskeden kunne ikke arkiveres.");
-    }
   }
 
   return (
@@ -270,7 +121,9 @@ export default function MessagesPage() {
                   {isExpanded && (
                     <div className="space-y-4 border-t border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                       <div className="grid gap-1 text-sm text-gray-500 dark:text-gray-400">
-                        <div>Fra: {getUserName(message.sender) || "System"}</div>
+                        <div>
+                          Fra: {getUserName(message.sender) || "System"}
+                        </div>
 
                         <div>
                           Til:{" "}
@@ -292,7 +145,7 @@ export default function MessagesPage() {
                       <div className="flex justify-end pt-2">
                         <button
                           type="button"
-                          onClick={() => archiveMessage(message.id)}
+                          onClick={() => archive(message.id)}
                           className="rounded-xl bg-gray-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-gray-200 dark:text-black dark:hover:bg-white"
                         >
                           Arkiver

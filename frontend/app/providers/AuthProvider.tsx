@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import type { CurrentUser } from "../../../shared/types";
 
@@ -8,8 +8,14 @@ type AuthContextValue = {
   user: CurrentUser | null;
   token: string | null;
   loading: boolean;
+
+  isMaster: boolean;
+  isAdmin: boolean;
+  isEmployee: boolean;
+
   login: (token: string, user: CurrentUser) => void;
   logout: () => void;
+  refreshUser: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -19,16 +25,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
+  function refreshUser() {
+    try {
+      const savedToken = localStorage.getItem("token");
+      const savedUser = localStorage.getItem("user");
 
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+      if (savedToken && savedUser) {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+      } else {
+        setToken(null);
+        setUser(null);
+      }
+    } catch {
+      setToken(null);
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    setLoading(false);
+  useEffect(() => {
+    refreshUser();
   }, []);
 
   function login(newToken: string, newUser: CurrentUser) {
@@ -49,19 +67,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = "/";
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        loading,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      token,
+      loading,
+
+      isMaster: user?.role === "MASTER",
+      isAdmin: user?.role === "ADMIN" || user?.role === "MASTER",
+      isEmployee: user?.role === "EMPLOYEE",
+
+      login,
+      logout,
+      refreshUser,
+    }),
+    [user, token, loading],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
