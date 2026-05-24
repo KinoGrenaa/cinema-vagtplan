@@ -9,6 +9,8 @@ import { useSchedule } from "../../hooks/useSchedule";
 import { useScheduleAi } from "../../hooks/useScheduleAi";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import type { Shift } from "../../../../shared/types";
+import ClockModal from "../../components/schedule/ClockModal";
+import LeaveRequestsPanel from "../../components/schedule/LeaveRequestsPanel";
 
 type LeaveRequest = {
   id: number;
@@ -129,18 +131,6 @@ export default function SchedulePage() {
     const end = new Date(request.endDate);
 
     return current >= start && current <= end;
-  }
-
-  function getLeaveStyle(status: LeaveRequest["status"]) {
-    if (status === "APPROVED") {
-      return "border-green-300 bg-green-100 text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200";
-    }
-
-    if (status === "REJECTED") {
-      return "border-red-300 bg-red-100 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200";
-    }
-
-    return "border-yellow-300 bg-yellow-100 text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-200";
   }
 
   const selectedDateLeaveRequests = leaveRequests.filter(leaveIsOnSelectedDate);
@@ -407,38 +397,7 @@ export default function SchedulePage() {
 
         {canManageShifts && (
           <>
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="mb-4 text-2xl font-bold">Fravær denne dag</h2>
-
-              <div className="space-y-2">
-                {selectedDateLeaveRequests.map((request) => (
-                  <div
-                    key={request.id}
-                    className={`rounded-xl border p-3 ${getLeaveStyle(
-                      request.status,
-                    )}`}
-                  >
-                    <div className="font-bold">
-                      {request.user.firstName} {request.user.lastName}
-                    </div>
-
-                    <div className="text-sm">Status: {request.status}</div>
-
-                    {request.reason && (
-                      <div className="mt-1 text-sm">
-                        Årsag: {request.reason}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {selectedDateLeaveRequests.length === 0 && (
-                  <div className="text-gray-500 dark:text-gray-400">
-                    Ingen fravær denne dag.
-                  </div>
-                )}
-              </div>
-            </div>
+            <LeaveRequestsPanel leaveRequests={selectedDateLeaveRequests} />
 
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
               <ShiftForm
@@ -515,81 +474,19 @@ export default function SchedulePage() {
         <MovieProgram movieShowings={movieShowings} />
       </div>
 
-      {showClockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="mx-4 w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">
-                Registrer møde- og fyraftstid
-              </h2>
-
-              <button onClick={resetClockModal} className="text-2xl">
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <select
-                value={clockShiftId || ""}
-                onChange={(event) => {
-                  const shiftId = Number(event.target.value);
-                  setClockShiftId(shiftId);
-
-                  const shift = shifts.find((s) => s.id === shiftId);
-                  if (!shift) return;
-
-                  setClockInTime(toInputDateTime(shift.startTime));
-                  setClockOutTime(toInputDateTime(shift.endTime));
-                  setClockNote("");
-                }}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-              >
-                <option value="">Vælg vagt</option>
-
-                {shifts
-                  .filter((shift) => shift.userId === currentUser?.id)
-                  .map((shift) => (
-                    <option key={shift.id} value={shift.id}>
-                      {shift.workType.name}
-                    </option>
-                  ))}
-              </select>
-
-              {clockShiftId && (
-                <>
-                  <input
-                    type="datetime-local"
-                    value={clockInTime}
-                    onChange={(event) => setClockInTime(event.target.value)}
-                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                  />
-
-                  <input
-                    type="datetime-local"
-                    value={clockOutTime}
-                    onChange={(event) => setClockOutTime(event.target.value)}
-                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                  />
-
-                  <textarea
-                    value={clockNote}
-                    onChange={(event) => setClockNote(event.target.value)}
-                    className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                    placeholder="Note ved afvigelse"
-                  />
-
-                  <button
-                    onClick={submitManualTime}
-                    className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                  >
-                    Send til godkendelse
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ClockModal
+        open={showClockModal}
+        onClose={() => setShowClockModal(false)}
+        clockShiftId={clockShiftId}
+        setClockShiftId={setClockShiftId}
+        clockInTime={clockInTime}
+        setClockInTime={setClockInTime}
+        clockOutTime={clockOutTime}
+        setClockOutTime={setClockOutTime}
+        clockNote={clockNote}
+        setClockNote={setClockNote}
+        submitManualTimeEntry={submitManualTimeEntry}
+      />
 
       {formError && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
