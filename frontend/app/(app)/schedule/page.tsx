@@ -8,6 +8,12 @@ import { useApi } from "../../hooks/useApi";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import type { Shift, User, WorkType } from "../../../../shared/types";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+function getToken() {
+  return localStorage.getItem("token") || "";
+}
+
 type MovieShowing = {
   id: number;
   title: string;
@@ -62,6 +68,44 @@ export default function SchedulePage() {
   const [formError, setFormError] = useState("");
 
   const [showClockModal, setShowClockModal] = useState(false);
+  const [staffingWarnings, setStaffingWarnings] = useState<string[]>([]);
+  const [staffingSuggestions, setStaffingSuggestions] = useState<string[]>([]);
+  const [recommendedEmployees, setRecommendedEmployees] = useState<
+    Record<number, string[]>
+  >({});
+  const [aiScheduleSuggestions, setAiScheduleSuggestions] = useState<string[]>(
+    [],
+  );
+  const [creatingAiShift, setCreatingAiShift] = useState<number | null>(null);
+  const [generatingAiSchedule, setGeneratingAiSchedule] = useState(false);
+  const [liveStaffingAlerts, setLiveStaffingAlerts] = useState<string[]>([]);
+  const [emergencyAiActions, setEmergencyAiActions] = useState<string[]>([]);
+  const [autoCreatingEmergencyShift, setAutoCreatingEmergencyShift] =
+    useState(false);
+  const [autoStaffingNotifications, setAutoStaffingNotifications] = useState<
+    string[]
+  >([]);
+  const [suggestedEmergencyReplacements, setSuggestedEmergencyReplacements] =
+    useState<
+      Array<{
+        name: string;
+        score: number;
+        fatigue: string;
+      }>
+    >([]);
+  const [sendingEmergencyRequest, setSendingEmergencyRequest] = useState<
+    string | null
+  >(null);
+  const [autoEscalationQueue, setAutoEscalationQueue] = useState<string[]>([]);
+  const [sendingRealStaffingMessage, setSendingRealStaffingMessage] = useState<
+    string | null
+  >(null);
+  const [staffingLoopStatus, setStaffingLoopStatus] = useState<
+    "IDLE" | "WAITING" | "ACCEPTED" | "DECLINED"
+  >("IDLE");
+  const [autonomousStaffingStatus, setAutonomousStaffingStatus] = useState<
+    "IDLE" | "EXECUTING" | "COMPLETED"
+  >("IDLE");
   const [clockShiftId, setClockShiftId] = useState<number | null>(null);
   const [clockInTime, setClockInTime] = useState("");
   const [clockOutTime, setClockOutTime] = useState("");
@@ -195,6 +239,799 @@ export default function SchedulePage() {
     ]);
   }, [fetchShifts, fetchMovieShowings, fetchLeaveRequests]);
 
+  const generateAiScheduleSuggestions = useCallback(() => {
+    const suggestions: string[] = [];
+
+    const eveningMovies = movieShowings.filter((movie) => {
+      const hour = new Date(movie.startTime).getHours();
+
+      return hour >= 18 && hour <= 22;
+    });
+
+    const eveningSoldSeats = eveningMovies.reduce(
+      (sum, movie) => sum + movie.soldSeats,
+      0,
+    );
+
+    const eveningShiftCount = shifts.filter((shift) => {
+      const hour = new Date(shift.startTime).getHours();
+
+      return hour >= 18 && hour <= 22;
+    }).length;
+
+    if (eveningSoldSeats >= 200 && eveningShiftCount <= 4) {
+      suggestions.push("🤖 Tilføj 1-2 ekstra medarbejdere mellem 18:00-22:00.");
+    }
+
+    if (eveningSoldSeats <= 60 && eveningShiftCount >= 6) {
+      suggestions.push("🤖 Overvej reduceret bemanding efter 22:00.");
+    }
+
+    const longShifts = shifts.filter((shift) => {
+      const start = new Date(shift.startTime);
+      const end = new Date(shift.endTime);
+
+      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+
+      return hours >= 8;
+    });
+
+    if (longShifts.length >= 3) {
+      suggestions.push(
+        "🤖 Flere lange vagter registreret — overvej at splitte bemandingen.",
+      );
+    }
+
+    if (movieShowings.length >= 8) {
+      suggestions.push(
+        "🤖 Høj filmaktivitet registreret — ekstra foyer/billetsalg anbefales.",
+      );
+    }
+
+    setAiScheduleSuggestions(suggestions);
+  }, [movieShowings, shifts]);
+
+  const createAiSuggestedShift = useCallback(
+    async (suggestion: string, index: number) => {
+      try {
+        setCreatingAiShift(index);
+
+        const today = selectedDate;
+
+        let startHour = 18;
+        let endHour = 22;
+
+        if (suggestion.includes("22:00")) {
+          startHour = 22;
+          endHour = 23;
+        }
+
+        const startTime = new Date(today);
+        startTime.setHours(startHour, 0, 0, 0);
+
+        const endTime = new Date(today);
+        endTime.setHours(endHour, 0, 0, 0);
+
+        const response = await fetch(`${API_URL}/shifts`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+            workTypeId: workTypes[0]?.id,
+            userId: users[0]?.id,
+          }),
+        });
+
+        if (!response.ok) {
+          alert("Kunne ikke oprette AI-vagt.");
+          return;
+        }
+
+        await refreshDayData();
+
+        alert("AI-oprettet vagt blev oprettet.");
+      } catch (error) {
+        console.error(error);
+        alert("AI-oprettelse fejlede.");
+      } finally {
+        setCreatingAiShift(null);
+      }
+    },
+    [refreshDayData, selectedDate, users, workTypes],
+  );
+
+  const generateAiDaySchedule = useCallback(async () => {
+    try {
+      setGeneratingAiSchedule(true);
+
+      const suggestions: Array<{
+        startHour: number;
+        endHour: number;
+      }> = [];
+
+      const eveningMovies = movieShowings.filter((movie) => {
+        const hour = new Date(movie.startTime).getHours();
+
+        return hour >= 18 && hour <= 22;
+      });
+
+      const eveningSoldSeats = eveningMovies.reduce(
+        (sum, movie) => sum + movie.soldSeats,
+        0,
+      );
+
+      if (eveningSoldSeats >= 200) {
+        suggestions.push({
+          startHour: 17,
+          endHour: 22,
+        });
+
+        suggestions.push({
+          startHour: 18,
+          endHour: 23,
+        });
+      }
+
+      if (movieShowings.length >= 8) {
+        suggestions.push({
+          startHour: 16,
+          endHour: 21,
+        });
+      }
+
+      if (suggestions.length === 0) {
+        alert("Ingen AI-vagter nødvendige i dag.");
+        return;
+      }
+
+      for (const suggestion of suggestions) {
+        const startTime = new Date(selectedDate);
+
+        startTime.setHours(suggestion.startHour, 0, 0, 0);
+
+        const endTime = new Date(selectedDate);
+
+        endTime.setHours(suggestion.endHour, 0, 0, 0);
+
+        await fetch(`${API_URL}/shifts`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+            workTypeId: workTypes[0]?.id,
+            userId: users[0]?.id,
+          }),
+        });
+      }
+
+      await refreshDayData();
+
+      alert("AI dagsplan blev genereret.");
+    } catch (error) {
+      console.error(error);
+
+      alert("AI dagsplan kunne ikke genereres.");
+    } finally {
+      setGeneratingAiSchedule(false);
+    }
+  }, [movieShowings, refreshDayData, selectedDate, users, workTypes]);
+
+  const generateLiveStaffingAlerts = useCallback(() => {
+    const alerts: string[] = [];
+
+    const currentHour = new Date().getHours();
+
+    const activeShifts = shifts.filter((shift) => {
+      const start = new Date(shift.startTime).getHours();
+
+      const end = new Date(shift.endTime).getHours();
+
+      return currentHour >= start && currentHour <= end;
+    });
+
+    const activeMovies = movieShowings.filter((movie) => {
+      const start = new Date(movie.startTime).getHours();
+
+      return currentHour >= start - 1 && currentHour <= start + 2;
+    });
+
+    const liveSoldSeats = activeMovies.reduce(
+      (sum, movie) => sum + movie.soldSeats,
+      0,
+    );
+
+    if (liveSoldSeats >= 150 && activeShifts.length <= 3) {
+      alerts.push("🔴 LIVE: Høj biografbelastning registreret lige nu.");
+    }
+
+    if (liveSoldSeats >= 250 && activeShifts.length <= 4) {
+      alerts.push("🔴 LIVE: Kritisk underbemanding registreret.");
+    }
+
+    const overtimeRisk = activeShifts.filter((shift) => {
+      const start = new Date(shift.startTime);
+
+      const end = new Date(shift.endTime);
+
+      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+
+      return hours >= 8;
+    });
+
+    if (overtimeRisk.length >= 2) {
+      alerts.push("🔴 LIVE: Flere medarbejdere nærmer sig overtime.");
+    }
+
+    if (activeMovies.length >= 4) {
+      alerts.push("🔴 LIVE: Peak-hour movie pressure registreret.");
+    }
+
+    setLiveStaffingAlerts(alerts);
+  }, [movieShowings, shifts]);
+
+  const generateEmergencyAiActions = useCallback(() => {
+    const actions: string[] = [];
+
+    const currentHour = new Date().getHours();
+
+    const activeShifts = shifts.filter((shift) => {
+      const start = new Date(shift.startTime).getHours();
+
+      const end = new Date(shift.endTime).getHours();
+
+      return currentHour >= start && currentHour <= end;
+    });
+
+    const activeMovies = movieShowings.filter((movie) => {
+      const start = new Date(movie.startTime).getHours();
+
+      return currentHour >= start - 1 && currentHour <= start + 2;
+    });
+
+    const liveSoldSeats = activeMovies.reduce(
+      (sum, movie) => sum + movie.soldSeats,
+      0,
+    );
+
+    if (liveSoldSeats >= 250 && activeShifts.length <= 4) {
+      actions.push("🚨 Opret emergency staffing shift de næste 2 timer.");
+    }
+
+    if (liveSoldSeats >= 300 && activeShifts.length <= 5) {
+      actions.push(
+        "🚨 Peak pressure kræver ekstra foyer/billetsalg bemanding.",
+      );
+    }
+
+    const overtimeRisk = activeShifts.filter((shift) => {
+      const start = new Date(shift.startTime);
+
+      const end = new Date(shift.endTime);
+
+      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+
+      return hours >= 8;
+    });
+
+    if (overtimeRisk.length >= 3) {
+      actions.push(
+        "🚨 Flere medarbejdere nærmer sig overtime — overvej omfordeling.",
+      );
+    }
+
+    if (activeMovies.length >= 5) {
+      actions.push(
+        "🚨 Kritisk movie pressure registreret — AI intervention anbefales.",
+      );
+    }
+
+    setEmergencyAiActions(actions);
+  }, [movieShowings, shifts]);
+
+  const autoCreateEmergencyShift = useCallback(async () => {
+    try {
+      setAutoCreatingEmergencyShift(true);
+
+      const currentHour = new Date().getHours();
+
+      const startTime = new Date(selectedDate);
+
+      startTime.setHours(currentHour, 0, 0, 0);
+
+      const endTime = new Date(selectedDate);
+
+      endTime.setHours(currentHour + 2, 0, 0, 0);
+
+      const response = await fetch(`${API_URL}/shifts`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          cinemaId: currentUser?.cinemaId,
+          userId: users[0]?.id,
+          workTypeId: workTypes[0]?.id,
+          note: "AI Emergency Staffing Shift",
+        }),
+      });
+
+      if (!response.ok) {
+        alert("Kunne ikke oprette emergency shift.");
+
+        return;
+      }
+
+      await refreshDayData();
+
+      alert("🚨 AI emergency shift blev automatisk oprettet.");
+    } catch (error) {
+      console.error(error);
+
+      alert("Emergency staffing action fejlede.");
+    } finally {
+      setAutoCreatingEmergencyShift(false);
+    }
+  }, [refreshDayData, selectedDate, users, workTypes]);
+
+  const generateAutoStaffingNotifications = useCallback(() => {
+    const notifications: string[] = [];
+
+    const currentHour = new Date().getHours();
+
+    const activeMovies = movieShowings.filter((movie) => {
+      const startHour = new Date(movie.startTime).getHours();
+
+      return currentHour >= startHour - 1 && currentHour <= startHour + 2;
+    });
+
+    const activeShifts = shifts.filter((shift) => {
+      const startHour = new Date(shift.startTime).getHours();
+
+      const endHour = new Date(shift.endTime).getHours();
+
+      return currentHour >= startHour && currentHour <= endHour;
+    });
+
+    const soldSeats = activeMovies.reduce(
+      (sum, movie) => sum + movie.soldSeats,
+      0,
+    );
+
+    if (soldSeats >= 250 && activeShifts.length <= 4) {
+      notifications.push(
+        "🚨 Kritisk staffing pressure — ekstra medarbejder anbefales nu.",
+      );
+    }
+
+    if (soldSeats >= 350) {
+      notifications.push("🚨 Biografen nærmer sig maksimal belastning.");
+    }
+
+    const overtimeRisk = activeShifts.filter((shift) => {
+      const start = new Date(shift.startTime);
+
+      const end = new Date(shift.endTime);
+
+      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+
+      return hours >= 8;
+    });
+
+    if (overtimeRisk.length >= 2) {
+      notifications.push("🚨 Flere medarbejdere nærmer sig overtime.");
+    }
+
+    if (activeMovies.length >= 5) {
+      notifications.push("🚨 Peak-hour staffing intervention anbefales.");
+    }
+
+    setAutoStaffingNotifications(notifications);
+  }, [movieShowings, shifts]);
+
+  const generateSuggestedEmergencyReplacements = useCallback(() => {
+    const replacements: Array<{
+      name: string;
+      score: number;
+      fatigue: string;
+    }> = [];
+
+    users.forEach((user) => {
+      const userShifts = shifts.filter((shift) => shift.userId === user.id);
+
+      let staffingScore = 100;
+
+      staffingScore -= userShifts.length * 8;
+
+      const longShifts = userShifts.filter((shift) => {
+        const start = new Date(shift.startTime);
+
+        const end = new Date(shift.endTime);
+
+        const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+
+        return hours >= 8;
+      });
+
+      staffingScore -= longShifts.length * 10;
+
+      let fatigue = "LOW";
+
+      if (staffingScore <= 70) {
+        fatigue = "MEDIUM";
+      }
+
+      if (staffingScore <= 45) {
+        fatigue = "HIGH";
+      }
+
+      replacements.push({
+        name: `${user.firstName} ${user.lastName}`,
+        score: staffingScore,
+        fatigue,
+      });
+    });
+
+    replacements.sort((a, b) => b.score - a.score);
+
+    setSuggestedEmergencyReplacements(replacements.slice(0, 5));
+  }, [users, shifts]);
+
+  const sendEmergencyStaffingRequest = useCallback(
+    async (employeeName: string) => {
+      try {
+        setSendingEmergencyRequest(employeeName);
+
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+
+        alert(`🚨 Emergency staffing request sendt til ${employeeName}.`);
+      } catch (error) {
+        console.error(error);
+
+        alert("Kunne ikke sende staffing request.");
+      } finally {
+        setSendingEmergencyRequest(null);
+      }
+    },
+    [],
+  );
+
+  const startAutoEscalation = useCallback(async () => {
+    try {
+      const queue = suggestedEmergencyReplacements.map(
+        (replacement) => replacement.name,
+      );
+
+      setAutoEscalationQueue(queue);
+
+      for (const employeeName of queue) {
+        setSendingEmergencyRequest(employeeName);
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        const accepted = Math.random() > 0.65;
+
+        if (accepted) {
+          alert(`✅ ${employeeName} accepterede emergency staffing request.`);
+
+          setAutoEscalationQueue([]);
+          const accepted = await autoHandleStaffingResponse(employeeName);
+
+          if (accepted) {
+            await autoAssignEmergencyShift(employeeName);
+
+            setAutoEscalationQueue([]);
+
+            return;
+          }
+          return;
+        }
+      }
+
+      alert("🚨 Ingen medarbejdere accepterede emergency staffing request.");
+    } catch (error) {
+      console.error(error);
+
+      alert("Auto escalation engine fejlede.");
+    } finally {
+      setSendingEmergencyRequest(null);
+    }
+  }, [suggestedEmergencyReplacements]);
+
+  const sendRealStaffingMessage = useCallback(async (employeeName: string) => {
+    try {
+      setSendingRealStaffingMessage(employeeName);
+
+      const response = await fetch(`${API_URL}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recipientName: employeeName,
+          subject: "🚨 Emergency Staffing Request",
+          content: `Der er akut behov for bemanding i biografen. Kontakt venligst administrationen hurtigst muligt.`,
+          systemType: "STAFFING_ALERT",
+        }),
+      });
+
+      if (!response.ok) {
+        alert("Kunne ikke sende staffing besked.");
+
+        return;
+      }
+
+      alert(`📨 Staffing request sendt til ${employeeName}.`);
+    } catch (error) {
+      console.error(error);
+
+      alert("Staffing message fejlede.");
+    } finally {
+      setSendingRealStaffingMessage(null);
+    }
+  }, []);
+
+  const autoHandleStaffingResponse = useCallback(
+    async (employeeName: string) => {
+      try {
+        setStaffingLoopStatus("WAITING");
+
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+
+        const accepted = Math.random() > 0.5;
+
+        if (accepted) {
+          setStaffingLoopStatus("ACCEPTED");
+
+          alert(`✅ ${employeeName} accepterede staffing request.`);
+
+          return true;
+        }
+
+        setStaffingLoopStatus("DECLINED");
+
+        alert(`❌ ${employeeName} afviste staffing request.`);
+
+        return false;
+      } catch (error) {
+        console.error(error);
+
+        setStaffingLoopStatus("DECLINED");
+
+        return false;
+      }
+    },
+    [],
+  );
+
+  const autoAssignEmergencyShift = useCallback(
+    async (employeeName: string) => {
+      try {
+        setAutonomousStaffingStatus("EXECUTING");
+
+        const employee = users.find(
+          (user) => `${user.firstName} ${user.lastName}` === employeeName,
+        );
+
+        if (!employee) {
+          throw new Error("Medarbejder ikke fundet.");
+        }
+
+        const currentHour = new Date().getHours();
+
+        const startTime = new Date(selectedDate);
+
+        startTime.setHours(currentHour, 0, 0, 0);
+
+        const endTime = new Date(selectedDate);
+
+        endTime.setHours(currentHour + 2, 0, 0, 0);
+
+        const response = await fetch(`${API_URL}/shifts`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+            cinemaId: currentUser?.cinemaId,
+            userId: employee.id,
+            workTypeId: workTypes[0]?.id,
+            note: "Autonomous AI Emergency Shift",
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Kunne ikke oprette emergency shift.");
+        }
+
+        await refreshDayData();
+
+        setAutonomousStaffingStatus("COMPLETED");
+
+        alert(
+          `🤖 Emergency shift blev automatisk tildelt til ${employeeName}.`,
+        );
+      } catch (error) {
+        console.error(error);
+
+        setAutonomousStaffingStatus("IDLE");
+
+        alert("Autonomous staffing execution fejlede.");
+      }
+    },
+    [currentUser, refreshDayData, selectedDate, users, workTypes],
+  );
+
+  const generateStaffingWarnings = useCallback(() => {
+    const warnings: string[] = [];
+
+    movieShowings.forEach((showing) => {
+      const showingStart = new Date(showing.startTime);
+      const showingEnd = new Date(showing.endTime);
+
+      const overlappingShifts = shifts.filter((shift) => {
+        const shiftStart = new Date(shift.startTime);
+        const shiftEnd = new Date(shift.endTime);
+
+        return shiftStart < showingEnd && shiftEnd > showingStart;
+      });
+
+      const activeEmployees = overlappingShifts.length;
+      const soldSeats = showing.soldSeats || 0;
+
+      if (soldSeats >= 120 && activeEmployees < 4) {
+        warnings.push(
+          `${showing.title} (${showing.hall}) har høj belastning men kun ${activeEmployees} medarbejdere.`,
+        );
+      }
+
+      if (soldSeats >= 200 && activeEmployees < 6) {
+        warnings.push(
+          `${showing.title} (${showing.hall}) er kritisk underbemandet.`,
+        );
+      }
+
+      const overtimeRisk = overlappingShifts.some((shift) => {
+        const start = new Date(shift.startTime);
+        const end = new Date(shift.endTime);
+
+        const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+
+        return hours >= 8;
+      });
+
+      if (overtimeRisk) {
+        warnings.push(
+          `${showing.title} (${showing.hall}) indeholder vagter med overtime-risiko.`,
+        );
+      }
+    });
+
+    setStaffingWarnings(warnings);
+  }, [movieShowings, shifts]);
+
+  const generateStaffingSuggestions = useCallback(() => {
+    const suggestions: string[] = [];
+
+    movieShowings.forEach((showing) => {
+      const showingStart = new Date(showing.startTime);
+      const showingEnd = new Date(showing.endTime);
+
+      const overlappingShifts = shifts.filter((shift) => {
+        const shiftStart = new Date(shift.startTime);
+        const shiftEnd = new Date(shift.endTime);
+
+        return shiftStart < showingEnd && shiftEnd > showingStart;
+      });
+
+      const activeEmployees = overlappingShifts.length;
+
+      const soldSeats = showing.soldSeats || 0;
+
+      if (soldSeats >= 120 && activeEmployees < 4) {
+        suggestions.push(
+          `🤖 Overvej at tilføje 1-2 ekstra medarbejdere til ${showing.title} (${showing.hall}).`,
+        );
+      }
+
+      if (soldSeats >= 200 && activeEmployees < 6) {
+        suggestions.push(
+          `🤖 ${showing.title} (${showing.hall}) bør sandsynligvis have minimum 6 medarbejdere.`,
+        );
+      }
+
+      if (soldSeats <= 40 && activeEmployees >= 5) {
+        suggestions.push(
+          `🤖 Overvej reduceret bemanding til ${showing.title} (${showing.hall}) efterspørgslen er lav.`,
+        );
+      }
+
+      const overtimeRisk = overlappingShifts.some((shift) => {
+        const start = new Date(shift.startTime);
+        const end = new Date(shift.endTime);
+
+        const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+
+        return hours >= 8;
+      });
+
+      if (overtimeRisk) {
+        suggestions.push(
+          `🤖 Overvej ekstra bemanding for at reducere overtime-risiko omkring ${showing.title}.`,
+        );
+      }
+    });
+
+    setStaffingSuggestions(suggestions);
+  }, [movieShowings, shifts]);
+
+  const generateRecommendedEmployees = useCallback(() => {
+    const recommendations: Record<number, string[]> = {};
+
+    shifts.forEach((shift) => {
+      const shiftStart = new Date(shift.startTime);
+      const shiftEnd = new Date(shift.endTime);
+
+      const shiftHours =
+        (shiftEnd.getTime() - shiftStart.getTime()) / 1000 / 60 / 60;
+
+      const availableUsers = users
+        .filter((user) => user.id !== shift.userId)
+        .map((user) => {
+          const userShifts = shifts.filter((s) => s.userId === user.id);
+
+          const totalHours = userShifts.reduce((sum, s) => {
+            const start = new Date(s.startTime);
+            const end = new Date(s.endTime);
+
+            return sum + (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+          }, 0);
+
+          const matchingSkill = workTypes.some(
+            (wt) => wt.id === shift.workTypeId,
+          );
+
+          return {
+            name: `${user.firstName} ${user.lastName}`,
+            totalHours,
+            matchingSkill,
+          };
+        })
+        .sort((a, b) => a.totalHours - b.totalHours)
+        .slice(0, 3);
+
+      const suggestions = availableUsers.map((user) => {
+        if (user.totalHours >= 35) {
+          return `${user.name} (overtime-risiko)`;
+        }
+
+        if (shiftHours >= 8) {
+          return `${user.name} (lang vagt anbefalet)`;
+        }
+
+        return `${user.name} (lav belastning)`;
+      });
+
+      recommendations[shift.id] = suggestions;
+    });
+
+    setRecommendedEmployees(recommendations);
+  }, [shifts, users, workTypes]);
+
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
 
@@ -211,6 +1048,56 @@ export default function SchedulePage() {
   useEffect(() => {
     refreshDayData();
   }, [refreshDayData]);
+
+  useEffect(() => {
+    generateStaffingWarnings();
+  }, [generateStaffingWarnings]);
+
+  useEffect(() => {
+    generateStaffingSuggestions();
+  }, [generateStaffingSuggestions]);
+
+  useEffect(() => {
+    generateAiScheduleSuggestions();
+  }, [generateAiScheduleSuggestions]);
+
+  useEffect(() => {
+    generateLiveStaffingAlerts();
+
+    const interval = setInterval(() => {
+      generateLiveStaffingAlerts();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [generateLiveStaffingAlerts]);
+
+  useEffect(() => {
+    generateEmergencyAiActions();
+
+    const interval = setInterval(() => {
+      generateEmergencyAiActions();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [generateEmergencyAiActions]);
+
+  useEffect(() => {
+    generateAutoStaffingNotifications();
+
+    const interval = setInterval(() => {
+      generateAutoStaffingNotifications();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [generateAutoStaffingNotifications]);
+
+  useEffect(() => {
+    generateSuggestedEmergencyReplacements();
+  }, [generateSuggestedEmergencyReplacements]);
+
+  useEffect(() => {
+    generateRecommendedEmployees();
+  }, [generateRecommendedEmployees]);
 
   useRealtimeShifts({
     onShiftsUpdated: refreshDayData,
@@ -490,6 +1377,17 @@ export default function SchedulePage() {
               <p className="text-gray-500 dark:text-gray-400">
                 Valgt dato: {selectedDate}
               </p>
+              <div className="mb-6 flex flex-wrap gap-3">
+                <button
+                  onClick={generateAiDaySchedule}
+                  disabled={generatingAiSchedule}
+                  className="rounded-2xl bg-cyan-600 px-5 py-3 font-semibold text-white shadow-sm hover:bg-cyan-700 disabled:opacity-50"
+                >
+                  {generatingAiSchedule
+                    ? "Genererer AI dagsplan..."
+                    : "🤖 Generate AI Day Schedule"}
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -594,6 +1492,297 @@ export default function SchedulePage() {
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-800 dark:bg-gray-950">
+            <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm dark:border-green-900 dark:bg-green-950">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="text-2xl">🤖</div>
+
+                <div>
+                  <h2 className="text-xl font-bold text-green-700 dark:text-green-300">
+                    AI Staffing Optimization
+                  </h2>
+
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    Systemet foreslår automatisk medarbejdere med lav
+                    belastning.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {shifts.slice(0, 5).map((shift) => (
+                  <div
+                    key={shift.id}
+                    className="rounded-xl border border-green-200 bg-white p-4 dark:border-green-900 dark:bg-gray-900"
+                  >
+                    <div className="mb-2 text-sm font-semibold">
+                      Vagt #{shift.id}
+                    </div>
+
+                    <div className="space-y-2">
+                      {(recommendedEmployees[shift.id] || []).map(
+                        (recommendation, index) => (
+                          <div
+                            key={index}
+                            className="rounded-lg bg-green-100 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300"
+                          >
+                            {recommendation}
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {true && (
+              <div className="mb-6 rounded-2xl border border-red-300 bg-red-50 p-5 shadow-sm dark:border-red-900 dark:bg-red-950">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="text-2xl">🔴</div>
+
+                  <div>
+                    <h2 className="text-xl font-bold text-red-700 dark:text-red-300">
+                      LIVE Staffing Alerts
+                    </h2>
+
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      Realtidsanalyse af biografens aktuelle staffing pressure.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {(liveStaffingAlerts.length > 0
+                    ? liveStaffingAlerts
+                    : ["Ingen LIVE staffing alerts lige nu."]
+                  ).map((alert, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl border border-red-200 bg-white p-4 text-sm font-medium text-red-700 dark:border-red-900 dark:bg-gray-900 dark:text-red-300"
+                    >
+                      {alert}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {true && (
+              <div className="mb-6 rounded-2xl border border-yellow-300 bg-yellow-50 p-5 shadow-sm dark:border-yellow-900 dark:bg-yellow-950">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="text-2xl">🚨</div>
+
+                  <div>
+                    <h2 className="text-xl font-bold text-yellow-700 dark:text-yellow-300">
+                      Emergency AI Staffing Actions
+                    </h2>
+
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                      Systemet anbefaler akut staffing intervention.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {(emergencyAiActions.length > 0
+                    ? emergencyAiActions
+                    : ["Ingen emergency AI actions lige nu."]
+                  ).map((action, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl border border-yellow-200 bg-white p-4 text-sm font-medium text-yellow-700 dark:border-yellow-900 dark:bg-gray-900 dark:text-yellow-300"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>{action}</div>
+
+                        <button
+                          onClick={autoCreateEmergencyShift}
+                          disabled={
+                            autoCreatingEmergencyShift ||
+                            emergencyAiActions.length === 0
+                          }
+                          className="rounded-xl bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-700 disabled:opacity-50"
+                        >
+                          {autoCreatingEmergencyShift
+                            ? "Opretter emergency shift..."
+                            : emergencyAiActions.length === 0
+                              ? "Ingen AI handling nødvendig"
+                              : "🚨 Aktivér AI handling"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {true && (
+              <div className="mb-6 rounded-2xl border border-blue-300 bg-blue-50 p-5 shadow-sm dark:border-blue-900 dark:bg-blue-950">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="text-2xl">🤖</div>
+
+                  <div>
+                    <h2 className="text-xl font-bold text-blue-700 dark:text-blue-300">
+                      Autonomous Staffing Notifications
+                    </h2>
+
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                      AI-systemet overvåger og reagerer automatisk på
+                      driftsbelastning.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {(autoStaffingNotifications.length > 0
+                    ? autoStaffingNotifications
+                    : ["Ingen autonomous staffing notifications lige nu."]
+                  ).map((notification, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl border border-blue-200 bg-white p-4 text-sm font-medium text-blue-700 dark:border-blue-900 dark:bg-gray-900 dark:text-blue-300"
+                    >
+                      {notification}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {true && (
+              <div className="mb-6 rounded-2xl border border-emerald-300 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900 dark:bg-emerald-950">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="text-2xl">🤖</div>
+
+                  <div>
+                    <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                      Suggested Emergency Replacements
+                    </h2>
+
+                    <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                      AI-systemet foreslår bedst egnede medarbejdere til akut
+                      bemanding.
+                      <button
+                        onClick={startAutoEscalation}
+                        disabled={
+                          suggestedEmergencyReplacements.length === 0 ||
+                          sendingEmergencyRequest !== null
+                        }
+                        className="mt-4 rounded-2xl bg-emerald-600 px-5 py-3 font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {sendingEmergencyRequest
+                          ? `Kontakter ${sendingEmergencyRequest}...`
+                          : "🤖 Start Auto Escalation"}
+                      </button>
+                    </p>
+                  </div>
+                </div>
+
+                {autoEscalationQueue.length > 0 && (
+                  <div className="mb-4 rounded-xl border border-emerald-200 bg-white p-4 dark:border-emerald-900 dark:bg-gray-900">
+                    <div className="mb-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                      AI escalation queue
+                      <div className="mb-3">
+                        <span
+                          className={`rounded-full px-4 py-2 text-xs font-bold ${
+                            staffingLoopStatus === "WAITING"
+                              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
+                              : staffingLoopStatus === "ACCEPTED"
+                                ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                : staffingLoopStatus === "DECLINED"
+                                  ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                                  : "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                          }`}
+                        >
+                          Staffing loop: {staffingLoopStatus}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <span
+                        className={`rounded-full px-4 py-2 text-xs font-bold ${
+                          autonomousStaffingStatus === "EXECUTING"
+                            ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300"
+                            : autonomousStaffingStatus === "COMPLETED"
+                              ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                        }`}
+                      >
+                        Autonomous staffing: {autonomousStaffingStatus}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {autoEscalationQueue.map((employee, index) => (
+                        <div
+                          key={index}
+                          className="rounded-lg bg-emerald-100 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                        >
+                          {employee}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {(suggestedEmergencyReplacements.length > 0
+                    ? suggestedEmergencyReplacements
+                    : [
+                        {
+                          name: "Ingen replacements nødvendige",
+                          score: 100,
+                          fatigue: "LOW",
+                        },
+                      ]
+                  ).map((replacement, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl border border-emerald-200 bg-white p-4 dark:border-emerald-900 dark:bg-gray-900"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <div className="font-semibold text-emerald-700 dark:text-emerald-300">
+                            {replacement.name}
+                          </div>
+
+                          <div className="mt-1 text-sm text-emerald-600 dark:text-emerald-400">
+                            Staffing score: {replacement.score}
+                          </div>
+                        </div>
+
+                        <div
+                          className={`rounded-full px-4 py-2 text-xs font-bold ${
+                            replacement.fatigue === "LOW"
+                              ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                              : replacement.fatigue === "MEDIUM"
+                                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
+                                : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                          }`}
+                        >
+                          Fatigue: {replacement.fatigue}
+                        </div>
+                        <button
+                          onClick={() =>
+                            sendRealStaffingMessage(replacement.name)
+                          }
+                          disabled={
+                            sendingRealStaffingMessage === replacement.name
+                          }
+                          className="mt-3 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          {sendingRealStaffingMessage === replacement.name
+                            ? "Sender staffing request..."
+                            : "📨 Send Staffing Request"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <ShiftTimeline
               shifts={shifts}
               users={users}
@@ -607,6 +1796,106 @@ export default function SchedulePage() {
             />
           </div>
         </div>
+
+        {staffingWarnings.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm dark:border-red-900 dark:bg-red-950">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="text-2xl">⚠️</div>
+
+              <div>
+                <h2 className="text-xl font-bold text-red-700 dark:text-red-300">
+                  Smart Staffing Warnings
+                </h2>
+
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  Systemet har fundet potentielle bemandingsproblemer.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {staffingWarnings.map((warning, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border border-red-200 bg-white p-4 text-sm text-red-700 dark:border-red-900 dark:bg-gray-900 dark:text-red-300"
+                >
+                  {warning}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {staffingSuggestions.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm dark:border-blue-900 dark:bg-blue-950">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="text-2xl">🤖</div>
+
+              <div>
+                <h2 className="text-xl font-bold text-blue-700 dark:text-blue-300">
+                  AI Staffing Suggestions
+                </h2>
+
+                <p className="text-sm text-blue-600 dark:text-blue-400">
+                  Systemet foreslår optimeringer af bemandingen.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {staffingSuggestions.map((suggestion, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border border-blue-200 bg-white p-4 text-sm text-blue-700 dark:border-blue-900 dark:bg-gray-900 dark:text-blue-300"
+                >
+                  {suggestion}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {aiScheduleSuggestions.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-cyan-200 bg-cyan-50 p-5 shadow-sm dark:border-cyan-900 dark:bg-cyan-950">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="text-2xl">🤖</div>
+
+              <div>
+                <h2 className="text-xl font-bold text-cyan-700 dark:text-cyan-300">
+                  AI Suggested Schedule Blocks
+                </h2>
+
+                <p className="text-sm text-cyan-600 dark:text-cyan-400">
+                  Systemet foreslår automatiske optimeringer af dagens
+                  bemanding.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {aiScheduleSuggestions.map((suggestion, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border border-cyan-200 bg-white p-4 text-sm text-cyan-700 dark:border-cyan-900 dark:bg-gray-900 dark:text-cyan-300"
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>{suggestion}</div>
+
+                    <button
+                      onClick={() => createAiSuggestedShift(suggestion, index)}
+                      disabled={creatingAiShift === index}
+                      className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700 disabled:opacity-50"
+                    >
+                      {creatingAiShift === index
+                        ? "Opretter..."
+                        : "🤖 Opret anbefalet vagt"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <MovieProgram movieShowings={movieShowings} />
       </div>

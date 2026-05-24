@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 type CurrentUser = {
   id: number;
@@ -40,15 +40,45 @@ type ShiftTrade = {
     };
   };
 };
+
 type CinemaSettings = {
   allowShiftTradePool: boolean;
   allowShiftTradeDirect: boolean;
 };
+
+type FatigueScore = {
+  score: number;
+  level: "LOW" | "MEDIUM" | "HIGH";
+};
+
 export default function ShiftTradesPage() {
   const [trades, setTrades] = useState<ShiftTrade[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-
   const [message, setMessage] = useState("");
+
+  const [autoFillSuggestions, setAutoFillSuggestions] = useState<
+    Record<number, string[]>
+  >({});
+
+  const [autoAssignLoading, setAutoAssignLoading] = useState<number | null>(
+    null,
+  );
+
+  const [staffingScores, setStaffingScores] = useState<Record<number, number>>(
+    {},
+  );
+
+  const [fatigueWarnings, setFatigueWarnings] = useState<
+    Record<number, string[]>
+  >({});
+
+  const [fatigueScores, setFatigueScores] = useState<
+    Record<number, FatigueScore>
+  >({});
+
+  const [recoveryWarnings, setRecoveryWarnings] = useState<
+    Record<number, string[]>
+  >({});
 
   const [cinemaSettings, setCinemaSettings] = useState<CinemaSettings | null>(
     null,
@@ -60,6 +90,21 @@ export default function ShiftTradesPage() {
       Authorization: `Bearer ${localStorage.getItem("token")}`,
     };
   }
+
+  const tradeUsers = useMemo(() => {
+    const allUsers = trades
+      .flatMap((trade) => [
+        trade.offeredByUser,
+        trade.targetUser,
+        trade.acceptedByUser,
+      ])
+      .filter(Boolean) as User[];
+
+    return allUsers.filter(
+      (user, index, self) =>
+        index === self.findIndex((item) => item.id === user.id),
+    );
+  }, [trades]);
 
   const fetchTrades = useCallback(async () => {
     try {
@@ -81,9 +126,10 @@ export default function ShiftTradesPage() {
           },
         );
 
-        const cinemaData = await cinemaResponse.json();
-
-        setCinemaSettings(cinemaData);
+        if (cinemaResponse.ok) {
+          const cinemaData = await cinemaResponse.json();
+          setCinemaSettings(cinemaData);
+        }
       }
 
       setTrades(Array.isArray(data) ? data : []);
@@ -155,9 +201,7 @@ export default function ShiftTradesPage() {
 
   const openTrades = useMemo(() => {
     return trades.filter((trade) => {
-      if (trade.status !== "OPEN") {
-        return false;
-      }
+      if (trade.status !== "OPEN") return false;
 
       if (
         trade.type === "POOL" &&
@@ -183,6 +227,261 @@ export default function ShiftTradesPage() {
     return trades.filter((trade) => trade.status !== "OPEN");
   }, [trades]);
 
+  const generateAutoFillSuggestions = useCallback(() => {
+    const suggestions: Record<number, string[]> = {};
+
+    openTrades.forEach((trade) => {
+      const recommended = tradeUsers
+        .filter(
+          (user) =>
+            user.id !== trade.offeredByUserId && user.id !== trade.shift.userId,
+        )
+        .slice(0, 3)
+        .map((user) => {
+          return `${user.firstName} ${user.lastName} (lav belastning anbefalet)`;
+        });
+
+      suggestions[trade.id] = recommended;
+    });
+
+    setAutoFillSuggestions(suggestions);
+  }, [openTrades, tradeUsers]);
+
+  const calculateStaffingScores = useCallback(() => {
+    const scores: Record<number, number> = {};
+
+    tradeUsers.forEach((user) => {
+      const userTrades = trades.filter(
+        (trade) =>
+          trade.offeredByUserId === user.id ||
+          trade.acceptedByUserId === user.id,
+      );
+
+      const loadPenalty = userTrades.length * 8;
+      const overtimePenalty = userTrades.length >= 5 ? 20 : 0;
+
+      const score = 100 - loadPenalty - overtimePenalty;
+
+      scores[user.id] = Math.max(score, 1);
+    });
+
+    setStaffingScores(scores);
+  }, [trades, tradeUsers]);
+
+  const calculateFatigueWarnings = useCallback(() => {
+    const warnings: Record<number, string[]> = {};
+
+    tradeUsers.forEach((user) => {
+      const userTrades = trades.filter(
+        (trade) =>
+          trade.offeredByUserId === user.id ||
+          trade.acceptedByUserId === user.id,
+      );
+
+      const userWarnings: string[] = [];
+
+      if (userTrades.length >= 5) {
+        userWarnings.push("Høj samlet belastning registreret.");
+      }
+
+      if (userTrades.length >= 3) {
+        userWarnings.push("Risiko for for mange vagter i træk.");
+      }
+
+      const lateShifts = userTrades.filter((trade) => {
+        const endHour = new Date(trade.shift.endTime).getHours();
+
+        return endHour >= 22;
+      });
+
+      if (lateShifts.length >= 2) {
+        userWarnings.push("Mange sene/aften vagter registreret.");
+      }
+
+      warnings[user.id] = userWarnings;
+    });
+
+    setFatigueWarnings(warnings);
+  }, [trades, tradeUsers]);
+
+  const calculateFatigueScores = useCallback(() => {
+    const scores: Record<number, FatigueScore> = {};
+
+    tradeUsers.forEach((user) => {
+      const userTrades = trades.filter(
+        (trade) =>
+          trade.offeredByUserId === user.id ||
+          trade.acceptedByUserId === user.id,
+      );
+
+      let fatigueScore = 0;
+
+      fatigueScore += userTrades.length * 10;
+
+      const lateShifts = userTrades.filter((trade) => {
+        const endHour = new Date(trade.shift.endTime).getHours();
+
+        return endHour >= 22;
+      });
+
+      fatigueScore += lateShifts.length * 12;
+
+      const weekendShifts = userTrades.filter((trade) => {
+        const day = new Date(trade.shift.startTime).getDay();
+
+        return day === 0 || day === 6;
+      });
+
+      fatigueScore += weekendShifts.length * 8;
+
+      if (userTrades.length >= 5) {
+        fatigueScore += 25;
+      }
+
+      let level: "LOW" | "MEDIUM" | "HIGH" = "LOW";
+
+      if (fatigueScore >= 70) {
+        level = "HIGH";
+      } else if (fatigueScore >= 35) {
+        level = "MEDIUM";
+      }
+
+      scores[user.id] = {
+        score: fatigueScore,
+        level,
+      };
+    });
+
+    setFatigueScores(scores);
+  }, [trades, tradeUsers]);
+
+  const calculateRecoveryWarnings = useCallback(() => {
+    const warnings: Record<number, string[]> = {};
+
+    tradeUsers.forEach((user) => {
+      const userTrades = trades
+        .filter(
+          (trade) =>
+            trade.offeredByUserId === user.id ||
+            trade.acceptedByUserId === user.id,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.shift.startTime).getTime() -
+            new Date(b.shift.startTime).getTime(),
+        );
+
+      const userWarnings: string[] = [];
+
+      for (let index = 1; index < userTrades.length; index++) {
+        const previousShift = userTrades[index - 1];
+        const currentShift = userTrades[index];
+
+        const previousEnd = new Date(previousShift.shift.endTime);
+        const currentStart = new Date(currentShift.shift.startTime);
+
+        const restHours =
+          (currentStart.getTime() - previousEnd.getTime()) / 1000 / 60 / 60;
+
+        if (restHours < 11) {
+          userWarnings.push(
+            `Kun ${restHours.toFixed(1)} timers hvile mellem vagter.`,
+          );
+        }
+
+        if (previousEnd.getHours() >= 22 && currentStart.getHours() <= 8) {
+          userWarnings.push(
+            "Lukkevagt efterfulgt af tidlig åbnevagt registreret.",
+          );
+        }
+      }
+
+      if (userTrades.length >= 6) {
+        userWarnings.push("Mange vagter i træk registreret.");
+      }
+
+      warnings[user.id] = userWarnings;
+    });
+
+    setRecoveryWarnings(warnings);
+  }, [trades, tradeUsers]);
+
+  const autoAssignBestEmployee = useCallback(
+    async (trade: ShiftTrade) => {
+      try {
+        setAutoAssignLoading(trade.id);
+
+        const candidates = tradeUsers
+          .filter(
+            (user) =>
+              user.id !== trade.offeredByUserId &&
+              user.id !== trade.shift.userId,
+          )
+          .sort((a, b) => {
+            const scoreA = staffingScores[a.id] || 0;
+            const scoreB = staffingScores[b.id] || 0;
+
+            return scoreB - scoreA;
+          });
+
+        const bestUser = candidates[0];
+
+        if (!bestUser) {
+          alert("Ingen egnet medarbejder fundet.");
+          return;
+        }
+
+        const response = await fetch(
+          `${API_URL}/shift-trades/${trade.id}/accept`,
+          {
+            method: "PATCH",
+            headers: getHeaders(),
+            body: JSON.stringify({
+              acceptedByUserId: bestUser.id,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          alert("Auto assign fejlede.");
+          return;
+        }
+
+        await fetchTrades();
+
+        alert(
+          `${bestUser.firstName} ${bestUser.lastName} blev automatisk valgt.`,
+        );
+      } catch (error) {
+        console.error(error);
+        alert("Auto assign fejlede.");
+      } finally {
+        setAutoAssignLoading(null);
+      }
+    },
+    [fetchTrades, staffingScores, tradeUsers],
+  );
+
+  useEffect(() => {
+    generateAutoFillSuggestions();
+  }, [generateAutoFillSuggestions]);
+
+  useEffect(() => {
+    calculateStaffingScores();
+  }, [calculateStaffingScores]);
+
+  useEffect(() => {
+    calculateFatigueWarnings();
+  }, [calculateFatigueWarnings]);
+
+  useEffect(() => {
+    calculateFatigueScores();
+  }, [calculateFatigueScores]);
+
+  useEffect(() => {
+    calculateRecoveryWarnings();
+  }, [calculateRecoveryWarnings]);
+
   function getStatusBadge(status: string) {
     if (status === "ACCEPTED") {
       return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
@@ -201,9 +500,7 @@ export default function ShiftTradesPage() {
 
   function getStatusText(status: string) {
     if (status === "ACCEPTED") return "Accepteret";
-
     if (status === "REJECTED") return "Afvist";
-
     if (status === "CANCELLED") return "Annulleret";
 
     return "Åben";
@@ -211,7 +508,6 @@ export default function ShiftTradesPage() {
 
   function canAcceptTrade(trade: ShiftTrade) {
     if (!currentUser) return false;
-
     if (trade.offeredByUserId === currentUser.id) return false;
 
     if (trade.type === "DIRECT" && trade.targetUserId !== currentUser.id) {
@@ -343,6 +639,136 @@ export default function ShiftTradesPage() {
                   </div>
                 )}
 
+                <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="text-lg">🤖</div>
+
+                    <div className="text-sm font-semibold text-green-700 dark:text-green-300">
+                      Auto-fill forslag
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(autoFillSuggestions[trade.id] || []).map(
+                      (suggestion, index) => {
+                        const matchedUser = tradeUsers.find((user) =>
+                          suggestion.includes(
+                            `${user.firstName} ${user.lastName}`,
+                          ),
+                        );
+
+                        const score = matchedUser
+                          ? staffingScores[matchedUser.id]
+                          : null;
+
+                        const fatigueScore = matchedUser
+                          ? fatigueScores[matchedUser.id]
+                          : null;
+
+                        return (
+                          <div
+                            key={index}
+                            className="rounded-lg bg-white px-3 py-2 text-sm text-green-700 dark:bg-gray-900 dark:text-green-300"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <span>{suggestion}</span>
+
+                              <div className="flex flex-wrap gap-2">
+                                {score && (
+                                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-950 dark:text-green-300">
+                                    Score: {score}
+                                  </span>
+                                )}
+
+                                {fatigueScore && (
+                                  <span
+                                    className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                      fatigueScore.level === "LOW"
+                                        ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                        : fatigueScore.level === "MEDIUM"
+                                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
+                                          : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                                    }`}
+                                  >
+                                    Fatigue: {fatigueScore.level} •{" "}
+                                    {fatigueScore.score}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {matchedUser &&
+                              fatigueWarnings[matchedUser.id]?.length > 0 && (
+                                <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-900 dark:bg-orange-950">
+                                  <div className="mb-2 text-xs font-bold text-orange-700 dark:text-orange-300">
+                                    ⚠️ Fatigue warnings
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    {fatigueWarnings[matchedUser.id].map(
+                                      (warning, warningIndex) => (
+                                        <div
+                                          key={warningIndex}
+                                          className="text-xs text-orange-700 dark:text-orange-300"
+                                        >
+                                          • {warning}
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+
+                                  <button
+                                    className="mt-3 rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-700"
+                                    onClick={() => {
+                                      alert(
+                                        "Fatigue warning ignoreret af admin.",
+                                      );
+                                    }}
+                                  >
+                                    Ignorer og fortsæt
+                                  </button>
+                                </div>
+                              )}
+
+                            {matchedUser &&
+                              recoveryWarnings[matchedUser.id]?.length > 0 && (
+                                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
+                                  <div className="mb-2 text-xs font-bold text-red-700 dark:text-red-300">
+                                    🛌 Recovery warnings
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    {recoveryWarnings[matchedUser.id].map(
+                                      (warning, warningIndex) => (
+                                        <div
+                                          key={warningIndex}
+                                          className="text-xs text-red-700 dark:text-red-300"
+                                        >
+                                          • {warning}
+                                        </div>
+                                      ),
+                                    )}
+                                  </div>
+
+                                  <button
+                                    className="mt-3 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
+                                    onClick={() => {
+                                      alert(
+                                        "Recovery warning ignoreret af admin.",
+                                      );
+                                    }}
+                                  >
+                                    Ignorer og fortsæt
+                                  </button>
+                                </div>
+                              )}
+                          </div>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+
                 {canAcceptTrade(trade) && (
                   <div className="flex flex-wrap gap-3">
                     <button
@@ -360,6 +786,16 @@ export default function ShiftTradesPage() {
                     </button>
                   </div>
                 )}
+
+                <button
+                  onClick={() => autoAssignBestEmployee(trade)}
+                  disabled={autoAssignLoading === trade.id}
+                  className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  {autoAssignLoading === trade.id
+                    ? "Auto assigning..."
+                    : "🤖 Auto assign bedste medarbejder"}
+                </button>
               </div>
             </div>
           ))}

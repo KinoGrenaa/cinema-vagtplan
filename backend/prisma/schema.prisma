@@ -79,6 +79,7 @@ model Cinema {
   auditLogs         AuditLog[]
   payrollPeriods    PayrollPeriod[]
   payrollTypes      PayrollType[]
+  aiLearningEvents  AiLearningEvent[]
 }
 
 model User {
@@ -394,4 +395,23 @@ model PayrollType {
 
   @@index([cinemaId])
   @@index([payrollCode])
+}
+
+model AiLearningEvent {
+  id Int @id @default(autoincrement())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  type String
+
+  severity String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([cinemaId])
+  @@index([type])
+  @@index([createdAt])
 }

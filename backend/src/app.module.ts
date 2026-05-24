@@ -19,6 +19,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PushSubscriptionsModule } from './push-subscriptions/push-subscriptions.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { PayrollTypesModule } from './payroll-types/payroll-types.module';
+import { AiLearningModule } from '../ai-learning/ai-learning.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { PayrollTypesModule } from './payroll-types/payroll-types.module';
     NotificationsModule,
     PushSubscriptionsModule,
     AuditLogsModule,
+    AiLearningModule,
 
     ThrottlerModule.forRoot([
       {
