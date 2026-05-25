@@ -8,7 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtGuard } from '../auth/jwt.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StaffingRequestsService } from './staffing-requests.service';
 import { CreateStaffingRequestDto } from './dto/create-staffing-request.dto';
 
@@ -21,7 +21,7 @@ type AuthRequest = {
   };
 };
 
-@UseGuards(JwtGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('staffing-requests')
 export class StaffingRequestsController {
   constructor(

@@ -42,7 +42,7 @@ export class ShiftGenerationService {
       };
     }
 
-    const suggestedShifts = [];
+    const suggestedShifts: any[] = [];
 
     for (const period of optimization.uncoveredPeriods) {
       const candidates = await this.staffingAiService.getTopEmergencyCandidates(
@@ -106,7 +106,7 @@ export class ShiftGenerationService {
       endDate: params.endDate,
     });
 
-    const createdShifts = [];
+    const createdShifts: any[] = [];
 
     for (const suggestion of result.suggestedShifts) {
       const existingShift = await this.prisma.shift.findFirst({

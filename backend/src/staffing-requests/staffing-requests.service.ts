@@ -358,7 +358,7 @@ export class StaffingRequestsService {
       params.limit ?? 5,
     );
 
-    const createdRequests = [];
+    const createdRequests: any[] = [];
 
     for (const candidate of candidates) {
       const request = await this.prisma.staffingRequest.create({

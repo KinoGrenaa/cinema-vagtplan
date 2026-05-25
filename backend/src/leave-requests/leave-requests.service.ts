@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StaffingMonitorService } from '../staffing-ai/staffing-monitor.service';
+import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
 
 @Injectable()
 export class LeaveRequestsService {
   constructor(
     private prisma: PrismaService,
     private staffingMonitorService: StaffingMonitorService,
+    private absenceImpactEngineService: AbsenceImpactEngineService,
   ) {}
 
   private async triggerStaffingMonitor() {
@@ -14,6 +16,27 @@ export class LeaveRequestsService {
       await this.staffingMonitorService.checkForStaffingProblems();
     } catch (error) {
       console.error('Staffing monitor trigger failed', error);
+    }
+  }
+
+  private async analyzeAbsenceImpact(leaveRequest: {
+    id: number;
+    userId: number;
+    cinemaId: number;
+    startDate: Date;
+    endDate: Date;
+  }) {
+    try {
+      return await this.absenceImpactEngineService.analyzeLeaveImpact({
+        leaveRequestId: leaveRequest.id,
+        userId: leaveRequest.userId,
+        cinemaId: leaveRequest.cinemaId,
+        startDate: leaveRequest.startDate,
+        endDate: leaveRequest.endDate,
+      });
+    } catch (error) {
+      console.error('Absence impact analysis failed', error);
+      return null;
     }
   }
 
@@ -45,9 +68,14 @@ export class LeaveRequestsService {
       },
     });
 
+    const absenceImpact = await this.analyzeAbsenceImpact(leaveRequest);
+
     await this.triggerStaffingMonitor();
 
-    return leaveRequest;
+    return {
+      leaveRequest,
+      absenceImpact,
+    };
   }
 
   async updateStatus(id: number, status: 'APPROVED' | 'REJECTED') {
@@ -56,8 +84,17 @@ export class LeaveRequestsService {
       data: { status },
     });
 
+    let absenceImpact: any = null;
+
+    if (status === 'APPROVED') {
+      absenceImpact = await this.analyzeAbsenceImpact(leaveRequest);
+    }
+
     await this.triggerStaffingMonitor();
 
-    return leaveRequest;
+    return {
+      leaveRequest,
+      absenceImpact,
+    };
   }
 }
