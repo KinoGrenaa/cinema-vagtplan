@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PushService } from '../push/push.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { StaffingMonitorService } from '../staffing-ai/staffing-monitor.service';
 
 type AuthUser = {
   sub: number;
@@ -23,7 +24,16 @@ export class ShiftsService {
     private realtimeGateway: RealtimeGateway,
     private pushService: PushService,
     private auditLogsService: AuditLogsService,
+    private staffingMonitorService: StaffingMonitorService,
   ) {}
+
+  private async triggerStaffingMonitor() {
+    try {
+      await this.staffingMonitorService.checkForStaffingProblems();
+    } catch (error) {
+      console.error('Staffing monitor trigger failed', error);
+    }
+  }
 
   private getCinemaFilter(user: AuthUser) {
     if (user.role === 'MASTER') return {};
@@ -214,6 +224,8 @@ export class ShiftsService {
       body: `${shift.workType.name} - ${this.formatShiftTime(startTime, endTime)}`,
       url: '/my-shifts',
     });
+
+    await this.triggerStaffingMonitor();
 
     return shift;
   }

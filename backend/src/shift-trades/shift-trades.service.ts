@@ -8,6 +8,7 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ShiftTradeStatus, ShiftTradeType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
+import { StaffingMonitorService } from '../staffing-ai/staffing-monitor.service';
 
 @Injectable()
 export class ShiftTradesService {
@@ -16,7 +17,16 @@ export class ShiftTradesService {
     private realtime: RealtimeGateway,
     private notifications: NotificationsService,
     private push: PushService,
+    private staffingMonitorService: StaffingMonitorService,
   ) {}
+
+  private async triggerStaffingMonitor() {
+    try {
+      await this.staffingMonitorService.checkForStaffingProblems();
+    } catch (error) {
+      console.error('Staffing monitor trigger failed', error);
+    }
+  }
 
   private getCinemaFilter(user: any) {
     if (user?.role === 'MASTER') {
@@ -379,6 +389,8 @@ export class ShiftTradesService {
       });
     }
 
+    await this.triggerStaffingMonitor();
+
     return trade;
   }
 
@@ -419,6 +431,8 @@ export class ShiftTradesService {
     });
 
     this.realtime.notifyCinema(trade.cinemaId, 'shiftTradesUpdated', trade);
+
+    await this.triggerStaffingMonitor();
 
     return trade;
   }

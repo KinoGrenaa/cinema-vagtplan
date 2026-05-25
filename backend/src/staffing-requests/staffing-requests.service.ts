@@ -8,6 +8,7 @@ import { StaffingRequestStatus, StaffingRequestType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { CreateStaffingRequestDto } from './dto/create-staffing-request.dto';
+import { StaffingAiService } from '../staffing-ai/staffing-ai.service';
 
 type AuthUser = {
   sub: number;
@@ -21,6 +22,7 @@ export class StaffingRequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtimeGateway: RealtimeGateway,
+    private readonly staffingAiService: StaffingAiService,
   ) {}
 
   private getCinemaFilter(user: AuthUser) {
@@ -338,6 +340,67 @@ export class StaffingRequestsService {
     this.emitUpdate(updated.cinemaId);
 
     return updated;
+  }
+
+  async createAiEmergencyRequests(params: {
+    cinemaId: number;
+    requestedByUserId: number;
+    startTime: Date;
+    endTime: Date;
+    shiftId?: number;
+    message?: string;
+    limit?: number;
+  }) {
+    const candidates = await this.staffingAiService.getTopEmergencyCandidates(
+      params.cinemaId,
+      params.startTime,
+      params.endTime,
+      params.limit ?? 5,
+    );
+
+    const createdRequests = [];
+
+    for (const candidate of candidates) {
+      const request = await this.prisma.staffingRequest.create({
+        data: {
+          cinemaId: params.cinemaId,
+          requestedByUserId: params.requestedByUserId,
+          targetUserId: candidate.userId,
+          shiftId: params.shiftId,
+          type: 'EMERGENCY',
+          status: 'PENDING',
+          priority: Math.max(1, Math.round(candidate.totalScore)),
+          aiGenerated: true,
+          message: params.message || '🚨 AI detected emergency staffing need.',
+        },
+        include: {
+          targetUser: true,
+          requestedByUser: true,
+          shift: true,
+        },
+      });
+
+      createdRequests.push({
+        request,
+        candidate,
+      });
+
+      await this.prisma.notification.create({
+        data: {
+          cinemaId: params.cinemaId,
+          userId: candidate.userId,
+          title: 'Emergency staffing request',
+          message:
+            params.message || '🚨 Der er akut behov for ekstra bemanding.',
+          type: 'STAFFING_REQUEST',
+          linkUrl: '/staffing-requests',
+        },
+      });
+    }
+
+    this.realtimeGateway.notifyStaffingRequestsUpdated(params.cinemaId);
+
+    return createdRequests;
   }
 
   private async findOneForUser(user: AuthUser, id: number) {

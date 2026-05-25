@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { toast } from "sonner";
 import { showInfo, showSuccess } from "@/app/lib/toast";
 import { useAuth } from "../providers/AuthProvider";
 import { useRealtimeCore } from "./useRealtimeCore";
@@ -156,7 +157,7 @@ socket.on("staffingRequestsUpdated", () => {
   onStaffingRequestsUpdated?.();
 
   if (enableToasts) {
-    console.log("📡 Staffing requests updated");
+    toast("📡 Staffing requests opdateret");
   }
 });
 
@@ -164,7 +165,7 @@ socket.on("staffingRequestAccepted", () => {
   onStaffingRequestsUpdated?.();
 
   if (enableToasts) {
-    console.log("✅ Staffing request accepted");
+    toast.success("✅ Staffing request accepteret");
   }
 });
 
@@ -172,7 +173,7 @@ socket.on("staffingRequestRejected", () => {
   onStaffingRequestsUpdated?.();
 
   if (enableToasts) {
-    console.log("❌ Staffing request rejected");
+    toast.error("❌ Staffing request afvist");
   }
 });
 
@@ -180,7 +181,7 @@ socket.on("staffingRequestCancelled", () => {
   onStaffingRequestsUpdated?.();
 
   if (enableToasts) {
-    console.log("🚫 Staffing request cancelled");
+    toast.info("🚫 Staffing request annulleret");
   }
 });
 
@@ -188,7 +189,7 @@ socket.on("staffingRequestsUpdated", () => {
   onStaffingRequestsUpdated?.();
 
   if (enableToasts) {
-    console.log("🎯 Ny staffing request");
+    toast.warning("🚨 Ny staffing request");
   }
 });
 
@@ -196,7 +197,7 @@ socket.on("staffingRequestAccepted", () => {
   onStaffingRequestsUpdated?.();
 
   if (enableToasts) {
-    console.log("✅ Staffing request accepteret");
+    toast.success("✅ Staffing request accepteret");
   }
 });
 
@@ -204,7 +205,7 @@ socket.on("staffingRequestRejected", () => {
   onStaffingRequestsUpdated?.();
 
   if (enableToasts) {
-    console.log("❌ Staffing request afvist");
+    toast.error("❌ Staffing request afvist");
   }
 });
 
@@ -212,6 +213,6 @@ socket.on("staffingRequestCancelled", () => {
   onStaffingRequestsUpdated?.();
 
   if (enableToasts) {
-    console.log("🚫 Staffing request annulleret");
+    toast.info("🚫 Staffing request annulleret");
   }
 });

@@ -130,6 +130,7 @@ model User {
   auditLogs                 AuditLog[]
   requestedStaffingRequests StaffingRequest[]  @relation("RequestedStaffingRequests")
   targetedStaffingRequests  StaffingRequest[]  @relation("TargetedStaffingRequests")
+  staffingAiProfile         StaffingAiProfile?
 }
 
 model WorkType {
@@ -474,4 +475,38 @@ model StaffingRequest {
   @@index([status])
   @@index([type])
   @@index([createdAt])
+}
+
+model StaffingAiProfile {
+  id Int @id @default(autoincrement())
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+
+  acceptanceRate Float @default(0)
+  rejectionRate  Float @default(0)
+
+  emergencyAcceptanceRate Float @default(0)
+
+  fatigueScore  Float @default(0)
+  overtimeScore Float @default(0)
+
+  aiPriorityScore Float @default(0)
+
+  preferredHours     String?
+  preferredWorkTypes String?
+
+  totalRequests    Int @default(0)
+  acceptedRequests Int @default(0)
+  rejectedRequests Int @default(0)
+
+  lastAcceptedAt DateTime?
+  lastRejectedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([aiPriorityScore])
+  @@index([fatigueScore])
+  @@index([overtimeScore])
 }

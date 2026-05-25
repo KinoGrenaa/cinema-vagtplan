@@ -11,21 +11,17 @@ export type RealtimeShiftTradePayload = {
   offeredByUserId?: number | string | null;
   rejectedByUserId?: number | string | null;
   targetUserId?: number | string | null;
-
   shift?: {
     startTime?: string;
     endTime?: string;
-
     workType?: {
       name?: string;
     };
   } | null;
-
   offeredByUser?: {
     firstName: string;
     lastName: string;
   } | null;
-
   rejectedByUser?: {
     firstName: string;
     lastName: string;
@@ -38,7 +34,7 @@ type UseRealtimeCoreInput = {
   onNotification?: () => void;
   onMessage?: () => void;
   onTimeEntry?: () => void;
-
+  onStaffingRequestUpdated?: () => void;
   onShiftAccepted?: (payload: RealtimeShiftTradePayload) => void;
   onNewShiftTrade?: (payload: RealtimeShiftTradePayload) => void;
   onNewDirectShiftTrade?: (payload: RealtimeShiftTradePayload) => void;
@@ -47,7 +43,6 @@ type UseRealtimeCoreInput = {
 
 export function useRealtimeCore(input: UseRealtimeCoreInput) {
   const { token, user } = useAuth();
-
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -75,6 +70,10 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
       input.onShiftTradeUpdated?.();
     };
 
+    const triggerStaffingRequestUpdated = () => {
+      input.onStaffingRequestUpdated?.();
+    };
+
     socket.on("connect", () => {
       console.log("Realtime connected:", socket.id);
     });
@@ -88,6 +87,11 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
 
     socket.on("shiftTradeUpdated", triggerShiftTradeUpdated);
     socket.on("shiftTradesUpdated", triggerShiftTradeUpdated);
+
+    socket.on("staffingRequestsUpdated", triggerStaffingRequestUpdated);
+    socket.on("staffingRequestAccepted", triggerStaffingRequestUpdated);
+    socket.on("staffingRequestRejected", triggerStaffingRequestUpdated);
+    socket.on("staffingRequestCancelled", triggerStaffingRequestUpdated);
 
     socket.on("notificationCreated", () => {
       input.onNotification?.();
@@ -103,45 +107,39 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
 
     socket.on("shiftAccepted", (payload: RealtimeShiftTradePayload) => {
       input.onShiftAccepted?.(payload);
-
       triggerShiftTradeUpdated();
       triggerShiftUpdated();
     });
 
     socket.on("newShiftTrade", (payload: RealtimeShiftTradePayload) => {
       input.onNewShiftTrade?.(payload);
-
       triggerShiftTradeUpdated();
     });
 
     socket.on("newDirectShiftTrade", (payload: RealtimeShiftTradePayload) => {
       input.onNewDirectShiftTrade?.(payload);
-
       triggerShiftTradeUpdated();
     });
 
     socket.on("shiftRejected", (payload: RealtimeShiftTradePayload) => {
       input.onShiftRejected?.(payload);
-
       triggerShiftTradeUpdated();
     });
 
     return () => {
       socket.removeAllListeners();
       socket.disconnect();
-
       socketRef.current = null;
     };
   }, [
     token,
     user,
-
     input.onShiftUpdated,
     input.onShiftTradeUpdated,
     input.onNotification,
     input.onMessage,
     input.onTimeEntry,
-
+    input.onStaffingRequestUpdated,
     input.onShiftAccepted,
     input.onNewShiftTrade,
     input.onNewDirectShiftTrade,

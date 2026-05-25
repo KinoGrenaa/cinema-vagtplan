@@ -1,9 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { StaffingMonitorService } from '../staffing-ai/staffing-monitor.service';
 
 @Injectable()
 export class LeaveRequestsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private staffingMonitorService: StaffingMonitorService,
+  ) {}
+
+  private async triggerStaffingMonitor() {
+    try {
+      await this.staffingMonitorService.checkForStaffingProblems();
+    } catch (error) {
+      console.error('Staffing monitor trigger failed', error);
+    }
+  }
 
   findAll() {
     return this.prisma.leaveRequest.findMany({
@@ -16,14 +28,14 @@ export class LeaveRequestsService {
     });
   }
 
-  create(data: {
+  async create(data: {
     startDate: string;
     endDate: string;
     reason?: string;
     cinemaId: number;
     userId: number;
   }) {
-    return this.prisma.leaveRequest.create({
+    const leaveRequest = await this.prisma.leaveRequest.create({
       data: {
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
@@ -32,12 +44,20 @@ export class LeaveRequestsService {
         userId: data.userId,
       },
     });
+
+    await this.triggerStaffingMonitor();
+
+    return leaveRequest;
   }
 
-  updateStatus(id: number, status: 'APPROVED' | 'REJECTED') {
-    return this.prisma.leaveRequest.update({
+  async updateStatus(id: number, status: 'APPROVED' | 'REJECTED') {
+    const leaveRequest = await this.prisma.leaveRequest.update({
       where: { id },
       data: { status },
     });
+
+    await this.triggerStaffingMonitor();
+
+    return leaveRequest;
   }
 }

@@ -21,6 +21,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { PayrollTypesModule } from './payroll-types/payroll-types.module';
 import { AiLearningModule } from './ai-learning/ai-learning.module';
 import { StaffingRequestsModule } from './staffing-requests/staffing-requests.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { StaffingRequestsModule } from './staffing-requests/staffing-requests.mo
     AuditLogsModule,
     AiLearningModule,
     StaffingRequestsModule,
+    ScheduleModule.forRoot(),
 
     ThrottlerModule.forRoot([
       {
