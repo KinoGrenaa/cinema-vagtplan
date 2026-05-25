@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ShiftForm from "./components/ShiftForm";
-import ShiftTimeline from "./components/ShiftTimeline";
+import ShiftTimeline from "../../components/schedule/ShiftTimeline";
 import MovieProgram from "./components/MovieProgram";
 import AiSuggestionsPanel from "../../components/schedule/AiSuggestionsPanel";
 import { useSchedule } from "../../hooks/useSchedule";
@@ -43,6 +43,14 @@ export default function SchedulePage() {
     offerShiftTrade,
     submitManualTime: submitManualTimeEntry,
   } = useSchedule(selectedDate);
+
+  const filteredMovieShowings = useMemo(() => {
+    return movieShowings.filter((movie) => {
+      const movieDate = new Date(movie.startTime).toISOString().slice(0, 10);
+
+      return movieDate === selectedDate;
+    });
+  }, [movieShowings, selectedDate]);
 
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
@@ -86,7 +94,7 @@ export default function SchedulePage() {
     shifts,
     users,
     workTypes,
-    movieShowings,
+    movieShowings: filteredMovieShowings,
     createShift,
   });
 
@@ -271,6 +279,16 @@ export default function SchedulePage() {
     setFormError("");
   }
 
+  function goToDate(nextDate: string) {
+    if (!nextDate) return;
+
+    setSelectedDate(nextDate);
+    setStartTime(`${nextDate}T14:00`);
+    setEndTime(`${nextDate}T22:00`);
+    setSelectedShift(null);
+    setFormError("");
+  }
+
   async function handleMoveShift(
     shift: Shift,
     newStartHour: number,
@@ -359,7 +377,7 @@ export default function SchedulePage() {
             <div>
               <h1 className="text-3xl font-bold">Vagtplan</h1>
               <p className="text-gray-500 dark:text-gray-400">
-                Valgt dato: {selectedDate}
+                Overblik over vagter, bemanding og dagens program
               </p>
               <div className="mb-6 flex flex-wrap gap-3">
                 <button
@@ -377,30 +395,9 @@ export default function SchedulePage() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setShowClockModal(true)}
-                className="rounded-xl bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
+                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
               >
                 Registrer tid
-              </button>
-
-              <button
-                onClick={() => changeDate(-1)}
-                className="rounded-xl bg-gray-200 px-4 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-              >
-                Forrige dag
-              </button>
-
-              <button
-                onClick={goToToday}
-                className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-              >
-                I dag
-              </button>
-
-              <button
-                onClick={() => changeDate(1)}
-                className="rounded-xl bg-gray-200 px-4 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-              >
-                Næste dag
               </button>
             </div>
           </div>
@@ -499,6 +496,53 @@ export default function SchedulePage() {
               sendRealStaffingMessage={sendRealStaffingMessage}
             />
 
+            <div className="mt-4 mb-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex flex-col items-center justify-center gap-3 text-center">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Dato for vagtplan
+                  </div>
+                  <div className="text-2xl font-bold">
+                    {selectedDate.split("-").reverse().join("-")}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => changeDate(-1)}
+                    className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-800"
+                  >
+                    ← Forrige dag
+                  </button>
+
+                  <button
+                    onClick={goToToday}
+                    className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  >
+                    I dag
+                  </button>
+
+                  <label className="relative inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-blue-300 bg-blue-50 text-lg shadow-sm transition hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:hover:bg-blue-950">
+                    <span aria-hidden="true">📅</span>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(event) => goToDate(event.target.value)}
+                      className="absolute inset-0 cursor-pointer opacity-0"
+                      aria-label="Vælg dato"
+                    />
+                  </label>
+
+                  <button
+                    onClick={() => changeDate(1)}
+                    className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-800"
+                  >
+                    Næste dag →
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <ShiftTimeline
               shifts={shifts}
               users={users}
@@ -513,7 +557,7 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        <MovieProgram movieShowings={movieShowings} />
+        <MovieProgram movieShowings={filteredMovieShowings} />
       </div>
 
       {showClockModal && (

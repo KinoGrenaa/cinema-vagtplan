@@ -127,7 +127,7 @@ export function useSchedule(selectedDate: string) {
 
   const fetchMovieShowings = useCallback(async () => {
     try {
-      const response = await apiFetch(`/movie-showings?date=${selectedDate}`);
+      const response = await fetch("/mock/movie-showings.json");
 
       if (!response.ok) {
         setMovieShowings([]);
@@ -144,7 +144,7 @@ export function useSchedule(selectedDate: string) {
     } catch {
       setMovieShowings([]);
     }
-  }, [apiFetch, selectedDate]);
+  }, []);
 
   const fetchLeaveRequests = useCallback(async () => {
     try {

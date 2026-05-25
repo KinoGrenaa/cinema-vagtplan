@@ -34,18 +34,22 @@ type TimelineShift = {
   shift: Shift;
   startMinutes: number;
   endMinutes: number;
-  top: number;
-  height: number;
+  left: number;
+  width: number;
   lane: number;
   laneCount: number;
 };
 
-const HOUR_HEIGHT = 72;
 const DAY_MINUTES = 24 * 60;
-const MIN_SHIFT_HEIGHT = 36;
+const TIMELINE_WIDTH = 1000;
+const TIMELINE_HEIGHT = 520;
+const LEFT_LABEL_WIDTH = 64;
+const SHIFT_HEIGHT = 64;
+const LANE_GAP = 10;
+const TOP_OFFSET = 52;
 const SNAP_MINUTES = 15;
-const TIMELINE_HEIGHT = 24 * HOUR_HEIGHT;
-const MINUTE_HEIGHT = HOUR_HEIGHT / 60;
+const MIN_SHIFT_WIDTH = 36;
+const MINUTE_WIDTH = TIMELINE_WIDTH / DAY_MINUTES;
 
 function getShiftUserName(shift: Shift) {
   const maybeShift = shift as Shift & {
@@ -104,8 +108,8 @@ function snapMinutes(value: number) {
   return Math.round(value / SNAP_MINUTES) * SNAP_MINUTES;
 }
 
-function yToTime(y: number) {
-  const totalMinutes = clampMinutes(snapMinutes(y / MINUTE_HEIGHT));
+function xToTime(x: number) {
+  const totalMinutes = clampMinutes(snapMinutes(x / MINUTE_WIDTH));
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
 
@@ -131,10 +135,10 @@ function buildTimelineShifts(shifts: Shift[], selectedDate: string) {
         shift,
         startMinutes,
         endMinutes: safeEndMinutes,
-        top: startMinutes * MINUTE_HEIGHT,
-        height: Math.max(
-          MIN_SHIFT_HEIGHT,
-          (safeEndMinutes - startMinutes) * MINUTE_HEIGHT,
+        left: startMinutes * MINUTE_WIDTH,
+        width: Math.max(
+          MIN_SHIFT_WIDTH,
+          (safeEndMinutes - startMinutes) * MINUTE_WIDTH,
         ),
         lane: 0,
         laneCount: 1,
@@ -205,141 +209,206 @@ function ShiftTimeline({
     [selectedDate, shifts],
   );
 
-  const hourRows = useMemo(
-    () => Array.from({ length: 24 }, (_, hour) => hour),
+  const hours = useMemo(
+    () => Array.from({ length: 25 }, (_, hour) => hour),
     [],
   );
 
+  const laneCount = Math.max(1, ...timelineShifts.map((item) => item.lane + 1));
+
+  const dynamicHeight = Math.max(
+    TIMELINE_HEIGHT,
+    TOP_OFFSET + laneCount * (SHIFT_HEIGHT + LANE_GAP) + 48,
+  );
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-      <div
-        className="relative min-w-[900px]"
-        style={{ height: TIMELINE_HEIGHT }}
-      >
-        {hourRows.map((hour) => (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            Dagsoversigt
+          </h2>
+
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Hele dagen vises skaleret fra 00:00 til 24:00.
+          </p>
+        </div>
+      </div>
+
+      <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
+        <div
+          className="relative w-full"
+          style={{
+            height: dynamicHeight,
+          }}
+        >
           <div
-            key={hour}
-            className="absolute left-0 right-0 border-t border-gray-200 dark:border-gray-800"
-            style={{ top: hour * HOUR_HEIGHT }}
+            className="absolute bottom-0 top-0 border-l border-gray-300 dark:border-gray-700"
+            style={{ left: LEFT_LABEL_WIDTH }}
+          />
+
+          <div
+            className="absolute bottom-0 top-0"
+            style={{
+              left: LEFT_LABEL_WIDTH,
+              right: 0,
+            }}
           >
-            <div className="absolute left-0 top-1 w-20 px-3 text-xs font-medium text-gray-500 dark:text-gray-400">
-              {String(hour).padStart(2, "0")}:00
-            </div>
-          </div>
-        ))}
+            {hours.map((hour) => {
+              const leftPercent = (hour / 24) * 100;
 
-        <div className="absolute bottom-0 left-20 right-0 top-0 border-l border-gray-200 dark:border-gray-800" />
-
-        {timelineShifts.length === 0 && (
-          <div className="absolute left-24 top-8 rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-400">
-            Ingen vagter på den valgte dato.
-          </div>
-        )}
-
-        {timelineShifts.map(({ shift, top, height, lane, laneCount }) => {
-          const widthPercent = 100 / laneCount;
-          const leftPercent = lane * widthPercent;
-
-          return (
-            <Rnd
-              key={shift.id}
-              bounds="parent"
-              dragAxis="y"
-              enableResizing={{
-                top: true,
-                right: false,
-                bottom: true,
-                left: false,
-                topRight: false,
-                bottomRight: false,
-                bottomLeft: false,
-                topLeft: false,
-              }}
-              minHeight={MIN_SHIFT_HEIGHT}
-              size={{
-                width: `calc(${widthPercent}% - 0.75rem)`,
-                height,
-              }}
-              position={{
-                x: 92 + leftPercent * 8,
-                y: top,
-              }}
-              style={{
-                left: `calc(${leftPercent}% + 5.75rem)`,
-                width: `calc(${widthPercent}% - 0.75rem)`,
-              }}
-              onDragStop={(_, data) => {
-                const { hour, minute } = yToTime(data.y);
-                onMoveShift(shift, hour, minute);
-              }}
-              onResizeStop={(_, __, ref, ___, position) => {
-                const start = yToTime(position.y);
-                const end = yToTime(position.y + ref.offsetHeight);
-
-                onResizeShift(
-                  shift,
-                  start.hour,
-                  start.minute,
-                  end.hour,
-                  end.minute,
-                );
-              }}
-              className="z-10"
-            >
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => onSelectShift(shift)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    onSelectShift(shift);
-                  }
-                }}
-                className="h-full cursor-pointer overflow-hidden rounded-xl border border-white/50 p-3 text-white shadow-lg transition hover:brightness-95"
-                style={{ backgroundColor: getShiftColor(shift) }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-bold">
-                      {getShiftUserName(shift)}
-                    </div>
-
-                    <div className="truncate text-xs opacity-90">
-                      {getShiftWorkTypeName(shift)}
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 text-right text-xs font-semibold opacity-90">
-                    {formatTime(shift.startTime)}-{formatTime(shift.endTime)}
+              return (
+                <div
+                  key={hour}
+                  className="absolute bottom-0 top-0 border-l border-gray-200 dark:border-gray-800"
+                  style={{
+                    left: hour === 24 ? "calc(100% - 1px)" : `${leftPercent}%`,
+                  }}
+                >
+                  <div
+                    className={`absolute top-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 ${
+                      hour === 24
+                        ? "-translate-x-full pr-1"
+                        : "-translate-x-1/2"
+                    }`}
+                  >
+                    {String(hour).padStart(2, "0")}
                   </div>
                 </div>
+              );
+            })}
+          </div>
 
-                {shift.note && (
-                  <div className="mt-2 line-clamp-2 text-xs opacity-90">
-                    {shift.note}
-                  </div>
-                )}
+          <div
+            className="absolute left-0 text-xs font-semibold text-gray-500 dark:text-gray-400"
+            style={{ top: TOP_OFFSET + 20 }}
+          >
+            Vagter
+          </div>
 
-                {users.length > 0 && (
-                  <select
-                    value={shift.userId}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) =>
-                      onChangeShiftUser(shift, Number(event.target.value))
-                    }
-                    className="mt-2 w-full rounded-lg border border-white/30 bg-white/90 px-2 py-1 text-xs text-gray-900"
+          {timelineShifts.length === 0 && (
+            <div
+              className="absolute rounded-xl border border-dashed border-gray-300 bg-white px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+              style={{
+                left: LEFT_LABEL_WIDTH + 16,
+                top: TOP_OFFSET,
+              }}
+            >
+              Ingen vagter på den valgte dato.
+            </div>
+          )}
+
+          <div
+            className="absolute"
+            style={{
+              left: LEFT_LABEL_WIDTH,
+              right: 0,
+              top: TOP_OFFSET,
+              height: dynamicHeight - TOP_OFFSET - 24,
+            }}
+          >
+            {timelineShifts.map(({ shift, left, width, lane }) => {
+              const y = lane * (SHIFT_HEIGHT + LANE_GAP);
+              const leftPercent = (left / TIMELINE_WIDTH) * 100;
+              const widthPercent = (width / TIMELINE_WIDTH) * 100;
+
+              return (
+                <Rnd
+                  key={shift.id}
+                  bounds="parent"
+                  dragAxis="x"
+                  enableResizing={{
+                    top: false,
+                    right: true,
+                    bottom: false,
+                    left: true,
+                    topRight: false,
+                    bottomRight: false,
+                    bottomLeft: false,
+                    topLeft: false,
+                  }}
+                  minWidth={MIN_SHIFT_WIDTH}
+                  size={{
+                    width: `${widthPercent}%`,
+                    height: SHIFT_HEIGHT,
+                  }}
+                  position={{
+                    x: left,
+                    y,
+                  }}
+                  style={{
+                    left: `${leftPercent}%`,
+                    width: `${widthPercent}%`,
+                  }}
+                  onDragStop={(_, data) => {
+                    const { hour, minute } = xToTime(data.x);
+                    onMoveShift(shift, hour, minute);
+                  }}
+                  onResizeStop={(_, __, ref, ___, position) => {
+                    const start = xToTime(position.x);
+                    const end = xToTime(position.x + ref.offsetWidth);
+
+                    onResizeShift(
+                      shift,
+                      start.hour,
+                      start.minute,
+                      end.hour,
+                      end.minute,
+                    );
+                  }}
+                  className="z-10"
+                >
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onSelectShift(shift)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        onSelectShift(shift);
+                      }
+                    }}
+                    className="h-full cursor-pointer overflow-hidden rounded-xl border border-white/50 p-2 text-white shadow-lg transition hover:brightness-95"
+                    style={{ backgroundColor: getShiftColor(shift) }}
                   >
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.firstName} {user.lastName}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </Rnd>
-          );
-        })}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-bold">
+                          {getShiftUserName(shift)}
+                        </div>
+
+                        <div className="truncate text-[11px] opacity-90">
+                          {getShiftWorkTypeName(shift)}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 text-right text-[11px] font-semibold opacity-90">
+                        {formatTime(shift.startTime)}-
+                        {formatTime(shift.endTime)}
+                      </div>
+                    </div>
+
+                    {users.length > 0 && (
+                      <select
+                        value={shift.userId}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) =>
+                          onChangeShiftUser(shift, Number(event.target.value))
+                        }
+                        className="mt-1 w-full rounded-lg border border-white/30 bg-white/90 px-2 py-0.5 text-[11px] text-gray-900 dark:bg-gray-950 dark:text-gray-100"
+                      >
+                        {users.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.firstName} {user.lastName}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </Rnd>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

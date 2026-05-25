@@ -8,6 +8,7 @@ import { useRealtimeCore } from "./useRealtimeCore";
 type UseRealtimeShiftsProps = {
   onShiftsUpdated?: () => void;
   onShiftTradesUpdated?: () => void;
+  onStaffingRequestsUpdated?: () => void;
   enableToasts?: boolean;
 };
 
@@ -83,6 +84,7 @@ function formatShiftText(trade: ShiftTradeEvent) {
 export function useRealtimeShifts({
   onShiftsUpdated,
   onShiftTradesUpdated,
+  onStaffingRequestsUpdated,
   enableToasts = true,
 }: UseRealtimeShiftsProps) {
   const { user } = useAuth();
@@ -149,3 +151,35 @@ export function useRealtimeShifts({
     onShiftRejected: handleShiftRejected,
   });
 }
+
+socket.on("staffingRequestsUpdated", () => {
+  onStaffingRequestsUpdated?.();
+
+  if (enableToasts) {
+    console.log("📡 Staffing requests updated");
+  }
+});
+
+socket.on("staffingRequestAccepted", () => {
+  onStaffingRequestsUpdated?.();
+
+  if (enableToasts) {
+    console.log("✅ Staffing request accepted");
+  }
+});
+
+socket.on("staffingRequestRejected", () => {
+  onStaffingRequestsUpdated?.();
+
+  if (enableToasts) {
+    console.log("❌ Staffing request rejected");
+  }
+});
+
+socket.on("staffingRequestCancelled", () => {
+  onStaffingRequestsUpdated?.();
+
+  if (enableToasts) {
+    console.log("🚫 Staffing request cancelled");
+  }
+});

@@ -548,46 +548,50 @@ export default function PayrollPage() {
 
   return (
     <PermissionGuard roles={["MASTER", "ADMIN"]}>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-6 text-gray-900 dark:text-gray-100">
         <div>
-          <h1 className="text-3xl font-bold">Løn / Payroll</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            Løn / Payroll
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Se timer, lås lønperioder og eksportér til lønbehandling.
           </p>
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow">
+        <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
           <div className="grid gap-4 md:grid-cols-4">
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Startdato
               </label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
-                className="w-full rounded border p-2"
+                className="w-full rounded border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">Slutdato</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Slutdato
+              </label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(event) => setEndDate(event.target.value)}
-                className="w-full rounded border p-2"
+                className="w-full rounded border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Medarbejder
               </label>
               <select
                 value={userId}
                 onChange={(event) => setUserId(event.target.value)}
-                className="w-full rounded border p-2"
+                className="w-full rounded border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
               >
                 <option value="">Alle medarbejdere</option>
 
@@ -612,46 +616,56 @@ export default function PayrollPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-5">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-gray-500">Totale timer</div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Totale timer
+            </div>
             <div className="mt-2 text-3xl font-bold">
               {formatHours(totalHours)}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-gray-500">Overtid</div>
+          <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm dark:border-red-900 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Overtid
+            </div>
             <div className="mt-2 text-3xl font-bold text-red-600">
               {formatHours(overtimeHours)}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-purple-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-gray-500">Weekend</div>
+          <div className="rounded-2xl border border-purple-200 bg-white p-5 shadow-sm dark:border-purple-900 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Weekend
+            </div>
             <div className="mt-2 text-3xl font-bold text-purple-600">
               {formatHours(weekendHours)}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-gray-500">Aften</div>
+          <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm dark:border-orange-900 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Aften
+            </div>
             <div className="mt-2 text-3xl font-bold text-orange-600">
               {formatHours(eveningHours)}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-gray-500">Nat</div>
+          <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm dark:border-blue-900 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">Nat</div>
             <div className="mt-2 text-3xl font-bold text-blue-600">
               {formatHours(nightHours)}
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Medarbejder summeringer</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Medarbejder summeringer
+              </h2>
               <p className="mt-1 text-sm text-gray-500">
                 Payroll oversigt pr medarbejder.
               </p>
@@ -659,9 +673,9 @@ export default function PayrollPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead>
-                <tr className="text-left text-sm text-gray-500">
+                <tr className="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th className="pb-3 pr-4">Medarbejder</th>
                   <th className="pb-3 pr-4">Timer</th>
                   <th className="pb-3 pr-4">Overtid</th>
@@ -671,7 +685,7 @@ export default function PayrollPage() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {report.map((employee) => {
                   const total = employee.entries.reduce(
                     (sum, entry) => sum + entry.hours,
@@ -700,8 +714,12 @@ export default function PayrollPage() {
 
                   return (
                     <tr key={employee.userId}>
-                      <td className="py-3 pr-4 font-medium">{employee.name}</td>
-                      <td className="py-3 pr-4">{formatHours(total)}</td>
+                      <td className="py-3 pr-4 font-medium text-gray-900 dark:text-gray-100">
+                        {employee.name}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
+                        {formatHours(total)}
+                      </td>
                       <td className="py-3 pr-4 font-medium text-red-600">
                         {formatHours(overtime)}
                       </td>
@@ -756,9 +774,11 @@ export default function PayrollPage() {
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {overtimeWarnings.map((employee) => (
                     <tr key={employee.name}>
-                      <td className="py-3 pr-4 font-medium">{employee.name}</td>
+                      <td className="py-3 pr-4 font-medium text-gray-900 dark:text-gray-100">
+                        {employee.name}
+                      </td>
 
-                      <td className="py-3 pr-4">
+                      <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
                         {formatHours(employee.totalHours)}
                       </td>
 
@@ -774,7 +794,7 @@ export default function PayrollPage() {
                         {formatHours(employee.night)}
                       </td>
 
-                      <td className="py-3 pr-4">
+                      <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
                         {employee.overtime > 0 ? (
                           <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">
                             OVERTIME
@@ -798,9 +818,11 @@ export default function PayrollPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-4">
-              <h2 className="text-2xl font-bold">Timer pr dag</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Timer pr dag
+              </h2>
               <p className="mt-1 text-sm text-gray-500">
                 Arbejdstimer i den valgte lønperiode.
               </p>
@@ -824,9 +846,11 @@ export default function PayrollPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-4">
-              <h2 className="text-2xl font-bold">Payroll fordeling</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Payroll fordeling
+              </h2>
               <p className="mt-1 text-sm text-gray-500">
                 Fordeling af lønarter.
               </p>
@@ -866,9 +890,9 @@ export default function PayrollPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm xl:col-span-2">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 xl:col-span-2">
             <div className="mb-4">
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Mest belastede medarbejdere
               </h2>
               <p className="mt-1 text-sm text-gray-500">
@@ -890,25 +914,27 @@ export default function PayrollPage() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow">
+        <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm text-gray-600">Lønperiode status</div>
-              <div className="text-xl font-bold">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Lønperiode status
+              </div>
+              <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
                 {period?.status || "OPEN"}
               </div>
               {period?.lockedAt && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   Låst: {formatDateTime(period.lockedAt)}
                 </div>
               )}
               {period?.exportedAt && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   Eksporteret: {formatDateTime(period.exportedAt)}
                 </div>
               )}
               {period?.unlockedAt && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   Låst op: {formatDateTime(period.unlockedAt)}
                 </div>
               )}
@@ -936,11 +962,13 @@ export default function PayrollPage() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow">
+        <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold">Rapport</h2>
-              <p className="text-sm text-gray-600">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                Rapport
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Timer i alt: {formatHours(totalHours)}
               </p>
             </div>
@@ -981,25 +1009,34 @@ export default function PayrollPage() {
           </div>
 
           {loading ? (
-            <div className="py-8 text-center text-gray-500">Indlæser...</div>
+            <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+              Indlæser...
+            </div>
           ) : report.length === 0 ? (
-            <div className="py-8 text-center text-gray-500">
+            <div className="py-8 text-center text-gray-500 dark:text-gray-400">
               Ingen tidsregistreringer i perioden.
             </div>
           ) : (
             <div className="space-y-6">
               {report.map((employee) => (
-                <div key={employee.userId} className="rounded-lg border">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-gray-50 p-3">
+                <div
+                  key={employee.userId}
+                  className="rounded-lg border border-gray-200 dark:border-gray-800"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800">
                     <div>
-                      <div className="font-bold">{employee.name}</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="font-bold text-gray-900 dark:text-gray-100">
+                        {employee.name}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         {employee.email}
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="text-sm text-gray-600">Timer</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Timer
+                      </div>
                       <div className="text-lg font-bold">
                         {formatHours(employee.totalHours)}
                       </div>
@@ -1007,19 +1044,37 @@ export default function PayrollPage() {
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1000px] text-sm">
+                    <table className="w-full min-w-[1000px] text-sm text-gray-900 dark:text-gray-100">
                       <thead>
-                        <tr className="border-b bg-gray-50 text-left">
-                          <th className="p-2">Dato</th>
-                          <th className="p-2">Ind</th>
-                          <th className="p-2">Ud</th>
+                        <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-700 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Dato
+                          </th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Ind
+                          </th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Ud
+                          </th>
                           <th className="p-2 text-right">Timer</th>
-                          <th className="p-2">Arbejdstype</th>
-                          <th className="p-2">Lønart</th>
-                          <th className="p-2">Eksportkode</th>
-                          <th className="p-2">Løntype</th>
-                          <th className="p-2">Status</th>
-                          <th className="p-2">Låst</th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Arbejdstype
+                          </th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Lønart
+                          </th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Eksportkode
+                          </th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Løntype
+                          </th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Status
+                          </th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Låst
+                          </th>
                         </tr>
                       </thead>
 
@@ -1027,24 +1082,36 @@ export default function PayrollPage() {
                         {employee.entries.map((entry, index) => (
                           <tr
                             key={entry.id || `${employee.userId}-${index}`}
-                            className="border-b"
+                            className="border-b border-gray-200 dark:border-gray-800"
                           >
-                            <td className="p-2">{entry.date}</td>
-                            <td className="p-2">
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
+                              {entry.date}
+                            </td>
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
                               {formatDateTime(entry.clockIn)}
                             </td>
-                            <td className="p-2">
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
                               {formatDateTime(entry.clockOut)}
                             </td>
                             <td className="p-2 text-right">
                               {formatHours(entry.hours)}
                             </td>
-                            <td className="p-2">{entry.workType}</td>
-                            <td className="p-2">{entry.payrollCode || "-"}</td>
-                            <td className="p-2">{entry.exportCode || "-"}</td>
-                            <td className="p-2">{entry.payrollName || "-"}</td>
-                            <td className="p-2">{entry.status || "-"}</td>
-                            <td className="p-2">
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
+                              {entry.workType}
+                            </td>
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
+                              {entry.payrollCode || "-"}
+                            </td>
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
+                              {entry.exportCode || "-"}
+                            </td>
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
+                              {entry.payrollName || "-"}
+                            </td>
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
+                              {entry.status || "-"}
+                            </td>
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
                               {entry.payrollLocked ? "Ja" : "Nej"}
                               {entry.payrollUnlockedByMaster ? " / oplåst" : ""}
                             </td>
@@ -1059,42 +1126,69 @@ export default function PayrollPage() {
           )}
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow">
+        <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
           <h2 className="mb-4 text-xl font-bold">Payroll audit history</h2>
 
           {auditHistory.length === 0 ? (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               Ingen historik for perioden.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px] text-sm">
+              <table className="w-full min-w-[800px] text-sm text-gray-900 dark:text-gray-100">
                 <thead>
-                  <tr className="border-b bg-gray-50 text-left">
-                    <th className="p-2">Status</th>
-                    <th className="p-2">Start</th>
-                    <th className="p-2">Slut</th>
-                    <th className="p-2">Låst</th>
-                    <th className="p-2">Eksporteret</th>
-                    <th className="p-2">Oplåst</th>
-                    <th className="p-2">Note</th>
+                  <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-700 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                    <th className="p-2 text-gray-700 dark:text-gray-200">
+                      Status
+                    </th>
+                    <th className="p-2 text-gray-700 dark:text-gray-200">
+                      Start
+                    </th>
+                    <th className="p-2 text-gray-700 dark:text-gray-200">
+                      Slut
+                    </th>
+                    <th className="p-2 text-gray-700 dark:text-gray-200">
+                      Låst
+                    </th>
+                    <th className="p-2 text-gray-700 dark:text-gray-200">
+                      Eksporteret
+                    </th>
+                    <th className="p-2 text-gray-700 dark:text-gray-200">
+                      Oplåst
+                    </th>
+                    <th className="p-2 text-gray-700 dark:text-gray-200">
+                      Note
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {auditHistory.map((item) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="p-2 font-medium">{item.status}</td>
-                      <td className="p-2">
+                    <tr
+                      key={item.id}
+                      className="border-b border-gray-200 dark:border-gray-800"
+                    >
+                      <td className="p-2 font-medium text-gray-900 dark:text-gray-100">
+                        {item.status}
+                      </td>
+                      <td className="p-2 text-gray-900 dark:text-gray-100">
                         {new Date(item.startDate).toLocaleDateString("da-DK")}
                       </td>
-                      <td className="p-2">
+                      <td className="p-2 text-gray-900 dark:text-gray-100">
                         {new Date(item.endDate).toLocaleDateString("da-DK")}
                       </td>
-                      <td className="p-2">{formatDateTime(item.lockedAt)}</td>
-                      <td className="p-2">{formatDateTime(item.exportedAt)}</td>
-                      <td className="p-2">{formatDateTime(item.unlockedAt)}</td>
-                      <td className="p-2">{item.unlockNote || "-"}</td>
+                      <td className="p-2 text-gray-900 dark:text-gray-100">
+                        {formatDateTime(item.lockedAt)}
+                      </td>
+                      <td className="p-2 text-gray-900 dark:text-gray-100">
+                        {formatDateTime(item.exportedAt)}
+                      </td>
+                      <td className="p-2 text-gray-900 dark:text-gray-100">
+                        {formatDateTime(item.unlockedAt)}
+                      </td>
+                      <td className="p-2 text-gray-900 dark:text-gray-100">
+                        {item.unlockNote || "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

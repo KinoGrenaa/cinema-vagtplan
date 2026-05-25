@@ -72,4 +72,31 @@ export class RealtimeGateway
   notifyAll(event: string, data: any) {
     this.server.emit(event, data);
   }
+
+  notifyStaffingRequestsUpdated(cinemaId: number) {
+    this.server.to(`cinema-${cinemaId}`).emit('staffingRequestsUpdated', {
+      cinemaId,
+    });
+  }
+
+  notifyStaffingRequestAccepted(cinemaId: number, requestId: number) {
+    this.server.to(`cinema-${cinemaId}`).emit('staffingRequestAccepted', {
+      cinemaId,
+      requestId,
+    });
+  }
+
+  notifyStaffingRequestRejected(cinemaId: number, requestId: number) {
+    this.server.to(`cinema-${cinemaId}`).emit('staffingRequestRejected', {
+      cinemaId,
+      requestId,
+    });
+  }
+
+  notifyStaffingRequestCancelled(cinemaId: number, requestId: number) {
+    this.server.to(`cinema-${cinemaId}`).emit('staffingRequestCancelled', {
+      cinemaId,
+      requestId,
+    });
+  }
 }

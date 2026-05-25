@@ -15,6 +15,7 @@ type MovieShowing = {
 };
 
 type SuggestedEmergencyReplacement = {
+  userId: number;
   name: string;
   score: number;
   fatigue: "LOW" | "MEDIUM" | "HIGH";
@@ -46,23 +47,30 @@ function getShiftHours(shift: Shift) {
 }
 
 function getCurrentActiveShifts(shifts: Shift[]) {
-  const currentHour = new Date().getHours();
+  const now = new Date();
 
   return shifts.filter((shift) => {
-    const startHour = new Date(shift.startTime).getHours();
-    const endHour = new Date(shift.endTime).getHours();
+    const start = new Date(shift.startTime);
+    const end = new Date(shift.endTime);
 
-    return currentHour >= startHour && currentHour <= endHour;
+    return now >= start && now <= end;
   });
 }
 
 function getCurrentActiveMovies(movieShowings: MovieShowing[]) {
-  const currentHour = new Date().getHours();
+  const now = new Date();
 
   return movieShowings.filter((movie) => {
-    const startHour = new Date(movie.startTime).getHours();
+    const start = new Date(movie.startTime);
+    const end = new Date(movie.endTime);
 
-    return currentHour >= startHour - 1 && currentHour <= startHour + 2;
+    const pressureStart = new Date(start);
+    pressureStart.setMinutes(pressureStart.getMinutes() - 60);
+
+    const pressureEnd = new Date(end);
+    pressureEnd.setMinutes(pressureEnd.getMinutes() + 30);
+
+    return now >= pressureStart && now <= pressureEnd;
   });
 }
 
@@ -78,6 +86,29 @@ function getDefaultCreateValues(users: User[], workTypes: WorkType[]) {
     userId,
     workTypeId,
   };
+}
+
+function getLeastLoadedUser(users: User[], shifts: Shift[]) {
+  if (users.length === 0) return null;
+
+  return users
+    .map((user) => {
+      const userShifts = shifts.filter((shift) => shift.userId === user.id);
+
+      const totalHours = userShifts.reduce((sum, shift) => {
+        return sum + getShiftHours(shift);
+      }, 0);
+
+      return {
+        user,
+        totalHours,
+      };
+    })
+    .sort((a, b) => a.totalHours - b.totalHours)[0]?.user;
+}
+
+function getWorkTypeId(workTypes: WorkType[]) {
+  return workTypes[0]?.id ?? null;
 }
 
 export function useScheduleAi({
@@ -283,6 +314,12 @@ export function useScheduleAi({
 
       staffingScore -= userShifts.length * 8;
 
+      const totalHours = userShifts.reduce((sum, shift) => {
+        return sum + getShiftHours(shift);
+      }, 0);
+
+      staffingScore -= Math.max(0, totalHours - 30) * 2;
+
       const longShifts = userShifts.filter(
         (shift) => getShiftHours(shift) >= 8,
       );
@@ -300,8 +337,9 @@ export function useScheduleAi({
       }
 
       replacements.push({
+        userId: user.id,
         name: `${user.firstName} ${user.lastName}`,
-        score: staffingScore,
+        score: Math.max(0, Math.round(staffingScore)),
         fatigue,
       });
     });
@@ -447,9 +485,10 @@ export function useScheduleAi({
       try {
         setCreatingAiShift(index);
 
-        const defaults = getDefaultCreateValues(users, workTypes);
+        const workTypeId = getWorkTypeId(workTypes);
+        const user = getLeastLoadedUser(users, shifts);
 
-        if (!defaults) {
+        if (!user || !workTypeId) {
           alert("Der mangler medarbejder eller arbejdstype.");
           return;
         }
@@ -471,7 +510,9 @@ export function useScheduleAi({
         await createShift({
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
-          ...defaults,
+          userId: user.id,
+          workTypeId,
+          note: "AI suggested staffing shift",
         });
 
         alert("AI-oprettet vagt blev oprettet.");
@@ -482,7 +523,7 @@ export function useScheduleAi({
         setCreatingAiShift(null);
       }
     },
-    [createShift, selectedDate, users, workTypes],
+    [createShift, selectedDate, shifts, users, workTypes],
   );
 
   const generateAiDaySchedule = useCallback(async () => {
@@ -547,6 +588,7 @@ export function useScheduleAi({
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
           ...defaults,
+          note: "AI generated day schedule",
         });
       }
 
@@ -564,9 +606,12 @@ export function useScheduleAi({
     try {
       setAutoCreatingEmergencyShift(true);
 
-      const defaults = getDefaultCreateValues(users, workTypes);
+      const workTypeId = getWorkTypeId(workTypes);
+      const recommendedUserId = suggestedEmergencyReplacements[0]?.userId;
+      const fallbackUserId = users[0]?.id;
+      const userId = recommendedUserId ?? fallbackUserId;
 
-      if (!defaults) {
+      if (!userId || !workTypeId) {
         alert("Der mangler medarbejder eller arbejdstype.");
         return;
       }
@@ -582,11 +627,12 @@ export function useScheduleAi({
       await createShift({
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
-        ...defaults,
+        userId,
+        workTypeId,
         note: "AI Emergency Staffing Shift",
       });
 
-      alert("🚨 AI emergency shift blev automatisk oprettet.");
+      alert("🚨 AI emergency shift blev oprettet.");
     } catch (error) {
       console.error(error);
 
@@ -594,25 +640,55 @@ export function useScheduleAi({
     } finally {
       setAutoCreatingEmergencyShift(false);
     }
-  }, [createShift, selectedDate, users, workTypes]);
+  }, [
+    createShift,
+    selectedDate,
+    suggestedEmergencyReplacements,
+    users,
+    workTypes,
+  ]);
 
   const sendEmergencyStaffingRequest = useCallback(
     async (employeeName: string) => {
       try {
         setSendingEmergencyRequest(employeeName);
 
-        await new Promise((resolve) => setTimeout(resolve, 1200));
+        const employee = users.find(
+          (user) => `${user.firstName} ${user.lastName}` === employeeName,
+        );
 
-        alert(`🚨 Emergency staffing request sendt til ${employeeName}.`);
+        if (!employee) {
+          throw new Error("Medarbejder blev ikke fundet.");
+        }
+
+        const response = await apiFetch("/staffing-requests", {
+          method: "POST",
+          body: JSON.stringify({
+            targetUserId: employee.id,
+            type: "EMERGENCY",
+            priority: 10,
+            aiGenerated: true,
+            message:
+              "🚨 Der er akut behov for ekstra bemanding i biografen. Kan du tage en ekstra vagt hurtigst muligt?",
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Kunne ikke oprette staffing request.");
+        }
+
+        return true;
       } catch (error) {
         console.error(error);
 
         alert("Kunne ikke sende staffing request.");
+
+        return false;
       } finally {
         setSendingEmergencyRequest(null);
       }
     },
-    [],
+    [apiFetch, users],
   );
 
   const sendRealStaffingMessage = useCallback(
@@ -620,66 +696,40 @@ export function useScheduleAi({
       try {
         setSendingRealStaffingMessage(employeeName);
 
-        const response = await apiFetch("/messages", {
+        const employee = users.find(
+          (user) => `${user.firstName} ${user.lastName}` === employeeName,
+        );
+
+        if (!employee) {
+          throw new Error("Medarbejder blev ikke fundet.");
+        }
+
+        const response = await apiFetch("/staffing-requests", {
           method: "POST",
           body: JSON.stringify({
-            recipientName: employeeName,
-            subject: "🚨 Emergency Staffing Request",
-            content:
-              "Der er akut behov for bemanding i biografen. Kontakt venligst administrationen hurtigst muligt.",
-            systemType: "STAFFING_ALERT",
+            targetUserId: employee.id,
+            type: "EXTRA_SHIFT",
+            priority: 5,
+            aiGenerated: true,
+            message:
+              "Ekstra bemanding nødvendig i biografen. Kontakt administrationen hurtigst muligt.",
           }),
         });
 
         if (!response.ok) {
-          alert("Kunne ikke sende staffing besked.");
-
-          return;
+          throw new Error("Kunne ikke oprette staffing request.");
         }
 
         alert(`📨 Staffing request sendt til ${employeeName}.`);
       } catch (error) {
         console.error(error);
 
-        alert("Staffing message fejlede.");
+        alert("Staffing request fejlede.");
       } finally {
         setSendingRealStaffingMessage(null);
       }
     },
-    [apiFetch],
-  );
-
-  const autoHandleStaffingResponse = useCallback(
-    async (employeeName: string) => {
-      try {
-        setStaffingLoopStatus("WAITING");
-
-        await new Promise((resolve) => setTimeout(resolve, 2500));
-
-        const accepted = Math.random() > 0.5;
-
-        if (accepted) {
-          setStaffingLoopStatus("ACCEPTED");
-
-          alert(`✅ ${employeeName} accepterede staffing request.`);
-
-          return true;
-        }
-
-        setStaffingLoopStatus("DECLINED");
-
-        alert(`❌ ${employeeName} afviste staffing request.`);
-
-        return false;
-      } catch (error) {
-        console.error(error);
-
-        setStaffingLoopStatus("DECLINED");
-
-        return false;
-      }
-    },
-    [],
+    [apiFetch, users],
   );
 
   const autoAssignEmergencyShift = useCallback(
@@ -695,7 +745,7 @@ export function useScheduleAi({
           throw new Error("Medarbejder ikke fundet.");
         }
 
-        const workTypeId = workTypes[0]?.id;
+        const workTypeId = getWorkTypeId(workTypes);
 
         if (!workTypeId) {
           throw new Error("Arbejdstype mangler.");
@@ -735,40 +785,51 @@ export function useScheduleAi({
 
   const startAutoEscalation = useCallback(async () => {
     try {
+      setStaffingLoopStatus("WAITING");
+
       const queue = suggestedEmergencyReplacements.map(
         (replacement) => replacement.name,
       );
 
+      if (queue.length === 0) {
+        alert("Ingen medarbejdere fundet til emergency staffing.");
+        setStaffingLoopStatus("IDLE");
+        return;
+      }
+
       setAutoEscalationQueue(queue);
 
+      let createdRequests = 0;
+
       for (const employeeName of queue) {
-        await sendEmergencyStaffingRequest(employeeName);
+        const success = await sendEmergencyStaffingRequest(employeeName);
 
-        const accepted = await autoHandleStaffingResponse(employeeName);
-
-        if (accepted) {
-          await autoAssignEmergencyShift(employeeName);
-
-          setAutoEscalationQueue([]);
-
-          return;
+        if (success) {
+          createdRequests += 1;
         }
       }
 
-      alert("🚨 Ingen medarbejdere accepterede emergency staffing request.");
+      if (createdRequests === 0) {
+        setStaffingLoopStatus("DECLINED");
+
+        alert("🚨 Ingen staffing requests kunne oprettes.");
+
+        return;
+      }
+
+      alert(
+        `🚨 ${createdRequests} staffing requests blev oprettet. Afventer accept/afvis fra medarbejdere.`,
+      );
     } catch (error) {
       console.error(error);
+
+      setStaffingLoopStatus("DECLINED");
 
       alert("Auto escalation engine fejlede.");
     } finally {
       setSendingEmergencyRequest(null);
     }
-  }, [
-    autoAssignEmergencyShift,
-    autoHandleStaffingResponse,
-    sendEmergencyStaffingRequest,
-    suggestedEmergencyReplacements,
-  ]);
+  }, [sendEmergencyStaffingRequest, suggestedEmergencyReplacements]);
 
   return {
     staffingWarnings,

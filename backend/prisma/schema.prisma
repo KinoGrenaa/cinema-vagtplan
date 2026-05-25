@@ -80,6 +80,7 @@ model Cinema {
   payrollPeriods    PayrollPeriod[]
   payrollTypes      PayrollType[]
   aiLearningEvents  AiLearningEvent[]
+  staffingRequests  StaffingRequest[]
 }
 
 model User {
@@ -114,19 +115,21 @@ model User {
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
 
-  shifts            Shift[]
-  leaveRequests     LeaveRequest[]
-  offeredTrades     ShiftTrade[]       @relation("OfferedTrades")
-  acceptedTrades    ShiftTrade[]       @relation("AcceptedTrades")
-  rejectedTrades    ShiftTrade[]       @relation("RejectedTrades")
-  targetedTrades    ShiftTrade[]       @relation("TargetedTrades")
-  sentMessages      Message[]          @relation("SentMessages")
-  receivedMessages  Message[]          @relation("ReceivedMessages")
-  timeEntries       TimeEntry[]
-  pushSubscriptions PushSubscription[]
-  documents         EmployeeDocument[]
-  notifications     Notification[]
-  auditLogs         AuditLog[]
+  shifts                    Shift[]
+  leaveRequests             LeaveRequest[]
+  offeredTrades             ShiftTrade[]       @relation("OfferedTrades")
+  acceptedTrades            ShiftTrade[]       @relation("AcceptedTrades")
+  rejectedTrades            ShiftTrade[]       @relation("RejectedTrades")
+  targetedTrades            ShiftTrade[]       @relation("TargetedTrades")
+  sentMessages              Message[]          @relation("SentMessages")
+  receivedMessages          Message[]          @relation("ReceivedMessages")
+  timeEntries               TimeEntry[]
+  pushSubscriptions         PushSubscription[]
+  documents                 EmployeeDocument[]
+  notifications             Notification[]
+  auditLogs                 AuditLog[]
+  requestedStaffingRequests StaffingRequest[]  @relation("RequestedStaffingRequests")
+  targetedStaffingRequests  StaffingRequest[]  @relation("TargetedStaffingRequests")
 }
 
 model WorkType {
@@ -160,8 +163,9 @@ model Shift {
   workTypeId Int
   workType   WorkType @relation(fields: [workTypeId], references: [id])
 
-  trades      ShiftTrade[]
-  timeEntries TimeEntry[]
+  trades           ShiftTrade[]
+  timeEntries      TimeEntry[]
+  staffingRequests StaffingRequest[]
 }
 
 model MovieShowing {
@@ -412,6 +416,62 @@ model AiLearningEvent {
   createdAt DateTime @default(now())
 
   @@index([cinemaId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum StaffingRequestType {
+  EXTRA_SHIFT
+  EMERGENCY
+  REPLACEMENT
+  OVERTIME
+}
+
+enum StaffingRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+model StaffingRequest {
+  id Int @id @default(autoincrement())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  shiftId Int?
+  shift   Shift? @relation(fields: [shiftId], references: [id])
+
+  requestedByUserId Int
+  requestedByUser   User @relation("RequestedStaffingRequests", fields: [requestedByUserId], references: [id])
+
+  targetUserId Int?
+  targetUser   User? @relation("TargetedStaffingRequests", fields: [targetUserId], references: [id])
+
+  type   StaffingRequestType
+  status StaffingRequestStatus @default(PENDING)
+
+  priority Int @default(1)
+
+  message String?
+
+  aiGenerated Boolean @default(false)
+
+  expiresAt DateTime?
+
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cinemaId])
+  @@index([shiftId])
+  @@index([requestedByUserId])
+  @@index([targetUserId])
+  @@index([status])
   @@index([type])
   @@index([createdAt])
 }
