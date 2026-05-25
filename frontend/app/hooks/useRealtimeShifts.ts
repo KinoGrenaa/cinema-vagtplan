@@ -183,3 +183,35 @@ socket.on("staffingRequestCancelled", () => {
     console.log("🚫 Staffing request cancelled");
   }
 });
+
+socket.on("staffingRequestsUpdated", () => {
+  onStaffingRequestsUpdated?.();
+
+  if (enableToasts) {
+    console.log("🎯 Ny staffing request");
+  }
+});
+
+socket.on("staffingRequestAccepted", () => {
+  onStaffingRequestsUpdated?.();
+
+  if (enableToasts) {
+    console.log("✅ Staffing request accepteret");
+  }
+});
+
+socket.on("staffingRequestRejected", () => {
+  onStaffingRequestsUpdated?.();
+
+  if (enableToasts) {
+    console.log("❌ Staffing request afvist");
+  }
+});
+
+socket.on("staffingRequestCancelled", () => {
+  onStaffingRequestsUpdated?.();
+
+  if (enableToasts) {
+    console.log("🚫 Staffing request annulleret");
+  }
+});

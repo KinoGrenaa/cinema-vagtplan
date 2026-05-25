@@ -18,8 +18,13 @@ type NavItem = {
 export default function AppMenu() {
   const pathname = usePathname();
 
-  const { poolCount, directCount, unreadMessages, notificationCount } =
-    useRealtimeBadges();
+  const {
+    poolCount,
+    directCount,
+    unreadMessages,
+    notificationCount,
+    staffingRequestCount,
+  } = useRealtimeBadges();
 
   const { user, logout, isAdmin, isMaster } = useAuth();
 
@@ -72,6 +77,12 @@ export default function AppMenu() {
         {
           href: "/leave-requests",
           label: "Mit fravær",
+        },
+
+        {
+          href: "/staffing-requests",
+          label: "Staffing",
+          badge: staffingRequestCount,
         },
       ],
     },

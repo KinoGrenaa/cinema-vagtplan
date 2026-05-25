@@ -13,6 +13,7 @@ export function useRealtimeBadges() {
   const [directCount, setDirectCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [staffingRequestCount, setStaffingRequestCount] = useState(0);
 
   const getCount = (data: unknown) => {
     if (typeof data === "number") return data;
@@ -24,35 +25,50 @@ export function useRealtimeBadges() {
     return 0;
   };
 
+  const getPendingStaffingCount = (data: unknown) => {
+    if (!Array.isArray(data)) return 0;
+
+    return data.filter((request) => request?.status === "PENDING").length;
+  };
+
   const refreshBadges = useCallback(async () => {
     if (!token) return;
 
     try {
-      const [poolRes, directRes, messagesRes, notificationsRes] =
+      const [poolRes, directRes, messagesRes, notificationsRes, staffingRes] =
         await Promise.all([
           apiFetch("/shift-trades/pool-count"),
           apiFetch("/shift-trades/direct-count"),
           apiFetch("/messages/unread-count"),
           apiFetch("/notifications/unread-count"),
+          apiFetch("/staffing-requests/mine"),
         ]);
 
-      const [poolData, directData, messagesData, notificationsData] =
-        await Promise.all([
-          poolRes.ok ? poolRes.json() : { count: 0 },
-          directRes.ok ? directRes.json() : { count: 0 },
-          messagesRes.ok ? messagesRes.json() : { count: 0 },
-          notificationsRes.ok ? notificationsRes.json() : { count: 0 },
-        ]);
+      const [
+        poolData,
+        directData,
+        messagesData,
+        notificationsData,
+        staffingData,
+      ] = await Promise.all([
+        poolRes.ok ? poolRes.json() : { count: 0 },
+        directRes.ok ? directRes.json() : { count: 0 },
+        messagesRes.ok ? messagesRes.json() : { count: 0 },
+        notificationsRes.ok ? notificationsRes.json() : { count: 0 },
+        staffingRes.ok ? staffingRes.json() : [],
+      ]);
 
       setPoolCount(getCount(poolData));
       setDirectCount(getCount(directData));
       setUnreadMessages(getCount(messagesData));
       setNotificationCount(getCount(notificationsData));
+      setStaffingRequestCount(getPendingStaffingCount(staffingData));
     } catch {
       setPoolCount(0);
       setDirectCount(0);
       setUnreadMessages(0);
       setNotificationCount(0);
+      setStaffingRequestCount(0);
     }
   }, [apiFetch, token]);
 
@@ -65,6 +81,7 @@ export function useRealtimeBadges() {
     onShiftTradeUpdated: refreshBadges,
     onNotification: refreshBadges,
     onMessage: refreshBadges,
+    onStaffingRequestUpdated: refreshBadges,
   });
 
   return {
@@ -72,6 +89,7 @@ export function useRealtimeBadges() {
     directCount,
     unreadMessages,
     notificationCount,
+    staffingRequestCount,
     refreshBadges,
   };
 }
