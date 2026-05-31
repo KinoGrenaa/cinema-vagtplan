@@ -4,12 +4,21 @@ import * as webPush from 'web-push';
 
 @Injectable()
 export class PushService {
+  private pushEnabled = false;
+
   constructor(private prisma: PrismaService) {
-    webPush.setVapidDetails(
-      process.env.VAPID_EMAIL || 'mailto:post@kinogrenaa.dk',
-      process.env.VAPID_PUBLIC_KEY || '',
-      process.env.VAPID_PRIVATE_KEY || '',
-    );
+    const vapidEmail = process.env.VAPID_EMAIL || 'mailto:post@kinogrenaa.dk';
+    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+    if (vapidPublicKey && vapidPrivateKey) {
+      webPush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+      this.pushEnabled = true;
+    } else {
+      console.warn(
+        'Push notifications disabled: VAPID_PUBLIC_KEY or VAPID_PRIVATE_KEY is missing',
+      );
+    }
   }
 
   async saveSubscription(data: {
@@ -47,6 +56,14 @@ export class PushService {
       url?: string;
     },
   ) {
+    if (!this.pushEnabled) {
+      return {
+        sent: 0,
+        skipped: true,
+        reason: 'Push notifications are disabled because VAPID keys are missing',
+      };
+    }
+
     const subscriptions = await this.prisma.pushSubscription.findMany({
       where: {
         userId,

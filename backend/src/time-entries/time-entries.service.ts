@@ -6,23 +6,15 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
-import { StaffingMonitorService } from '../staffing-ai/staffing-monitor.service';
 
 @Injectable()
 export class TimeEntriesService {
-  private async triggerStaffingMonitor() {
-    try {
-      await this.staffingMonitorService.checkForStaffingProblems();
-    } catch (error) {
-      console.error('Staffing monitor trigger failed', error);
-    }
-  }
+  
   constructor(
-    private prisma: PrismaService,
-    private realtimeGateway: RealtimeGateway,
-    private auditLogsService: AuditLogsService,
-    private staffingMonitorService: StaffingMonitorService,
-  ) {}
+  private prisma: PrismaService,
+  private realtimeGateway: RealtimeGateway,
+  private auditLogsService: AuditLogsService,
+) {}
 
   private getCinemaFilter(user?: any) {
     if (!user || user.role === 'MASTER') {
@@ -202,8 +194,6 @@ export class TimeEntriesService {
       entry,
     );
 
-    await this.triggerStaffingMonitor();
-
     return entry;
   }
 
@@ -260,8 +250,6 @@ export class TimeEntriesService {
       entry,
     );
 
-    await this.triggerStaffingMonitor();
-
     return entry;
   }
 
@@ -297,8 +285,6 @@ export class TimeEntriesService {
       'timeEntriesUpdated',
       entry,
     );
-
-    await this.triggerStaffingMonitor();
 
     return entry;
   }
@@ -336,8 +322,6 @@ export class TimeEntriesService {
       entry,
     );
 
-    await this.triggerStaffingMonitor();
-
     return entry;
   }
 
@@ -373,8 +357,6 @@ export class TimeEntriesService {
       'timeEntriesUpdated',
       entry,
     );
-
-    await this.triggerStaffingMonitor();
 
     return entry;
   }
@@ -412,8 +394,6 @@ export class TimeEntriesService {
       'timeEntriesUpdated',
       entry,
     );
-
-    await this.triggerStaffingMonitor();
 
     return entry;
   }
@@ -467,8 +447,6 @@ export class TimeEntriesService {
       'timeEntriesUpdated',
       entry,
     );
-
-    await this.triggerStaffingMonitor();
 
     return entry;
   }

@@ -1,23 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { StaffingMonitorService } from '../staffing-ai/staffing-monitor.service';
 import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
 
 @Injectable()
 export class LeaveRequestsService {
   constructor(
     private prisma: PrismaService,
-    private staffingMonitorService: StaffingMonitorService,
     private absenceImpactEngineService: AbsenceImpactEngineService,
   ) {}
-
-  private async triggerStaffingMonitor() {
-    try {
-      await this.staffingMonitorService.checkForStaffingProblems();
-    } catch (error) {
-      console.error('Staffing monitor trigger failed', error);
-    }
-  }
 
   private async analyzeAbsenceImpact(leaveRequest: {
     id: number;
@@ -70,8 +60,6 @@ export class LeaveRequestsService {
 
     const absenceImpact = await this.analyzeAbsenceImpact(leaveRequest);
 
-    await this.triggerStaffingMonitor();
-
     return {
       leaveRequest,
       absenceImpact,
@@ -89,8 +77,6 @@ export class LeaveRequestsService {
     if (status === 'APPROVED') {
       absenceImpact = await this.analyzeAbsenceImpact(leaveRequest);
     }
-
-    await this.triggerStaffingMonitor();
 
     return {
       leaveRequest,

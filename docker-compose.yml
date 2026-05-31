@@ -21,7 +21,8 @@ services:
       - "3001:3001"
       - "5555:5555"
     environment:
-      DATABASE_URL: postgresql://cinema:cinema123@database:5432/cinema_vagtplan
+      DATABASE_URL: postgresql://neondb_owner:npg_S47BkoqATKmp@ep-rapid-salad-altua8sr.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require
+      JWT_SECRET: super-secret-key-change-later
     depends_on:
       - database
     volumes:
@@ -35,6 +36,8 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
     depends_on:
       - backend
     volumes:

@@ -22,9 +22,11 @@ import { PayrollTypesModule } from './payroll-types/payroll-types.module';
 import { AiLearningModule } from './ai-learning/ai-learning.module';
 import { StaffingRequestsModule } from './staffing-requests/staffing-requests.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { StaffingMonitorModule } from './staffing-ai/staffing-monitor.module';
 
 @Module({
   imports: [
+    StaffingMonitorModule,
     PrismaModule,
     UsersModule,
     AuthModule,
