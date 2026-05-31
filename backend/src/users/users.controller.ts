@@ -173,7 +173,7 @@ export class UsersController {
     }
 
     return {
-      imageUrl: `${process.env.NEXT_PUBLIC_API_URL}/uploads/profile-images/${file.filename}`,
+      imageUrl: `/uploads/profile-images/${file.filename}`,
     };
   }
 
