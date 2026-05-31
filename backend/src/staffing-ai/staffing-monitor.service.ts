@@ -16,11 +16,19 @@ export class StaffingMonitorService {
 
   @Cron('*/5 * * * *')
   async checkForStaffingProblems() {
-    const now = new Date();
+    const aiMonitorEnabled = process.env.ENABLE_AI_MONITOR === 'true';
 
+    if (!aiMonitorEnabled) {
+      return;
+    }
+
+    const now = new Date();
     const next12Hours = new Date(now.getTime() + 12 * 60 * 60 * 1000);
 
     const cinemas = await this.prisma.cinema.findMany({
+      where: {
+        aiEnabled: true,
+      },
       include: {
         shifts: {
           where: {
@@ -29,13 +37,11 @@ export class StaffingMonitorService {
               lte: next12Hours,
             },
           },
-
           include: {
             user: true,
             workType: true,
           },
         },
-
         movieShowings: {
           where: {
             startTime: {
@@ -66,6 +72,7 @@ export class StaffingMonitorService {
           role: {
             in: ['MASTER', 'ADMIN'],
           },
+          isActive: true,
         },
         orderBy: {
           id: 'asc',
@@ -157,7 +164,6 @@ export class StaffingMonitorService {
           staffingIssues.push({
             startTime,
             endTime,
-
             reason:
               `AI detected understaffing. ` +
               `${data.shifts}/${requiredStaff} staff assigned.`,
