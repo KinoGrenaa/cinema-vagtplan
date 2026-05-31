@@ -11,10 +11,16 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailIncludingInactive(email);
 
     if (!user) {
       throw new UnauthorizedException('Forkert email eller password');
+    }
+
+    if (user.isActive === false) {
+      throw new UnauthorizedException(
+        'Brugeren er deaktiveret. Kontakt en administrator.',
+      );
     }
 
     const passwordValid = await bcrypt.compare(password, user.password);

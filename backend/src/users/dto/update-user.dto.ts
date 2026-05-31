@@ -57,6 +57,10 @@ export class UpdateUserDto {
   notes?: string;
 
   @IsOptional()
+  @IsEnum(['HOURLY', 'SALARIED'])
+  employmentType?: 'HOURLY' | 'SALARIED';
+
+  @IsOptional()
   @IsBoolean()
   canManageSchedule?: boolean;
 

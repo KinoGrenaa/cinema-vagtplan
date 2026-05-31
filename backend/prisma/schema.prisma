@@ -81,6 +81,7 @@ model Cinema {
   payrollTypes      PayrollType[]
   aiLearningEvents  AiLearningEvent[]
   staffingRequests  StaffingRequest[]
+  aiEnabled         Boolean            @default(false)
 }
 
 model User {
@@ -100,6 +101,8 @@ model User {
   theme          String    @default("light")
   role           Role      @default(EMPLOYEE)
   createdAt      DateTime  @default(now())
+  isActive       Boolean   @default(true)
+  deactivatedAt  DateTime?
 
   employeeNumber    String?
   payrollEmployeeId String?

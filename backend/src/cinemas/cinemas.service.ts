@@ -1,6 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+type UpdateCinemaSettingsData = {
+  allowShiftTradePool?: boolean;
+  allowShiftTradeDirect?: boolean;
+
+  aiEnabled?: boolean;
+
+  payrollRulesEnabled?: boolean;
+  payrollOvertimeEnabled?: boolean;
+  plannedOvertimeEnabled?: boolean;
+  dailyOvertimeEnabled?: boolean;
+  weeklyOvertimeEnabled?: boolean;
+  dailyOvertimeThreshold?: number;
+  weeklyOvertimeThreshold?: number;
+};
+
 @Injectable()
 export class CinemasService {
   constructor(private prisma: PrismaService) {}
@@ -17,14 +32,7 @@ export class CinemasService {
     return cinema;
   }
 
-  async updateSettings(
-    id: number,
-    data: {
-      allowShiftTradePool?: boolean;
-      allowShiftTradeDirect?: boolean;
-      payrollRulesEnabled?: boolean;
-    },
-  ) {
+  async updateSettings(id: number, data: UpdateCinemaSettingsData) {
     const cinema = await this.prisma.cinema.findUnique({
       where: { id },
     });
@@ -38,7 +46,16 @@ export class CinemasService {
       data: {
         allowShiftTradePool: data.allowShiftTradePool,
         allowShiftTradeDirect: data.allowShiftTradeDirect,
+
+        aiEnabled: data.aiEnabled,
+
         payrollRulesEnabled: data.payrollRulesEnabled,
+        payrollOvertimeEnabled: data.payrollOvertimeEnabled,
+        plannedOvertimeEnabled: data.plannedOvertimeEnabled,
+        dailyOvertimeEnabled: data.dailyOvertimeEnabled,
+        weeklyOvertimeEnabled: data.weeklyOvertimeEnabled,
+        dailyOvertimeThreshold: data.dailyOvertimeThreshold,
+        weeklyOvertimeThreshold: data.weeklyOvertimeThreshold,
       },
     });
   }

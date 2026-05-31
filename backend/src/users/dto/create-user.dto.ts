@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsInt,
@@ -31,4 +32,32 @@ export class CreateUserDto {
 
   @IsInt()
   cinemaId: number;
+
+  @IsOptional()
+  @IsEnum(['HOURLY', 'SALARIED'])
+  employmentType?: 'HOURLY' | 'SALARIED';
+
+  @IsOptional()
+  @IsBoolean()
+  canManageSchedule?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageUsers?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManagePayroll?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageLeaveRequests?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canManageCinemaSettings?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  canSendBroadcastMessages?: boolean;
 }

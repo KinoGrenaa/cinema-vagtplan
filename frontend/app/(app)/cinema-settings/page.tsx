@@ -12,6 +12,8 @@ type Cinema = {
   allowShiftTradePool: boolean;
   allowShiftTradeDirect: boolean;
 
+  aiEnabled: boolean;
+
   payrollRulesEnabled: boolean;
 
   payrollOvertimeEnabled: boolean;
@@ -31,10 +33,8 @@ type CurrentUser = {
 
 export default function CinemaSettingsPage() {
   const [cinema, setCinema] = useState<Cinema | null>(null);
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [message, setMessage] = useState("");
 
   function getHeaders() {
@@ -69,6 +69,7 @@ export default function CinemaSettingsPage() {
       const data = await response.json();
 
       setCinema({
+        aiEnabled: false,
         payrollRulesEnabled: false,
         payrollOvertimeEnabled: false,
         plannedOvertimeEnabled: true,
@@ -98,24 +99,17 @@ export default function CinemaSettingsPage() {
       const response = await fetch(`${API_URL}/cinemas/${updatedCinema.id}`, {
         method: "PATCH",
         headers: getHeaders(),
-
         body: JSON.stringify({
           allowShiftTradePool: updatedCinema.allowShiftTradePool,
-
           allowShiftTradeDirect: updatedCinema.allowShiftTradeDirect,
+          aiEnabled: updatedCinema.aiEnabled,
 
           payrollRulesEnabled: updatedCinema.payrollRulesEnabled,
-
           payrollOvertimeEnabled: updatedCinema.payrollOvertimeEnabled,
-
           plannedOvertimeEnabled: updatedCinema.plannedOvertimeEnabled,
-
           dailyOvertimeEnabled: updatedCinema.dailyOvertimeEnabled,
-
           weeklyOvertimeEnabled: updatedCinema.weeklyOvertimeEnabled,
-
           dailyOvertimeThreshold: updatedCinema.dailyOvertimeThreshold,
-
           weeklyOvertimeThreshold: updatedCinema.weeklyOvertimeThreshold,
         }),
       });
@@ -127,6 +121,7 @@ export default function CinemaSettingsPage() {
       const savedCinema = await response.json();
 
       setCinema({
+        aiEnabled: false,
         payrollRulesEnabled: false,
         payrollOvertimeEnabled: false,
         plannedOvertimeEnabled: true,
@@ -243,6 +238,38 @@ export default function CinemaSettingsPage() {
                   {cinema.allowShiftTradeDirect ? "Aktiveret" : "Deaktiveret"}
                 </button>
               </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="mb-6 text-2xl font-bold">AI-funktioner</h2>
+
+            <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+              <div>
+                <div className="font-semibold">Aktivér AI</div>
+
+                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Aktiverer AI-dashboard, AI-analyser og fremtidige
+                  AI-funktioner for denne biograf.
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  updateCinemaSettings({
+                    ...cinema,
+                    aiEnabled: !cinema.aiEnabled,
+                  })
+                }
+                disabled={saving}
+                className={`rounded-xl px-4 py-2 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  cinema.aiEnabled
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-gray-600 hover:bg-gray-700"
+                }`}
+              >
+                {cinema.aiEnabled ? "Aktiveret" : "Deaktiveret"}
+              </button>
             </div>
           </section>
 

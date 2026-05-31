@@ -25,35 +25,80 @@ import { RolesGuard } from '../auth/roles.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
+export type AuthUser = {
+  sub?: number;
+  id?: number;
+  email: string;
+  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+  cinemaId: number;
+};
+
 @Controller('users')
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
+  private validateUserRoleAccess(currentUser: AuthUser, targetRole?: string) {
+    if (currentUser.role !== 'MASTER' && targetRole === 'MASTER') {
+      throw new ForbiddenException(
+        'Kun master kan oprette eller tildele master-rolle',
+      );
+    }
+  }
+
   @UseGuards(JwtGuard)
   @Get()
-  getAllUsers() {
-    return this.usersService.findAll();
+  getAllUsers(@Req() req: any) {
+    const currentUser = req.user as AuthUser;
+
+    return this.usersService.findAll(currentUser);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Post()
-  createUser(@Body() body: CreateUserDto) {
-    return this.usersService.createUser(body);
+  createUser(@Body() body: CreateUserDto, @Req() req: any) {
+    const currentUser = req.user as AuthUser;
+
+    this.validateUserRoleAccess(currentUser, body.role);
+
+    if (currentUser.role !== 'MASTER') {
+      body.cinemaId = currentUser.cinemaId;
+    }
+
+    return this.usersService.createUser(body, currentUser);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id')
-  updateUser(@Param('id') id: string, @Body() body: UpdateUserDto) {
-    return this.usersService.updateUser(Number(id), body);
+  updateUser(
+    @Param('id') id: string,
+    @Body() body: UpdateUserDto,
+    @Req() req: any,
+  ) {
+    const currentUser = req.user as AuthUser;
+
+    this.validateUserRoleAccess(currentUser, body.role);
+
+    return this.usersService.updateUser(Number(id), body, currentUser);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Delete(':id')
-  deleteUser(@Param('id') id: string) {
-    return this.usersService.deleteUser(Number(id));
+  deleteUser(@Param('id') id: string, @Req() req: any) {
+    const currentUser = req.user as AuthUser;
+
+    return this.usersService.deleteUser(Number(id), currentUser);
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
+  @Patch(':id/reactivate')
+  reactivateUser(@Param('id') id: string, @Req() req: any) {
+    const currentUser = req.user as AuthUser;
+
+    return this.usersService.reactivateUser(Number(id), currentUser);
   }
 
   @UseGuards(JwtGuard)
@@ -73,7 +118,9 @@ export class UsersController {
       skills?: string;
     },
   ) {
-    if (Number(req.user?.id) !== Number(id)) {
+    const currentUserId = req.user?.sub ?? req.user?.id;
+
+    if (Number(currentUserId) !== Number(id)) {
       throw new ForbiddenException('Du kan kun redigere din egen profil');
     }
 
@@ -113,7 +160,9 @@ export class UsersController {
     @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (Number(req.user?.id) !== Number(id)) {
+    const currentUserId = req.user?.sub ?? req.user?.id;
+
+    if (Number(currentUserId) !== Number(id)) {
       throw new ForbiddenException(
         'Du kan kun uploade billede til din egen profil',
       );

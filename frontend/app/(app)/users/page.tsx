@@ -13,9 +13,11 @@ type User = {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
+  phone?: string | null;
   role: UserRole;
   employmentType?: EmploymentType;
+  isActive?: boolean;
+  deactivatedAt?: string | null;
   canManageSchedule?: boolean;
   canManageUsers?: boolean;
   canManagePayroll?: boolean;
@@ -32,12 +34,28 @@ type UserFormData = {
   phone?: string;
   role: UserRole;
   employmentType: EmploymentType;
-  canManageSchedule?: boolean;
-  canManageUsers?: boolean;
-  canManagePayroll?: boolean;
-  canManageLeaveRequests?: boolean;
-  canManageCinemaSettings?: boolean;
-  canSendBroadcastMessages?: boolean;
+  canManageSchedule: boolean;
+  canManageUsers: boolean;
+  canManagePayroll: boolean;
+  canManageLeaveRequests: boolean;
+  canManageCinemaSettings: boolean;
+  canSendBroadcastMessages: boolean;
+};
+
+const emptyUser: UserFormData = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  password: "",
+  phone: "",
+  role: "EMPLOYEE",
+  employmentType: "HOURLY",
+  canManageSchedule: false,
+  canManageUsers: false,
+  canManagePayroll: false,
+  canManageLeaveRequests: false,
+  canManageCinemaSettings: false,
+  canSendBroadcastMessages: false,
 };
 
 function getEmploymentTypeLabel(employmentType?: EmploymentType) {
@@ -45,29 +63,56 @@ function getEmploymentTypeLabel(employmentType?: EmploymentType) {
   return "Timelønnet";
 }
 
+function getRoleLabel(role: UserRole) {
+  if (role === "MASTER") return "Master";
+  if (role === "ADMIN") return "Admin";
+  return "Medarbejder";
+}
+
+function translateApiError(message: string) {
+  if (
+    message.includes("password must be longer than or equal to 6 characters")
+  ) {
+    return "Password skal være mindst 6 tegn.";
+  }
+
+  if (message.includes("email must be an email")) {
+    return "Indtast en gyldig emailadresse.";
+  }
+
+  if (message.includes("firstName")) return "Fornavn mangler.";
+  if (message.includes("lastName")) return "Efternavn mangler.";
+  if (message.includes("email")) return "Email mangler eller er ugyldig.";
+
+  return message;
+}
+
+async function getErrorMessage(response: Response) {
+  try {
+    const data = await response.json();
+
+    if (Array.isArray(data.message)) {
+      return data.message.map(translateApiError).join("\n");
+    }
+
+    if (typeof data.message === "string") {
+      return translateApiError(data.message);
+    }
+
+    return "Der opstod en ukendt fejl.";
+  } catch {
+    return "Der opstod en ukendt fejl.";
+  }
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-
-  const emptyUser: UserFormData = {
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    phone: "",
-    role: "EMPLOYEE",
-    employmentType: "HOURLY",
-    canManageSchedule: false,
-    canManageUsers: false,
-    canManagePayroll: false,
-    canManageLeaveRequests: false,
-    canManageCinemaSettings: false,
-    canSendBroadcastMessages: false,
-  };
-
   const [newUser, setNewUser] = useState<UserFormData>(emptyUser);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -80,13 +125,18 @@ export default function UsersPage() {
 
   async function fetchUsers() {
     try {
+      setLoading(true);
+      setErrorMessage("");
+
       const response = await fetch(`${API_URL}/users`, {
         headers: {
           Authorization: `Bearer ${getToken()}`,
         },
       });
 
-      if (!response.ok) throw new Error("Kunne ikke hente brugere");
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response));
+      }
 
       const data = await response.json();
 
@@ -94,23 +144,52 @@ export default function UsersPage() {
         ? data.map((user) => ({
             ...user,
             employmentType: user.employmentType || "HOURLY",
+            isActive: user.isActive !== false,
           }))
         : [];
 
       setUsers(normalizedUsers);
     } catch (error) {
       console.error(error);
+      setErrorMessage(
+        error instanceof Error ? error.message : "Kunne ikke hente brugere.",
+      );
       setUsers([]);
     } finally {
       setLoading(false);
     }
   }
 
+  function validateCreateUser() {
+    if (!newUser.firstName.trim()) return "Fornavn mangler.";
+    if (!newUser.lastName.trim()) return "Efternavn mangler.";
+    if (!newUser.email.trim()) return "Email mangler.";
+    if (!newUser.email.includes("@")) return "Indtast en gyldig emailadresse.";
+
+    if (!newUser.password || newUser.password.length < 6) {
+      return "Password skal være mindst 6 tegn.";
+    }
+
+    return "";
+  }
+
   async function createUser() {
     try {
+      setErrorMessage("");
+
+      const validationError = validateCreateUser();
+
+      if (validationError) {
+        setErrorMessage(validationError);
+        return;
+      }
+
       const savedUser = localStorage.getItem("user");
 
-      if (!savedUser) return;
+      if (!savedUser) {
+        setErrorMessage("Du er ikke logget ind korrekt. Log ud og ind igen.");
+        return;
+      }
 
       const currentUser = JSON.parse(savedUser);
 
@@ -122,12 +201,18 @@ export default function UsersPage() {
         },
         body: JSON.stringify({
           ...newUser,
+          firstName: newUser.firstName.trim(),
+          lastName: newUser.lastName.trim(),
+          email: newUser.email.trim(),
+          phone: newUser.phone?.trim() || undefined,
           employmentType: newUser.employmentType || "HOURLY",
           cinemaId: currentUser.cinemaId,
         }),
       });
 
-      if (!response.ok) throw new Error("Kunne ikke oprette bruger");
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response));
+      }
 
       const createdUser = await response.json();
 
@@ -136,6 +221,7 @@ export default function UsersPage() {
         {
           ...createdUser,
           employmentType: createdUser.employmentType || "HOURLY",
+          isActive: createdUser.isActive !== false,
         },
       ]);
 
@@ -143,7 +229,9 @@ export default function UsersPage() {
       setNewUser(emptyUser);
     } catch (error) {
       console.error(error);
-      alert("Fejl ved oprettelse");
+      setErrorMessage(
+        error instanceof Error ? error.message : "Kunne ikke oprette bruger.",
+      );
     }
   }
 
@@ -151,6 +239,8 @@ export default function UsersPage() {
     if (!editingUser) return;
 
     try {
+      setErrorMessage("");
+
       const response = await fetch(`${API_URL}/users/${editingUser.id}`, {
         method: "PATCH",
         headers: {
@@ -161,19 +251,22 @@ export default function UsersPage() {
           firstName: editingUser.firstName,
           lastName: editingUser.lastName,
           email: editingUser.email,
-          phone: editingUser.phone,
+          phone: editingUser.phone || undefined,
           role: editingUser.role,
           employmentType: editingUser.employmentType || "HOURLY",
-          canManageSchedule: editingUser.canManageSchedule,
-          canManageUsers: editingUser.canManageUsers,
-          canManagePayroll: editingUser.canManagePayroll,
-          canManageLeaveRequests: editingUser.canManageLeaveRequests,
-          canManageCinemaSettings: editingUser.canManageCinemaSettings,
-          canSendBroadcastMessages: editingUser.canSendBroadcastMessages,
+          canManageSchedule: editingUser.canManageSchedule || false,
+          canManageUsers: editingUser.canManageUsers || false,
+          canManagePayroll: editingUser.canManagePayroll || false,
+          canManageLeaveRequests: editingUser.canManageLeaveRequests || false,
+          canManageCinemaSettings: editingUser.canManageCinemaSettings || false,
+          canSendBroadcastMessages:
+            editingUser.canSendBroadcastMessages || false,
         }),
       });
 
-      if (!response.ok) throw new Error("Kunne ikke opdatere bruger");
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response));
+      }
 
       const updatedUser = await response.json();
 
@@ -183,6 +276,7 @@ export default function UsersPage() {
             ? {
                 ...updatedUser,
                 employmentType: updatedUser.employmentType || "HOURLY",
+                isActive: updatedUser.isActive !== false,
               }
             : user,
         ),
@@ -191,39 +285,117 @@ export default function UsersPage() {
       setEditingUser(null);
     } catch (error) {
       console.error(error);
-      alert("Fejl ved opdatering");
+      setErrorMessage(
+        error instanceof Error ? error.message : "Kunne ikke opdatere bruger.",
+      );
     }
   }
 
-  async function deleteUser(id: number) {
-    const confirmed = confirm("Er du sikker på du vil slette brugeren?");
+  async function deactivateUser(user: User) {
+    const fullName = `${user.firstName} ${user.lastName}`;
+
+    const confirmed = confirm(
+      `Er du sikker på, at du vil deaktivere ${fullName}?\n\n` +
+        "Brugeren kan ikke længere logge ind.\n\n" +
+        "Tidligere vagter, tidsregistreringer, lønhistorik, beskeder og anden historik bevares.\n\n" +
+        "Brugeren kan genaktiveres senere.",
+    );
 
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`${API_URL}/users/${id}`, {
+      setErrorMessage("");
+
+      const response = await fetch(`${API_URL}/users/${user.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${getToken()}`,
         },
       });
 
-      if (!response.ok) throw new Error("Kunne ikke slette bruger");
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response));
+      }
 
-      setUsers((prev) => prev.filter((user) => user.id !== id));
+      const deactivatedUser = await response.json();
+
+      setUsers((prev) =>
+        prev.map((existingUser) =>
+          existingUser.id === user.id
+            ? {
+                ...existingUser,
+                ...deactivatedUser,
+                isActive: false,
+              }
+            : existingUser,
+        ),
+      );
     } catch (error) {
       console.error(error);
-      alert("Fejl ved sletning");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke deaktivere bruger.",
+      );
     }
   }
+
+  async function reactivateUser(user: User) {
+    const fullName = `${user.firstName} ${user.lastName}`;
+
+    const confirmed = confirm(
+      `Vil du genaktivere ${fullName}?\n\nBrugeren vil igen kunne logge ind.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setErrorMessage("");
+
+      const response = await fetch(`${API_URL}/users/${user.id}/reactivate`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response));
+      }
+
+      const reactivatedUser = await response.json();
+
+      setUsers((prev) =>
+        prev.map((existingUser) =>
+          existingUser.id === user.id
+            ? {
+                ...existingUser,
+                ...reactivatedUser,
+                isActive: true,
+                deactivatedAt: null,
+              }
+            : existingUser,
+        ),
+      );
+    } catch (error) {
+      console.error(error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke genaktivere bruger.",
+      );
+    }
+  }
+
+  const visibleUsers = showInactive
+    ? users
+    : users.filter((user) => user.isActive !== false);
 
   if (loading) {
     return (
       <PermissionGuard permission="canManageUsers">
         <div className="p-6 text-gray-900 dark:text-gray-100">
-          <p className="text-gray-600 dark:text-gray-300">
-            Indlæser brugere...
-          </p>
+          Indlæser brugere...
         </div>
       </PermissionGuard>
     );
@@ -232,113 +404,161 @@ export default function UsersPage() {
   return (
     <PermissionGuard permission="canManageUsers">
       <div className="p-6 text-gray-900 dark:text-gray-100">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Brugere
-          </h1>
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Brugere</h1>
+
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(event) => setShowInactive(event.target.checked)}
+              />
+              Vis deaktiverede brugere
+            </label>
+          </div>
 
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={() => {
+              setErrorMessage("");
+              setShowCreate(true);
+            }}
             className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Opret bruger
           </button>
         </div>
 
+        {errorMessage && (
+          <div className="mb-6 whitespace-pre-line rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+            {errorMessage}
+          </div>
+        )}
+
         {showCreate && (
           <UserModal
             title="Opret bruger"
             user={newUser}
             setUser={setNewUser}
-            onClose={() => setShowCreate(false)}
+            onClose={() => {
+              setShowCreate(false);
+              setErrorMessage("");
+            }}
             onSave={createUser}
             showPassword
           />
         )}
 
         {editingUser && (
-          <UserModal
-            title="Rediger bruger"
-            user={{
-              ...editingUser,
-              employmentType: editingUser.employmentType || "HOURLY",
-            }}
+          <EditUserModal
+            user={editingUser}
             setUser={setEditingUser}
-            onClose={() => setEditingUser(null)}
+            onClose={() => {
+              setEditingUser(null);
+              setErrorMessage("");
+            }}
             onSave={updateUser}
           />
         )}
 
-        <div className="overflow-hidden rounded-xl bg-white shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
-          <table className="w-full">
-            <thead className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-              <tr className="text-left">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <table className="w-full border-collapse text-left">
+            <thead className="bg-gray-50 text-sm text-gray-500 dark:bg-gray-950 dark:text-gray-400">
+              <tr>
                 <th className="p-4">Navn</th>
                 <th className="p-4">Email</th>
                 <th className="p-4">Telefon</th>
                 <th className="p-4">Rolle</th>
                 <th className="p-4">Ansættelse</th>
-                <th className="p-4">Handlinger</th>
+                <th className="p-4">Status</th>
+                <th className="p-4 text-right">Handlinger</th>
               </tr>
             </thead>
 
             <tbody>
-              {users.map((user) => (
-                <tr
-                  key={user.id}
-                  className="border-t border-gray-200 text-gray-900 dark:border-gray-800 dark:text-gray-100"
-                >
-                  <td className="p-4">
-                    {user.firstName} {user.lastName}
+              {visibleUsers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="p-6 text-center text-gray-500 dark:text-gray-400"
+                  >
+                    Ingen brugere fundet.
                   </td>
-
-                  <td className="p-4">{user.email}</td>
-                  <td className="p-4">{user.phone || "-"}</td>
-
-                  <td className="p-4">
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                      {user.role}
-                    </span>
-                  </td>
-
-                  <td className="p-4">
-                    <span className="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                </tr>
+              ) : (
+                visibleUsers.map((user) => (
+                  <tr
+                    key={user.id}
+                    className={`border-t border-gray-200 dark:border-gray-800 ${
+                      user.isActive === false
+                        ? "bg-gray-50 dark:bg-gray-950"
+                        : ""
+                    }`}
+                  >
+                    <td className="p-4 font-medium">
+                      {user.firstName} {user.lastName}
+                    </td>
+                    <td className="p-4">{user.email}</td>
+                    <td className="p-4">{user.phone || "-"}</td>
+                    <td className="p-4">{getRoleLabel(user.role)}</td>
+                    <td className="p-4">
                       {getEmploymentTypeLabel(user.employmentType)}
-                    </span>
-                  </td>
-
-                  <td className="p-4">
-                    <div className="flex gap-2">
+                    </td>
+                    <td className="p-4">
+                      {user.isActive === false ? (
+                        <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                          Deaktiveret
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+                          Aktiv
+                        </span>
+                      )}
+                    </td>
+                    <td className="space-x-2 p-4 text-right">
                       <button
-                        onClick={() =>
+                        onClick={() => {
+                          setErrorMessage("");
                           setEditingUser({
                             ...user,
                             employmentType: user.employmentType || "HOURLY",
-                          })
-                        }
-                        className="rounded-lg bg-gray-700 px-3 py-2 text-sm text-white hover:bg-gray-800"
+                            canManageSchedule: user.canManageSchedule || false,
+                            canManageUsers: user.canManageUsers || false,
+                            canManagePayroll: user.canManagePayroll || false,
+                            canManageLeaveRequests:
+                              user.canManageLeaveRequests || false,
+                            canManageCinemaSettings:
+                              user.canManageCinemaSettings || false,
+                            canSendBroadcastMessages:
+                              user.canSendBroadcastMessages || false,
+                          });
+                        }}
+                        className="rounded-lg bg-gray-200 px-3 py-2 text-sm text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                       >
                         Rediger
                       </button>
 
-                      <button
-                        onClick={() => deleteUser(user.id)}
-                        className="rounded-lg bg-red-500 px-3 py-2 text-sm text-white hover:bg-red-600"
-                      >
-                        Slet
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      {user.isActive === false ? (
+                        <button
+                          onClick={() => reactivateUser(user)}
+                          className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+                        >
+                          Genaktivér
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => deactivateUser(user)}
+                          className="rounded-lg bg-orange-600 px-3 py-2 text-sm text-white hover:bg-orange-700"
+                        >
+                          Deaktivér
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-
-          {users.length === 0 && (
-            <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-              Ingen brugere fundet
-            </div>
-          )}
         </div>
       </div>
     </PermissionGuard>
@@ -351,148 +571,93 @@ function UserModal({
   setUser,
   onClose,
   onSave,
-  showPassword = false,
+  showPassword,
 }: {
   title: string;
-  user: UserFormData | User;
-  setUser: any;
+  user: UserFormData;
+  setUser: (user: UserFormData) => void;
   onClose: () => void;
   onSave: () => void;
   showPassword?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 text-gray-900 shadow-2xl dark:bg-gray-900 dark:text-gray-100 dark:ring-1 dark:ring-gray-800">
-        <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {title}
-        </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+        <h2 className="mb-4 text-2xl font-bold">{title}</h2>
 
-        <div className="space-y-3">
-          <input
-            type="text"
-            placeholder="Fornavn"
+        <div className="grid gap-4 md:grid-cols-2">
+          <Input
+            label="Fornavn"
             value={user.firstName}
-            onChange={(e) => setUser({ ...user, firstName: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
+            onChange={(value) => setUser({ ...user, firstName: value })}
           />
 
-          <input
-            type="text"
-            placeholder="Efternavn"
+          <Input
+            label="Efternavn"
             value={user.lastName}
-            onChange={(e) => setUser({ ...user, lastName: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
+            onChange={(value) => setUser({ ...user, lastName: value })}
           />
 
-          <input
+          <Input
+            label="Email"
             type="email"
-            placeholder="Email"
             value={user.email}
-            onChange={(e) => setUser({ ...user, email: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
+            onChange={(value) => setUser({ ...user, email: value })}
+          />
+
+          <Input
+            label="Telefon"
+            value={user.phone || ""}
+            onChange={(value) => setUser({ ...user, phone: value })}
           />
 
           {showPassword && (
-            <input
-              type="password"
-              placeholder="Password"
-              value={(user as UserFormData).password || ""}
-              onChange={(e) => setUser({ ...user, password: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-            />
+            <div>
+              <Input
+                label="Password"
+                type="password"
+                value={user.password || ""}
+                onChange={(value) => setUser({ ...user, password: value })}
+              />
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Password skal være mindst 6 tegn.
+              </p>
+            </div>
           )}
 
-          <input
-            type="text"
-            placeholder="Telefon"
-            value={user.phone || ""}
-            onChange={(e) => setUser({ ...user, phone: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-          />
-
-          <select
-            value={user.role}
-            onChange={(e) =>
-              setUser({
-                ...user,
-                role: e.target.value as UserRole,
-              })
-            }
-            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-          >
-            <option value="EMPLOYEE">Medarbejder</option>
-            <option value="ADMIN">Admin</option>
-            <option value="MASTER">Master</option>
-          </select>
-
-          <select
-            value={user.employmentType || "HOURLY"}
-            onChange={(e) =>
-              setUser({
-                ...user,
-                employmentType: e.target.value as EmploymentType,
-              })
-            }
-            className="w-full rounded-lg border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500"
-          >
-            <option value="HOURLY">Timelønnet</option>
-            <option value="SALARIED">Fastlønnet</option>
-          </select>
-
-          <div className="space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-              Rettigheder
-            </h3>
-
-            <PermissionCheckbox
-              label="Kan administrere vagtplan"
-              checked={!!user.canManageSchedule}
-              onChange={(checked) =>
-                setUser({ ...user, canManageSchedule: checked })
+          <label className="space-y-1">
+            <span className="text-sm font-medium">Rolle</span>
+            <select
+              value={user.role === "MASTER" ? "ADMIN" : user.role}
+              onChange={(event) =>
+                setUser({ ...user, role: event.target.value as UserRole })
               }
-            />
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+            >
+              <option value="EMPLOYEE">Medarbejder</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </label>
 
-            <PermissionCheckbox
-              label="Kan administrere brugere"
-              checked={!!user.canManageUsers}
-              onChange={(checked) =>
-                setUser({ ...user, canManageUsers: checked })
+          <label className="space-y-1">
+            <span className="text-sm font-medium">Ansættelsestype</span>
+            <select
+              value={user.employmentType}
+              onChange={(event) =>
+                setUser({
+                  ...user,
+                  employmentType: event.target.value as EmploymentType,
+                })
               }
-            />
-
-            <PermissionCheckbox
-              label="Kan administrere løn"
-              checked={!!user.canManagePayroll}
-              onChange={(checked) =>
-                setUser({ ...user, canManagePayroll: checked })
-              }
-            />
-
-            <PermissionCheckbox
-              label="Kan administrere fravær"
-              checked={!!user.canManageLeaveRequests}
-              onChange={(checked) =>
-                setUser({ ...user, canManageLeaveRequests: checked })
-              }
-            />
-
-            <PermissionCheckbox
-              label="Kan administrere biografindstillinger"
-              checked={!!user.canManageCinemaSettings}
-              onChange={(checked) =>
-                setUser({ ...user, canManageCinemaSettings: checked })
-              }
-            />
-
-            <PermissionCheckbox
-              label="Kan sende broadcast beskeder"
-              checked={!!user.canSendBroadcastMessages}
-              onChange={(checked) =>
-                setUser({ ...user, canSendBroadcastMessages: checked })
-              }
-            />
-          </div>
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+            >
+              <option value="HOURLY">Timelønnet</option>
+              <option value="SALARIED">Fastlønnet</option>
+            </select>
+          </label>
         </div>
+
+        <PermissionFields user={user} setUser={setUser} />
 
         <div className="mt-6 flex justify-end gap-3">
           <button
@@ -514,25 +679,121 @@ function UserModal({
   );
 }
 
-function PermissionCheckbox({
+function EditUserModal({
+  user,
+  setUser,
+  onClose,
+  onSave,
+}: {
+  user: User;
+  setUser: (user: User) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const formUser: UserFormData = {
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    phone: user.phone || "",
+    role: user.role,
+    employmentType: user.employmentType || "HOURLY",
+    canManageSchedule: user.canManageSchedule || false,
+    canManageUsers: user.canManageUsers || false,
+    canManagePayroll: user.canManagePayroll || false,
+    canManageLeaveRequests: user.canManageLeaveRequests || false,
+    canManageCinemaSettings: user.canManageCinemaSettings || false,
+    canSendBroadcastMessages: user.canSendBroadcastMessages || false,
+  };
+
+  function updateForm(nextUser: UserFormData) {
+    setUser({
+      ...user,
+      ...nextUser,
+    });
+  }
+
+  return (
+    <UserModal
+      title="Rediger bruger"
+      user={formUser}
+      setUser={updateForm}
+      onClose={onClose}
+      onSave={onSave}
+    />
+  );
+}
+
+function Input({
   label,
-  checked,
+  value,
   onChange,
+  type = "text",
 }: {
   label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
 }) {
   return (
-    <label className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200">
+    <label className="space-y-1">
+      <span className="text-sm font-medium">{label}</span>
       <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 accent-blue-600"
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
       />
-
-      <span>{label}</span>
     </label>
+  );
+}
+
+function PermissionFields({
+  user,
+  setUser,
+}: {
+  user: UserFormData;
+  setUser: (user: UserFormData) => void;
+}) {
+  const permissions: {
+    key: keyof UserFormData;
+    label: string;
+  }[] = [
+    { key: "canManageSchedule", label: "Kan administrere vagtplan" },
+    { key: "canManageUsers", label: "Kan administrere brugere" },
+    { key: "canManagePayroll", label: "Kan administrere løn" },
+    { key: "canManageLeaveRequests", label: "Kan administrere fravær" },
+    {
+      key: "canManageCinemaSettings",
+      label: "Kan administrere biografindstillinger",
+    },
+    {
+      key: "canSendBroadcastMessages",
+      label: "Kan sende fællesbeskeder",
+    },
+  ];
+
+  return (
+    <div className="mt-6 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+      <h3 className="mb-3 font-semibold">Rettigheder</h3>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {permissions.map((permission) => (
+          <label key={permission.key} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={Boolean(user[permission.key])}
+              onChange={(event) =>
+                setUser({
+                  ...user,
+                  [permission.key]: event.target.checked,
+                })
+              }
+              className="h-4 w-4"
+            />
+            <span className="text-sm">{permission.label}</span>
+          </label>
+        ))}
+      </div>
+    </div>
   );
 }
