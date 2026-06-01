@@ -193,8 +193,8 @@ export function calculateLiveOperationsStatus(input: {
   staffingHealth: StaffingHealth;
   highFatigueEmployees: number;
   moviePressure: number;
-}) {
-  let status = "NORMAL";
+}): "NORMAL" | "WARNING" | "CRITICAL" {
+  let status: "NORMAL" | "WARNING" | "CRITICAL" = "NORMAL";
 
   if (
     input.staffingHealth === "HIGH_PRESSURE" ||

@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from "react";
 import { Rnd } from "react-rnd";
-import type { Shift } from "../../../../../shared/types";
+import type { Shift } from "../../../../shared/types";
 
 type User = {
   id: number;

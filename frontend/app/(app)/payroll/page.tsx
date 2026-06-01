@@ -547,7 +547,7 @@ export default function PayrollPage() {
   }, [startDate, endDate, userId]);
 
   return (
-    <PermissionGuard roles={["MASTER", "ADMIN"]}>
+    <PermissionGuard permission="canManagePayroll">
       <div className="space-y-6 p-6 text-gray-900 dark:text-gray-100">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">

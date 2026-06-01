@@ -65,3 +65,6 @@ export async function disablePushNotifications() {
     await subscription.unsubscribe();
   }
 }
+export function usePushNotifications() {
+  return null;
+}

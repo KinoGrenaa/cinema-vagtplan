@@ -120,6 +120,10 @@ export default function AppMenu() {
 
       children: [
         {
+          href: "/profile",
+          label: "Min profil",
+        },
+        {
           href: "/settings",
           label: "Brugerindstillinger",
         },
@@ -254,7 +258,9 @@ export default function AppMenu() {
               {user && (
                 <div className="mt-2">
                   <p className="text-sm font-medium">
-                    {user.firstName} {user.lastName}
+                    {`${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+                      user.email ||
+                      "Bruger"}
                   </p>
 
                   <p className="text-xs text-gray-500 dark:text-gray-400">

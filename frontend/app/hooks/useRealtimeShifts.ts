@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import { toast } from "sonner";
 import { showInfo, showSuccess } from "@/app/lib/toast";
 import { useAuth } from "../providers/AuthProvider";
 import { useRealtimeCore } from "./useRealtimeCore";
@@ -53,7 +52,6 @@ function formatUserName(user?: RealtimeShiftTradeUser | null) {
 
 function formatShiftText(trade: ShiftTradeEvent) {
   const start = trade.shift?.startTime ? new Date(trade.shift.startTime) : null;
-
   const end = trade.shift?.endTime ? new Date(trade.shift.endTime) : null;
 
   const dateText = start
@@ -89,6 +87,12 @@ export function useRealtimeShifts({
   enableToasts = true,
 }: UseRealtimeShiftsProps) {
   const { user } = useAuth();
+
+  // Staffing request events were previously registered with loose socket.on(...)
+  // calls outside the hook. That breaks scope and can cause build/runtime errors.
+  // Keep the callback in the API for now, but do not register staffing listeners
+  // here until useRealtimeCore exposes those events cleanly.
+  void onStaffingRequestsUpdated;
 
   const handleShiftAccepted = useCallback(
     (trade: ShiftTradeEvent) => {
@@ -152,67 +156,3 @@ export function useRealtimeShifts({
     onShiftRejected: handleShiftRejected,
   });
 }
-
-socket.on("staffingRequestsUpdated", () => {
-  onStaffingRequestsUpdated?.();
-
-  if (enableToasts) {
-    toast("📡 Staffing requests opdateret");
-  }
-});
-
-socket.on("staffingRequestAccepted", () => {
-  onStaffingRequestsUpdated?.();
-
-  if (enableToasts) {
-    toast.success("✅ Staffing request accepteret");
-  }
-});
-
-socket.on("staffingRequestRejected", () => {
-  onStaffingRequestsUpdated?.();
-
-  if (enableToasts) {
-    toast.error("❌ Staffing request afvist");
-  }
-});
-
-socket.on("staffingRequestCancelled", () => {
-  onStaffingRequestsUpdated?.();
-
-  if (enableToasts) {
-    toast.info("🚫 Staffing request annulleret");
-  }
-});
-
-socket.on("staffingRequestsUpdated", () => {
-  onStaffingRequestsUpdated?.();
-
-  if (enableToasts) {
-    toast.warning("🚨 Ny staffing request");
-  }
-});
-
-socket.on("staffingRequestAccepted", () => {
-  onStaffingRequestsUpdated?.();
-
-  if (enableToasts) {
-    toast.success("✅ Staffing request accepteret");
-  }
-});
-
-socket.on("staffingRequestRejected", () => {
-  onStaffingRequestsUpdated?.();
-
-  if (enableToasts) {
-    toast.error("❌ Staffing request afvist");
-  }
-});
-
-socket.on("staffingRequestCancelled", () => {
-  onStaffingRequestsUpdated?.();
-
-  if (enableToasts) {
-    toast.info("🚫 Staffing request annulleret");
-  }
-});

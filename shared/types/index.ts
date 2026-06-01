@@ -1,10 +1,10 @@
-export type Role = 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+export type Role = "MASTER" | "ADMIN" | "EMPLOYEE";
 
-export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
 
-export type TimeEntryStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
 
-export type ShiftTradeStatus = 'OPEN' | 'ACCEPTED' | 'CANCELLED';
+export type ShiftTradeStatus = "OPEN" | "ACCEPTED" | "CANCELLED";
 
 export type User = {
   id: number;
@@ -69,6 +69,9 @@ export type Message = {
 
 export type CurrentUser = {
   id: number;
+  email: string;
   role: Role;
   cinemaId: number;
+  firstName?: string;
+  lastName?: string;
 };

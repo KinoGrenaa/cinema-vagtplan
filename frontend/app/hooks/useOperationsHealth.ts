@@ -13,7 +13,6 @@ export function useOperationsHealth(
 
   const highFatigueEmployees = shifts.filter((shift) => {
     const start = new Date(shift.startTime);
-
     const end = new Date(shift.endTime);
 
     const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
@@ -23,7 +22,7 @@ export function useOperationsHealth(
 
   const moviePressure = movies.reduce((sum, movie) => sum + movie.soldSeats, 0);
 
-  let staffingHealth = "STABLE" as const;
+  let staffingHealth: OperationsHealth["staffingHealth"] = "STABLE";
 
   if (moviePressure >= 400 || highFatigueEmployees >= 4) {
     staffingHealth = "HIGH_PRESSURE";

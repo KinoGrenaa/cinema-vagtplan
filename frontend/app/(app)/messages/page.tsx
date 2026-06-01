@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMessages } from "../../hooks/useMessages";
-import type { MessageUser } from "../../types/messages";
+import type { MessageParticipant } from "../../types/messages";
 
 export default function MessagesPage() {
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
@@ -13,7 +13,7 @@ export default function MessagesPage() {
     mode: "inbox",
   });
 
-  function getUserName(user?: MessageUser | null) {
+  function getUserName(user?: MessageParticipant | null) {
     if (!user) return null;
     return `${user.firstName} ${user.lastName}`;
   }
