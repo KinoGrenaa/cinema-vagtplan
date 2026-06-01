@@ -18,7 +18,7 @@ export class ShiftTradesService {
     private push: PushService,
   ) {}
 
-    private getCinemaFilter(user: any) {
+  private getCinemaFilter(user: any) {
     if (user?.role === 'MASTER') {
       return {};
     }
@@ -238,6 +238,36 @@ export class ShiftTradesService {
         acceptedByUserId,
       },
     });
+
+    const shift = await this.prisma.shift.findUnique({
+      where: {
+        id: trade.shiftId,
+      },
+    });
+
+    if (!shift) {
+      throw new NotFoundException('Vagten blev ikke fundet');
+    }
+
+    const conflictingShift = await this.prisma.shift.findFirst({
+      where: {
+        cinemaId: trade.cinemaId,
+        userId: acceptedByUserId,
+        id: {
+          not: trade.shiftId,
+        },
+        startTime: {
+          lt: shift.endTime,
+        },
+        endTime: {
+          gt: shift.startTime,
+        },
+      },
+    });
+
+    if (conflictingShift) {
+      throw new ForbiddenException('Du har allerede en vagt i dette tidsrum');
+    }
 
     await this.prisma.shift.update({
       where: {
