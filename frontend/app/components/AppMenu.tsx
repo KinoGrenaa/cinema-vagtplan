@@ -167,6 +167,11 @@ export default function AppMenu() {
         },
 
         {
+          href: "/leave-approval",
+          label: "Fraværsgodkendelse",
+        },
+
+        {
           href: "/payroll",
           label: "Løn / timer",
         },

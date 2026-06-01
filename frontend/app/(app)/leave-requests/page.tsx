@@ -1,25 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Calendar } from "lucide-react";
+import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+
+type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
 type LeaveRequest = {
   id: number;
   startDate: string;
   endDate: string;
   reason?: string | null;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: LeaveStatus;
   user: {
+    id: number;
     firstName: string;
     lastName: string;
   };
-};
-
-type CurrentUser = {
-  id: number;
-  role: string;
-  cinemaId: number;
 };
 
 const inputClass =
@@ -28,7 +27,7 @@ const inputClass =
 const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
-function getStatusBadge(status: LeaveRequest["status"]) {
+function getStatusBadge(status: LeaveStatus) {
   if (status === "APPROVED") {
     return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
   }
@@ -37,22 +36,37 @@ function getStatusBadge(status: LeaveRequest["status"]) {
     return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
   }
 
+  if (status === "CANCELLED") {
+    return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+  }
+
   return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
 }
 
-function getStatusLabel(status: LeaveRequest["status"]) {
+function getStatusLabel(status: LeaveStatus) {
   if (status === "APPROVED") return "Godkendt";
   if (status === "REJECTED") return "Afvist";
+  if (status === "CANCELLED") return "Annulleret";
   return "Afventer";
 }
 
 export default function LeaveRequestsPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const [startDate, setStartDate] = useState("2026-05-15");
-  const [endDate, setEndDate] = useState("2026-05-15");
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDate = tomorrow.toISOString().split("T")[0];
+
+  const [startDate, setStartDate] = useState(minDate);
+  const [endDate, setEndDate] = useState(minDate);
   const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [allDay, setAllDay] = useState(true);
+  const [startTime, setStartTime] = useState("08:00");
+  const [endTime, setEndTime] = useState("16:00");
 
   function getToken() {
     return localStorage.getItem("token");
@@ -78,11 +92,16 @@ export default function LeaveRequestsPage() {
     }
   }, []);
 
+  useRealtimeCore({
+    onLeaveRequestUpdated: fetchRequests,
+  });
+
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
 
     if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setCurrentUserId(parsedUser.id ?? parsedUser.sub ?? null);
     }
 
     fetchRequests();
@@ -91,45 +110,75 @@ export default function LeaveRequestsPage() {
   async function createLeaveRequest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!currentUser) return;
+    setError("");
+    setSuccess("");
 
-    await fetch(`${API_URL}/leave-requests`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
-      },
-      body: JSON.stringify({
-        startDate: `${startDate}T00:00:00.000Z`,
-        endDate: `${endDate}T23:59:59.999Z`,
-        reason,
-        cinemaId: currentUser.cinemaId,
-        userId: currentUser.id,
-      }),
-    });
+    try {
+      const response = await fetch(`${API_URL}/leave-requests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          startDate: allDay
+            ? `${startDate}T00:00:00`
+            : `${startDate}T${startTime}:00`,
 
-    setReason("");
-    await fetchRequests();
+          endDate: allDay ? `${endDate}T23:59:59` : `${endDate}T${endTime}:00`,
+
+          reason,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message || "Fraværsansøgningen kunne ikke oprettes.",
+        );
+      }
+
+      setReason("");
+      setSuccess("Fraværsansøgningen er sendt.");
+
+      await fetchRequests();
+    } catch (err: any) {
+      setError(err.message || "Der opstod en fejl.");
+    }
   }
 
-  async function updateStatus(
-    requestId: number,
-    status: "APPROVED" | "REJECTED",
-  ) {
-    await fetch(`${API_URL}/leave-requests/${requestId}/status`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
-      },
-      body: JSON.stringify({ status }),
-    });
+  async function cancelLeaveRequest(requestId: number) {
+    setError("");
+    setSuccess("");
 
-    await fetchRequests();
+    try {
+      const response = await fetch(
+        `${API_URL}/leave-requests/${requestId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({ status: "CANCELLED" }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message || "Fraværsansøgningen kunne ikke annulleres.",
+        );
+      }
+
+      setSuccess("Fraværsansøgningen er annulleret.");
+      await fetchRequests();
+    } catch (err: any) {
+      setError(err.message || "Der opstod en fejl.");
+    }
   }
-
-  const canApprove =
-    currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -142,42 +191,98 @@ export default function LeaveRequestsPage() {
                 Ansøg om fri og se status på ansøgninger.
               </p>
             </div>
-
-            <a
-              href="/dashboard"
-              className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-            >
-              Dashboard
-            </a>
           </div>
         </div>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <h2 className="mb-4 text-2xl font-bold">Ny fridagsansøgning</h2>
 
+          {error && (
+            <div className="mb-4 rounded-xl border border-red-300 bg-red-50 p-3 text-red-700">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 rounded-xl border border-green-300 bg-green-50 p-3 text-green-700">
+              {success}
+            </div>
+          )}
+
           <form
             onSubmit={createLeaveRequest}
-            className="grid grid-cols-1 gap-4 md:grid-cols-4"
+            className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]"
           >
             <div>
               <label className={labelClass}>Fra dato</label>
-              <input
-                type="date"
-                className={inputClass}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  min={minDate}
+                  className={`${inputClass} pr-10`}
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+
+                <Calendar
+                  size={18}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
+                />
+              </div>
             </div>
 
             <div>
               <label className={labelClass}>Til dato</label>
-              <input
-                type="date"
-                className={inputClass}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  min={minDate}
+                  className={`${inputClass} pr-10`}
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+
+                <Calendar
+                  size={18}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
+                />
+              </div>
             </div>
+
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+                <input
+                  type="checkbox"
+                  checked={allDay}
+                  onChange={(e) => setAllDay(e.target.checked)}
+                />
+                Hele dagen
+              </label>
+            </div>
+
+            {!allDay && (
+              <>
+                <div>
+                  <label className={labelClass}>Fra tidspunkt</label>
+                  <input
+                    type="time"
+                    className={inputClass}
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Til tidspunkt</label>
+                  <input
+                    type="time"
+                    className={inputClass}
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <label className={labelClass}>Årsag</label>
@@ -192,7 +297,7 @@ export default function LeaveRequestsPage() {
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full rounded-xl bg-black py-3 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                className="w-full rounded-xl bg-black px-5 py-3 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
               >
                 Send ansøgning
               </button>
@@ -201,10 +306,10 @@ export default function LeaveRequestsPage() {
         </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-4 text-2xl font-bold">Ansøgninger</h2>
+          <h2 className="mb-4 text-2xl font-bold">Mine ansøgninger</h2>
 
           <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800">
-            <div className="hidden grid-cols-6 bg-gray-50 text-sm font-medium text-gray-600 dark:bg-gray-950 dark:text-gray-400 md:grid">
+            <div className="hidden bg-gray-50 text-sm font-medium text-gray-600 dark:bg-gray-950 dark:text-gray-400 md:grid md:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1.2fr]">
               <div className="border-r border-gray-200 p-3 dark:border-gray-800">
                 Medarbejder
               </div>
@@ -226,7 +331,7 @@ export default function LeaveRequestsPage() {
             {requests.map((request) => (
               <div
                 key={request.id}
-                className="grid gap-3 border-t border-gray-200 p-4 text-sm dark:border-gray-800 md:grid-cols-6 md:gap-0 md:p-0"
+                className="grid gap-3 border-t border-gray-200 p-4 text-sm dark:border-gray-800 md:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_1.2fr] md:gap-0 md:p-0"
               >
                 <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
                   <span className="block text-xs text-gray-500 md:hidden">
@@ -269,23 +374,16 @@ export default function LeaveRequestsPage() {
                   </span>
                 </div>
 
-                <div className="flex gap-2 md:p-3">
-                  {canApprove && request.status === "PENDING" ? (
-                    <>
-                      <button
-                        onClick={() => updateStatus(request.id, "APPROVED")}
-                        className="rounded-lg bg-green-600 px-3 py-1 text-white transition hover:bg-green-700"
-                      >
-                        Godkend
-                      </button>
-
-                      <button
-                        onClick={() => updateStatus(request.id, "REJECTED")}
-                        className="rounded-lg bg-red-600 px-3 py-1 text-white transition hover:bg-red-700"
-                      >
-                        Afvis
-                      </button>
-                    </>
+                <div className="flex flex-wrap gap-2 md:p-3">
+                  {(request.status === "PENDING" ||
+                    request.status === "APPROVED") &&
+                  request.user.id === currentUserId ? (
+                    <button
+                      onClick={() => cancelLeaveRequest(request.id)}
+                      className="rounded-lg bg-gray-600 px-3 py-1 text-white transition hover:bg-gray-700"
+                    >
+                      Annuller
+                    </button>
                   ) : (
                     <span className="text-gray-400 dark:text-gray-500">
                       Ingen

@@ -5,47 +5,39 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
-
 import { LeaveRequestsService } from './leave-requests.service';
-
 import { JwtGuard } from '../auth/jwt/jwt.guard';
-
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
-
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 import { UpdateLeaveStatusDto } from './dto/update-leave-status.dto';
 
 @Controller('leave-requests')
 export class LeaveRequestsController {
-  constructor(
-    private leaveRequestsService: LeaveRequestsService,
-  ) {}
+  constructor(private leaveRequestsService: LeaveRequestsService) {}
 
   @UseGuards(JwtGuard)
   @Get()
-  getAllLeaveRequests() {
-    return this.leaveRequestsService.findAll();
+  getAllLeaveRequests(@Req() req: any) {
+    return this.leaveRequestsService.findAll(req.user);
   }
 
   @UseGuards(JwtGuard)
   @Post()
-  createLeaveRequest(
-    @Body() body: CreateLeaveRequestDto,
-  ) {
-    return this.leaveRequestsService.create(body);
+  createLeaveRequest(@Req() req: any, @Body() body: CreateLeaveRequestDto) {
+    return this.leaveRequestsService.create(req.user, body);
   }
 
-  @UseGuards(JwtGuard, RolesGuard)
-  @Roles('ADMIN', 'MASTER')
+  @UseGuards(JwtGuard)
   @Patch(':id/status')
   updateStatus(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: UpdateLeaveStatusDto,
   ) {
     return this.leaveRequestsService.updateStatus(
+      req.user,
       Number(id),
       body.status,
     );

@@ -29,6 +29,7 @@ export type RealtimeShiftTradePayload = {
 };
 
 type UseRealtimeCoreInput = {
+  onLeaveRequestUpdated?: () => void;
   onShiftUpdated?: () => void;
   onShiftTradeUpdated?: () => void;
   onNotification?: () => void;
@@ -74,6 +75,10 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
       input.onStaffingRequestUpdated?.();
     };
 
+    const triggerLeaveRequestUpdated = () => {
+      input.onLeaveRequestUpdated?.();
+    };
+
     socket.on("connect", () => {
       console.log("Realtime connected:", socket.id);
     });
@@ -92,7 +97,10 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
     socket.on("staffingRequestAccepted", triggerStaffingRequestUpdated);
     socket.on("staffingRequestRejected", triggerStaffingRequestUpdated);
     socket.on("staffingRequestCancelled", triggerStaffingRequestUpdated);
-
+    socket.on("leaveRequestsUpdated", () => {
+      console.log("Realtime leaveRequestsUpdated received");
+      triggerLeaveRequestUpdated();
+    });
     socket.on("notificationCreated", () => {
       input.onNotification?.();
     });
@@ -144,6 +152,7 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
     input.onNewShiftTrade,
     input.onNewDirectShiftTrade,
     input.onShiftRejected,
+    input.onLeaveRequestUpdated,
   ]);
 
   return {
