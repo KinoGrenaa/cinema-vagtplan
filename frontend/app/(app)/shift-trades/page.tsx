@@ -67,6 +67,7 @@ export default function ShiftTradesPage() {
   const confirmModal = useConfirm();
 
   const [trades, setTrades] = useState<ShiftTrade[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -83,6 +84,14 @@ export default function ShiftTradesPage() {
 
       const data = await response.json();
       setTrades(Array.isArray(data) ? data : []);
+      const shiftsResponse = await apiFetch("/shifts");
+
+      if (shiftsResponse.ok) {
+        const shiftsData = await shiftsResponse.json();
+        setShifts(Array.isArray(shiftsData) ? shiftsData : []);
+      } else {
+        setShifts([]);
+      }
     } catch (error) {
       console.error("Kunne ikke hente vagtbytter", error);
       setTrades([]);
@@ -142,6 +151,23 @@ export default function ShiftTradesPage() {
       );
     });
   }, [trades, user]);
+
+  function hasShiftConflict(trade: ShiftTrade) {
+    if (!user) return false;
+
+    const tradeStart = new Date(trade.shift.startTime).getTime();
+    const tradeEnd = new Date(trade.shift.endTime).getTime();
+
+    return shifts.some((shift) => {
+      if (shift.userId !== user.id) return false;
+      if (shift.id === trade.shift.id) return false;
+
+      const ownStart = new Date(shift.startTime).getTime();
+      const ownEnd = new Date(shift.endTime).getTime();
+
+      return tradeStart < ownEnd && tradeEnd > ownStart;
+    });
+  }
 
   function acceptTrade(trade: ShiftTrade) {
     if (!user) return;
@@ -251,6 +277,12 @@ export default function ShiftTradesPage() {
                   onAccept={() => acceptTrade(trade)}
                   onReject={() => rejectTrade(trade)}
                   actionLabel="Accepter vagt"
+                  acceptDisabled={hasShiftConflict(trade)}
+                  acceptTooltip={
+                    hasShiftConflict(trade)
+                      ? "Du har allerede en vagt i dette tidsrum"
+                      : undefined
+                  }
                 />
               ))}
 
@@ -274,6 +306,12 @@ export default function ShiftTradesPage() {
                   trade={trade}
                   onAccept={() => acceptTrade(trade)}
                   actionLabel="Accepter vagt"
+                  acceptDisabled={hasShiftConflict(trade)}
+                  acceptTooltip={
+                    hasShiftConflict(trade)
+                      ? "Du har allerede en vagt i dette tidsrum"
+                      : undefined
+                  }
                 />
               ))}
 
@@ -347,9 +385,18 @@ type TradeCardProps = {
   actionLabel: string;
   onAccept: () => void;
   onReject?: () => void;
+  acceptDisabled?: boolean;
+  acceptTooltip?: string;
 };
 
-function TradeCard({ trade, actionLabel, onAccept, onReject }: TradeCardProps) {
+function TradeCard({
+  trade,
+  actionLabel,
+  onAccept,
+  onReject,
+  acceptDisabled,
+  acceptTooltip,
+}: TradeCardProps) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-950">
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -390,7 +437,13 @@ function TradeCard({ trade, actionLabel, onAccept, onReject }: TradeCardProps) {
         <button
           type="button"
           onClick={onAccept}
-          className="rounded-xl bg-green-600 px-4 py-2 font-semibold text-white transition hover:bg-green-700"
+          disabled={acceptDisabled}
+          title={acceptTooltip}
+          className={`rounded-xl px-4 py-2 font-semibold transition ${
+            acceptDisabled
+              ? "cursor-not-allowed bg-gray-300 text-gray-500"
+              : "bg-green-600 text-white hover:bg-green-700"
+          }`}
         >
           {actionLabel}
         </button>
