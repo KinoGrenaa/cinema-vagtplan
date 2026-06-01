@@ -378,8 +378,54 @@ export default function SchedulePage() {
     });
   }
 
+  function formatShiftDate(value: string) {
+    return new Date(value).toLocaleDateString("da-DK", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
+
+  function formatShiftTimeRange(shift: Shift) {
+    const start = new Date(shift.startTime).toLocaleTimeString("da-DK", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const end = new Date(shift.endTime).toLocaleTimeString("da-DK", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return `${start} - ${end}`;
+  }
+
+  function getShiftWorkTypeName(shift: Shift) {
+    const maybeShift = shift as Shift & {
+      workType?: {
+        name?: string;
+      };
+    };
+
+    return maybeShift.workType?.name ?? `Arbejdstype #${shift.workTypeId}`;
+  }
+
+  function getShiftConfirmText(shift: Shift) {
+    return `${getShiftWorkTypeName(shift)}
+${formatShiftDate(shift.startTime)}
+${formatShiftTimeRange(shift)}`;
+  }
+
   async function handleOfferTrade() {
     if (!selectedShift) return;
+
+    const confirmed = window.confirm(
+      `Er du sikker på, at du vil sende denne vagt i vagtpuljen?
+
+${getShiftConfirmText(selectedShift)}`,
+    );
+
+    if (!confirmed) return;
 
     try {
       await offerShiftTrade(selectedShift);

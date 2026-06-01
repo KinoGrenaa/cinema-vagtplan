@@ -186,12 +186,63 @@ export default function MyShiftsPage() {
     }, 0);
   }, [myMonthShifts]);
 
+  function formatShiftDate(value: string) {
+    return new Date(value).toLocaleDateString("da-DK", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
+
+  function formatShiftTimeRange(shift: { startTime: string; endTime: string }) {
+    const start = new Date(shift.startTime).toLocaleTimeString("da-DK", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const end = new Date(shift.endTime).toLocaleTimeString("da-DK", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return `${start} - ${end}`;
+  }
+
+  function getShiftWorkTypeName(shift: {
+    workType?: {
+      name: string;
+    };
+  }) {
+    return shift.workType?.name ?? "Ukendt arbejdstype";
+  }
+
+  function getShiftConfirmText(shift: {
+    startTime: string;
+    endTime: string;
+    workType?: {
+      name: string;
+    };
+  }) {
+    return `${getShiftWorkTypeName(shift)}
+${formatShiftDate(shift.startTime)}
+${formatShiftTimeRange(shift)}`;
+  }
+
   async function sendToPool(shiftId: number) {
     if (!currentUser) return;
 
+    const shift = shifts.find((item) => item.id === shiftId);
+
+    if (!shift) {
+      setMessage("Vagten blev ikke fundet");
+      return;
+    }
+
     if (
       !window.confirm(
-        "Er du sikker på, at du vil sende denne vagt i vagtpuljen?",
+        `Er du sikker på, at du vil sende denne vagt i vagtpuljen?
+
+${getShiftConfirmText(shift)}`,
       )
     ) {
       return;
@@ -222,14 +273,24 @@ export default function MyShiftsPage() {
   async function sendDirect(shiftId: number, targetUserId: number) {
     if (!currentUser || !targetUserId) return;
 
+    const shift = shifts.find((item) => item.id === shiftId);
+
+    if (!shift) {
+      setMessage("Vagten blev ikke fundet");
+      return;
+    }
+
     const targetUser = users.find((user) => user.id === targetUserId);
+
     const targetName = targetUser
       ? `${targetUser.firstName} ${targetUser.lastName}`
       : "den valgte kollega";
 
     if (
       !window.confirm(
-        `Er du sikker på, at du vil sende denne vagt direkte til ${targetName}?`,
+        `Er du sikker på, at du vil sende denne vagt direkte til ${targetName}?
+
+${getShiftConfirmText(shift)}`,
       )
     ) {
       return;
@@ -258,10 +319,29 @@ export default function MyShiftsPage() {
     await refreshData();
   }
 
+  function getTradeShift(tradeId: number) {
+    const trade = shiftTrades.find((item) => item.id === tradeId);
+
+    return trade?.shift ?? null;
+  }
+
   async function acceptTrade(tradeId: number) {
     if (!currentUser) return;
 
-    if (!window.confirm("Er du sikker på, at du vil acceptere denne vagt?")) {
+    const shift = getTradeShift(tradeId);
+
+    if (!shift) {
+      setMessage("Vagten blev ikke fundet");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Er du sikker på, at du vil acceptere denne vagt?
+
+${getShiftConfirmText(shift)}`,
+      )
+    ) {
       return;
     }
 
@@ -285,7 +365,20 @@ export default function MyShiftsPage() {
   }
 
   async function rejectTrade(tradeId: number) {
-    if (!window.confirm("Er du sikker på, at du vil afvise denne vagt?")) {
+    const shift = getTradeShift(tradeId);
+
+    if (!shift) {
+      setMessage("Vagten blev ikke fundet");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Er du sikker på, at du vil afvise denne vagt?
+
+${getShiftConfirmText(shift)}`,
+      )
+    ) {
       return;
     }
 
