@@ -27,6 +27,12 @@ const inputClass =
 const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+
+  return `${date.getUTCDate()}.${date.getUTCMonth() + 1}.${date.getUTCFullYear()}`;
+}
+
 function getStatusBadge(status: LeaveStatus) {
   if (status === "APPROVED") {
     return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
@@ -344,14 +350,14 @@ export default function LeaveRequestsPage() {
                   <span className="block text-xs text-gray-500 md:hidden">
                     Fra
                   </span>
-                  {new Date(request.startDate).toLocaleDateString("da-DK")}
+                  {formatDate(request.startDate)}
                 </div>
 
                 <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
                   <span className="block text-xs text-gray-500 md:hidden">
                     Til
                   </span>
-                  {new Date(request.endDate).toLocaleDateString("da-DK")}
+                  {formatDate(request.endDate)}
                 </div>
 
                 <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">

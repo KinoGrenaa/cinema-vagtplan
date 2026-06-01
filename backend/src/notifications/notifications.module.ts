@@ -5,7 +5,7 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
   imports: [
@@ -13,11 +13,13 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
       secret: 'super-secret-key-change-later',
       signOptions: { expiresIn: '7d' },
     }),
+
+    RealtimeModule,
   ],
 
   controllers: [NotificationsController],
 
-  providers: [NotificationsService, PrismaService, RealtimeGateway],
+  providers: [NotificationsService, PrismaService],
 
   exports: [NotificationsService],
 })

@@ -7,6 +7,30 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
+
+type AuthUser = {
+  sub?: number;
+  id?: number;
+  email?: string;
+  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+  cinemaId: number;
+};
+
+type LeaveStatus = 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+type LeaveRequestWithUser = {
+  id: number;
+  userId: number;
+  cinemaId: number;
+  startDate: Date;
+  endDate: Date;
+  user: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+};
 
 @Injectable()
 export class LeaveRequestsService {
@@ -14,12 +38,19 @@ export class LeaveRequestsService {
     private prisma: PrismaService,
     private absenceImpactEngineService: AbsenceImpactEngineService,
     private realtimeGateway: RealtimeGateway,
+    private notificationsService: NotificationsService,
   ) {}
+
+  private getUserId(user: AuthUser) {
+    return user.sub ?? user.id;
+  }
 
   private getTomorrowStart() {
     const tomorrow = new Date();
+
     tomorrow.setHours(0, 0, 0, 0);
     tomorrow.setDate(tomorrow.getDate() + 1);
+
     return tomorrow;
   }
 
@@ -80,6 +111,251 @@ export class LeaveRequestsService {
     }
   }
 
+  private notifyLeaveRequestsUpdated(cinemaId: number) {
+    console.log('Sending leaveRequestsUpdated', cinemaId);
+
+    this.realtimeGateway.notifyCinema(cinemaId, 'leaveRequestsUpdated', {
+      cinemaId,
+    });
+  }
+
+  private formatUserName(user?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  }) {
+    const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
+
+    return fullName || user?.email || 'Ukendt bruger';
+  }
+
+  private pad(value: number) {
+    return value.toString().padStart(2, '0');
+  }
+
+  private formatDate(date: Date) {
+    return new Intl.DateTimeFormat('da-DK', {
+      timeZone: 'Europe/Copenhagen',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(date);
+  }
+
+  private formatTime(date: Date) {
+    return new Intl.DateTimeFormat('da-DK', {
+      timeZone: 'Europe/Copenhagen',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date);
+  }
+
+  private isSameUtcDate(left: Date, right: Date) {
+    return (
+      left.getUTCFullYear() === right.getUTCFullYear() &&
+      left.getUTCMonth() === right.getUTCMonth() &&
+      left.getUTCDate() === right.getUTCDate()
+    );
+  }
+
+  private isAllDay(startDate: Date, endDate: Date) {
+    return (
+      startDate.getUTCHours() === 0 &&
+      startDate.getUTCMinutes() === 0 &&
+      endDate.getUTCHours() === 23 &&
+      endDate.getUTCMinutes() === 59
+    );
+  }
+
+  private formatLeavePeriod(startDate: Date, endDate: Date) {
+    const startDateText = this.formatDate(startDate);
+    const endDateText = this.formatDate(endDate);
+    const sameDate = this.isSameUtcDate(startDate, endDate);
+    const allDay = this.isAllDay(startDate, endDate);
+
+    if (sameDate && allDay) {
+      return startDateText;
+    }
+
+    if (sameDate) {
+      return `${startDateText} kl. ${this.formatTime(startDate)}-${this.formatTime(
+        endDate,
+      )}`;
+    }
+
+    if (allDay) {
+      return `${startDateText} - ${endDateText}`;
+    }
+
+    return `${startDateText} kl. ${this.formatTime(
+      startDate,
+    )} - ${endDateText} kl. ${this.formatTime(endDate)}`;
+  }
+
+  private async getLeaveManagers(cinemaId: number, excludeUserId?: number) {
+    return this.prisma.user.findMany({
+      where: {
+        cinemaId,
+        isActive: true,
+        ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+        OR: [
+          { role: 'ADMIN' },
+          { role: 'MASTER' },
+          { canManageLeaveRequests: true },
+        ],
+      },
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  private async notifyLeaveManagers(params: {
+    cinemaId: number;
+    excludeUserId?: number;
+    title: string;
+    message: string;
+    type: string;
+  }) {
+    const managers = await this.getLeaveManagers(
+      params.cinemaId,
+      params.excludeUserId,
+    );
+
+    await Promise.all(
+      managers.map((manager) =>
+        this.notificationsService.create({
+          userId: manager.id,
+          cinemaId: params.cinemaId,
+          title: params.title,
+          message: params.message,
+          type: params.type,
+          linkUrl: '/leave-approval',
+        }),
+      ),
+    );
+  }
+
+  private async notifyUser(params: {
+    userId: number;
+    cinemaId: number;
+    title: string;
+    message: string;
+    type: string;
+  }) {
+    await this.notificationsService.create({
+      userId: params.userId,
+      cinemaId: params.cinemaId,
+      title: params.title,
+      message: params.message,
+      type: params.type,
+      linkUrl: '/leave-requests',
+    });
+  }
+
+  private async getActorName(userId: number) {
+    const actor = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
+    });
+
+    return this.formatUserName(actor ?? undefined);
+  }
+
+  private async notifyLeaveRequestCreated(
+    leaveRequest: LeaveRequestWithUser,
+    actorUserId: number,
+  ) {
+    const employeeName = this.formatUserName(leaveRequest.user);
+    const period = this.formatLeavePeriod(
+      leaveRequest.startDate,
+      leaveRequest.endDate,
+    );
+
+    await this.notifyLeaveManagers({
+      cinemaId: leaveRequest.cinemaId,
+      excludeUserId: actorUserId,
+      title: 'Ny fraværsansøgning',
+      message: `${period}\n${employeeName} har anmodet om fravær.`,
+      type: 'LEAVE_REQUEST_CREATED',
+    });
+  }
+
+  private async notifyLeaveRequestStatusChanged(params: {
+    leaveRequest: LeaveRequestWithUser;
+    actorUserId: number;
+    status: LeaveStatus;
+  }) {
+    const actorName = await this.getActorName(params.actorUserId);
+    const period = this.formatLeavePeriod(
+      params.leaveRequest.startDate,
+      params.leaveRequest.endDate,
+    );
+
+    if (params.status === 'APPROVED') {
+      if (params.leaveRequest.userId !== params.actorUserId) {
+        await this.notifyUser({
+          userId: params.leaveRequest.userId,
+          cinemaId: params.leaveRequest.cinemaId,
+          title: 'Fravær godkendt',
+          message: `${period}\n${actorName} har godkendt dit fravær.`,
+          type: 'LEAVE_REQUEST_APPROVED',
+        });
+      }
+
+      return;
+    }
+
+    if (params.status === 'REJECTED') {
+      if (params.leaveRequest.userId !== params.actorUserId) {
+        await this.notifyUser({
+          userId: params.leaveRequest.userId,
+          cinemaId: params.leaveRequest.cinemaId,
+          title: 'Fravær afvist',
+          message: `${period}\n${actorName} har afvist dit fravær.`,
+          type: 'LEAVE_REQUEST_REJECTED',
+        });
+      }
+
+      return;
+    }
+
+    const isCancelledByOwner =
+      params.status === 'CANCELLED' &&
+      params.leaveRequest.userId === params.actorUserId;
+
+    if (isCancelledByOwner) {
+      const employeeName = this.formatUserName(params.leaveRequest.user);
+
+      await this.notifyLeaveManagers({
+        cinemaId: params.leaveRequest.cinemaId,
+        excludeUserId: params.actorUserId,
+        title: 'Fravær annulleret',
+        message: `${period}\n${employeeName} har annulleret sin fraværsansøgning.`,
+        type: 'LEAVE_REQUEST_CANCELLED_BY_EMPLOYEE',
+      });
+
+      return;
+    }
+
+    if (params.leaveRequest.userId !== params.actorUserId) {
+      await this.notifyUser({
+        userId: params.leaveRequest.userId,
+        cinemaId: params.leaveRequest.cinemaId,
+        title: 'Fravær annulleret',
+        message: `${period}\n${actorName} har annulleret dit fravær.`,
+        type: 'LEAVE_REQUEST_CANCELLED_BY_ADMIN',
+      });
+    }
+  }
+
   private async analyzeAbsenceImpact(leaveRequest: {
     id: number;
     userId: number;
@@ -101,13 +377,14 @@ export class LeaveRequestsService {
     }
   }
 
-  findAll(user: any) {
+  findAll(user: AuthUser) {
+    const userId = this.getUserId(user);
     const isAdmin = user.role === 'ADMIN' || user.role === 'MASTER';
 
     return this.prisma.leaveRequest.findMany({
       where: {
         cinemaId: user.cinemaId,
-        ...(isAdmin ? {} : { userId: user.sub }),
+        ...(isAdmin ? {} : { userId }),
       },
       include: {
         user: true,
@@ -119,20 +396,26 @@ export class LeaveRequestsService {
   }
 
   async create(
-    user: any,
+    user: AuthUser,
     data: {
       startDate: string;
       endDate: string;
       reason?: string;
     },
   ) {
+    const userId = this.getUserId(user);
+
+    if (!userId) {
+      throw new ForbiddenException('Brugeren kunne ikke identificeres.');
+    }
+
     const startDate = new Date(data.startDate);
     const endDate = new Date(data.endDate);
 
     this.validateDates(startDate, endDate);
 
     await this.ensureNoOverlappingShift(
-      user.sub,
+      userId,
       user.cinemaId,
       startDate,
       endDate,
@@ -144,15 +427,16 @@ export class LeaveRequestsService {
         endDate,
         reason: data.reason,
         cinemaId: user.cinemaId,
-        userId: user.sub,
+        userId,
+      },
+      include: {
+        user: true,
       },
     });
 
-    this.realtimeGateway.notifyCinema(
-      user.cinemaId,
-      'leaveRequestsUpdated',
-      {},
-    );
+    await this.notifyLeaveRequestCreated(leaveRequest, userId);
+
+    this.notifyLeaveRequestsUpdated(leaveRequest.cinemaId);
 
     const absenceImpact = await this.analyzeAbsenceImpact(leaveRequest);
 
@@ -162,11 +446,13 @@ export class LeaveRequestsService {
     };
   }
 
-  async updateStatus(
-    user: any,
-    id: number,
-    status: 'APPROVED' | 'REJECTED' | 'CANCELLED',
-  ) {
+  async updateStatus(user: AuthUser, id: number, status: LeaveStatus) {
+    const userId = this.getUserId(user);
+
+    if (!userId) {
+      throw new ForbiddenException('Brugeren kunne ikke identificeres.');
+    }
+
     const existing = await this.prisma.leaveRequest.findFirst({
       where: {
         id,
@@ -179,7 +465,7 @@ export class LeaveRequestsService {
     }
 
     const isAdmin = user.role === 'ADMIN' || user.role === 'MASTER';
-    const isOwner = existing.userId === user.sub;
+    const isOwner = existing.userId === userId;
 
     if (status === 'CANCELLED') {
       if (!isAdmin && !isOwner) {
@@ -215,13 +501,18 @@ export class LeaveRequestsService {
     const leaveRequest = await this.prisma.leaveRequest.update({
       where: { id },
       data: { status },
+      include: {
+        user: true,
+      },
     });
 
-    this.realtimeGateway.notifyCinema(
-      leaveRequest.cinemaId,
-      'leaveRequestsUpdated',
-      {},
-    );
+    await this.notifyLeaveRequestStatusChanged({
+      leaveRequest,
+      actorUserId: userId,
+      status,
+    });
+
+    this.notifyLeaveRequestsUpdated(leaveRequest.cinemaId);
 
     let absenceImpact: any = null;
 
