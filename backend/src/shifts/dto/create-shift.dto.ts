@@ -1,8 +1,4 @@
-import {
-  IsInt,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateShiftDto {
   @IsInt()
@@ -11,8 +7,9 @@ export class CreateShiftDto {
   @IsInt()
   workTypeId: number;
 
+  @IsOptional()
   @IsInt()
-  cinemaId: number;
+  cinemaId?: number;
 
   @IsString()
   startTime: string;
