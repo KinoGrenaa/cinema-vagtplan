@@ -8,7 +8,7 @@ import AiSuggestionsPanel from "../../components/schedule/AiSuggestionsPanel";
 import { useSchedule } from "../../hooks/useSchedule";
 import { useScheduleAi } from "../../hooks/useScheduleAi";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
-import type { Shift } from "../../../../shared/types";
+import type { Shift, User, WorkType } from "../../../../shared/types";
 
 type LeaveRequest = {
   id: number;
@@ -28,9 +28,9 @@ type AiScheduleFeatureProps = {
   enabled: boolean;
   selectedDate: string;
   shifts: Shift[];
-  users: unknown[];
-  workTypes: unknown[];
-  movieShowings: unknown[];
+  users: User[];
+  workTypes: WorkType[];
+  movieShowings: any[];
   createShift: (...args: any[]) => any;
   children: (ai: AiScheduleData | null) => React.ReactNode;
 };

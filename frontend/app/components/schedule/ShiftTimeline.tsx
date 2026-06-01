@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Rnd } from "react-rnd";
 import type { Shift } from "../../../../shared/types";
 
@@ -41,7 +41,6 @@ type TimelineShift = {
 };
 
 const DAY_MINUTES = 24 * 60;
-const TIMELINE_WIDTH = 1000;
 const TIMELINE_HEIGHT = 520;
 const LEFT_LABEL_WIDTH = 64;
 const SHIFT_HEIGHT = 64;
@@ -49,7 +48,6 @@ const LANE_GAP = 10;
 const TOP_OFFSET = 52;
 const SNAP_MINUTES = 15;
 const MIN_SHIFT_WIDTH = 36;
-const MINUTE_WIDTH = TIMELINE_WIDTH / DAY_MINUTES;
 
 function getShiftUserName(shift: Shift) {
   const maybeShift = shift as Shift & {
@@ -94,12 +92,6 @@ function formatTime(value: string) {
   });
 }
 
-function minutesFromDate(value: string) {
-  const date = new Date(value);
-
-  return date.getHours() * 60 + date.getMinutes();
-}
-
 function clampMinutes(value: number) {
   return Math.max(0, Math.min(DAY_MINUTES, value));
 }
@@ -108,42 +100,90 @@ function snapMinutes(value: number) {
   return Math.round(value / SNAP_MINUTES) * SNAP_MINUTES;
 }
 
-function xToTime(x: number) {
-  const totalMinutes = clampMinutes(snapMinutes(x / MINUTE_WIDTH));
+function selectedDateStart(selectedDate: string) {
+  return new Date(`${selectedDate}T00:00:00`);
+}
+
+function selectedDateEnd(selectedDate: string) {
+  const end = selectedDateStart(selectedDate);
+  end.setDate(end.getDate() + 1);
+
+  return end;
+}
+
+function getVisibleShiftMinutes(shift: Shift, selectedDate: string) {
+  const dayStart = selectedDateStart(selectedDate);
+  const dayEnd = selectedDateEnd(selectedDate);
+  const shiftStart = new Date(shift.startTime);
+  const shiftEnd = new Date(shift.endTime);
+
+  if (shiftEnd <= dayStart || shiftStart >= dayEnd) {
+    return null;
+  }
+
+  const visibleStart = Math.max(shiftStart.getTime(), dayStart.getTime());
+  const visibleEnd = Math.min(shiftEnd.getTime(), dayEnd.getTime());
+
+  const startMinutes = clampMinutes(
+    Math.round((visibleStart - dayStart.getTime()) / 60000),
+  );
+
+  const endMinutes = clampMinutes(
+    Math.round((visibleEnd - dayStart.getTime()) / 60000),
+  );
+
+  return {
+    startMinutes,
+    endMinutes: Math.max(endMinutes, startMinutes + SNAP_MINUTES),
+  };
+}
+
+function xToTime(x: number, timelineWidth: number) {
+  const safeTimelineWidth = Math.max(1, timelineWidth);
+  const totalMinutes = clampMinutes(
+    snapMinutes((x / safeTimelineWidth) * DAY_MINUTES),
+  );
+
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
 
   return { hour, minute };
 }
 
-function isSameSelectedDate(shift: Shift, selectedDate: string) {
-  const startDate = new Date(shift.startTime).toISOString().slice(0, 10);
-  const endDate = new Date(shift.endTime).toISOString().slice(0, 10);
+function buildTimelineShifts(
+  shifts: Shift[],
+  selectedDate: string,
+  timelineWidth: number,
+) {
+  const safeTimelineWidth = Math.max(1, timelineWidth);
 
-  return startDate === selectedDate || endDate === selectedDate;
-}
-
-function buildTimelineShifts(shifts: Shift[], selectedDate: string) {
   const dayShifts = shifts
-    .filter((shift) => isSameSelectedDate(shift, selectedDate))
     .map((shift) => {
-      const startMinutes = clampMinutes(minutesFromDate(shift.startTime));
-      const endMinutes = clampMinutes(minutesFromDate(shift.endTime));
+      const visibleMinutes = getVisibleShiftMinutes(shift, selectedDate);
+
+      if (!visibleMinutes) {
+        return null;
+      }
+
+      const { startMinutes, endMinutes } = visibleMinutes;
       const safeEndMinutes = Math.max(endMinutes, startMinutes + SNAP_MINUTES);
+      const left = (startMinutes / DAY_MINUTES) * safeTimelineWidth;
+      const width = Math.max(
+        MIN_SHIFT_WIDTH,
+        ((safeEndMinutes - startMinutes) / DAY_MINUTES) * safeTimelineWidth,
+      );
 
       return {
         shift,
         startMinutes,
         endMinutes: safeEndMinutes,
-        left: startMinutes * MINUTE_WIDTH,
-        width: Math.max(
-          MIN_SHIFT_WIDTH,
-          (safeEndMinutes - startMinutes) * MINUTE_WIDTH,
-        ),
+        left,
+        width,
         lane: 0,
         laneCount: 1,
       } satisfies TimelineShift;
     })
+    .filter((item): item is TimelineShift => item !== null)
     .sort(
       (a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes,
     );
@@ -204,9 +244,29 @@ function ShiftTimeline({
   onChangeShiftUser,
   onResizeShift,
 }: ShiftTimelineProps) {
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  const [timelineWidth, setTimelineWidth] = useState(1);
+
+  useEffect(() => {
+    const element = timelineRef.current;
+
+    if (!element) return;
+
+    const updateWidth = () => {
+      setTimelineWidth(Math.max(1, element.clientWidth));
+    };
+
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(element);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
   const timelineShifts = useMemo(
-    () => buildTimelineShifts(shifts, selectedDate),
-    [selectedDate, shifts],
+    () => buildTimelineShifts(shifts, selectedDate, timelineWidth),
+    [selectedDate, shifts, timelineWidth],
   );
 
   const hours = useMemo(
@@ -299,6 +359,7 @@ function ShiftTimeline({
           )}
 
           <div
+            ref={timelineRef}
             className="absolute"
             style={{
               left: LEFT_LABEL_WIDTH,
@@ -309,8 +370,6 @@ function ShiftTimeline({
           >
             {timelineShifts.map(({ shift, left, width, lane }) => {
               const y = lane * (SHIFT_HEIGHT + LANE_GAP);
-              const leftPercent = (left / TIMELINE_WIDTH) * 100;
-              const widthPercent = (width / TIMELINE_WIDTH) * 100;
 
               return (
                 <Rnd
@@ -329,24 +388,23 @@ function ShiftTimeline({
                   }}
                   minWidth={MIN_SHIFT_WIDTH}
                   size={{
-                    width: `${widthPercent}%`,
+                    width,
                     height: SHIFT_HEIGHT,
                   }}
                   position={{
                     x: left,
                     y,
                   }}
-                  style={{
-                    left: `${leftPercent}%`,
-                    width: `${widthPercent}%`,
-                  }}
                   onDragStop={(_, data) => {
-                    const { hour, minute } = xToTime(data.x);
+                    const { hour, minute } = xToTime(data.x, timelineWidth);
                     onMoveShift(shift, hour, minute);
                   }}
                   onResizeStop={(_, __, ref, ___, position) => {
-                    const start = xToTime(position.x);
-                    const end = xToTime(position.x + ref.offsetWidth);
+                    const start = xToTime(position.x, timelineWidth);
+                    const end = xToTime(
+                      position.x + ref.offsetWidth,
+                      timelineWidth,
+                    );
 
                     onResizeShift(
                       shift,
