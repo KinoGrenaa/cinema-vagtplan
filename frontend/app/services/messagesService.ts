@@ -71,6 +71,9 @@ export async function sendMessage(input: SendMessageInput): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error("Kunne ikke sende besked");
+    const text = await response.text();
+    console.error("Message send failed:", text);
+
+    throw new Error(`Kunne ikke sende besked: ${text || response.status}`);
   }
 }

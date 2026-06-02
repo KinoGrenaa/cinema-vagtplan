@@ -15,12 +15,6 @@ export class CreateMessageDto {
   @MaxLength(5000)
   body: string;
 
-  @IsInt()
-  cinemaId: number;
-
-  @IsInt()
-  senderId: number;
-
   @IsOptional()
   @IsInt()
   receiverId?: number | null;

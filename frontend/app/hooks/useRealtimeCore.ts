@@ -106,6 +106,7 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
     });
 
     socket.on("notificationsUpdated", () => {
+      console.log("Realtime notificationsUpdated received");
       input.onNotification?.();
     });
 

@@ -3,6 +3,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
+type CreateMessageInput = CreateMessageDto & {
+  cinemaId: number;
+  senderId: number;
+};
+
 @Injectable()
 export class MessagesService {
   constructor(
@@ -10,7 +15,7 @@ export class MessagesService {
     private realtime: RealtimeGateway,
   ) {}
 
-  async create(data: CreateMessageDto) {
+  async create(data: CreateMessageInput) {
     const createdMessage = await this.prisma.message.create({
       data: {
         subject: data.subject,

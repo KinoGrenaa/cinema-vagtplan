@@ -46,6 +46,9 @@ export default function AppMenu() {
 
   const totalTradeCount = poolCount + directCount;
 
+  const totalMenuBadgeCount =
+    totalTradeCount + unreadMessages + notificationCount + staffingRequestCount;
+
   const navItems: NavItem[] = [
     {
       href: "/dashboard",
@@ -117,6 +120,7 @@ export default function AppMenu() {
 
     {
       label: "Indstillinger",
+      badge: notificationCount,
 
       children: [
         {
@@ -236,10 +240,16 @@ export default function AppMenu() {
       <div className="fixed left-4 top-4 z-50">
         <button
           onClick={() => setOpen(true)}
-          className="rounded-2xl border border-gray-800 bg-black p-3 text-white shadow-xl transition hover:scale-105 hover:bg-gray-800 dark:border-gray-700 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+          className="relative rounded-2xl border border-gray-800 bg-black p-3 text-white shadow-xl transition hover:scale-105 hover:bg-gray-800 dark:border-gray-700 dark:bg-white dark:text-black dark:hover:bg-gray-200"
           aria-label="Åbn menu"
         >
           <Menu size={24} />
+
+          {totalMenuBadgeCount > 0 && (
+            <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-red-600 px-2 text-xs font-bold text-white shadow">
+              {totalMenuBadgeCount}
+            </span>
+          )}
         </button>
       </div>
 
