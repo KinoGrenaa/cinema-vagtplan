@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import type { CurrentUser, Shift, TimeEntry } from "../../../../shared/types";
+import { getTodayLocalDate, formatTimeDK } from "@/app/utils/dateTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -66,7 +66,7 @@ export default function ClockPage() {
 
   const fetchTodayShifts = useCallback(async (userId: number) => {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getTodayLocalDate();
 
       const response = await fetch(`${API_URL}/shifts?date=${today}`, {
         headers: {
@@ -198,15 +198,9 @@ export default function ClockPage() {
 
                 {todayShifts.map((shift) => (
                   <option key={shift.id} value={shift.id}>
-                    {new Date(shift.startTime).toLocaleTimeString("da-DK", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatTimeDK(shift.startTime)}
                     {" - "}
-                    {new Date(shift.endTime).toLocaleTimeString("da-DK", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatTimeDK(shift.endTime)}
                   </option>
                 ))}
               </select>

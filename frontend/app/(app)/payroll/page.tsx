@@ -16,6 +16,12 @@ import {
   YAxis,
 } from "recharts";
 import PermissionGuard from "@/app/components/PermissionGuard";
+import {
+  getTodayLocalDate,
+  dateToLocalDateString,
+  formatDateDK,
+  formatTimeDK,
+} from "@/app/utils/dateTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -78,24 +84,19 @@ type PayrollAuditHistory = {
 };
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return getTodayLocalDate();
 }
 
 function firstDayOfMonthIso() {
   const now = new Date();
 
-  return new Date(now.getFullYear(), now.getMonth(), 1)
-    .toISOString()
-    .slice(0, 10);
+  return dateToLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
 }
 
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
 
-  return new Date(value).toLocaleString("da-DK", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  return `${formatDateDK(value)} ${formatTimeDK(value)}`;
 }
 
 function formatHours(value: number) {
