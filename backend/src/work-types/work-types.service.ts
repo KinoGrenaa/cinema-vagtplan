@@ -139,6 +139,19 @@ export class WorkTypesService {
       throw new NotFoundException('Vagttype blev ikke fundet');
     }
 
+    const shiftCount = await this.prisma.shift.count({
+      where: {
+        workTypeId: id,
+        ...this.getCinemaFilter(user),
+      },
+    });
+
+    if (shiftCount > 0) {
+      throw new BadRequestException(
+        `Vagttypen bruges på ${shiftCount} vagt(er) og kan derfor ikke slettes.`,
+      );
+    }
+
     return this.prisma.workType.delete({
       where: {
         id,

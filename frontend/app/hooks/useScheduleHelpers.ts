@@ -2,13 +2,17 @@
 
 import { useCallback } from "react";
 import type { Shift } from "../../../shared/types";
+import {
+  localDateTimeToISOString,
+  toInputDateTime,
+} from "@/app/utils/dateTime";
 
 export type ScheduleLeaveRequest = {
   id: number;
   startDate: string;
   endDate: string;
   reason?: string | null;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
   user: {
     firstName: string;
     lastName: string;
@@ -28,19 +32,6 @@ type UseScheduleHelpersParams = {
   setClockOutTime: (value: string) => void;
   setClockNote: (value: string) => void;
 };
-
-export function toInputDateTime(value: string) {
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-
-  return new Date(date.getTime() - offset * 60 * 1000)
-    .toISOString()
-    .slice(0, 16);
-}
-
-export function localDateTimeToISOString(value: string) {
-  return new Date(value).toISOString();
-}
 
 export function useScheduleHelpers({
   selectedDate,

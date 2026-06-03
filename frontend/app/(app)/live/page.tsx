@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
+import { getTodayLocalDate, formatTimeDK } from "@/app/utils/dateTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -46,7 +47,7 @@ export default function LivePage() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [movies, setMovies] = useState<MovieShowing[]>([]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayLocalDate();
 
   function getToken() {
     return localStorage.getItem("token");
@@ -74,18 +75,13 @@ export default function LivePage() {
 
       const shiftsData: Shift[] = await shiftsRes.json();
 
-      const moviesData: MovieShowing[] =
-        await moviesRes.json();
+      const moviesData: MovieShowing[] = await moviesRes.json();
 
       setUsers(Array.isArray(usersData) ? usersData : []);
 
-      setShifts(
-        Array.isArray(shiftsData) ? shiftsData : [],
-      );
+      setShifts(Array.isArray(shiftsData) ? shiftsData : []);
 
-      setMovies(
-        Array.isArray(moviesData) ? moviesData : [],
-      );
+      setMovies(Array.isArray(moviesData) ? moviesData : []);
 
       const allEntries: TimeEntry[] = [];
 
@@ -95,8 +91,7 @@ export default function LivePage() {
           { headers },
         );
 
-        const entry: TimeEntry | null =
-          await res.json();
+        const entry: TimeEntry | null = await res.json();
 
         if (entry) {
           allEntries.push({
@@ -144,13 +139,9 @@ export default function LivePage() {
   }, [fetchData]);
 
   function getUserName(userId: number) {
-    const user = users.find(
-      (item) => item.id === userId,
-    );
+    const user = users.find((item) => item.id === userId);
 
-    return user
-      ? `${user.firstName} ${user.lastName}`
-      : "Ukendt";
+    return user ? `${user.firstName} ${user.lastName}` : "Ukendt";
   }
 
   function isShiftActive(shift: Shift) {
@@ -185,22 +176,17 @@ export default function LivePage() {
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-3xl font-bold">
-            Live driftsskærm
-          </h1>
+          <h1 className="text-3xl font-bold">Live driftsskærm</h1>
 
           <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Overblik over bemanding, clock-ins og film
-            lige nu.
+            Overblik over bemanding, clock-ins og film lige nu.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">
-                Clocked ind nu
-              </h2>
+              <h2 className="text-2xl font-bold">Clocked ind nu</h2>
 
               <span className="rounded-full bg-green-600 px-3 py-1 text-sm font-semibold text-white">
                 {timeEntries.length}
@@ -213,15 +199,10 @@ export default function LivePage() {
                   key={entry.id}
                   className="rounded-2xl border border-green-200 bg-green-50 p-4 transition-colors dark:border-green-900 dark:bg-green-950/40"
                 >
-                  <div className="font-bold">
-                    {getUserName(entry.userId)}
-                  </div>
+                  <div className="font-bold">{getUserName(entry.userId)}</div>
 
                   <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    Clocked ind siden{" "}
-                    {new Date(
-                      entry.clockIn,
-                    ).toLocaleTimeString("da-DK")}
+                    Clocked ind siden {formatTimeDK(entry.clockIn)}
                   </div>
                 </div>
               ))}
@@ -236,9 +217,7 @@ export default function LivePage() {
 
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">
-                Aktive vagter
-              </h2>
+              <h2 className="text-2xl font-bold">Aktive vagter</h2>
 
               <span className="rounded-full bg-blue-600 px-3 py-1 text-sm font-semibold text-white">
                 {activeShifts.length}
@@ -254,15 +233,13 @@ export default function LivePage() {
                   <div
                     className="h-2"
                     style={{
-                      backgroundColor:
-                        shift.workType.color,
+                      backgroundColor: shift.workType.color,
                     }}
                   />
 
                   <div className="p-4">
                     <div className="font-bold">
-                      {shift.user.firstName}{" "}
-                      {shift.user.lastName}
+                      {shift.user.firstName} {shift.user.lastName}
                     </div>
 
                     <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
@@ -270,19 +247,9 @@ export default function LivePage() {
                     </div>
 
                     <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(
-                        shift.startTime,
-                      ).toLocaleTimeString("da-DK", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatTimeDK(shift.startTime)}
                       {" - "}
-                      {new Date(
-                        shift.endTime,
-                      ).toLocaleTimeString("da-DK", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatTimeDK(shift.endTime)}
                     </div>
                   </div>
                 </div>
@@ -298,9 +265,7 @@ export default function LivePage() {
 
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">
-                Film lige nu
-              </h2>
+              <h2 className="text-2xl font-bold">Film lige nu</h2>
 
               <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-semibold text-white">
                 {activeMovies.length}
@@ -313,17 +278,14 @@ export default function LivePage() {
                   key={movie.id}
                   className="rounded-2xl border border-gray-200 bg-gray-50 p-4 transition-colors dark:border-gray-800 dark:bg-gray-950"
                 >
-                  <div className="font-bold">
-                    {movie.title}
-                  </div>
+                  <div className="font-bold">{movie.title}</div>
 
                   <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                     {movie.hall}
                   </div>
 
                   <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    {movie.soldSeats} solgt ·{" "}
-                    {movie.freeSeats} ledige
+                    {movie.soldSeats} solgt · {movie.freeSeats} ledige
                   </div>
                 </div>
               ))}

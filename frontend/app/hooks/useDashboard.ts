@@ -1,5 +1,6 @@
 "use client";
 
+import { getTodayLocalDate } from "@/app/utils/dateTime";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchDashboardOverview } from "../services/dashboard.service";
 import type {
@@ -36,7 +37,7 @@ export function useDashboard() {
 
   const [loading, setLoading] = useState(true);
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => getTodayLocalDate(), []);
 
   const loadDashboard = useCallback(
     async (user: CurrentUser) => {

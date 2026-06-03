@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Calendar } from "lucide-react";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
-import { getTomorrowLocalDate, formatDateDK } from "@/app/utils/dateTime";
+import { getTomorrowLocalDate, formatUtcDateDK } from "@/app/utils/dateTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -343,14 +343,14 @@ export default function LeaveRequestsPage() {
                   <span className="block text-xs text-gray-500 md:hidden">
                     Fra
                   </span>
-                  {formatDateDK(request.startDate)}
+                  {formatUtcDateDK(request.startDate)}
                 </div>
 
                 <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
                   <span className="block text-xs text-gray-500 md:hidden">
                     Til
                   </span>
-                  {formatDateDK(request.endDate)}
+                  {formatUtcDateDK(request.endDate)}
                 </div>
 
                 <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">

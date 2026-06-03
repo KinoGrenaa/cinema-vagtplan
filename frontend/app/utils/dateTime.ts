@@ -56,3 +56,21 @@ export function isSameLocalDate(left: Date | string, right: Date | string) {
     dateToLocalDateString(new Date(right))
   );
 }
+export function toInputDateTime(value: string) {
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset();
+
+  return new Date(date.getTime() - offset * 60 * 1000)
+    .toISOString()
+    .slice(0, 16);
+}
+export function formatUtcDateDK(date: Date | string) {
+  const value = new Date(date);
+
+  return new Intl.DateTimeFormat("da-DK", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(value);
+}

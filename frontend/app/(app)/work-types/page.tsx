@@ -127,13 +127,18 @@ export default function WorkTypesPage() {
       });
 
       if (!response.ok) {
-        throw new Error();
+        const data = await response.json().catch(() => null);
+
+        throw new Error(data?.message || "Kunne ikke slette vagttype");
       }
 
       await fetchWorkTypes();
     } catch (error) {
       console.error(error);
-      alert("Kunne ikke slette vagttype");
+
+      alert(
+        error instanceof Error ? error.message : "Kunne ikke slette vagttype",
+      );
     }
   }
 
