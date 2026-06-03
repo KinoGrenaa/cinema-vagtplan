@@ -1,6 +1,22 @@
+type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+
+type LeaveRequest = {
+  id: number;
+  userId?: number | null;
+  startDate: string;
+  endDate: string;
+  status: LeaveStatus;
+  user?: {
+    id?: number | null;
+    firstName?: string;
+    lastName?: string;
+  } | null;
+};
+
 type ShiftFormProps = {
   users: any[];
   workTypes: any[];
+  leaveRequests?: LeaveRequest[];
   startTime: string;
   setStartTime: (value: string) => void;
   endTime: string;
@@ -24,6 +40,8 @@ const inputClass =
 const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
+const helpTextClass = "mt-1 text-xs text-gray-500 dark:text-gray-400";
+
 function openDateTimePicker(id: string) {
   const input = document.getElementById(id) as HTMLInputElement | null;
 
@@ -34,9 +52,98 @@ function openDateTimePicker(id: string) {
   }
 }
 
+function getLeaveUserId(leaveRequest: LeaveRequest): number | null {
+  if (typeof leaveRequest.userId === "number") {
+    return leaveRequest.userId;
+  }
+
+  if (typeof leaveRequest.user?.id === "number") {
+    return leaveRequest.user.id;
+  }
+
+  return null;
+}
+
+function datesOverlap(
+  shiftStartTime: string,
+  shiftEndTime: string,
+  leaveStartDate: string,
+  leaveEndDate: string,
+) {
+  if (!shiftStartTime || !shiftEndTime || !leaveStartDate || !leaveEndDate) {
+    return false;
+  }
+
+  const shiftStart = new Date(shiftStartTime).getTime();
+  const shiftEnd = new Date(shiftEndTime).getTime();
+  const leaveStart = new Date(leaveStartDate).getTime();
+  const leaveEnd = new Date(leaveEndDate).getTime();
+
+  if (
+    Number.isNaN(shiftStart) ||
+    Number.isNaN(shiftEnd) ||
+    Number.isNaN(leaveStart) ||
+    Number.isNaN(leaveEnd)
+  ) {
+    return false;
+  }
+
+  return shiftStart < leaveEnd && shiftEnd > leaveStart;
+}
+
+function getUserLeaveConflict(
+  userId: number,
+  leaveRequests: LeaveRequest[],
+  startTime: string,
+  endTime: string,
+): LeaveStatus | null {
+  const relevantLeaveRequests = leaveRequests.filter((leaveRequest) => {
+    const leaveUserId = getLeaveUserId(leaveRequest);
+
+    return (
+      leaveUserId === userId &&
+      (leaveRequest.status === "APPROVED" ||
+        leaveRequest.status === "PENDING") &&
+      datesOverlap(
+        startTime,
+        endTime,
+        leaveRequest.startDate,
+        leaveRequest.endDate,
+      )
+    );
+  });
+
+  if (
+    relevantLeaveRequests.some(
+      (leaveRequest) => leaveRequest.status === "APPROVED",
+    )
+  ) {
+    return "APPROVED";
+  }
+
+  if (
+    relevantLeaveRequests.some(
+      (leaveRequest) => leaveRequest.status === "PENDING",
+    )
+  ) {
+    return "PENDING";
+  }
+
+  return null;
+}
+
+function getUserDisplayName(user: any) {
+  return (
+    `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+    user.email ||
+    "Ukendt medarbejder"
+  );
+}
+
 export default function ShiftForm({
   users,
   workTypes,
+  leaveRequests = [],
   startTime,
   setStartTime,
   endTime,
@@ -53,6 +160,13 @@ export default function ShiftForm({
   onCancel,
   onOfferTrade,
 }: ShiftFormProps) {
+  const selectedUserLeaveConflict = getUserLeaveConflict(
+    userId,
+    leaveRequests,
+    startTime,
+    endTime,
+  );
+
   return (
     <div className="space-y-5">
       <div>
@@ -129,12 +243,58 @@ export default function ShiftForm({
             value={userId}
             onChange={(e) => setUserId(Number(e.target.value))}
           >
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.firstName} {user.lastName}
-              </option>
-            ))}
+            {users.map((user) => {
+              const leaveConflict = getUserLeaveConflict(
+                user.id,
+                leaveRequests,
+                startTime,
+                endTime,
+              );
+              const hasApprovedLeave = leaveConflict === "APPROVED";
+              const hasPendingLeave = leaveConflict === "PENDING";
+              const isCurrentSelectedUser = user.id === userId;
+              const displayName = getUserDisplayName(user);
+
+              return (
+                <option
+                  key={user.id}
+                  value={user.id}
+                  disabled={hasApprovedLeave && !isCurrentSelectedUser}
+                  className={
+                    hasApprovedLeave
+                      ? "text-gray-400"
+                      : hasPendingLeave
+                        ? "text-yellow-700"
+                        : undefined
+                  }
+                >
+                  {displayName}
+                  {hasApprovedLeave ? " — godkendt fri" : ""}
+                  {hasPendingLeave ? " — afventer fravær" : ""}
+                </option>
+              );
+            })}
           </select>
+
+          {selectedUserLeaveConflict === "APPROVED" && (
+            <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+              Den valgte medarbejder har godkendt fri i dette tidsrum.
+            </p>
+          )}
+
+          {selectedUserLeaveConflict === "PENDING" && (
+            <p className="mt-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:border-yellow-900/60 dark:bg-yellow-950/40 dark:text-yellow-200">
+              Den valgte medarbejder har en afventende fraværsansøgning i dette
+              tidsrum.
+            </p>
+          )}
+
+          {leaveRequests.length > 0 && startTime && endTime && (
+            <p className={helpTextClass}>
+              Medarbejdere med godkendt fri markeres i listen og kan ikke
+              vælges.
+            </p>
+          )}
         </div>
 
         <div>

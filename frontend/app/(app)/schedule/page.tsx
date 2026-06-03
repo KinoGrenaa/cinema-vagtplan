@@ -541,6 +541,7 @@ ${getShiftConfirmText(selectedShift)}`,
                     onDelete={handleDelete}
                     onCancel={clearForm}
                     onOfferTrade={handleOfferTrade}
+                    leaveRequests={leaveRequests}
                   />
                 </div>
               </>
