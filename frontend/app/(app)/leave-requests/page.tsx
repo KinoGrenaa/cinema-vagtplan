@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Calendar } from "lucide-react";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { getTomorrowLocalDate, formatUtcDateDK } from "@/app/utils/dateTime";
@@ -66,6 +66,19 @@ export default function LeaveRequestsPage() {
   const [allDay, setAllDay] = useState(true);
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("16:00");
+
+  const startDateInputRef = useRef<HTMLInputElement | null>(null);
+  const endDateInputRef = useRef<HTMLInputElement | null>(null);
+
+  function openDatePicker(input: HTMLInputElement | null) {
+    if (!input) return;
+
+    input.focus();
+
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+    }
+  }
 
   function getToken() {
     return localStorage.getItem("token");
@@ -216,17 +229,22 @@ export default function LeaveRequestsPage() {
               <label className={labelClass}>Fra dato</label>
               <div className="relative">
                 <input
+                  ref={startDateInputRef}
                   type="date"
                   min={minDate}
-                  className={`${inputClass} pr-10`}
+                  className={`${inputClass} pr-11 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0`}
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                 />
 
-                <Calendar
-                  size={18}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
-                />
+                <button
+                  type="button"
+                  aria-label="Åbn kalender for fra dato"
+                  onClick={() => openDatePicker(startDateInputRef.current)}
+                  className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                >
+                  <Calendar size={18} />
+                </button>
               </div>
             </div>
 
@@ -234,17 +252,22 @@ export default function LeaveRequestsPage() {
               <label className={labelClass}>Til dato</label>
               <div className="relative">
                 <input
+                  ref={endDateInputRef}
                   type="date"
                   min={minDate}
-                  className={`${inputClass} pr-10`}
+                  className={`${inputClass} pr-11 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0`}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                 />
 
-                <Calendar
-                  size={18}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
-                />
+                <button
+                  type="button"
+                  aria-label="Åbn kalender for til dato"
+                  onClick={() => openDatePicker(endDateInputRef.current)}
+                  className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                >
+                  <Calendar size={18} />
+                </button>
               </div>
             </div>
 
