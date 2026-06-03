@@ -112,8 +112,6 @@ export class LeaveRequestsService {
   }
 
   private notifyLeaveRequestsUpdated(cinemaId: number) {
-    console.log('Sending leaveRequestsUpdated', cinemaId);
-
     this.realtimeGateway.notifyCinema(cinemaId, 'leaveRequestsUpdated', {
       cinemaId,
     });

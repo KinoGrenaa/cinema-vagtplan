@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
-import { showSuccess, showError } from "@/app/lib/toast";
+import {
+  dateToLocalMonthString,
+  formatDateDK,
+  formatTimeDK,
+} from "@/app/utils/dateTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -59,7 +63,7 @@ export default function MyShiftsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    return new Date().toISOString().slice(0, 7);
+    return dateToLocalMonthString(new Date());
   });
   const [message, setMessage] = useState("");
   const [cinemaSettings, setCinemaSettings] = useState<CinemaSettings | null>(
@@ -172,7 +176,7 @@ export default function MyShiftsPage() {
     if (!currentUser) return [];
 
     return shifts.filter((shift) => {
-      const shiftMonth = shift.startTime.slice(0, 7);
+      const shiftMonth = dateToLocalMonthString(new Date(shift.startTime));
       return shift.userId === currentUser.id && shiftMonth === selectedMonth;
     });
   }, [shifts, currentUser, selectedMonth]);
@@ -187,25 +191,11 @@ export default function MyShiftsPage() {
   }, [myMonthShifts]);
 
   function formatShiftDate(value: string) {
-    return new Date(value).toLocaleDateString("da-DK", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    return formatDateDK(value);
   }
 
   function formatShiftTimeRange(shift: { startTime: string; endTime: string }) {
-    const start = new Date(shift.startTime).toLocaleTimeString("da-DK", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const end = new Date(shift.endTime).toLocaleTimeString("da-DK", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    return `${start} - ${end}`;
+    return `${formatTimeDK(shift.startTime)} - ${formatTimeDK(shift.endTime)}`;
   }
 
   function getShiftWorkTypeName(shift: {
@@ -426,7 +416,7 @@ ${getShiftConfirmText(shift)}`,
   function changeMonth(direction: number) {
     const date = new Date(`${selectedMonth}-01T12:00:00`);
     date.setMonth(date.getMonth() + direction);
-    setSelectedMonth(date.toISOString().slice(0, 7));
+    setSelectedMonth(dateToLocalMonthString(date));
   }
 
   return (

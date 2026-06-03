@@ -25,7 +25,7 @@ export class ShiftsService {
     private auditLogsService: AuditLogsService,
   ) {}
 
-    private getCinemaFilter(user: AuthUser) {
+  private getCinemaFilter(user: AuthUser) {
     if (user.role === 'MASTER') return {};
     return { cinemaId: user.cinemaId };
   }
@@ -114,10 +114,10 @@ export class ShiftsService {
         userId: data.userId,
         status: 'APPROVED',
         startDate: {
-          lte: data.endTime,
+          lt: data.endTime,
         },
         endDate: {
-          gte: data.startTime,
+          gt: data.startTime,
         },
       },
     });

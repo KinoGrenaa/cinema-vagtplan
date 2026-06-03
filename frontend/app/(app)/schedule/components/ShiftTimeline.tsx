@@ -3,6 +3,7 @@
 import { memo, useCallback, useMemo } from "react";
 import type { Shift, User } from "../../../../../shared/types";
 import ShiftCard from "./ShiftCard";
+import { getTodayLocalDate } from "@/app/utils/dateTime";
 
 const HOURS = Array.from({ length: 25 }, (_, i) =>
   i.toString().padStart(2, "0"),
@@ -51,7 +52,7 @@ function ShiftTimelineComponent({
 }: ShiftTimelineProps) {
   const nowMeta = useMemo(() => {
     const now = new Date();
-    const today = now.toISOString().slice(0, 10);
+    const today = getTodayLocalDate();
 
     return {
       showNowLine: selectedDate === today,

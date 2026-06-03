@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Calendar } from "lucide-react";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import { getTomorrowLocalDate, formatDateDK } from "@/app/utils/dateTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -26,12 +27,6 @@ const inputClass =
 
 const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
-
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
-
-  return `${date.getUTCDate()}.${date.getUTCMonth() + 1}.${date.getUTCFullYear()}`;
-}
 
 function getStatusBadge(status: LeaveStatus) {
   if (status === "APPROVED") {
@@ -60,9 +55,7 @@ export default function LeaveRequestsPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split("T")[0];
+  const minDate = getTomorrowLocalDate();
 
   const [startDate, setStartDate] = useState(minDate);
   const [endDate, setEndDate] = useState(minDate);
@@ -350,14 +343,14 @@ export default function LeaveRequestsPage() {
                   <span className="block text-xs text-gray-500 md:hidden">
                     Fra
                   </span>
-                  {formatDate(request.startDate)}
+                  {formatDateDK(request.startDate)}
                 </div>
 
                 <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
                   <span className="block text-xs text-gray-500 md:hidden">
                     Til
                   </span>
-                  {formatDate(request.endDate)}
+                  {formatDateDK(request.endDate)}
                 </div>
 
                 <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">

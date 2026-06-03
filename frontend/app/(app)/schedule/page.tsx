@@ -8,6 +8,13 @@ import AiSuggestionsPanel from "../../components/schedule/AiSuggestionsPanel";
 import { useSchedule } from "../../hooks/useSchedule";
 import { useScheduleAi } from "../../hooks/useScheduleAi";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+import {
+  dateToLocalDateString,
+  formatDateDK,
+  formatTimeDK,
+  getTodayLocalDate,
+  localDateTimeToISOString,
+} from "@/app/utils/dateTime";
 import type { Shift, User, WorkType } from "../../../../shared/types";
 
 type LeaveRequest = {
@@ -15,7 +22,7 @@ type LeaveRequest = {
   startDate: string;
   endDate: string;
   reason?: string | null;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
   user: {
     firstName: string;
     lastName: string;
@@ -86,7 +93,7 @@ function AiScheduleFeaturesEnabled({
 
 export default function SchedulePage() {
   const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === "true";
-  const todayDefault = new Date().toISOString().slice(0, 10);
+  const todayDefault = getTodayLocalDate();
 
   const [selectedDate, setSelectedDate] = useState(todayDefault);
 
@@ -109,7 +116,7 @@ export default function SchedulePage() {
 
   const filteredMovieShowings = useMemo(() => {
     return movieShowings.filter((movie) => {
-      const movieDate = new Date(movie.startTime).toISOString().slice(0, 10);
+      const movieDate = dateToLocalDateString(new Date(movie.startTime));
 
       return movieDate === selectedDate;
     });
@@ -154,10 +161,6 @@ export default function SchedulePage() {
       .slice(0, 16);
   }
 
-  function localDateTimeToISOString(value: string) {
-    return new Date(value).toISOString();
-  }
-
   useRealtimeShifts({
     onShiftsUpdated: refreshDayData,
     onShiftTradesUpdated: refreshDayData,
@@ -184,7 +187,11 @@ export default function SchedulePage() {
     return "border-yellow-300 bg-yellow-100 text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-200";
   }
 
-  const selectedDateLeaveRequests = leaveRequests.filter(leaveIsOnSelectedDate);
+  const selectedDateLeaveRequests = leaveRequests.filter(
+    (request) =>
+      (request.status === "PENDING" || request.status === "APPROVED") &&
+      leaveIsOnSelectedDate(request),
+  );
 
   function clearForm() {
     setSelectedShift(null);
@@ -292,7 +299,7 @@ export default function SchedulePage() {
     const date = new Date(`${selectedDate}T12:00:00`);
     date.setDate(date.getDate() + days);
 
-    const nextDate = date.toISOString().slice(0, 10);
+    const nextDate = dateToLocalDateString(date);
 
     setSelectedDate(nextDate);
     setStartTime(`${nextDate}T14:00`);
@@ -302,7 +309,7 @@ export default function SchedulePage() {
   }
 
   function goToToday() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getTodayLocalDate();
 
     setSelectedDate(today);
     setStartTime(`${today}T14:00`);
@@ -379,25 +386,11 @@ export default function SchedulePage() {
   }
 
   function formatShiftDate(value: string) {
-    return new Date(value).toLocaleDateString("da-DK", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    return formatDateDK(value);
   }
 
   function formatShiftTimeRange(shift: Shift) {
-    const start = new Date(shift.startTime).toLocaleTimeString("da-DK", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const end = new Date(shift.endTime).toLocaleTimeString("da-DK", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    return `${start} - ${end}`;
+    return `${formatTimeDK(shift.startTime)} - ${formatTimeDK(shift.endTime)}`;
   }
 
   function getShiftWorkTypeName(shift: Shift) {

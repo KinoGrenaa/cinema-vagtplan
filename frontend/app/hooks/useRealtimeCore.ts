@@ -98,7 +98,6 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
     socket.on("staffingRequestRejected", triggerStaffingRequestUpdated);
     socket.on("staffingRequestCancelled", triggerStaffingRequestUpdated);
     socket.on("leaveRequestsUpdated", () => {
-      console.log("Realtime leaveRequestsUpdated received");
       triggerLeaveRequestUpdated();
     });
     socket.on("notificationCreated", () => {

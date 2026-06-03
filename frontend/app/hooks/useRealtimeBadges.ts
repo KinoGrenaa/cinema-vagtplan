@@ -32,7 +32,6 @@ export function useRealtimeBadges() {
   };
 
   const refreshBadges = useCallback(async () => {
-    console.log("refreshBadges called");
     if (!token) return;
 
     try {
@@ -63,7 +62,6 @@ export function useRealtimeBadges() {
       setDirectCount(getCount(directData));
       setUnreadMessages(getCount(messagesData));
       setNotificationCount(getCount(notificationsData));
-      console.log("notification count", getCount(notificationsData));
       setStaffingRequestCount(getPendingStaffingCount(staffingData));
     } catch {
       setPoolCount(0);
