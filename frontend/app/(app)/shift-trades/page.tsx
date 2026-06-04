@@ -178,8 +178,11 @@ export default function ShiftTradesPage() {
     )} kl. ${formatShiftTime(trade.shift.startTime, trade.shift.endTime)}`;
 
     confirmModal.confirm({
-      title: "Accepter vagt",
+      title: "Acceptér vagt",
       description: `Er du sikker på, at du vil acceptere denne vagt fra ${offeredBy}?\n\n${shiftInfo}`,
+      confirmText: "Acceptér",
+      cancelText: "Annuller",
+      confirmVariant: "success",
       onConfirm: async () => {
         const response = await apiFetch(`/shift-trades/${trade.id}/accept`, {
           method: "PATCH",
@@ -209,6 +212,9 @@ export default function ShiftTradesPage() {
     confirmModal.confirm({
       title: "Afvis vagt",
       description: `Er du sikker på, at du vil afvise denne vagt?\n\n${shiftInfo}`,
+      confirmText: "Afvis",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
       onConfirm: async () => {
         const response = await apiFetch(`/shift-trades/${trade.id}/reject`, {
           method: "PATCH",
@@ -369,10 +375,10 @@ export default function ShiftTradesPage() {
         open={confirmModal.open}
         title={confirmModal.title}
         description={confirmModal.description}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        confirmVariant={confirmModal.confirmVariant}
         loading={confirmModal.loading}
-        confirmText="Ja"
-        cancelText="Nej"
-        confirmVariant="success"
         onConfirm={confirmModal.handleConfirm}
         onCancel={confirmModal.handleCancel}
       />

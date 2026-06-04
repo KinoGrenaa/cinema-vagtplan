@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -22,6 +24,7 @@ type EmployeeDocument = {
 };
 
 export default function EmployeeDocumentsPage() {
+  const confirmDialog = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -148,33 +151,36 @@ export default function EmployeeDocumentsPage() {
     }
   }
 
-  async function handleDelete(id: number) {
-    const confirmed = confirm("Er du sikker på du vil slette dokumentet?");
+  function handleDelete(id: number) {
+    confirmDialog.confirm({
+      title: "Slet dokument",
+      description: "Er du sikker på, at du vil slette dokumentet?",
+      confirmText: "Slet",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_URL}/employee-documents/${id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-    if (!confirmed) return;
+          if (!response.ok) {
+            console.error("Kunne ikke slette dokument");
+            return;
+          }
 
-    try {
-      const response = await fetch(`${API_URL}/employee-documents/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        alert("Kunne ikke slette dokument");
-        return;
-      }
-
-      if (selectedUserId) {
-        fetchDocuments(selectedUserId);
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Kunne ikke slette dokument");
-    }
+          if (selectedUserId) {
+            fetchDocuments(selectedUserId);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      },
+    });
   }
-
   return (
     <AdminGuard>
       <div className="mx-auto max-w-5xl space-y-6 p-6">
@@ -283,6 +289,18 @@ export default function EmployeeDocumentsPage() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmVariant={confirmDialog.confirmVariant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.handleConfirm}
+        onCancel={confirmDialog.handleCancel}
+      />
     </AdminGuard>
   );
 }

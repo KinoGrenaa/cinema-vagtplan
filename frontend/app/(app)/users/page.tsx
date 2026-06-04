@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import PermissionGuard from "@/app/components/PermissionGuard";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -106,6 +108,7 @@ async function getErrorMessage(response: Response) {
 }
 
 export default function UsersPage() {
+  const confirmDialog = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -291,100 +294,110 @@ export default function UsersPage() {
     }
   }
 
-  async function deactivateUser(user: User) {
+  function deactivateUser(user: User) {
     const fullName = `${user.firstName} ${user.lastName}`;
 
-    const confirmed = confirm(
-      `Er du sikker på, at du vil deaktivere ${fullName}?\n\n` +
+    confirmDialog.confirm({
+      title: "Deaktivér bruger",
+      description:
+        `Er du sikker på, at du vil deaktivere ${fullName}?\n\n` +
         "Brugeren kan ikke længere logge ind.\n\n" +
         "Tidligere vagter, tidsregistreringer, lønhistorik, beskeder og anden historik bevares.\n\n" +
         "Brugeren kan genaktiveres senere.",
-    );
+      confirmText: "Deaktivér",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          setErrorMessage("");
 
-    if (!confirmed) return;
+          const response = await fetch(`${API_URL}/users/${user.id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${getToken()}`,
+            },
+          });
 
-    try {
-      setErrorMessage("");
+          if (!response.ok) {
+            throw new Error(await getErrorMessage(response));
+          }
 
-      const response = await fetch(`${API_URL}/users/${user.id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+          const deactivatedUser = await response.json();
 
-      if (!response.ok) {
-        throw new Error(await getErrorMessage(response));
-      }
-
-      const deactivatedUser = await response.json();
-
-      setUsers((prev) =>
-        prev.map((existingUser) =>
-          existingUser.id === user.id
-            ? {
-                ...existingUser,
-                ...deactivatedUser,
-                isActive: false,
-              }
-            : existingUser,
-        ),
-      );
-    } catch (error) {
-      console.error(error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Kunne ikke deaktivere bruger.",
-      );
-    }
+          setUsers((prev) =>
+            prev.map((existingUser) =>
+              existingUser.id === user.id
+                ? {
+                    ...existingUser,
+                    ...deactivatedUser,
+                    isActive: false,
+                  }
+                : existingUser,
+            ),
+          );
+        } catch (error) {
+          console.error(error);
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Kunne ikke deaktivere bruger.",
+          );
+        }
+      },
+    });
   }
 
-  async function reactivateUser(user: User) {
+  function reactivateUser(user: User) {
     const fullName = `${user.firstName} ${user.lastName}`;
 
-    const confirmed = confirm(
-      `Vil du genaktivere ${fullName}?\n\nBrugeren vil igen kunne logge ind.`,
-    );
+    confirmDialog.confirm({
+      title: "Genaktivér bruger",
+      description: `Vil du genaktivere ${fullName}?\n\nBrugeren vil igen kunne logge ind.`,
+      confirmText: "Genaktivér",
+      cancelText: "Annuller",
+      confirmVariant: "success",
+      onConfirm: async () => {
+        try {
+          setErrorMessage("");
 
-    if (!confirmed) return;
+          const response = await fetch(
+            `${API_URL}/users/${user.id}/reactivate`,
+            {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${getToken()}`,
+              },
+            },
+          );
 
-    try {
-      setErrorMessage("");
+          if (!response.ok) {
+            throw new Error(await getErrorMessage(response));
+          }
 
-      const response = await fetch(`${API_URL}/users/${user.id}/reactivate`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+          const reactivatedUser = await response.json();
 
-      if (!response.ok) {
-        throw new Error(await getErrorMessage(response));
-      }
-
-      const reactivatedUser = await response.json();
-
-      setUsers((prev) =>
-        prev.map((existingUser) =>
-          existingUser.id === user.id
-            ? {
-                ...existingUser,
-                ...reactivatedUser,
-                isActive: true,
-                deactivatedAt: null,
-              }
-            : existingUser,
-        ),
-      );
-    } catch (error) {
-      console.error(error);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Kunne ikke genaktivere bruger.",
-      );
-    }
+          setUsers((prev) =>
+            prev.map((existingUser) =>
+              existingUser.id === user.id
+                ? {
+                    ...existingUser,
+                    ...reactivatedUser,
+                    isActive: true,
+                    deactivatedAt: null,
+                  }
+                : existingUser,
+            ),
+          );
+        } catch (error) {
+          console.error(error);
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Kunne ikke genaktivere bruger.",
+          );
+        }
+      },
+    });
   }
 
   const visibleUsers = showInactive
@@ -560,6 +573,18 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+
+        <ConfirmModal
+          open={confirmDialog.open}
+          title={confirmDialog.title}
+          description={confirmDialog.description}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          confirmVariant={confirmDialog.confirmVariant}
+          loading={confirmDialog.loading}
+          onConfirm={confirmDialog.handleConfirm}
+          onCancel={confirmDialog.handleCancel}
+        />
       </div>
     </PermissionGuard>
   );

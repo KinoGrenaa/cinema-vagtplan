@@ -2,27 +2,39 @@
 
 import { useState } from "react";
 
+type ConfirmVariant = "danger" | "success" | "primary";
+
+type ConfirmInput = {
+  title: string;
+  description: string;
+  confirmText?: string;
+  cancelText?: string;
+  confirmVariant?: ConfirmVariant;
+  onConfirm: () => Promise<void> | void;
+};
+
 export function useConfirm() {
   const [open, setOpen] = useState(false);
-
   const [loading, setLoading] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [confirmText, setConfirmText] = useState("Bekræft");
+  const [cancelText, setCancelText] = useState("Annuller");
+  const [confirmVariant, setConfirmVariant] =
+    useState<ConfirmVariant>("primary");
 
   const [onConfirmAction, setOnConfirmAction] = useState<
-    (() => Promise<void>) | null
+    (() => Promise<void> | void) | null
   >(null);
 
-  function confirm(input: {
-    title: string;
-    description: string;
-    onConfirm: () => Promise<void>;
-  }) {
+  function confirm(input: ConfirmInput) {
     setTitle(input.title);
     setDescription(input.description);
+    setConfirmText(input.confirmText ?? "Bekræft");
+    setCancelText(input.cancelText ?? "Annuller");
+    setConfirmVariant(input.confirmVariant ?? "primary");
     setOnConfirmAction(() => input.onConfirm);
-
     setOpen(true);
   }
 
@@ -31,9 +43,7 @@ export function useConfirm() {
 
     try {
       setLoading(true);
-
       await onConfirmAction();
-
       setOpen(false);
     } finally {
       setLoading(false);
@@ -42,19 +52,18 @@ export function useConfirm() {
 
   function handleCancel() {
     if (loading) return;
-
     setOpen(false);
   }
 
   return {
     open,
     loading,
-
     title,
     description,
-
+    confirmText,
+    cancelText,
+    confirmVariant,
     confirm,
-
     handleConfirm,
     handleCancel,
   };

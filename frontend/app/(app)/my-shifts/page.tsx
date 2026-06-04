@@ -7,6 +7,8 @@ import {
   formatDateDK,
   formatTimeDK,
 } from "@/app/utils/dateTime";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -58,6 +60,7 @@ type CinemaSettings = {
 };
 
 export default function MyShiftsPage() {
+  const confirmDialog = useConfirm();
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -218,7 +221,7 @@ ${formatShiftDate(shift.startTime)}
 ${formatShiftTimeRange(shift)}`;
   }
 
-  async function sendToPool(shiftId: number) {
+  function sendToPool(shiftId: number) {
     if (!currentUser) return;
 
     const shift = shifts.find((item) => item.id === shiftId);
@@ -228,39 +231,40 @@ ${formatShiftTimeRange(shift)}`;
       return;
     }
 
-    if (
-      !window.confirm(
-        `Er du sikker på, at du vil sende denne vagt i vagtpuljen?
+    confirmDialog.confirm({
+      title: "Send vagt i vagtpulje",
+      description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen?
 
 ${getShiftConfirmText(shift)}`,
-      )
-    ) {
-      return;
-    }
+      confirmText: "Send i pulje",
+      cancelText: "Annuller",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        const response = await fetch(`${API_URL}/shift-trades`, {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            shiftId,
+            offeredByUserId: currentUser.id,
+            cinemaId: currentUser.cinemaId,
+            type: "POOL",
+          }),
+        });
 
-    const response = await fetch(`${API_URL}/shift-trades`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        shiftId,
-        offeredByUserId: currentUser.id,
-        cinemaId: currentUser.cinemaId,
-        type: "POOL",
-      }),
+        const data = await response.json();
+
+        if (!response.ok) {
+          setMessage(data.message || "Kunne ikke sende vagten til puljen");
+          return;
+        }
+
+        setMessage("Vagten er sendt til fælles pulje.");
+        await refreshData();
+      },
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke sende vagten til puljen");
-      return;
-    }
-
-    setMessage("Vagten er sendt til fælles pulje.");
-    await refreshData();
   }
 
-  async function sendDirect(shiftId: number, targetUserId: number) {
+  function sendDirect(shiftId: number, targetUserId: number) {
     if (!currentUser || !targetUserId) return;
 
     const shift = shifts.find((item) => item.id === shiftId);
@@ -276,37 +280,38 @@ ${getShiftConfirmText(shift)}`,
       ? `${targetUser.firstName} ${targetUser.lastName}`
       : "den valgte kollega";
 
-    if (
-      !window.confirm(
-        `Er du sikker på, at du vil sende denne vagt direkte til ${targetName}?
+    confirmDialog.confirm({
+      title: "Send vagt direkte",
+      description: `Er du sikker på, at du vil sende denne vagt direkte til ${targetName}?
 
 ${getShiftConfirmText(shift)}`,
-      )
-    ) {
-      return;
-    }
+      confirmText: "Send vagt",
+      cancelText: "Annuller",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        const response = await fetch(`${API_URL}/shift-trades`, {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            shiftId,
+            offeredByUserId: currentUser.id,
+            cinemaId: currentUser.cinemaId,
+            type: "DIRECT",
+            targetUserId,
+          }),
+        });
 
-    const response = await fetch(`${API_URL}/shift-trades`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        shiftId,
-        offeredByUserId: currentUser.id,
-        cinemaId: currentUser.cinemaId,
-        type: "DIRECT",
-        targetUserId,
-      }),
+        const data = await response.json();
+
+        if (!response.ok) {
+          setMessage(data.message || "Kunne ikke sende vagten til kollegaen");
+          return;
+        }
+
+        setMessage(`Vagten er sendt direkte til ${targetName}.`);
+        await refreshData();
+      },
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke sende vagten til kollegaen");
-      return;
-    }
-
-    setMessage(`Vagten er sendt direkte til ${targetName}.`);
-    await refreshData();
   }
 
   function getTradeShift(tradeId: number) {
@@ -315,7 +320,7 @@ ${getShiftConfirmText(shift)}`,
     return trade?.shift ?? null;
   }
 
-  async function acceptTrade(tradeId: number) {
+  function acceptTrade(tradeId: number) {
     if (!currentUser) return;
 
     const shift = getTradeShift(tradeId);
@@ -325,36 +330,40 @@ ${getShiftConfirmText(shift)}`,
       return;
     }
 
-    if (
-      !window.confirm(
-        `Er du sikker på, at du vil acceptere denne vagt?
+    confirmDialog.confirm({
+      title: "Acceptér vagt",
+      description: `Er du sikker på, at du vil acceptere denne vagt?
 
 ${getShiftConfirmText(shift)}`,
-      )
-    ) {
-      return;
-    }
+      confirmText: "Acceptér",
+      cancelText: "Annuller",
+      confirmVariant: "success",
+      onConfirm: async () => {
+        const response = await fetch(
+          `${API_URL}/shift-trades/${tradeId}/accept`,
+          {
+            method: "PATCH",
+            headers: getHeaders(),
+            body: JSON.stringify({
+              acceptedByUserId: currentUser.id,
+            }),
+          },
+        );
 
-    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/accept`, {
-      method: "PATCH",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        acceptedByUserId: currentUser.id,
-      }),
+        const data = await response.json();
+
+        if (!response.ok) {
+          setMessage(data.message || "Kunne ikke acceptere vagten");
+          return;
+        }
+
+        setMessage("Vagten er accepteret.");
+        await refreshData();
+      },
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke acceptere vagten");
-      return;
-    }
-
-    setMessage("Vagten er accepteret.");
-    await refreshData();
   }
 
-  async function rejectTrade(tradeId: number) {
+  function rejectTrade(tradeId: number) {
     const shift = getTradeShift(tradeId);
 
     if (!shift) {
@@ -362,55 +371,64 @@ ${getShiftConfirmText(shift)}`,
       return;
     }
 
-    if (
-      !window.confirm(
-        `Er du sikker på, at du vil afvise denne vagt?
+    confirmDialog.confirm({
+      title: "Afvis vagt",
+      description: `Er du sikker på, at du vil afvise denne vagt?
 
 ${getShiftConfirmText(shift)}`,
-      )
-    ) {
-      return;
-    }
+      confirmText: "Afvis",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        const response = await fetch(
+          `${API_URL}/shift-trades/${tradeId}/reject`,
+          {
+            method: "PATCH",
+            headers: getHeaders(),
+          },
+        );
 
-    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/reject`, {
-      method: "PATCH",
-      headers: getHeaders(),
+        const data = await response.json();
+
+        if (!response.ok) {
+          setMessage(data.message || "Kunne ikke afvise vagten");
+          return;
+        }
+
+        setMessage("Vagten er afvist.");
+        await refreshData();
+      },
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke afvise vagten");
-      return;
-    }
-
-    setMessage("Vagten er afvist.");
-    await refreshData();
   }
 
-  async function cancelTrade(tradeId: number) {
-    if (
-      !window.confirm(
+  function cancelTrade(tradeId: number) {
+    confirmDialog.confirm({
+      title: "Annullér udsendelse",
+      description:
         "Er du sikker på, at du vil annullere udsendelsen af denne vagt?",
-      )
-    ) {
-      return;
-    }
+      confirmText: "Annullér",
+      cancelText: "Tilbage",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        const response = await fetch(
+          `${API_URL}/shift-trades/${tradeId}/cancel`,
+          {
+            method: "PATCH",
+            headers: getHeaders(),
+          },
+        );
 
-    const response = await fetch(`${API_URL}/shift-trades/${tradeId}/cancel`, {
-      method: "PATCH",
-      headers: getHeaders(),
+        const data = await response.json();
+
+        if (!response.ok) {
+          setMessage(data.message || "Kunne ikke annullere udsendelsen");
+          return;
+        }
+
+        setMessage("Udsendelsen er annulleret.");
+        await refreshData();
+      },
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      setMessage(data.message || "Kunne ikke annullere udsendelsen");
-      return;
-    }
-
-    setMessage("Udsendelsen er annulleret.");
-    await refreshData();
   }
 
   function changeMonth(direction: number) {
@@ -697,6 +715,18 @@ ${getShiftConfirmText(shift)}`,
           )}
         </section>
       </div>
+
+      <ConfirmModal
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmVariant={confirmDialog.confirmVariant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.handleConfirm}
+        onCancel={confirmDialog.handleCancel}
+      />
     </main>
   );
 }

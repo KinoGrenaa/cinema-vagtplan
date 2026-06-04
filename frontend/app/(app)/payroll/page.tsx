@@ -22,6 +22,8 @@ import {
   formatDateDK,
   formatTimeDK,
 } from "@/app/utils/dateTime";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -107,6 +109,7 @@ function formatHours(value: number) {
 }
 
 export default function PayrollPage() {
+  const confirmDialog = useConfirm();
   const [startDate, setStartDate] = useState(firstDayOfMonthIso());
   const [endDate, setEndDate] = useState(todayIso());
   const [userId, setUserId] = useState("");
@@ -463,41 +466,44 @@ export default function PayrollPage() {
     }
   }
 
-  async function lockPeriod() {
-    const confirmed = window.confirm(
-      `Er du sikker på, at du vil låse lønperioden ${startDate} til ${endDate}?`,
-    );
+  function lockPeriod() {
+    confirmDialog.confirm({
+      title: "Lås lønperiode",
+      description: `Er du sikker på, at du vil låse lønperioden ${startDate} til ${endDate}?`,
+      confirmText: "Lås periode",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          setLocking(true);
 
-    if (!confirmed) return;
+          const response = await fetch(`${API_URL}/payroll/period/lock`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${getToken()}`,
+            },
+            body: JSON.stringify({
+              startDate,
+              endDate,
+            }),
+          });
 
-    try {
-      setLocking(true);
+          if (!response.ok) {
+            const errorText = await response.text();
+            alert(errorText || "Låsning fejlede");
+            return;
+          }
 
-      const response = await fetch(`${API_URL}/payroll/period/lock`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({
-          startDate,
-          endDate,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        alert(errorText || "Låsning fejlede");
-        return;
-      }
-
-      await refreshPayroll();
-    } catch (error) {
-      console.error(error);
-      alert("Låsning fejlede");
-    } finally {
-      setLocking(false);
-    }
+          await refreshPayroll();
+        } catch (error) {
+          console.error(error);
+          alert("Låsning fejlede");
+        } finally {
+          setLocking(false);
+        }
+      },
+    });
   }
 
   async function unlockPeriod() {
@@ -1198,6 +1204,18 @@ export default function PayrollPage() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmVariant={confirmDialog.confirmVariant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.handleConfirm}
+        onCancel={confirmDialog.handleCancel}
+      />
     </PermissionGuard>
   );
 }

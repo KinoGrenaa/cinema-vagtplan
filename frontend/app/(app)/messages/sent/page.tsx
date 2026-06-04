@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { useMessages } from "../../../hooks/useMessages";
 import type { MessageParticipant } from "../../../types/messages";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 
 export default function SentMessagesPage() {
+  const confirmDialog = useConfirm();
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
   );
@@ -23,21 +26,26 @@ export default function SentMessagesPage() {
     return body.length > 120 ? `${body.slice(0, 120)}...` : body;
   }
 
-  async function handleArchive(messageId: number) {
-    const confirmed = confirm("Vil du arkivere denne besked?");
+  function handleArchive(messageId: number) {
+    confirmDialog.confirm({
+      title: "Arkiver besked",
+      description: "Vil du arkivere denne besked?",
+      confirmText: "Arkiver",
+      cancelText: "Annuller",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        try {
+          await archive(messageId);
 
-    if (!confirmed) return;
-
-    try {
-      await archive(messageId);
-
-      if (expandedMessageId === messageId) {
-        setExpandedMessageId(null);
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Beskeden kunne ikke arkiveres.");
-    }
+          if (expandedMessageId === messageId) {
+            setExpandedMessageId(null);
+          }
+        } catch (error) {
+          console.error(error);
+          alert("Beskeden kunne ikke arkiveres.");
+        }
+      },
+    });
   }
 
   return (
@@ -159,6 +167,18 @@ export default function SentMessagesPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmVariant={confirmDialog.confirmVariant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.handleConfirm}
+        onCancel={confirmDialog.handleCancel}
+      />
     </main>
   );
 }

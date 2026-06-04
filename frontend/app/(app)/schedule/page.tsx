@@ -16,6 +16,8 @@ import {
   localDateTimeToISOString,
 } from "@/app/utils/dateTime";
 import type { Shift, User, WorkType } from "../../../../shared/types";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 
 type LeaveRequest = {
   id: number;
@@ -92,6 +94,7 @@ function AiScheduleFeaturesEnabled({
 }
 
 export default function SchedulePage() {
+  const confirmDialog = useConfirm();
   const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === "true";
   const todayDefault = getTodayLocalDate();
 
@@ -409,27 +412,30 @@ ${formatShiftDate(shift.startTime)}
 ${formatShiftTimeRange(shift)}`;
   }
 
-  async function handleOfferTrade() {
+  function handleOfferTrade() {
     if (!selectedShift) return;
 
-    const confirmed = window.confirm(
-      `Er du sikker på, at du vil sende denne vagt i vagtpuljen?
+    confirmDialog.confirm({
+      title: "Send vagt i byttepulje",
+      description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen?
 
 ${getShiftConfirmText(selectedShift)}`,
-    );
-
-    if (!confirmed) return;
-
-    try {
-      await offerShiftTrade(selectedShift);
-      alert("Vagten er sendt i byttepuljen");
-    } catch (error) {
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Kunne ikke sende vagten i byttepuljen",
-      );
-    }
+      confirmText: "Send i pulje",
+      cancelText: "Annuller",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        try {
+          await offerShiftTrade(selectedShift);
+          alert("Vagten er sendt i byttepuljen");
+        } catch (error) {
+          alert(
+            error instanceof Error
+              ? error.message
+              : "Kunne ikke sende vagten i byttepuljen",
+          );
+        }
+      },
+    });
   }
 
   if (loading) {
@@ -451,303 +457,327 @@ ${getShiftConfirmText(selectedShift)}`,
       createShift={createShift}
     >
       {(ai) => (
-        <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-          <div className="mx-auto space-y-6">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold">Vagtplan</h1>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Overblik over vagter, bemanding og dagens program
-                  </p>
+        <>
+          <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+            <div className="mx-auto space-y-6">
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold">Vagtplan</h1>
+                    <p className="text-gray-500 dark:text-gray-400">
+                      Overblik over vagter, bemanding og dagens program
+                    </p>
 
-                  {ai && (
-                    <div className="mb-6 flex flex-wrap gap-3">
-                      <button
-                        onClick={ai.generateAiDaySchedule}
-                        disabled={ai.generatingAiSchedule}
-                        className="rounded-2xl bg-cyan-600 px-5 py-3 font-semibold text-white shadow-sm hover:bg-cyan-700 disabled:opacity-50"
-                      >
-                        {ai.generatingAiSchedule
-                          ? "Genererer AI dagsplan..."
-                          : "🤖 Generate AI Day Schedule"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setShowClockModal(true)}
-                    className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
-                  >
-                    Registrer tid
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {canManageShifts && (
-              <>
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-                  <h2 className="mb-4 text-2xl font-bold">Fravær denne dag</h2>
-
-                  <div className="space-y-2">
-                    {selectedDateLeaveRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className={`rounded-xl border p-3 ${getLeaveStyle(
-                          request.status,
-                        )}`}
-                      >
-                        <div className="font-bold">
-                          {request.user.firstName} {request.user.lastName}
-                        </div>
-
-                        <div className="text-sm">Status: {request.status}</div>
-
-                        {request.reason && (
-                          <div className="mt-1 text-sm">
-                            Årsag: {request.reason}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    {selectedDateLeaveRequests.length === 0 && (
-                      <div className="text-gray-500 dark:text-gray-400">
-                        Ingen fravær denne dag.
+                    {ai && (
+                      <div className="mb-6 flex flex-wrap gap-3">
+                        <button
+                          onClick={ai.generateAiDaySchedule}
+                          disabled={ai.generatingAiSchedule}
+                          className="rounded-2xl bg-cyan-600 px-5 py-3 font-semibold text-white shadow-sm hover:bg-cyan-700 disabled:opacity-50"
+                        >
+                          {ai.generatingAiSchedule
+                            ? "Genererer AI dagsplan..."
+                            : "🤖 Generate AI Day Schedule"}
+                        </button>
                       </div>
                     )}
                   </div>
-                </div>
 
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-                  <ShiftForm
-                    users={users}
-                    workTypes={workTypes}
-                    startTime={startTime}
-                    setStartTime={setStartTime}
-                    endTime={endTime}
-                    setEndTime={setEndTime}
-                    note={note}
-                    setNote={setNote}
-                    userId={userId}
-                    setUserId={setUserId}
-                    workTypeId={workTypeId}
-                    setWorkTypeId={setWorkTypeId}
-                    selectedShift={selectedShift}
-                    onSubmit={handleSubmit}
-                    onDelete={handleDelete}
-                    onCancel={clearForm}
-                    onOfferTrade={handleOfferTrade}
-                    leaveRequests={leaveRequests}
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-              <div className="mb-6">
-                <h2 className="text-3xl font-bold">Dagens vagter</h2>
-                <p className="text-gray-500 dark:text-gray-400">
-                  {canManageShifts
-                    ? "Administrer, flyt og resize vagter"
-                    : "Se dagens vagtplan"}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-800 dark:bg-gray-950">
-                {ai && (
-                  <AiSuggestionsPanel
-                    shifts={shifts}
-                    staffingWarnings={ai.staffingWarnings}
-                    staffingSuggestions={ai.staffingSuggestions}
-                    recommendedEmployees={ai.recommendedEmployees}
-                    aiScheduleSuggestions={ai.aiScheduleSuggestions}
-                    creatingAiShift={ai.creatingAiShift}
-                    liveStaffingAlerts={ai.liveStaffingAlerts}
-                    emergencyAiActions={ai.emergencyAiActions}
-                    autoCreatingEmergencyShift={ai.autoCreatingEmergencyShift}
-                    autoStaffingNotifications={ai.autoStaffingNotifications}
-                    suggestedEmergencyReplacements={
-                      ai.suggestedEmergencyReplacements
-                    }
-                    sendingEmergencyRequest={ai.sendingEmergencyRequest}
-                    autoEscalationQueue={ai.autoEscalationQueue}
-                    sendingRealStaffingMessage={ai.sendingRealStaffingMessage}
-                    staffingLoopStatus={ai.staffingLoopStatus}
-                    autonomousStaffingStatus={ai.autonomousStaffingStatus}
-                    createAiSuggestedShift={ai.createAiSuggestedShift}
-                    autoCreateEmergencyShift={ai.autoCreateEmergencyShift}
-                    startAutoEscalation={ai.startAutoEscalation}
-                    sendRealStaffingMessage={ai.sendRealStaffingMessage}
-                  />
-                )}
-
-                <div className="mt-4 mb-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                  <div className="flex flex-col items-center justify-center gap-3 text-center">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                        Dato for vagtplan
-                      </div>
-                      <div className="text-2xl font-bold">
-                        {selectedDate.split("-").reverse().join("-")}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                      <button
-                        onClick={() => changeDate(-1)}
-                        className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-800"
-                      >
-                        ← Forrige dag
-                      </button>
-
-                      <button
-                        onClick={goToToday}
-                        className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                      >
-                        I dag
-                      </button>
-
-                      <label className="relative inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-blue-300 bg-blue-50 text-lg shadow-sm transition hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:hover:bg-blue-950">
-                        <span aria-hidden="true">📅</span>
-                        <input
-                          type="date"
-                          value={selectedDate}
-                          onChange={(event) => goToDate(event.target.value)}
-                          className="absolute inset-0 cursor-pointer opacity-0"
-                          aria-label="Vælg dato"
-                        />
-                      </label>
-
-                      <button
-                        onClick={() => changeDate(1)}
-                        className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-800"
-                      >
-                        Næste dag →
-                      </button>
-                    </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setShowClockModal(true)}
+                      className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+                    >
+                      Registrer tid
+                    </button>
                   </div>
                 </div>
-
-                <ShiftTimeline
-                  shifts={shifts}
-                  users={users}
-                  selectedDate={selectedDate}
-                  onSelectShift={canManageShifts ? handleSelectShift : () => {}}
-                  onMoveShift={canManageShifts ? handleMoveShift : () => {}}
-                  onChangeShiftUser={
-                    canManageShifts ? handleChangeShiftUser : () => {}
-                  }
-                  onResizeShift={canManageShifts ? handleResizeShift : () => {}}
-                />
               </div>
+
+              {canManageShifts && (
+                <>
+                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+                    <h2 className="mb-4 text-2xl font-bold">
+                      Fravær denne dag
+                    </h2>
+
+                    <div className="space-y-2">
+                      {selectedDateLeaveRequests.map((request) => (
+                        <div
+                          key={request.id}
+                          className={`rounded-xl border p-3 ${getLeaveStyle(
+                            request.status,
+                          )}`}
+                        >
+                          <div className="font-bold">
+                            {request.user.firstName} {request.user.lastName}
+                          </div>
+
+                          <div className="text-sm">
+                            Status: {request.status}
+                          </div>
+
+                          {request.reason && (
+                            <div className="mt-1 text-sm">
+                              Årsag: {request.reason}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {selectedDateLeaveRequests.length === 0 && (
+                        <div className="text-gray-500 dark:text-gray-400">
+                          Ingen fravær denne dag.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+                    <ShiftForm
+                      users={users}
+                      workTypes={workTypes}
+                      startTime={startTime}
+                      setStartTime={setStartTime}
+                      endTime={endTime}
+                      setEndTime={setEndTime}
+                      note={note}
+                      setNote={setNote}
+                      userId={userId}
+                      setUserId={setUserId}
+                      workTypeId={workTypeId}
+                      setWorkTypeId={setWorkTypeId}
+                      selectedShift={selectedShift}
+                      onSubmit={handleSubmit}
+                      onDelete={handleDelete}
+                      onCancel={clearForm}
+                      onOfferTrade={handleOfferTrade}
+                      leaveRequests={leaveRequests}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+                <div className="mb-6">
+                  <h2 className="text-3xl font-bold">Dagens vagter</h2>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {canManageShifts
+                      ? "Administrer, flyt og resize vagter"
+                      : "Se dagens vagtplan"}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-800 dark:bg-gray-950">
+                  {ai && (
+                    <AiSuggestionsPanel
+                      shifts={shifts}
+                      staffingWarnings={ai.staffingWarnings}
+                      staffingSuggestions={ai.staffingSuggestions}
+                      recommendedEmployees={ai.recommendedEmployees}
+                      aiScheduleSuggestions={ai.aiScheduleSuggestions}
+                      creatingAiShift={ai.creatingAiShift}
+                      liveStaffingAlerts={ai.liveStaffingAlerts}
+                      emergencyAiActions={ai.emergencyAiActions}
+                      autoCreatingEmergencyShift={ai.autoCreatingEmergencyShift}
+                      autoStaffingNotifications={ai.autoStaffingNotifications}
+                      suggestedEmergencyReplacements={
+                        ai.suggestedEmergencyReplacements
+                      }
+                      sendingEmergencyRequest={ai.sendingEmergencyRequest}
+                      autoEscalationQueue={ai.autoEscalationQueue}
+                      sendingRealStaffingMessage={ai.sendingRealStaffingMessage}
+                      staffingLoopStatus={ai.staffingLoopStatus}
+                      autonomousStaffingStatus={ai.autonomousStaffingStatus}
+                      createAiSuggestedShift={ai.createAiSuggestedShift}
+                      autoCreateEmergencyShift={ai.autoCreateEmergencyShift}
+                      startAutoEscalation={ai.startAutoEscalation}
+                      sendRealStaffingMessage={ai.sendRealStaffingMessage}
+                    />
+                  )}
+
+                  <div className="mt-4 mb-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                    <div className="flex flex-col items-center justify-center gap-3 text-center">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                          Dato for vagtplan
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {selectedDate.split("-").reverse().join("-")}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          onClick={() => changeDate(-1)}
+                          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-800"
+                        >
+                          ← Forrige dag
+                        </button>
+
+                        <button
+                          onClick={goToToday}
+                          className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                        >
+                          I dag
+                        </button>
+
+                        <label className="relative inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-blue-300 bg-blue-50 text-lg shadow-sm transition hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:hover:bg-blue-950">
+                          <span aria-hidden="true">📅</span>
+                          <input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(event) => goToDate(event.target.value)}
+                            className="absolute inset-0 cursor-pointer opacity-0"
+                            aria-label="Vælg dato"
+                          />
+                        </label>
+
+                        <button
+                          onClick={() => changeDate(1)}
+                          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-800"
+                        >
+                          Næste dag →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <ShiftTimeline
+                    shifts={shifts}
+                    users={users}
+                    selectedDate={selectedDate}
+                    onSelectShift={
+                      canManageShifts ? handleSelectShift : () => {}
+                    }
+                    onMoveShift={canManageShifts ? handleMoveShift : () => {}}
+                    onChangeShiftUser={
+                      canManageShifts ? handleChangeShiftUser : () => {}
+                    }
+                    onResizeShift={
+                      canManageShifts ? handleResizeShift : () => {}
+                    }
+                  />
+                </div>
+              </div>
+
+              <MovieProgram movieShowings={filteredMovieShowings} />
             </div>
 
-            <MovieProgram movieShowings={filteredMovieShowings} />
-          </div>
+            {showClockModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                <div className="mx-4 w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-2xl font-bold">
+                      Registrer møde- og fyraftstid
+                    </h2>
 
-          {showClockModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-              <div className="mx-4 w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-2xl font-bold">
-                    Registrer møde- og fyraftstid
+                    <button onClick={resetClockModal} className="text-2xl">
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <select
+                      value={clockShiftId || ""}
+                      onChange={(event) => {
+                        const shiftId = Number(event.target.value);
+                        setClockShiftId(shiftId);
+
+                        const shift = shifts.find((s) => s.id === shiftId);
+                        if (!shift) return;
+
+                        setClockInTime(toInputDateTime(shift.startTime));
+                        setClockOutTime(toInputDateTime(shift.endTime));
+                        setClockNote("");
+                      }}
+                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                    >
+                      <option value="">Vælg vagt</option>
+
+                      {shifts
+                        .filter((shift) => shift.userId === currentUser?.id)
+                        .map((shift) => (
+                          <option key={shift.id} value={shift.id}>
+                            {shift.workType.name}
+                          </option>
+                        ))}
+                    </select>
+
+                    {clockShiftId && (
+                      <>
+                        <input
+                          type="datetime-local"
+                          value={clockInTime}
+                          onChange={(event) =>
+                            setClockInTime(event.target.value)
+                          }
+                          className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                        />
+
+                        <input
+                          type="datetime-local"
+                          value={clockOutTime}
+                          onChange={(event) =>
+                            setClockOutTime(event.target.value)
+                          }
+                          className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                        />
+
+                        <textarea
+                          value={clockNote}
+                          onChange={(event) => setClockNote(event.target.value)}
+                          className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                          placeholder="Note ved afvigelse"
+                        />
+
+                        <button
+                          onClick={submitManualTime}
+                          className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                        >
+                          Send til godkendelse
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formError && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                <div className="mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+                  <h2 className="mb-4 text-2xl font-bold text-red-600 dark:text-red-400">
+                    Konflikt fundet
                   </h2>
 
-                  <button onClick={resetClockModal} className="text-2xl">
-                    ×
+                  <p className="mb-6 text-gray-700 dark:text-gray-300">
+                    {formError}
+                  </p>
+
+                  <button
+                    onClick={() => setFormError("")}
+                    className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  >
+                    OK
                   </button>
                 </div>
-
-                <div className="space-y-4">
-                  <select
-                    value={clockShiftId || ""}
-                    onChange={(event) => {
-                      const shiftId = Number(event.target.value);
-                      setClockShiftId(shiftId);
-
-                      const shift = shifts.find((s) => s.id === shiftId);
-                      if (!shift) return;
-
-                      setClockInTime(toInputDateTime(shift.startTime));
-                      setClockOutTime(toInputDateTime(shift.endTime));
-                      setClockNote("");
-                    }}
-                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                  >
-                    <option value="">Vælg vagt</option>
-
-                    {shifts
-                      .filter((shift) => shift.userId === currentUser?.id)
-                      .map((shift) => (
-                        <option key={shift.id} value={shift.id}>
-                          {shift.workType.name}
-                        </option>
-                      ))}
-                  </select>
-
-                  {clockShiftId && (
-                    <>
-                      <input
-                        type="datetime-local"
-                        value={clockInTime}
-                        onChange={(event) => setClockInTime(event.target.value)}
-                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                      />
-
-                      <input
-                        type="datetime-local"
-                        value={clockOutTime}
-                        onChange={(event) =>
-                          setClockOutTime(event.target.value)
-                        }
-                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                      />
-
-                      <textarea
-                        value={clockNote}
-                        onChange={(event) => setClockNote(event.target.value)}
-                        className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                        placeholder="Note ved afvigelse"
-                      />
-
-                      <button
-                        onClick={submitManualTime}
-                        className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                      >
-                        Send til godkendelse
-                      </button>
-                    </>
-                  )}
-                </div>
               </div>
-            </div>
-          )}
+            )}
+          </main>
 
-          {formError && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-              <div className="mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
-                <h2 className="mb-4 text-2xl font-bold text-red-600 dark:text-red-400">
-                  Konflikt fundet
-                </h2>
-
-                <p className="mb-6 text-gray-700 dark:text-gray-300">
-                  {formError}
-                </p>
-
-                <button
-                  onClick={() => setFormError("")}
-                  className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                >
-                  OK
-                </button>
-              </div>
-            </div>
-          )}
-        </main>
+          <ConfirmModal
+            open={confirmDialog.open}
+            title={confirmDialog.title}
+            description={confirmDialog.description}
+            confirmText={confirmDialog.confirmText}
+            cancelText={confirmDialog.cancelText}
+            confirmVariant={confirmDialog.confirmVariant}
+            loading={confirmDialog.loading}
+            onConfirm={confirmDialog.handleConfirm}
+            onCancel={confirmDialog.handleCancel}
+          />
+        </>
       )}
     </AiScheduleFeatures>
   );

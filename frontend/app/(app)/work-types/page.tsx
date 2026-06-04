@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -22,6 +24,7 @@ type WorkType = {
 };
 
 export default function WorkTypesPage() {
+  const confirmDialog = useConfirm();
   const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
   const [payrollTypes, setPayrollTypes] = useState<PayrollType[]>([]);
 
@@ -115,31 +118,38 @@ export default function WorkTypesPage() {
     }
   }
 
-  async function removeWorkType(id: number) {
-    const confirmed = confirm("Er du sikker på du vil slette denne vagttype?");
+  function removeWorkType(id: number) {
+    confirmDialog.confirm({
+      title: "Slet vagttype",
+      description: "Er du sikker på, at du vil slette denne vagttype?",
+      confirmText: "Slet",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_URL}/work-types/${id}`, {
+            method: "DELETE",
+            headers: getHeaders(),
+          });
 
-    if (!confirmed) return;
+          if (!response.ok) {
+            const data = await response.json().catch(() => null);
 
-    try {
-      const response = await fetch(`${API_URL}/work-types/${id}`, {
-        method: "DELETE",
-        headers: getHeaders(),
-      });
+            throw new Error(data?.message || "Kunne ikke slette vagttype");
+          }
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
+          await fetchWorkTypes();
+        } catch (error) {
+          console.error(error);
 
-        throw new Error(data?.message || "Kunne ikke slette vagttype");
-      }
-
-      await fetchWorkTypes();
-    } catch (error) {
-      console.error(error);
-
-      alert(
-        error instanceof Error ? error.message : "Kunne ikke slette vagttype",
-      );
-    }
+          alert(
+            error instanceof Error
+              ? error.message
+              : "Kunne ikke slette vagttype",
+          );
+        }
+      },
+    });
   }
 
   return (
@@ -260,6 +270,17 @@ export default function WorkTypesPage() {
           </section>
         </div>
       </main>
+      <ConfirmModal
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmVariant={confirmDialog.confirmVariant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.handleConfirm}
+        onCancel={confirmDialog.handleCancel}
+      />
     </AdminGuard>
   );
 }
