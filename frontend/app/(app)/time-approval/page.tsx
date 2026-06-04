@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
+import InputModal from "@/app/components/modals/InputModal";
+import { useInputModal } from "@/app/hooks/useInputModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -47,6 +49,7 @@ function getStatusClass(status: TimeEntryStatus) {
 export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const inputDialog = useInputModal();
 
   function getToken() {
     return localStorage.getItem("token");
@@ -87,8 +90,7 @@ export default function TimeApprovalPage() {
     const start = new Date(entry.clockIn);
     const end = new Date(entry.clockOut);
 
-    const hours =
-      (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+    const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
 
     return hours.toFixed(2);
   }
@@ -115,165 +117,176 @@ export default function TimeApprovalPage() {
     await fetchEntries();
   }
 
-  async function reject(id: number) {
-    const adminNote =
-      window.prompt("Skriv evt. årsag til afvisning") || "";
+  function reject(id: number) {
+    inputDialog.prompt({
+      title: "Afvis tidsregistrering",
+      description: "Skriv evt. årsag til afvisning. Feltet må gerne være tomt.",
+      label: "Årsag",
+      placeholder: "Fx manglende clock ud, forkert tidspunkt...",
+      confirmText: "Afvis",
+      cancelText: "Annuller",
+      required: false,
+      onConfirm: async (value) => {
+        const adminNote = value.trim();
 
-    await fetch(`${API_URL}/time-entries/${id}/reject`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
+        await fetch(`${API_URL}/time-entries/${id}/reject`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({
+            adminNote,
+          }),
+        });
+
+        await fetchEntries();
       },
-      body: JSON.stringify({
-        adminNote,
-      }),
     });
-
-    await fetchEntries();
   }
 
   return (
-    <AdminGuard>
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            <h1 className="text-3xl font-bold">Godkend timer</h1>
+    <>
+      <AdminGuard>
+        <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+          <div className="mx-auto max-w-7xl space-y-6">
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+              <h1 className="text-3xl font-bold">Godkend timer</h1>
 
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-              Gennemgå, godkend eller afvis clock ind/ud.
-            </p>
-          </div>
-
-          {loading && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-              Henter tidsregistreringer...
+              <p className="mt-2 text-gray-500 dark:text-gray-400">
+                Gennemgå, godkend eller afvis clock ind/ud.
+              </p>
             </div>
-          )}
 
-          {!loading && entries.length > 0 && (
-            <div className="space-y-4">
-              {entries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
-                >
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-3">
-                      <div>
-                        <h2 className="text-xl font-bold">
-                          {entry.user.firstName}{" "}
-                          {entry.user.lastName}
-                        </h2>
+            {loading && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+                Henter tidsregistreringer...
+              </div>
+            )}
 
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {entry.user.email}
-                        </p>
-                      </div>
-
-                      <div className="grid gap-2 text-sm">
+            {!loading && entries.length > 0 && (
+              <div className="space-y-4">
+                {entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
+                  >
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-3">
                         <div>
-                          <span className="font-semibold">
-                            Arbejdstype:
-                          </span>{" "}
-                          {entry.shift?.workType?.name || "-"}
+                          <h2 className="text-xl font-bold">
+                            {entry.user.firstName} {entry.user.lastName}
+                          </h2>
+
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {entry.user.email}
+                          </p>
                         </div>
 
-                        <div>
-                          <span className="font-semibold">
-                            Clock ind:
-                          </span>{" "}
-                          {new Date(
-                            entry.clockIn,
-                          ).toLocaleString("da-DK")}
-                        </div>
-
-                        <div>
-                          <span className="font-semibold">
-                            Clock ud:
-                          </span>{" "}
-                          {entry.clockOut
-                            ? new Date(
-                                entry.clockOut,
-                              ).toLocaleString("da-DK")
-                            : "-"}
-                        </div>
-
-                        <div>
-                          <span className="font-semibold">
-                            Timer:
-                          </span>{" "}
-                          {getHours(entry)}
-                        </div>
-
-                        {entry.adminNote && (
-                          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
-                            <span className="font-semibold">
-                              Admin note:
-                            </span>{" "}
-                            {entry.adminNote}
+                        <div className="grid gap-2 text-sm">
+                          <div>
+                            <span className="font-semibold">Arbejdstype:</span>{" "}
+                            {entry.shift?.workType?.name || "-"}
                           </div>
-                        )}
+
+                          <div>
+                            <span className="font-semibold">Clock ind:</span>{" "}
+                            {new Date(entry.clockIn).toLocaleString("da-DK")}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold">Clock ud:</span>{" "}
+                            {entry.clockOut
+                              ? new Date(entry.clockOut).toLocaleString("da-DK")
+                              : "-"}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold">Timer:</span>{" "}
+                            {getHours(entry)}
+                          </div>
+
+                          {entry.adminNote && (
+                            <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
+                              <span className="font-semibold">Admin note:</span>{" "}
+                              {entry.adminNote}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-col items-start gap-3 lg:items-end">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                          entry.status,
-                        )}`}
-                      >
-                        {getStatusLabel(entry.status)}
-                      </span>
-
-                      <div className="flex flex-wrap gap-2">
-                        {entry.status !== "APPROVED" && (
-                          <button
-                            onClick={() => approve(entry.id)}
-                            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
-                          >
-                            Godkend
-                          </button>
-                        )}
-
-                        {entry.status === "APPROVED" && (
-                          <button
-                            onClick={() => unapprove(entry.id)}
-                            className="rounded-xl bg-yellow-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-700"
-                          >
-                            Fjern godkendelse
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => reject(entry.id)}
-                          className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                      <div className="flex flex-col items-start gap-3 lg:items-end">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                            entry.status,
+                          )}`}
                         >
-                          Afvis
-                        </button>
+                          {getStatusLabel(entry.status)}
+                        </span>
+
+                        <div className="flex flex-wrap gap-2">
+                          {entry.status !== "APPROVED" && (
+                            <button
+                              onClick={() => approve(entry.id)}
+                              className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+                            >
+                              Godkend
+                            </button>
+                          )}
+
+                          {entry.status === "APPROVED" && (
+                            <button
+                              onClick={() => unapprove(entry.id)}
+                              className="rounded-xl bg-yellow-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-700"
+                            >
+                              Fjern godkendelse
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => reject(entry.id)}
+                            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                          >
+                            Afvis
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {!loading && entries.length === 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="mb-2 text-4xl">⏱️</div>
+            {!loading && entries.length === 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <div className="mb-2 text-4xl">⏱️</div>
 
-              <h2 className="text-xl font-bold">
-                Ingen tidsregistreringer
-              </h2>
+                <h2 className="text-xl font-bold">Ingen tidsregistreringer</h2>
 
-              <p className="mt-2 text-gray-500 dark:text-gray-400">
-                Der er ingen registreringer at godkende lige nu.
-              </p>
-            </div>
-          )}
-        </div>
-      </main>
-    </AdminGuard>
+                <p className="mt-2 text-gray-500 dark:text-gray-400">
+                  Der er ingen registreringer at godkende lige nu.
+                </p>
+              </div>
+            )}
+          </div>
+        </main>
+      </AdminGuard>
+
+      <InputModal
+        open={inputDialog.open}
+        title={inputDialog.title}
+        description={inputDialog.description}
+        label={inputDialog.label}
+        placeholder={inputDialog.placeholder}
+        value={inputDialog.value}
+        confirmText={inputDialog.confirmText}
+        cancelText={inputDialog.cancelText}
+        loading={inputDialog.loading}
+        required={inputDialog.required}
+        onChange={inputDialog.setValue}
+        onConfirm={inputDialog.handleConfirm}
+        onCancel={inputDialog.handleCancel}
+      />
+    </>
   );
 }

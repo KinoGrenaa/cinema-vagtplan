@@ -130,8 +130,8 @@ export default function SchedulePage() {
   const [startTime, setStartTime] = useState(`${todayDefault}T14:00`);
   const [endTime, setEndTime] = useState(`${todayDefault}T22:00`);
   const [note, setNote] = useState("");
-  const [userId, setUserId] = useState(1);
-  const [workTypeId, setWorkTypeId] = useState(1);
+  const [userId, setUserId] = useState(0);
+  const [workTypeId, setWorkTypeId] = useState(0);
   const [formError, setFormError] = useState("");
 
   const [showClockModal, setShowClockModal] = useState(false);
@@ -141,17 +141,22 @@ export default function SchedulePage() {
   const [clockNote, setClockNote] = useState("");
 
   useEffect(() => {
-    if (users.length > 0 && !users.some((user) => user.id === userId)) {
-      setUserId(users[0].id);
+    if (
+      userId !== 0 &&
+      users.length > 0 &&
+      !users.some((user) => user.id === userId)
+    ) {
+      setUserId(0);
     }
   }, [userId, users]);
 
   useEffect(() => {
     if (
+      workTypeId !== 0 &&
       workTypes.length > 0 &&
       !workTypes.some((workType) => workType.id === workTypeId)
     ) {
-      setWorkTypeId(workTypes[0].id);
+      setWorkTypeId(0);
     }
   }, [workTypeId, workTypes]);
 

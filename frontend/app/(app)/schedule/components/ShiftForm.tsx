@@ -1,3 +1,5 @@
+import { useState, type FormEvent } from "react";
+
 type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
 type LeaveRequest = {
@@ -28,7 +30,7 @@ type ShiftFormProps = {
   workTypeId: number;
   setWorkTypeId: (value: number) => void;
   selectedShift: any;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDelete: () => void;
   onCancel: () => void;
   onOfferTrade: () => void;
@@ -140,6 +142,66 @@ function getUserDisplayName(user: any) {
   );
 }
 
+function getDateTimeValue(value: string): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const dateTimeValue = new Date(value).getTime();
+
+  if (Number.isNaN(dateTimeValue)) {
+    return null;
+  }
+
+  return dateTimeValue;
+}
+
+function validateShiftForm({
+  startTime,
+  endTime,
+  userId,
+  workTypeId,
+  selectedUserLeaveConflict,
+}: {
+  startTime: string;
+  endTime: string;
+  userId: number;
+  workTypeId: number;
+  selectedUserLeaveConflict: LeaveStatus | null;
+}) {
+  const errors: string[] = [];
+  const startDateTime = getDateTimeValue(startTime);
+  const endDateTime = getDateTimeValue(endTime);
+
+  if (startDateTime === null) {
+    errors.push("Starttidspunkt skal udfyldes.");
+  }
+
+  if (endDateTime === null) {
+    errors.push("Sluttidspunkt skal udfyldes.");
+  }
+
+  if (startDateTime !== null && endDateTime !== null) {
+    if (endDateTime <= startDateTime) {
+      errors.push("Sluttidspunkt skal være efter starttidspunkt.");
+    }
+  }
+
+  if (!userId || userId <= 0) {
+    errors.push("Medarbejder skal vælges.");
+  }
+
+  if (!workTypeId || workTypeId <= 0) {
+    errors.push("Arbejdstype skal vælges.");
+  }
+
+  if (selectedUserLeaveConflict === "APPROVED") {
+    errors.push("Den valgte medarbejder har godkendt fri i dette tidsrum.");
+  }
+
+  return errors;
+}
+
 export default function ShiftForm({
   users,
   workTypes,
@@ -166,6 +228,26 @@ export default function ShiftForm({
     startTime,
     endTime,
   );
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    const errors = validateShiftForm({
+      startTime,
+      endTime,
+      userId,
+      workTypeId,
+      selectedUserLeaveConflict,
+    });
+
+    if (errors.length > 0) {
+      event.preventDefault();
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors([]);
+    onSubmit(event);
+  }
 
   return (
     <div className="space-y-5">
@@ -178,8 +260,19 @@ export default function ShiftForm({
         </p>
       </div>
 
+      {validationErrors.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+          <p className="font-semibold">Vagten kan ikke gemmes endnu:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {validationErrors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <form
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
         className="grid grid-cols-1 gap-4 md:grid-cols-3"
       >
         <div>
@@ -243,6 +336,8 @@ export default function ShiftForm({
             value={userId}
             onChange={(e) => setUserId(Number(e.target.value))}
           >
+            <option value={0}>Vælg medarbejder</option>
+
             {users.map((user) => {
               const leaveConflict = getUserLeaveConflict(
                 user.id,
@@ -304,6 +399,8 @@ export default function ShiftForm({
             value={workTypeId}
             onChange={(e) => setWorkTypeId(Number(e.target.value))}
           >
+            <option value={0}>Vælg vagttype</option>
+
             {workTypes.map((workType) => (
               <option key={workType.id} value={workType.id}>
                 {workType.name}

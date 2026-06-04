@@ -24,6 +24,8 @@ import {
 } from "@/app/utils/dateTime";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import InputModal from "@/app/components/modals/InputModal";
+import { useInputModal } from "@/app/hooks/useInputModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -109,6 +111,7 @@ function formatHours(value: number) {
 }
 
 export default function PayrollPage() {
+  const inputDialog = useInputModal();
   const confirmDialog = useConfirm();
   const [startDate, setStartDate] = useState(firstDayOfMonthIso());
   const [endDate, setEndDate] = useState(todayIso());
@@ -506,43 +509,57 @@ export default function PayrollPage() {
     });
   }
 
-  async function unlockPeriod() {
+  function unlockPeriod() {
     if (!period?.id) return;
 
-    const note = window.prompt("Skriv årsag til oplåsning:");
+    inputDialog.prompt({
+      title: "Oplås lønperiode",
+      description: `Angiv årsagen til at lønperioden ${startDate} til ${endDate} skal oplåses.`,
+      label: "Begrundelse",
+      placeholder: "Skriv begrundelse...",
+      confirmText: "Oplås periode",
+      cancelText: "Annuller",
+      required: true,
+      onConfirm: async (value) => {
+        const note = value.trim();
 
-    if (note === null) return;
+        if (!note) {
+          alert("Du skal skrive en begrundelse for at oplåse lønperioden.");
+          throw new Error("Unlock note is required");
+        }
 
-    try {
-      setUnlocking(true);
+        try {
+          setUnlocking(true);
 
-      const response = await fetch(
-        `${API_URL}/payroll/period/${period.id}/unlock`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({
-            note,
-          }),
-        },
-      );
+          const response = await fetch(
+            `${API_URL}/payroll/period/${period.id}/unlock`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${getToken()}`,
+              },
+              body: JSON.stringify({
+                note,
+              }),
+            },
+          );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        alert(errorText || "Oplåsning fejlede");
-        return;
-      }
+          if (!response.ok) {
+            const errorText = await response.text();
+            alert(errorText || "Oplåsning fejlede");
+            return;
+          }
 
-      await refreshPayroll();
-    } catch (error) {
-      console.error(error);
-      alert("Oplåsning fejlede");
-    } finally {
-      setUnlocking(false);
-    }
+          await refreshPayroll();
+        } catch (error) {
+          console.error(error);
+          alert("Oplåsning fejlede");
+        } finally {
+          setUnlocking(false);
+        }
+      },
+    });
   }
 
   useEffect(() => {
@@ -1215,6 +1232,21 @@ export default function PayrollPage() {
         loading={confirmDialog.loading}
         onConfirm={confirmDialog.handleConfirm}
         onCancel={confirmDialog.handleCancel}
+      />
+      <InputModal
+        open={inputDialog.open}
+        loading={inputDialog.loading}
+        value={inputDialog.value}
+        title={inputDialog.title}
+        description={inputDialog.description}
+        label={inputDialog.label}
+        placeholder={inputDialog.placeholder}
+        confirmText={inputDialog.confirmText}
+        cancelText={inputDialog.cancelText}
+        required={inputDialog.required}
+        onChange={inputDialog.setValue}
+        onConfirm={inputDialog.handleConfirm}
+        onCancel={inputDialog.handleCancel}
       />
     </PermissionGuard>
   );
