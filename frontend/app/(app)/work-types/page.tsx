@@ -98,7 +98,11 @@ export default function WorkTypesPage() {
       );
 
       if (!response.ok) {
-        throw new Error();
+        const errorText = await response.text();
+
+        console.error("WorkTypes fetch failed:", response.status, errorText);
+
+        throw new Error(errorText || "Kunne ikke hente vagttyper");
       }
 
       const data = await response.json();
@@ -236,17 +240,17 @@ export default function WorkTypesPage() {
 
   return (
     <AdminGuard>
-      <main className="min-h-screen bg-gray-100 p-4 md:p-8">
+      <main className="min-h-screen bg-gray-100 p-4 md:p-8 dark:bg-gray-950">
         <div className="mx-auto max-w-6xl space-y-6">
-          <section className="rounded-2xl bg-white p-6 shadow">
+          <section className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900">
             <h1 className="text-3xl font-bold">Vagttyper</h1>
 
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
               Administrer vagttyper og kobling til lønarter.
             </p>
           </section>
 
-          <section className="rounded-2xl bg-white p-6 shadow">
+          <section className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900">
             <h2 className="mb-4 text-2xl font-bold">Opret vagttype</h2>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -255,10 +259,10 @@ export default function WorkTypesPage() {
                 placeholder="Navn"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                className="rounded-xl border p-3"
+                className="rounded-xl border p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               />
 
-              <label className="flex items-center gap-3 rounded-xl border p-3">
+              <label className="flex items-center gap-3 rounded-xl border p-3 dark:border-gray-700 dark:bg-gray-800">
                 <span>Farve</span>
 
                 <input
@@ -271,7 +275,7 @@ export default function WorkTypesPage() {
               <select
                 value={payrollTypeId}
                 onChange={(event) => setPayrollTypeId(event.target.value)}
-                className="rounded-xl border p-3"
+                className="rounded-xl border p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               >
                 <option value="">Ingen lønart</option>
 
@@ -291,7 +295,7 @@ export default function WorkTypesPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-6 shadow">
+          <section className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h2 className="text-2xl font-bold">Eksisterende vagttyper</h2>
 
@@ -311,13 +315,13 @@ export default function WorkTypesPage() {
             {loading ? (
               <div>Indlæser...</div>
             ) : workTypes.length === 0 ? (
-              <div className="rounded-xl border border-dashed p-8 text-center text-gray-500">
+              <div className="rounded-xl border border-dashed p-8 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
                 Ingen vagttyper endnu.
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px] text-left text-sm">
-                  <thead>
+                <table className="w-full min-w-[800px] text-left text-sm dark:text-gray-100">
+                  <thead className="text-gray-500 dark:text-gray-400">
                     <tr className="border-b">
                       <th className="p-3">Farve</th>
                       <th className="p-3">Navn</th>
@@ -331,8 +335,10 @@ export default function WorkTypesPage() {
                     {workTypes.map((workType) => (
                       <tr
                         key={workType.id}
-                        className={`border-b ${
-                          workType.isActive ? "" : "bg-gray-50 text-gray-500"
+                        className={`border-b dark:border-gray-700 ${
+                          workType.isActive
+                            ? ""
+                            : "bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                         }`}
                       >
                         <td className="p-3">
