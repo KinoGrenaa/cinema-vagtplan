@@ -203,8 +203,13 @@ export default function SchedulePage() {
 
   function clearForm() {
     setSelectedShift(null);
+
+    setUserId(0);
+    setWorkTypeId(0);
+
     setStartTime(`${selectedDate}T14:00`);
     setEndTime(`${selectedDate}T22:00`);
+
     setNote("");
     setFormError("");
   }

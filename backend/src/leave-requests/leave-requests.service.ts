@@ -105,8 +105,28 @@ export class LeaveRequestsService {
     );
 
     if (shift) {
+      const shiftDate = shift.startTime.toLocaleDateString('da-DK', {
+        timeZone: 'Europe/Copenhagen',
+      });
+
+      const shiftStart = shift.startTime.toLocaleTimeString('da-DK', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Copenhagen',
+      });
+
+      const shiftEnd = shift.endTime.toLocaleTimeString('da-DK', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Copenhagen',
+      });
+
+      const workTypeName = shift.workType?.name
+        ? `${shift.workType.name}-vagt`
+        : 'vagt';
+
       throw new BadRequestException(
-        'Medarbejderen har allerede en vagt i det valgte tidsrum.',
+        `Du har en ${workTypeName} den ${shiftDate} kl. ${shiftStart}-${shiftEnd}. Byt vagten først, eller kontakt din planlægger, før du søger fravær.`,
       );
     }
   }
