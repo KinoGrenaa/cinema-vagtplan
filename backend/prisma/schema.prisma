@@ -143,6 +143,9 @@ model WorkType {
   color     String   @default("#2563eb")
   createdAt DateTime @default(now())
 
+  isActive   Boolean   @default(true)
+  archivedAt DateTime?
+
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
 

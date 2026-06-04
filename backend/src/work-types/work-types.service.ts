@@ -35,17 +35,25 @@ export class WorkTypesService {
     };
   }
 
-  async findAll(user: AuthUser) {
+  async findAll(user: AuthUser, includeArchived = false) {
     return this.prisma.workType.findMany({
-      where: this.getCinemaFilter(user),
+      where: {
+        ...this.getCinemaFilter(user),
+        ...(includeArchived ? {} : { isActive: true }),
+      },
 
       include: {
         payrollType: true,
       },
 
-      orderBy: {
-        name: 'asc',
-      },
+      orderBy: [
+        {
+          isActive: 'desc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
     });
   }
 
@@ -62,12 +70,13 @@ export class WorkTypesService {
     const existing = await this.prisma.workType.findFirst({
       where: {
         name: data.name,
+        isActive: true,
         ...this.getCinemaFilter(user),
       },
     });
 
     if (existing) {
-      throw new BadRequestException('Vagttype findes allerede');
+      throw new BadRequestException('Aktiv vagttype findes allerede');
     }
 
     return this.prisma.workType.create({
@@ -78,6 +87,8 @@ export class WorkTypesService {
         cinemaId: user.cinemaId,
 
         payrollTypeId: data.payrollTypeId || null,
+        isActive: true,
+        archivedAt: null,
       },
 
       include: {
@@ -108,6 +119,23 @@ export class WorkTypesService {
       throw new NotFoundException('Vagttype blev ikke fundet');
     }
 
+    if (data.name && data.name !== existing.name) {
+      const duplicate = await this.prisma.workType.findFirst({
+        where: {
+          name: data.name,
+          isActive: true,
+          id: {
+            not: id,
+          },
+          ...this.getCinemaFilter(user),
+        },
+      });
+
+      if (duplicate) {
+        throw new BadRequestException('Aktiv vagttype findes allerede');
+      }
+    }
+
     return this.prisma.workType.update({
       where: {
         id,
@@ -116,7 +144,8 @@ export class WorkTypesService {
       data: {
         ...data,
 
-        payrollTypeId: data.payrollTypeId || null,
+        payrollTypeId:
+          data.payrollTypeId === undefined ? undefined : data.payrollTypeId,
       },
 
       include: {
@@ -139,22 +168,73 @@ export class WorkTypesService {
       throw new NotFoundException('Vagttype blev ikke fundet');
     }
 
-    const shiftCount = await this.prisma.shift.count({
+    if (!existing.isActive) {
+      throw new BadRequestException('Vagttypen er allerede arkiveret');
+    }
+
+    return this.prisma.workType.update({
       where: {
-        workTypeId: id,
+        id,
+      },
+
+      data: {
+        isActive: false,
+        archivedAt: new Date(),
+      },
+
+      include: {
+        payrollType: true,
+      },
+    });
+  }
+
+  async reactivate(user: AuthUser, id: number) {
+    this.ensureAdmin(user);
+
+    const existing = await this.prisma.workType.findFirst({
+      where: {
+        id,
         ...this.getCinemaFilter(user),
       },
     });
 
-    if (shiftCount > 0) {
+    if (!existing) {
+      throw new NotFoundException('Vagttype blev ikke fundet');
+    }
+
+    if (existing.isActive) {
+      throw new BadRequestException('Vagttypen er allerede aktiv');
+    }
+
+    const duplicate = await this.prisma.workType.findFirst({
+      where: {
+        name: existing.name,
+        isActive: true,
+        id: {
+          not: id,
+        },
+        ...this.getCinemaFilter(user),
+      },
+    });
+
+    if (duplicate) {
       throw new BadRequestException(
-        `Vagttypen bruges på ${shiftCount} vagt(er) og kan derfor ikke slettes.`,
+        'Der findes allerede en aktiv vagttype med samme navn',
       );
     }
 
-    return this.prisma.workType.delete({
+    return this.prisma.workType.update({
       where: {
         id,
+      },
+
+      data: {
+        isActive: true,
+        archivedAt: null,
+      },
+
+      include: {
+        payrollType: true,
       },
     });
   }
