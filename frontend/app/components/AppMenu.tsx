@@ -24,6 +24,7 @@ export default function AppMenu() {
     unreadMessages,
     notificationCount,
     staffingRequestCount,
+    leaveRequestCount,
   } = useRealtimeBadges();
 
   const { user, logout, isAdmin, isMaster } = useAuth();
@@ -148,6 +149,7 @@ export default function AppMenu() {
     {
       label: "Administration",
       adminOnly: true,
+      badge: leaveRequestCount,
 
       children: [
         {
@@ -173,6 +175,7 @@ export default function AppMenu() {
         {
           href: "/leave-approval",
           label: "Fraværsgodkendelse",
+          badge: leaveRequestCount,
         },
 
         {

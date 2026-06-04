@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import {
+  formatDateDK,
+  formatTimeDK,
+  formatUtcDateDK,
+} from "@/app/utils/dateTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -21,45 +26,40 @@ type LeaveRequest = {
   };
 };
 
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
-
-  return date.toLocaleDateString("da-DK", {
-    timeZone: "Europe/Copenhagen",
-  });
+function isFullDayLeave(start: Date, end: Date) {
+  return (
+    start.getUTCHours() === 0 &&
+    start.getUTCMinutes() === 0 &&
+    end.getUTCHours() === 23 &&
+    end.getUTCMinutes() === 59
+  );
 }
 
-function formatLeaveDateTime(startDateString: string, endDateString: string) {
+function formatLeavePeriod(startDateString: string, endDateString: string) {
   const start = new Date(startDateString);
   const end = new Date(endDateString);
 
-  const startDate = formatDate(startDateString);
-  const endDate = formatDate(endDateString);
+  if (isFullDayLeave(start, end)) {
+    const startDate = formatUtcDateDK(start);
+    const endDate = formatUtcDateDK(end);
 
-  const startTime = start.toLocaleTimeString("da-DK", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Copenhagen",
-  });
+    if (startDate === endDate) {
+      return `${startDate} · Heldag`;
+    }
 
-  const endTime = end.toLocaleTimeString("da-DK", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Copenhagen",
-  });
-
-  const isFullDay =
-    startTime === "00.00" && (endTime === "23.59" || endTime === "00.00");
-
-  if (isFullDay && startDate === endDate) {
-    return `${startDate} · Heldag`;
+    return `${startDate} → ${endDate} · Heldag`;
   }
+
+  const startDate = formatDateDK(start);
+  const endDate = formatDateDK(end);
+  const startTime = formatTimeDK(start);
+  const endTime = formatTimeDK(end);
 
   if (startDate === endDate) {
     return `${startDate} · ${startTime}-${endTime}`;
   }
 
-  return `${startDate} ${startTime} → ${endDate} ${endTime}`;
+  return `${startDate} kl. ${startTime} → ${endDate} kl. ${endTime}`;
 }
 function getStatusBadge(status: LeaveStatus) {
   if (status === "APPROVED") {
@@ -183,26 +183,30 @@ export default function LeaveApprovalPage() {
           {!loading && requests.length > 0 && (
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
               <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800">
-                <div className="hidden bg-gray-50 text-sm font-medium text-gray-600 dark:bg-gray-950 dark:text-gray-400 md:grid md:grid-cols-[1.2fr_1.4fr_1fr_1fr_1.6fr]">
+                <div className="hidden bg-gray-50 text-sm font-medium text-gray-600 dark:bg-gray-950 dark:text-gray-400 md:grid md:grid-cols-[1.2fr_1.6fr_1fr_1fr_1.6fr]">
                   <div className="border-r border-gray-200 p-3 dark:border-gray-800">
                     Medarbejder
                   </div>
+
                   <div className="border-r border-gray-200 p-3 dark:border-gray-800">
                     Periode
                   </div>
+
                   <div className="border-r border-gray-200 p-3 dark:border-gray-800">
                     Årsag
                   </div>
+
                   <div className="border-r border-gray-200 p-3 dark:border-gray-800">
                     Status
                   </div>
+
                   <div className="p-3">Handling</div>
                 </div>
 
                 {requests.map((request) => (
                   <div
                     key={request.id}
-                    className="grid gap-3 border-t border-gray-200 p-4 text-sm dark:border-gray-800 md:grid-cols-[1.2fr_1.4fr_1fr_1fr_1.6fr] md:gap-0 md:p-0"
+                    className="grid gap-3 border-t border-gray-200 p-4 text-sm dark:border-gray-800 md:md:grid-cols-[1.2fr_1.6fr_1fr_1fr_1.6fr] md:gap-0 md:p-0"
                   >
                     <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
                       <span className="block text-xs text-gray-500 md:hidden">
@@ -211,11 +215,11 @@ export default function LeaveApprovalPage() {
                       {request.user.firstName} {request.user.lastName}
                     </div>
 
-                    <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
+                    <div className="whitespace-nowrap md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
                       <span className="block text-xs text-gray-500 md:hidden">
                         Periode
                       </span>
-                      {formatLeaveDateTime(request.startDate, request.endDate)}
+                      {formatLeavePeriod(request.startDate, request.endDate)}
                     </div>
 
                     <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
