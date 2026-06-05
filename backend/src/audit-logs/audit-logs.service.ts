@@ -38,4 +38,18 @@ export class AuditLogsService {
       take: 500,
     });
   }
+  async findByEntity(entityType: string, entityId: number) {
+    return this.prisma.auditLog.findMany({
+      where: {
+        entityType,
+        entityId,
+      },
+      include: {
+        user: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }

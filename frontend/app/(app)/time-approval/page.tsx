@@ -5,16 +5,32 @@ import { useCallback, useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import InputModal from "@/app/components/modals/InputModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
+import { toast } from "sonner";
+import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
+import AuditHistoryModal from "@/app/components/modals/AuditHistoryModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+type AuditLog = {
+  id: number;
+  action: string;
+  description?: string | null;
+  createdAt: string;
+  user?: {
+    firstName: string;
+    lastName: string;
+  } | null;
+};
 
 type TimeEntry = {
   id: number;
   clockIn: string;
   clockOut?: string | null;
   status: TimeEntryStatus;
+
+  note?: string | null;
   adminNote?: string | null;
   user: {
     firstName: string;
@@ -50,11 +66,53 @@ export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const inputDialog = useInputModal();
+  const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [historyLogs, setHistoryLogs] = useState<AuditLog[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
 
   function getToken() {
     return localStorage.getItem("token");
   }
+  async function saveEdit(data: {
+    clockIn: string;
+    clockOut?: string | null;
+    adminNote: string;
+  }) {
+    if (!editEntry) return;
 
+    try {
+      setSavingEdit(true);
+
+      const response = await fetch(`${API_URL}/time-entries/${editEntry.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Kunne ikke redigere timeregistrering");
+      }
+
+      await fetchEntries();
+      setEditEntry(null);
+      toast.success("Timeregistrering opdateret");
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke redigere timeregistrering",
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  }
   const fetchEntries = useCallback(async () => {
     try {
       setLoading(true);
@@ -79,6 +137,35 @@ export default function TimeApprovalPage() {
       setLoading(false);
     }
   }, []);
+
+  async function openHistory(entry: TimeEntry) {
+    try {
+      setHistoryEntry(entry);
+      setHistoryLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/audit-logs/entity/TimeEntry/${entry.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error();
+      }
+
+      const data = await response.json();
+
+      setHistoryLogs(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Kunne ikke hente historik");
+      setHistoryLogs([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   useEffect(() => {
     fetchEntries();
@@ -205,7 +292,14 @@ export default function TimeApprovalPage() {
                             <span className="font-semibold">Timer:</span>{" "}
                             {getHours(entry)}
                           </div>
-
+                          {entry.note && (
+                            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                              <span className="font-semibold">
+                                Medarbejder note:
+                              </span>{" "}
+                              {entry.note}
+                            </div>
+                          )}
                           {entry.adminNote && (
                             <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
                               <span className="font-semibold">Admin note:</span>{" "}
@@ -225,6 +319,18 @@ export default function TimeApprovalPage() {
                         </span>
 
                         <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => setEditEntry(entry)}
+                            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                          >
+                            Redigér
+                          </button>
+                          <button
+                            onClick={() => openHistory(entry)}
+                            className="rounded-xl bg-gray-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
+                          >
+                            Historik
+                          </button>
                           {entry.status !== "APPROVED" && (
                             <button
                               onClick={() => approve(entry.id)}
@@ -270,6 +376,27 @@ export default function TimeApprovalPage() {
             )}
           </div>
         </main>
+        {editEntry && (
+          <TimeEntryEditModal
+            open={!!editEntry}
+            clockIn={editEntry.clockIn}
+            clockOut={editEntry.clockOut}
+            loading={savingEdit}
+            onClose={() => setEditEntry(null)}
+            onSave={saveEdit}
+          />
+        )}
+        {historyEntry && (
+          <AuditHistoryModal
+            open={!!historyEntry}
+            logs={historyLogs}
+            loading={historyLoading}
+            onClose={() => {
+              setHistoryEntry(null);
+              setHistoryLogs([]);
+            }}
+          />
+        )}
       </AdminGuard>
 
       <InputModal

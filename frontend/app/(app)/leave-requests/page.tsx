@@ -63,7 +63,7 @@ export default function LeaveRequestsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [allDay, setAllDay] = useState(true);
+  const [allDay, setAllDay] = useState(false);
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("16:00");
 

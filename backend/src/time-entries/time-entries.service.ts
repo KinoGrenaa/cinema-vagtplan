@@ -9,12 +9,11 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service';
 
 @Injectable()
 export class TimeEntriesService {
-  
   constructor(
-  private prisma: PrismaService,
-  private realtimeGateway: RealtimeGateway,
-  private auditLogsService: AuditLogsService,
-) {}
+    private prisma: PrismaService,
+    private realtimeGateway: RealtimeGateway,
+    private auditLogsService: AuditLogsService,
+  ) {}
 
   private getCinemaFilter(user?: any) {
     if (!user || user.role === 'MASTER') {
@@ -183,7 +182,7 @@ export class TimeEntriesService {
       action: 'SUBMIT_MANUAL_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
-      description: `Indsendte manuel tidsregistrering for ${shift.workType.name}`,
+      description: 'Medarbejder indsendte manuel tidsregistrering',
       userId: entry.userId,
       cinemaId: entry.cinemaId,
     });
@@ -424,11 +423,37 @@ export class TimeEntriesService {
       );
     }
 
+    const oldClockIn = existingEntry.clockIn;
+    const oldClockOut = existingEntry.clockOut;
+
+    const newClockIn = new Date(data.clockIn);
+    const newClockOut = data.clockOut ? new Date(data.clockOut) : null;
+
+    const changes: string[] = [];
+
+    if (oldClockIn.getTime() !== newClockIn.getTime()) {
+      changes.push(
+        `Clock ind: ${oldClockIn.toLocaleString('da-DK')} → ${newClockIn.toLocaleString('da-DK')}`,
+      );
+    }
+
+    if ((oldClockOut?.getTime() ?? null) !== (newClockOut?.getTime() ?? null)) {
+      changes.push(
+        `Clock ud: ${
+          oldClockOut ? oldClockOut.toLocaleString('da-DK') : '-'
+        } → ${newClockOut ? newClockOut.toLocaleString('da-DK') : '-'}`,
+      );
+    }
+
+    if (changes.length === 0) {
+      changes.push('Ingen tidsændring registreret');
+    }
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
-        clockIn: new Date(data.clockIn),
-        clockOut: data.clockOut ? new Date(data.clockOut) : null,
+        clockIn: newClockIn,
+        clockOut: newClockOut,
         adminNote: data.adminNote,
         status: 'PENDING',
       },
@@ -438,7 +463,12 @@ export class TimeEntriesService {
       action: 'UPDATE_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
-      description: `Rettede tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}. Note: ${data.adminNote}`,
+      description: [
+        `Rettede tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}.`,
+        ...changes,
+        `Begrundelse: ${data.adminNote}`,
+      ].join('\n'),
+      userId: user.sub,
       cinemaId: entry.cinemaId,
     });
 
