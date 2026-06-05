@@ -77,6 +77,11 @@ export default function AppMenu() {
         },
 
         {
+          href: "/my-time",
+          label: "Mine timer",
+        },
+
+        {
           href: "/shift-trades",
           label: "Vagtpulje",
           badge: poolCount,

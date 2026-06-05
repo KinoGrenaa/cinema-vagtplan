@@ -23,6 +23,12 @@ import { RejectTimeEntryDto } from './dto/reject-time-entry.dto';
 export class TimeEntriesController {
   constructor(private timeEntriesService: TimeEntriesService) {}
 
+  @UseGuards(JwtGuard)
+  @Get('me')
+  getMyEntries(@Req() req) {
+    return this.timeEntriesService.findForUser(req.user.sub);
+  }
+
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Get()
@@ -84,6 +90,21 @@ export class TimeEntriesController {
   @Patch(':id/reject')
   rejectEntry(@Param('id') id: string, @Body() body: RejectTimeEntryDto) {
     return this.timeEntriesService.rejectEntry(Number(id), body.adminNote);
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch('me/:id')
+  updateMyEntry(
+    @Req() req,
+    @Param('id') id: string,
+    @Body()
+    body: {
+      clockIn: string;
+      clockOut?: string | null;
+      note?: string | null;
+    },
+  ) {
+    return this.timeEntriesService.updateOwnEntry(req.user, Number(id), body);
   }
 
   @UseGuards(JwtGuard, RolesGuard)

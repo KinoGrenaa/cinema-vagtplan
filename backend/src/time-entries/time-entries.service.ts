@@ -397,6 +397,112 @@ export class TimeEntriesService {
     return entry;
   }
 
+  async updateOwnEntry(
+    user: any,
+    id: number,
+    data: {
+      clockIn: string;
+      clockOut?: string | null;
+      note?: string | null;
+    },
+  ) {
+    const existingEntry = await this.prisma.timeEntry.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
+    if (existingEntry.userId !== user.sub) {
+      throw new BadRequestException(
+        'Du kan kun rette dine egne tidsregistreringer',
+      );
+    }
+
+    if (existingEntry.status === 'APPROVED') {
+      throw new BadRequestException(
+        'Denne tidsregistrering er allerede godkendt og kan ikke ændres',
+      );
+    }
+
+    this.ensureEntryEditable(existingEntry, user);
+
+    const oldClockIn = existingEntry.clockIn;
+    const oldClockOut = existingEntry.clockOut;
+    const oldNote = existingEntry.note;
+
+    const newClockIn = new Date(data.clockIn);
+    const newClockOut = data.clockOut ? new Date(data.clockOut) : null;
+
+    if (Number.isNaN(newClockIn.getTime())) {
+      throw new BadRequestException('Ugyldig clock ind');
+    }
+
+    if (newClockOut && Number.isNaN(newClockOut.getTime())) {
+      throw new BadRequestException('Ugyldig clock ud');
+    }
+
+    if (newClockOut && newClockOut <= newClockIn) {
+      throw new BadRequestException('Clock ud skal være efter clock ind');
+    }
+
+    const changes: string[] = [];
+
+    if (oldClockIn.getTime() !== newClockIn.getTime()) {
+      changes.push(
+        `Clock ind: ${oldClockIn.toLocaleString('da-DK')} → ${newClockIn.toLocaleString('da-DK')}`,
+      );
+    }
+
+    if ((oldClockOut?.getTime() ?? null) !== (newClockOut?.getTime() ?? null)) {
+      changes.push(
+        `Clock ud: ${
+          oldClockOut ? oldClockOut.toLocaleString('da-DK') : '-'
+        } → ${newClockOut ? newClockOut.toLocaleString('da-DK') : '-'}`,
+      );
+    }
+
+    if ((oldNote ?? '') !== (data.note ?? '')) {
+      changes.push(`Note ændret`);
+    }
+
+    if (changes.length === 0) {
+      changes.push('Ingen ændring registreret');
+    }
+
+    const entry = await this.prisma.timeEntry.update({
+      where: { id },
+      data: {
+        clockIn: newClockIn,
+        clockOut: newClockOut,
+        note: data.note,
+        status: 'PENDING',
+      },
+    });
+
+    await this.auditLogsService.create({
+      action: 'UPDATE_OWN_TIME_ENTRY',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: [
+        `Medarbejder rettede egen tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}.`,
+        ...changes,
+      ].join('\n'),
+      userId: user.sub,
+      cinemaId: entry.cinemaId,
+    });
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      entry,
+    );
+
+    return entry;
+  }
+
   async updateEntry(
     user: any,
     id: number,

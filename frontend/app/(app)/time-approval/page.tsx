@@ -8,6 +8,7 @@ import { useInputModal } from "@/app/hooks/useInputModal";
 import { toast } from "sonner";
 import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
 import AuditHistoryModal from "@/app/components/modals/AuditHistoryModal";
+import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -137,6 +138,10 @@ export default function TimeApprovalPage() {
       setLoading(false);
     }
   }, []);
+
+  useRealtimeCore({
+    onTimeEntry: fetchEntries,
+  });
 
   async function openHistory(entry: TimeEntry) {
     try {
