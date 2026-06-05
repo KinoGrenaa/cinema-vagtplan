@@ -48,7 +48,11 @@ export default function AppMenu() {
   const totalTradeCount = poolCount + directCount;
 
   const totalMenuBadgeCount =
-    totalTradeCount + unreadMessages + notificationCount + staffingRequestCount;
+    totalTradeCount +
+    unreadMessages +
+    notificationCount +
+    staffingRequestCount +
+    leaveRequestCount;
 
   const navItems: NavItem[] = [
     {
