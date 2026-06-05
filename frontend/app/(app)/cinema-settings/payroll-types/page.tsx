@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
+import { useConfirm } from "@/app/hooks/useConfirm";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -28,6 +30,7 @@ export default function PayrollTypesPage() {
   const [color, setColor] = useState("#2563eb");
   const [isDefault, setIsDefault] = useState(false);
   const [message, setMessage] = useState("");
+  const confirmDialog = useConfirm();
 
   function getHeaders() {
     return {
@@ -130,7 +133,7 @@ export default function PayrollTypesPage() {
       await fetchPayrollTypes();
     } catch (error) {
       console.error(error);
-      alert("Kunne ikke opdatere lønart");
+      toast.error("Kunne ikke opdatere lønart");
     }
   }
 
@@ -154,30 +157,37 @@ export default function PayrollTypesPage() {
       await fetchPayrollTypes();
     } catch (error) {
       console.error(error);
-      alert("Kunne ikke vælge standard lønart");
+      toast.error("Kunne ikke vælge standard lønart");
     }
   }
 
   async function removePayrollType(id: number) {
-    const confirmed = confirm("Er du sikker på du vil slette denne lønart?");
+    confirmDialog.confirm({
+      title: "Slet lønart",
+      description: "Er du sikker på at du vil slette denne lønart?",
+      confirmText: "Slet",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`${API_URL}/payroll-types/${id}`, {
+            method: "DELETE",
+            headers: getHeaders(),
+          });
 
-    if (!confirmed) return;
+          if (!response.ok) {
+            throw new Error("Kunne ikke slette lønart");
+          }
 
-    try {
-      const response = await fetch(`${API_URL}/payroll-types/${id}`, {
-        method: "DELETE",
-        headers: getHeaders(),
-      });
+          await fetchPayrollTypes();
 
-      if (!response.ok) {
-        throw new Error("Kunne ikke slette lønart");
-      }
-
-      await fetchPayrollTypes();
-    } catch (error) {
-      console.error(error);
-      alert("Kunne ikke slette lønart");
-    }
+          toast.success("Lønart slettet");
+        } catch (error) {
+          console.error(error);
+          toast.error("Kunne ikke slette lønart");
+        }
+      },
+    });
   }
 
   return (

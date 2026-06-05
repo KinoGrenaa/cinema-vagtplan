@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -135,7 +136,7 @@ export default function EmployeeDocumentsPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(error.message || "Upload fejlede");
+        toast.error(error.message || "Upload fejlede");
         return;
       }
 
@@ -143,9 +144,10 @@ export default function EmployeeDocumentsPage() {
       setFile(null);
 
       fetchDocuments(selectedUserId);
+      toast.success("Dokument uploadet");
     } catch (error) {
       console.error(error);
-      alert("Kunne ikke uploade dokument");
+      toast.error("Kunne ikke uploade dokument");
     } finally {
       setUploading(false);
     }

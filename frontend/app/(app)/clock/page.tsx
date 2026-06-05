@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CurrentUser, Shift, TimeEntry } from "../../../../shared/types";
 import { getTodayLocalDate, formatTimeDK } from "@/app/utils/dateTime";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -132,7 +133,7 @@ export default function ClockPage() {
       });
 
       if (!response.ok) {
-        alert("Kunne ikke registrere tid.");
+        toast.error("Kunne ikke registrere tid.");
         return;
       }
 
@@ -146,7 +147,7 @@ export default function ClockPage() {
 
       await fetchEntries(currentUser.id);
 
-      alert("Tid registreret.");
+      toast.success("Tid registreret.");
     } finally {
       setLoading(false);
     }

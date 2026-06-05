@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useApi } from "../../../hooks/useApi";
 import { useAuth } from "../../../providers/AuthProvider";
 import { sendMessage as sendMessageService } from "../../../services/messagesService";
+import { toast } from "sonner";
 
 type User = {
   id: number;
@@ -64,12 +65,12 @@ export default function SendMessagePage() {
     event.preventDefault();
 
     if (!subject.trim() || !body.trim()) {
-      alert("Udfyld både emne og besked.");
+      toast.error("Udfyld både emne og besked.");
       return;
     }
 
     if (!isBroadcast && !receiverId) {
-      alert("Vælg en modtager eller send som broadcast.");
+      toast.error("Vælg en modtager eller send som broadcast.");
       return;
     }
 
@@ -88,10 +89,10 @@ export default function SendMessagePage() {
       setSubject("");
       setBody("");
 
-      alert("Beskeden er sendt.");
+      toast.success("Beskeden er sendt.");
     } catch (error) {
       console.error(error);
-      alert("Beskeden kunne ikke sendes.");
+      toast.error("Beskeden kunne ikke sendes.");
     } finally {
       setSending(false);
     }

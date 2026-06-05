@@ -18,6 +18,7 @@ import {
 import type { Shift, User, WorkType } from "../../../../shared/types";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { toast } from "sonner";
 
 type LeaveRequest = {
   id: number;
@@ -226,7 +227,7 @@ export default function SchedulePage() {
     const shift = shifts.find((s) => s.id === clockShiftId);
 
     if (!shift || !currentUser || !clockShiftId) {
-      alert("Vælg en vagt først");
+      toast.error("Vælg en vagt først");
       return;
     }
 
@@ -237,7 +238,7 @@ export default function SchedulePage() {
       plannedStart !== clockInTime || plannedEnd !== clockOutTime;
 
     if (hasDeviation && !clockNote.trim()) {
-      alert("Du skal skrive en note ved afvigelse fra vagtplanen");
+      toast.error("Du skal skrive en note ved afvigelse fra vagtplanen");
       return;
     }
 
@@ -249,10 +250,10 @@ export default function SchedulePage() {
         note: clockNote,
       });
 
-      alert("Timer sendt til godkendelse");
+      toast.success("Timer sendt til godkendelse");
       resetClockModal();
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Kunne ikke registrere timer",
       );
     }
@@ -436,9 +437,9 @@ ${getShiftConfirmText(selectedShift)}`,
       onConfirm: async () => {
         try {
           await offerShiftTrade(selectedShift);
-          alert("Vagten er sendt i byttepuljen");
+          toast.success("Vagten er sendt i byttepuljen");
         } catch (error) {
-          alert(
+          toast.error(
             error instanceof Error
               ? error.message
               : "Kunne ikke sende vagten i byttepuljen",

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "./useApi";
 import type { Shift, User, WorkType } from "../../../shared/types";
+import { toast } from "sonner";
 
 type MovieShowing = {
   id: number;
@@ -489,7 +490,7 @@ export function useScheduleAi({
         const user = getLeastLoadedUser(users, shifts);
 
         if (!user || !workTypeId) {
-          alert("Der mangler medarbejder eller arbejdstype.");
+          toast.error("Der mangler medarbejder eller arbejdstype.");
           return;
         }
 
@@ -515,10 +516,10 @@ export function useScheduleAi({
           note: "AI suggested staffing shift",
         });
 
-        alert("AI-oprettet vagt blev oprettet.");
+        toast.success("AI-oprettet vagt blev oprettet.");
       } catch (error) {
         console.error(error);
-        alert("AI-oprettelse fejlede.");
+        toast.error("AI-oprettelse fejlede.");
       } finally {
         setCreatingAiShift(null);
       }
@@ -533,7 +534,7 @@ export function useScheduleAi({
       const defaults = getDefaultCreateValues(users, workTypes);
 
       if (!defaults) {
-        alert("Der mangler medarbejder eller arbejdstype.");
+        toast.error("Der mangler medarbejder eller arbejdstype.");
         return;
       }
 
@@ -573,7 +574,7 @@ export function useScheduleAi({
       }
 
       if (suggestions.length === 0) {
-        alert("Ingen AI-vagter nødvendige i dag.");
+        toast.info("Ingen AI-vagter nødvendige i dag.");
         return;
       }
 
@@ -592,11 +593,11 @@ export function useScheduleAi({
         });
       }
 
-      alert("AI dagsplan blev genereret.");
+      toast.success("AI dagsplan blev genereret.");
     } catch (error) {
       console.error(error);
 
-      alert("AI dagsplan kunne ikke genereres.");
+      toast.error("AI dagsplan kunne ikke genereres.");
     } finally {
       setGeneratingAiSchedule(false);
     }
@@ -612,7 +613,7 @@ export function useScheduleAi({
       const userId = recommendedUserId ?? fallbackUserId;
 
       if (!userId || !workTypeId) {
-        alert("Der mangler medarbejder eller arbejdstype.");
+        toast.error("Der mangler medarbejder eller arbejdstype.");
         return;
       }
 
@@ -632,11 +633,11 @@ export function useScheduleAi({
         note: "AI Emergency Staffing Shift",
       });
 
-      alert("🚨 AI emergency shift blev oprettet.");
+      toast.success("AI emergency shift blev oprettet.");
     } catch (error) {
       console.error(error);
 
-      alert("Emergency staffing action fejlede.");
+      toast.error("Emergency staffing action fejlede.");
     } finally {
       setAutoCreatingEmergencyShift(false);
     }
@@ -681,7 +682,7 @@ export function useScheduleAi({
       } catch (error) {
         console.error(error);
 
-        alert("Kunne ikke sende staffing request.");
+        toast.error("Kunne ikke sende staffing request.");
 
         return false;
       } finally {
@@ -720,11 +721,11 @@ export function useScheduleAi({
           throw new Error("Kunne ikke oprette staffing request.");
         }
 
-        alert(`📨 Staffing request sendt til ${employeeName}.`);
+        toast.success(`Staffing request sendt til ${employeeName}.`);
       } catch (error) {
         console.error(error);
 
-        alert("Staffing request fejlede.");
+        toast.error("Staffing request fejlede.");
       } finally {
         setSendingRealStaffingMessage(null);
       }
@@ -769,15 +770,15 @@ export function useScheduleAi({
 
         setAutonomousStaffingStatus("COMPLETED");
 
-        alert(
-          `🤖 Emergency shift blev automatisk tildelt til ${employeeName}.`,
+        toast.success(
+          `Emergency shift blev automatisk tildelt til ${employeeName}.`,
         );
       } catch (error) {
         console.error(error);
 
         setAutonomousStaffingStatus("IDLE");
 
-        alert("Autonomous staffing execution fejlede.");
+        toast.error("Autonomous staffing execution fejlede.");
       }
     },
     [createShift, selectedDate, users, workTypes],
@@ -792,7 +793,7 @@ export function useScheduleAi({
       );
 
       if (queue.length === 0) {
-        alert("Ingen medarbejdere fundet til emergency staffing.");
+        toast.warning("Ingen medarbejdere fundet til emergency staffing.");
         setStaffingLoopStatus("IDLE");
         return;
       }
@@ -812,20 +813,20 @@ export function useScheduleAi({
       if (createdRequests === 0) {
         setStaffingLoopStatus("DECLINED");
 
-        alert("🚨 Ingen staffing requests kunne oprettes.");
+        toast.warning("Ingen staffing requests kunne oprettes.");
 
         return;
       }
 
-      alert(
-        `🚨 ${createdRequests} staffing requests blev oprettet. Afventer accept/afvis fra medarbejdere.`,
+      toast.success(
+        `${createdRequests} staffing requests blev oprettet. Afventer accept/afvis fra medarbejdere.`,
       );
     } catch (error) {
       console.error(error);
 
       setStaffingLoopStatus("DECLINED");
 
-      alert("Auto escalation engine fejlede.");
+      toast.error("Auto escalation engine fejlede.");
     } finally {
       setSendingEmergencyRequest(null);
     }

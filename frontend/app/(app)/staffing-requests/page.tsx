@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/app/hooks/useApi";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+import { toast } from "sonner";
 
 type StaffingRequest = {
   id: number;
@@ -89,7 +90,7 @@ export default function StaffingRequestsPage() {
     } catch (error) {
       console.error(error);
 
-      alert("Kunne ikke acceptere staffing request");
+      toast.error("Kunne ikke acceptere staffing request");
     } finally {
       setProcessingId(null);
     }
@@ -111,7 +112,7 @@ export default function StaffingRequestsPage() {
     } catch (error) {
       console.error(error);
 
-      alert("Kunne ikke afvise staffing request");
+      toast.error("Kunne ikke afvise staffing request");
     } finally {
       setProcessingId(null);
     }

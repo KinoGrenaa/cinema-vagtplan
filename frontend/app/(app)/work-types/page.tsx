@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -158,7 +159,7 @@ export default function WorkTypesPage() {
       await fetchWorkTypes();
     } catch (error) {
       console.error(error);
-      alert("Kunne ikke oprette vagttype");
+      toast.error("Kunne ikke oprette vagttype");
     }
   }
 
@@ -189,7 +190,7 @@ export default function WorkTypesPage() {
         } catch (error) {
           console.error(error);
 
-          alert(
+          toast.error(
             error instanceof Error
               ? error.message
               : "Kunne ikke arkivere vagttype",
@@ -228,7 +229,7 @@ export default function WorkTypesPage() {
         } catch (error) {
           console.error(error);
 
-          alert(
+          toast.error(
             error instanceof Error
               ? error.message
               : "Kunne ikke genaktivere vagttype",

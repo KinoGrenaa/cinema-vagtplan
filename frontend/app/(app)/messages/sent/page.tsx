@@ -5,6 +5,7 @@ import { useMessages } from "../../../hooks/useMessages";
 import type { MessageParticipant } from "../../../types/messages";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { toast } from "sonner";
 
 export default function SentMessagesPage() {
   const confirmDialog = useConfirm();
@@ -42,7 +43,7 @@ export default function SentMessagesPage() {
           }
         } catch (error) {
           console.error(error);
-          alert("Beskeden kunne ikke arkiveres.");
+          toast.error("Beskeden kunne ikke arkiveres.");
         }
       },
     });

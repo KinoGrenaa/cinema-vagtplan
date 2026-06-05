@@ -26,6 +26,7 @@ import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import InputModal from "@/app/components/modals/InputModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -435,7 +436,7 @@ export default function PayrollPage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        alert(errorText || "Eksport fejlede");
+        toast.error(errorText || "Eksport fejlede");
         return;
       }
 
@@ -463,7 +464,7 @@ export default function PayrollPage() {
       await refreshPayroll();
     } catch (error) {
       console.error(error);
-      alert("Eksport fejlede");
+      toast.error("Eksport fejlede");
     } finally {
       setExporting(false);
     }
@@ -494,14 +495,14 @@ export default function PayrollPage() {
 
           if (!response.ok) {
             const errorText = await response.text();
-            alert(errorText || "Låsning fejlede");
+            toast.error(errorText || "Låsning fejlede");
             return;
           }
 
           await refreshPayroll();
         } catch (error) {
           console.error(error);
-          alert("Låsning fejlede");
+          toast.error("Låsning fejlede");
         } finally {
           setLocking(false);
         }
@@ -524,7 +525,9 @@ export default function PayrollPage() {
         const note = value.trim();
 
         if (!note) {
-          alert("Du skal skrive en begrundelse for at oplåse lønperioden.");
+          toast.error(
+            "Du skal skrive en begrundelse for at oplåse lønperioden.",
+          );
           throw new Error("Unlock note is required");
         }
 
@@ -547,14 +550,14 @@ export default function PayrollPage() {
 
           if (!response.ok) {
             const errorText = await response.text();
-            alert(errorText || "Oplåsning fejlede");
+            toast.error(errorText || "Oplåsning fejlede");
             return;
           }
 
           await refreshPayroll();
         } catch (error) {
           console.error(error);
-          alert("Oplåsning fejlede");
+          toast.error("Oplåsning fejlede");
         } finally {
           setUnlocking(false);
         }

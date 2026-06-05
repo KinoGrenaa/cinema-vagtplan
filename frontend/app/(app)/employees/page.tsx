@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -124,7 +125,7 @@ export default function EmployeesPage() {
         ),
       );
     } catch {
-      alert("Kunne ikke opdatere permission");
+      toast.error("Kunne ikke opdatere permission");
     }
   }
 
