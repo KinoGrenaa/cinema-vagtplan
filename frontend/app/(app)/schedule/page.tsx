@@ -14,6 +14,7 @@ import {
   formatTimeDK,
   getTodayLocalDate,
   localDateTimeToISOString,
+  toInputDateTime,
 } from "@/app/utils/dateTime";
 import type { Shift, User, WorkType } from "../../../../shared/types";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
@@ -162,15 +163,6 @@ export default function SchedulePage() {
     }
   }, [workTypeId, workTypes]);
 
-  function toInputDateTime(value: string) {
-    const date = new Date(value);
-    const offset = date.getTimezoneOffset();
-
-    return new Date(date.getTime() - offset * 60 * 1000)
-      .toISOString()
-      .slice(0, 16);
-  }
-
   useRealtimeShifts({
     onShiftsUpdated: refreshDayData,
     onShiftTradesUpdated: refreshDayData,
@@ -240,7 +232,10 @@ export default function SchedulePage() {
     const plannedEnd = toInputDateTime(shift.endTime);
 
     const hasDeviation =
-      plannedStart !== clockInTime || plannedEnd !== clockOutTime;
+      localDateTimeToISOString(plannedStart) !==
+        localDateTimeToISOString(clockInTime) ||
+      localDateTimeToISOString(plannedEnd) !==
+        localDateTimeToISOString(clockOutTime);
 
     if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
       toast.error("Du skal skrive en note ved afvigelse fra vagtplanen");
