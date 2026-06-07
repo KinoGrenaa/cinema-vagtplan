@@ -17,7 +17,6 @@ import {
 } from "recharts";
 import PermissionGuard from "@/app/components/PermissionGuard";
 import {
-  getTodayLocalDate,
   dateToLocalDateString,
   formatDateDK,
   formatTimeDK,
@@ -29,6 +28,18 @@ import { useInputModal } from "@/app/hooks/useInputModal";
 import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+type PayrollEntryDeviation = {
+  hasDeviation: boolean;
+  requiresNote: boolean;
+  types: string[];
+  plannedMinutes?: number;
+  registeredMinutes?: number;
+  differenceMinutes?: number;
+  clockInDeviationMinutes?: number;
+  clockOutDeviationMinutes?: number;
+  messages: string[];
+};
 
 type PayrollEntry = {
   id?: number;
@@ -46,6 +57,7 @@ type PayrollEntry = {
   payrollLocked?: boolean;
   payrollUnlockedByMaster?: boolean;
   payrollPeriodId?: number | null;
+  deviation?: PayrollEntryDeviation;
 };
 
 type PayrollEmployee = {
@@ -64,6 +76,21 @@ type User = {
   lastName: string;
   email: string;
   role: string;
+};
+
+type PayrollPeriodModel = "CALENDAR_MONTH" | "FIXED_DAY_TO_DAY" | "BIWEEKLY";
+
+type PayrollPayoutRule = "LAST_WEEKDAY_OF_MONTH" | "FIXED_DAY_OF_MONTH";
+
+type CinemaPayrollSettings = {
+  id: number;
+  name: string;
+  payrollPeriodModel?: PayrollPeriodModel;
+  payrollPeriodStartDay?: number;
+  payrollPeriodEndDay?: number;
+  payrollPeriodAnchorDate?: string | null;
+  payrollPayoutRule?: PayrollPayoutRule;
+  payrollPayoutDay?: number;
 };
 
 type PayrollPeriod = {
@@ -88,14 +115,138 @@ type PayrollAuditHistory = {
   unlockNote?: string | null;
 };
 
-function todayIso() {
-  return getTodayLocalDate();
-}
-
 function firstDayOfMonthIso() {
   const now = new Date();
 
   return dateToLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
+}
+
+function lastDayOfMonthIso() {
+  const now = new Date();
+
+  return dateToLocalDateString(
+    new Date(now.getFullYear(), now.getMonth() + 1, 0),
+  );
+}
+
+function daysInMonth(year: number, monthIndex: number) {
+  return new Date(year, monthIndex + 1, 0).getDate();
+}
+
+function clampDay(year: number, monthIndex: number, day: number) {
+  return Math.min(Math.max(day, 1), daysInMonth(year, monthIndex));
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function calculatePayrollPeriod(settings?: CinemaPayrollSettings | null) {
+  const today = new Date();
+
+  if (!settings || settings.payrollPeriodModel === "CALENDAR_MONTH") {
+    return {
+      startDate: firstDayOfMonthIso(),
+      endDate: lastDayOfMonthIso(),
+    };
+  }
+
+  if (settings.payrollPeriodModel === "BIWEEKLY") {
+    const anchor = settings.payrollPeriodAnchorDate
+      ? new Date(settings.payrollPeriodAnchorDate)
+      : new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysSinceAnchor = Math.floor(
+      (new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+      ).getTime() -
+        new Date(
+          anchor.getFullYear(),
+          anchor.getMonth(),
+          anchor.getDate(),
+        ).getTime()) /
+        msPerDay,
+    );
+
+    const cycleOffset = Math.floor(daysSinceAnchor / 14) * 14;
+    const start = addDays(anchor, cycleOffset);
+    const end = addDays(start, 13);
+
+    return {
+      startDate: dateToLocalDateString(start),
+      endDate: dateToLocalDateString(end),
+    };
+  }
+
+  const startDay = settings.payrollPeriodStartDay || 1;
+  const endDay = settings.payrollPeriodEndDay || 31;
+
+  if (startDay <= endDay) {
+    return {
+      startDate: dateToLocalDateString(
+        new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          clampDay(today.getFullYear(), today.getMonth(), startDay),
+        ),
+      ),
+      endDate: dateToLocalDateString(
+        new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          clampDay(today.getFullYear(), today.getMonth(), endDay),
+        ),
+      ),
+    };
+  }
+
+  const startMonthOffset = today.getDate() >= startDay ? 0 : -1;
+  const endMonthOffset = today.getDate() >= startDay ? 1 : 0;
+
+  const startMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + startMonthOffset,
+    1,
+  );
+  const endMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + endMonthOffset,
+    1,
+  );
+
+  return {
+    startDate: dateToLocalDateString(
+      new Date(
+        startMonth.getFullYear(),
+        startMonth.getMonth(),
+        clampDay(startMonth.getFullYear(), startMonth.getMonth(), startDay),
+      ),
+    ),
+    endDate: dateToLocalDateString(
+      new Date(
+        endMonth.getFullYear(),
+        endMonth.getMonth(),
+        clampDay(endMonth.getFullYear(), endMonth.getMonth(), endDay),
+      ),
+    ),
+  };
+}
+
+function describePayrollModel(settings?: CinemaPayrollSettings | null) {
+  if (!settings || settings.payrollPeriodModel === "CALENDAR_MONTH") {
+    return "Kalendermåned";
+  }
+
+  if (settings.payrollPeriodModel === "BIWEEKLY") {
+    return "14 dage";
+  }
+
+  return `${settings.payrollPeriodStartDay || 1}.–${settings.payrollPeriodEndDay || 31}.`;
 }
 
 function formatDateTime(value?: string | null) {
@@ -115,8 +266,10 @@ export default function PayrollPage() {
   const inputDialog = useInputModal();
   const confirmDialog = useConfirm();
   const [startDate, setStartDate] = useState(firstDayOfMonthIso());
-  const [endDate, setEndDate] = useState(todayIso());
+  const [endDate, setEndDate] = useState(lastDayOfMonthIso());
   const [userId, setUserId] = useState("");
+  const [cinemaSettings, setCinemaSettings] =
+    useState<CinemaPayrollSettings | null>(null);
 
   const [users, setUsers] = useState<User[]>([]);
   const [report, setReport] = useState<PayrollEmployee[]>([]);
@@ -296,6 +449,28 @@ export default function PayrollPage() {
     return localStorage.getItem("token") || "";
   }
 
+  function getCurrentCinemaId() {
+    if (typeof window === "undefined") return null;
+
+    const savedUser = localStorage.getItem("user");
+
+    if (!savedUser) return null;
+
+    try {
+      const user = JSON.parse(savedUser) as { cinemaId?: number };
+      return user.cinemaId || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function applyCurrentPayrollPeriod(settings = cinemaSettings) {
+    const periodDates = calculatePayrollPeriod(settings);
+
+    setStartDate(periodDates.startDate);
+    setEndDate(periodDates.endDate);
+  }
+
   function buildParams(includeUser = true) {
     const params = new URLSearchParams({
       startDate,
@@ -307,6 +482,28 @@ export default function PayrollPage() {
     }
 
     return params;
+  }
+
+  async function fetchCinemaPayrollSettings() {
+    const cinemaId = getCurrentCinemaId();
+
+    if (!cinemaId) return;
+
+    try {
+      const response = await fetch(`${API_URL}/cinemas/${cinemaId}`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      if (!response.ok) return;
+
+      const data: CinemaPayrollSettings = await response.json();
+      setCinemaSettings(data);
+      applyCurrentPayrollPeriod(data);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async function fetchUsers() {
@@ -567,6 +764,7 @@ export default function PayrollPage() {
 
   useEffect(() => {
     fetchUsers();
+    fetchCinemaPayrollSettings();
   }, []);
 
   useEffect(() => {
@@ -586,6 +784,24 @@ export default function PayrollPage() {
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
+          <div className="mb-4 flex flex-col justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-100 md:flex-row md:items-center">
+            <div>
+              <p className="font-semibold">Aktuel lønperiode</p>
+              <p>
+                {describePayrollModel(cinemaSettings)} ·{" "}
+                {formatDateDK(startDate)} til {formatDateDK(endDate)}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => applyCurrentPayrollPeriod()}
+              className="rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+            >
+              Brug aktuel lønperiode
+            </button>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -1100,6 +1316,9 @@ export default function PayrollPage() {
                             Status
                           </th>
                           <th className="p-2 text-gray-700 dark:text-gray-200">
+                            Afvigelse
+                          </th>
+                          <th className="p-2 text-gray-700 dark:text-gray-200">
                             Låst
                           </th>
                         </tr>
@@ -1137,6 +1356,29 @@ export default function PayrollPage() {
                             </td>
                             <td className="p-2 text-gray-900 dark:text-gray-100">
                               {entry.status || "-"}
+                            </td>
+                            <td className="p-2 text-gray-900 dark:text-gray-100">
+                              {entry.deviation?.hasDeviation ? (
+                                <div className="space-y-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                  {entry.deviation.messages.length > 0 ? (
+                                    entry.deviation.messages.map(
+                                      (message, messageIndex) => (
+                                        <div
+                                          key={`${entry.id || index}-deviation-${messageIndex}`}
+                                        >
+                                          ⚠ {message}
+                                        </div>
+                                      ),
+                                    )
+                                  ) : (
+                                    <div>⚠ Afvigelse</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                                  OK
+                                </span>
+                              )}
                             </td>
                             <td className="p-2 text-gray-900 dark:text-gray-100">
                               {entry.payrollLocked ? "Ja" : "Nej"}

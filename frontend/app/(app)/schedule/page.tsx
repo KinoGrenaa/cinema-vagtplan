@@ -115,6 +115,11 @@ export default function SchedulePage() {
     updateShift,
     deleteShift,
     offerShiftTrade,
+
+    openTimeEntry,
+    clockIn,
+    clockOut,
+
     submitManualTime: submitManualTimeEntry,
   } = useSchedule(selectedDate);
 
@@ -140,6 +145,16 @@ export default function SchedulePage() {
   const [clockInTime, setClockInTime] = useState("");
   const [clockOutTime, setClockOutTime] = useState("");
   const [clockNote, setClockNote] = useState("");
+
+  const isToday = selectedDate === getTodayLocalDate();
+
+  const todaysUserShifts = shifts.filter(
+    (shift) => shift.userId === currentUser?.id,
+  );
+
+  const [selectedClockShiftId, setSelectedClockShiftId] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     if (
@@ -221,6 +236,42 @@ export default function SchedulePage() {
     setClockInTime("");
     setClockOutTime("");
     setClockNote("");
+  }
+
+  async function handleClockIn() {
+    const shiftId =
+      todaysUserShifts.length === 1
+        ? todaysUserShifts[0].id
+        : selectedClockShiftId;
+
+    if (!shiftId) {
+      toast.error("Vælg hvilken vagt du vil møde ind på");
+      return;
+    }
+
+    try {
+      await clockIn(shiftId);
+      toast.success("Du er mødt ind");
+      setSelectedClockShiftId(null);
+      await refreshDayData();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Kunne ikke clocke ind",
+      );
+    }
+  }
+
+  async function handleClockOut() {
+    try {
+      await clockOut();
+      toast.success("Du er gået hjem");
+      setSelectedClockShiftId(null);
+      await refreshDayData();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Kunne ikke clocke ud",
+      );
+    }
   }
 
   async function submitManualTime() {
@@ -495,11 +546,56 @@ ${getShiftConfirmText(selectedShift)}`,
                   </div>
 
                   <div className="flex flex-wrap gap-2">
+                    {isToday &&
+                      !openTimeEntry &&
+                      todaysUserShifts.length > 0 && (
+                        <>
+                          {todaysUserShifts.length > 1 && (
+                            <select
+                              value={selectedClockShiftId ?? ""}
+                              onChange={(e) =>
+                                setSelectedClockShiftId(
+                                  e.target.value
+                                    ? Number(e.target.value)
+                                    : null,
+                                )
+                              }
+                              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
+                            >
+                              <option value="">Vælg vagt</option>
+
+                              {todaysUserShifts.map((shift) => (
+                                <option key={shift.id} value={shift.id}>
+                                  {formatTimeDK(shift.startTime)} -{" "}
+                                  {formatTimeDK(shift.endTime)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+
+                          <button
+                            onClick={handleClockIn}
+                            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+                          >
+                            Mød ind
+                          </button>
+                        </>
+                      )}
+
+                    {isToday && openTimeEntry && (
+                      <button
+                        onClick={handleClockOut}
+                        className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+                      >
+                        Gå hjem
+                      </button>
+                    )}
+
                     <button
                       onClick={() => setShowClockModal(true)}
-                      className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
                     >
-                      Registrer tid
+                      Registrer arbejde uden planlagt vagt
                     </button>
                   </div>
                 </div>

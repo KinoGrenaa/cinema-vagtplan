@@ -14,6 +14,16 @@ type UpdateCinemaSettingsData = {
   weeklyOvertimeEnabled?: boolean;
   dailyOvertimeThreshold?: number;
   weeklyOvertimeThreshold?: number;
+
+  payrollPeriodModel?: 'CALENDAR_MONTH' | 'FIXED_DAY_TO_DAY' | 'BIWEEKLY';
+
+  payrollPeriodStartDay?: number;
+  payrollPeriodEndDay?: number;
+  payrollPeriodAnchorDate?: Date | null;
+
+  payrollPayoutRule?: 'LAST_WEEKDAY_OF_MONTH' | 'FIXED_DAY_OF_MONTH';
+
+  payrollPayoutDay?: number;
 };
 
 @Injectable()
@@ -56,6 +66,18 @@ export class CinemasService {
         weeklyOvertimeEnabled: data.weeklyOvertimeEnabled,
         dailyOvertimeThreshold: data.dailyOvertimeThreshold,
         weeklyOvertimeThreshold: data.weeklyOvertimeThreshold,
+
+        payrollPeriodModel: data.payrollPeriodModel,
+        payrollPeriodStartDay: data.payrollPeriodStartDay,
+        payrollPeriodEndDay: data.payrollPeriodEndDay,
+
+        payrollPeriodAnchorDate:
+          data.payrollPeriodAnchorDate !== undefined
+            ? data.payrollPeriodAnchorDate
+            : undefined,
+
+        payrollPayoutRule: data.payrollPayoutRule,
+        payrollPayoutDay: data.payrollPayoutDay,
       },
     });
   }

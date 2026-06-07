@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
-import InputModal from "@/app/components/modals/InputModal";
-import { useInputModal } from "@/app/hooks/useInputModal";
-import { toast } from "sonner";
-import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
 import AuditHistoryModal from "@/app/components/modals/AuditHistoryModal";
+import InputModal from "@/app/components/modals/InputModal";
+import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
+import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -25,6 +25,22 @@ type AuditLog = {
   } | null;
 };
 
+type TimeEntryDeviation = {
+  hasDeviation: boolean;
+  requiresNote: boolean;
+
+  types: string[];
+
+  plannedMinutes: number | null;
+  registeredMinutes: number | null;
+  differenceMinutes: number | null;
+
+  clockInDeviationMinutes: number | null;
+  clockOutDeviationMinutes: number | null;
+
+  messages: string[];
+};
+
 type TimeEntry = {
   id: number;
   clockIn: string;
@@ -39,10 +55,13 @@ type TimeEntry = {
     email: string;
   };
   shift?: {
+    startTime?: string;
+    endTime?: string;
     workType?: {
       name: string;
     };
   } | null;
+  deviation?: TimeEntryDeviation;
 };
 
 function getStatusLabel(status: TimeEntryStatus) {
@@ -63,6 +82,136 @@ function getStatusClass(status: TimeEntryStatus) {
   return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+
+  return new Date(value).toLocaleString("da-DK", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function formatMinutes(value: number | null | undefined) {
+  if (value === null || value === undefined) return "-";
+
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value} min`;
+}
+
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const text = await response.text();
+
+    if (!text) return fallback;
+
+    try {
+      const data = JSON.parse(text);
+
+      if (typeof data?.message === "string") return data.message;
+
+      if (Array.isArray(data?.message)) {
+        return data.message.join(", ");
+      }
+
+      if (typeof data?.error === "string") return data.error;
+    } catch {
+      return text;
+    }
+
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function DeviationPanel({ entry }: { entry: TimeEntry }) {
+  const deviation = entry.deviation;
+
+  if (!deviation) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-800 dark:bg-gray-950/40">
+        <div className="font-semibold">Afvigelsesanalyse</div>
+        <div className="mt-1 text-gray-500 dark:text-gray-400">
+          Ingen afvigelsesdata modtaget fra backend.
+        </div>
+      </div>
+    );
+  }
+
+  const plannedRange =
+    entry.shift?.startTime && entry.shift?.endTime
+      ? `${formatDateTime(entry.shift.startTime)} - ${formatDateTime(
+          entry.shift.endTime,
+        )}`
+      : "-";
+
+  const registeredRange = `${formatDateTime(entry.clockIn)} - ${formatDateTime(
+    entry.clockOut,
+  )}`;
+
+  return (
+    <div
+      className={`rounded-xl border p-3 text-sm ${
+        deviation.hasDeviation
+          ? "border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/40"
+          : "border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950/40"
+      }`}
+    >
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="font-semibold">Afvigelsesanalyse</span>
+
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+            deviation.hasDeviation
+              ? "bg-orange-200 text-orange-900 dark:bg-orange-900 dark:text-orange-100"
+              : "bg-green-200 text-green-900 dark:bg-green-900 dark:text-green-100"
+          }`}
+        >
+          {deviation.hasDeviation ? "Afvigelse" : "OK"}
+        </span>
+
+        {deviation.requiresNote && (
+          <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-semibold text-red-900 dark:bg-red-900 dark:text-red-100">
+            Kræver note
+          </span>
+        )}
+      </div>
+
+      <div className="grid gap-1">
+        <div>
+          <span className="font-semibold">Planlagt:</span> {plannedRange}
+        </div>
+
+        <div>
+          <span className="font-semibold">Registreret:</span> {registeredRange}
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-1">
+        {deviation.messages.map((message, index) => (
+          <div key={`${entry.id}-deviation-${index}`}>
+            {deviation.hasDeviation ? "⚠️" : "✅"} {message}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-1 text-xs opacity-80 sm:grid-cols-2">
+        <div>Planlagt tid: {formatMinutes(deviation.plannedMinutes)}</div>
+        <div>Registreret tid: {formatMinutes(deviation.registeredMinutes)}</div>
+        <div>Difference: {formatMinutes(deviation.differenceMinutes)}</div>
+        <div>
+          Clock ind-afvigelse:{" "}
+          {formatMinutes(deviation.clockInDeviationMinutes)}
+        </div>
+        <div>
+          Clock ud-afvigelse:{" "}
+          {formatMinutes(deviation.clockOutDeviationMinutes)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,44 +225,7 @@ export default function TimeApprovalPage() {
   function getToken() {
     return localStorage.getItem("token");
   }
-  async function saveEdit(data: {
-    clockIn: string;
-    clockOut?: string | null;
-    adminNote: string;
-  }) {
-    if (!editEntry) return;
 
-    try {
-      setSavingEdit(true);
-
-      const response = await fetch(`${API_URL}/time-entries/${editEntry.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Kunne ikke redigere timeregistrering");
-      }
-
-      await fetchEntries();
-      setEditEntry(null);
-      toast.success("Timeregistrering opdateret");
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Kunne ikke redigere timeregistrering",
-      );
-    } finally {
-      setSavingEdit(false);
-    }
-  }
   const fetchEntries = useCallback(async () => {
     try {
       setLoading(true);
@@ -143,35 +255,6 @@ export default function TimeApprovalPage() {
     onTimeEntry: fetchEntries,
   });
 
-  async function openHistory(entry: TimeEntry) {
-    try {
-      setHistoryEntry(entry);
-      setHistoryLoading(true);
-
-      const response = await fetch(
-        `${API_URL}/audit-logs/entity/TimeEntry/${entry.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error();
-      }
-
-      const data = await response.json();
-
-      setHistoryLogs(Array.isArray(data) ? data : []);
-    } catch {
-      toast.error("Kunne ikke hente historik");
-      setHistoryLogs([]);
-    } finally {
-      setHistoryLoading(false);
-    }
-  }
-
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
@@ -187,26 +270,143 @@ export default function TimeApprovalPage() {
     return hours.toFixed(2);
   }
 
-  async function approve(id: number) {
-    await fetch(`${API_URL}/time-entries/${id}/approve`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+  async function saveEdit(data: {
+    clockIn: string;
+    clockOut?: string | null;
+    adminNote: string;
+  }) {
+    if (!editEntry) return;
 
-    await fetchEntries();
+    try {
+      setSavingEdit(true);
+
+      const response = await fetch(`${API_URL}/time-entries/${editEntry.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Kunne ikke redigere timeregistrering",
+          ),
+        );
+      }
+
+      await fetchEntries();
+      setEditEntry(null);
+      toast.success("Timeregistrering opdateret");
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke redigere timeregistrering",
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function openHistory(entry: TimeEntry) {
+    try {
+      setHistoryEntry(entry);
+      setHistoryLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/audit-logs/entity/TimeEntry/${entry.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke hente historik"),
+        );
+      }
+
+      const data = await response.json();
+
+      setHistoryLogs(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Kunne ikke hente historik",
+      );
+      setHistoryLogs([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function approve(entry: TimeEntry) {
+    try {
+      const response = await fetch(
+        `${API_URL}/time-entries/${entry.id}/approve`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Kunne ikke godkende timeregistrering",
+          ),
+        );
+      }
+
+      await fetchEntries();
+
+      if (entry.deviation?.hasDeviation) {
+        toast.success("Timeregistrering med afvigelse er godkendt");
+      } else {
+        toast.success("Timeregistrering godkendt");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke godkende timeregistrering",
+      );
+    }
   }
 
   async function unapprove(id: number) {
-    await fetch(`${API_URL}/time-entries/${id}/unapprove`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+    try {
+      const response = await fetch(`${API_URL}/time-entries/${id}/unapprove`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
 
-    await fetchEntries();
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke fjerne godkendelse"),
+        );
+      }
+
+      await fetchEntries();
+      toast.success("Godkendelse fjernet");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke fjerne godkendelse",
+      );
+    }
   }
 
   function reject(id: number) {
@@ -221,7 +421,7 @@ export default function TimeApprovalPage() {
       onConfirm: async (value) => {
         const adminNote = value.trim();
 
-        await fetch(`${API_URL}/time-entries/${id}/reject`, {
+        const response = await fetch(`${API_URL}/time-entries/${id}/reject`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -232,7 +432,17 @@ export default function TimeApprovalPage() {
           }),
         });
 
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(
+              response,
+              "Kunne ikke afvise timeregistrering",
+            ),
+          );
+        }
+
         await fetchEntries();
+        toast.success("Timeregistrering afvist");
       },
     });
   }
@@ -246,7 +456,8 @@ export default function TimeApprovalPage() {
               <h1 className="text-3xl font-bold">Godkend timer</h1>
 
               <p className="mt-2 text-gray-500 dark:text-gray-400">
-                Gennemgå, godkend eller afvis clock ind/ud.
+                Gennemgå, godkend eller afvis clock ind/ud med tydelig
+                sammenligning mellem vagtplan og registreret tid.
               </p>
             </div>
 
@@ -264,7 +475,7 @@ export default function TimeApprovalPage() {
                     className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
                   >
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         <div>
                           <h2 className="text-xl font-bold">
                             {entry.user.firstName} {entry.user.lastName}
@@ -283,20 +494,21 @@ export default function TimeApprovalPage() {
 
                           <div>
                             <span className="font-semibold">Clock ind:</span>{" "}
-                            {new Date(entry.clockIn).toLocaleString("da-DK")}
+                            {formatDateTime(entry.clockIn)}
                           </div>
 
                           <div>
                             <span className="font-semibold">Clock ud:</span>{" "}
-                            {entry.clockOut
-                              ? new Date(entry.clockOut).toLocaleString("da-DK")
-                              : "-"}
+                            {formatDateTime(entry.clockOut)}
                           </div>
 
                           <div>
                             <span className="font-semibold">Timer:</span>{" "}
                             {getHours(entry)}
                           </div>
+
+                          <DeviationPanel entry={entry} />
+
                           {entry.note && (
                             <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
                               <span className="font-semibold">
@@ -305,6 +517,7 @@ export default function TimeApprovalPage() {
                               {entry.note}
                             </div>
                           )}
+
                           {entry.adminNote && (
                             <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
                               <span className="font-semibold">Admin note:</span>{" "}
@@ -323,6 +536,12 @@ export default function TimeApprovalPage() {
                           {getStatusLabel(entry.status)}
                         </span>
 
+                        {entry.deviation?.hasDeviation && (
+                          <span className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
+                            Afvigelse
+                          </span>
+                        )}
+
                         <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => setEditEntry(entry)}
@@ -330,15 +549,17 @@ export default function TimeApprovalPage() {
                           >
                             Redigér
                           </button>
+
                           <button
                             onClick={() => openHistory(entry)}
                             className="rounded-xl bg-gray-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
                           >
                             Historik
                           </button>
+
                           {entry.status !== "APPROVED" && (
                             <button
-                              onClick={() => approve(entry.id)}
+                              onClick={() => approve(entry)}
                               className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
                             >
                               Godkend
@@ -381,6 +602,7 @@ export default function TimeApprovalPage() {
             )}
           </div>
         </main>
+
         {editEntry && (
           <TimeEntryEditModal
             open={!!editEntry}
@@ -391,6 +613,7 @@ export default function TimeApprovalPage() {
             onSave={saveEdit}
           />
         )}
+
         {historyEntry && (
           <AuditHistoryModal
             open={!!historyEntry}

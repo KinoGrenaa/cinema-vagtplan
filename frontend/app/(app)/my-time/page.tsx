@@ -8,6 +8,25 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
 
+type PayrollPeriodModel = "CALENDAR_MONTH" | "FIXED_DAY_TO_DAY" | "BIWEEKLY";
+
+type PayrollPayoutRule = "LAST_WEEKDAY_OF_MONTH" | "FIXED_DAY_OF_MONTH";
+
+type CinemaPayrollSettings = {
+  payrollPeriodModel: PayrollPeriodModel;
+  payrollPeriodStartDay: number;
+  payrollPeriodEndDay: number;
+  payrollPeriodAnchorDate?: string | null;
+  payrollPayoutRule?: PayrollPayoutRule;
+  payrollPayoutDay?: number;
+};
+
+type CurrentUser = {
+  id: number;
+  role: "MASTER" | "ADMIN" | "EMPLOYEE";
+  cinemaId: number;
+};
+
 type TimeEntry = {
   id: number;
   clockIn: string;
@@ -52,6 +71,16 @@ function formatDateTime(value?: string | null) {
   });
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+
+  return new Date(`${value}T00:00:00`).toLocaleDateString("da-DK", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 function getHours(entry: TimeEntry) {
   if (!entry.clockOut) return "-";
 
@@ -65,12 +94,141 @@ function getHours(entry: TimeEntry) {
   return `${((end - start) / 1000 / 60 / 60).toFixed(2)} t`;
 }
 
-function getMonthValue(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+function dateToLocalDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
-function isInSelectedMonth(entry: TimeEntry, selectedMonth: string) {
-  return entry.clockIn.startsWith(selectedMonth);
+function firstDayOfMonthIso(date = new Date()) {
+  return dateToLocalDateString(
+    new Date(date.getFullYear(), date.getMonth(), 1),
+  );
+}
+
+function lastDayOfMonthIso(date = new Date()) {
+  return dateToLocalDateString(
+    new Date(date.getFullYear(), date.getMonth() + 1, 0),
+  );
+}
+
+function addDays(date: Date, days: number) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function clampDay(year: number, month: number, day: number) {
+  return Math.min(Math.max(day, 1), getDaysInMonth(year, month));
+}
+
+function calculatePayrollPeriod(settings?: CinemaPayrollSettings | null) {
+  const today = new Date();
+
+  if (!settings || settings.payrollPeriodModel === "CALENDAR_MONTH") {
+    return {
+      startDate: firstDayOfMonthIso(),
+      endDate: lastDayOfMonthIso(),
+    };
+  }
+
+  if (settings.payrollPeriodModel === "BIWEEKLY") {
+    const anchor = settings.payrollPeriodAnchorDate
+      ? new Date(settings.payrollPeriodAnchorDate)
+      : new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysSinceAnchor = Math.floor(
+      (new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+      ).getTime() -
+        new Date(
+          anchor.getFullYear(),
+          anchor.getMonth(),
+          anchor.getDate(),
+        ).getTime()) /
+        msPerDay,
+    );
+
+    const cycleOffset = Math.floor(daysSinceAnchor / 14) * 14;
+    const start = addDays(anchor, cycleOffset);
+    const end = addDays(start, 13);
+
+    return {
+      startDate: dateToLocalDateString(start),
+      endDate: dateToLocalDateString(end),
+    };
+  }
+
+  const startDay = settings.payrollPeriodStartDay || 1;
+  const endDay = settings.payrollPeriodEndDay || 31;
+
+  if (startDay <= endDay) {
+    return {
+      startDate: dateToLocalDateString(
+        new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          clampDay(today.getFullYear(), today.getMonth(), startDay),
+        ),
+      ),
+      endDate: dateToLocalDateString(
+        new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          clampDay(today.getFullYear(), today.getMonth(), endDay),
+        ),
+      ),
+    };
+  }
+
+  const startMonthOffset = today.getDate() >= startDay ? 0 : -1;
+  const endMonthOffset = today.getDate() >= startDay ? 1 : 0;
+
+  const startMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + startMonthOffset,
+    1,
+  );
+  const endMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + endMonthOffset,
+    1,
+  );
+
+  return {
+    startDate: dateToLocalDateString(
+      new Date(
+        startMonth.getFullYear(),
+        startMonth.getMonth(),
+        clampDay(startMonth.getFullYear(), startMonth.getMonth(), startDay),
+      ),
+    ),
+    endDate: dateToLocalDateString(
+      new Date(
+        endMonth.getFullYear(),
+        endMonth.getMonth(),
+        clampDay(endMonth.getFullYear(), endMonth.getMonth(), endDay),
+      ),
+    ),
+  };
+}
+
+function isInPayrollPeriod(
+  entry: TimeEntry,
+  startDate: string,
+  endDate: string,
+) {
+  const entryDate = dateToLocalDateString(new Date(entry.clockIn));
+  return entryDate >= startDate && entryDate <= endDate;
 }
 
 function toInputDateTime(value?: string | null) {
@@ -87,7 +245,11 @@ function toInputDateTime(value?: string | null) {
 export default function MyTimePage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState(getMonthValue());
+  const [cinemaSettings, setCinemaSettings] =
+    useState<CinemaPayrollSettings | null>(null);
+  const [payrollPeriod, setPayrollPeriod] = useState(() =>
+    calculatePayrollPeriod(null),
+  );
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
@@ -122,6 +284,40 @@ export default function MyTimePage() {
       toast.error("Kunne ikke hente dine timer");
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchCinemaPayrollSettings = useCallback(async () => {
+    const savedUser = localStorage.getItem("user");
+
+    if (!savedUser) return;
+
+    try {
+      const user: CurrentUser = JSON.parse(savedUser);
+
+      const response = await fetch(`${API_URL}/cinemas/${user.cinemaId}`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      if (!response.ok) return;
+
+      const settings = await response.json();
+      const payrollSettings: CinemaPayrollSettings = {
+        payrollPeriodModel: settings.payrollPeriodModel || "CALENDAR_MONTH",
+        payrollPeriodStartDay: settings.payrollPeriodStartDay || 1,
+        payrollPeriodEndDay: settings.payrollPeriodEndDay || 31,
+        payrollPeriodAnchorDate: settings.payrollPeriodAnchorDate || null,
+        payrollPayoutRule:
+          settings.payrollPayoutRule || "LAST_WEEKDAY_OF_MONTH",
+        payrollPayoutDay: settings.payrollPayoutDay || 0,
+      };
+
+      setCinemaSettings(payrollSettings);
+      setPayrollPeriod(calculatePayrollPeriod(payrollSettings));
+    } catch (error) {
+      console.error(error);
     }
   }, []);
 
@@ -190,12 +386,19 @@ export default function MyTimePage() {
   }
 
   useEffect(() => {
+    fetchCinemaPayrollSettings();
     fetchEntries();
-  }, [fetchEntries]);
+  }, [fetchCinemaPayrollSettings, fetchEntries]);
+
+  useEffect(() => {
+    setPayrollPeriod(calculatePayrollPeriod(cinemaSettings));
+  }, [cinemaSettings]);
 
   const filteredEntries = useMemo(() => {
-    return entries.filter((entry) => isInSelectedMonth(entry, selectedMonth));
-  }, [entries, selectedMonth]);
+    return entries.filter((entry) =>
+      isInPayrollPeriod(entry, payrollPeriod.startDate, payrollPeriod.endDate),
+    );
+  }, [entries, payrollPeriod.endDate, payrollPeriod.startDate]);
 
   const totalHours = useMemo(() => {
     return filteredEntries.reduce((total, entry) => {
@@ -223,20 +426,21 @@ export default function MyTimePage() {
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <label className="mb-1 block text-sm font-medium">Måned</label>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(event.target.value)}
-            className="rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-          />
+          <div className="mb-1 text-sm font-medium">Lønperiode</div>
+          <div className="text-base font-semibold">
+            {formatDate(payrollPeriod.startDate)} →{" "}
+            {formatDate(payrollPeriod.endDate)}
+          </div>
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Beregnet ud fra biografens lønopsætning.
+          </div>
         </div>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Timer i valgt måned
+            Timer i lønperiode
           </div>
           <div className="mt-1 text-2xl font-bold">
             {totalHours.toFixed(2)} t
@@ -273,7 +477,7 @@ export default function MyTimePage() {
 
       {!loading && filteredEntries.length === 0 && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-          Der er ingen timer i den valgte måned.
+          Der er ingen timer i den aktuelle lønperiode.
         </div>
       )}
 
@@ -342,6 +546,7 @@ export default function MyTimePage() {
                       {entry.adminNote}
                     </div>
                   )}
+
                   {entry.status !== "APPROVED" && (
                     <div className="mt-4 flex justify-end">
                       <button
@@ -358,6 +563,7 @@ export default function MyTimePage() {
           ))}
         </div>
       )}
+
       {editingEntry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">

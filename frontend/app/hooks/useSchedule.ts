@@ -44,6 +44,15 @@ type ManualTimeInput = {
   note: string;
 };
 
+type OpenTimeEntry = {
+  id: number;
+  clockIn: string;
+  clockOut?: string | null;
+  shiftId?: number | null;
+  userId: number;
+  cinemaId: number;
+};
+
 export function useSchedule(selectedDate: string) {
   const { apiFetch } = useApi();
 
@@ -55,6 +64,9 @@ export function useSchedule(selectedDate: string) {
   const [movieShowings, setMovieShowings] = useState<MovieShowing[]>([]);
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [openTimeEntry, setOpenTimeEntry] = useState<OpenTimeEntry | null>(
+    null,
+  );
 
   const [loading, setLoading] = useState(true);
 
@@ -167,6 +179,28 @@ export function useSchedule(selectedDate: string) {
     }
   }, [apiFetch]);
 
+  const fetchOpenTimeEntry = useCallback(async () => {
+    if (!user) {
+      setOpenTimeEntry(null);
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`/time-entries/open?userId=${user.id}`);
+
+      if (!response.ok) {
+        setOpenTimeEntry(null);
+        return;
+      }
+
+      const data = await response.json();
+
+      setOpenTimeEntry(data ?? null);
+    } catch {
+      setOpenTimeEntry(null);
+    }
+  }, [apiFetch, user]);
+
   const refreshDayData = useCallback(async () => {
     setLoading(true);
 
@@ -175,11 +209,12 @@ export function useSchedule(selectedDate: string) {
         fetchShifts(),
         fetchMovieShowings(),
         fetchLeaveRequests(),
+        fetchOpenTimeEntry(),
       ]);
     } finally {
       setLoading(false);
     }
-  }, [fetchShifts, fetchMovieShowings, fetchLeaveRequests]);
+  }, [fetchShifts, fetchMovieShowings, fetchLeaveRequests, fetchOpenTimeEntry]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -273,6 +308,53 @@ export function useSchedule(selectedDate: string) {
     [apiFetch, refreshDayData, user],
   );
 
+  const clockIn = useCallback(
+    async (shiftId?: number | null) => {
+      if (!user) return;
+
+      const response = await apiFetch("/time-entries/clock-in", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user.id,
+          cinemaId: user.cinemaId,
+          shiftId: shiftId ?? null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Kunne ikke clocke ind");
+      }
+
+      setOpenTimeEntry(data ?? null);
+      await refreshDayData();
+    },
+    [apiFetch, refreshDayData, user],
+  );
+
+  const clockOut = useCallback(async () => {
+    if (!openTimeEntry) {
+      throw new Error("Der er ingen åben tidsregistrering");
+    }
+
+    const response = await apiFetch(
+      `/time-entries/${openTimeEntry.id}/clock-out`,
+      {
+        method: "PATCH",
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Kunne ikke clocke ud");
+    }
+
+    setOpenTimeEntry(null);
+    await refreshDayData();
+  }, [apiFetch, openTimeEntry, refreshDayData]);
+
   const submitManualTime = useCallback(
     async (input: ManualTimeInput) => {
       if (!user) return;
@@ -294,8 +376,10 @@ export function useSchedule(selectedDate: string) {
       if (!response.ok) {
         throw new Error(data.message || "Kunne ikke registrere timer");
       }
+
+      await refreshDayData();
     },
-    [apiFetch, user],
+    [apiFetch, refreshDayData, user],
   );
 
   return {
@@ -319,6 +403,10 @@ export function useSchedule(selectedDate: string) {
     deleteShift,
 
     offerShiftTrade,
+
+    openTimeEntry,
+    clockIn,
+    clockOut,
 
     submitManualTime,
   };

@@ -34,6 +34,16 @@ type UpdateCinemaSettingsBody = {
   weeklyOvertimeEnabled?: boolean;
   dailyOvertimeThreshold?: number;
   weeklyOvertimeThreshold?: number;
+
+  payrollPeriodModel?: 'CALENDAR_MONTH' | 'FIXED_DAY_TO_DAY' | 'BIWEEKLY';
+
+  payrollPeriodStartDay?: number;
+  payrollPeriodEndDay?: number;
+  payrollPeriodAnchorDate?: string | null;
+
+  payrollPayoutRule?: 'LAST_WEEKDAY_OF_MONTH' | 'FIXED_DAY_OF_MONTH';
+
+  payrollPayoutDay?: number;
 };
 
 @Controller('cinemas')
@@ -77,6 +87,14 @@ export class CinemasController {
       );
     }
 
-    return this.cinemasService.updateSettings(cinemaId, body);
+    return this.cinemasService.updateSettings(cinemaId, {
+      ...body,
+      payrollPeriodAnchorDate:
+        body.payrollPeriodAnchorDate !== undefined
+          ? body.payrollPeriodAnchorDate
+            ? new Date(body.payrollPeriodAnchorDate)
+            : null
+          : undefined,
+    });
   }
 }

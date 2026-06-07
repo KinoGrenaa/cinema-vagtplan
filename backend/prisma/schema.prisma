@@ -50,6 +50,17 @@ enum PayrollPeriodStatus {
   UNLOCKED
 }
 
+enum PayrollPeriodModel {
+  CALENDAR_MONTH
+  FIXED_DAY_TO_DAY
+  BIWEEKLY
+}
+
+enum PayrollPayoutRule {
+  LAST_WEEKDAY_OF_MONTH
+  FIXED_DAY_OF_MONTH
+}
+
 model Cinema {
   id                    Int      @id @default(autoincrement())
   name                  String
@@ -66,6 +77,13 @@ model Cinema {
 
   dailyOvertimeThreshold  Float @default(8)
   weeklyOvertimeThreshold Float @default(37)
+
+  payrollPeriodModel      PayrollPeriodModel @default(CALENDAR_MONTH)
+  payrollPeriodStartDay   Int                @default(1)
+  payrollPeriodEndDay     Int                @default(31)
+  payrollPeriodAnchorDate DateTime?
+  payrollPayoutRule       PayrollPayoutRule  @default(LAST_WEEKDAY_OF_MONTH)
+  payrollPayoutDay        Int                @default(0)
 
   movieShowings     MovieShowing[]
   leaveRequests     LeaveRequest[]
