@@ -117,6 +117,10 @@ export default function SchedulePage() {
     deleteShift,
     offerShiftTrade,
 
+    openTimeEntry,
+    clockIn,
+    clockOut,
+
     submitManualTime: submitManualTimeEntry,
   } = useSchedule(selectedDate);
 
@@ -259,6 +263,75 @@ export default function SchedulePage() {
     }
   }
 
+  async function handleRegisterClockIn() {
+    if (!selectedClockShift || !currentUser || !clockShiftId) {
+      toast.error("Vælg en vagt først");
+      return;
+    }
+
+    const plannedStart = toInputDateTime(selectedClockShift.startTime);
+
+    const hasDeviation =
+      localDateTimeToISOString(plannedStart) !==
+      localDateTimeToISOString(clockInTime);
+
+    if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
+      toast.error("Du skal skrive en note ved ændret mødetid");
+      return;
+    }
+
+    try {
+      await clockIn(clockShiftId, clockInTime, clockNote);
+
+      toast.success("Mødetid registreret");
+      resetClockModal();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke registrere mødetid",
+      );
+    }
+  }
+
+  async function handleRegisterClockOut() {
+    if (!openTimeEntry) {
+      toast.error("Ingen åben tidsregistrering fundet");
+      return;
+    }
+
+    const shift = shifts.find((s) => s.id === openTimeEntry.shiftId);
+
+    if (!shift) {
+      toast.error("Kunne ikke finde vagten for den åbne tidsregistrering");
+      return;
+    }
+
+    const plannedEnd = toInputDateTime(shift.endTime);
+
+    const hasDeviation =
+      localDateTimeToISOString(plannedEnd) !==
+      localDateTimeToISOString(clockOutTime);
+
+    if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
+      toast.error("Du skal skrive en note ved ændret fyraften");
+      return;
+    }
+
+    try {
+      await clockOut(clockOutTime, clockNote);
+
+      toast.success("Fyraften registreret");
+      resetClockModal();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke registrere fyraften",
+      );
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
@@ -340,6 +413,36 @@ export default function SchedulePage() {
     setEndTime(`${nextDate}T22:00`);
     setSelectedShift(null);
     setFormError("");
+  }
+
+  function openRegisterTimeModal() {
+    setClockNote("");
+
+    if (openTimeEntry?.shiftId) {
+      setClockShiftId(openTimeEntry.shiftId);
+      setClockInTime(toInputDateTime(openTimeEntry.clockIn));
+
+      if (openTimeEntry.shift?.endTime) {
+        const value = toInputDateTime(openTimeEntry.shift.endTime);
+
+        console.log("FYRAFTEN DEBUG");
+        console.log("endTime:", openTimeEntry.shift.endTime);
+        console.log("converted:", value);
+
+        setClockOutTime(value);
+      } else {
+        const shift = shifts.find((s) => s.id === openTimeEntry.shiftId);
+        setClockOutTime(shift ? toInputDateTime(shift.endTime) : "");
+      }
+
+      setShowClockModal(true);
+      return;
+    }
+
+    setClockShiftId(null);
+    setClockInTime("");
+    setClockOutTime("");
+    setShowClockModal(true);
   }
 
   async function handleMoveShift(
@@ -496,7 +599,7 @@ ${getShiftConfirmText(selectedShift)}`,
 
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => setShowClockModal(true)}
+                      onClick={openRegisterTimeModal}
                       className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
                     >
                       Registrer tid
@@ -687,53 +790,56 @@ ${getShiftConfirmText(selectedShift)}`,
                   </div>
 
                   <div className="space-y-4">
-                    <select
-                      value={clockShiftId || ""}
-                      onChange={(event) => {
-                        const shiftId = Number(event.target.value);
-                        setClockShiftId(shiftId);
+                    {!openTimeEntry && (
+                      <select
+                        value={clockShiftId || ""}
+                        onChange={(event) => {
+                          const shiftId = Number(event.target.value);
+                          setClockShiftId(shiftId);
 
-                        const shift = shifts.find((s) => s.id === shiftId);
-                        if (!shift) return;
+                          const shift = shifts.find((s) => s.id === shiftId);
+                          if (!shift) return;
 
-                        setClockInTime(toInputDateTime(shift.startTime));
-                        setClockOutTime(toInputDateTime(shift.endTime));
-                        setClockNote("");
-                      }}
-                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                    >
-                      <option value="">Vælg vagt</option>
+                          setClockInTime(toInputDateTime(shift.startTime));
+                          setClockOutTime(toInputDateTime(shift.endTime));
+                          setClockNote("");
+                        }}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                      >
+                        <option value="">Vælg vagt</option>
 
-                      {shifts
-                        .filter((shift) => shift.userId === currentUser?.id)
-                        .map((shift) => (
-                          <option key={shift.id} value={shift.id}>
-                            {formatTimeDK(shift.startTime)} -{" "}
-                            {formatTimeDK(shift.endTime)}
-                            {" · "}
-                            {shift.workType.name}
-                          </option>
-                        ))}
-                    </select>
+                        {shifts
+                          .filter((shift) => shift.userId === currentUser?.id)
+                          .map((shift) => (
+                            <option key={shift.id} value={shift.id}>
+                              {formatTimeDK(shift.startTime)} -{" "}
+                              {formatTimeDK(shift.endTime)}
+                              {" · "}
+                              {shift.workType.name}
+                            </option>
+                          ))}
+                      </select>
+                    )}
 
-                    {clockShiftId && (
+                    {selectedClockShift && (
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+                        <div className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                          Planlagt vagt
+                        </div>
+
+                        <div className="mt-1 text-lg font-bold">
+                          {formatTimeDK(selectedClockShift.startTime)} -{" "}
+                          {formatTimeDK(selectedClockShift.endTime)}
+                        </div>
+
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                          {selectedClockShift.workType.name}
+                        </div>
+                      </div>
+                    )}
+
+                    {!openTimeEntry && clockShiftId && (
                       <>
-                        {selectedClockShift && (
-                          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
-                            <div className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                              Planlagt vagt
-                            </div>
-
-                            <div className="mt-1 text-lg font-bold">
-                              {formatTimeDK(selectedClockShift.startTime)} -{" "}
-                              {formatTimeDK(selectedClockShift.endTime)}
-                            </div>
-
-                            <div className="text-sm text-blue-700 dark:text-blue-300">
-                              {selectedClockShift.workType.name}
-                            </div>
-                          </div>
-                        )}
                         <label className="block text-sm font-semibold">
                           Faktisk mødetid
                         </label>
@@ -747,6 +853,24 @@ ${getShiftConfirmText(selectedShift)}`,
                           className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
                         />
 
+                        <textarea
+                          value={clockNote}
+                          onChange={(event) => setClockNote(event.target.value)}
+                          className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                          placeholder="Forklar eventuel ændret mødetid"
+                        />
+
+                        <button
+                          onClick={handleRegisterClockIn}
+                          className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                        >
+                          Registrer mødetid
+                        </button>
+                      </>
+                    )}
+
+                    {openTimeEntry && (
+                      <>
                         <label className="block text-sm font-semibold">
                           Faktisk fyraften
                         </label>
@@ -764,14 +888,14 @@ ${getShiftConfirmText(selectedShift)}`,
                           value={clockNote}
                           onChange={(event) => setClockNote(event.target.value)}
                           className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                          placeholder="Forklar eventuelle afvigelser fra vagtplanen"
+                          placeholder="Forklar eventuel ændret fyraften"
                         />
 
                         <button
-                          onClick={submitManualTime}
+                          onClick={handleRegisterClockOut}
                           className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                         >
-                          Send til godkendelse
+                          Registrer fyraften
                         </button>
                       </>
                     )}

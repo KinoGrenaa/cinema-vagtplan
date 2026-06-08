@@ -283,6 +283,7 @@ export class PayrollService {
         clockOut: {
           not: null,
         },
+        status: 'APPROVED',
       },
       include: {
         user: true,
@@ -300,6 +301,36 @@ export class PayrollService {
       },
       orderBy: {
         clockIn: 'asc',
+      },
+    });
+
+    const pendingCount = await this.prisma.timeEntry.count({
+      where: {
+        ...this.getCinemaFilter(user),
+        ...(userId ? { userId: Number(userId) } : {}),
+        clockIn: {
+          gte: start,
+          lte: end,
+        },
+        clockOut: {
+          not: null,
+        },
+        status: 'PENDING',
+      },
+    });
+
+    const rejectedCount = await this.prisma.timeEntry.count({
+      where: {
+        ...this.getCinemaFilter(user),
+        ...(userId ? { userId: Number(userId) } : {}),
+        clockIn: {
+          gte: start,
+          lte: end,
+        },
+        clockOut: {
+          not: null,
+        },
+        status: 'REJECTED',
       },
     });
 
@@ -385,11 +416,15 @@ export class PayrollService {
       });
     }
 
-    return Array.from(grouped.values()).map((employee) => ({
-      ...employee,
-      totalHours: Number(employee.totalHours.toFixed(2)),
-      deviationCount: employee.deviationCount,
-    }));
+    return {
+      employees: Array.from(grouped.values()).map((employee) => ({
+        ...employee,
+        totalHours: Number(employee.totalHours.toFixed(2)),
+        deviationCount: employee.deviationCount,
+      })),
+      pendingCount,
+      rejectedCount,
+    };
   }
 
   async getPeriod(user: AuthUser, startDate: string, endDate: string) {
@@ -697,7 +732,7 @@ export class PayrollService {
       ],
     ];
 
-    for (const employee of report) {
+    for (const employee of report.employees) {
       for (const entry of employee.entries) {
         rows.push([
           employee.name,
@@ -750,7 +785,7 @@ export class PayrollService {
     const usePayrollRules = await this.getPayrollRulesEnabled(user);
     const rows = [['Employee', 'PayrollCode', 'Date', 'Hours', 'Text']];
 
-    for (const employee of report) {
+    for (const employee of report.employees) {
       for (const entry of employee.entries) {
         const segments = usePayrollRules
           ? this.payrollRulesService.calculateSegments(entry)
@@ -819,7 +854,7 @@ export class PayrollService {
       { header: 'Låst op af MASTER', key: 'unlockedByMaster', width: 20 },
     ];
 
-    for (const employee of report) {
+    for (const employee of report.employees) {
       for (const entry of employee.entries) {
         sheet.addRow({
           employee: employee.name,
@@ -889,7 +924,7 @@ export class PayrollService {
 
     doc.moveDown();
 
-    for (const employee of report) {
+    for (const employee of report.employees) {
       doc.fontSize(14).text(employee.name, {
         underline: true,
       });

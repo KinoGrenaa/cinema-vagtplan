@@ -200,11 +200,10 @@ function DeviationPanel({ entry }: { entry: TimeEntry }) {
         <div>Registreret tid: {formatMinutes(deviation.registeredMinutes)}</div>
         <div>Difference: {formatMinutes(deviation.differenceMinutes)}</div>
         <div>
-          Clock ind-afvigelse:{" "}
-          {formatMinutes(deviation.clockInDeviationMinutes)}
+          Mødetidsafvigelse: {formatMinutes(deviation.clockInDeviationMinutes)}
         </div>
         <div>
-          Clock ud-afvigelse:{" "}
+          Fyraftensafvigelse:{" "}
           {formatMinutes(deviation.clockOutDeviationMinutes)}
         </div>
       </div>
@@ -221,6 +220,36 @@ export default function TimeApprovalPage() {
   const [historyLogs, setHistoryLogs] = useState<AuditLog[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
+  const [showApproved, setShowApproved] = useState(false);
+  const [showRejected, setShowRejected] = useState(false);
+  const [expandedEntryIds, setExpandedEntryIds] = useState<number[]>([]);
+
+  const toggleEntryDetails = (entryId: number) => {
+    setExpandedEntryIds((current) =>
+      current.includes(entryId)
+        ? current.filter((id) => id !== entryId)
+        : [...current, entryId],
+    );
+  };
+
+  const visibleEntries = entries.filter((entry) => {
+    if (!entry.clockIn || !entry.clockOut) return false;
+    if (entry.status === "APPROVED") return showApproved;
+    if (entry.status === "REJECTED") return showRejected;
+    return true;
+  });
+
+  const pendingCount = entries.filter(
+    (entry) => entry.clockIn && entry.clockOut && entry.status === "PENDING",
+  ).length;
+
+  const approvedCount = entries.filter(
+    (entry) => entry.clockIn && entry.clockOut && entry.status === "APPROVED",
+  ).length;
+
+  const rejectedCount = entries.filter(
+    (entry) => entry.clockIn && entry.clockOut && entry.status === "REJECTED",
+  ).length;
 
   function getToken() {
     return localStorage.getItem("token");
@@ -414,7 +443,8 @@ export default function TimeApprovalPage() {
       title: "Afvis tidsregistrering",
       description: "Skriv evt. årsag til afvisning. Feltet må gerne være tomt.",
       label: "Årsag",
-      placeholder: "Fx manglende clock ud, forkert tidspunkt...",
+      placeholder:
+        "Fx manglende registrering af fyraften, forkert tidspunkt...",
       confirmText: "Afvis",
       cancelText: "Annuller",
       required: false,
@@ -456,7 +486,7 @@ export default function TimeApprovalPage() {
               <h1 className="text-3xl font-bold">Godkend timer</h1>
 
               <p className="mt-2 text-gray-500 dark:text-gray-400">
-                Gennemgå, godkend eller afvis clock ind/ud med tydelig
+                Gennemgå, godkend eller afvis mødetid og fyraften med tydelig
                 sammenligning mellem vagtplan og registreret tid.
               </p>
             </div>
@@ -469,7 +499,44 @@ export default function TimeApprovalPage() {
 
             {!loading && entries.length > 0 && (
               <div className="space-y-4">
-                {entries.map((entry) => (
+                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                      Viser som standard kun afventende registreringer.
+                      <span className="ml-2 font-semibold">
+                        Afventer: {pendingCount}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={showApproved}
+                          onChange={(event) =>
+                            setShowApproved(event.target.checked)
+                          }
+                          className="h-4 w-4"
+                        />
+                        Vis godkendte ({approvedCount})
+                      </label>
+
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={showRejected}
+                          onChange={(event) =>
+                            setShowRejected(event.target.checked)
+                          }
+                          className="h-4 w-4"
+                        />
+                        Vis afviste ({rejectedCount})
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {visibleEntries.map((entry) => (
                   <div
                     key={entry.id}
                     className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
@@ -493,12 +560,12 @@ export default function TimeApprovalPage() {
                           </div>
 
                           <div>
-                            <span className="font-semibold">Clock ind:</span>{" "}
+                            <span className="font-semibold">Mødt:</span>
                             {formatDateTime(entry.clockIn)}
                           </div>
 
                           <div>
-                            <span className="font-semibold">Clock ud:</span>{" "}
+                            <span className="font-semibold">Gået hjem:</span>
                             {formatDateTime(entry.clockOut)}
                           </div>
 
@@ -507,15 +574,30 @@ export default function TimeApprovalPage() {
                             {getHours(entry)}
                           </div>
 
-                          <DeviationPanel entry={entry} />
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleEntryDetails(entry.id)}
+                              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                                entry.deviation?.hasDeviation ||
+                                entry.note ||
+                                entry.adminNote
+                                  ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/50"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                              }`}
+                            >
+                              {entry.deviation?.hasDeviation ||
+                              entry.note ||
+                              entry.adminNote
+                                ? "⚠ Vis detaljer"
+                                : "Vis detaljer"}
+                            </button>
+                          </div>
 
-                          {entry.note && (
-                            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                              <span className="font-semibold">
-                                Medarbejder note:
-                              </span>{" "}
-                              {entry.note}
-                            </div>
+                          {expandedEntryIds.includes(entry.id) && (
+                            <>
+                              <DeviationPanel entry={entry} />
+                            </>
                           )}
 
                           {entry.adminNote && (
@@ -575,12 +657,14 @@ export default function TimeApprovalPage() {
                             </button>
                           )}
 
-                          <button
-                            onClick={() => reject(entry.id)}
-                            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
-                          >
-                            Afvis
-                          </button>
+                          {entry.status !== "REJECTED" && (
+                            <button
+                              onClick={() => reject(entry.id)}
+                              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                            >
+                              Afvis
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

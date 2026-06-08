@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bar,
   BarChart,
@@ -263,6 +264,7 @@ function formatHours(value: number) {
 }
 
 export default function PayrollPage() {
+  const router = useRouter();
   const inputDialog = useInputModal();
   const confirmDialog = useConfirm();
   const [startDate, setStartDate] = useState(firstDayOfMonthIso());
@@ -273,6 +275,8 @@ export default function PayrollPage() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [report, setReport] = useState<PayrollEmployee[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [rejectedCount, setRejectedCount] = useState(0);
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [auditHistory, setAuditHistory] = useState<PayrollAuditHistory[]>([]);
 
@@ -542,14 +546,27 @@ export default function PayrollPage() {
 
       if (!response.ok) {
         setReport([]);
+        setPendingCount(0);
+        setRejectedCount(0);
         return;
       }
 
       const data = await response.json();
-      setReport(Array.isArray(data) ? data : []);
+
+      if (Array.isArray(data)) {
+        setReport(data);
+        setPendingCount(0);
+        setRejectedCount(0);
+      } else {
+        setReport(Array.isArray(data.employees) ? data.employees : []);
+        setPendingCount(Number(data.pendingCount || 0));
+        setRejectedCount(Number(data.rejectedCount || 0));
+      }
     } catch (error) {
       console.error(error);
       setReport([]);
+      setPendingCount(0);
+      setRejectedCount(0);
     } finally {
       setLoading(false);
     }
@@ -1158,30 +1175,99 @@ export default function PayrollPage() {
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Lønperiode status
               </div>
+
               <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                {period?.status || "OPEN"}
+                {period?.status === "LOCKED"
+                  ? "Låst"
+                  : period?.status === "EXPORTED"
+                    ? "Eksporteret"
+                    : "Åben"}
               </div>
+
               {period?.lockedAt && (
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   Låst: {formatDateTime(period.lockedAt)}
                 </div>
               )}
+
               {period?.exportedAt && (
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   Eksporteret: {formatDateTime(period.exportedAt)}
                 </div>
               )}
+
               {period?.unlockedAt && (
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   Låst op: {formatDateTime(period.unlockedAt)}
                 </div>
               )}
             </div>
+
+            <div className="grid gap-3 text-sm sm:grid-cols-3">
+              <div className="rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-800">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Godkendte timer
+                </div>
+                <div className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-100">
+                  {totalHours.toFixed(2).replace(".", ",")}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-amber-200 px-4 py-3 dark:border-amber-800">
+                <div className="text-xs text-amber-700 dark:text-amber-300">
+                  Afventer godkendelse
+                </div>
+                <div className="mt-1 text-lg font-bold text-amber-800 dark:text-amber-200">
+                  {pendingCount}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-800">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Afviste
+                </div>
+                <div className="mt-1 text-lg font-bold text-gray-700 dark:text-gray-300">
+                  {rejectedCount}
+                </div>
+              </div>
+            </div>
+
+            {pendingCount > 0 && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                <div className="font-semibold">
+                  ⚠ {pendingCount} afventende tidsregistreringer
+                </div>
+
+                <div className="mt-1">
+                  Disse timer er ikke medtaget i løngrundlaget før de er
+                  godkendt.
+                </div>
+
+                <button
+                  onClick={() => router.push("/time-approval")}
+                  className="mt-3 rounded-lg border border-amber-400 px-3 py-2 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                >
+                  Gå til Time Approval
+                </button>
+              </div>
+            )}
+
+            {rejectedCount > 0 && (
+              <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
+                <div className="font-semibold">
+                  🚫 Afviste tidsregistreringer: {rejectedCount}
+                </div>
+
+                <div className="mt-1">
+                  Afviste registreringer indgår ikke i løngrundlaget.
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2">
               <button
@@ -1396,7 +1482,7 @@ export default function PayrollPage() {
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
-          <h2 className="mb-4 text-xl font-bold">Payroll audit history</h2>
+          <h2 className="mb-4 text-xl font-bold">Lønhistorik</h2>
 
           {auditHistory.length === 0 ? (
             <div className="text-sm text-gray-500 dark:text-gray-400">

@@ -60,6 +60,8 @@ export class TimeEntriesController {
       userId: number;
       cinemaId: number;
       shiftId?: number | null;
+      clockIn?: string;
+      note?: string;
     },
   ) {
     return this.timeEntriesService.clockIn(body);
@@ -67,8 +69,15 @@ export class TimeEntriesController {
 
   @UseGuards(JwtGuard)
   @Patch(':id/clock-out')
-  clockOut(@Param('id') id: string) {
-    return this.timeEntriesService.clockOut(Number(id));
+  clockOut(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      clockOut?: string;
+      note?: string;
+    },
+  ) {
+    return this.timeEntriesService.clockOut(Number(id), body);
   }
 
   @UseGuards(JwtGuard, RolesGuard)

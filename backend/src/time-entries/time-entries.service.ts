@@ -279,6 +279,7 @@ export class TimeEntriesService {
         userId,
         ...(cinemaId ? { cinemaId } : {}),
         clockOut: null,
+        status: 'PENDING',
       },
       include: {
         shift: {
@@ -408,6 +409,8 @@ export class TimeEntriesService {
     userId: number;
     cinemaId: number;
     shiftId?: number | null;
+    clockIn?: string;
+    note?: string;
   }) {
     const openEntry = await this.findOpenEntry(data.userId, data.cinemaId);
 
@@ -415,7 +418,12 @@ export class TimeEntriesService {
       return this.withDeviation(openEntry);
     }
 
-    const clockIn = new Date();
+    const clockIn = data.clockIn ? new Date(data.clockIn) : new Date();
+
+    if (Number.isNaN(clockIn.getTime())) {
+      throw new BadRequestException('Ugyldig mødetid');
+    }
+
     let shift: any = null;
 
     if (data.shiftId) {
@@ -435,7 +443,7 @@ export class TimeEntriesService {
 
       if (shift.userId !== data.userId) {
         throw new BadRequestException(
-          'Du kan kun stemple ind på dine egne vagter',
+          'Du kan kun registrere mødetid på dine egne vagter',
         );
       }
     } else {
@@ -446,6 +454,22 @@ export class TimeEntriesService {
       });
     }
 
+    if (shift?.id) {
+      const existingShiftEntry = await this.prisma.timeEntry.findFirst({
+        where: {
+          shiftId: shift.id,
+          userId: data.userId,
+          cinemaId: data.cinemaId,
+        },
+      });
+
+      if (existingShiftEntry) {
+        throw new BadRequestException(
+          'Der findes allerede en tidsregistrering for denne vagt',
+        );
+      }
+    }
+
     const entry = await this.prisma.timeEntry.create({
       data: {
         userId: data.userId,
@@ -453,6 +477,7 @@ export class TimeEntriesService {
         shiftId: shift?.id || null,
         payrollTypeId: shift?.workType?.payrollTypeId || null,
         clockIn,
+        note: data.note?.trim() || null,
         status: 'PENDING',
       },
       include: {
@@ -475,8 +500,8 @@ export class TimeEntriesService {
       entityType: 'TimeEntry',
       entityId: entry.id,
       description: shift
-        ? 'Medarbejder stemplede ind på planlagt vagt'
-        : 'Medarbejder stemplede ind uden tilknyttet vagt',
+        ? 'Medarbejder registrerede mødetid på planlagt vagt'
+        : 'Medarbejder registrerede mødetid uden tilknyttet vagt',
       userId: entry.userId,
       cinemaId: entry.cinemaId,
     });
@@ -492,7 +517,13 @@ export class TimeEntriesService {
     return response;
   }
 
-  async clockOut(id: number) {
+  async clockOut(
+    id: number,
+    data?: {
+      clockOut?: string;
+      note?: string;
+    },
+  ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
     });
@@ -503,10 +534,21 @@ export class TimeEntriesService {
 
     this.ensureEntryEditable(existingEntry);
 
+    const clockOut = data?.clockOut ? new Date(data.clockOut) : new Date();
+
+    if (Number.isNaN(clockOut.getTime())) {
+      throw new BadRequestException('Ugyldig fyraften');
+    }
+
+    if (clockOut <= existingEntry.clockIn) {
+      throw new BadRequestException('Fyraften skal være efter mødetid');
+    }
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
-        clockOut: new Date(),
+        clockOut,
+        note: data?.note?.trim() || existingEntry.note,
       },
       include: {
         user: true,
@@ -527,7 +569,7 @@ export class TimeEntriesService {
       action: 'CLOCK_OUT',
       entityType: 'TimeEntry',
       entityId: entry.id,
-      description: 'Medarbejder stemplede ud',
+      description: 'Medarbejder registrerede fyraften',
       userId: entry.userId,
       cinemaId: entry.cinemaId,
     });

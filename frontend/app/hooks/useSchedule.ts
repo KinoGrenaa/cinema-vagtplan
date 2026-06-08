@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useApi } from "./useApi";
 import { useAuth } from "../providers/AuthProvider";
+import { localDateTimeToISOString } from "@/app/utils/dateTime";
 
 import type {
   Shift,
@@ -45,6 +46,14 @@ type ManualTimeInput = {
 };
 
 type OpenTimeEntry = {
+  shift?: {
+    id: number;
+    startTime: string;
+    endTime: string;
+    workType?: {
+      name: string;
+    };
+  } | null;
   id: number;
   clockIn: string;
   clockOut?: string | null;
@@ -309,7 +318,7 @@ export function useSchedule(selectedDate: string) {
   );
 
   const clockIn = useCallback(
-    async (shiftId?: number | null) => {
+    async (shiftId?: number | null, clockInTime?: string, note?: string) => {
       if (!user) return;
 
       const response = await apiFetch("/time-entries/clock-in", {
@@ -318,6 +327,10 @@ export function useSchedule(selectedDate: string) {
           userId: user.id,
           cinemaId: user.cinemaId,
           shiftId: shiftId ?? null,
+          clockIn: clockInTime
+            ? localDateTimeToISOString(clockInTime)
+            : undefined,
+          note,
         }),
       });
 
@@ -333,27 +346,36 @@ export function useSchedule(selectedDate: string) {
     [apiFetch, refreshDayData, user],
   );
 
-  const clockOut = useCallback(async () => {
-    if (!openTimeEntry) {
-      throw new Error("Der er ingen åben tidsregistrering");
-    }
+  const clockOut = useCallback(
+    async (clockOutTime?: string, note?: string) => {
+      if (!openTimeEntry) {
+        throw new Error("Der er ingen åben tidsregistrering");
+      }
 
-    const response = await apiFetch(
-      `/time-entries/${openTimeEntry.id}/clock-out`,
-      {
-        method: "PATCH",
-      },
-    );
+      const response = await apiFetch(
+        `/time-entries/${openTimeEntry.id}/clock-out`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            clockOut: clockOutTime
+              ? localDateTimeToISOString(clockOutTime)
+              : undefined,
+            note,
+          }),
+        },
+      );
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "Kunne ikke clocke ud");
-    }
+      if (!response.ok) {
+        throw new Error(data.message || "Kunne ikke clocke ud");
+      }
 
-    setOpenTimeEntry(null);
-    await refreshDayData();
-  }, [apiFetch, openTimeEntry, refreshDayData]);
+      setOpenTimeEntry(null);
+      await refreshDayData();
+    },
+    [apiFetch, openTimeEntry, refreshDayData],
+  );
 
   const submitManualTime = useCallback(
     async (input: ManualTimeInput) => {
