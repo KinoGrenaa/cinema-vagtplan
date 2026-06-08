@@ -27,6 +27,7 @@ import { useConfirm } from "@/app/hooks/useConfirm";
 import InputModal from "@/app/components/modals/InputModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { toast } from "sonner";
+import ExportModal from "@/app/components/modals/ExportModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -68,6 +69,7 @@ type PayrollEmployee = {
   employeeNumber?: string | null;
   payrollEmployeeId?: string | null;
   totalHours: number;
+  deviationCount?: number;
   entries: PayrollEntry[];
 };
 
@@ -284,6 +286,7 @@ export default function PayrollPage() {
   const [locking, setLocking] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const totalHours = useMemo(() => {
     return report.reduce((sum, employee) => sum + employee.totalHours, 0);
@@ -649,8 +652,12 @@ export default function PayrollPage() {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        toast.error(errorText || "Eksport fejlede");
+        const errorData = await response.json().catch(() => null);
+
+        const message =
+          errorData?.message || "Eksporten kunne ikke gennemføres.";
+
+        toast.error(message);
         return;
       }
 
@@ -938,10 +945,11 @@ export default function PayrollPage() {
                 <tr className="text-left text-sm text-gray-500 dark:text-gray-400">
                   <th className="pb-3 pr-4">Medarbejder</th>
                   <th className="pb-3 pr-4">Timer</th>
-                  <th className="pb-3 pr-4">Overtid</th>
+                  <th className="pb-3 pr-4">Ekstra timer</th>
                   <th className="pb-3 pr-4">Weekend</th>
                   <th className="pb-3 pr-4">Aften</th>
                   <th className="pb-3 pr-4">Nat</th>
+                  <th className="pb-3 pr-4">Afvigelser</th>
                 </tr>
               </thead>
 
@@ -992,6 +1000,17 @@ export default function PayrollPage() {
                       <td className="py-3 pr-4 font-medium text-blue-600">
                         {formatHours(night)}
                       </td>
+                      <td className="py-3 pr-4">
+                        {(employee.deviationCount || 0) > 0 ? (
+                          <span className="font-medium text-amber-700 dark:text-amber-300">
+                            ⚠ {employee.deviationCount} afvigelser
+                          </span>
+                        ) : (
+                          <span className="text-green-700 dark:text-green-300">
+                            ✓ Ingen
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -1004,7 +1023,7 @@ export default function PayrollPage() {
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-red-600">
-                Overtime warnings
+                Registreringer der kræver opmærksomhed
               </h2>
 
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -1015,7 +1034,7 @@ export default function PayrollPage() {
 
           {overtimeWarnings.length === 0 ? (
             <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300">
-              Ingen overtime warnings i perioden.
+              Ingen afvigelser fundet.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1057,15 +1076,15 @@ export default function PayrollPage() {
                       <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
                         {employee.overtime > 0 ? (
                           <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">
-                            OVERTIME
+                            EKSTRA TIMER
                           </span>
                         ) : employee.weekend > 10 ? (
                           <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-950 dark:text-purple-300">
-                            WEEKEND LOAD
+                            WEEKEND
                           </span>
                         ) : (
                           <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                            NIGHT LOAD
+                            NAT
                           </span>
                         )}
                       </td>
@@ -1075,103 +1094,6 @@ export default function PayrollPage() {
               </table>
             </div>
           )}
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-2">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Timer pr dag
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Arbejdstimer i den valgte lønperiode.
-              </p>
-            </div>
-
-            <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyHoursData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="hours"
-                    stroke="#2563eb"
-                    strokeWidth={3}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Payroll fordeling
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Fordeling af lønarter.
-              </p>
-            </div>
-
-            <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={payrollDistributionData}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={110}
-                    label
-                  >
-                    {payrollDistributionData.map((entry, index) => {
-                      const colors = [
-                        "#2563eb",
-                        "#dc2626",
-                        "#7c3aed",
-                        "#ea580c",
-                        "#0891b2",
-                        "#16a34a",
-                      ];
-
-                      return (
-                        <Cell
-                          key={entry.name}
-                          fill={colors[index % colors.length]}
-                        />
-                      );
-                    })}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 xl:col-span-2">
-            <div className="mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Mest belastede medarbejdere
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Top medarbejdere baseret på timer.
-              </p>
-            </div>
-
-            <div className="h-[360px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={employeeLoadData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="hours" fill="#16a34a" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
@@ -1304,35 +1226,12 @@ export default function PayrollPage() {
 
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => downloadExport("csv")}
+                type="button"
+                onClick={() => setExportModalOpen(true)}
                 disabled={exporting}
                 className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
               >
-                Eksporter CSV
-              </button>
-
-              <button
-                onClick={() => downloadExport("xlsx")}
-                disabled={exporting}
-                className="rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                Eksporter XLSX
-              </button>
-
-              <button
-                onClick={() => downloadExport("pdf")}
-                disabled={exporting}
-                className="rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-800 disabled:opacity-50"
-              >
-                Eksporter PDF
-              </button>
-
-              <button
-                onClick={() => downloadExport("uniconta")}
-                disabled={exporting}
-                className="rounded bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 disabled:opacity-50"
-              >
-                Eksporter Uniconta CSV
+                Eksporter
               </button>
             </div>
           </div>
@@ -1481,6 +1380,103 @@ export default function PayrollPage() {
           )}
         </div>
 
+        <div className="grid gap-6 xl:grid-cols-2">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Timer pr dag
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Arbejdstimer i den valgte lønperiode.
+              </p>
+            </div>
+
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dailyHoursData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="hours"
+                    stroke="#2563eb"
+                    strokeWidth={3}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Payroll fordeling
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Fordeling af lønarter.
+              </p>
+            </div>
+
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={payrollDistributionData}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={110}
+                    label
+                  >
+                    {payrollDistributionData.map((entry, index) => {
+                      const colors = [
+                        "#2563eb",
+                        "#dc2626",
+                        "#7c3aed",
+                        "#ea580c",
+                        "#0891b2",
+                        "#16a34a",
+                      ];
+
+                      return (
+                        <Cell
+                          key={entry.name}
+                          fill={colors[index % colors.length]}
+                        />
+                      );
+                    })}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900 xl:col-span-2">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                Mest belastede medarbejdere
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Top medarbejdere baseret på timer.
+              </p>
+            </div>
+
+            <div className="h-[360px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={employeeLoadData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="hours" fill="#16a34a" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
         <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
           <h2 className="mb-4 text-xl font-bold">Lønhistorik</h2>
 
@@ -1578,6 +1574,15 @@ export default function PayrollPage() {
         onChange={inputDialog.setValue}
         onConfirm={inputDialog.handleConfirm}
         onCancel={inputDialog.handleCancel}
+      />
+      <ExportModal
+        open={exportModalOpen}
+        exporting={exporting}
+        onClose={() => setExportModalOpen(false)}
+        onExport={(format) => {
+          downloadExport(format);
+          setExportModalOpen(false);
+        }}
       />
     </PermissionGuard>
   );
