@@ -600,6 +600,15 @@ export default function TimeApprovalPage() {
                             </>
                           )}
 
+                          {entry.note && (
+                            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                              <span className="font-semibold">
+                                Medarbejder note:
+                              </span>{" "}
+                              {entry.note}
+                            </div>
+                          )}
+
                           {entry.adminNote && (
                             <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
                               <span className="font-semibold">Admin note:</span>{" "}

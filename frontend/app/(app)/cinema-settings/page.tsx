@@ -20,6 +20,12 @@ type Cinema = {
 
   payrollRulesEnabled: boolean;
 
+  clockInDeviationToleranceMinutes: number;
+  clockOutDeviationToleranceMinutes: number;
+  requireNoteForClockInDeviation: boolean;
+  requireNoteForClockOutDeviation: boolean;
+  requireNoteForManualEntry: boolean;
+
   payrollOvertimeEnabled: boolean;
   plannedOvertimeEnabled: boolean;
   dailyOvertimeEnabled: boolean;
@@ -256,6 +262,20 @@ export default function CinemaSettingsPage() {
           aiEnabled: updatedCinema.aiEnabled,
 
           payrollRulesEnabled: updatedCinema.payrollRulesEnabled,
+
+          clockInDeviationToleranceMinutes:
+            updatedCinema.clockInDeviationToleranceMinutes,
+
+          clockOutDeviationToleranceMinutes:
+            updatedCinema.clockOutDeviationToleranceMinutes,
+
+          requireNoteForClockInDeviation:
+            updatedCinema.requireNoteForClockInDeviation,
+
+          requireNoteForClockOutDeviation:
+            updatedCinema.requireNoteForClockOutDeviation,
+
+          requireNoteForManualEntry: updatedCinema.requireNoteForManualEntry,
           payrollOvertimeEnabled: updatedCinema.payrollOvertimeEnabled,
           plannedOvertimeEnabled: updatedCinema.plannedOvertimeEnabled,
           dailyOvertimeEnabled: updatedCinema.dailyOvertimeEnabled,
@@ -427,7 +447,9 @@ export default function CinemaSettingsPage() {
           </section>
 
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 className="mb-6 text-2xl font-bold">Lønregler & overtime</h2>
+            <h2 className="mb-6 text-2xl font-bold">
+              Lønregler & timeregistrering
+            </h2>
 
             <div className="space-y-5">
               <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
@@ -436,6 +458,68 @@ export default function CinemaSettingsPage() {
 
                   <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     Splitter automatisk timer i weekend, aften og nat.
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+                  <h3 className="mb-4 text-lg font-semibold">
+                    Afvigelsestolerance
+                  </h3>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Mødetid (minutter)
+                      </label>
+
+                      <input
+                        type="number"
+                        min={0}
+                        value={cinema.clockInDeviationToleranceMinutes ?? 0}
+                        onChange={(e) =>
+                          setCinema((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  clockInDeviationToleranceMinutes: Number(
+                                    e.target.value,
+                                  ),
+                                }
+                              : prev,
+                          )
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Fyraften (minutter)
+                      </label>
+
+                      <input
+                        type="number"
+                        min={0}
+                        value={cinema.clockOutDeviationToleranceMinutes ?? 0}
+                        onChange={(e) =>
+                          setCinema((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  clockOutDeviationToleranceMinutes: Number(
+                                    e.target.value,
+                                  ),
+                                }
+                              : prev,
+                          )
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                    Afvigelser mindre end tolerancen ignoreres.
                   </div>
                 </div>
 
@@ -459,7 +543,7 @@ export default function CinemaSettingsPage() {
 
               <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
                 <div>
-                  <div className="font-semibold">Brug overtime system</div>
+                  <div className="font-semibold">Brug overarbejdsregler</div>
 
                   <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     Aktiverer overtime regler i løneksport.

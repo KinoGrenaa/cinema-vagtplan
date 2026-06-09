@@ -8,6 +8,12 @@ type UpdateCinemaSettingsData = {
   aiEnabled?: boolean;
 
   payrollRulesEnabled?: boolean;
+  clockInDeviationToleranceMinutes?: number;
+  clockOutDeviationToleranceMinutes?: number;
+
+  requireNoteForClockInDeviation?: boolean;
+  requireNoteForClockOutDeviation?: boolean;
+  requireNoteForManualEntry?: boolean;
   payrollOvertimeEnabled?: boolean;
   plannedOvertimeEnabled?: boolean;
   dailyOvertimeEnabled?: boolean;
@@ -60,6 +66,16 @@ export class CinemasService {
         aiEnabled: data.aiEnabled,
 
         payrollRulesEnabled: data.payrollRulesEnabled,
+        clockInDeviationToleranceMinutes: data.clockInDeviationToleranceMinutes,
+
+        clockOutDeviationToleranceMinutes:
+          data.clockOutDeviationToleranceMinutes,
+
+        requireNoteForClockInDeviation: data.requireNoteForClockInDeviation,
+
+        requireNoteForClockOutDeviation: data.requireNoteForClockOutDeviation,
+
+        requireNoteForManualEntry: data.requireNoteForManualEntry,
         payrollOvertimeEnabled: data.payrollOvertimeEnabled,
         plannedOvertimeEnabled: data.plannedOvertimeEnabled,
         dailyOvertimeEnabled: data.dailyOvertimeEnabled,

@@ -29,6 +29,14 @@ type TimeEntryDeviation = {
   messages: string[];
 };
 
+type TimeEntryDeviationSettings = {
+  clockInDeviationToleranceMinutes?: number | null;
+  clockOutDeviationToleranceMinutes?: number | null;
+  requireNoteForClockInDeviation?: boolean | null;
+  requireNoteForClockOutDeviation?: boolean | null;
+  requireNoteForManualEntry?: boolean | null;
+};
+
 @Injectable()
 export class TimeEntriesService {
   private readonly deviationGraceMinutes = 5;
@@ -73,11 +81,39 @@ export class TimeEntriesService {
     return Boolean(value && value.trim() !== '');
   }
 
-  private analyzeDeviation(entry: any): TimeEntryDeviation {
+  private analyzeDeviation(
+    entry: any,
+    settings?: TimeEntryDeviationSettings | null,
+  ): TimeEntryDeviation {
     const messages: string[] = [];
     const types: TimeEntryDeviationType[] = [];
 
     const shift = entry.shift;
+
+    const clockInTolerance =
+      settings?.clockInDeviationToleranceMinutes ??
+      entry.cinema?.clockInDeviationToleranceMinutes ??
+      this.deviationGraceMinutes;
+
+    const clockOutTolerance =
+      settings?.clockOutDeviationToleranceMinutes ??
+      entry.cinema?.clockOutDeviationToleranceMinutes ??
+      this.deviationGraceMinutes;
+
+    const requireNoteForClockInDeviation =
+      settings?.requireNoteForClockInDeviation ??
+      entry.cinema?.requireNoteForClockInDeviation ??
+      true;
+
+    const requireNoteForClockOutDeviation =
+      settings?.requireNoteForClockOutDeviation ??
+      entry.cinema?.requireNoteForClockOutDeviation ??
+      true;
+
+    const requireNoteForManualEntry =
+      settings?.requireNoteForManualEntry ??
+      entry.cinema?.requireNoteForManualEntry ??
+      true;
 
     if (!entry.clockOut) {
       return {
@@ -100,7 +136,7 @@ export class TimeEntriesService {
     if (!shift) {
       return {
         hasDeviation: true,
-        requiresNote: true,
+        requiresNote: requireNoteForManualEntry,
         types: ['MANUAL_WITHOUT_SHIFT'],
         plannedMinutes: null,
         registeredMinutes: this.minutesBetween(entry.clockIn, entry.clockOut),
@@ -126,33 +162,34 @@ export class TimeEntriesService {
       entry.clockOut,
     );
 
-    if (clockInDeviationMinutes > this.deviationGraceMinutes) {
+    if (clockInDeviationMinutes > clockInTolerance) {
       types.push('LATE_CLOCK_IN');
       messages.push(`Mødt ${clockInDeviationMinutes} minutter for sent`);
     }
 
-    if (clockInDeviationMinutes < -this.deviationGraceMinutes) {
+    if (clockInDeviationMinutes < -clockInTolerance) {
       types.push('EARLY_CLOCK_IN');
       messages.push(
         `Mødt ${Math.abs(clockInDeviationMinutes)} minutter før planlagt`,
       );
     }
 
-    if (clockOutDeviationMinutes < -this.deviationGraceMinutes) {
+    if (clockOutDeviationMinutes < -clockOutTolerance) {
       types.push('EARLY_CLOCK_OUT');
       messages.push(
         `Gået ${Math.abs(clockOutDeviationMinutes)} minutter før planlagt`,
       );
     }
 
-    if (clockOutDeviationMinutes > this.deviationGraceMinutes) {
+    if (clockOutDeviationMinutes > clockOutTolerance) {
       types.push('LATE_CLOCK_OUT');
       messages.push(`Gået ${clockOutDeviationMinutes} minutter efter planlagt`);
     }
 
     if (
       types.length === 0 &&
-      Math.abs(differenceMinutes) > this.deviationGraceMinutes
+      Math.abs(differenceMinutes) >
+        Math.max(clockInTolerance, clockOutTolerance)
     ) {
       types.push('TIME_DIFFERENCE');
       messages.push(
@@ -167,9 +204,21 @@ export class TimeEntriesService {
 
     const hasDeviation = types.some((type) => type !== 'NONE');
 
+    const requiresNote =
+      (types.some(
+        (type) => type === 'EARLY_CLOCK_IN' || type === 'LATE_CLOCK_IN',
+      ) &&
+        requireNoteForClockInDeviation) ||
+      (types.some(
+        (type) => type === 'EARLY_CLOCK_OUT' || type === 'LATE_CLOCK_OUT',
+      ) &&
+        requireNoteForClockOutDeviation) ||
+      (types.includes('TIME_DIFFERENCE') &&
+        (requireNoteForClockInDeviation || requireNoteForClockOutDeviation));
+
     return {
       hasDeviation,
-      requiresNote: hasDeviation,
+      requiresNote,
       types,
       plannedMinutes,
       registeredMinutes,
@@ -183,7 +232,17 @@ export class TimeEntriesService {
   private withDeviation(entry: any) {
     return {
       ...entry,
-      deviation: this.analyzeDeviation(entry),
+      deviation: this.analyzeDeviation(entry, entry.cinema),
+    };
+  }
+
+  private getCinemaDeviationSelect() {
+    return {
+      clockInDeviationToleranceMinutes: true,
+      clockOutDeviationToleranceMinutes: true,
+      requireNoteForClockInDeviation: true,
+      requireNoteForClockOutDeviation: true,
+      requireNoteForManualEntry: true,
     };
   }
 
@@ -212,6 +271,9 @@ export class TimeEntriesService {
       },
       include: {
         workType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
       },
       orderBy: {
         startTime: 'asc',
@@ -225,6 +287,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -255,6 +320,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -282,6 +350,9 @@ export class TimeEntriesService {
         status: 'PENDING',
       },
       include: {
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: true,
@@ -309,6 +380,9 @@ export class TimeEntriesService {
       },
       include: {
         workType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
       },
     });
 
@@ -333,11 +407,14 @@ export class TimeEntriesService {
       throw new BadRequestException('Fyraften skal være efter mødetid');
     }
 
-    const deviation = this.analyzeDeviation({
-      clockIn,
-      clockOut,
-      shift,
-    });
+    const deviation = this.analyzeDeviation(
+      {
+        clockIn,
+        clockOut,
+        shift,
+      },
+      shift.cinema,
+    );
 
     if (deviation.requiresNote && !this.hasText(data.note)) {
       throw new BadRequestException(
@@ -373,6 +450,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -483,6 +563,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -526,6 +609,12 @@ export class TimeEntriesService {
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
+      include: {
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
+        shift: true,
+      },
     });
 
     if (!existingEntry) {
@@ -544,15 +633,27 @@ export class TimeEntriesService {
       throw new BadRequestException('Fyraften skal være efter mødetid');
     }
 
+    const clockOutNote = data?.note?.trim();
+
+    const combinedNote = [
+      existingEntry.note,
+      clockOutNote ? `Fyraften: ${clockOutNote}` : null,
+    ]
+      .filter((note): note is string => Boolean(note))
+      .join('\n\n');
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
         clockOut,
-        note: data?.note?.trim() || existingEntry.note,
+        note: combinedNote || null,
       },
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -590,6 +691,9 @@ export class TimeEntriesService {
       where: { id },
       include: {
         user: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: true,
       },
     });
@@ -600,7 +704,10 @@ export class TimeEntriesService {
 
     this.ensureEntryEditable(existingEntry);
 
-    const deviation = this.analyzeDeviation(existingEntry);
+    const deviation = this.analyzeDeviation(
+      existingEntry,
+      existingEntry.cinema,
+    );
 
     if (deviation.types.includes('OPEN_ENTRY')) {
       throw new BadRequestException(
@@ -622,6 +729,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -656,7 +766,12 @@ export class TimeEntriesService {
   async unapproveEntry(id: number) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: { user: true },
+      include: {
+        user: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
+      },
     });
 
     if (!existingEntry) {
@@ -673,6 +788,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -707,7 +825,12 @@ export class TimeEntriesService {
   async rejectEntry(id: number, adminNote?: string) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: { user: true },
+      include: {
+        user: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
+      },
     });
 
     if (!existingEntry) {
@@ -725,6 +848,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -769,6 +895,9 @@ export class TimeEntriesService {
       where: { id },
       include: {
         user: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: true,
       },
     });
@@ -799,22 +928,25 @@ export class TimeEntriesService {
     const newClockOut = data.clockOut ? new Date(data.clockOut) : null;
 
     if (Number.isNaN(newClockIn.getTime())) {
-      throw new BadRequestException('Ugyldig clock ind');
+      throw new BadRequestException('Ugyldig mødetid');
     }
 
     if (newClockOut && Number.isNaN(newClockOut.getTime())) {
-      throw new BadRequestException('Ugyldig clock ud');
+      throw new BadRequestException('Ugyldig fyraften');
     }
 
     if (newClockOut && newClockOut <= newClockIn) {
-      throw new BadRequestException('Clock ud skal være efter clock ind');
+      throw new BadRequestException('Fyraften skal være efter mødetid');
     }
 
-    const deviation = this.analyzeDeviation({
-      ...existingEntry,
-      clockIn: newClockIn,
-      clockOut: newClockOut,
-    });
+    const deviation = this.analyzeDeviation(
+      {
+        ...existingEntry,
+        clockIn: newClockIn,
+        clockOut: newClockOut,
+      },
+      existingEntry.cinema,
+    );
 
     if (deviation.requiresNote && !this.hasText(data.note)) {
       throw new BadRequestException(
@@ -826,13 +958,13 @@ export class TimeEntriesService {
 
     if (oldClockIn.getTime() !== newClockIn.getTime()) {
       changes.push(
-        `Clock ind: ${oldClockIn.toLocaleString('da-DK')} → ${newClockIn.toLocaleString('da-DK')}`,
+        `Mødetid: ${oldClockIn.toLocaleString('da-DK')} → ${newClockIn.toLocaleString('da-DK')}`,
       );
     }
 
     if ((oldClockOut?.getTime() ?? null) !== (newClockOut?.getTime() ?? null)) {
       changes.push(
-        `Clock ud: ${
+        `Fyraften: ${
           oldClockOut ? oldClockOut.toLocaleString('da-DK') : '-'
         } → ${newClockOut ? newClockOut.toLocaleString('da-DK') : '-'}`,
       );
@@ -857,6 +989,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {
@@ -905,6 +1040,9 @@ export class TimeEntriesService {
       where: { id },
       include: {
         user: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: true,
       },
     });
@@ -928,28 +1066,28 @@ export class TimeEntriesService {
     const newClockOut = data.clockOut ? new Date(data.clockOut) : null;
 
     if (Number.isNaN(newClockIn.getTime())) {
-      throw new BadRequestException('Ugyldig clock ind');
+      throw new BadRequestException('Ugyldig mødetid');
     }
 
     if (newClockOut && Number.isNaN(newClockOut.getTime())) {
-      throw new BadRequestException('Ugyldig clock ud');
+      throw new BadRequestException('Ugyldig fyraften');
     }
 
     if (newClockOut && newClockOut <= newClockIn) {
-      throw new BadRequestException('Clock ud skal være efter clock ind');
+      throw new BadRequestException('Fyraften skal være efter mødetid');
     }
 
     const changes: string[] = [];
 
     if (oldClockIn.getTime() !== newClockIn.getTime()) {
       changes.push(
-        `Clock ind: ${oldClockIn.toLocaleString('da-DK')} → ${newClockIn.toLocaleString('da-DK')}`,
+        `Mødetid: ${oldClockIn.toLocaleString('da-DK')} → ${newClockIn.toLocaleString('da-DK')}`,
       );
     }
 
     if ((oldClockOut?.getTime() ?? null) !== (newClockOut?.getTime() ?? null)) {
       changes.push(
-        `Clock ud: ${
+        `Fyraften: ${
           oldClockOut ? oldClockOut.toLocaleString('da-DK') : '-'
         } → ${newClockOut ? newClockOut.toLocaleString('da-DK') : '-'}`,
       );
@@ -970,6 +1108,9 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
         shift: {
           include: {
             workType: {

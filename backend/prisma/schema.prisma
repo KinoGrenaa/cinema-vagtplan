@@ -70,6 +70,12 @@ model Cinema {
 
   payrollRulesEnabled Boolean @default(false)
 
+  clockInDeviationToleranceMinutes  Int     @default(0)
+  clockOutDeviationToleranceMinutes Int     @default(0)
+  requireNoteForClockInDeviation    Boolean @default(true)
+  requireNoteForClockOutDeviation   Boolean @default(true)
+  requireNoteForManualEntry         Boolean @default(true)
+
   payrollOvertimeEnabled Boolean @default(false)
   plannedOvertimeEnabled Boolean @default(true)
   dailyOvertimeEnabled   Boolean @default(false)
@@ -284,9 +290,11 @@ model TimeEntry {
   clockOut  DateTime?
   createdAt DateTime  @default(now())
 
-  status    TimeEntryStatus @default(PENDING)
-  note      String?
-  adminNote String?
+  status       TimeEntryStatus @default(PENDING)
+  note         String?
+  clockInNote  String?
+  clockOutNote String?
+  adminNote    String?
 
   userId Int
   user   User @relation(fields: [userId], references: [id])
