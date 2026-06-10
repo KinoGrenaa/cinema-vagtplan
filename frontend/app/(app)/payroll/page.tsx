@@ -942,6 +942,12 @@ export default function PayrollPage() {
                         Disse registreringer er ikke inkluderet i lønrapporten,
                         før de er godkendt.
                       </div>
+                      <button
+                        onClick={() => router.push("/time-approval")}
+                        className="mt-3 rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700"
+                      >
+                        Gennemgå tidsregistreringer
+                      </button>
                     </div>
                   )}
 
