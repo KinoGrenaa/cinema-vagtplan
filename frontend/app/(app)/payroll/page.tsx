@@ -930,6 +930,34 @@ export default function PayrollPage() {
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-5 flex items-center justify-between">
             <div>
+              {(pendingCount > 0 || rejectedCount > 0) && (
+                <div className="mb-6 space-y-3">
+                  {pendingCount > 0 && (
+                    <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                      <div className="font-semibold">
+                        ⚠ {pendingCount} afventende tidsregistreringer
+                      </div>
+
+                      <div className="mt-1 text-sm">
+                        Disse registreringer er ikke inkluderet i lønrapporten,
+                        før de er godkendt.
+                      </div>
+                    </div>
+                  )}
+
+                  {rejectedCount > 0 && (
+                    <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+                      <div className="font-semibold">
+                        ℹ {rejectedCount} afviste tidsregistreringer
+                      </div>
+
+                      <div className="mt-1 text-sm">
+                        Afviste registreringer indgår ikke i løngrundlaget.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Medarbejder summeringer
               </h2>
