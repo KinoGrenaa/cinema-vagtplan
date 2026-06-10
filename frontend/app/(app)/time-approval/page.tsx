@@ -48,7 +48,10 @@ type TimeEntry = {
   status: TimeEntryStatus;
 
   note?: string | null;
+  clockInNote?: string | null;
+  clockOutNote?: string | null;
   adminNote?: string | null;
+
   user: {
     firstName: string;
     lastName: string;
@@ -580,6 +583,8 @@ export default function TimeApprovalPage() {
                               onClick={() => toggleEntryDetails(entry.id)}
                               className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                                 entry.deviation?.hasDeviation ||
+                                entry.clockInNote ||
+                                entry.clockOutNote ||
                                 entry.note ||
                                 entry.adminNote
                                   ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/50"
@@ -587,6 +592,8 @@ export default function TimeApprovalPage() {
                               }`}
                             >
                               {entry.deviation?.hasDeviation ||
+                              entry.clockInNote ||
+                              entry.clockOutNote ||
                               entry.note ||
                               entry.adminNote
                                 ? "⚠ Vis detaljer"
@@ -600,12 +607,38 @@ export default function TimeApprovalPage() {
                             </>
                           )}
 
-                          {entry.note && (
-                            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                              <span className="font-semibold">
-                                Medarbejder note:
-                              </span>{" "}
-                              {entry.note}
+                          {(entry.clockInNote ||
+                            entry.clockOutNote ||
+                            entry.note) && (
+                            <div className="space-y-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                              {entry.clockInNote && (
+                                <div>
+                                  <span className="font-semibold">
+                                    Mødetidsnote:
+                                  </span>{" "}
+                                  {entry.clockInNote}
+                                </div>
+                              )}
+
+                              {entry.clockOutNote && (
+                                <div>
+                                  <span className="font-semibold">
+                                    Fyraftensnote:
+                                  </span>{" "}
+                                  {entry.clockOutNote}
+                                </div>
+                              )}
+
+                              {!entry.clockInNote &&
+                                !entry.clockOutNote &&
+                                entry.note && (
+                                  <div>
+                                    <span className="font-semibold">
+                                      Medarbejder note:
+                                    </span>{" "}
+                                    {entry.note}
+                                  </div>
+                                )}
                             </div>
                           )}
 
