@@ -681,7 +681,7 @@ export default function TimeApprovalPage() {
                             Historik
                           </button>
 
-                          {entry.status !== "APPROVED" && (
+                          {entry.status === "PENDING" && (
                             <button
                               onClick={() => approve(entry)}
                               className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
@@ -699,7 +699,7 @@ export default function TimeApprovalPage() {
                             </button>
                           )}
 
-                          {entry.status !== "REJECTED" && (
+                          {entry.status === "PENDING" && (
                             <button
                               onClick={() => reject(entry.id)}
                               className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
