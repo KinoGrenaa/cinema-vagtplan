@@ -372,6 +372,8 @@ export class TimeEntriesService {
     clockIn: string;
     clockOut: string;
     note?: string;
+    clockInNote?: string;
+    clockOutNote?: string;
   }) {
     const shift = await this.prisma.shift.findFirst({
       where: {
@@ -444,7 +446,9 @@ export class TimeEntriesService {
         payrollTypeId: shift.workType?.payrollTypeId || null,
         clockIn,
         clockOut,
-        note: data.note,
+        note: data.note ?? null,
+        clockInNote: data.clockInNote ?? data.note ?? null,
+        clockOutNote: data.clockOutNote ?? data.note ?? null,
         status: 'PENDING',
       },
       include: {
@@ -558,6 +562,7 @@ export class TimeEntriesService {
         payrollTypeId: shift?.workType?.payrollTypeId || null,
         clockIn,
         note: data.note?.trim() || null,
+        clockInNote: data.note?.trim() || null,
         status: 'PENDING',
       },
       include: {
@@ -647,6 +652,7 @@ export class TimeEntriesService {
       data: {
         clockOut,
         note: combinedNote || null,
+        clockOutNote: clockOutNote || null,
       },
       include: {
         user: true,
@@ -715,7 +721,12 @@ export class TimeEntriesService {
       );
     }
 
-    if (deviation.requiresNote && !this.hasText(existingEntry.note)) {
+    if (
+      deviation.requiresNote &&
+      !this.hasText(existingEntry.clockInNote) &&
+      !this.hasText(existingEntry.clockOutNote) &&
+      !this.hasText(existingEntry.note)
+    ) {
       throw new BadRequestException(
         'Tidsregistreringen har afvigelser og kræver en medarbejder-note før godkendelse',
       );
@@ -748,7 +759,7 @@ export class TimeEntriesService {
       action: 'APPROVE_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
-      description: `Godkendte tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      description: `Status ændret fra ${existingEntry.status} til APPROVED for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
       cinemaId: entry.cinemaId,
     });
 
@@ -807,7 +818,7 @@ export class TimeEntriesService {
       action: 'UNAPPROVE_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
-      description: `Fjernede godkendelse af tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      description: `Status ændret fra ${existingEntry.status} til PENDING for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
       cinemaId: entry.cinemaId,
     });
 
@@ -867,7 +878,7 @@ export class TimeEntriesService {
       action: 'REJECT_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
-      description: `Afviste tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      description: `Status ændret fra ${existingEntry.status} til REJECTED for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
       cinemaId: entry.cinemaId,
     });
 
@@ -1031,9 +1042,11 @@ export class TimeEntriesService {
     user: any,
     id: number,
     data: {
-      clockIn: string;
+      clockIn?: string;
       clockOut?: string | null;
-      adminNote?: string;
+      clockInNote?: string | null;
+      clockOutNote?: string | null;
+      adminNote?: string | null;
     },
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
@@ -1059,49 +1072,100 @@ export class TimeEntriesService {
       );
     }
 
-    const oldClockIn = existingEntry.clockIn;
-    const oldClockOut = existingEntry.clockOut;
+    const nextClockIn = data.clockIn
+      ? new Date(data.clockIn)
+      : existingEntry.clockIn;
 
-    const newClockIn = new Date(data.clockIn);
-    const newClockOut = data.clockOut ? new Date(data.clockOut) : null;
+    const nextClockOut =
+      data.clockOut === undefined
+        ? existingEntry.clockOut
+        : data.clockOut
+          ? new Date(data.clockOut)
+          : null;
 
-    if (Number.isNaN(newClockIn.getTime())) {
+    if (Number.isNaN(nextClockIn.getTime())) {
       throw new BadRequestException('Ugyldig mødetid');
     }
 
-    if (newClockOut && Number.isNaN(newClockOut.getTime())) {
+    if (nextClockOut && Number.isNaN(nextClockOut.getTime())) {
       throw new BadRequestException('Ugyldig fyraften');
     }
 
-    if (newClockOut && newClockOut <= newClockIn) {
+    if (nextClockOut && nextClockOut <= nextClockIn) {
       throw new BadRequestException('Fyraften skal være efter mødetid');
     }
 
     const changes: string[] = [];
 
-    if (oldClockIn.getTime() !== newClockIn.getTime()) {
+    if (existingEntry.clockIn.getTime() !== nextClockIn.getTime()) {
       changes.push(
-        `Mødetid: ${oldClockIn.toLocaleString('da-DK')} → ${newClockIn.toLocaleString('da-DK')}`,
+        `Mødetid ændret fra ${existingEntry.clockIn.toLocaleString('da-DK')} til ${nextClockIn.toLocaleString('da-DK')}`,
       );
     }
 
-    if ((oldClockOut?.getTime() ?? null) !== (newClockOut?.getTime() ?? null)) {
+    if (
+      (existingEntry.clockOut?.getTime() ?? null) !==
+      (nextClockOut?.getTime() ?? null)
+    ) {
       changes.push(
-        `Fyraften: ${
-          oldClockOut ? oldClockOut.toLocaleString('da-DK') : '-'
-        } → ${newClockOut ? newClockOut.toLocaleString('da-DK') : '-'}`,
+        `Fyraften ændret fra ${
+          existingEntry.clockOut
+            ? existingEntry.clockOut.toLocaleString('da-DK')
+            : '-'
+        } til ${nextClockOut ? nextClockOut.toLocaleString('da-DK') : '-'}`,
+      );
+    }
+
+    if (
+      data.clockInNote !== undefined &&
+      data.clockInNote !== existingEntry.clockInNote
+    ) {
+      changes.push(
+        `Mødetidsnote ændret fra "${
+          existingEntry.clockInNote ?? '-'
+        }" til "${data.clockInNote ?? '-'}"`,
+      );
+    }
+
+    if (
+      data.clockOutNote !== undefined &&
+      data.clockOutNote !== existingEntry.clockOutNote
+    ) {
+      changes.push(
+        `Fyraftensnote ændret fra "${
+          existingEntry.clockOutNote ?? '-'
+        }" til "${data.clockOutNote ?? '-'}"`,
+      );
+    }
+
+    if (
+      data.adminNote !== undefined &&
+      data.adminNote !== existingEntry.adminNote
+    ) {
+      changes.push(
+        `Admin-note ændret fra "${
+          existingEntry.adminNote ?? '-'
+        }" til "${data.adminNote ?? '-'}"`,
       );
     }
 
     if (changes.length === 0) {
-      changes.push('Ingen tidsændring registreret');
+      throw new BadRequestException('Ingen ændringer registreret');
     }
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
-        clockIn: newClockIn,
-        clockOut: newClockOut,
+        clockIn: nextClockIn,
+        clockOut: nextClockOut,
+        clockInNote:
+          data.clockInNote === undefined
+            ? existingEntry.clockInNote
+            : data.clockInNote,
+        clockOutNote:
+          data.clockOutNote === undefined
+            ? existingEntry.clockOutNote
+            : data.clockOutNote,
         adminNote: data.adminNote,
         status: 'PENDING',
       },
@@ -1122,6 +1186,17 @@ export class TimeEntriesService {
         },
       },
     });
+
+    for (const change of changes) {
+      await this.auditLogsService.create({
+        action: 'UPDATE_TIME_ENTRY_FIELD',
+        entityType: 'TimeEntry',
+        entityId: entry.id,
+        description: change,
+        userId: user.sub,
+        cinemaId: entry.cinemaId,
+      });
+    }
 
     await this.auditLogsService.create({
       action: 'UPDATE_TIME_ENTRY',

@@ -290,8 +290,12 @@ model TimeEntry {
   clockOut  DateTime?
   createdAt DateTime  @default(now())
 
-  status       TimeEntryStatus @default(PENDING)
-  note         String?
+  status TimeEntryStatus @default(PENDING)
+
+  // Midlertidigt legacy-felt til bagudkompatibilitet
+  note String?
+
+  // Nye note-felter
   clockInNote  String?
   clockOutNote String?
   adminNote    String?
@@ -539,7 +543,36 @@ model StaffingAiProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  model TimeEntryAudit {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  fieldName String
+  oldValue  String?
+  newValue  String?
+
+  changedById Int
+  changedBy   User @relation(...)
+
+  timeEntryId Int
+  timeEntry   TimeEntry @relation(...)
+
   @@index([aiPriorityScore])
   @@index([fatigueScore])
   @@index([overtimeScore])
+}
+
+model TimeEntryAudit {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  fieldName String
+  oldValue  String?
+  newValue  String?
+
+  changedById Int
+  changedBy   User @relation(...)
+
+  timeEntryId Int
+  timeEntry   TimeEntry @relation(...)
 }

@@ -62,6 +62,7 @@ export class TimeEntriesController {
       shiftId?: number | null;
       clockIn?: string;
       note?: string;
+      clockInNote?: string;
     },
   ) {
     return this.timeEntriesService.clockIn(body);
@@ -75,6 +76,7 @@ export class TimeEntriesController {
     body: {
       clockOut?: string;
       note?: string;
+      clockOutNote?: string;
     },
   ) {
     return this.timeEntriesService.clockOut(Number(id), body);
