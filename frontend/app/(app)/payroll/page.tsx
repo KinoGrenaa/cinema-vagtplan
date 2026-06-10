@@ -17,253 +17,30 @@ import {
   YAxis,
 } from "recharts";
 import PermissionGuard from "@/app/components/PermissionGuard";
-import {
-  dateToLocalDateString,
-  formatDateDK,
-  formatTimeDK,
-} from "@/app/utils/dateTime";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import InputModal from "@/app/components/modals/InputModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { toast } from "sonner";
 import ExportModal from "@/app/components/modals/ExportModal";
+import { formatDateDK } from "@/app/utils/dateTime";
+import type {
+  CinemaPayrollSettings,
+  PayrollAuditHistory,
+  PayrollEmployee,
+  PayrollPeriod,
+  User,
+} from "./types";
+import {
+  calculatePayrollPeriod,
+  describePayrollModel,
+  formatDateTime,
+  formatHours,
+  firstDayOfMonthIso,
+  lastDayOfMonthIso,
+} from "./utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-type PayrollEntryDeviation = {
-  hasDeviation: boolean;
-  requiresNote: boolean;
-  types: string[];
-  plannedMinutes?: number;
-  registeredMinutes?: number;
-  differenceMinutes?: number;
-  clockInDeviationMinutes?: number;
-  clockOutDeviationMinutes?: number;
-  messages: string[];
-};
-
-type PayrollEntry = {
-  id?: number;
-  date: string;
-  clockIn: string;
-  clockOut: string;
-  hours: number;
-  workType: string;
-  payrollCode?: string;
-  exportCode?: string;
-  payrollName?: string;
-  status?: string;
-  note?: string | null;
-  adminNote?: string | null;
-  payrollLocked?: boolean;
-  payrollUnlockedByMaster?: boolean;
-  payrollPeriodId?: number | null;
-  deviation?: PayrollEntryDeviation;
-};
-
-type PayrollEmployee = {
-  userId: number;
-  name: string;
-  email: string;
-  employeeNumber?: string | null;
-  payrollEmployeeId?: string | null;
-  totalHours: number;
-  deviationCount?: number;
-  entries: PayrollEntry[];
-};
-
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-};
-
-type PayrollPeriodModel = "CALENDAR_MONTH" | "FIXED_DAY_TO_DAY" | "BIWEEKLY";
-
-type PayrollPayoutRule = "LAST_WEEKDAY_OF_MONTH" | "FIXED_DAY_OF_MONTH";
-
-type CinemaPayrollSettings = {
-  id: number;
-  name: string;
-  payrollPeriodModel?: PayrollPeriodModel;
-  payrollPeriodStartDay?: number;
-  payrollPeriodEndDay?: number;
-  payrollPeriodAnchorDate?: string | null;
-  payrollPayoutRule?: PayrollPayoutRule;
-  payrollPayoutDay?: number;
-};
-
-type PayrollPeriod = {
-  id: number;
-  status: "OPEN" | "LOCKED" | "EXPORTED" | "UNLOCKED";
-  lockedAt?: string | null;
-  exportedAt?: string | null;
-  unlockedAt?: string | null;
-};
-
-type PayrollAuditHistory = {
-  id: number;
-  status: "OPEN" | "LOCKED" | "EXPORTED" | "UNLOCKED";
-  startDate: string;
-  endDate: string;
-  lockedAt?: string | null;
-  lockedByUserId?: number | null;
-  exportedAt?: string | null;
-  exportedByUserId?: number | null;
-  unlockedAt?: string | null;
-  unlockedByUserId?: number | null;
-  unlockNote?: string | null;
-};
-
-function firstDayOfMonthIso() {
-  const now = new Date();
-
-  return dateToLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
-}
-
-function lastDayOfMonthIso() {
-  const now = new Date();
-
-  return dateToLocalDateString(
-    new Date(now.getFullYear(), now.getMonth() + 1, 0),
-  );
-}
-
-function daysInMonth(year: number, monthIndex: number) {
-  return new Date(year, monthIndex + 1, 0).getDate();
-}
-
-function clampDay(year: number, monthIndex: number, day: number) {
-  return Math.min(Math.max(day, 1), daysInMonth(year, monthIndex));
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function calculatePayrollPeriod(settings?: CinemaPayrollSettings | null) {
-  const today = new Date();
-
-  if (!settings || settings.payrollPeriodModel === "CALENDAR_MONTH") {
-    return {
-      startDate: firstDayOfMonthIso(),
-      endDate: lastDayOfMonthIso(),
-    };
-  }
-
-  if (settings.payrollPeriodModel === "BIWEEKLY") {
-    const anchor = settings.payrollPeriodAnchorDate
-      ? new Date(settings.payrollPeriodAnchorDate)
-      : new Date(today.getFullYear(), today.getMonth(), 1);
-
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const daysSinceAnchor = Math.floor(
-      (new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate(),
-      ).getTime() -
-        new Date(
-          anchor.getFullYear(),
-          anchor.getMonth(),
-          anchor.getDate(),
-        ).getTime()) /
-        msPerDay,
-    );
-
-    const cycleOffset = Math.floor(daysSinceAnchor / 14) * 14;
-    const start = addDays(anchor, cycleOffset);
-    const end = addDays(start, 13);
-
-    return {
-      startDate: dateToLocalDateString(start),
-      endDate: dateToLocalDateString(end),
-    };
-  }
-
-  const startDay = settings.payrollPeriodStartDay || 1;
-  const endDay = settings.payrollPeriodEndDay || 31;
-
-  if (startDay <= endDay) {
-    return {
-      startDate: dateToLocalDateString(
-        new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          clampDay(today.getFullYear(), today.getMonth(), startDay),
-        ),
-      ),
-      endDate: dateToLocalDateString(
-        new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          clampDay(today.getFullYear(), today.getMonth(), endDay),
-        ),
-      ),
-    };
-  }
-
-  const startMonthOffset = today.getDate() >= startDay ? 0 : -1;
-  const endMonthOffset = today.getDate() >= startDay ? 1 : 0;
-
-  const startMonth = new Date(
-    today.getFullYear(),
-    today.getMonth() + startMonthOffset,
-    1,
-  );
-  const endMonth = new Date(
-    today.getFullYear(),
-    today.getMonth() + endMonthOffset,
-    1,
-  );
-
-  return {
-    startDate: dateToLocalDateString(
-      new Date(
-        startMonth.getFullYear(),
-        startMonth.getMonth(),
-        clampDay(startMonth.getFullYear(), startMonth.getMonth(), startDay),
-      ),
-    ),
-    endDate: dateToLocalDateString(
-      new Date(
-        endMonth.getFullYear(),
-        endMonth.getMonth(),
-        clampDay(endMonth.getFullYear(), endMonth.getMonth(), endDay),
-      ),
-    ),
-  };
-}
-
-function describePayrollModel(settings?: CinemaPayrollSettings | null) {
-  if (!settings || settings.payrollPeriodModel === "CALENDAR_MONTH") {
-    return "Kalendermåned";
-  }
-
-  if (settings.payrollPeriodModel === "BIWEEKLY") {
-    return "14 dage";
-  }
-
-  return `${settings.payrollPeriodStartDay || 1}.–${settings.payrollPeriodEndDay || 31}.`;
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return "-";
-
-  return `${formatDateDK(value)} ${formatTimeDK(value)}`;
-}
-
-function formatHours(value: number) {
-  return value.toLocaleString("da-DK", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 export default function PayrollPage() {
   const router = useRouter();
@@ -930,40 +707,6 @@ export default function PayrollPage() {
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              {(pendingCount > 0 || rejectedCount > 0) && (
-                <div className="mb-6 space-y-3">
-                  {pendingCount > 0 && (
-                    <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                      <div className="font-semibold">
-                        ⚠ {pendingCount} afventende tidsregistreringer
-                      </div>
-
-                      <div className="mt-1 text-sm">
-                        Disse registreringer er ikke inkluderet i lønrapporten,
-                        før de er godkendt.
-                      </div>
-                      <button
-                        onClick={() => router.push("/time-approval")}
-                        className="mt-3 rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700"
-                      >
-                        Gennemgå tidsregistreringer
-                      </button>
-                    </div>
-                  )}
-
-                  {rejectedCount > 0 && (
-                    <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
-                      <div className="font-semibold">
-                        ℹ {rejectedCount} afviste tidsregistreringer
-                      </div>
-
-                      <div className="mt-1 text-sm">
-                        Afviste registreringer indgår ikke i løngrundlaget.
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Medarbejder summeringer
               </h2>
@@ -1208,7 +951,7 @@ export default function PayrollPage() {
                   onClick={() => router.push("/time-approval")}
                   className="mt-3 rounded-lg border border-amber-400 px-3 py-2 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40"
                 >
-                  Gå til Time Approval
+                  Gennemgå tidsregistreringer
                 </button>
               </div>
             )}
