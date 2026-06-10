@@ -39,6 +39,8 @@ import {
   firstDayOfMonthIso,
   lastDayOfMonthIso,
 } from "./utils";
+import PayrollWarnings from "./components/PayrollWarnings";
+import PayrollEmployeeSummaryTable from "./components/PayrollEmployeeSummaryTable";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -715,85 +717,7 @@ export default function PayrollPage() {
               </p>
             </div>
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-              <thead>
-                <tr className="text-left text-sm text-gray-500 dark:text-gray-400">
-                  <th className="pb-3 pr-4">Medarbejder</th>
-                  <th className="pb-3 pr-4">Timer</th>
-                  <th className="pb-3 pr-4">Ekstra timer</th>
-                  <th className="pb-3 pr-4">Weekend</th>
-                  <th className="pb-3 pr-4">Aften</th>
-                  <th className="pb-3 pr-4">Nat</th>
-                  <th className="pb-3 pr-4">Afvigelser</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {report.map((employee) => {
-                  const total = employee.entries.reduce(
-                    (sum, entry) => sum + entry.hours,
-                    0,
-                  );
-
-                  const overtime = employee.entries.reduce((sum, entry) => {
-                    const code = entry.payrollCode || "";
-                    return code.includes("OVERTIME") ? sum + entry.hours : sum;
-                  }, 0);
-
-                  const weekend = employee.entries.reduce((sum, entry) => {
-                    const code = entry.payrollCode || "";
-                    return code.includes("WEEKEND") ? sum + entry.hours : sum;
-                  }, 0);
-
-                  const evening = employee.entries.reduce((sum, entry) => {
-                    const code = entry.payrollCode || "";
-                    return code.includes("EVENING") ? sum + entry.hours : sum;
-                  }, 0);
-
-                  const night = employee.entries.reduce((sum, entry) => {
-                    const code = entry.payrollCode || "";
-                    return code.includes("NIGHT") ? sum + entry.hours : sum;
-                  }, 0);
-
-                  return (
-                    <tr key={employee.userId}>
-                      <td className="py-3 pr-4 font-medium text-gray-900 dark:text-gray-100">
-                        {employee.name}
-                      </td>
-                      <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
-                        {formatHours(total)}
-                      </td>
-                      <td className="py-3 pr-4 font-medium text-red-600">
-                        {formatHours(overtime)}
-                      </td>
-                      <td className="py-3 pr-4 font-medium text-purple-600">
-                        {formatHours(weekend)}
-                      </td>
-                      <td className="py-3 pr-4 font-medium text-orange-600">
-                        {formatHours(evening)}
-                      </td>
-                      <td className="py-3 pr-4 font-medium text-blue-600">
-                        {formatHours(night)}
-                      </td>
-                      <td className="py-3 pr-4">
-                        {(employee.deviationCount || 0) > 0 ? (
-                          <span className="font-medium text-amber-700 dark:text-amber-300">
-                            ⚠ {employee.deviationCount} afvigelser
-                          </span>
-                        ) : (
-                          <span className="text-green-700 dark:text-green-300">
-                            ✓ Ingen
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <PayrollEmployeeSummaryTable report={report} />
         </div>
 
         <div className="rounded-2xl border border-red-200 bg-white p-6 shadow-sm dark:border-red-900 dark:bg-gray-900">
@@ -936,37 +860,11 @@ export default function PayrollPage() {
               </div>
             </div>
 
-            {pendingCount > 0 && (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                <div className="font-semibold">
-                  ⚠ {pendingCount} afventende tidsregistreringer
-                </div>
-
-                <div className="mt-1">
-                  Disse timer er ikke medtaget i løngrundlaget før de er
-                  godkendt.
-                </div>
-
-                <button
-                  onClick={() => router.push("/time-approval")}
-                  className="mt-3 rounded-lg border border-amber-400 px-3 py-2 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40"
-                >
-                  Gennemgå tidsregistreringer
-                </button>
-              </div>
-            )}
-
-            {rejectedCount > 0 && (
-              <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
-                <div className="font-semibold">
-                  🚫 Afviste tidsregistreringer: {rejectedCount}
-                </div>
-
-                <div className="mt-1">
-                  Afviste registreringer indgår ikke i løngrundlaget.
-                </div>
-              </div>
-            )}
+            <PayrollWarnings
+              pendingCount={pendingCount}
+              rejectedCount={rejectedCount}
+              onOpenTimeApproval={() => router.push("/time-approval")}
+            />
 
             <div className="flex flex-wrap gap-2">
               <button
