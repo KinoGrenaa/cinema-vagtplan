@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
+import FilterModal from "@/app/components/modals/FilterModal";
 import InputModal from "@/app/components/modals/InputModal";
 import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
@@ -138,6 +139,24 @@ function shouldShowCreatedNoteAsSingleNote(item: TimeEntryRevision) {
   return clockInNote.length > 0 && clockInNote === clockOutNote;
 }
 
+function hasEntryNote(entry: TimeEntry) {
+  return Boolean(
+    entry.clockInNote?.trim() ||
+    entry.clockOutNote?.trim() ||
+    entry.note?.trim() ||
+    entry.adminNote?.trim(),
+  );
+}
+
+function getEntryLocalDate(entry: TimeEntry) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Copenhagen",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(entry.clockIn));
+}
+
 function DeviationPanel({ entry }: { entry: TimeEntry }) {
   const deviation = entry.deviation;
   const isManualEntry = !entry.shift;
@@ -255,8 +274,18 @@ export default function TimeApprovalPage() {
   const [historyItems, setHistoryItems] = useState<TimeEntryRevision[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [showPending, setShowPending] = useState(true);
+  const [showNeedsChanges, setShowNeedsChanges] = useState(true);
   const [showApproved, setShowApproved] = useState(false);
   const [showVoided, setShowVoided] = useState(false);
+  const [showPlannedEntries, setShowPlannedEntries] = useState(true);
+  const [showManualEntries, setShowManualEntries] = useState(true);
+  const [onlyWithDeviations, setOnlyWithDeviations] = useState(false);
+  const [onlyWithNotes, setOnlyWithNotes] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [expandedEntryIds, setExpandedEntryIds] = useState<number[]>([]);
   const [expandedUserIds, setExpandedUserIds] = useState<string[]>([]);
 
@@ -278,8 +307,34 @@ export default function TimeApprovalPage() {
 
   const visibleEntries = entries.filter((entry) => {
     if (!entry.clockIn || !entry.clockOut) return false;
-    if (entry.status === "APPROVED") return showApproved;
-    if (entry.status === "VOIDED") return showVoided;
+
+    if (entry.status === "PENDING" && !showPending) return false;
+    if (entry.status === "NEEDS_CHANGES" && !showNeedsChanges) return false;
+    if (entry.status === "APPROVED" && !showApproved) return false;
+    if (entry.status === "VOIDED" && !showVoided) return false;
+
+    const isManualEntry = !entry.shift;
+
+    if (isManualEntry && !showManualEntries) return false;
+    if (!isManualEntry && !showPlannedEntries) return false;
+
+    if (onlyWithDeviations && !entry.deviation?.hasDeviation) return false;
+    if (onlyWithNotes && !hasEntryNote(entry)) return false;
+
+    const entryDate = getEntryLocalDate(entry);
+
+    if (dateFrom && entryDate < dateFrom) return false;
+    if (dateTo && entryDate > dateTo) return false;
+
+    const search = employeeSearch.trim().toLowerCase();
+
+    if (search) {
+      const haystack =
+        `${entry.user.firstName} ${entry.user.lastName} ${entry.user.email}`.toLowerCase();
+
+      if (!haystack.includes(search)) return false;
+    }
+
     return true;
   });
 
@@ -299,6 +354,32 @@ export default function TimeApprovalPage() {
   const voidedCount = entries.filter(
     (entry) => entry.clockIn && entry.clockOut && entry.status === "VOIDED",
   ).length;
+
+  const activeFilterCount = [
+    !showPending,
+    !showNeedsChanges,
+    showApproved,
+    showVoided,
+    !showPlannedEntries,
+    !showManualEntries,
+    onlyWithDeviations,
+    onlyWithNotes,
+    Boolean(dateFrom),
+    Boolean(dateTo),
+  ].filter(Boolean).length;
+
+  function resetFilters() {
+    setShowPending(true);
+    setShowNeedsChanges(true);
+    setShowApproved(false);
+    setShowVoided(false);
+    setShowPlannedEntries(true);
+    setShowManualEntries(true);
+    setOnlyWithDeviations(false);
+    setOnlyWithNotes(false);
+    setDateFrom("");
+    setDateTo("");
+  }
 
   const groupedEntries = Array.from(
     visibleEntries.reduce((groups, entry) => {
@@ -573,6 +654,50 @@ export default function TimeApprovalPage() {
     });
   }
 
+  function voidEntry(id: number) {
+    inputDialog.prompt({
+      title: "Afvis og slet registrering",
+      description:
+        "Denne tidsregistrering markeres som annulleret og kommer ikke med i løn. Den slettes ikke fra historikken.",
+      label: "Begrundelse",
+      placeholder:
+        "Fx fejlregistrering, dobbeltregistrering eller registrering der ikke skal lønbehandles...",
+      confirmText: "Afvis og slet",
+      cancelText: "Annuller",
+      required: true,
+      onConfirm: async (value) => {
+        const adminNote = value.trim();
+
+        if (!adminNote) {
+          throw new Error("Begrundelse er påkrævet");
+        }
+
+        const response = await fetch(`${API_URL}/time-entries/${id}/void`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({
+            adminNote,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(
+              response,
+              "Kunne ikke annullere tidsregistrering",
+            ),
+          );
+        }
+
+        await fetchEntries();
+        toast.success("Tidsregistrering annulleret");
+      },
+    });
+  }
+
   return (
     <>
       <AdminGuard>
@@ -597,42 +722,52 @@ export default function TimeApprovalPage() {
             {!loading && entries.length > 0 && (
               <div className="space-y-4">
                 <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="text-sm text-gray-600 dark:text-gray-300">
-                      Viser som standard afventende registreringer og
-                      registreringer, der er sendt retur til rettelse.
-                      <span className="ml-2 font-semibold">
-                        Afventer: {pendingCount}
-                      </span>
-                      <span className="ml-2 font-semibold">
-                        Skal rettes: {needsChangesCount}
-                      </span>
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="flex-1 space-y-3">
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        Viser som standard afventende registreringer og
+                        registreringer, der er sendt retur til rettelse.
+                        <span className="ml-2 font-semibold">
+                          Afventer: {pendingCount}
+                        </span>
+                        <span className="ml-2 font-semibold">
+                          Skal rettes: {needsChangesCount}
+                        </span>
+                      </div>
+
+                      <label className="block max-w-xl text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Søg medarbejder
+                        <input
+                          type="search"
+                          value={employeeSearch}
+                          onChange={(event) =>
+                            setEmployeeSearch(event.target.value)
+                          }
+                          placeholder="Søg på navn eller e-mail..."
+                          className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-900"
+                        />
+                      </label>
                     </div>
 
-                    <div className="flex flex-wrap gap-4 text-sm">
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={showApproved}
-                          onChange={(event) =>
-                            setShowApproved(event.target.checked)
-                          }
-                          className="h-4 w-4"
-                        />
-                        Vis godkendte ({approvedCount})
-                      </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {activeFilterCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={resetFilters}
+                          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                        >
+                          Nulstil filtre
+                        </button>
+                      )}
 
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={showVoided}
-                          onChange={(event) =>
-                            setShowVoided(event.target.checked)
-                          }
-                          className="h-4 w-4"
-                        />
-                        Vis annullerede ({voidedCount})
-                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilterModal(true)}
+                        className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+                      >
+                        Filtre
+                        {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -924,6 +1059,14 @@ export default function TimeApprovalPage() {
                                           Send retur
                                         </button>
                                       )}
+                                      {entry.status !== "VOIDED" && (
+                                        <button
+                                          onClick={() => voidEntry(entry.id)}
+                                          className="rounded-xl bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
+                                        >
+                                          Afvis og slet
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -962,6 +1105,157 @@ export default function TimeApprovalPage() {
             onSave={saveEdit}
           />
         )}
+
+        <FilterModal
+          open={showFilterModal}
+          title="Filtre"
+          activeFilterCount={activeFilterCount}
+          onApply={() => setShowFilterModal(false)}
+          onClose={() => setShowFilterModal(false)}
+          onReset={resetFilters}
+        >
+          <div className="space-y-6">
+            <section>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Status
+              </h3>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={showPending}
+                    onChange={(event) => setShowPending(event.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  Afventer godkendelse ({pendingCount})
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={showNeedsChanges}
+                    onChange={(event) =>
+                      setShowNeedsChanges(event.target.checked)
+                    }
+                    className="h-4 w-4"
+                  />
+                  Sendt retur ({needsChangesCount})
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={showApproved}
+                    onChange={(event) => setShowApproved(event.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  Godkendte ({approvedCount})
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={showVoided}
+                    onChange={(event) => setShowVoided(event.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  Annullerede ({voidedCount})
+                </label>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Registreringstype
+              </h3>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={showPlannedEntries}
+                    onChange={(event) =>
+                      setShowPlannedEntries(event.target.checked)
+                    }
+                    className="h-4 w-4"
+                  />
+                  Planlagte vagter
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={showManualEntries}
+                    onChange={(event) =>
+                      setShowManualEntries(event.target.checked)
+                    }
+                    className="h-4 w-4"
+                  />
+                  Manuelle registreringer
+                </label>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Indhold
+              </h3>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={onlyWithDeviations}
+                    onChange={(event) =>
+                      setOnlyWithDeviations(event.target.checked)
+                    }
+                    className="h-4 w-4"
+                  />
+                  Kun registreringer med afvigelser
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={onlyWithNotes}
+                    onChange={(event) => setOnlyWithNotes(event.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  Kun registreringer med noter
+                </label>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Dato
+              </h3>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Fra
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(event) => setDateFrom(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-900"
+                  />
+                </label>
+
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Til
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(event) => setDateTo(event.target.value)}
+                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-900"
+                  />
+                </label>
+              </div>
+            </section>
+          </div>
+        </FilterModal>
 
         {historyEntry && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">

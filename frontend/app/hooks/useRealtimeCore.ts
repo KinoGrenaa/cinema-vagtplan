@@ -117,6 +117,10 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
       input.onTimeEntry?.();
     });
 
+    socket.on("timeEntriesUpdated", () => {
+      input.onTimeEntry?.();
+    });
+
     socket.on("shiftAccepted", (payload: RealtimeShiftTradePayload) => {
       input.onShiftAccepted?.(payload);
       triggerShiftTradeUpdated();

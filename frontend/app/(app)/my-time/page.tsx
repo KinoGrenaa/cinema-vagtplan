@@ -223,17 +223,25 @@ function formatDate(value?: string | null) {
   });
 }
 
-function getHours(entry: TimeEntry) {
-  if (!entry.clockOut) return "-";
+function getEntryHoursNumber(entry: TimeEntry) {
+  if (!entry.clockOut) return 0;
 
   const start = new Date(entry.clockIn).getTime();
   const end = new Date(entry.clockOut).getTime();
 
   if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-    return "-";
+    return 0;
   }
 
-  return `${((end - start) / 1000 / 60 / 60).toFixed(2)} t`;
+  return (end - start) / 1000 / 60 / 60;
+}
+
+function getHours(entry: TimeEntry) {
+  const hours = getEntryHoursNumber(entry);
+
+  if (hours <= 0) return "-";
+
+  return `${hours.toFixed(2)} t`;
 }
 
 function dateToLocalDateString(date: Date) {
@@ -270,8 +278,11 @@ function clampDay(year: number, month: number, day: number) {
   return Math.min(Math.max(day, 1), getDaysInMonth(year, month));
 }
 
-function calculatePayrollPeriod(settings?: CinemaPayrollSettings | null) {
-  const today = new Date();
+function calculatePayrollPeriod(
+  settings?: CinemaPayrollSettings | null,
+  referenceDate = new Date(),
+) {
+  const today = new Date(referenceDate);
 
   if (!settings || settings.payrollPeriodModel === "CALENDAR_MONTH") {
     return {
@@ -364,6 +375,111 @@ function calculatePayrollPeriod(settings?: CinemaPayrollSettings | null) {
   };
 }
 
+function shiftDateString(dateString: string, days: number) {
+  return dateToLocalDateString(
+    addDays(new Date(`${dateString}T00:00:00`), days),
+  );
+}
+
+function getPayrollPeriodLengthDays(period: {
+  startDate: string;
+  endDate: string;
+}) {
+  const start = new Date(`${period.startDate}T00:00:00`).getTime();
+  const end = new Date(`${period.endDate}T00:00:00`).getTime();
+
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    return 1;
+  }
+
+  return Math.round((end - start) / (24 * 60 * 60 * 1000)) + 1;
+}
+
+function getPreviousPayrollPeriod(
+  period: { startDate: string; endDate: string },
+  settings?: CinemaPayrollSettings | null,
+) {
+  if (settings?.payrollPeriodModel === "CALENDAR_MONTH") {
+    const currentStart = new Date(`${period.startDate}T00:00:00`);
+    const previousMonth = new Date(
+      currentStart.getFullYear(),
+      currentStart.getMonth() - 1,
+      1,
+    );
+
+    return {
+      startDate: firstDayOfMonthIso(previousMonth),
+      endDate: lastDayOfMonthIso(previousMonth),
+    };
+  }
+
+  const daysToMove =
+    settings?.payrollPeriodModel === "BIWEEKLY"
+      ? 14
+      : getPayrollPeriodLengthDays(period);
+
+  return {
+    startDate: shiftDateString(period.startDate, -daysToMove),
+    endDate: shiftDateString(period.endDate, -daysToMove),
+  };
+}
+
+function getNextPayrollPeriod(
+  period: { startDate: string; endDate: string },
+  settings?: CinemaPayrollSettings | null,
+) {
+  if (settings?.payrollPeriodModel === "CALENDAR_MONTH") {
+    const currentStart = new Date(`${period.startDate}T00:00:00`);
+    const nextMonth = new Date(
+      currentStart.getFullYear(),
+      currentStart.getMonth() + 1,
+      1,
+    );
+
+    return {
+      startDate: firstDayOfMonthIso(nextMonth),
+      endDate: lastDayOfMonthIso(nextMonth),
+    };
+  }
+
+  const daysToMove =
+    settings?.payrollPeriodModel === "BIWEEKLY"
+      ? 14
+      : getPayrollPeriodLengthDays(period);
+
+  return {
+    startDate: shiftDateString(period.startDate, daysToMove),
+    endDate: shiftDateString(period.endDate, daysToMove),
+  };
+}
+
+function getDaySummaryParts(entries: TimeEntry[]) {
+  const approvedHours = entries.reduce((total, entry) => {
+    if (entry.status !== "APPROVED") return total;
+    return total + getEntryHoursNumber(entry);
+  }, 0);
+
+  const pendingHours = entries.reduce((total, entry) => {
+    if (entry.status !== "PENDING") return total;
+    return total + getEntryHoursNumber(entry);
+  }, 0);
+
+  const needsChangesCount = entries.filter(
+    (entry) => entry.status === "NEEDS_CHANGES",
+  ).length;
+
+  const voidedCount = entries.filter(
+    (entry) => entry.status === "VOIDED",
+  ).length;
+
+  return [
+    approvedHours > 0 ? `Godkendt: ${approvedHours.toFixed(2)} t` : null,
+    pendingHours > 0 ? `Afventer: ${pendingHours.toFixed(2)} t` : null,
+    needsChangesCount > 0 ? `Kræver handling: ${needsChangesCount}` : null,
+    voidedCount > 0 ? `Annulleret: ${voidedCount}` : null,
+  ].filter(Boolean) as string[];
+}
+
 function isInPayrollPeriod(
   entry: TimeEntry,
   startDate: string,
@@ -371,6 +487,19 @@ function isInPayrollPeriod(
 ) {
   const entryDate = dateToLocalDateString(new Date(entry.clockIn));
   return entryDate >= startDate && entryDate <= endDate;
+}
+
+function getEntryDayKey(entry: TimeEntry) {
+  return dateToLocalDateString(new Date(entry.clockIn));
+}
+
+function getEntryDayLabel(dayKey: string) {
+  return new Date(`${dayKey}T00:00:00`).toLocaleDateString("da-DK", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 function toInputDateTime(value?: string | null) {
@@ -398,6 +527,8 @@ export default function MyTimePage() {
   const [editClockInNote, setEditClockInNote] = useState("");
   const [editClockOutNote, setEditClockOutNote] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [showVoidedEntries, setShowVoidedEntries] = useState(false);
+  const [expandedDayKeys, setExpandedDayKeys] = useState<string[]>([]);
 
   const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -598,6 +729,33 @@ export default function MyTimePage() {
     }
   }
 
+  function toggleDayGroup(dayKey: string) {
+    setExpandedDayKeys((current) =>
+      current.includes(dayKey)
+        ? current.filter((key) => key !== dayKey)
+        : [...current, dayKey],
+    );
+  }
+
+  function goToPreviousPayrollPeriod() {
+    setPayrollPeriod((current) =>
+      getPreviousPayrollPeriod(current, cinemaSettings),
+    );
+    setExpandedDayKeys([]);
+  }
+
+  function goToCurrentPayrollPeriod() {
+    setPayrollPeriod(calculatePayrollPeriod(cinemaSettings));
+    setExpandedDayKeys([]);
+  }
+
+  function goToNextPayrollPeriod() {
+    setPayrollPeriod((current) =>
+      getNextPayrollPeriod(current, cinemaSettings),
+    );
+    setExpandedDayKeys([]);
+  }
+
   useEffect(() => {
     fetchCinemaPayrollSettings();
     fetchEntries();
@@ -613,20 +771,65 @@ export default function MyTimePage() {
     );
   }, [entries, payrollPeriod.endDate, payrollPeriod.startDate]);
 
-  const totalHours = useMemo(() => {
+  const visibleEntries = useMemo(() => {
+    return filteredEntries.filter(
+      (entry) => showVoidedEntries || entry.status !== "VOIDED",
+    );
+  }, [filteredEntries, showVoidedEntries]);
+
+  const approvedHours = useMemo(() => {
     return filteredEntries.reduce((total, entry) => {
-      if (!entry.clockOut) return total;
-
-      const start = new Date(entry.clockIn).getTime();
-      const end = new Date(entry.clockOut).getTime();
-
-      if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-        return total;
-      }
-
-      return total + (end - start) / 1000 / 60 / 60;
+      if (entry.status !== "APPROVED") return total;
+      return total + getEntryHoursNumber(entry);
     }, 0);
   }, [filteredEntries]);
+
+  const pendingHours = useMemo(() => {
+    return filteredEntries.reduce((total, entry) => {
+      if (entry.status !== "PENDING") return total;
+      return total + getEntryHoursNumber(entry);
+    }, 0);
+  }, [filteredEntries]);
+
+  const needsChangesCount = useMemo(() => {
+    return filteredEntries.filter((entry) => entry.status === "NEEDS_CHANGES")
+      .length;
+  }, [filteredEntries]);
+
+  const dayGroups = useMemo(() => {
+    type DayGroup = {
+      dayKey: string;
+      label: string;
+      entries: TimeEntry[];
+      summaryParts: string[];
+    };
+
+    return Array.from(
+      visibleEntries.reduce((groups, entry) => {
+        const dayKey = getEntryDayKey(entry);
+        const existingGroup = groups.get(dayKey);
+
+        if (existingGroup) {
+          existingGroup.entries.push(entry);
+          return groups;
+        }
+
+        groups.set(dayKey, {
+          dayKey,
+          label: getEntryDayLabel(dayKey),
+          entries: [entry],
+          summaryParts: [],
+        });
+
+        return groups;
+      }, new Map<string, DayGroup>()),
+    )
+      .map(([, group]) => ({
+        ...group,
+        summaryParts: getDaySummaryParts(group.entries),
+      }))
+      .sort((a, b) => b.dayKey.localeCompare(a.dayKey));
+  }, [visibleEntries]);
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8">
@@ -644,7 +847,32 @@ export default function MyTimePage() {
             {formatDate(payrollPeriod.startDate)} →{" "}
             {formatDate(payrollPeriod.endDate)}
           </div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={goToPreviousPayrollPeriod}
+              className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              Forrige
+            </button>
+
+            <button
+              type="button"
+              onClick={goToCurrentPayrollPeriod}
+              className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+            >
+              Aktuel
+            </button>
+
+            <button
+              type="button"
+              onClick={goToNextPayrollPeriod}
+              className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              Næste
+            </button>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             Beregnet ud fra biografens lønopsætning.
           </div>
         </div>
@@ -653,33 +881,49 @@ export default function MyTimePage() {
       <div className="mb-6 grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Timer i lønperiode
+            Godkendte timer
           </div>
           <div className="mt-1 text-2xl font-bold">
-            {totalHours.toFixed(2)} t
+            {approvedHours.toFixed(2)} t
+          </div>
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Tæller med i løngrundlaget.
           </div>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Registreringer
+            Afventer godkendelse
           </div>
           <div className="mt-1 text-2xl font-bold">
-            {filteredEntries.length}
+            {pendingHours.toFixed(2)} t
+          </div>
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Ikke med i løn før godkendelse.
           </div>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            Afventer
+            Kræver handling
           </div>
-          <div className="mt-1 text-2xl font-bold">
-            {
-              filteredEntries.filter((entry) => entry.status === "PENDING")
-                .length
-            }
+          <div className="mt-1 text-2xl font-bold">{needsChangesCount}</div>
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Registreringer sendt retur til rettelse.
           </div>
         </div>
+      </div>
+
+      <div className="mb-4 flex justify-end">
+        <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <input
+            type="checkbox"
+            checked={showVoidedEntries}
+            onChange={(event) => setShowVoidedEntries(event.target.checked)}
+            className="h-4 w-4"
+          />
+          Vis annullerede
+        </label>
       </div>
 
       {loading && (
@@ -688,130 +932,199 @@ export default function MyTimePage() {
         </div>
       )}
 
-      {!loading && filteredEntries.length === 0 && (
+      {!loading && visibleEntries.length === 0 && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
           Der er ingen timer i den aktuelle lønperiode.
         </div>
       )}
 
-      {!loading && filteredEntries.length > 0 && (
+      {!loading && visibleEntries.length > 0 && (
         <div className="space-y-4">
-          {filteredEntries.map((entry) => (
-            <div
-              key={entry.id}
-              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-            >
-              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold">
-                    {entry.shift?.workType?.name ||
-                      entry.payrollType?.name ||
-                      "Timeregistrering"}
-                  </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatDateTime(entry.clockIn)}
-                  </p>
-                </div>
+          {dayGroups.map((group) => {
+            const isExpanded = expandedDayKeys.includes(group.dayKey);
 
-                <span
-                  className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                    entry.status,
-                  )}`}
-                >
-                  {getStatusLabel(entry.status)}
-                </span>
-              </div>
-
-              <div className="grid gap-2 text-sm md:grid-cols-2">
-                <div>
-                  <span className="font-semibold">Clock ind:</span>{" "}
-                  {formatDateTime(entry.clockIn)}
-                </div>
-
-                <div>
-                  <span className="font-semibold">Clock ud:</span>{" "}
-                  {formatDateTime(entry.clockOut)}
-                </div>
-
-                <div>
-                  <span className="font-semibold">Timer:</span>{" "}
-                  {getHours(entry)}
-                </div>
-
-                <div>
-                  <span className="font-semibold">Status:</span>{" "}
-                  {getStatusLabel(entry.status)}
-                </div>
-              </div>
-
-              {(entry.note ||
-                entry.clockInNote ||
-                entry.clockOutNote ||
-                entry.adminNote) && (
-                <div className="mt-4 space-y-3">
-                  {shouldShowEntryNoteAsSingleNote(entry) ? (
-                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                      <span className="font-semibold">Note:</span>{" "}
-                      {getEntrySingleNote(entry)}
-                    </div>
-                  ) : (
-                    <>
-                      {entry.clockInNote && (
-                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                          <span className="font-semibold">Mødetidsnote:</span>{" "}
-                          {entry.clockInNote}
-                        </div>
-                      )}
-
-                      {entry.clockOutNote && (
-                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                          <span className="font-semibold">Fyraftensnote:</span>{" "}
-                          {entry.clockOutNote}
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {entry.adminNote && (
-                    <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
-                      <div className="font-semibold">
-                        {entry.status === "NEEDS_CHANGES"
-                          ? "Sendt retur til rettelse"
-                          : "Admin note"}
-                      </div>
-
-                      <div className="mt-1">{entry.adminNote}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {entry.status === "NEEDS_CHANGES" && (
-                <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm font-medium text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
-                  Denne tidsregistrering er sendt retur til rettelse og skal
-                  opdateres før den kan godkendes.
-                </div>
-              )}
-
-              <div className="mt-4 flex justify-end gap-2">
+            return (
+              <div
+                key={group.dayKey}
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
+              >
                 <button
-                  onClick={() => openHistory(entry)}
-                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                  type="button"
+                  onClick={() => toggleDayGroup(group.dayKey)}
+                  className="flex w-full flex-col gap-3 p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/60 md:flex-row md:items-center md:justify-between"
                 >
-                  Historik
+                  <div>
+                    <div className="text-lg font-bold capitalize">
+                      {group.label}
+                    </div>
+
+                    {group.summaryParts.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {group.summaryParts.map((part) => {
+                          let className =
+                            "rounded-full px-2 py-1 text-xs font-medium";
+
+                          if (part.startsWith("Godkendt:")) {
+                            className +=
+                              " bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+                          } else if (part.startsWith("Afventer:")) {
+                            className +=
+                              " bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+                          } else if (part.startsWith("Kræver handling:")) {
+                            className +=
+                              " bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+                          } else if (part.startsWith("Annulleret:")) {
+                            className +=
+                              " bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+                          }
+
+                          return (
+                            <span key={part} className={className}>
+                              {part}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-xl border border-gray-300 px-3 py-1 text-sm font-medium dark:border-gray-700">
+                      {isExpanded ? "Fold ind" : "Fold ud"}
+                    </span>
+                  </div>
                 </button>
 
-                {entry.status !== "APPROVED" && entry.status !== "VOIDED" && (
-                  <button
-                    onClick={() => openEdit(entry)}
-                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                  >
-                    Redigér
-                  </button>
+                {isExpanded && (
+                  <div className="space-y-4 border-t border-gray-200 p-5 dark:border-gray-800">
+                    {group.entries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950/40"
+                      >
+                        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <h2 className="text-lg font-bold">
+                              {entry.shift?.workType?.name ||
+                                entry.payrollType?.name ||
+                                "Timeregistrering"}
+                            </h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {formatDateTime(entry.clockIn)}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                              entry.status,
+                            )}`}
+                          >
+                            {getStatusLabel(entry.status)}
+                          </span>
+                        </div>
+
+                        <div className="grid gap-2 text-sm md:grid-cols-2">
+                          <div>
+                            <span className="font-semibold">Clock ind:</span>{" "}
+                            {formatDateTime(entry.clockIn)}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold">Clock ud:</span>{" "}
+                            {formatDateTime(entry.clockOut)}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold">Timer:</span>{" "}
+                            {getHours(entry)}
+                          </div>
+
+                          <div>
+                            <span className="font-semibold">Status:</span>{" "}
+                            {getStatusLabel(entry.status)}
+                          </div>
+                        </div>
+
+                        {(entry.note ||
+                          entry.clockInNote ||
+                          entry.clockOutNote ||
+                          entry.adminNote) && (
+                          <div className="mt-4 space-y-3">
+                            {shouldShowEntryNoteAsSingleNote(entry) ? (
+                              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                                <span className="font-semibold">Note:</span>{" "}
+                                {getEntrySingleNote(entry)}
+                              </div>
+                            ) : (
+                              <>
+                                {entry.clockInNote && (
+                                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                                    <span className="font-semibold">
+                                      Mødetidsnote:
+                                    </span>{" "}
+                                    {entry.clockInNote}
+                                  </div>
+                                )}
+
+                                {entry.clockOutNote && (
+                                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                                    <span className="font-semibold">
+                                      Fyraftensnote:
+                                    </span>{" "}
+                                    {entry.clockOutNote}
+                                  </div>
+                                )}
+                              </>
+                            )}
+
+                            {entry.adminNote && (
+                              <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
+                                <div className="font-semibold">
+                                  {entry.status === "NEEDS_CHANGES"
+                                    ? "Sendt retur til rettelse"
+                                    : entry.status === "VOIDED"
+                                      ? "Annulleret"
+                                      : "Admin note"}
+                                </div>
+
+                                <div className="mt-1">{entry.adminNote}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {entry.status === "NEEDS_CHANGES" && (
+                          <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm font-medium text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
+                            Denne tidsregistrering er sendt retur til rettelse
+                            og skal opdateres før den kan godkendes.
+                          </div>
+                        )}
+
+                        <div className="mt-4 flex justify-end gap-2">
+                          <button
+                            onClick={() => openHistory(entry)}
+                            className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                          >
+                            Historik
+                          </button>
+
+                          {entry.status !== "APPROVED" &&
+                            entry.status !== "VOIDED" && (
+                              <button
+                                onClick={() => openEdit(entry)}
+                                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                              >
+                                Redigér
+                              </button>
+                            )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

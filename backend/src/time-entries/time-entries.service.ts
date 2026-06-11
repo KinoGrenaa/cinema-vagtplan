@@ -1122,6 +1122,108 @@ export class TimeEntriesService {
     return response;
   }
 
+  async voidEntry(
+    id: number,
+    adminNote?: string,
+    changedByUserId?: number | null,
+  ) {
+    if (!adminNote?.trim()) {
+      throw new BadRequestException(
+        'Admin-begrundelse er påkrævet ved annullering af tidsregistrering',
+      );
+    }
+
+    const existingEntry = await this.prisma.timeEntry.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
+      },
+    });
+
+    if (!existingEntry) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
+    this.ensureEntryEditable(existingEntry);
+
+    if (existingEntry.status === 'VOIDED') {
+      throw new BadRequestException(
+        'Tidsregistreringen er allerede annulleret',
+      );
+    }
+
+    const entry = await this.prisma.timeEntry.update({
+      where: { id },
+      data: {
+        status: 'VOIDED',
+        adminNote: adminNote.trim(),
+      },
+      include: {
+        user: true,
+        payrollType: true,
+        cinema: {
+          select: this.getCinemaDeviationSelect(),
+        },
+        shift: {
+          include: {
+            workType: {
+              include: {
+                payrollType: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    await this.createRevision({
+      timeEntryId: entry.id,
+      changedByUserId: changedByUserId ?? null,
+      action: 'VOIDED',
+      before: {
+        status: existingEntry.status,
+        clockIn: existingEntry.clockIn,
+        clockOut: existingEntry.clockOut,
+        note: existingEntry.note,
+        clockInNote: existingEntry.clockInNote,
+        clockOutNote: existingEntry.clockOutNote,
+        adminNote: existingEntry.adminNote,
+      },
+      after: {
+        status: entry.status,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        note: entry.note,
+        clockInNote: entry.clockInNote,
+        clockOutNote: entry.clockOutNote,
+        adminNote: entry.adminNote,
+      },
+      reason: adminNote.trim(),
+    });
+
+    await this.auditLogsService.create({
+      action: 'VOID_TIME_ENTRY',
+      entityType: 'TimeEntry',
+      entityId: entry.id,
+      description: `Tidsregistrering annulleret for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      userId: changedByUserId ?? undefined,
+      cinemaId: entry.cinemaId,
+    });
+
+    const response = this.withDeviation(entry);
+
+    this.realtimeGateway.notifyCinema(
+      entry.cinemaId,
+      'timeEntriesUpdated',
+      response,
+    );
+
+    return response;
+  }
+
   async updateOwnEntry(
     user: any,
     id: number,

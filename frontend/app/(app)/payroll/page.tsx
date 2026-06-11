@@ -102,6 +102,15 @@ export default function PayrollPage() {
   const [unlocking, setUnlocking] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [expandedEmployeeIds, setExpandedEmployeeIds] = useState<number[]>([]);
+
+  const toggleEmployeeGroup = (employeeId: number) => {
+    setExpandedEmployeeIds((current) =>
+      current.includes(employeeId)
+        ? current.filter((id) => id !== employeeId)
+        : [...current, employeeId],
+    );
+  };
 
   function lockPeriod() {
     confirmDialog.confirm({
@@ -399,124 +408,148 @@ export default function PayrollPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {report.map((employee) => (
-                <div
-                  key={employee.userId}
-                  className="rounded-lg border border-gray-200 dark:border-gray-800"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800">
-                    <div>
-                      <div className="font-bold text-gray-900 dark:text-gray-100">
-                        {employee.name}
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {employee.email}
-                      </div>
-                    </div>
+              {report.map((employee) => {
+                const isExpanded = expandedEmployeeIds.includes(
+                  employee.userId,
+                );
 
-                    <div className="text-right">
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Timer
+                return (
+                  <div
+                    key={employee.userId}
+                    className="rounded-lg border border-gray-200 dark:border-gray-800"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleEmployeeGroup(employee.userId)}
+                      className="flex w-full flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 p-3 text-left transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
+                    >
+                      <div>
+                        <div className="font-bold text-gray-900 dark:text-gray-100">
+                          {employee.name}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {employee.email}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          {employee.entries.length} registrering
+                          {employee.entries.length === 1 ? "" : "er"}
+                        </div>
                       </div>
-                      <div className="text-lg font-bold">
-                        {formatHours(employee.totalHours)}
+
+                      <div className="flex items-center gap-4 text-right">
+                        <div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Timer
+                          </div>
+                          <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                            {formatHours(employee.totalHours)}
+                          </div>
+                        </div>
+
+                        <div className="rounded-full border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-600 dark:text-gray-200">
+                          {isExpanded ? "Skjul" : "Vis"}
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </button>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[900px] text-sm text-gray-900 dark:text-gray-100">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-700 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                          <th className="p-2 text-gray-700 dark:text-gray-200">
-                            Dato
-                          </th>
-                          <th className="p-2 text-gray-700 dark:text-gray-200">
-                            Ind
-                          </th>
-                          <th className="p-2 text-gray-700 dark:text-gray-200">
-                            Ud
-                          </th>
-                          <th className="p-2 text-right">Timer</th>
-                          <th className="p-2 text-gray-700 dark:text-gray-200">
-                            Arbejdstype
-                          </th>
-                          <th className="p-2 text-gray-700 dark:text-gray-200">
-                            Lønart
-                          </th>
-                          <th className="p-2 text-gray-700 dark:text-gray-200">
-                            Løntype
-                          </th>
-                          <th className="p-2 text-gray-700 dark:text-gray-200">
-                            Afvigelse
-                          </th>
-                          <th className="p-2 text-gray-700 dark:text-gray-200">
-                            Låst
-                          </th>
-                        </tr>
-                      </thead>
+                    {isExpanded && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[900px] text-sm text-gray-900 dark:text-gray-100">
+                          <thead>
+                            <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-700 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                              <th className="p-2 text-gray-700 dark:text-gray-200">
+                                Dato
+                              </th>
+                              <th className="p-2 text-gray-700 dark:text-gray-200">
+                                Ind
+                              </th>
+                              <th className="p-2 text-gray-700 dark:text-gray-200">
+                                Ud
+                              </th>
+                              <th className="p-2 text-right">Timer</th>
+                              <th className="p-2 text-gray-700 dark:text-gray-200">
+                                Arbejdstype
+                              </th>
+                              <th className="p-2 text-gray-700 dark:text-gray-200">
+                                Lønart
+                              </th>
+                              <th className="p-2 text-gray-700 dark:text-gray-200">
+                                Løntype
+                              </th>
+                              <th className="p-2 text-gray-700 dark:text-gray-200">
+                                Afvigelse
+                              </th>
+                              <th className="p-2 text-gray-700 dark:text-gray-200">
+                                Låst
+                              </th>
+                            </tr>
+                          </thead>
 
-                      <tbody>
-                        {employee.entries.map((entry, index) => (
-                          <tr
-                            key={entry.id || `${employee.userId}-${index}`}
-                            className="border-b border-gray-200 dark:border-gray-800"
-                          >
-                            <td className="p-2 text-gray-900 dark:text-gray-100">
-                              {entry.date}
-                            </td>
-                            <td className="p-2 text-gray-900 dark:text-gray-100">
-                              {formatDateTime(entry.clockIn)}
-                            </td>
-                            <td className="p-2 text-gray-900 dark:text-gray-100">
-                              {formatDateTime(entry.clockOut)}
-                            </td>
-                            <td className="p-2 text-right">
-                              {formatHours(entry.hours)}
-                            </td>
-                            <td className="p-2 text-gray-900 dark:text-gray-100">
-                              {entry.workType}
-                            </td>
-                            <td className="p-2 text-gray-900 dark:text-gray-100">
-                              {entry.payrollCode || "-"}
-                            </td>
-                            <td className="p-2 text-gray-900 dark:text-gray-100">
-                              {entry.payrollName || "-"}
-                            </td>
-                            <td className="p-2 text-gray-900 dark:text-gray-100">
-                              {entry.deviation?.hasDeviation ? (
-                                <div className="space-y-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                                  {entry.deviation.messages.length > 0 ? (
-                                    entry.deviation.messages.map(
-                                      (message, messageIndex) => (
-                                        <div
-                                          key={`${entry.id || index}-deviation-${messageIndex}`}
-                                        >
-                                          ⚠ {message}
-                                        </div>
-                                      ),
-                                    )
+                          <tbody>
+                            {employee.entries.map((entry, index) => (
+                              <tr
+                                key={entry.id || `${employee.userId}-${index}`}
+                                className="border-b border-gray-200 dark:border-gray-800"
+                              >
+                                <td className="p-2 text-gray-900 dark:text-gray-100">
+                                  {entry.date}
+                                </td>
+                                <td className="p-2 text-gray-900 dark:text-gray-100">
+                                  {formatDateTime(entry.clockIn)}
+                                </td>
+                                <td className="p-2 text-gray-900 dark:text-gray-100">
+                                  {formatDateTime(entry.clockOut)}
+                                </td>
+                                <td className="p-2 text-right">
+                                  {formatHours(entry.hours)}
+                                </td>
+                                <td className="p-2 text-gray-900 dark:text-gray-100">
+                                  {entry.workType}
+                                </td>
+                                <td className="p-2 text-gray-900 dark:text-gray-100">
+                                  {entry.payrollCode || "-"}
+                                </td>
+                                <td className="p-2 text-gray-900 dark:text-gray-100">
+                                  {entry.payrollName || "-"}
+                                </td>
+                                <td className="p-2 text-gray-900 dark:text-gray-100">
+                                  {entry.deviation?.hasDeviation ? (
+                                    <div className="space-y-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                      {entry.deviation.messages.length > 0 ? (
+                                        entry.deviation.messages.map(
+                                          (message, messageIndex) => (
+                                            <div
+                                              key={`${entry.id || index}-deviation-${messageIndex}`}
+                                            >
+                                              ⚠ {message}
+                                            </div>
+                                          ),
+                                        )
+                                      ) : (
+                                        <div>⚠ Afvigelse</div>
+                                      )}
+                                    </div>
                                   ) : (
-                                    <div>⚠ Afvigelse</div>
+                                    <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                                      OK
+                                    </span>
                                   )}
-                                </div>
-                              ) : (
-                                <span className="text-xs font-medium text-green-700 dark:text-green-400">
-                                  OK
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-2 text-gray-900 dark:text-gray-100">
-                              {entry.payrollLocked ? "Ja" : "Nej"}
-                              {entry.payrollUnlockedByMaster ? " / oplåst" : ""}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                </td>
+                                <td className="p-2 text-gray-900 dark:text-gray-100">
+                                  {entry.payrollLocked ? "Ja" : "Nej"}
+                                  {entry.payrollUnlockedByMaster
+                                    ? " / oplåst"
+                                    : ""}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

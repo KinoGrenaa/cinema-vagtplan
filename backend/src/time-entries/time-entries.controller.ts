@@ -111,6 +111,21 @@ export class TimeEntriesController {
     );
   }
 
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
+  @Patch(':id/void')
+  voidEntry(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body: RejectTimeEntryDto,
+  ) {
+    return this.timeEntriesService.voidEntry(
+      Number(id),
+      body.adminNote,
+      req.user.sub,
+    );
+  }
+
   @UseGuards(JwtGuard)
   @Patch('me/:id')
   updateMyEntry(
