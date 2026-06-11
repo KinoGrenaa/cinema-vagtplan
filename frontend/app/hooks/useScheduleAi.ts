@@ -5,7 +5,7 @@ import { useApi } from "./useApi";
 import type { Shift, User, WorkType } from "../../../shared/types";
 import { toast } from "sonner";
 
-type MovieShowing = {
+export type MovieShowing = {
   id: number;
   title: string;
   hall: string;
@@ -25,7 +25,7 @@ type SuggestedEmergencyReplacement = {
 type StaffingLoopStatus = "IDLE" | "WAITING" | "ACCEPTED" | "DECLINED";
 type AutonomousStaffingStatus = "IDLE" | "EXECUTING" | "COMPLETED";
 
-type UseScheduleAiInput = {
+export type UseScheduleAiInput = {
   selectedDate: string;
   shifts: Shift[];
   users: User[];

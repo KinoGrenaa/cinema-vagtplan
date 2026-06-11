@@ -6,7 +6,7 @@ import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
-type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
+type TimeEntryStatus = "PENDING" | "NEEDS_CHANGES" | "APPROVED" | "VOIDED";
 
 type PayrollPeriodModel = "CALENDAR_MONTH" | "FIXED_DAY_TO_DAY" | "BIWEEKLY";
 
@@ -33,6 +33,8 @@ type TimeEntry = {
   clockOut?: string | null;
   status: TimeEntryStatus;
   note?: string | null;
+  clockInNote?: string | null;
+  clockOutNote?: string | null;
   adminNote?: string | null;
   payrollType?: {
     name: string;
@@ -44,9 +46,43 @@ type TimeEntry = {
   } | null;
 };
 
+type TimeEntryRevision = {
+  id: number;
+  action: string;
+  reason?: string | null;
+  createdAt: string;
+
+  previousStatus?: string | null;
+  newStatus?: string | null;
+
+  previousClockIn?: string | null;
+  newClockIn?: string | null;
+
+  previousClockOut?: string | null;
+  newClockOut?: string | null;
+
+  previousClockInNote?: string | null;
+  newClockInNote?: string | null;
+
+  previousClockOutNote?: string | null;
+  newClockOutNote?: string | null;
+
+  previousAdminNote?: string | null;
+  newAdminNote?: string | null;
+
+  changedByUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+  } | null;
+};
+
 function getStatusLabel(status: TimeEntryStatus) {
   if (status === "APPROVED") return "Godkendt";
-  if (status === "REJECTED") return "Afvist";
+  if (status === "NEEDS_CHANGES") return "Skal rettes";
+  if (status === "VOIDED") return "Annulleret";
   return "Afventer";
 }
 
@@ -55,11 +91,117 @@ function getStatusClass(status: TimeEntryStatus) {
     return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
   }
 
-  if (status === "REJECTED") {
+  if (status === "NEEDS_CHANGES") {
+    return "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200";
+  }
+
+  if (status === "VOIDED") {
     return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
   }
 
   return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
+}
+
+function getRevisionActionLabel(action: string) {
+  switch (action) {
+    case "CREATED":
+      return "Oprettet";
+
+    case "UPDATED":
+      return "Rettet";
+
+    case "APPROVED":
+      return "Godkendt";
+
+    case "NEEDS_CHANGES":
+      return "Sendt retur til rettelse";
+
+    case "VOIDED":
+      return "Annulleret";
+
+    case "REOPENED":
+      return "Genåbnet";
+
+    case "UNAPPROVED":
+      return "Godkendelse fjernet";
+
+    default:
+      return action;
+  }
+}
+
+function getRevisionActorLabel(action: string) {
+  switch (action) {
+    case "CREATED":
+      return "Oprettet af";
+
+    case "UPDATED":
+      return "Rettet af";
+
+    case "APPROVED":
+      return "Godkendt af";
+
+    case "NEEDS_CHANGES":
+      return "Sendt retur af";
+
+    case "VOIDED":
+      return "Annulleret af";
+
+    case "REOPENED":
+      return "Genåbnet af";
+
+    case "UNAPPROVED":
+      return "Godkendelse fjernet af";
+
+    default:
+      return "Udført af";
+  }
+}
+
+function shouldShowCreatedNoteAsSingleNote(item: TimeEntryRevision) {
+  if (item.action !== "CREATED") return false;
+
+  const clockInNote = item.newClockInNote?.trim() || "";
+  const clockOutNote = item.newClockOutNote?.trim() || "";
+
+  return clockInNote.length > 0 && clockInNote === clockOutNote;
+}
+
+function shouldShowEntryNoteAsSingleNote(entry: TimeEntry) {
+  const clockInNote = entry.clockInNote?.trim() || "";
+  const clockOutNote = entry.clockOutNote?.trim() || "";
+
+  return !entry.shift && clockInNote.length > 0 && clockInNote === clockOutNote;
+}
+
+function getEntrySingleNote(entry: TimeEntry) {
+  return (
+    entry.note?.trim() ||
+    entry.clockInNote?.trim() ||
+    entry.clockOutNote?.trim() ||
+    ""
+  );
+}
+
+function getStatusHistoryLabel(status?: string | null) {
+  if (!status) return "-";
+
+  switch (status) {
+    case "PENDING":
+      return "Afventer";
+
+    case "APPROVED":
+      return "Godkendt";
+
+    case "NEEDS_CHANGES":
+      return "Skal rettes";
+
+    case "VOIDED":
+      return "Annulleret";
+
+    default:
+      return status;
+  }
 }
 
 function formatDateTime(value?: string | null) {
@@ -253,8 +395,13 @@ export default function MyTimePage() {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
-  const [editNote, setEditNote] = useState("");
+  const [editClockInNote, setEditClockInNote] = useState("");
+  const [editClockOutNote, setEditClockOutNote] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+
+  const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyItems, setHistoryItems] = useState<TimeEntryRevision[]>([]);
 
   function getToken() {
     return localStorage.getItem("token");
@@ -329,7 +476,8 @@ export default function MyTimePage() {
     setEditingEntry(entry);
     setEditClockIn(toInputDateTime(entry.clockIn));
     setEditClockOut(toInputDateTime(entry.clockOut));
-    setEditNote(entry.note || "");
+    setEditClockInNote(entry.clockInNote ?? "");
+    setEditClockOutNote(entry.clockOutNote ?? "");
   }
 
   function closeEdit() {
@@ -338,11 +486,48 @@ export default function MyTimePage() {
     setEditingEntry(null);
     setEditClockIn("");
     setEditClockOut("");
-    setEditNote("");
+    setEditClockInNote("");
+    setEditClockOutNote("");
+  }
+
+  function getErrorMessage(errorText: string) {
+    try {
+      const parsed = JSON.parse(errorText);
+
+      if (typeof parsed?.message === "string") {
+        return parsed.message;
+      }
+
+      if (Array.isArray(parsed?.message)) {
+        return parsed.message.join("\n");
+      }
+    } catch {
+      // Ikke JSON - brug teksten som den er
+    }
+
+    return errorText || "Kunne ikke rette timeregistrering";
   }
 
   async function saveEdit() {
     if (!editingEntry) return;
+
+    const parsedClockIn = new Date(editClockIn);
+    const parsedClockOut = editClockOut ? new Date(editClockOut) : null;
+
+    if (Number.isNaN(parsedClockIn.getTime())) {
+      toast.error("Ugyldig mødetid");
+      return;
+    }
+
+    if (parsedClockOut && Number.isNaN(parsedClockOut.getTime())) {
+      toast.error("Ugyldig fyraften");
+      return;
+    }
+
+    if (parsedClockOut && parsedClockOut <= parsedClockIn) {
+      toast.error("Fyraften skal være efter mødetid");
+      return;
+    }
 
     try {
       setSavingEdit(true);
@@ -356,18 +541,18 @@ export default function MyTimePage() {
             Authorization: `Bearer ${getToken()}`,
           },
           body: JSON.stringify({
-            clockIn: new Date(editClockIn).toISOString(),
-            clockOut: editClockOut
-              ? new Date(editClockOut).toISOString()
-              : null,
-            note: editNote,
+            clockIn: parsedClockIn.toISOString(),
+            clockOut: parsedClockOut ? parsedClockOut.toISOString() : null,
+            clockInNote: editClockInNote,
+            clockOutNote: editClockOutNote,
           }),
         },
       );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Kunne ikke rette timeregistrering");
+        toast.error(getErrorMessage(errorText));
+        return;
       }
 
       await fetchEntries();
@@ -375,13 +560,41 @@ export default function MyTimePage() {
       toast.success("Timeregistrering rettet");
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Kunne ikke rette timeregistrering",
-      );
+      toast.error("Kunne ikke rette timeregistrering");
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  async function openHistory(entry: TimeEntry) {
+    try {
+      setHistoryLoading(true);
+      setHistoryEntry(entry);
+
+      const response = await fetch(
+        `${API_URL}/time-entries/${entry.id}/revisions`,
+        {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        toast.error("Kunne ikke hente historik");
+        setHistoryEntry(null);
+        return;
+      }
+
+      const data = await response.json();
+
+      setHistoryItems(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+      toast.error("Kunne ikke hente historik");
+      setHistoryEntry(null);
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -531,34 +744,72 @@ export default function MyTimePage() {
                 </div>
               </div>
 
-              {(entry.note || entry.adminNote) && (
+              {(entry.note ||
+                entry.clockInNote ||
+                entry.clockOutNote ||
+                entry.adminNote) && (
                 <div className="mt-4 space-y-3">
-                  {entry.note && (
+                  {shouldShowEntryNoteAsSingleNote(entry) ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                      <span className="font-semibold">Din note:</span>{" "}
-                      {entry.note}
+                      <span className="font-semibold">Note:</span>{" "}
+                      {getEntrySingleNote(entry)}
                     </div>
+                  ) : (
+                    <>
+                      {entry.clockInNote && (
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                          <span className="font-semibold">Mødetidsnote:</span>{" "}
+                          {entry.clockInNote}
+                        </div>
+                      )}
+
+                      {entry.clockOutNote && (
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                          <span className="font-semibold">Fyraftensnote:</span>{" "}
+                          {entry.clockOutNote}
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {entry.adminNote && (
                     <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
-                      <span className="font-semibold">Admin note:</span>{" "}
-                      {entry.adminNote}
-                    </div>
-                  )}
+                      <div className="font-semibold">
+                        {entry.status === "NEEDS_CHANGES"
+                          ? "Sendt retur til rettelse"
+                          : "Admin note"}
+                      </div>
 
-                  {entry.status !== "APPROVED" && (
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        onClick={() => openEdit(entry)}
-                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                      >
-                        Redigér
-                      </button>
+                      <div className="mt-1">{entry.adminNote}</div>
                     </div>
                   )}
                 </div>
               )}
+
+              {entry.status === "NEEDS_CHANGES" && (
+                <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm font-medium text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
+                  Denne tidsregistrering er sendt retur til rettelse og skal
+                  opdateres før den kan godkendes.
+                </div>
+              )}
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => openHistory(entry)}
+                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Historik
+                </button>
+
+                {entry.status !== "APPROVED" && entry.status !== "VOIDED" && (
+                  <button
+                    onClick={() => openEdit(entry)}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                  >
+                    Redigér
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -600,12 +851,28 @@ export default function MyTimePage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">Note</label>
+                <label className="mb-1 block text-sm font-medium">
+                  Mødetidsnote
+                </label>
                 <textarea
-                  value={editNote}
-                  onChange={(event) => setEditNote(event.target.value)}
-                  rows={4}
+                  value={editClockInNote}
+                  onChange={(event) => setEditClockInNote(event.target.value)}
+                  rows={3}
                   className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                  placeholder="Forklar evt. ændret mødetid"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Fyraftensnote
+                </label>
+                <textarea
+                  value={editClockOutNote}
+                  onChange={(event) => setEditClockOutNote(event.target.value)}
+                  rows={3}
+                  className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                  placeholder="Forklar evt. ændret fyraften"
                 />
               </div>
             </div>
@@ -627,6 +894,147 @@ export default function MyTimePage() {
                 {savingEdit ? "Gemmer..." : "Gem ændringer"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {historyEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold">
+                Historik for tidsregistrering
+              </h2>
+
+              <button
+                onClick={() => {
+                  setHistoryEntry(null);
+                  setHistoryItems([]);
+                }}
+                className="rounded-lg px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="py-8 text-center">Henter historik...</div>
+            ) : historyItems.length === 0 ? (
+              <div className="py-8 text-center text-gray-500">
+                Ingen historik fundet
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {historyItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="relative rounded-xl border border-gray-200 p-4 dark:border-gray-800"
+                  >
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-semibold">
+                        {getRevisionActionLabel(item.action)}
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        {formatDateTime(item.createdAt)}
+                      </div>
+                    </div>
+
+                    {item.changedByUser && (
+                      <div className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+                        <span className="font-medium">
+                          {getRevisionActorLabel(item.action)}:
+                        </span>{" "}
+                        {item.changedByUser.firstName}{" "}
+                        {item.changedByUser.lastName}
+                      </div>
+                    )}
+
+                    <div className="space-y-2 text-sm">
+                      {item.previousClockIn !== item.newClockIn && (
+                        <div>
+                          <span className="font-medium">Mødetid:</span>{" "}
+                          {formatDateTime(item.previousClockIn)}
+                          {" → "}
+                          {formatDateTime(item.newClockIn)}
+                        </div>
+                      )}
+
+                      {item.previousClockOut !== item.newClockOut && (
+                        <div>
+                          <span className="font-medium">Fyraften:</span>{" "}
+                          {formatDateTime(item.previousClockOut)}
+                          {" → "}
+                          {formatDateTime(item.newClockOut)}
+                        </div>
+                      )}
+
+                      {item.previousStatus !== item.newStatus && (
+                        <div>
+                          <span className="font-medium">Status:</span>{" "}
+                          {getStatusHistoryLabel(item.previousStatus)}
+                          {" → "}
+                          {getStatusHistoryLabel(item.newStatus)}
+                        </div>
+                      )}
+
+                      {shouldShowCreatedNoteAsSingleNote(item) ? (
+                        <div>
+                          <span className="font-medium">Note:</span>{" "}
+                          {item.newClockInNote}
+                        </div>
+                      ) : (
+                        <>
+                          {item.previousClockInNote !== item.newClockInNote && (
+                            <div>
+                              <span className="font-medium">Mødetidsnote:</span>{" "}
+                              {item.previousClockInNote || "-"}
+                              {" → "}
+                              {item.newClockInNote || "-"}
+                            </div>
+                          )}
+
+                          {item.previousClockOutNote !==
+                            item.newClockOutNote && (
+                            <div>
+                              <span className="font-medium">
+                                Fyraftensnote:
+                              </span>{" "}
+                              {item.previousClockOutNote || "-"}
+                              {" → "}
+                              {item.newClockOutNote || "-"}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {item.previousAdminNote !== item.newAdminNote && (
+                        <div>
+                          <span className="font-medium">Adminnote:</span>{" "}
+                          {item.previousAdminNote || "-"}
+                          {" → "}
+                          {item.newAdminNote || "-"}
+                        </div>
+                      )}
+                    </div>
+
+                    {item.reason &&
+                      item.reason !== "Tidsregistrering oprettet" &&
+                      item.reason !== item.newAdminNote && (
+                        <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                          <div className="mb-1 font-medium">
+                            {item.action === "APPROVED" ||
+                            item.action === "UNAPPROVED"
+                              ? "Systembesked"
+                              : "Begrundelse"}
+                          </div>
+
+                          <div>{item.reason}</div>
+                        </div>
+                      )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

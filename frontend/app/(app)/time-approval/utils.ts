@@ -2,7 +2,8 @@ import type { TimeEntryStatus } from "./types";
 
 export function getStatusLabel(status: TimeEntryStatus) {
   if (status === "APPROVED") return "Godkendt";
-  if (status === "REJECTED") return "Afvist";
+  if (status === "NEEDS_CHANGES") return "Skal rettes";
+  if (status === "VOIDED") return "Annulleret";
   return "Afventer";
 }
 
@@ -11,13 +12,16 @@ export function getStatusClass(status: TimeEntryStatus) {
     return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
   }
 
-  if (status === "REJECTED") {
+  if (status === "NEEDS_CHANGES") {
+    return "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200";
+  }
+
+  if (status === "VOIDED") {
     return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
   }
 
   return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
 }
-
 export function formatDateTime(value?: string | null) {
   if (!value) return "-";
 

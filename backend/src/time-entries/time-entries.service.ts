@@ -49,6 +49,70 @@ export class TimeEntriesService {
     private auditLogsService: AuditLogsService,
   ) {}
 
+  private async createRevision(params: {
+    timeEntryId: number;
+    changedByUserId?: number | null;
+    action: string;
+    before?: {
+      status?: any;
+      clockIn?: Date | string | null;
+      clockOut?: Date | string | null;
+      note?: string | null;
+      clockInNote?: string | null;
+      clockOutNote?: string | null;
+      adminNote?: string | null;
+    } | null;
+    after?: {
+      status?: any;
+      clockIn?: Date | string | null;
+      clockOut?: Date | string | null;
+      note?: string | null;
+      clockInNote?: string | null;
+      clockOutNote?: string | null;
+      adminNote?: string | null;
+    } | null;
+    reason?: string | null;
+  }) {
+    return this.prisma.timeEntryRevision.create({
+      data: {
+        timeEntryId: params.timeEntryId,
+        changedByUserId: params.changedByUserId ?? null,
+        action: params.action,
+
+        previousStatus: params.before?.status ?? null,
+        newStatus: params.after?.status ?? null,
+
+        previousClockIn: params.before?.clockIn
+          ? new Date(params.before.clockIn)
+          : null,
+        newClockIn: params.after?.clockIn
+          ? new Date(params.after.clockIn)
+          : null,
+
+        previousClockOut: params.before?.clockOut
+          ? new Date(params.before.clockOut)
+          : null,
+        newClockOut: params.after?.clockOut
+          ? new Date(params.after.clockOut)
+          : null,
+
+        previousNote: params.before?.note ?? null,
+        newNote: params.after?.note ?? null,
+
+        previousClockInNote: params.before?.clockInNote ?? null,
+        newClockInNote: params.after?.clockInNote ?? null,
+
+        previousClockOutNote: params.before?.clockOutNote ?? null,
+        newClockOutNote: params.after?.clockOutNote ?? null,
+
+        previousAdminNote: params.before?.adminNote ?? null,
+        newAdminNote: params.after?.adminNote ?? null,
+
+        reason: params.reason ?? null,
+      },
+    });
+  }
+
   private getCinemaFilter(user?: any) {
     if (!user || user.role === 'MASTER') {
       return {};
@@ -79,6 +143,24 @@ export class TimeEntriesService {
 
   private hasText(value?: string | null) {
     return Boolean(value && value.trim() !== '');
+  }
+
+  private requiresClockInDeviationNote(deviation: TimeEntryDeviation) {
+    return deviation.types.some(
+      (type) => type === 'EARLY_CLOCK_IN' || type === 'LATE_CLOCK_IN',
+    );
+  }
+
+  private requiresClockOutDeviationNote(deviation: TimeEntryDeviation) {
+    return deviation.types.some(
+      (type) => type === 'EARLY_CLOCK_OUT' || type === 'LATE_CLOCK_OUT',
+    );
+  }
+
+  private requiresGeneralDeviationNote(deviation: TimeEntryDeviation) {
+    return deviation.types.some(
+      (type) => type === 'TIME_DIFFERENCE' || type === 'MANUAL_WITHOUT_SHIFT',
+    );
   }
 
   private analyzeDeviation(
@@ -368,36 +450,13 @@ export class TimeEntriesService {
   async submitManualEntry(data: {
     userId: number;
     cinemaId: number;
-    shiftId: number;
+    shiftId?: number | null;
     clockIn: string;
     clockOut: string;
     note?: string;
     clockInNote?: string;
     clockOutNote?: string;
   }) {
-    const shift = await this.prisma.shift.findFirst({
-      where: {
-        id: data.shiftId,
-        cinemaId: data.cinemaId,
-      },
-      include: {
-        workType: true,
-        cinema: {
-          select: this.getCinemaDeviationSelect(),
-        },
-      },
-    });
-
-    if (!shift) {
-      throw new BadRequestException('Vagten blev ikke fundet');
-    }
-
-    if (shift.userId !== data.userId) {
-      throw new BadRequestException(
-        'Du kan kun indsende timer for dine egne vagter',
-      );
-    }
-
     const clockIn = new Date(data.clockIn);
     const clockOut = new Date(data.clockOut);
 
@@ -409,46 +468,90 @@ export class TimeEntriesService {
       throw new BadRequestException('Fyraften skal være efter mødetid');
     }
 
-    const deviation = this.analyzeDeviation(
-      {
-        clockIn,
-        clockOut,
-        shift,
-      },
-      shift.cinema,
-    );
+    const shift = data.shiftId
+      ? await this.prisma.shift.findFirst({
+          where: {
+            id: data.shiftId,
+            cinemaId: data.cinemaId,
+          },
+          include: {
+            workType: true,
+            cinema: {
+              select: this.getCinemaDeviationSelect(),
+            },
+          },
+        })
+      : null;
 
-    if (deviation.requiresNote && !this.hasText(data.note)) {
+    if (data.shiftId && !shift) {
+      throw new BadRequestException('Vagten blev ikke fundet');
+    }
+
+    if (shift && shift.userId !== data.userId) {
       throw new BadRequestException(
-        'Du skal skrive en note, når tiderne afviger fra vagtplanen',
+        'Du kan kun indsende timer for dine egne vagter',
       );
     }
 
-    const existingEntry = await this.prisma.timeEntry.findFirst({
-      where: {
-        userId: data.userId,
-        shiftId: data.shiftId,
-        cinemaId: data.cinemaId,
-      },
-    });
+    const clockInNote = data.clockInNote ?? data.note ?? null;
+    const clockOutNote = data.clockOutNote ?? data.note ?? null;
 
-    if (existingEntry) {
-      throw new BadRequestException(
-        'Der er allerede indsendt timer for denne vagt',
+    if (shift) {
+      const deviation = this.analyzeDeviation(
+        {
+          clockIn,
+          clockOut,
+          shift,
+        },
+        shift.cinema,
       );
+
+      if (
+        deviation.requiresNote &&
+        this.requiresClockInDeviationNote(deviation) &&
+        !this.hasText(clockInNote)
+      ) {
+        throw new BadRequestException(
+          'Du skal skrive en mødetidsnote, når mødetiden afviger fra vagtplanen',
+        );
+      }
+
+      if (
+        deviation.requiresNote &&
+        this.requiresClockOutDeviationNote(deviation) &&
+        !this.hasText(clockOutNote)
+      ) {
+        throw new BadRequestException(
+          'Du skal skrive en fyraftensnote, når fyraften afviger fra vagtplanen',
+        );
+      }
+
+      const existingEntry = await this.prisma.timeEntry.findFirst({
+        where: {
+          userId: data.userId,
+          shiftId: shift.id,
+          cinemaId: data.cinemaId,
+        },
+      });
+
+      if (existingEntry) {
+        throw new BadRequestException(
+          'Der er allerede indsendt timer for denne vagt',
+        );
+      }
     }
 
     const entry = await this.prisma.timeEntry.create({
       data: {
         userId: data.userId,
         cinemaId: data.cinemaId,
-        shiftId: data.shiftId,
-        payrollTypeId: shift.workType?.payrollTypeId || null,
+        shiftId: shift?.id || null,
+        payrollTypeId: shift?.workType?.payrollTypeId || null,
         clockIn,
         clockOut,
         note: data.note ?? null,
-        clockInNote: data.clockInNote ?? data.note ?? null,
-        clockOutNote: data.clockOutNote ?? data.note ?? null,
+        clockInNote,
+        clockOutNote,
         status: 'PENDING',
       },
       include: {
@@ -469,11 +572,30 @@ export class TimeEntriesService {
       },
     });
 
+    await this.createRevision({
+      timeEntryId: entry.id,
+      changedByUserId: data.userId,
+      action: 'CREATED',
+      before: null,
+      after: {
+        status: entry.status,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        note: entry.note,
+        clockInNote: entry.clockInNote,
+        clockOutNote: entry.clockOutNote,
+        adminNote: entry.adminNote,
+      },
+      reason: null,
+    });
+
     await this.auditLogsService.create({
       action: 'SUBMIT_MANUAL_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
-      description: 'Medarbejder indsendte manuel tidsregistrering',
+      description: shift
+        ? 'Medarbejder indsendte manuel tidsregistrering på planlagt vagt'
+        : 'Medarbejder indsendte manuel tidsregistrering uden tilknyttet vagt',
       userId: entry.userId,
       cinemaId: entry.cinemaId,
     });
@@ -554,6 +676,8 @@ export class TimeEntriesService {
       }
     }
 
+    const note = data.note?.trim() || null;
+
     const entry = await this.prisma.timeEntry.create({
       data: {
         userId: data.userId,
@@ -561,8 +685,8 @@ export class TimeEntriesService {
         shiftId: shift?.id || null,
         payrollTypeId: shift?.workType?.payrollTypeId || null,
         clockIn,
-        note: data.note?.trim() || null,
-        clockInNote: data.note?.trim() || null,
+        note,
+        clockInNote: note,
         status: 'PENDING',
       },
       include: {
@@ -581,6 +705,23 @@ export class TimeEntriesService {
           },
         },
       },
+    });
+
+    await this.createRevision({
+      timeEntryId: entry.id,
+      changedByUserId: data.userId,
+      action: 'CREATED',
+      before: null,
+      after: {
+        status: entry.status,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        note: entry.note,
+        clockInNote: entry.clockInNote,
+        clockOutNote: entry.clockOutNote,
+        adminNote: entry.adminNote,
+      },
+      reason: null,
     });
 
     await this.auditLogsService.create({
@@ -692,7 +833,7 @@ export class TimeEntriesService {
     return response;
   }
 
-  async approveEntry(id: number) {
+  async approveEntry(id: number, changedByUserId?: number | null) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
       include: {
@@ -709,6 +850,12 @@ export class TimeEntriesService {
     }
 
     this.ensureEntryEditable(existingEntry);
+
+    if (existingEntry.status === 'VOIDED') {
+      throw new BadRequestException(
+        'En annulleret tidsregistrering kan ikke godkendes',
+      );
+    }
 
     const deviation = this.analyzeDeviation(
       existingEntry,
@@ -755,11 +902,33 @@ export class TimeEntriesService {
       },
     });
 
+    await this.createRevision({
+      timeEntryId: entry.id,
+      changedByUserId: changedByUserId ?? null,
+      action: 'APPROVED',
+      before: {
+        status: existingEntry.status,
+        clockIn: existingEntry.clockIn,
+        clockOut: existingEntry.clockOut,
+        note: existingEntry.note,
+        adminNote: existingEntry.adminNote,
+      },
+      after: {
+        status: entry.status,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        note: entry.note,
+        adminNote: entry.adminNote,
+      },
+      reason: 'Tidsregistrering godkendt',
+    });
+
     await this.auditLogsService.create({
       action: 'APPROVE_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
       description: `Status ændret fra ${existingEntry.status} til APPROVED for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      userId: changedByUserId ?? undefined,
       cinemaId: entry.cinemaId,
     });
 
@@ -774,7 +943,7 @@ export class TimeEntriesService {
     return response;
   }
 
-  async unapproveEntry(id: number) {
+  async unapproveEntry(id: number, changedByUserId?: number | null) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
       include: {
@@ -790,6 +959,12 @@ export class TimeEntriesService {
     }
 
     this.ensureEntryEditable(existingEntry);
+
+    if (existingEntry.status === 'VOIDED') {
+      throw new BadRequestException(
+        'En annulleret tidsregistrering kan ikke genåbnes',
+      );
+    }
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
@@ -814,11 +989,33 @@ export class TimeEntriesService {
       },
     });
 
+    await this.createRevision({
+      timeEntryId: entry.id,
+      changedByUserId: changedByUserId ?? null,
+      action: 'UNAPPROVED',
+      before: {
+        status: existingEntry.status,
+        clockIn: existingEntry.clockIn,
+        clockOut: existingEntry.clockOut,
+        note: existingEntry.note,
+        adminNote: existingEntry.adminNote,
+      },
+      after: {
+        status: entry.status,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        note: entry.note,
+        adminNote: entry.adminNote,
+      },
+      reason: 'Godkendelse fjernet',
+    });
+
     await this.auditLogsService.create({
       action: 'UNAPPROVE_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
       description: `Status ændret fra ${existingEntry.status} til PENDING for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      userId: changedByUserId ?? undefined,
       cinemaId: entry.cinemaId,
     });
 
@@ -833,7 +1030,17 @@ export class TimeEntriesService {
     return response;
   }
 
-  async rejectEntry(id: number, adminNote?: string) {
+  async rejectEntry(
+    id: number,
+    adminNote?: string,
+    changedByUserId?: number | null,
+  ) {
+    if (!adminNote?.trim()) {
+      throw new BadRequestException(
+        'Admin-begrundelse er påkrævet ved send retur til rettelse',
+      );
+    }
+
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
       include: {
@@ -853,8 +1060,8 @@ export class TimeEntriesService {
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
-        status: 'REJECTED',
-        adminNote,
+        status: 'NEEDS_CHANGES',
+        adminNote: adminNote.trim(),
       },
       include: {
         user: true,
@@ -874,11 +1081,33 @@ export class TimeEntriesService {
       },
     });
 
+    await this.createRevision({
+      timeEntryId: entry.id,
+      changedByUserId: changedByUserId ?? null,
+      action: 'NEEDS_CHANGES',
+      before: {
+        status: existingEntry.status,
+        clockIn: existingEntry.clockIn,
+        clockOut: existingEntry.clockOut,
+        note: existingEntry.note,
+        adminNote: existingEntry.adminNote,
+      },
+      after: {
+        status: entry.status,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        note: entry.note,
+        adminNote: entry.adminNote,
+      },
+      reason: adminNote.trim(),
+    });
+
     await this.auditLogsService.create({
-      action: 'REJECT_TIME_ENTRY',
+      action: 'SEND_BACK_TIME_ENTRY',
       entityType: 'TimeEntry',
       entityId: entry.id,
-      description: `Status ændret fra ${existingEntry.status} til REJECTED for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      description: `Sendt retur til rettelse for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
+      userId: changedByUserId ?? undefined,
       cinemaId: entry.cinemaId,
     });
 
@@ -899,7 +1128,8 @@ export class TimeEntriesService {
     data: {
       clockIn: string;
       clockOut?: string | null;
-      note?: string | null;
+      clockInNote?: string | null;
+      clockOutNote?: string | null;
     },
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
@@ -929,14 +1159,23 @@ export class TimeEntriesService {
       );
     }
 
+    if (existingEntry.status === 'VOIDED') {
+      throw new BadRequestException(
+        'En annulleret tidsregistrering kan ikke ændres',
+      );
+    }
+
     this.ensureEntryEditable(existingEntry, user);
 
     const oldClockIn = existingEntry.clockIn;
     const oldClockOut = existingEntry.clockOut;
-    const oldNote = existingEntry.note;
+    const oldClockInNote = existingEntry.clockInNote;
+    const oldClockOutNote = existingEntry.clockOutNote;
 
     const newClockIn = new Date(data.clockIn);
     const newClockOut = data.clockOut ? new Date(data.clockOut) : null;
+    const newClockInNote = data.clockInNote ?? null;
+    const newClockOutNote = data.clockOutNote ?? null;
 
     if (Number.isNaN(newClockIn.getTime())) {
       throw new BadRequestException('Ugyldig mødetid');
@@ -959,7 +1198,32 @@ export class TimeEntriesService {
       existingEntry.cinema,
     );
 
-    if (deviation.requiresNote && !this.hasText(data.note)) {
+    if (
+      deviation.requiresNote &&
+      this.requiresClockInDeviationNote(deviation) &&
+      !this.hasText(newClockInNote)
+    ) {
+      throw new BadRequestException(
+        'Du skal skrive en mødetidsnote, når mødetiden afviger fra vagtplanen',
+      );
+    }
+
+    if (
+      deviation.requiresNote &&
+      this.requiresClockOutDeviationNote(deviation) &&
+      !this.hasText(newClockOutNote)
+    ) {
+      throw new BadRequestException(
+        'Du skal skrive en fyraftensnote, når fyraften afviger fra vagtplanen',
+      );
+    }
+
+    if (
+      deviation.requiresNote &&
+      this.requiresGeneralDeviationNote(deviation) &&
+      !this.hasText(newClockInNote) &&
+      !this.hasText(newClockOutNote)
+    ) {
       throw new BadRequestException(
         'Du skal skrive en note, når tiderne afviger fra vagtplanen',
       );
@@ -981,12 +1245,20 @@ export class TimeEntriesService {
       );
     }
 
-    if ((oldNote ?? '') !== (data.note ?? '')) {
-      changes.push(`Note ændret`);
+    if ((oldClockInNote ?? '') !== (newClockInNote ?? '')) {
+      changes.push('Mødetidsnote ændret');
+    }
+
+    if ((oldClockOutNote ?? '') !== (newClockOutNote ?? '')) {
+      changes.push('Fyraftensnote ændret');
+    }
+
+    if (existingEntry.status !== 'PENDING') {
+      changes.push(`Status: ${existingEntry.status} → PENDING`);
     }
 
     if (changes.length === 0) {
-      changes.push('Ingen ændring registreret');
+      throw new BadRequestException('Ingen ændringer registreret');
     }
 
     const entry = await this.prisma.timeEntry.update({
@@ -994,7 +1266,8 @@ export class TimeEntriesService {
       data: {
         clockIn: newClockIn,
         clockOut: newClockOut,
-        note: data.note,
+        clockInNote: newClockInNote,
+        clockOutNote: newClockOutNote,
         status: 'PENDING',
       },
       include: {
@@ -1013,6 +1286,31 @@ export class TimeEntriesService {
           },
         },
       },
+    });
+
+    await this.createRevision({
+      timeEntryId: entry.id,
+      changedByUserId: user.sub,
+      action: 'UPDATED',
+      before: {
+        status: existingEntry.status,
+        clockIn: existingEntry.clockIn,
+        clockOut: existingEntry.clockOut,
+        note: existingEntry.note,
+        clockInNote: existingEntry.clockInNote,
+        clockOutNote: existingEntry.clockOutNote,
+        adminNote: existingEntry.adminNote,
+      },
+      after: {
+        status: entry.status,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        note: entry.note,
+        clockInNote: entry.clockInNote,
+        clockOutNote: entry.clockOutNote,
+        adminNote: entry.adminNote,
+      },
+      reason: changes.join('\n'),
     });
 
     await this.auditLogsService.create({
@@ -1095,6 +1393,46 @@ export class TimeEntriesService {
       throw new BadRequestException('Fyraften skal være efter mødetid');
     }
 
+    const nextClockInNote =
+      data.clockInNote === undefined
+        ? existingEntry.clockInNote
+        : data.clockInNote;
+    const nextClockOutNote =
+      data.clockOutNote === undefined
+        ? existingEntry.clockOutNote
+        : data.clockOutNote;
+
+    const deviation = this.analyzeDeviation(
+      {
+        ...existingEntry,
+        clockIn: nextClockIn,
+        clockOut: nextClockOut,
+      },
+      existingEntry.cinema,
+    );
+
+    if (
+      deviation.requiresNote &&
+      this.requiresClockInDeviationNote(deviation) &&
+      !this.hasText(nextClockInNote) &&
+      !this.hasText(data.adminNote)
+    ) {
+      throw new BadRequestException(
+        'Mødetidsnote eller admin-note er påkrævet, når mødetiden afviger fra vagtplanen',
+      );
+    }
+
+    if (
+      deviation.requiresNote &&
+      this.requiresClockOutDeviationNote(deviation) &&
+      !this.hasText(nextClockOutNote) &&
+      !this.hasText(data.adminNote)
+    ) {
+      throw new BadRequestException(
+        'Fyraftensnote eller admin-note er påkrævet, når fyraften afviger fra vagtplanen',
+      );
+    }
+
     const changes: string[] = [];
 
     if (existingEntry.clockIn.getTime() !== nextClockIn.getTime()) {
@@ -1149,6 +1487,10 @@ export class TimeEntriesService {
       );
     }
 
+    if (existingEntry.status !== 'PENDING') {
+      changes.push(`Status: ${existingEntry.status} → PENDING`);
+    }
+
     if (changes.length === 0) {
       throw new BadRequestException('Ingen ændringer registreret');
     }
@@ -1158,15 +1500,12 @@ export class TimeEntriesService {
       data: {
         clockIn: nextClockIn,
         clockOut: nextClockOut,
-        clockInNote:
-          data.clockInNote === undefined
-            ? existingEntry.clockInNote
-            : data.clockInNote,
-        clockOutNote:
-          data.clockOutNote === undefined
-            ? existingEntry.clockOutNote
-            : data.clockOutNote,
-        adminNote: data.adminNote,
+        clockInNote: nextClockInNote,
+        clockOutNote: nextClockOutNote,
+        adminNote:
+          data.adminNote === undefined
+            ? existingEntry.adminNote
+            : data.adminNote,
         status: 'PENDING',
       },
       include: {
@@ -1185,6 +1524,31 @@ export class TimeEntriesService {
           },
         },
       },
+    });
+
+    await this.createRevision({
+      timeEntryId: entry.id,
+      changedByUserId: user.sub,
+      action: 'UPDATED',
+      before: {
+        status: existingEntry.status,
+        clockIn: existingEntry.clockIn,
+        clockOut: existingEntry.clockOut,
+        note: existingEntry.note,
+        adminNote: existingEntry.adminNote,
+        clockInNote: existingEntry.clockInNote,
+        clockOutNote: existingEntry.clockOutNote,
+      },
+      after: {
+        status: entry.status,
+        clockIn: entry.clockIn,
+        clockOut: entry.clockOut,
+        note: entry.note,
+        adminNote: entry.adminNote,
+        clockInNote: entry.clockInNote,
+        clockOutNote: entry.clockOutNote,
+      },
+      reason: data.adminNote,
     });
 
     for (const change of changes) {
@@ -1220,5 +1584,52 @@ export class TimeEntriesService {
     );
 
     return response;
+  }
+
+  async findRevisionsForEntry(user: any, id: number) {
+    const entry = await this.prisma.timeEntry.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        cinemaId: true,
+      },
+    });
+
+    if (!entry) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
+    if (user.role === 'EMPLOYEE' && entry.userId !== user.sub) {
+      throw new BadRequestException(
+        'Du kan kun se historik for dine egne tidsregistreringer',
+      );
+    }
+
+    if (user.role !== 'MASTER' && entry.cinemaId !== user.cinemaId) {
+      throw new BadRequestException(
+        'Du kan kun se historik for din egen biograf',
+      );
+    }
+
+    return this.prisma.timeEntryRevision.findMany({
+      where: {
+        timeEntryId: id,
+      },
+      include: {
+        changedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
   }
 }

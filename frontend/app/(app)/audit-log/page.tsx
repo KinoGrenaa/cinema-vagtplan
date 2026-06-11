@@ -28,7 +28,7 @@ const actionLabels: Record<string, string> = {
   UPDATE_TIME_ENTRY_FIELD: "Felt ændret",
   APPROVE_TIME_ENTRY: "Tidsregistrering godkendt",
   UNAPPROVE_TIME_ENTRY: "Godkendelse fjernet",
-  REJECT_TIME_ENTRY: "Tidsregistrering afvist",
+  SEND_BACK_TIME_ENTRY: "Tidsregistrering sendt retur til rettelse",
   LOCK_PAYROLL_PERIOD: "Lønperiode låst",
   UNLOCK_PAYROLL_PERIOD: "Lønperiode låst op",
 };

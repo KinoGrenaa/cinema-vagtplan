@@ -39,8 +39,9 @@ enum ShiftTradeType {
 
 enum TimeEntryStatus {
   PENDING
+  NEEDS_CHANGES
   APPROVED
-  REJECTED
+  VOIDED
 }
 
 enum PayrollPeriodStatus {
@@ -110,6 +111,10 @@ model Cinema {
 }
 
 model User {
+  // eksisterende felter...
+
+  timeEntryRevisions TimeEntryRevision[]
+
   id             Int       @id @default(autoincrement())
   email          String    @unique
   password       String
@@ -285,6 +290,10 @@ model Message {
 }
 
 model TimeEntry {
+  // eksisterende felter...
+
+  revisions TimeEntryRevision[]
+
   id        Int       @id @default(autoincrement())
   clockIn   DateTime
   clockOut  DateTime?
@@ -543,36 +552,48 @@ model StaffingAiProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  model TimeEntryAudit {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-
-  fieldName String
-  oldValue  String?
-  newValue  String?
-
-  changedById Int
-  changedBy   User @relation(...)
-
-  timeEntryId Int
-  timeEntry   TimeEntry @relation(...)
-
   @@index([aiPriorityScore])
   @@index([fatigueScore])
   @@index([overtimeScore])
 }
 
-model TimeEntryAudit {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-
-  fieldName String
-  oldValue  String?
-  newValue  String?
-
-  changedById Int
-  changedBy   User @relation(...)
+model TimeEntryRevision {
+  id Int @id @default(autoincrement())
 
   timeEntryId Int
-  timeEntry   TimeEntry @relation(...)
+  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+
+  changedByUserId Int?
+  changedByUser   User? @relation(fields: [changedByUserId], references: [id])
+
+  action String
+
+  previousStatus TimeEntryStatus?
+  newStatus      TimeEntryStatus?
+
+  previousClockIn DateTime?
+  newClockIn      DateTime?
+
+  previousClockOut DateTime?
+  newClockOut      DateTime?
+
+  previousNote String?
+  newNote      String?
+
+  previousClockInNote String?
+  newClockInNote      String?
+
+  previousClockOutNote String?
+  newClockOutNote      String?
+
+  previousAdminNote String?
+  newAdminNote      String?
+
+  reason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([timeEntryId])
+  @@index([changedByUserId])
+  @@index([createdAt])
 }

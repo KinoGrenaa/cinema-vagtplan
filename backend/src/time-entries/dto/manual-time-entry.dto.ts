@@ -1,8 +1,4 @@
-import {
-  IsInt,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsInt, IsOptional, IsString } from 'class-validator';
 
 export class ManualTimeEntryDto {
   @IsInt()
@@ -11,8 +7,9 @@ export class ManualTimeEntryDto {
   @IsInt()
   cinemaId: number;
 
+  @IsOptional()
   @IsInt()
-  shiftId: number;
+  shiftId?: number | null;
 
   @IsString()
   clockIn: string;

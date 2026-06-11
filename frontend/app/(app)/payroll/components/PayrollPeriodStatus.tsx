@@ -1,24 +1,12 @@
-import type { PayrollPeriod } from "../types";
+import type { PayrollPeriodStatusProps } from "../types";
 import { formatDateTime } from "../utils";
 import PayrollWarnings from "./PayrollWarnings";
-
-type PayrollPeriodStatusProps = {
-  period: PayrollPeriod | null;
-  totalHours: number;
-  pendingCount: number;
-  rejectedCount: number;
-  locking: boolean;
-  unlocking: boolean;
-  onLockPeriod: () => void;
-  onUnlockPeriod: () => void;
-  onOpenTimeApproval: () => void;
-};
 
 export default function PayrollPeriodStatus({
   period,
   totalHours,
   pendingCount,
-  rejectedCount,
+  voidedCount,
   locking,
   unlocking,
   onLockPeriod,
@@ -81,17 +69,17 @@ export default function PayrollPeriodStatus({
 
           <div className="rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-800">
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Afviste
+              Annullerede
             </div>
             <div className="mt-1 text-lg font-bold text-gray-700 dark:text-gray-300">
-              {rejectedCount}
+              {voidedCount}
             </div>
           </div>
         </div>
 
         <PayrollWarnings
           pendingCount={pendingCount}
-          rejectedCount={rejectedCount}
+          voidedCount={voidedCount}
           onOpenTimeApproval={onOpenTimeApproval}
         />
 

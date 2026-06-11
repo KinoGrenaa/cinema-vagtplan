@@ -87,3 +87,32 @@ export type PayrollAuditHistory = {
   unlockedByUserId?: number | null;
   unlockNote?: string | null;
 };
+
+export type PayrollCounts = {
+  pendingCount: number;
+  voidedCount: number;
+};
+
+export type PayrollReportResponse = {
+  employees: PayrollEmployee[];
+  pendingCount: number;
+  voidedCount: number;
+};
+
+export type PayrollPeriodStatusProps = {
+  period: PayrollPeriod | null;
+  totalHours: number;
+  pendingCount: number;
+  voidedCount: number;
+  locking: boolean;
+  unlocking: boolean;
+  onLockPeriod: () => void;
+  onUnlockPeriod: () => void;
+  onOpenTimeApproval: () => void;
+};
+
+export type PayrollWarningsProps = {
+  pendingCount: number;
+  voidedCount: number;
+  onOpenTimeApproval: () => void;
+};

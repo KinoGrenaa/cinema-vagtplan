@@ -1,15 +1,11 @@
-type PayrollWarningsProps = {
-  pendingCount: number;
-  rejectedCount: number;
-  onOpenTimeApproval: () => void;
-};
+import type { PayrollWarningsProps } from "../types";
 
 export default function PayrollWarnings({
   pendingCount,
-  rejectedCount,
+  voidedCount,
   onOpenTimeApproval,
 }: PayrollWarningsProps) {
-  if (pendingCount <= 0 && rejectedCount <= 0) {
+  if (pendingCount <= 0 && voidedCount <= 0) {
     return null;
   }
 
@@ -35,14 +31,14 @@ export default function PayrollWarnings({
         </div>
       )}
 
-      {rejectedCount > 0 && (
+      {voidedCount > 0 && (
         <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
           <div className="font-semibold">
-            ℹ {rejectedCount} afviste tidsregistreringer
+            {voidedCount} annullerede tidsregistreringer
           </div>
 
           <div className="mt-1">
-            Afviste registreringer indgår ikke i løngrundlaget.
+            Annullerede registreringer indgår ikke i løngrundlaget.
           </div>
         </div>
       )}

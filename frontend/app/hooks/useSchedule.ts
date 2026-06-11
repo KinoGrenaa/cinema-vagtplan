@@ -39,7 +39,7 @@ type UpdateShiftInput = {
 };
 
 type ManualTimeInput = {
-  shiftId: number;
+  shiftId?: number | null;
   clockIn: string;
   clockOut: string;
   note: string;
@@ -386,9 +386,9 @@ export function useSchedule(selectedDate: string) {
         body: JSON.stringify({
           userId: user.id,
           cinemaId: user.cinemaId,
-          shiftId: input.shiftId,
-          clockIn: input.clockIn,
-          clockOut: input.clockOut,
+          shiftId: input.shiftId ?? null,
+          clockIn: localDateTimeToISOString(input.clockIn),
+          clockOut: localDateTimeToISOString(input.clockOut),
           note: input.note,
         }),
       });

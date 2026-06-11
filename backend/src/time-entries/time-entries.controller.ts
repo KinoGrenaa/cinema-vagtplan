@@ -85,22 +85,30 @@ export class TimeEntriesController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id/approve')
-  approveEntry(@Param('id') id: string) {
-    return this.timeEntriesService.approveEntry(Number(id));
+  approveEntry(@Req() req, @Param('id') id: string) {
+    return this.timeEntriesService.approveEntry(Number(id), req.user.sub);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id/unapprove')
-  unapproveEntry(@Param('id') id: string) {
-    return this.timeEntriesService.unapproveEntry(Number(id));
+  unapproveEntry(@Req() req, @Param('id') id: string) {
+    return this.timeEntriesService.unapproveEntry(Number(id), req.user.sub);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id/reject')
-  rejectEntry(@Param('id') id: string, @Body() body: RejectTimeEntryDto) {
-    return this.timeEntriesService.rejectEntry(Number(id), body.adminNote);
+  rejectEntry(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body: RejectTimeEntryDto,
+  ) {
+    return this.timeEntriesService.rejectEntry(
+      Number(id),
+      body.adminNote,
+      req.user.sub,
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -118,8 +126,11 @@ export class TimeEntriesController {
     return this.timeEntriesService.updateOwnEntry(req.user, Number(id), body);
   }
 
-  @UseGuards(JwtGuard, RolesGuard)
-  @Roles('ADMIN', 'MASTER')
+  @UseGuards(JwtGuard)
+  @Get(':id/revisions')
+  getEntryRevisions(@Req() req, @Param('id') id: string) {
+    return this.timeEntriesService.findRevisionsForEntry(req.user, Number(id));
+  }
   @Patch(':id')
   updateEntry(
     @Req() req,

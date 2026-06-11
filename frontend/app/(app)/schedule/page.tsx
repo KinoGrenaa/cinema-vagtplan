@@ -6,7 +6,11 @@ import ShiftTimeline from "../../components/schedule/ShiftTimeline";
 import MovieProgram from "./components/MovieProgram";
 import AiSuggestionsPanel from "../../components/schedule/AiSuggestionsPanel";
 import { useSchedule } from "../../hooks/useSchedule";
-import { useScheduleAi } from "../../hooks/useScheduleAi";
+import {
+  useScheduleAi,
+  type MovieShowing,
+  type UseScheduleAiInput,
+} from "../../hooks/useScheduleAi";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
   dateToLocalDateString,
@@ -41,8 +45,8 @@ type AiScheduleFeatureProps = {
   shifts: Shift[];
   users: User[];
   workTypes: WorkType[];
-  movieShowings: any[];
-  createShift: (...args: any[]) => any;
+  movieShowings: MovieShowing[];
+  createShift: UseScheduleAiInput["createShift"];
   children: (ai: AiScheduleData | null) => React.ReactNode;
 };
 
@@ -147,6 +151,15 @@ export default function SchedulePage() {
   const [clockOutTime, setClockOutTime] = useState("");
   const [clockNote, setClockNote] = useState("");
 
+  const [showManualTimeModal, setShowManualTimeModal] = useState(false);
+  const [manualClockInTime, setManualClockInTime] = useState(
+    `${todayDefault}T14:00`,
+  );
+  const [manualClockOutTime, setManualClockOutTime] = useState(
+    `${todayDefault}T22:00`,
+  );
+  const [manualNote, setManualNote] = useState("");
+
   useEffect(() => {
     if (
       userId !== 0 &&
@@ -220,6 +233,13 @@ export default function SchedulePage() {
     setClockInTime("");
     setClockOutTime("");
     setClockNote("");
+  }
+
+  function resetManualTimeModal() {
+    setShowManualTimeModal(false);
+    setManualClockInTime(`${selectedDate}T14:00`);
+    setManualClockOutTime(`${selectedDate}T22:00`);
+    setManualNote("");
   }
 
   const requireNoteOnTimeDeviation = true;
@@ -445,6 +465,59 @@ export default function SchedulePage() {
     setShowClockModal(true);
   }
 
+  function openManualTimeModal() {
+    setManualClockInTime(`${selectedDate}T14:00`);
+    setManualClockOutTime(`${selectedDate}T22:00`);
+    setManualNote("");
+    setShowManualTimeModal(true);
+  }
+
+  async function handleSubmitManualTimeWithoutShift() {
+    if (!currentUser) {
+      toast.error("Du er ikke logget ind");
+      return;
+    }
+
+    if (!manualClockInTime || !manualClockOutTime) {
+      toast.error("Udfyld både mødetid og fyraften");
+      return;
+    }
+
+    const clockIn = new Date(localDateTimeToISOString(manualClockInTime));
+    const clockOut = new Date(localDateTimeToISOString(manualClockOutTime));
+
+    if (Number.isNaN(clockIn.getTime()) || Number.isNaN(clockOut.getTime())) {
+      toast.error("Ugyldig mødetid eller fyraften");
+      return;
+    }
+
+    if (clockOut <= clockIn) {
+      toast.error("Fyraften skal være efter mødetid");
+      return;
+    }
+
+    if (!manualNote.trim()) {
+      toast.error("Du skal skrive en note ved manuel registrering uden vagt");
+      return;
+    }
+
+    try {
+      await submitManualTimeEntry({
+        shiftId: null,
+        clockIn: manualClockInTime,
+        clockOut: manualClockOutTime,
+        note: manualNote,
+      });
+
+      toast.success("Manuel tidsregistrering sendt til godkendelse");
+      resetManualTimeModal();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Kunne ikke registrere timer",
+      );
+    }
+  }
+
   async function handleMoveShift(
     shift: Shift,
     newStartHour: number,
@@ -603,6 +676,13 @@ ${getShiftConfirmText(selectedShift)}`,
                       className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
                     >
                       Registrer tid
+                    </button>
+
+                    <button
+                      onClick={openManualTimeModal}
+                      className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Manuel registrering
                     </button>
                   </div>
                 </div>
@@ -899,6 +979,80 @@ ${getShiftConfirmText(selectedShift)}`,
                         </button>
                       </>
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showManualTimeModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+                <div className="mx-4 w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold">
+                        Manuel registrering
+                      </h2>
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Bruges til arbejde uden planlagt vagt. Registreringen
+                        sendes til godkendelse.
+                      </p>
+                    </div>
+
+                    <button onClick={resetManualTimeModal} className="text-2xl">
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">
+                        Mødetid
+                      </label>
+
+                      <input
+                        type="datetime-local"
+                        value={manualClockInTime}
+                        onChange={(event) =>
+                          setManualClockInTime(event.target.value)
+                        }
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">
+                        Fyraften
+                      </label>
+
+                      <input
+                        type="datetime-local"
+                        value={manualClockOutTime}
+                        onChange={(event) =>
+                          setManualClockOutTime(event.target.value)
+                        }
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">
+                        Note / begrundelse
+                      </label>
+
+                      <textarea
+                        value={manualNote}
+                        onChange={(event) => setManualNote(event.target.value)}
+                        className="min-h-28 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                        placeholder="Skriv hvorfor timerne registreres uden planlagt vagt"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleSubmitManualTimeWithoutShift}
+                      className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                    >
+                      Send til godkendelse
+                    </button>
                   </div>
                 </div>
               </div>

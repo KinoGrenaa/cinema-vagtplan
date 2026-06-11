@@ -1,4 +1,8 @@
-export type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type TimeEntryStatus =
+  | "PENDING"
+  | "NEEDS_CHANGES"
+  | "APPROVED"
+  | "VOIDED";
 
 export type TimeEntryDeviation = {
   hasDeviation: boolean;

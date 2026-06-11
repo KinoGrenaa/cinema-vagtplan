@@ -55,6 +55,23 @@ type TimeEntryDeviation = {
 export class PayrollService {
   private readonly deviationGraceMinutes = 5;
 
+  private formatDeviationMinutes(minutes: number): string {
+    const absoluteMinutes = Math.abs(minutes);
+
+    const hours = Math.floor(absoluteMinutes / 60);
+    const remainingMinutes = absoluteMinutes % 60;
+
+    if (hours === 0) {
+      return `${remainingMinutes} minutter`;
+    }
+
+    if (remainingMinutes === 0) {
+      return `${hours} timer`;
+    }
+
+    return `${hours} timer ${remainingMinutes} minutter`;
+  }
+
   private minutesBetween(start: Date, end: Date) {
     return Math.round((end.getTime() - start.getTime()) / 60000);
   }
@@ -113,26 +130,30 @@ export class PayrollService {
 
     if (clockInDeviationMinutes > this.deviationGraceMinutes) {
       types.push('LATE_CLOCK_IN');
-      messages.push(`Mødt ${clockInDeviationMinutes} minutter for sent`);
+      messages.push(
+        `Mødt ${this.formatDeviationMinutes(clockInDeviationMinutes)} for sent`,
+      );
     }
 
     if (clockInDeviationMinutes < -this.deviationGraceMinutes) {
       types.push('EARLY_CLOCK_IN');
       messages.push(
-        `Mødt ${Math.abs(clockInDeviationMinutes)} minutter før planlagt`,
+        `Mødt ${this.formatDeviationMinutes(clockInDeviationMinutes)} før planlagt`,
       );
     }
 
     if (clockOutDeviationMinutes < -this.deviationGraceMinutes) {
       types.push('EARLY_CLOCK_OUT');
       messages.push(
-        `Gået ${Math.abs(clockOutDeviationMinutes)} minutter før planlagt`,
+        `Gået ${this.formatDeviationMinutes(clockOutDeviationMinutes)} efter planlagt`,
       );
     }
 
     if (clockOutDeviationMinutes > this.deviationGraceMinutes) {
       types.push('LATE_CLOCK_OUT');
-      messages.push(`Gået ${clockOutDeviationMinutes} minutter efter planlagt`);
+      messages.push(
+        `Gået ${this.formatDeviationMinutes(clockOutDeviationMinutes)} efter planlagt`,
+      );
     }
 
     if (
@@ -141,7 +162,7 @@ export class PayrollService {
     ) {
       types.push('TIME_DIFFERENCE');
       messages.push(
-        `Registreret tid afviger med ${differenceMinutes} minutter fra vagtplanen`,
+        `Registreret tid afviger med ${this.formatDeviationMinutes(differenceMinutes)} fra vagtplanen`,
       );
     }
 
@@ -319,7 +340,7 @@ export class PayrollService {
       },
     });
 
-    const rejectedCount = await this.prisma.timeEntry.count({
+    const voidedCount = await this.prisma.timeEntry.count({
       where: {
         ...this.getCinemaFilter(user),
         ...(userId ? { userId: Number(userId) } : {}),
@@ -330,7 +351,7 @@ export class PayrollService {
         clockOut: {
           not: null,
         },
-        status: 'REJECTED',
+        status: 'VOIDED',
       },
     });
 
@@ -423,7 +444,7 @@ export class PayrollService {
         deviationCount: employee.deviationCount,
       })),
       pendingCount,
-      rejectedCount,
+      voidedCount,
     };
   }
 
@@ -639,9 +660,7 @@ export class PayrollService {
         clockOut: {
           not: null,
         },
-        status: {
-          not: 'APPROVED',
-        },
+        status: 'PENDING',
       },
       include: {
         user: true,
@@ -655,7 +674,7 @@ export class PayrollService {
         .join(', ');
 
       throw new BadRequestException(
-        `Kan ikke eksportere. Der findes ${unapprovedEntries.length} ikke-godkendte tidsregistreringer i perioden: ${names}`,
+        `Kan ikke eksportere. Der findes ${unapprovedEntries.length} afventende tidsregistreringer i perioden: ${names}`,
       );
     }
   }
