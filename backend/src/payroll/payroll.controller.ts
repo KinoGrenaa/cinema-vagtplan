@@ -48,6 +48,12 @@ export class PayrollController {
     return this.payrollService.getPeriod(req.user, startDate, endDate);
   }
 
+  @Get('period-for-date')
+  @Roles('EMPLOYEE', 'ADMIN', 'MASTER')
+  getPeriodForDate(@Req() req: any, @Query('date') date: string) {
+    return this.payrollService.getPayrollPeriodForDate(req.user, date);
+  }
+
   @Get('audit-history')
   getAuditHistory(
     @Req() req: any,

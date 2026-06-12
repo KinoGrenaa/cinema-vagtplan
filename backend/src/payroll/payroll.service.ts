@@ -225,6 +225,183 @@ export class PayrollService {
     };
   }
 
+  private dateToDateString(date: Date) {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
+  private createUtcDate(year: number, month: number, day: number) {
+    return new Date(Date.UTC(year, month, day));
+  }
+
+  private addDays(date: Date, days: number) {
+    return this.createUtcDate(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() + days,
+    );
+  }
+
+  private getDaysInMonth(year: number, month: number) {
+    return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  }
+
+  private clampDay(year: number, month: number, day: number) {
+    return Math.min(Math.max(day, 1), this.getDaysInMonth(year, month));
+  }
+
+  private calculatePayrollPeriodForDate(cinema: any, referenceDate: Date) {
+    const model = cinema.payrollPeriodModel || 'CALENDAR_MONTH';
+
+    const reference = this.createUtcDate(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth(),
+      referenceDate.getUTCDate(),
+    );
+
+    if (model === 'CALENDAR_MONTH') {
+      const start = this.createUtcDate(
+        reference.getUTCFullYear(),
+        reference.getUTCMonth(),
+        1,
+      );
+
+      const end = this.createUtcDate(
+        reference.getUTCFullYear(),
+        reference.getUTCMonth() + 1,
+        0,
+      );
+
+      return {
+        startDate: this.dateToDateString(start),
+        endDate: this.dateToDateString(end),
+      };
+    }
+
+    if (model === 'BIWEEKLY') {
+      const anchor = cinema.payrollPeriodAnchorDate
+        ? this.createUtcDate(
+            cinema.payrollPeriodAnchorDate.getUTCFullYear(),
+            cinema.payrollPeriodAnchorDate.getUTCMonth(),
+            cinema.payrollPeriodAnchorDate.getUTCDate(),
+          )
+        : this.createUtcDate(
+            reference.getUTCFullYear(),
+            reference.getUTCMonth(),
+            1,
+          );
+
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const daysSinceAnchor = Math.floor(
+        (reference.getTime() - anchor.getTime()) / msPerDay,
+      );
+
+      const cycleOffset = Math.floor(daysSinceAnchor / 14) * 14;
+      const start = this.addDays(anchor, cycleOffset);
+      const end = this.addDays(start, 13);
+
+      return {
+        startDate: this.dateToDateString(start),
+        endDate: this.dateToDateString(end),
+      };
+    }
+
+    const startDay = cinema.payrollPeriodStartDay || 1;
+    const endDay = cinema.payrollPeriodEndDay || 31;
+
+    const referenceDay = reference.getUTCDate();
+
+    if (startDay <= endDay) {
+      const start = this.createUtcDate(
+        reference.getUTCFullYear(),
+        reference.getUTCMonth(),
+        this.clampDay(
+          reference.getUTCFullYear(),
+          reference.getUTCMonth(),
+          startDay,
+        ),
+      );
+
+      const end = this.createUtcDate(
+        reference.getUTCFullYear(),
+        reference.getUTCMonth(),
+        this.clampDay(
+          reference.getUTCFullYear(),
+          reference.getUTCMonth(),
+          endDay,
+        ),
+      );
+
+      return {
+        startDate: this.dateToDateString(start),
+        endDate: this.dateToDateString(end),
+      };
+    }
+
+    const startMonthOffset = referenceDay >= startDay ? 0 : -1;
+    const endMonthOffset = referenceDay >= startDay ? 1 : 0;
+
+    const startMonth = this.createUtcDate(
+      reference.getUTCFullYear(),
+      reference.getUTCMonth() + startMonthOffset,
+      1,
+    );
+
+    const endMonth = this.createUtcDate(
+      reference.getUTCFullYear(),
+      reference.getUTCMonth() + endMonthOffset,
+      1,
+    );
+
+    const start = this.createUtcDate(
+      startMonth.getUTCFullYear(),
+      startMonth.getUTCMonth(),
+      this.clampDay(
+        startMonth.getUTCFullYear(),
+        startMonth.getUTCMonth(),
+        startDay,
+      ),
+    );
+
+    const end = this.createUtcDate(
+      endMonth.getUTCFullYear(),
+      endMonth.getUTCMonth(),
+      this.clampDay(endMonth.getUTCFullYear(), endMonth.getUTCMonth(), endDay),
+    );
+
+    return {
+      startDate: this.dateToDateString(start),
+      endDate: this.dateToDateString(end),
+    };
+  }
+
+  async getPayrollPeriodForDate(user: AuthUser, referenceDate: string) {
+    if (!user.cinemaId) {
+      throw new BadRequestException('Der mangler cinemaId på brugeren');
+    }
+
+    const reference = new Date(`${referenceDate}T00:00:00.000Z`);
+
+    if (Number.isNaN(reference.getTime())) {
+      throw new BadRequestException('Ugyldig dato');
+    }
+
+    const cinema = await this.prisma.cinema.findUnique({
+      where: {
+        id: user.cinemaId,
+      },
+    });
+
+    if (!cinema) {
+      throw new NotFoundException('Biograf blev ikke fundet');
+    }
+
+    return this.calculatePayrollPeriodForDate(cinema, reference);
+  }
+
   private resolvePayrollData(timeEntry: any): PayrollData {
     const directPayrollType = timeEntry.payrollType;
 

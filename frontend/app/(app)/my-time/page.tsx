@@ -8,25 +8,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type TimeEntryStatus = "PENDING" | "NEEDS_CHANGES" | "APPROVED" | "VOIDED";
 
-type PayrollPeriodModel = "CALENDAR_MONTH" | "FIXED_DAY_TO_DAY" | "BIWEEKLY";
-
-type PayrollPayoutRule = "LAST_WEEKDAY_OF_MONTH" | "FIXED_DAY_OF_MONTH";
-
-type CinemaPayrollSettings = {
-  payrollPeriodModel: PayrollPeriodModel;
-  payrollPeriodStartDay: number;
-  payrollPeriodEndDay: number;
-  payrollPeriodAnchorDate?: string | null;
-  payrollPayoutRule?: PayrollPayoutRule;
-  payrollPayoutDay?: number;
-};
-
-type CurrentUser = {
-  id: number;
-  role: "MASTER" | "ADMIN" | "EMPLOYEE";
-  cinemaId: number;
-};
-
 type TimeEntry = {
   id: number;
   clockIn: string;
@@ -252,205 +233,10 @@ function dateToLocalDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function firstDayOfMonthIso(date = new Date()) {
-  return dateToLocalDateString(
-    new Date(date.getFullYear(), date.getMonth(), 1),
-  );
-}
-
-function lastDayOfMonthIso(date = new Date()) {
-  return dateToLocalDateString(
-    new Date(date.getFullYear(), date.getMonth() + 1, 0),
-  );
-}
-
 function addDays(date: Date, days: number) {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result;
-}
-
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function clampDay(year: number, month: number, day: number) {
-  return Math.min(Math.max(day, 1), getDaysInMonth(year, month));
-}
-
-function calculatePayrollPeriod(
-  settings?: CinemaPayrollSettings | null,
-  referenceDate = new Date(),
-) {
-  const today = new Date(referenceDate);
-
-  if (!settings || settings.payrollPeriodModel === "CALENDAR_MONTH") {
-    return {
-      startDate: firstDayOfMonthIso(),
-      endDate: lastDayOfMonthIso(),
-    };
-  }
-
-  if (settings.payrollPeriodModel === "BIWEEKLY") {
-    const anchor = settings.payrollPeriodAnchorDate
-      ? new Date(settings.payrollPeriodAnchorDate)
-      : new Date(today.getFullYear(), today.getMonth(), 1);
-
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const daysSinceAnchor = Math.floor(
-      (new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate(),
-      ).getTime() -
-        new Date(
-          anchor.getFullYear(),
-          anchor.getMonth(),
-          anchor.getDate(),
-        ).getTime()) /
-        msPerDay,
-    );
-
-    const cycleOffset = Math.floor(daysSinceAnchor / 14) * 14;
-    const start = addDays(anchor, cycleOffset);
-    const end = addDays(start, 13);
-
-    return {
-      startDate: dateToLocalDateString(start),
-      endDate: dateToLocalDateString(end),
-    };
-  }
-
-  const startDay = settings.payrollPeriodStartDay || 1;
-  const endDay = settings.payrollPeriodEndDay || 31;
-
-  if (startDay <= endDay) {
-    return {
-      startDate: dateToLocalDateString(
-        new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          clampDay(today.getFullYear(), today.getMonth(), startDay),
-        ),
-      ),
-      endDate: dateToLocalDateString(
-        new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          clampDay(today.getFullYear(), today.getMonth(), endDay),
-        ),
-      ),
-    };
-  }
-
-  const startMonthOffset = today.getDate() >= startDay ? 0 : -1;
-  const endMonthOffset = today.getDate() >= startDay ? 1 : 0;
-
-  const startMonth = new Date(
-    today.getFullYear(),
-    today.getMonth() + startMonthOffset,
-    1,
-  );
-  const endMonth = new Date(
-    today.getFullYear(),
-    today.getMonth() + endMonthOffset,
-    1,
-  );
-
-  return {
-    startDate: dateToLocalDateString(
-      new Date(
-        startMonth.getFullYear(),
-        startMonth.getMonth(),
-        clampDay(startMonth.getFullYear(), startMonth.getMonth(), startDay),
-      ),
-    ),
-    endDate: dateToLocalDateString(
-      new Date(
-        endMonth.getFullYear(),
-        endMonth.getMonth(),
-        clampDay(endMonth.getFullYear(), endMonth.getMonth(), endDay),
-      ),
-    ),
-  };
-}
-
-function shiftDateString(dateString: string, days: number) {
-  return dateToLocalDateString(
-    addDays(new Date(`${dateString}T00:00:00`), days),
-  );
-}
-
-function getPayrollPeriodLengthDays(period: {
-  startDate: string;
-  endDate: string;
-}) {
-  const start = new Date(`${period.startDate}T00:00:00`).getTime();
-  const end = new Date(`${period.endDate}T00:00:00`).getTime();
-
-  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
-    return 1;
-  }
-
-  return Math.round((end - start) / (24 * 60 * 60 * 1000)) + 1;
-}
-
-function getPreviousPayrollPeriod(
-  period: { startDate: string; endDate: string },
-  settings?: CinemaPayrollSettings | null,
-) {
-  if (settings?.payrollPeriodModel === "CALENDAR_MONTH") {
-    const currentStart = new Date(`${period.startDate}T00:00:00`);
-    const previousMonth = new Date(
-      currentStart.getFullYear(),
-      currentStart.getMonth() - 1,
-      1,
-    );
-
-    return {
-      startDate: firstDayOfMonthIso(previousMonth),
-      endDate: lastDayOfMonthIso(previousMonth),
-    };
-  }
-
-  const daysToMove =
-    settings?.payrollPeriodModel === "BIWEEKLY"
-      ? 14
-      : getPayrollPeriodLengthDays(period);
-
-  return {
-    startDate: shiftDateString(period.startDate, -daysToMove),
-    endDate: shiftDateString(period.endDate, -daysToMove),
-  };
-}
-
-function getNextPayrollPeriod(
-  period: { startDate: string; endDate: string },
-  settings?: CinemaPayrollSettings | null,
-) {
-  if (settings?.payrollPeriodModel === "CALENDAR_MONTH") {
-    const currentStart = new Date(`${period.startDate}T00:00:00`);
-    const nextMonth = new Date(
-      currentStart.getFullYear(),
-      currentStart.getMonth() + 1,
-      1,
-    );
-
-    return {
-      startDate: firstDayOfMonthIso(nextMonth),
-      endDate: lastDayOfMonthIso(nextMonth),
-    };
-  }
-
-  const daysToMove =
-    settings?.payrollPeriodModel === "BIWEEKLY"
-      ? 14
-      : getPayrollPeriodLengthDays(period);
-
-  return {
-    startDate: shiftDateString(period.startDate, daysToMove),
-    endDate: shiftDateString(period.endDate, daysToMove),
-  };
 }
 
 function getDaySummaryParts(entries: TimeEntry[]) {
@@ -516,11 +302,14 @@ function toInputDateTime(value?: string | null) {
 export default function MyTimePage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cinemaSettings, setCinemaSettings] =
-    useState<CinemaPayrollSettings | null>(null);
-  const [payrollPeriod, setPayrollPeriod] = useState(() =>
-    calculatePayrollPeriod(null),
-  );
+  const [payrollPeriod, setPayrollPeriod] = useState(() => {
+    const today = dateToLocalDateString(new Date());
+
+    return {
+      startDate: today,
+      endDate: today,
+    };
+  });
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
@@ -565,39 +354,46 @@ export default function MyTimePage() {
     }
   }, []);
 
-  const fetchCinemaPayrollSettings = useCallback(async () => {
-    const savedUser = localStorage.getItem("user");
+  const fetchPayrollPeriodForDate = useCallback(
+    async (referenceDate: string) => {
+      try {
+        const response = await fetch(
+          `${API_URL}/payroll/period-for-date?date=${encodeURIComponent(referenceDate)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${getToken()}`,
+            },
+          },
+        );
 
-    if (!savedUser) return;
+        if (!response.ok) {
+          toast.error("Kunne ikke hente lønperiode");
+          return;
+        }
 
-    try {
-      const user: CurrentUser = JSON.parse(savedUser);
+        const data = await response.json();
 
-      const response = await fetch(`${API_URL}/cinemas/${user.cinemaId}`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+        if (
+          typeof data?.startDate !== "string" ||
+          typeof data?.endDate !== "string"
+        ) {
+          toast.error("Ugyldig lønperiode fra serveren");
+          return;
+        }
 
-      if (!response.ok) return;
+        setPayrollPeriod({
+          startDate: data.startDate.slice(0, 10),
+          endDate: data.endDate.slice(0, 10),
+        });
 
-      const settings = await response.json();
-      const payrollSettings: CinemaPayrollSettings = {
-        payrollPeriodModel: settings.payrollPeriodModel || "CALENDAR_MONTH",
-        payrollPeriodStartDay: settings.payrollPeriodStartDay || 1,
-        payrollPeriodEndDay: settings.payrollPeriodEndDay || 31,
-        payrollPeriodAnchorDate: settings.payrollPeriodAnchorDate || null,
-        payrollPayoutRule:
-          settings.payrollPayoutRule || "LAST_WEEKDAY_OF_MONTH",
-        payrollPayoutDay: settings.payrollPayoutDay || 0,
-      };
-
-      setCinemaSettings(payrollSettings);
-      setPayrollPeriod(calculatePayrollPeriod(payrollSettings));
-    } catch (error) {
-      console.error(error);
-    }
-  }, []);
+        setExpandedDayKeys([]);
+      } catch (error) {
+        console.error(error);
+        toast.error("Kunne ikke hente lønperiode");
+      }
+    },
+    [],
+  );
 
   useRealtimeCore({
     onTimeEntry: fetchEntries,
@@ -738,32 +534,29 @@ export default function MyTimePage() {
   }
 
   function goToPreviousPayrollPeriod() {
-    setPayrollPeriod((current) =>
-      getPreviousPayrollPeriod(current, cinemaSettings),
+    const referenceDate = dateToLocalDateString(
+      addDays(new Date(`${payrollPeriod.startDate}T00:00:00`), -1),
     );
-    setExpandedDayKeys([]);
+
+    fetchPayrollPeriodForDate(referenceDate);
   }
 
   function goToCurrentPayrollPeriod() {
-    setPayrollPeriod(calculatePayrollPeriod(cinemaSettings));
-    setExpandedDayKeys([]);
+    fetchPayrollPeriodForDate(dateToLocalDateString(new Date()));
   }
 
   function goToNextPayrollPeriod() {
-    setPayrollPeriod((current) =>
-      getNextPayrollPeriod(current, cinemaSettings),
+    const referenceDate = dateToLocalDateString(
+      addDays(new Date(`${payrollPeriod.endDate}T00:00:00`), 1),
     );
-    setExpandedDayKeys([]);
+
+    fetchPayrollPeriodForDate(referenceDate);
   }
 
   useEffect(() => {
-    fetchCinemaPayrollSettings();
+    fetchPayrollPeriodForDate(dateToLocalDateString(new Date()));
     fetchEntries();
-  }, [fetchCinemaPayrollSettings, fetchEntries]);
-
-  useEffect(() => {
-    setPayrollPeriod(calculatePayrollPeriod(cinemaSettings));
-  }, [cinemaSettings]);
+  }, [fetchEntries, fetchPayrollPeriodForDate]);
 
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) =>

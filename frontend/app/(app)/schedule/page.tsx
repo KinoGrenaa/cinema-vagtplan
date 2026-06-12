@@ -336,7 +336,8 @@ export default function SchedulePage() {
       return;
     }
 
-    const shift = shifts.find((s) => s.id === openTimeEntry.shiftId);
+    const shift =
+      openTimeEntry.shift || shifts.find((s) => s.id === openTimeEntry.shiftId);
 
     if (!shift) {
       toast.error("Kunne ikke finde vagten for den åbne tidsregistrering");

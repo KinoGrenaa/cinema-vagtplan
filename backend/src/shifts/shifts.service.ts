@@ -39,10 +39,18 @@ export class ShiftsService {
       const start = new Date(`${date}T00:00:00.000Z`);
       const end = new Date(`${date}T23:59:59.999Z`);
 
-      where.startTime = {
-        gte: start,
-        lte: end,
-      };
+      where.AND = [
+        {
+          startTime: {
+            lt: end,
+          },
+        },
+        {
+          endTime: {
+            gt: start,
+          },
+        },
+      ];
     }
 
     return this.prisma.shift.findMany({
