@@ -30,14 +30,67 @@ export class ShiftsService {
     return { cinemaId: user.cinemaId };
   }
 
+  private getCopenhagenOffsetMs(date: Date) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Europe/Copenhagen',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+
+    const values = Object.fromEntries(
+      parts
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, part.value]),
+    );
+
+    const asUtc = Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+      Number(values.second),
+    );
+
+    return asUtc - date.getTime();
+  }
+
+  private copenhagenLocalMidnightToUtc(
+    year: number,
+    month: number,
+    day: number,
+  ) {
+    const utcGuess = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+    const offsetMs = this.getCopenhagenOffsetMs(utcGuess);
+
+    return new Date(utcGuess.getTime() - offsetMs);
+  }
+
+  private getCopenhagenDayRange(date: string) {
+    const [year, month, day] = date.split('-').map(Number);
+
+    if (!year || !month || !day) {
+      throw new BadRequestException('Ugyldig dato');
+    }
+
+    return {
+      start: this.copenhagenLocalMidnightToUtc(year, month, day),
+      end: this.copenhagenLocalMidnightToUtc(year, month, day + 1),
+    };
+  }
+
   async findAll(user: AuthUser, date?: string) {
     const where: any = {
       ...this.getCinemaFilter(user),
     };
 
     if (date) {
-      const start = new Date(`${date}T00:00:00.000Z`);
-      const end = new Date(`${date}T23:59:59.999Z`);
+      const { start, end } = this.getCopenhagenDayRange(date);
 
       where.AND = [
         {

@@ -535,6 +535,23 @@ export default function SchedulePage() {
     }
   }
 
+  function createDateTimeFromSelectedDate(hour: number, minute: number) {
+    const date = new Date(`${selectedDate}T00:00:00`);
+
+    date.setHours(hour, minute, 0, 0);
+
+    return date;
+  }
+
+  function getSelectedDayRange() {
+    const start = new Date(`${selectedDate}T00:00:00`);
+    const end = new Date(start);
+
+    end.setDate(end.getDate() + 1);
+
+    return { start, end };
+  }
+
   async function handleMoveShift(
     shift: Shift,
     newStartHour: number,
@@ -544,9 +561,19 @@ export default function SchedulePage() {
     const oldEnd = new Date(shift.endTime);
     const durationMs = oldEnd.getTime() - oldStart.getTime();
 
-    const newStart = new Date(oldStart);
-    newStart.setHours(newStartHour, newStartMinute, 0, 0);
+    const { start: dayStart } = getSelectedDayRange();
 
+    const visibleStart =
+      oldStart.getTime() > dayStart.getTime() ? oldStart : dayStart;
+
+    const visibleOffsetMs = visibleStart.getTime() - oldStart.getTime();
+
+    const newVisibleStart = createDateTimeFromSelectedDate(
+      newStartHour,
+      newStartMinute,
+    );
+
+    const newStart = new Date(newVisibleStart.getTime() - visibleOffsetMs);
     const newEnd = new Date(newStart.getTime() + durationMs);
 
     await updateShift(shift.id, {
@@ -576,12 +603,32 @@ export default function SchedulePage() {
     newEndMinute: number,
   ) {
     const oldStart = new Date(shift.startTime);
+    const oldEnd = new Date(shift.endTime);
 
-    const newStart = new Date(oldStart);
-    newStart.setHours(newStartHour, newStartMinute, 0, 0);
+    const { start: dayStart, end: dayEnd } = getSelectedDayRange();
 
-    const newEnd = new Date(oldStart);
-    newEnd.setHours(newEndHour, newEndMinute, 0, 0);
+    const visibleStart =
+      oldStart.getTime() > dayStart.getTime() ? oldStart : dayStart;
+
+    const visibleEnd = oldEnd.getTime() < dayEnd.getTime() ? oldEnd : dayEnd;
+
+    const hiddenBeforeMs = visibleStart.getTime() - oldStart.getTime();
+
+    const hiddenAfterMs = oldEnd.getTime() - visibleEnd.getTime();
+
+    const newVisibleStart = createDateTimeFromSelectedDate(
+      newStartHour,
+      newStartMinute,
+    );
+
+    const newVisibleEnd = createDateTimeFromSelectedDate(
+      newEndHour,
+      newEndMinute,
+    );
+
+    const newStart = new Date(newVisibleStart.getTime() - hiddenBeforeMs);
+
+    const newEnd = new Date(newVisibleEnd.getTime() + hiddenAfterMs);
 
     await updateShift(shift.id, {
       startTime: newStart.toISOString(),
