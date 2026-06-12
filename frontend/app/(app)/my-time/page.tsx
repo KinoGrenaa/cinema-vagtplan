@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -1003,147 +1004,15 @@ export default function MyTimePage() {
           </div>
         </div>
       )}
-      {historyEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold">
-                Historik for tidsregistrering
-              </h2>
-
-              <button
-                onClick={() => {
-                  setHistoryEntry(null);
-                  setHistoryItems([]);
-                }}
-                className="rounded-lg px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                ✕
-              </button>
-            </div>
-
-            {historyLoading ? (
-              <div className="py-8 text-center">Henter historik...</div>
-            ) : historyItems.length === 0 ? (
-              <div className="py-8 text-center text-gray-500">
-                Ingen historik fundet
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {historyItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="relative rounded-xl border border-gray-200 p-4 dark:border-gray-800"
-                  >
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-semibold">
-                        {getRevisionActionLabel(item.action)}
-                      </div>
-
-                      <div className="text-xs text-gray-500">
-                        {formatDateTime(item.createdAt)}
-                      </div>
-                    </div>
-
-                    {item.changedByUser && (
-                      <div className="mb-3 text-sm text-gray-600 dark:text-gray-400">
-                        <span className="font-medium">
-                          {getRevisionActorLabel(item.action)}:
-                        </span>{" "}
-                        {item.changedByUser.firstName}{" "}
-                        {item.changedByUser.lastName}
-                      </div>
-                    )}
-
-                    <div className="space-y-2 text-sm">
-                      {item.previousClockIn !== item.newClockIn && (
-                        <div>
-                          <span className="font-medium">Mødetid:</span>{" "}
-                          {formatDateTime(item.previousClockIn)}
-                          {" → "}
-                          {formatDateTime(item.newClockIn)}
-                        </div>
-                      )}
-
-                      {item.previousClockOut !== item.newClockOut && (
-                        <div>
-                          <span className="font-medium">Fyraften:</span>{" "}
-                          {formatDateTime(item.previousClockOut)}
-                          {" → "}
-                          {formatDateTime(item.newClockOut)}
-                        </div>
-                      )}
-
-                      {item.previousStatus !== item.newStatus && (
-                        <div>
-                          <span className="font-medium">Status:</span>{" "}
-                          {getStatusHistoryLabel(item.previousStatus)}
-                          {" → "}
-                          {getStatusHistoryLabel(item.newStatus)}
-                        </div>
-                      )}
-
-                      {shouldShowCreatedNoteAsSingleNote(item) ? (
-                        <div>
-                          <span className="font-medium">Note:</span>{" "}
-                          {item.newClockInNote}
-                        </div>
-                      ) : (
-                        <>
-                          {item.previousClockInNote !== item.newClockInNote && (
-                            <div>
-                              <span className="font-medium">Mødetidsnote:</span>{" "}
-                              {item.previousClockInNote || "-"}
-                              {" → "}
-                              {item.newClockInNote || "-"}
-                            </div>
-                          )}
-
-                          {item.previousClockOutNote !==
-                            item.newClockOutNote && (
-                            <div>
-                              <span className="font-medium">
-                                Fyraftensnote:
-                              </span>{" "}
-                              {item.previousClockOutNote || "-"}
-                              {" → "}
-                              {item.newClockOutNote || "-"}
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {item.previousAdminNote !== item.newAdminNote && (
-                        <div>
-                          <span className="font-medium">Adminnote:</span>{" "}
-                          {item.previousAdminNote || "-"}
-                          {" → "}
-                          {item.newAdminNote || "-"}
-                        </div>
-                      )}
-                    </div>
-
-                    {item.reason &&
-                      item.reason !== "Tidsregistrering oprettet" &&
-                      item.reason !== item.newAdminNote && (
-                        <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
-                          <div className="mb-1 font-medium">
-                            {item.action === "APPROVED" ||
-                            item.action === "UNAPPROVED"
-                              ? "Systembesked"
-                              : "Begrundelse"}
-                          </div>
-
-                          <div>{item.reason}</div>
-                        </div>
-                      )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <TimeEntryHistoryModal
+        isOpen={!!historyEntry}
+        onClose={() => {
+          setHistoryEntry(null);
+          setHistoryItems([]);
+        }}
+        revisions={historyItems}
+        currentStatus={historyEntry?.status}
+      />
     </main>
   );
 }

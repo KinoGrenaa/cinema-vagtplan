@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
+import BaseModal from "@/app/components/modals/BaseModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import {
   formatDateDK,
@@ -19,6 +21,7 @@ type LeaveRequest = {
   endDate: string;
   reason?: string | null;
   status: LeaveStatus;
+  createdAt?: string;
   user: {
     id: number;
     firstName: string;
@@ -31,7 +34,7 @@ function isFullDayLeave(start: Date, end: Date) {
     start.getUTCHours() === 0 &&
     start.getUTCMinutes() === 0 &&
     end.getUTCHours() === 23 &&
-    end.getUTCMinutes() === 59
+    end.getUTCMinutes() >= 59
   );
 }
 
@@ -43,11 +46,9 @@ function formatLeavePeriod(startDateString: string, endDateString: string) {
     const startDate = formatUtcDateDK(start);
     const endDate = formatUtcDateDK(end);
 
-    if (startDate === endDate) {
-      return `${startDate} · Heldag`;
-    }
-
-    return `${startDate} → ${endDate} · Heldag`;
+    return startDate === endDate
+      ? `${startDate} · Heldag`
+      : `${startDate} - ${endDate} · Heldag`;
   }
 
   const startDate = formatDateDK(start);
@@ -55,12 +56,11 @@ function formatLeavePeriod(startDateString: string, endDateString: string) {
   const startTime = formatTimeDK(start);
   const endTime = formatTimeDK(end);
 
-  if (startDate === endDate) {
-    return `${startDate} · ${startTime}-${endTime}`;
-  }
-
-  return `${startDate} kl. ${startTime} → ${endDate} kl. ${endTime}`;
+  return startDate === endDate
+    ? `${startDate} · kl. ${startTime}-${endTime}`
+    : `${startDate} kl. ${startTime} - ${endDate} kl. ${endTime}`;
 }
+
 function getStatusBadge(status: LeaveStatus) {
   if (status === "APPROVED") {
     return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
@@ -84,10 +84,22 @@ function getStatusLabel(status: LeaveStatus) {
   return "Afventer";
 }
 
+function getUserName(request: LeaveRequest) {
+  return `${request.user.firstName} ${request.user.lastName}`.trim();
+}
+
 export default function LeaveApprovalPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showPending, setShowPending] = useState(true);
+  const [showApproved, setShowApproved] = useState(false);
+  const [showRejected, setShowRejected] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
+
+  const [expandedUserIds, setExpandedUserIds] = useState<number[]>([]);
 
   function getToken() {
     return localStorage.getItem("token");
@@ -128,6 +140,52 @@ export default function LeaveApprovalPage() {
     fetchRequests();
   }, [fetchRequests]);
 
+  const visibleRequests = useMemo(() => {
+    return requests.filter((request) => {
+      if (request.status === "PENDING") return showPending;
+      if (request.status === "APPROVED") return showApproved;
+      if (request.status === "REJECTED") return showRejected;
+      if (request.status === "CANCELLED") return showCancelled;
+
+      return false;
+    });
+  }, [requests, showApproved, showCancelled, showPending, showRejected]);
+
+  const groupedRequests = useMemo(() => {
+    const groups = new Map<number, LeaveRequest[]>();
+
+    for (const request of visibleRequests) {
+      const existing = groups.get(request.user.id) || [];
+      groups.set(request.user.id, [...existing, request]);
+    }
+
+    return Array.from(groups.entries())
+      .map(([userId, userRequests]) => ({
+        userId,
+        userName: getUserName(userRequests[0]),
+        requests: userRequests.sort(
+          (a, b) =>
+            new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+        ),
+      }))
+      .sort((a, b) => a.userName.localeCompare(b.userName, "da-DK"));
+  }, [visibleRequests]);
+
+  function resetFilter() {
+    setShowPending(true);
+    setShowApproved(false);
+    setShowRejected(false);
+    setShowCancelled(false);
+  }
+
+  function toggleUserGroup(userId: number) {
+    setExpandedUserIds((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId],
+    );
+  }
+
   async function updateStatus(requestId: number, status: LeaveStatus) {
     try {
       setError("");
@@ -161,11 +219,24 @@ export default function LeaveApprovalPage() {
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            <h1 className="text-3xl font-bold">Fraværsgodkendelse</h1>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">Fraværsgodkendelse</h1>
 
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-              Gennemgå, godkend, afvis eller annuller fraværsansøgninger.
-            </p>
+                <p className="mt-2 text-gray-500 dark:text-gray-400">
+                  Gennemgå, godkend, afvis eller annuller fraværsansøgninger.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowFilterModal(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 font-medium text-gray-900 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
+              >
+                <SlidersHorizontal size={18} />
+                Filter
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -180,120 +251,284 @@ export default function LeaveApprovalPage() {
             </div>
           )}
 
-          {!loading && requests.length > 0 && (
+          {!loading && (
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-              <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800">
-                <div className="hidden bg-gray-50 text-sm font-medium text-gray-600 dark:bg-gray-950 dark:text-gray-400 md:grid md:grid-cols-[1.2fr_1.6fr_1fr_1fr_1.6fr]">
-                  <div className="border-r border-gray-200 p-3 dark:border-gray-800">
-                    Medarbejder
-                  </div>
-
-                  <div className="border-r border-gray-200 p-3 dark:border-gray-800">
-                    Periode
-                  </div>
-
-                  <div className="border-r border-gray-200 p-3 dark:border-gray-800">
-                    Årsag
-                  </div>
-
-                  <div className="border-r border-gray-200 p-3 dark:border-gray-800">
-                    Status
-                  </div>
-
-                  <div className="p-3">Handling</div>
-                </div>
-
-                {requests.map((request) => (
-                  <div
-                    key={request.id}
-                    className="grid gap-3 border-t border-gray-200 p-4 text-sm dark:border-gray-800 md:md:grid-cols-[1.2fr_1.6fr_1fr_1fr_1.6fr] md:gap-0 md:p-0"
-                  >
-                    <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
-                      <span className="block text-xs text-gray-500 md:hidden">
-                        Medarbejder
-                      </span>
-                      {request.user.firstName} {request.user.lastName}
-                    </div>
-
-                    <div className="whitespace-nowrap md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
-                      <span className="block text-xs text-gray-500 md:hidden">
-                        Periode
-                      </span>
-                      {formatLeavePeriod(request.startDate, request.endDate)}
-                    </div>
-
-                    <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
-                      <span className="block text-xs text-gray-500 md:hidden">
-                        Årsag
-                      </span>
-                      {request.reason || "-"}
-                    </div>
-
-                    <div className="md:border-r md:border-gray-200 md:p-3 md:dark:border-gray-800">
-                      <span className="block text-xs text-gray-500 md:hidden">
-                        Status
-                      </span>
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
-                          request.status,
-                        )}`}
-                      >
-                        {getStatusLabel(request.status)}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 md:p-3">
-                      {request.status === "PENDING" && (
-                        <>
-                          <button
-                            onClick={() => updateStatus(request.id, "APPROVED")}
-                            className="rounded-lg bg-green-600 px-3 py-1 text-white transition hover:bg-green-700"
-                          >
-                            Godkend
-                          </button>
-
-                          <button
-                            onClick={() => updateStatus(request.id, "REJECTED")}
-                            className="rounded-lg bg-red-600 px-3 py-1 text-white transition hover:bg-red-700"
-                          >
-                            Afvis
-                          </button>
-                        </>
-                      )}
-
-                      {(request.status === "PENDING" ||
-                        request.status === "APPROVED") && (
-                        <button
-                          onClick={() => updateStatus(request.id, "CANCELLED")}
-                          className="rounded-lg bg-gray-600 px-3 py-1 text-white transition hover:bg-gray-700"
-                        >
-                          Annuller
-                        </button>
-                      )}
-
-                      {(request.status === "REJECTED" ||
-                        request.status === "CANCELLED") && (
-                        <span className="text-gray-400 dark:text-gray-500">
-                          Ingen
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="mb-4">
+                <h2 className="text-2xl font-bold">Ansøgninger</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Viser {visibleRequests.length} af {requests.length}{" "}
+                  ansøgninger.
+                </p>
               </div>
+
+              {groupedRequests.length === 0 ? (
+                <div className="rounded-2xl border border-gray-200 p-8 text-center dark:border-gray-800">
+                  <h3 className="text-xl font-bold">
+                    Ingen fraværsansøgninger
+                  </h3>
+
+                  <p className="mt-2 text-gray-500 dark:text-gray-400">
+                    Ingen ansøgninger matcher det valgte filter.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {groupedRequests.map((group) => {
+                    const isExpanded = expandedUserIds.includes(group.userId);
+
+                    return (
+                      <div
+                        key={group.userId}
+                        className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleUserGroup(group.userId)}
+                          className="flex w-full items-center justify-between gap-4 bg-gray-50 p-4 text-left transition hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2 font-semibold">
+                              {isExpanded ? (
+                                <ChevronDown size={18} />
+                              ) : (
+                                <ChevronRight size={18} />
+                              )}
+                              {group.userName}
+                            </div>
+
+                            <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                              {group.requests.length} ansøgning
+                              {group.requests.length === 1 ? "" : "er"}
+                            </div>
+                          </div>
+
+                          <div className="text-right text-sm text-gray-500 dark:text-gray-400">
+                            {[
+                              {
+                                label: "Afventer",
+                                count: group.requests.filter(
+                                  (request) => request.status === "PENDING",
+                                ).length,
+                              },
+                              {
+                                label: "Godkendt",
+                                count: group.requests.filter(
+                                  (request) => request.status === "APPROVED",
+                                ).length,
+                              },
+                              {
+                                label: "Afvist",
+                                count: group.requests.filter(
+                                  (request) => request.status === "REJECTED",
+                                ).length,
+                              },
+                              {
+                                label: "Annulleret",
+                                count: group.requests.filter(
+                                  (request) => request.status === "CANCELLED",
+                                ).length,
+                              },
+                            ]
+                              .filter((item) => item.count > 0)
+                              .map((item) => `${item.label}: ${item.count}`)
+                              .join(" · ")}
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="space-y-3 p-4">
+                            {group.requests.map((request) => (
+                              <div
+                                key={request.id}
+                                className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800"
+                              >
+                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                  <div>
+                                    <div className="text-lg font-semibold">
+                                      {formatLeavePeriod(
+                                        request.startDate,
+                                        request.endDate,
+                                      )}
+                                    </div>
+
+                                    <div className="mt-2">
+                                      <span
+                                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
+                                          request.status,
+                                        )}`}
+                                      >
+                                        {getStatusLabel(request.status)}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-2">
+                                    {request.status === "PENDING" && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            updateStatus(request.id, "APPROVED")
+                                          }
+                                          className="rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+                                        >
+                                          Godkend
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            updateStatus(request.id, "REJECTED")
+                                          }
+                                          className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                                        >
+                                          Afvis
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {(request.status === "PENDING" ||
+                                      request.status === "APPROVED") && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          updateStatus(request.id, "CANCELLED")
+                                        }
+                                        className="rounded-lg bg-gray-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
+                                      >
+                                        Annuller
+                                      </button>
+                                    )}
+
+                                    {(request.status === "REJECTED" ||
+                                      request.status === "CANCELLED") && (
+                                      <span className="text-sm text-gray-400 dark:text-gray-500">
+                                        Ingen handlinger
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 text-sm md:grid-cols-4">
+                                  <div>
+                                    <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                                      Medarbejder
+                                    </div>
+                                    <div className="mt-1">
+                                      {getUserName(request)}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                                      Periode
+                                    </div>
+                                    <div className="mt-1">
+                                      {formatLeavePeriod(
+                                        request.startDate,
+                                        request.endDate,
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                                      Årsag
+                                    </div>
+                                    <div className="mt-1">
+                                      {request.reason || "-"}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                                      Oprettet
+                                    </div>
+                                    <div className="mt-1">
+                                      {request.createdAt
+                                        ? `${formatDateDK(
+                                            request.createdAt,
+                                          )} kl. ${formatTimeDK(
+                                            request.createdAt,
+                                          )}`
+                                        : "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
-
-          {!loading && requests.length === 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="text-xl font-bold">Ingen fraværsansøgninger</h2>
-
-              <p className="mt-2 text-gray-500 dark:text-gray-400">
-                Der er ingen fraværsansøgninger at behandle lige nu.
-              </p>
-            </div>
-          )}
         </div>
+
+        <BaseModal
+          open={showFilterModal}
+          onClose={() => setShowFilterModal(false)}
+          title="Filter"
+        >
+          <div className="space-y-3">
+            <label className="flex items-center justify-between rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+              <span>Afventer</span>
+              <input
+                type="checkbox"
+                checked={showPending}
+                onChange={(event) => setShowPending(event.target.checked)}
+              />
+            </label>
+
+            <label className="flex items-center justify-between rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+              <span>Godkendt</span>
+              <input
+                type="checkbox"
+                checked={showApproved}
+                onChange={(event) => setShowApproved(event.target.checked)}
+              />
+            </label>
+
+            <label className="flex items-center justify-between rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+              <span>Afvist</span>
+              <input
+                type="checkbox"
+                checked={showRejected}
+                onChange={(event) => setShowRejected(event.target.checked)}
+              />
+            </label>
+
+            <label className="flex items-center justify-between rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+              <span>Annulleret</span>
+              <input
+                type="checkbox"
+                checked={showCancelled}
+                onChange={(event) => setShowCancelled(event.target.checked)}
+              />
+            </label>
+
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={resetFilter}
+                className="rounded-xl border border-gray-300 px-4 py-2 font-medium transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+              >
+                Nulstil filter
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowFilterModal(false)}
+                className="rounded-xl bg-black px-4 py-2 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+              >
+                Luk
+              </button>
+            </div>
+          </div>
+        </BaseModal>
       </main>
     </AdminGuard>
   );
