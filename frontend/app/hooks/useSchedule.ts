@@ -62,6 +62,14 @@ type OpenTimeEntry = {
   cinemaId: number;
 };
 
+type ScheduleTimeEntry = {
+  id: number;
+  shiftId?: number | null;
+  status: "PENDING" | "APPROVED" | "NEEDS_CHANGES" | "VOIDED";
+  clockIn: string;
+  clockOut?: string | null;
+};
+
 export function useSchedule(selectedDate: string) {
   const { apiFetch } = useApi();
 
@@ -76,6 +84,7 @@ export function useSchedule(selectedDate: string) {
   const [openTimeEntry, setOpenTimeEntry] = useState<OpenTimeEntry | null>(
     null,
   );
+  const [timeEntries, setTimeEntries] = useState<ScheduleTimeEntry[]>([]);
 
   const [loading, setLoading] = useState(true);
 
@@ -210,6 +219,30 @@ export function useSchedule(selectedDate: string) {
     }
   }, [apiFetch, user]);
 
+  const fetchMyTimeEntries = useCallback(async () => {
+    if (!user) {
+      setTimeEntries([]);
+      return;
+    }
+
+    try {
+      const response = await apiFetch("/time-entries/me");
+
+      if (!response.ok) {
+        setTimeEntries([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      const entriesArray: ScheduleTimeEntry[] = Array.isArray(data) ? data : [];
+
+      setTimeEntries(entriesArray);
+    } catch {
+      setTimeEntries([]);
+    }
+  }, [apiFetch, user]);
+
   const refreshDayData = useCallback(async () => {
     setLoading(true);
 
@@ -219,11 +252,18 @@ export function useSchedule(selectedDate: string) {
         fetchMovieShowings(),
         fetchLeaveRequests(),
         fetchOpenTimeEntry(),
+        fetchMyTimeEntries(),
       ]);
     } finally {
       setLoading(false);
     }
-  }, [fetchShifts, fetchMovieShowings, fetchLeaveRequests, fetchOpenTimeEntry]);
+  }, [
+    fetchShifts,
+    fetchMovieShowings,
+    fetchLeaveRequests,
+    fetchOpenTimeEntry,
+    fetchMyTimeEntries,
+  ]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -427,6 +467,7 @@ export function useSchedule(selectedDate: string) {
     offerShiftTrade,
 
     openTimeEntry,
+    timeEntries,
     clockIn,
     clockOut,
 

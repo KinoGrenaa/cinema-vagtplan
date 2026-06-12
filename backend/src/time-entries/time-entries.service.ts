@@ -468,6 +468,62 @@ export class TimeEntriesService {
       throw new BadRequestException('Fyraften skal være efter mødetid');
     }
 
+    const overlappingTimeEntry = await this.prisma.timeEntry.findFirst({
+      where: {
+        userId: data.userId,
+        cinemaId: data.cinemaId,
+        status: {
+          not: 'VOIDED',
+        },
+        clockOut: {
+          not: null,
+        },
+        AND: [
+          {
+            clockIn: {
+              lt: clockOut,
+            },
+          },
+          {
+            clockOut: {
+              gt: clockIn,
+            },
+          },
+        ],
+      },
+    });
+
+    if (overlappingTimeEntry) {
+      throw new BadRequestException(
+        'Der findes allerede en tidsregistrering i dette tidsrum',
+      );
+    }
+
+    const overlappingShift = await this.prisma.shift.findFirst({
+      where: {
+        userId: data.userId,
+        cinemaId: data.cinemaId,
+        AND: [
+          {
+            startTime: {
+              lt: clockOut,
+            },
+          },
+          {
+            endTime: {
+              gt: clockIn,
+            },
+          },
+        ],
+      },
+    });
+
+    if (overlappingShift) {
+      throw new BadRequestException(
+        'Du har allerede en planlagt vagt i dette tidsrum. Registrer tid på vagten i stedet.',
+      );
+    }
+
     const shift = data.shiftId
       ? await this.prisma.shift.findFirst({
           where: {

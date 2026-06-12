@@ -24,6 +24,7 @@ import InputModal from "@/app/components/modals/InputModal";
 
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInputModal } from "@/app/hooks/useInputModal";
+import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 
 import { formatDateDK } from "@/app/utils/dateTime";
 
@@ -77,6 +78,12 @@ export default function PayrollPage() {
     endDate,
     userId,
     onSettingsLoaded: applyCurrentPayrollPeriod,
+  });
+
+  useRealtimeCore({
+    onTimeEntry: () => {
+      refreshPayroll();
+    },
   });
 
   const {

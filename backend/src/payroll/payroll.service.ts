@@ -208,8 +208,8 @@ export class PayrollService {
   }
 
   private ensureMaster(user: AuthUser) {
-    if (user.role !== 'MASTER') {
-      throw new ForbiddenException('Kun MASTER kan låse op igen');
+    if (user.role !== 'MASTER' && user.role !== 'ADMIN') {
+      throw new ForbiddenException('Kun ADMIN eller MASTER kan låse op igen');
     }
   }
 

@@ -122,11 +122,27 @@ export default function SchedulePage() {
     offerShiftTrade,
 
     openTimeEntry,
+    timeEntries,
     clockIn,
     clockOut,
 
     submitManualTime: submitManualTimeEntry,
   } = useSchedule(selectedDate);
+
+  const shiftsForTimeRegistration = useMemo(() => {
+    const entriesByShiftId = new Map(
+      timeEntries
+        .filter((entry) => entry.shiftId && entry.status !== "VOIDED")
+        .map((entry) => [entry.shiftId, entry]),
+    );
+
+    return shifts
+      .filter((shift) => shift.userId === currentUser?.id)
+      .map((shift) => ({
+        shift,
+        timeEntry: entriesByShiftId.get(shift.id) ?? null,
+      }));
+  }, [currentUser?.id, shifts, timeEntries]);
 
   const filteredMovieShowings = useMemo(() => {
     return movieShowings.filter((movie) => {
@@ -888,16 +904,34 @@ ${getShiftConfirmText(selectedShift)}`,
                       >
                         <option value="">Vælg vagt</option>
 
-                        {shifts
-                          .filter((shift) => shift.userId === currentUser?.id)
-                          .map((shift) => (
-                            <option key={shift.id} value={shift.id}>
-                              {formatTimeDK(shift.startTime)} -{" "}
-                              {formatTimeDK(shift.endTime)}
-                              {" · "}
-                              {shift.workType.name}
-                            </option>
-                          ))}
+                        {shiftsForTimeRegistration.map(
+                          ({ shift, timeEntry }) => {
+                            const isDisabled = Boolean(timeEntry);
+
+                            const statusText =
+                              timeEntry?.status === "APPROVED"
+                                ? "Godkendt"
+                                : timeEntry?.status === "PENDING"
+                                  ? "Afventer godkendelse"
+                                  : timeEntry?.status === "NEEDS_CHANGES"
+                                    ? "Kræver rettelse"
+                                    : "";
+
+                            return (
+                              <option
+                                key={shift.id}
+                                value={shift.id}
+                                disabled={isDisabled}
+                              >
+                                {formatTimeDK(shift.startTime)} -{" "}
+                                {formatTimeDK(shift.endTime)}
+                                {" · "}
+                                {shift.workType.name}
+                                {statusText ? ` · ${statusText}` : ""}
+                              </option>
+                            );
+                          },
+                        )}
                       </select>
                     )}
 
