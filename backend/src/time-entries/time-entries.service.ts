@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { PayrollService } from '../payroll/payroll.service';
 
 type TimeEntryDeviationType =
   | 'NONE'
@@ -47,6 +49,7 @@ export class TimeEntriesService {
     private prisma: PrismaService,
     private realtimeGateway: RealtimeGateway,
     private auditLogsService: AuditLogsService,
+    private readonly payrollService: PayrollService,
   ) {}
 
   private async createRevision(params: {
@@ -889,7 +892,11 @@ export class TimeEntriesService {
     return response;
   }
 
-  async approveEntry(id: number, changedByUserId?: number | null) {
+  async approveEntry(
+    id: number,
+    changedByUserId?: number | null,
+    confirmPayrollAdjustment = false,
+  ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
       include: {
@@ -903,6 +910,48 @@ export class TimeEntriesService {
 
     if (!existingEntry) {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
+
+    const payrollPeriod =
+      await this.payrollService.getPayrollPeriodEntityForDate(
+        existingEntry.cinemaId,
+        existingEntry.clockIn,
+      );
+
+    if (payrollPeriod?.status === 'LOCKED') {
+      throw new ConflictException({
+        code: 'PAYROLL_PERIOD_LOCKED',
+        title: 'Lønperioden er låst',
+        message: 'Lås lønperioden op før tidsregistreringen kan godkendes.',
+      });
+    }
+
+    if (payrollPeriod?.status === 'EXPORTED' && !confirmPayrollAdjustment) {
+      const adjustmentPayrollPeriod =
+        await this.payrollService.getCurrentPayrollPeriodEntity(
+          existingEntry.cinemaId,
+        );
+
+      throw new ConflictException({
+        code: 'PAYROLL_PERIOD_EXPORTED',
+        title: 'Lønperioden er allerede eksporteret',
+        message:
+          'Denne tidsregistrering tilhører en lønperiode, der allerede er eksporteret.',
+
+        originalPayrollPeriod: {
+          id: payrollPeriod.id,
+          startDate: payrollPeriod.startDate,
+          endDate: payrollPeriod.endDate,
+        },
+
+        adjustmentPayrollPeriod: adjustmentPayrollPeriod
+          ? {
+              id: adjustmentPayrollPeriod.id,
+              startDate: adjustmentPayrollPeriod.startDate,
+              endDate: adjustmentPayrollPeriod.endDate,
+            }
+          : null,
+      });
     }
 
     this.ensureEntryEditable(existingEntry);
@@ -935,10 +984,41 @@ export class TimeEntriesService {
       );
     }
 
+    let adjustmentPayrollPeriodId: number | null = null;
+
+    if (payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment) {
+      const adjustmentPayrollPeriod =
+        await this.payrollService.getCurrentPayrollPeriodEntity(
+          existingEntry.cinemaId,
+        );
+
+      adjustmentPayrollPeriodId = adjustmentPayrollPeriod?.id ?? null;
+    }
+
     const entry = await this.prisma.timeEntry.update({
       where: { id },
       data: {
         status: 'APPROVED',
+
+        payrollPeriodId:
+          payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment
+            ? null
+            : payrollPeriod?.id,
+
+        isPayrollAdjustment:
+          payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment,
+
+        originalPayrollPeriodId:
+          payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment
+            ? payrollPeriod.id
+            : null,
+
+        adjustmentPayrollPeriodId,
+
+        payrollAdjustmentReason:
+          payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment
+            ? 'Godkendt som efterregulering, fordi lønperioden allerede var eksporteret.'
+            : null,
       },
       include: {
         user: true,

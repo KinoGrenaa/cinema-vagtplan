@@ -54,6 +54,25 @@ type TimeEntryRevision = {
   } | null;
 };
 
+type PayrollPeriodInfo = {
+  id: number;
+  startDate: string;
+  endDate: string;
+};
+
+type PayrollApprovalConflict = {
+  code?: string;
+  title?: string;
+  message?: string;
+  originalPayrollPeriod?: PayrollPeriodInfo | null;
+  adjustmentPayrollPeriod?: PayrollPeriodInfo | null;
+};
+
+type PayrollAdjustmentConfirmation = {
+  entry: TimeEntry;
+  details: PayrollApprovalConflict;
+};
+
 function getRevisionActionLabel(action: string) {
   switch (action) {
     case "CREATED":
@@ -289,6 +308,10 @@ export default function TimeApprovalPage() {
   const [dateTo, setDateTo] = useState("");
   const [expandedEntryIds, setExpandedEntryIds] = useState<number[]>([]);
   const [expandedUserIds, setExpandedUserIds] = useState<string[]>([]);
+  const [payrollAdjustmentConfirmation, setPayrollAdjustmentConfirmation] =
+    useState<PayrollAdjustmentConfirmation | null>(null);
+  const [confirmingPayrollAdjustment, setConfirmingPayrollAdjustment] =
+    useState(false);
 
   const toggleEntryDetails = (entryId: number) => {
     setExpandedEntryIds((current) =>
@@ -548,19 +571,82 @@ export default function TimeApprovalPage() {
     }
   }
 
-  async function approve(entry: TimeEntry) {
+  function getPayrollConflictDetails(
+    payload: unknown,
+  ): PayrollApprovalConflict {
+    if (!payload || typeof payload !== "object") return {};
+
+    const data = payload as {
+      code?: string;
+      title?: string;
+      message?: string | PayrollApprovalConflict;
+      originalPayrollPeriod?: PayrollPeriodInfo | null;
+      adjustmentPayrollPeriod?: PayrollPeriodInfo | null;
+    };
+
+    if (data.message && typeof data.message === "object") {
+      return data.message;
+    }
+
+    return {
+      code: data.code,
+      title: data.title,
+      message: typeof data.message === "string" ? data.message : undefined,
+      originalPayrollPeriod: data.originalPayrollPeriod,
+      adjustmentPayrollPeriod: data.adjustmentPayrollPeriod,
+    };
+  }
+
+  function formatPayrollPeriod(period?: PayrollPeriodInfo | null) {
+    if (!period) return "-";
+
+    return `${formatDateTime(period.startDate)} – ${formatDateTime(
+      period.endDate,
+    )}`;
+  }
+
+  async function approve(
+    entry: TimeEntry,
+    options?: { confirmPayrollAdjustment?: boolean },
+  ) {
     try {
       const response = await fetch(
         `${API_URL}/time-entries/${entry.id}/approve`,
         {
           method: "PATCH",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${getToken()}`,
           },
+          body: JSON.stringify({
+            confirmPayrollAdjustment:
+              options?.confirmPayrollAdjustment ?? false,
+          }),
         },
       );
 
       if (!response.ok) {
+        if (response.status === 409) {
+          const payload = await response.json().catch(() => null);
+          const details = getPayrollConflictDetails(payload);
+
+          if (details.code === "PAYROLL_PERIOD_LOCKED") {
+            toast.error(
+              details.message ||
+                "Lås lønperioden op før tidsregistreringen kan godkendes.",
+            );
+            return;
+          }
+
+          if (details.code === "PAYROLL_PERIOD_EXPORTED") {
+            setPayrollAdjustmentConfirmation({
+              entry,
+              details,
+            });
+            return;
+          }
+        }
+
         throw new Error(
           await readErrorMessage(
             response,
@@ -571,7 +657,9 @@ export default function TimeApprovalPage() {
 
       await fetchEntries();
 
-      if (entry.deviation?.hasDeviation) {
+      if (options?.confirmPayrollAdjustment) {
+        toast.success("Timeregistrering godkendt som efterregulering");
+      } else if (entry.deviation?.hasDeviation) {
         toast.success("Timeregistrering med afvigelse er godkendt");
       } else {
         toast.success("Timeregistrering godkendt");
@@ -1268,6 +1356,85 @@ export default function TimeApprovalPage() {
         revisions={historyItems}
         currentStatus={historyEntry?.status}
       />
+
+      {payrollAdjustmentConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <h2 className="text-xl font-bold">
+              Lønperioden er allerede eksporteret
+            </h2>
+
+            <div className="mt-4 space-y-4 text-sm text-gray-700 dark:text-gray-200">
+              <p>
+                Denne tidsregistrering tilhører en lønperiode, der allerede er
+                eksporteret.
+              </p>
+
+              <div className="rounded-xl bg-gray-100 p-3 dark:bg-gray-800">
+                <div className="font-semibold">Oprindelig lønperiode</div>
+                <div>
+                  {formatPayrollPeriod(
+                    payrollAdjustmentConfirmation.details.originalPayrollPeriod,
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-orange-50 p-3 text-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
+                <div className="font-semibold">
+                  Efterreguleres i lønperioden
+                </div>
+                <div>
+                  {formatPayrollPeriod(
+                    payrollAdjustmentConfirmation.details
+                      .adjustmentPayrollPeriod,
+                  )}
+                </div>
+              </div>
+
+              <p>
+                Hvis du fortsætter, bliver registreringen markeret som
+                efterregulering.
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                disabled={confirmingPayrollAdjustment}
+                onClick={() => setPayrollAdjustmentConfirmation(null)}
+                className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                Annuller
+              </button>
+
+              <button
+                type="button"
+                disabled={confirmingPayrollAdjustment}
+                onClick={async () => {
+                  const entry = payrollAdjustmentConfirmation.entry;
+
+                  try {
+                    setConfirmingPayrollAdjustment(true);
+
+                    await approve(entry, {
+                      confirmPayrollAdjustment: true,
+                    });
+
+                    setPayrollAdjustmentConfirmation(null);
+                  } finally {
+                    setConfirmingPayrollAdjustment(false);
+                  }
+                }}
+                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
+              >
+                {confirmingPayrollAdjustment
+                  ? "Godkender..."
+                  : "Godkend som efterregulering"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <InputModal
         open={inputDialog.open}

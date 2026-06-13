@@ -123,7 +123,7 @@ export default function PayrollPage() {
     confirmDialog.confirm({
       title: "Lås lønperiode",
       description: `Er du sikker på, at du vil låse lønperioden ${startDate} til ${endDate}?`,
-      confirmText: "Lås periode",
+      confirmText: "Lås lønperiode",
       cancelText: "Annuller",
       confirmVariant: "danger",
       onConfirm: async () => {
@@ -154,11 +154,11 @@ export default function PayrollPage() {
     if (!period?.id) return;
 
     inputDialog.prompt({
-      title: "Oplås lønperiode",
-      description: `Angiv årsagen til at lønperioden ${startDate} til ${endDate} skal oplåses.`,
+      title: "Genåbn lønperiode",
+      description: `Angiv årsagen til at lønperioden ${startDate} til ${endDate} skal genåbnes.`,
       label: "Begrundelse",
       placeholder: "Skriv begrundelse...",
-      confirmText: "Oplås periode",
+      confirmText: "Genåbn lønperiode",
       cancelText: "Annuller",
       required: true,
       onConfirm: async (value) => {
@@ -166,7 +166,7 @@ export default function PayrollPage() {
 
         if (!note) {
           toast.error(
-            "Du skal skrive en begrundelse for at oplåse lønperioden.",
+            "Du skal skrive en begrundelse for at genåbne lønperioden.",
           );
           throw new Error("Unlock note is required");
         }
@@ -182,7 +182,7 @@ export default function PayrollPage() {
           toast.error(
             error instanceof Error && error.message
               ? error.message
-              : "Oplåsning fejlede",
+              : "Genåbning fejlede",
           );
         } finally {
           setUnlocking(false);
@@ -216,7 +216,7 @@ export default function PayrollPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={previousPayrollPeriod}
+                onClick={() => previousPayrollPeriod(cinemaSettings)}
                 className="rounded bg-gray-600 px-4 py-2 font-medium text-white hover:bg-gray-700"
               >
                 ← Forrige lønperiode
@@ -232,7 +232,7 @@ export default function PayrollPage() {
 
               <button
                 type="button"
-                onClick={nextPayrollPeriod}
+                onClick={() => nextPayrollPeriod(cinemaSettings)}
                 className="rounded bg-gray-600 px-4 py-2 font-medium text-white hover:bg-gray-700"
               >
                 Næste lønperiode →
@@ -377,8 +377,10 @@ export default function PayrollPage() {
           voidedCount={voidedCount}
           locking={locking}
           unlocking={unlocking}
+          exporting={exporting}
           onLockPeriod={lockPeriod}
           onUnlockPeriod={unlockPeriod}
+          onOpenExportModal={() => setExportModalOpen(true)}
           onOpenTimeApproval={() => router.push("/time-approval")}
         />
 
@@ -391,17 +393,6 @@ export default function PayrollPage() {
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Timer i alt: {formatHours(totalHours)}
               </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setExportModalOpen(true)}
-                disabled={exporting}
-                className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                Eksporter
-              </button>
             </div>
           </div>
 
@@ -545,7 +536,7 @@ export default function PayrollPage() {
                                 <td className="p-2 text-gray-900 dark:text-gray-100">
                                   {entry.payrollLocked ? "Ja" : "Nej"}
                                   {entry.payrollUnlockedByMaster
-                                    ? " / oplåst"
+                                    ? " / genåbnet"
                                     : ""}
                                 </td>
                               </tr>
@@ -686,7 +677,7 @@ export default function PayrollPage() {
                       Eksporteret
                     </th>
                     <th className="p-2 text-gray-700 dark:text-gray-200">
-                      Oplåst
+                      Genåbnet
                     </th>
                     <th className="p-2 text-gray-700 dark:text-gray-200">
                       Note

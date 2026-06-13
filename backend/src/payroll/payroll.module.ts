@@ -13,5 +13,6 @@ import { PayrollRulesService } from './payroll-rules.service';
   ],
   controllers: [PayrollController],
   providers: [PayrollService, PayrollRulesService],
+  exports: [PayrollService],
 })
 export class PayrollModule {}

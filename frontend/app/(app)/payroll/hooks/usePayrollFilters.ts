@@ -6,21 +6,8 @@ import {
 } from "../utils";
 import type { CinemaPayrollSettings } from "../types";
 
-function toLocalIsoDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function getInclusivePeriodLength(startDate: string, endDate: string) {
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
-
-  return (
-    Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-  );
+function toLocalDate(dateString: string) {
+  return new Date(`${dateString}T00:00:00`);
 }
 
 export function usePayrollFilters() {
@@ -35,30 +22,24 @@ export function usePayrollFilters() {
     setEndDate(periodDates.endDate);
   }
 
-  function previousPayrollPeriod() {
-    const periodLength = getInclusivePeriodLength(startDate, endDate);
+  function previousPayrollPeriod(settings?: CinemaPayrollSettings | null) {
+    const referenceDate = toLocalDate(startDate);
+    referenceDate.setDate(referenceDate.getDate() - 1);
 
-    const newEnd = new Date(`${startDate}T00:00:00`);
-    newEnd.setDate(newEnd.getDate() - 1);
+    const periodDates = calculatePayrollPeriod(settings ?? null, referenceDate);
 
-    const newStart = new Date(newEnd);
-    newStart.setDate(newStart.getDate() - (periodLength - 1));
-
-    setStartDate(toLocalIsoDate(newStart));
-    setEndDate(toLocalIsoDate(newEnd));
+    setStartDate(periodDates.startDate);
+    setEndDate(periodDates.endDate);
   }
 
-  function nextPayrollPeriod() {
-    const periodLength = getInclusivePeriodLength(startDate, endDate);
+  function nextPayrollPeriod(settings?: CinemaPayrollSettings | null) {
+    const referenceDate = toLocalDate(endDate);
+    referenceDate.setDate(referenceDate.getDate() + 1);
 
-    const newStart = new Date(`${endDate}T00:00:00`);
-    newStart.setDate(newStart.getDate() + 1);
+    const periodDates = calculatePayrollPeriod(settings ?? null, referenceDate);
 
-    const newEnd = new Date(newStart);
-    newEnd.setDate(newEnd.getDate() + (periodLength - 1));
-
-    setStartDate(toLocalIsoDate(newStart));
-    setEndDate(toLocalIsoDate(newEnd));
+    setStartDate(periodDates.startDate);
+    setEndDate(periodDates.endDate);
   }
 
   return {

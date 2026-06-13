@@ -9,10 +9,15 @@ export default function PayrollPeriodStatus({
   voidedCount,
   locking,
   unlocking,
+  exporting,
   onLockPeriod,
   onUnlockPeriod,
+  onOpenExportModal,
   onOpenTimeApproval,
 }: PayrollPeriodStatusProps) {
+  const periodStatus = period?.status ?? "OPEN";
+  const isOpenPeriod = periodStatus === "OPEN" || periodStatus === "UNLOCKED";
+
   return (
     <div className="rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -22,9 +27,9 @@ export default function PayrollPeriodStatus({
           </div>
 
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            {period?.status === "LOCKED"
+            {periodStatus === "LOCKED"
               ? "Låst"
-              : period?.status === "EXPORTED"
+              : periodStatus === "EXPORTED"
                 ? "Eksporteret"
                 : "Åben"}
           </div>
@@ -43,7 +48,7 @@ export default function PayrollPeriodStatus({
 
           {period?.unlockedAt && (
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Låst op: {formatDateTime(period.unlockedAt)}
+              Genåbnet: {formatDateTime(period.unlockedAt)}
             </div>
           )}
         </div>
@@ -84,23 +89,36 @@ export default function PayrollPeriodStatus({
         />
 
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={onLockPeriod}
-            disabled={locking || period?.status === "LOCKED"}
-            className="rounded bg-yellow-600 px-4 py-2 text-white hover:bg-yellow-700 disabled:opacity-50"
-          >
-            {locking ? "Låser..." : "Lås periode"}
-          </button>
-
-          {period && (
+          {isOpenPeriod && (
             <button
+              type="button"
+              onClick={onLockPeriod}
+              disabled={locking}
+              className="rounded bg-yellow-600 px-4 py-2 text-white hover:bg-yellow-700 disabled:opacity-50"
+            >
+              {locking ? "Låser..." : "Lås lønperiode"}
+            </button>
+          )}
+
+          {(periodStatus === "LOCKED" || periodStatus === "EXPORTED") && (
+            <button
+              type="button"
               onClick={onUnlockPeriod}
               disabled={unlocking}
               className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
             >
-              {unlocking ? "Låser op..." : "Lås periode op"}
+              {unlocking ? "Genåbner..." : "Genåbn lønperiode"}
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={onOpenExportModal}
+            disabled={exporting}
+            className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {exporting ? "Eksporterer..." : "Eksporter"}
+          </button>
         </div>
       </div>
     </div>

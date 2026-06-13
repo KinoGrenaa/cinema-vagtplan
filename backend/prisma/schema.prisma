@@ -326,6 +326,16 @@ model TimeEntry {
   payrollUnlockedAt       DateTime?
   payrollLockNote         String?
 
+  isPayrollAdjustment Boolean @default(false)
+
+  originalPayrollPeriodId Int?
+  originalPayrollPeriod   PayrollPeriod? @relation("OriginalPayrollPeriod", fields: [originalPayrollPeriodId], references: [id])
+
+  adjustmentPayrollPeriodId Int?
+  adjustmentPayrollPeriod   PayrollPeriod? @relation("AdjustmentPayrollPeriod", fields: [adjustmentPayrollPeriodId], references: [id])
+
+  payrollAdjustmentReason String?
+
   payrollTypeId Int?
   payrollType   PayrollType? @relation(fields: [payrollTypeId], references: [id])
 }
@@ -404,6 +414,9 @@ model PayrollPeriod {
 
   exportedAt       DateTime?
   exportedByUserId Int?
+
+  originalAdjustmentEntries TimeEntry[] @relation("OriginalPayrollPeriod")
+  adjustmentEntries         TimeEntry[] @relation("AdjustmentPayrollPeriod")
 
   unlockedAt       DateTime?
   unlockedByUserId Int?

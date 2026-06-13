@@ -106,8 +106,10 @@ export type PayrollPeriodStatusProps = {
   voidedCount: number;
   locking: boolean;
   unlocking: boolean;
+  exporting: boolean;
   onLockPeriod: () => void;
   onUnlockPeriod: () => void;
+  onOpenExportModal: () => void;
   onOpenTimeApproval: () => void;
 };
 

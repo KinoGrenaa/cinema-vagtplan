@@ -402,6 +402,35 @@ export class PayrollService {
     return this.calculatePayrollPeriodForDate(cinema, reference);
   }
 
+  async getPayrollPeriodEntityForDate(cinemaId: number, referenceDate: Date) {
+    const cinema = await this.prisma.cinema.findUnique({
+      where: { id: cinemaId },
+    });
+
+    if (!cinema) {
+      throw new NotFoundException('Biograf blev ikke fundet');
+    }
+
+    const { startDate, endDate } = this.calculatePayrollPeriodForDate(
+      cinema,
+      referenceDate,
+    );
+
+    return this.prisma.payrollPeriod.findUnique({
+      where: {
+        cinemaId_startDate_endDate: {
+          cinemaId,
+          startDate: new Date(`${startDate}T00:00:00`),
+          endDate: new Date(`${endDate}T23:59:59`),
+        },
+      },
+    });
+  }
+
+  async getCurrentPayrollPeriodEntity(cinemaId: number) {
+    return this.getPayrollPeriodEntityForDate(cinemaId, new Date());
+  }
+
   private resolvePayrollData(timeEntry: any): PayrollData {
     const directPayrollType = timeEntry.payrollType;
 
@@ -866,25 +895,96 @@ export class PayrollService {
     if (!user.cinemaId) return;
 
     const { start, end } = this.getPeriodDates(startDate, endDate);
+    const cinemaId = user.cinemaId;
+    const now = new Date();
 
-    const period = await this.prisma.payrollPeriod.findFirst({
+    const existingPeriod = await this.prisma.payrollPeriod.findFirst({
       where: {
-        cinemaId: user.cinemaId,
+        cinemaId,
         startDate: start,
         endDate: end,
       },
     });
 
-    if (!period) return;
+    const period = existingPeriod
+      ? await this.prisma.payrollPeriod.update({
+          where: { id: existingPeriod.id },
+          data: {
+            status: 'EXPORTED',
+            lockedAt: existingPeriod.lockedAt || now,
+            lockedByUserId: existingPeriod.lockedByUserId || user.sub,
+            exportedAt: now,
+            exportedByUserId: user.sub,
+            unlockedAt: null,
+            unlockedByUserId: null,
+            unlockNote: null,
+          },
+        })
+      : await this.prisma.payrollPeriod.create({
+          data: {
+            cinemaId,
+            startDate: start,
+            endDate: end,
+            status: 'EXPORTED',
+            lockedAt: now,
+            lockedByUserId: user.sub,
+            exportedAt: now,
+            exportedByUserId: user.sub,
+          },
+        });
 
-    await this.prisma.payrollPeriod.update({
-      where: { id: period.id },
-      data: {
-        status: 'EXPORTED',
-        exportedAt: new Date(),
-        exportedByUserId: user.sub,
+    const defaultPayrollType = await this.prisma.payrollType.findFirst({
+      where: {
+        cinemaId,
+        isDefault: true,
+        isActive: true,
       },
     });
+
+    const entries = await this.prisma.timeEntry.findMany({
+      where: {
+        cinemaId,
+        clockIn: {
+          gte: start,
+          lte: end,
+        },
+        clockOut: {
+          not: null,
+        },
+        status: 'APPROVED',
+      },
+      include: {
+        payrollType: true,
+        shift: {
+          include: {
+            workType: {
+              include: {
+                payrollType: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    for (const entry of entries) {
+      const payrollType =
+        entry.payrollType ||
+        entry.shift?.workType?.payrollType ||
+        defaultPayrollType;
+
+      await this.prisma.timeEntry.update({
+        where: { id: entry.id },
+        data: {
+          payrollPeriodId: period.id,
+          payrollLocked: true,
+          payrollUnlockedByMaster: false,
+          payrollUnlockedAt: null,
+          payrollLockNote: null,
+          payrollTypeId: payrollType?.id || null,
+        },
+      });
+    }
   }
 
   async exportPayrollCsv(
@@ -897,14 +997,14 @@ export class PayrollService {
 
     await this.ensureEntriesApproved(user, startDate, endDate, userId);
 
+    await this.markPeriodAsExported(user, startDate, endDate, userId);
+
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
     );
-
-    await this.markPeriodAsExported(user, startDate, endDate, userId);
 
     const rows = [
       [
@@ -969,14 +1069,14 @@ export class PayrollService {
 
     await this.ensureEntriesApproved(user, startDate, endDate, userId);
 
+    await this.markPeriodAsExported(user, startDate, endDate, userId);
+
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
     );
-
-    await this.markPeriodAsExported(user, startDate, endDate, userId);
 
     const usePayrollRules = await this.getPayrollRulesEnabled(user);
     const rows = [['Employee', 'PayrollCode', 'Date', 'Hours', 'Text']];
@@ -1018,14 +1118,14 @@ export class PayrollService {
 
     await this.ensureEntriesApproved(user, startDate, endDate, userId);
 
+    await this.markPeriodAsExported(user, startDate, endDate, userId);
+
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
     );
-
-    await this.markPeriodAsExported(user, startDate, endDate, userId);
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Payroll');
@@ -1091,14 +1191,14 @@ export class PayrollService {
 
     await this.ensureEntriesApproved(user, startDate, endDate, userId);
 
+    await this.markPeriodAsExported(user, startDate, endDate, userId);
+
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
     );
-
-    await this.markPeriodAsExported(user, startDate, endDate, userId);
 
     const chunks: Buffer[] = [];
 

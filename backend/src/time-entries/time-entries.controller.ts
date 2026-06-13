@@ -85,8 +85,19 @@ export class TimeEntriesController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id/approve')
-  approveEntry(@Req() req, @Param('id') id: string) {
-    return this.timeEntriesService.approveEntry(Number(id), req.user.sub);
+  approveEntry(
+    @Req() req,
+    @Param('id') id: string,
+    @Body()
+    body?: {
+      confirmPayrollAdjustment?: boolean;
+    },
+  ) {
+    return this.timeEntriesService.approveEntry(
+      Number(id),
+      req.user.sub,
+      body?.confirmPayrollAdjustment ?? false,
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)

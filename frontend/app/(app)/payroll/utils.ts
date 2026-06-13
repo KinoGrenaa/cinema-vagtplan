@@ -36,8 +36,9 @@ function addDays(date: Date, days: number) {
 
 export function calculatePayrollPeriod(
   settings?: CinemaPayrollSettings | null,
+  referenceDate?: Date,
 ) {
-  const today = new Date();
+  const today = referenceDate ?? new Date();
 
   if (!settings || settings.payrollPeriodModel === "CALENDAR_MONTH") {
     return {
