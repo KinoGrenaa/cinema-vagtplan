@@ -117,6 +117,7 @@ export async function fetchPayrollReport(params: PayrollReportParams) {
       employees: [],
       pendingCount: 0,
       voidedCount: 0,
+      adjustmentCount: 0,
     } satisfies PayrollReportResponse;
   }
 
@@ -124,9 +125,10 @@ export async function fetchPayrollReport(params: PayrollReportParams) {
 
   if (Array.isArray(data)) {
     return {
-      employees: data as PayrollEmployee[],
+      employees: data,
       pendingCount: 0,
       voidedCount: 0,
+      adjustmentCount: 0,
     } satisfies PayrollReportResponse;
   }
 
@@ -134,6 +136,7 @@ export async function fetchPayrollReport(params: PayrollReportParams) {
     employees: Array.isArray(data.employees) ? data.employees : [],
     pendingCount: Number(data.pendingCount || 0),
     voidedCount: Number(data.voidedCount || 0),
+    adjustmentCount: Number(data.adjustmentCount || 0),
   } satisfies PayrollReportResponse;
 }
 

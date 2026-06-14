@@ -98,6 +98,11 @@ export default function PayrollPage() {
     overtimeWarnings,
   } = usePayrollStats(report);
 
+  const adjustmentCount = report.reduce(
+    (sum, employee) => sum + (employee.adjustmentCount ?? 0),
+    0,
+  );
+
   const { exporting, downloadExport } = usePayrollExport({
     startDate,
     endDate,
@@ -375,6 +380,7 @@ export default function PayrollPage() {
           totalHours={totalHours}
           pendingCount={pendingCount}
           voidedCount={voidedCount}
+          adjustmentCount={adjustmentCount}
           locking={locking}
           unlocking={unlocking}
           exporting={exporting}
@@ -751,9 +757,25 @@ export default function PayrollPage() {
         open={exportModalOpen}
         exporting={exporting}
         onClose={() => setExportModalOpen(false)}
-        onExport={(format) => {
-          downloadExport(format);
-          setExportModalOpen(false);
+        onExport={async (format) => {
+          try {
+            await downloadExport(format);
+            setExportModalOpen(false);
+          } catch (error) {
+            setExportModalOpen(false);
+
+            setTimeout(() => {
+              confirmDialog.confirm({
+                title: "Kan ikke eksportere lønperiode",
+                description:
+                  error instanceof Error && error.message
+                    ? error.message
+                    : "Eksporten kunne ikke gennemføres.",
+                confirmText: "OK",
+                onConfirm: async () => {},
+              });
+            }, 0);
+          }
         }}
       />
     </PermissionGuard>

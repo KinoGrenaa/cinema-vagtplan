@@ -20,7 +20,7 @@ export function useConfirm() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [confirmText, setConfirmText] = useState("Bekræft");
-  const [cancelText, setCancelText] = useState("Annuller");
+  const [cancelText, setCancelText] = useState<string | undefined>("Annuller");
   const [confirmVariant, setConfirmVariant] =
     useState<ConfirmVariant>("primary");
 
@@ -32,7 +32,7 @@ export function useConfirm() {
     setTitle(input.title);
     setDescription(input.description);
     setConfirmText(input.confirmText ?? "Bekræft");
-    setCancelText(input.cancelText ?? "Annuller");
+    setCancelText(input.cancelText);
     setConfirmVariant(input.confirmVariant ?? "primary");
     setOnConfirmAction(() => input.onConfirm);
     setOpen(true);

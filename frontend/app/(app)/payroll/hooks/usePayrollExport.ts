@@ -51,12 +51,7 @@ export function usePayrollExport({
 
       await refreshPayroll();
     } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error && error.message
-          ? error.message
-          : "Eksport fejlede",
-      );
+      throw error;
     } finally {
       setExporting(false);
     }

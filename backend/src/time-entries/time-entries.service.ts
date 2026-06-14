@@ -136,7 +136,7 @@ export class TimeEntriesService {
     }
 
     throw new BadRequestException(
-      'Denne tidsregistrering er låst af lønsystemet',
+      'Denne tidsregistrering er låst, fordi den allerede indgår i en låst eller eksporteret lønperiode. Genåbn lønperioden, hvis registreringen skal rettes.',
     );
   }
 

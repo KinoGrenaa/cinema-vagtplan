@@ -503,18 +503,31 @@ export class PayrollService {
       where: {
         ...this.getCinemaFilter(user),
         ...(userId ? { userId: Number(userId) } : {}),
-        clockIn: {
-          gte: start,
-          lte: end,
-        },
         clockOut: {
           not: null,
         },
         status: 'APPROVED',
+        OR: [
+          {
+            clockIn: {
+              gte: start,
+              lte: end,
+            },
+          },
+          {
+            isPayrollAdjustment: true,
+            adjustmentPayrollPeriod: {
+              startDate: start,
+              endDate: end,
+            },
+          },
+        ],
       },
       include: {
         user: true,
         payrollPeriod: true,
+        originalPayrollPeriod: true,
+        adjustmentPayrollPeriod: true,
         payrollType: true,
         shift: {
           include: {
@@ -561,6 +574,10 @@ export class PayrollService {
       },
     });
 
+    const adjustmentCount = entries.filter(
+      (entry) => entry.isPayrollAdjustment,
+    ).length;
+
     const grouped = new Map<
       number,
       {
@@ -571,6 +588,7 @@ export class PayrollService {
         payrollEmployeeId: string | null;
         totalHours: number;
         deviationCount: number;
+        adjustmentCount: number;
         entries: {
           id: number;
           date: string;
@@ -588,6 +606,10 @@ export class PayrollService {
           payrollUnlockedByMaster: boolean;
           payrollPeriodId: number | null;
           deviation: TimeEntryDeviation;
+          isPayrollAdjustment: boolean;
+          originalPayrollPeriodId: number | null;
+          adjustmentPayrollPeriodId: number | null;
+          payrollAdjustmentReason: string | null;
         }[];
       }
     >();
@@ -607,6 +629,7 @@ export class PayrollService {
           payrollEmployeeId: entry.user.payrollEmployeeId,
           totalHours: 0,
           deviationCount: 0,
+          adjustmentCount: 0,
           entries: [],
         });
       }
@@ -621,6 +644,10 @@ export class PayrollService {
 
       if (deviation.hasDeviation) {
         userGroup.deviationCount += 1;
+      }
+
+      if (entry.isPayrollAdjustment) {
+        userGroup.adjustmentCount += 1;
       }
 
       userGroup.entries.push({
@@ -640,6 +667,10 @@ export class PayrollService {
         payrollUnlockedByMaster: entry.payrollUnlockedByMaster,
         payrollPeriodId: entry.payrollPeriodId,
         deviation,
+        isPayrollAdjustment: entry.isPayrollAdjustment,
+        originalPayrollPeriodId: entry.originalPayrollPeriodId,
+        adjustmentPayrollPeriodId: entry.adjustmentPayrollPeriodId,
+        payrollAdjustmentReason: entry.payrollAdjustmentReason,
       });
     }
 
@@ -648,9 +679,11 @@ export class PayrollService {
         ...employee,
         totalHours: Number(employee.totalHours.toFixed(2)),
         deviationCount: employee.deviationCount,
+        adjustmentCount: employee.adjustmentCount,
       })),
       pendingCount,
       voidedCount,
+      adjustmentCount,
     };
   }
 

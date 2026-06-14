@@ -7,6 +7,7 @@ export default function PayrollPeriodStatus({
   totalHours,
   pendingCount,
   voidedCount,
+  adjustmentCount,
   locking,
   unlocking,
   exporting,
@@ -85,6 +86,7 @@ export default function PayrollPeriodStatus({
         <PayrollWarnings
           pendingCount={pendingCount}
           voidedCount={voidedCount}
+          adjustmentCount={adjustmentCount}
           onOpenTimeApproval={onOpenTimeApproval}
         />
 

@@ -27,6 +27,11 @@ export type PayrollEntry = {
   payrollUnlockedByMaster?: boolean;
   payrollPeriodId?: number | null;
   deviation?: PayrollEntryDeviation;
+
+  isPayrollAdjustment?: boolean;
+  originalPayrollPeriodId?: number | null;
+  adjustmentPayrollPeriodId?: number | null;
+  payrollAdjustmentReason?: string | null;
 };
 
 export type PayrollEmployee = {
@@ -37,6 +42,7 @@ export type PayrollEmployee = {
   payrollEmployeeId?: string | null;
   totalHours: number;
   deviationCount?: number;
+  adjustmentCount?: number;
   entries: PayrollEntry[];
 };
 
@@ -91,12 +97,14 @@ export type PayrollAuditHistory = {
 export type PayrollCounts = {
   pendingCount: number;
   voidedCount: number;
+  adjustmentCount: number;
 };
 
 export type PayrollReportResponse = {
   employees: PayrollEmployee[];
   pendingCount: number;
   voidedCount: number;
+  adjustmentCount: number;
 };
 
 export type PayrollPeriodStatusProps = {
@@ -107,6 +115,7 @@ export type PayrollPeriodStatusProps = {
   locking: boolean;
   unlocking: boolean;
   exporting: boolean;
+  adjustmentCount: number;
   onLockPeriod: () => void;
   onUnlockPeriod: () => void;
   onOpenExportModal: () => void;
@@ -116,5 +125,6 @@ export type PayrollPeriodStatusProps = {
 export type PayrollWarningsProps = {
   pendingCount: number;
   voidedCount: number;
+  adjustmentCount: number;
   onOpenTimeApproval: () => void;
 };

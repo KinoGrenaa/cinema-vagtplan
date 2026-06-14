@@ -18,6 +18,8 @@ import {
 } from "./utils";
 import type { TimeEntry, TimeEntryStatus } from "./types";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
@@ -289,6 +291,7 @@ export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const inputDialog = useInputModal();
+  const errorDialog = useConfirm();
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [historyItems, setHistoryItems] = useState<TimeEntryRevision[]>([]);
@@ -703,8 +706,8 @@ export default function TimeApprovalPage() {
     inputDialog.prompt({
       title: "Send retur til rettelse",
       description:
-        "Skriv hvorfor tidsregistreringen skal rettes. Begrundelsen vises til medarbejderen.",
-      label: "Begrundelse",
+        "Skriv hvorfor tidsregistreringen skal rettes. Beskeden vises til medarbejderen.",
+      label: "Besked til medarbejderen",
       placeholder:
         "Fx forkert mødetid, manglende fyraften eller manglende note...",
       confirmText: "Send retur",
@@ -714,7 +717,8 @@ export default function TimeApprovalPage() {
         const adminNote = value.trim();
 
         if (!adminNote) {
-          throw new Error("Begrundelse er påkrævet");
+          toast.error("Besked er påkrævet");
+          return;
         }
 
         const response = await fetch(`${API_URL}/time-entries/${id}/reject`, {
@@ -729,12 +733,19 @@ export default function TimeApprovalPage() {
         });
 
         if (!response.ok) {
-          throw new Error(
-            await readErrorMessage(
-              response,
-              "Kunne ikke sende timeregistrering retur",
-            ),
+          const message = await readErrorMessage(
+            response,
+            "Kunne ikke sende timeregistrering retur",
           );
+
+          errorDialog.confirm({
+            title: "Kan ikke sendes retur",
+            description: message,
+            confirmText: "OK",
+            onConfirm: async () => {},
+          });
+
+          return;
         }
 
         await fetchEntries();
@@ -1435,6 +1446,18 @@ export default function TimeApprovalPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={errorDialog.open}
+        title={errorDialog.title}
+        description={errorDialog.description}
+        confirmText={errorDialog.confirmText}
+        cancelText={errorDialog.cancelText}
+        confirmVariant={errorDialog.confirmVariant}
+        loading={errorDialog.loading}
+        onConfirm={errorDialog.handleConfirm}
+        onCancel={errorDialog.handleCancel}
+      />
 
       <InputModal
         open={inputDialog.open}
