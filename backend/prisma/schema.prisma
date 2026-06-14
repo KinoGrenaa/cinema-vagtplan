@@ -80,6 +80,13 @@ enum PayrollAdjustmentExportCategory {
   VOLUNTEER
 }
 
+enum PayrollAdjustmentRevisionAction {
+  CREATED
+  UPDATED
+  INCLUDED
+  VOIDED
+}
+
 model Cinema {
   id                    Int      @id @default(autoincrement())
   name                  String
@@ -167,24 +174,25 @@ model User {
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
 
-  shifts                    Shift[]
-  leaveRequests             LeaveRequest[]
-  offeredTrades             ShiftTrade[]        @relation("OfferedTrades")
-  acceptedTrades            ShiftTrade[]        @relation("AcceptedTrades")
-  rejectedTrades            ShiftTrade[]        @relation("RejectedTrades")
-  targetedTrades            ShiftTrade[]        @relation("TargetedTrades")
-  sentMessages              Message[]           @relation("SentMessages")
-  receivedMessages          Message[]           @relation("ReceivedMessages")
-  timeEntries               TimeEntry[]
-  pushSubscriptions         PushSubscription[]
-  documents                 EmployeeDocument[]
-  notifications             Notification[]
-  auditLogs                 AuditLog[]
-  requestedStaffingRequests StaffingRequest[]   @relation("RequestedStaffingRequests")
-  targetedStaffingRequests  StaffingRequest[]   @relation("TargetedStaffingRequests")
-  payrollAdjustments        PayrollAdjustment[] @relation("PayrollAdjustmentUser")
-  createdPayrollAdjustments PayrollAdjustment[] @relation("PayrollAdjustmentCreatedBy")
-  staffingAiProfile         StaffingAiProfile?
+  shifts                     Shift[]
+  leaveRequests              LeaveRequest[]
+  offeredTrades              ShiftTrade[]                @relation("OfferedTrades")
+  acceptedTrades             ShiftTrade[]                @relation("AcceptedTrades")
+  rejectedTrades             ShiftTrade[]                @relation("RejectedTrades")
+  targetedTrades             ShiftTrade[]                @relation("TargetedTrades")
+  sentMessages               Message[]                   @relation("SentMessages")
+  receivedMessages           Message[]                   @relation("ReceivedMessages")
+  timeEntries                TimeEntry[]
+  pushSubscriptions          PushSubscription[]
+  documents                  EmployeeDocument[]
+  notifications              Notification[]
+  auditLogs                  AuditLog[]
+  requestedStaffingRequests  StaffingRequest[]           @relation("RequestedStaffingRequests")
+  targetedStaffingRequests   StaffingRequest[]           @relation("TargetedStaffingRequests")
+  payrollAdjustments         PayrollAdjustment[]         @relation("PayrollAdjustmentUser")
+  createdPayrollAdjustments  PayrollAdjustment[]         @relation("PayrollAdjustmentCreatedBy")
+  payrollAdjustmentRevisions PayrollAdjustmentRevision[]
+  staffingAiProfile          StaffingAiProfile?
 }
 
 model WorkType {
@@ -527,7 +535,8 @@ model PayrollAdjustment {
   reason String
 
   createdByUserId Int?
-  createdByUser   User? @relation("PayrollAdjustmentCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUser   User?                       @relation("PayrollAdjustmentCreatedBy", fields: [createdByUserId], references: [id])
+  revisions       PayrollAdjustmentRevision[]
 
   includedAt DateTime?
   voidedAt   DateTime?
@@ -546,6 +555,44 @@ model PayrollAdjustment {
   @@index([status])
   @@index([type])
   @@index([exportCategory])
+}
+
+model PayrollAdjustmentRevision {
+  id Int @id @default(autoincrement())
+
+  payrollAdjustmentId Int
+  payrollAdjustment   PayrollAdjustment @relation(fields: [payrollAdjustmentId], references: [id], onDelete: Cascade)
+
+  changedByUserId Int?
+  changedByUser   User? @relation(fields: [changedByUserId], references: [id])
+
+  action PayrollAdjustmentRevisionAction
+
+  previousStatus PayrollAdjustmentStatus?
+  newStatus      PayrollAdjustmentStatus?
+
+  previousExportedMinutes Int?
+  newExportedMinutes      Int?
+
+  previousAdjustedMinutes Int?
+  newAdjustedMinutes      Int?
+
+  previousMinutesDelta Int?
+  newMinutesDelta      Int?
+
+  previousOriginalPayrollPeriodId Int?
+  newOriginalPayrollPeriodId      Int?
+
+  previousSettlementPayrollPeriodId Int?
+  newSettlementPayrollPeriodId      Int?
+
+  reason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([payrollAdjustmentId])
+  @@index([changedByUserId])
+  @@index([createdAt])
 }
 
 model AiLearningEvent {
