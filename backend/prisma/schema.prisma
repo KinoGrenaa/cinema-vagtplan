@@ -513,6 +513,9 @@ model PayrollAdjustment {
 
   minutesDelta Int
 
+  exportedMinutes Int
+  adjustedMinutes Int
+
   previousMinutes Int?
   newMinutes      Int?
 
