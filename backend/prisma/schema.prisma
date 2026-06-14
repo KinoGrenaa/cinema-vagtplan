@@ -62,6 +62,24 @@ enum PayrollPayoutRule {
   FIXED_DAY_OF_MONTH
 }
 
+enum PayrollAdjustmentType {
+  APPROVAL_AFTER_EXPORT
+  EDIT_AFTER_EXPORT
+  MANUAL_ENTRY_IN_EXPORTED_PERIOD
+}
+
+enum PayrollAdjustmentStatus {
+  PENDING
+  INCLUDED
+  VOIDED
+}
+
+enum PayrollAdjustmentExportCategory {
+  HOURLY
+  SALARIED
+  VOLUNTEER
+}
+
 model Cinema {
   id                    Int      @id @default(autoincrement())
   name                  String
@@ -92,22 +110,23 @@ model Cinema {
   payrollPayoutRule       PayrollPayoutRule  @default(LAST_WEEKDAY_OF_MONTH)
   payrollPayoutDay        Int                @default(0)
 
-  movieShowings     MovieShowing[]
-  leaveRequests     LeaveRequest[]
-  shiftTrades       ShiftTrade[]
-  users             User[]
-  workTypes         WorkType[]
-  shifts            Shift[]
-  messages          Message[]
-  timeEntries       TimeEntry[]
-  notifications     Notification[]
-  pushSubscriptions PushSubscription[]
-  auditLogs         AuditLog[]
-  payrollPeriods    PayrollPeriod[]
-  payrollTypes      PayrollType[]
-  aiLearningEvents  AiLearningEvent[]
-  staffingRequests  StaffingRequest[]
-  aiEnabled         Boolean            @default(false)
+  movieShowings      MovieShowing[]
+  leaveRequests      LeaveRequest[]
+  shiftTrades        ShiftTrade[]
+  users              User[]
+  workTypes          WorkType[]
+  shifts             Shift[]
+  messages           Message[]
+  timeEntries        TimeEntry[]
+  notifications      Notification[]
+  pushSubscriptions  PushSubscription[]
+  auditLogs          AuditLog[]
+  payrollPeriods     PayrollPeriod[]
+  payrollTypes       PayrollType[]
+  aiLearningEvents   AiLearningEvent[]
+  staffingRequests   StaffingRequest[]
+  payrollAdjustments PayrollAdjustment[]
+  aiEnabled          Boolean             @default(false)
 }
 
 model User {
@@ -150,19 +169,21 @@ model User {
 
   shifts                    Shift[]
   leaveRequests             LeaveRequest[]
-  offeredTrades             ShiftTrade[]       @relation("OfferedTrades")
-  acceptedTrades            ShiftTrade[]       @relation("AcceptedTrades")
-  rejectedTrades            ShiftTrade[]       @relation("RejectedTrades")
-  targetedTrades            ShiftTrade[]       @relation("TargetedTrades")
-  sentMessages              Message[]          @relation("SentMessages")
-  receivedMessages          Message[]          @relation("ReceivedMessages")
+  offeredTrades             ShiftTrade[]        @relation("OfferedTrades")
+  acceptedTrades            ShiftTrade[]        @relation("AcceptedTrades")
+  rejectedTrades            ShiftTrade[]        @relation("RejectedTrades")
+  targetedTrades            ShiftTrade[]        @relation("TargetedTrades")
+  sentMessages              Message[]           @relation("SentMessages")
+  receivedMessages          Message[]           @relation("ReceivedMessages")
   timeEntries               TimeEntry[]
   pushSubscriptions         PushSubscription[]
   documents                 EmployeeDocument[]
   notifications             Notification[]
   auditLogs                 AuditLog[]
-  requestedStaffingRequests StaffingRequest[]  @relation("RequestedStaffingRequests")
-  targetedStaffingRequests  StaffingRequest[]  @relation("TargetedStaffingRequests")
+  requestedStaffingRequests StaffingRequest[]   @relation("RequestedStaffingRequests")
+  targetedStaffingRequests  StaffingRequest[]   @relation("TargetedStaffingRequests")
+  payrollAdjustments        PayrollAdjustment[] @relation("PayrollAdjustmentUser")
+  createdPayrollAdjustments PayrollAdjustment[] @relation("PayrollAdjustmentCreatedBy")
   staffingAiProfile         StaffingAiProfile?
 }
 
@@ -336,8 +357,9 @@ model TimeEntry {
 
   payrollAdjustmentReason String?
 
-  payrollTypeId Int?
-  payrollType   PayrollType? @relation(fields: [payrollTypeId], references: [id])
+  payrollTypeId      Int?
+  payrollType        PayrollType?        @relation(fields: [payrollTypeId], references: [id])
+  payrollAdjustments PayrollAdjustment[]
 }
 
 model PushSubscription {
@@ -415,8 +437,10 @@ model PayrollPeriod {
   exportedAt       DateTime?
   exportedByUserId Int?
 
-  originalAdjustmentEntries TimeEntry[] @relation("OriginalPayrollPeriod")
-  adjustmentEntries         TimeEntry[] @relation("AdjustmentPayrollPeriod")
+  originalAdjustmentEntries    TimeEntry[]         @relation("OriginalPayrollPeriod")
+  adjustmentEntries            TimeEntry[]         @relation("AdjustmentPayrollPeriod")
+  originalPayrollAdjustments   PayrollAdjustment[] @relation("OriginalPayrollAdjustments")
+  settlementPayrollAdjustments PayrollAdjustment[] @relation("SettlementPayrollAdjustments")
 
   unlockedAt       DateTime?
   unlockedByUserId Int?
@@ -454,11 +478,71 @@ model PayrollType {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workTypes   WorkType[]
-  timeEntries TimeEntry[]
+  workTypes          WorkType[]
+  timeEntries        TimeEntry[]
+  payrollAdjustments PayrollAdjustment[]
 
   @@index([cinemaId])
   @@index([payrollCode])
+}
+
+model PayrollAdjustment {
+  id Int @id @default(autoincrement())
+
+  cinemaId Int
+  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+
+  userId Int
+  user   User @relation("PayrollAdjustmentUser", fields: [userId], references: [id])
+
+  timeEntryId Int
+  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+
+  originalPayrollPeriodId Int
+  originalPayrollPeriod   PayrollPeriod @relation("OriginalPayrollAdjustments", fields: [originalPayrollPeriodId], references: [id])
+
+  settlementPayrollPeriodId Int?
+  settlementPayrollPeriod   PayrollPeriod? @relation("SettlementPayrollAdjustments", fields: [settlementPayrollPeriodId], references: [id])
+
+  payrollTypeId Int?
+  payrollType   PayrollType? @relation(fields: [payrollTypeId], references: [id])
+
+  type           PayrollAdjustmentType
+  status         PayrollAdjustmentStatus         @default(PENDING)
+  exportCategory PayrollAdjustmentExportCategory @default(HOURLY)
+
+  minutesDelta Int
+
+  previousMinutes Int?
+  newMinutes      Int?
+
+  previousClockIn  DateTime?
+  previousClockOut DateTime?
+  newClockIn       DateTime?
+  newClockOut      DateTime?
+
+  reason String
+
+  createdByUserId Int?
+  createdByUser   User? @relation("PayrollAdjustmentCreatedBy", fields: [createdByUserId], references: [id])
+
+  includedAt DateTime?
+  voidedAt   DateTime?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cinemaId])
+  @@index([userId])
+  @@index([timeEntryId])
+  @@index([originalPayrollPeriodId])
+  @@index([settlementPayrollPeriodId])
+  @@index([payrollTypeId])
+  @@index([status])
+  @@index([type])
+  @@index([exportCategory])
 }
 
 model AiLearningEvent {
