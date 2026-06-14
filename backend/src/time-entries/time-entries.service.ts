@@ -131,12 +131,12 @@ export class TimeEntriesService {
       return;
     }
 
-    if (user?.role === 'MASTER' && entry.payrollUnlockedByMaster) {
+    if (user?.role === 'MASTER' || user?.role === 'ADMIN') {
       return;
     }
 
     throw new BadRequestException(
-      'Denne tidsregistrering er låst, fordi den allerede indgår i en låst eller eksporteret lønperiode. Genåbn lønperioden, hvis registreringen skal rettes.',
+      'Denne tidsregistrering er låst, fordi den allerede indgår i en låst eller eksporteret lønperiode.',
     );
   }
 
@@ -1785,6 +1785,19 @@ export class TimeEntriesService {
       const exportedMinutes = this.getEntryMinutes(existingEntry);
       const adjustedMinutes = this.getEntryMinutes(entry);
 
+      console.log('PAYROLL ADJUSTMENT DEBUG', {
+        timeEntryId: entry.id,
+        payrollPeriodId: payrollPeriod.id,
+        payrollPeriodStatus: payrollPeriod.status,
+        oldClockIn: existingEntry.clockIn,
+        oldClockOut: existingEntry.clockOut,
+        newClockIn: entry.clockIn,
+        newClockOut: entry.clockOut,
+        exportedMinutes,
+        adjustedMinutes,
+        minutesDelta: adjustedMinutes - exportedMinutes,
+      });
+
       await this.createOrUpdatePayrollAdjustment({
         timeEntry: entry,
         originalPayrollPeriodId: payrollPeriod.id,
@@ -2021,7 +2034,7 @@ export class TimeEntriesService {
           data.adminNote === undefined
             ? existingEntry.adminNote
             : data.adminNote,
-        status: 'PENDING',
+        status: existingEntry.status,
       },
       include: {
         user: true,
@@ -2041,9 +2054,42 @@ export class TimeEntriesService {
       },
     });
 
+    const payrollPeriod =
+      await this.payrollService.getPayrollPeriodEntityForDate(
+        existingEntry.cinemaId,
+        existingEntry.clockIn,
+      );
+
+    if (payrollPeriod?.status === 'EXPORTED') {
+      const adjustmentPayrollPeriod =
+        await this.payrollService.getCurrentPayrollPeriodEntity(
+          existingEntry.cinemaId,
+        );
+
+      const exportedMinutes = this.getEntryMinutes(existingEntry);
+      const adjustedMinutes = this.getEntryMinutes(entry);
+
+      await this.createOrUpdatePayrollAdjustment({
+        timeEntry: entry,
+        originalPayrollPeriodId: payrollPeriod.id,
+        settlementPayrollPeriodId: adjustmentPayrollPeriod?.id ?? null,
+        type: 'EDIT_AFTER_EXPORT',
+        exportedMinutes,
+        adjustedMinutes,
+        reason: `Tidsregistrering rettet efter eksport. Tidligere registreret: ${this.formatSignedDuration(
+          exportedMinutes,
+        ).replace('+', '')}. Ny registrering: ${this.formatSignedDuration(
+          adjustedMinutes,
+        ).replace('+', '')}. Efterregulering: ${this.formatSignedDuration(
+          adjustedMinutes - exportedMinutes,
+        )}. Årsag: ${data.adminNote}`,
+        changedByUserId: user?.sub ?? null,
+      });
+    }
+
     await this.createRevision({
       timeEntryId: entry.id,
-      changedByUserId: user.sub,
+      changedByUserId: user?.sub ?? null,
       action: 'UPDATED',
       before: {
         status: existingEntry.status,
@@ -2072,7 +2118,7 @@ export class TimeEntriesService {
         entityType: 'TimeEntry',
         entityId: entry.id,
         description: change,
-        userId: user.sub,
+        userId: user?.sub ?? null,
         cinemaId: entry.cinemaId,
       });
     }
@@ -2086,7 +2132,7 @@ export class TimeEntriesService {
         ...changes,
         `Begrundelse: ${data.adminNote}`,
       ].join('\n'),
-      userId: user.sub,
+      userId: user?.sub ?? null,
       cinemaId: entry.cinemaId,
     });
 

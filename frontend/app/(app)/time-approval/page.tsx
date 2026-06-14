@@ -505,40 +505,68 @@ export default function TimeApprovalPage() {
   }) {
     if (!editEntry) return;
 
-    try {
-      setSavingEdit(true);
+    const employeeName = `${editEntry.user.firstName} ${editEntry.user.lastName}`;
+    const oldTime = `${formatDateTime(editEntry.clockIn)} - ${
+      editEntry.clockOut ? formatDateTime(editEntry.clockOut) : "-"
+    }`;
+    const newTime = `${formatDateTime(data.clockIn)} - ${
+      data.clockOut ? formatDateTime(data.clockOut) : "-"
+    }`;
 
-      const response = await fetch(`${API_URL}/time-entries/${editEntry.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify(data),
-      });
+    errorDialog.confirm({
+      title: "Bekræft rettelse",
+      description: [
+        `Du er ved at ændre en tidsregistrering for ${employeeName}.`,
+        "",
+        `Nuværende tid: ${oldTime}`,
+        `Ny tid: ${newTime}`,
+        "",
+        "Ændringen gemmes i historikken.",
+        "Hvis registreringen tilhører en eksporteret lønperiode, oprettes der automatisk en efterregulering.",
+      ].join("\n"),
+      confirmText: "Gem rettelse",
+      cancelText: "Annuller",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        try {
+          setSavingEdit(true);
 
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(
-            response,
-            "Kunne ikke redigere timeregistrering",
-          ),
-        );
-      }
+          const response = await fetch(
+            `${API_URL}/time-entries/${editEntry.id}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${getToken()}`,
+              },
+              body: JSON.stringify(data),
+            },
+          );
 
-      await fetchEntries();
-      setEditEntry(null);
-      toast.success("Timeregistrering opdateret");
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Kunne ikke redigere timeregistrering",
-      );
-    } finally {
-      setSavingEdit(false);
-    }
+          if (!response.ok) {
+            const message = await readErrorMessage(
+              response,
+              "Kunne ikke redigere timeregistrering",
+            );
+
+            errorDialog.confirm({
+              title: "Kunne ikke gemme rettelsen",
+              description: message,
+              confirmText: "OK",
+              onConfirm: async () => {},
+            });
+
+            return;
+          }
+
+          await fetchEntries();
+          setEditEntry(null);
+          toast.success("Timeregistrering opdateret");
+        } finally {
+          setSavingEdit(false);
+        }
+      },
+    });
   }
 
   async function openHistory(entry: TimeEntry) {

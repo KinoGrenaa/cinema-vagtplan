@@ -157,6 +157,8 @@ export class TimeEntriesController {
   getEntryRevisions(@Req() req, @Param('id') id: string) {
     return this.timeEntriesService.findRevisionsForEntry(req.user, Number(id));
   }
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Patch(':id')
   updateEntry(
     @Req() req,
