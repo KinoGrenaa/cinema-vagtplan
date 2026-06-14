@@ -34,6 +34,17 @@ export type PayrollEntry = {
   payrollAdjustmentReason?: string | null;
 };
 
+export type PayrollAdjustment = {
+  id: number;
+  minutesDelta: number;
+  exportedMinutes: number;
+  adjustedMinutes: number;
+  reason: string;
+  originalPayrollPeriodId: number;
+  settlementPayrollPeriodId?: number | null;
+  createdAt: string;
+};
+
 export type PayrollEmployee = {
   userId: number;
   name: string;
@@ -43,6 +54,7 @@ export type PayrollEmployee = {
   totalHours: number;
   deviationCount?: number;
   adjustmentCount?: number;
+  payrollAdjustments?: PayrollAdjustment[];
   entries: PayrollEntry[];
 };
 

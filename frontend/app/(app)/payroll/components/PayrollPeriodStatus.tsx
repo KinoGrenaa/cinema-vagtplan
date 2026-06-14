@@ -54,7 +54,7 @@ export default function PayrollPeriodStatus({
           )}
         </div>
 
-        <div className="grid gap-3 text-sm sm:grid-cols-3">
+        <div className="grid gap-3 text-sm sm:grid-cols-4">
           <div className="rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-800">
             <div className="text-xs text-gray-500 dark:text-gray-400">
               Godkendte timer
@@ -79,6 +79,15 @@ export default function PayrollPeriodStatus({
             </div>
             <div className="mt-1 text-lg font-bold text-gray-700 dark:text-gray-300">
               {voidedCount}
+            </div>
+          </div>
+          <div className="rounded-lg border border-blue-200 px-4 py-3 dark:border-blue-800">
+            <div className="text-xs text-blue-700 dark:text-blue-300">
+              Efterreguleringer
+            </div>
+
+            <div className="mt-1 text-lg font-bold text-blue-800 dark:text-blue-200">
+              {adjustmentCount}
             </div>
           </div>
         </div>

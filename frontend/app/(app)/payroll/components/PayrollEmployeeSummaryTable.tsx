@@ -20,6 +20,7 @@ export default function PayrollEmployeeSummaryTable({
             <th className="pb-3 pr-4">Aften</th>
             <th className="pb-3 pr-4">Nat</th>
             <th className="pb-3 pr-4">Afvigelser</th>
+            <th className="pb-3 pr-4">Efterreguleringer</th>
           </tr>
         </thead>
 
@@ -49,6 +50,14 @@ export default function PayrollEmployeeSummaryTable({
               const code = entry.payrollCode || "";
               return code.includes("NIGHT") ? sum + entry.hours : sum;
             }, 0);
+
+            const adjustmentMinutes =
+              employee.payrollAdjustments?.reduce(
+                (sum, adjustment) => sum + adjustment.minutesDelta,
+                0,
+              ) ?? 0;
+
+            const adjustmentHours = adjustmentMinutes / 60;
 
             return (
               <tr key={employee.userId}>
@@ -85,6 +94,22 @@ export default function PayrollEmployeeSummaryTable({
                     <span className="text-green-700 dark:text-green-300">
                       ✓ Ingen
                     </span>
+                  )}
+                </td>
+                <td className="py-3 pr-4">
+                  {adjustmentMinutes !== 0 ? (
+                    <span
+                      className={
+                        adjustmentMinutes > 0
+                          ? "font-medium text-green-700 dark:text-green-300"
+                          : "font-medium text-red-700 dark:text-red-300"
+                      }
+                    >
+                      {adjustmentMinutes > 0 ? "+" : ""}
+                      {formatHours(adjustmentHours)}
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 dark:text-gray-400">-</span>
                   )}
                 </td>
               </tr>

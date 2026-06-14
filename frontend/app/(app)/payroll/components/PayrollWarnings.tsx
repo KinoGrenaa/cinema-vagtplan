@@ -3,9 +3,10 @@ import type { PayrollWarningsProps } from "../types";
 export default function PayrollWarnings({
   pendingCount,
   voidedCount,
+  adjustmentCount,
   onOpenTimeApproval,
 }: PayrollWarningsProps) {
-  if (pendingCount <= 0 && voidedCount <= 0) {
+  if (pendingCount <= 0 && voidedCount <= 0 && adjustmentCount <= 0) {
     return null;
   }
 
@@ -28,6 +29,19 @@ export default function PayrollWarnings({
           >
             Gennemgå tidsregistreringer
           </button>
+        </div>
+      )}
+
+      {adjustmentCount > 0 && (
+        <div className="rounded-xl border border-blue-300 bg-blue-50 p-4 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+          <div className="font-semibold">
+            {adjustmentCount} afventende efterreguleringer
+          </div>
+
+          <div className="mt-1">
+            Disse efterreguleringer vises separat og vil senere blive medtaget
+            ved løneksport.
+          </div>
         </div>
       )}
 

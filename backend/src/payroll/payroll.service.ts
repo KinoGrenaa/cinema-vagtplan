@@ -544,6 +544,42 @@ export class PayrollService {
       },
     });
 
+    const payrollAdjustments = await this.prisma.payrollAdjustment.findMany({
+      where: {
+        ...this.getCinemaFilter(user),
+        ...(userId ? { userId: Number(userId) } : {}),
+        status: 'PENDING',
+        settlementPayrollPeriodId: null,
+        originalPayrollPeriod: {
+          endDate: {
+            lt: start,
+          },
+        },
+      },
+      include: {
+        user: true,
+        payrollType: true,
+        originalPayrollPeriod: true,
+        settlementPayrollPeriod: true,
+        timeEntry: {
+          include: {
+            shift: {
+              include: {
+                workType: {
+                  include: {
+                    payrollType: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
     const pendingCount = await this.prisma.timeEntry.count({
       where: {
         ...this.getCinemaFilter(user),
@@ -574,7 +610,7 @@ export class PayrollService {
       },
     });
 
-    const adjustmentCount = entries.filter(
+    const legacyAdjustmentCount = entries.filter(
       (entry) => entry.isPayrollAdjustment,
     ).length;
 
@@ -587,6 +623,7 @@ export class PayrollService {
         employeeNumber: string | null;
         payrollEmployeeId: string | null;
         totalHours: number;
+        adjustmentHours: number;
         deviationCount: number;
         adjustmentCount: number;
         entries: {
@@ -611,6 +648,28 @@ export class PayrollService {
           adjustmentPayrollPeriodId: number | null;
           payrollAdjustmentReason: string | null;
         }[];
+        payrollAdjustments: {
+          id: number;
+          timeEntryId: number;
+          type: string;
+          status: string;
+          exportCategory: string;
+          hours: number;
+          exportedHours: number;
+          adjustedHours: number;
+          previousHours: number | null;
+          newHours: number | null;
+          reason: string;
+          originalPayrollPeriodId: number;
+          originalPayrollPeriodStartDate: string;
+          originalPayrollPeriodEndDate: string;
+          settlementPayrollPeriodId: number | null;
+          payrollCode: string;
+          exportCode: string;
+          payrollName: string;
+          workType: string;
+          createdAt: string;
+        }[];
       }
     >();
 
@@ -628,9 +687,11 @@ export class PayrollService {
           employeeNumber: entry.user.employeeNumber,
           payrollEmployeeId: entry.user.payrollEmployeeId,
           totalHours: 0,
+          adjustmentHours: 0,
           deviationCount: 0,
           adjustmentCount: 0,
           entries: [],
+          payrollAdjustments: [],
         });
       }
 
@@ -648,6 +709,7 @@ export class PayrollService {
 
       if (entry.isPayrollAdjustment) {
         userGroup.adjustmentCount += 1;
+        userGroup.adjustmentHours += hours;
       }
 
       userGroup.entries.push({
@@ -674,16 +736,82 @@ export class PayrollService {
       });
     }
 
+    for (const adjustment of payrollAdjustments) {
+      if (!grouped.has(adjustment.userId)) {
+        grouped.set(adjustment.userId, {
+          userId: adjustment.userId,
+          name: `${adjustment.user.firstName} ${adjustment.user.lastName}`,
+          email: adjustment.user.email,
+          employeeNumber: adjustment.user.employeeNumber,
+          payrollEmployeeId: adjustment.user.payrollEmployeeId,
+          totalHours: 0,
+          adjustmentHours: 0,
+          deviationCount: 0,
+          adjustmentCount: 0,
+          entries: [],
+          payrollAdjustments: [],
+        });
+      }
+
+      const userGroup = grouped.get(adjustment.userId);
+      if (!userGroup) continue;
+
+      const payrollData =
+        adjustment.payrollType ||
+        adjustment.timeEntry.shift?.workType?.payrollType ||
+        null;
+
+      const adjustmentHours = adjustment.minutesDelta / 60;
+
+      userGroup.adjustmentCount += 1;
+      userGroup.adjustmentHours += adjustmentHours;
+
+      userGroup.payrollAdjustments.push({
+        id: adjustment.id,
+        timeEntryId: adjustment.timeEntryId,
+        type: adjustment.type,
+        status: adjustment.status,
+        exportCategory: adjustment.exportCategory,
+        hours: Number(adjustmentHours.toFixed(2)),
+        exportedHours: Number((adjustment.exportedMinutes / 60).toFixed(2)),
+        adjustedHours: Number((adjustment.adjustedMinutes / 60).toFixed(2)),
+        previousHours:
+          adjustment.previousMinutes === null
+            ? null
+            : Number((adjustment.previousMinutes / 60).toFixed(2)),
+        newHours:
+          adjustment.newMinutes === null
+            ? null
+            : Number((adjustment.newMinutes / 60).toFixed(2)),
+        reason: adjustment.reason,
+        originalPayrollPeriodId: adjustment.originalPayrollPeriodId,
+        originalPayrollPeriodStartDate:
+          adjustment.originalPayrollPeriod.startDate.toISOString().slice(0, 10),
+        originalPayrollPeriodEndDate: adjustment.originalPayrollPeriod.endDate
+          .toISOString()
+          .slice(0, 10),
+        settlementPayrollPeriodId: adjustment.settlementPayrollPeriodId,
+        payrollCode: payrollData?.payrollCode || 'NORMAL',
+        exportCode:
+          payrollData?.exportCode || payrollData?.payrollCode || 'NORMAL',
+        payrollName: payrollData?.name || 'Normale timer',
+        workType: adjustment.timeEntry.shift?.workType?.name || '-',
+        createdAt: adjustment.createdAt.toISOString(),
+      });
+    }
+
     return {
       employees: Array.from(grouped.values()).map((employee) => ({
         ...employee,
         totalHours: Number(employee.totalHours.toFixed(2)),
+        adjustmentHours: Number(employee.adjustmentHours.toFixed(2)),
         deviationCount: employee.deviationCount,
         adjustmentCount: employee.adjustmentCount,
       })),
       pendingCount,
       voidedCount,
-      adjustmentCount,
+      adjustmentCount: legacyAdjustmentCount + payrollAdjustments.length,
+      payrollAdjustmentCount: payrollAdjustments.length,
     };
   }
 

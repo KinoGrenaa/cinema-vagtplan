@@ -34,6 +34,7 @@ export function usePayrollData({
   const [report, setReport] = useState<PayrollEmployee[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [voidedCount, setVoidedCount] = useState(0);
+  const [adjustmentCount, setAdjustmentCount] = useState(0);
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [auditHistory, setAuditHistory] = useState<PayrollAuditHistory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,11 +75,13 @@ export function usePayrollData({
       setReport(data.employees);
       setPendingCount(data.pendingCount);
       setVoidedCount(data.voidedCount);
+      setAdjustmentCount(data.adjustmentCount ?? 0);
     } catch (error) {
       console.error(error);
       setReport([]);
       setPendingCount(0);
       setVoidedCount(0);
+      setAdjustmentCount(0);
     } finally {
       setLoading(false);
     }
@@ -133,6 +136,7 @@ export function usePayrollData({
     report,
     pendingCount,
     voidedCount,
+    adjustmentCount,
     period,
     auditHistory,
     loading,
