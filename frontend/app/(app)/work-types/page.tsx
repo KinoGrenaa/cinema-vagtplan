@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { apiFetch } from "@/app/lib/api";
 import { toast } from "sonner";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 type PayrollType = {
   id: number;
@@ -62,13 +61,6 @@ export default function WorkTypesPage() {
 
   const isMaster = currentUser?.role === "MASTER";
 
-  function getHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
-
   useEffect(() => {
     setCurrentUser(getCurrentUserFromToken());
   }, []);
@@ -91,11 +83,8 @@ export default function WorkTypesPage() {
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${API_URL}/work-types?includeArchived=${showArchived}`,
-        {
-          headers: getHeaders(),
-        },
+      const response = await apiFetch(
+        `/work-types?includeArchived=${showArchived}`,
       );
 
       if (!response.ok) {
@@ -119,9 +108,7 @@ export default function WorkTypesPage() {
 
   async function fetchPayrollTypes() {
     try {
-      const response = await fetch(`${API_URL}/payroll-types`, {
-        headers: getHeaders(),
-      });
+      const response = await apiFetch("/payroll-types");
 
       if (!response.ok) {
         throw new Error();
@@ -138,9 +125,8 @@ export default function WorkTypesPage() {
 
   async function createWorkType() {
     try {
-      const response = await fetch(`${API_URL}/work-types`, {
+      const response = await apiFetch("/work-types", {
         method: "POST",
-        headers: getHeaders(),
         body: JSON.stringify({
           name,
           color,
@@ -175,9 +161,8 @@ export default function WorkTypesPage() {
       confirmVariant: "danger",
       onConfirm: async () => {
         try {
-          const response = await fetch(`${API_URL}/work-types/${id}`, {
+          const response = await apiFetch(`/work-types/${id}`, {
             method: "DELETE",
-            headers: getHeaders(),
           });
 
           if (!response.ok) {
@@ -211,13 +196,9 @@ export default function WorkTypesPage() {
       confirmVariant: "success",
       onConfirm: async () => {
         try {
-          const response = await fetch(
-            `${API_URL}/work-types/${id}/reactivate`,
-            {
-              method: "PATCH",
-              headers: getHeaders(),
-            },
-          );
+          const response = await apiFetch(`/work-types/${id}/reactivate`, {
+            method: "PATCH",
+          });
 
           if (!response.ok) {
             const data = await response.json().catch(() => null);

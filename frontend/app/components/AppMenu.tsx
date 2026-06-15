@@ -193,6 +193,11 @@ export default function AppMenu() {
         },
 
         {
+          href: "/work-types",
+          label: "Vagttyper",
+        },
+
+        {
           href: "/cinema-settings",
           label: "Biograf indstillinger",
         },
