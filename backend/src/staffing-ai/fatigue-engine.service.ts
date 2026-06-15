@@ -5,6 +5,46 @@ import { PrismaService } from '../prisma/prisma.service';
 export class FatigueEngineService {
   constructor(private prisma: PrismaService) {}
 
+  private getCopenhagenDateParts(date: Date) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Copenhagen',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false,
+      hourCycle: 'h23',
+    }).formatToParts(date);
+
+    const getPart = (type: string) =>
+      parts.find((part) => part.type === type)?.value ?? '';
+
+    return {
+      year: getPart('year'),
+      month: getPart('month'),
+      day: getPart('day'),
+      hour: getPart('hour'),
+    };
+  }
+
+  private dateToCopenhagenDateKey(date: Date) {
+    const parts = this.getCopenhagenDateParts(date);
+
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+
+  private getCopenhagenHour(date: Date) {
+    const hour = Number(this.getCopenhagenDateParts(date).hour);
+
+    return Number.isNaN(hour) ? 0 : hour;
+  }
+
+  private dateKeyToUtcDate(dateKey: string) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+
   async calculateFatigueScore(userId: number): Promise<{
     fatigueScore: number;
     overtimeScore: number;
@@ -61,23 +101,29 @@ export class FatigueEngineService {
 
     const workedDates = new Set(
       shifts.map((shift) =>
-        new Date(shift.startTime).toISOString().slice(0, 10),
+        this.dateToCopenhagenDateKey(new Date(shift.startTime)),
       ),
     );
 
     const sortedDates = Array.from(workedDates).sort();
 
-    for (let i = 1; i < sortedDates.length; i++) {
-      const prev = new Date(sortedDates[i - 1]);
-      const current = new Date(sortedDates[i]);
+    for (let i = 0; i < sortedDates.length; i++) {
+      if (i === 0) {
+        consecutiveDays = 1;
+        maxConsecutiveDays = 1;
+        continue;
+      }
+
+      const prev = this.dateKeyToUtcDate(sortedDates[i - 1]);
+      const current = this.dateKeyToUtcDate(sortedDates[i]);
 
       const diffDays =
         (current.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
 
-      if (diffDays <= 1) {
+      if (diffDays === 1) {
         consecutiveDays += 1;
       } else {
-        consecutiveDays = 0;
+        consecutiveDays = 1;
       }
 
       maxConsecutiveDays = Math.max(maxConsecutiveDays, consecutiveDays);
@@ -94,7 +140,7 @@ export class FatigueEngineService {
     }
 
     const lateShifts = shifts.filter((shift) => {
-      const endHour = new Date(shift.endTime).getHours();
+      const endHour = this.getCopenhagenHour(new Date(shift.endTime));
 
       return endHour >= 23 || endHour <= 5;
     });
