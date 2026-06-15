@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import { apiFetch } from "@/app/lib/api";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type TimeEntryStatus = "PENDING" | "NEEDS_CHANGES" | "APPROVED" | "VOIDED";
 
@@ -324,19 +323,11 @@ export default function MyTimePage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyItems, setHistoryItems] = useState<TimeEntryRevision[]>([]);
 
-  function getToken() {
-    return localStorage.getItem("token");
-  }
-
   const fetchEntries = useCallback(async () => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/time-entries/me`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const response = await apiFetch("/time-entries/me");
 
       if (!response.ok) {
         setEntries([]);
@@ -358,13 +349,8 @@ export default function MyTimePage() {
   const fetchPayrollPeriodForDate = useCallback(
     async (referenceDate: string) => {
       try {
-        const response = await fetch(
-          `${API_URL}/payroll/period-for-date?date=${encodeURIComponent(referenceDate)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${getToken()}`,
-            },
-          },
+        const response = await apiFetch(
+          `/payroll/period-for-date?date=${encodeURIComponent(referenceDate)}`,
         );
 
         if (!response.ok) {
@@ -460,22 +446,15 @@ export default function MyTimePage() {
     try {
       setSavingEdit(true);
 
-      const response = await fetch(
-        `${API_URL}/time-entries/me/${editingEntry.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({
-            clockIn: parsedClockIn.toISOString(),
-            clockOut: parsedClockOut ? parsedClockOut.toISOString() : null,
-            clockInNote: editClockInNote,
-            clockOutNote: editClockOutNote,
-          }),
-        },
-      );
+      const response = await apiFetch(`/time-entries/me/${editingEntry.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          clockIn: parsedClockIn.toISOString(),
+          clockOut: parsedClockOut ? parsedClockOut.toISOString() : null,
+          clockInNote: editClockInNote,
+          clockOutNote: editClockOutNote,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -499,14 +478,7 @@ export default function MyTimePage() {
       setHistoryLoading(true);
       setHistoryEntry(entry);
 
-      const response = await fetch(
-        `${API_URL}/time-entries/${entry.id}/revisions`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        },
-      );
+      const response = await apiFetch(`/time-entries/${entry.id}/revisions`);
 
       if (!response.ok) {
         toast.error("Kunne ikke hente historik");

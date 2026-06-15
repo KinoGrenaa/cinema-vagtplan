@@ -16,14 +16,13 @@ import {
 } from "lucide-react";
 import BaseModal from "@/app/components/modals/BaseModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import { apiFetch } from "@/app/lib/api";
 import {
   getTomorrowLocalDate,
   formatUtcDateDK,
   formatTimeDK,
   localDateTimeToISOString,
 } from "@/app/utils/dateTime";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
@@ -107,10 +106,6 @@ function getGroupKey(request: LeaveRequest) {
   return formatUtcDateDK(request.startDate);
 }
 
-function getToken() {
-  return localStorage.getItem("token");
-}
-
 export default function LeaveRequestsPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
@@ -156,11 +151,7 @@ export default function LeaveRequestsPage() {
 
   const fetchRequests = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/leave-requests`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const response = await apiFetch("/leave-requests");
 
       if (!response.ok) {
         setRequests([]);
@@ -248,12 +239,8 @@ export default function LeaveRequestsPage() {
     setSuccess("");
 
     try {
-      const response = await fetch(`${API_URL}/leave-requests`, {
+      const response = await apiFetch("/leave-requests", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({
           startDate: allDay
             ? localDateTimeToISOString(`${startDate}T00:00`)
@@ -288,17 +275,10 @@ export default function LeaveRequestsPage() {
     setSuccess("");
 
     try {
-      const response = await fetch(
-        `${API_URL}/leave-requests/${requestId}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({ status: "CANCELLED" }),
-        },
-      );
+      const response = await apiFetch(`/leave-requests/${requestId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "CANCELLED" }),
+      });
 
       const data = await response.json();
 

@@ -5,13 +5,12 @@ import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
 import BaseModal from "@/app/components/modals/BaseModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import { apiFetch } from "@/app/lib/api";
 import {
   formatDateDK,
   formatTimeDK,
   formatUtcDateDK,
 } from "@/app/utils/dateTime";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
@@ -101,20 +100,12 @@ export default function LeaveApprovalPage() {
 
   const [expandedUserIds, setExpandedUserIds] = useState<number[]>([]);
 
-  function getToken() {
-    return localStorage.getItem("token");
-  }
-
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await fetch(`${API_URL}/leave-requests`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const response = await apiFetch("/leave-requests");
 
       if (!response.ok) {
         setRequests([]);
@@ -190,17 +181,10 @@ export default function LeaveApprovalPage() {
     try {
       setError("");
 
-      const response = await fetch(
-        `${API_URL}/leave-requests/${requestId}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({ status }),
-        },
-      );
+      const response = await apiFetch(`/leave-requests/${requestId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
 
       const data = await response.json();
 
