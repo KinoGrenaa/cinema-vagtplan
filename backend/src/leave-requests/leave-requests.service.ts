@@ -169,41 +169,97 @@ export class LeaveRequestsService {
     }).format(date);
   }
 
-  private isSameUtcDate(left: Date, right: Date) {
+  private getCopenhagenDateTimeParts(date: Date) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Copenhagen',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      hourCycle: 'h23',
+    }).formatToParts(date);
+
+    const getPart = (type: string) =>
+      parts.find((part) => part.type === type)?.value ?? '';
+
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    const hour = getPart('hour');
+    const minute = getPart('minute');
+
+    return {
+      dateKey: `${year}-${month}-${day}`,
+      hour,
+      minute,
+    };
+  }
+
+  private formatUtcDate(date: Date) {
+    return `${this.pad(date.getUTCDate())}.${this.pad(
+      date.getUTCMonth() + 1,
+    )}.${date.getUTCFullYear()}`;
+  }
+
+  private isSameCopenhagenDate(left: Date, right: Date) {
     return (
-      left.getUTCFullYear() === right.getUTCFullYear() &&
-      left.getUTCMonth() === right.getUTCMonth() &&
-      left.getUTCDate() === right.getUTCDate()
+      this.getCopenhagenDateTimeParts(left).dateKey ===
+      this.getCopenhagenDateTimeParts(right).dateKey
     );
   }
 
-  private isAllDay(startDate: Date, endDate: Date) {
-    return (
+  private getAllDayDateRange(startDate: Date, endDate: Date) {
+    const startLocal = this.getCopenhagenDateTimeParts(startDate);
+    const endLocal = this.getCopenhagenDateTimeParts(endDate);
+
+    const isLocalAllDay =
+      startLocal.hour === '00' &&
+      startLocal.minute === '00' &&
+      endLocal.hour === '23' &&
+      Number(endLocal.minute) >= 59;
+
+    if (isLocalAllDay) {
+      return {
+        startDateText: this.formatDate(startDate),
+        endDateText: this.formatDate(endDate),
+      };
+    }
+
+    const isUtcAllDay =
       startDate.getUTCHours() === 0 &&
       startDate.getUTCMinutes() === 0 &&
       endDate.getUTCHours() === 23 &&
-      endDate.getUTCMinutes() === 59
-    );
+      endDate.getUTCMinutes() >= 59;
+
+    if (isUtcAllDay) {
+      return {
+        startDateText: this.formatUtcDate(startDate),
+        endDateText: this.formatUtcDate(endDate),
+      };
+    }
+
+    return null;
   }
 
   private formatLeavePeriod(startDate: Date, endDate: Date) {
+    const allDayDateRange = this.getAllDayDateRange(startDate, endDate);
+
+    if (allDayDateRange) {
+      return allDayDateRange.startDateText === allDayDateRange.endDateText
+        ? `${allDayDateRange.startDateText} · Hele dagen`
+        : `${allDayDateRange.startDateText} - ${allDayDateRange.endDateText} · Hele dagen`;
+    }
+
     const startDateText = this.formatDate(startDate);
     const endDateText = this.formatDate(endDate);
-    const sameDate = this.isSameUtcDate(startDate, endDate);
-    const allDay = this.isAllDay(startDate, endDate);
-
-    if (sameDate && allDay) {
-      return startDateText;
-    }
+    const sameDate = this.isSameCopenhagenDate(startDate, endDate);
 
     if (sameDate) {
       return `${startDateText} kl. ${this.formatTime(startDate)}-${this.formatTime(
         endDate,
       )}`;
-    }
-
-    if (allDay) {
-      return `${startDateText} - ${endDateText}`;
     }
 
     return `${startDateText} kl. ${this.formatTime(
