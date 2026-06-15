@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "@/app/lib/api";
 
 type Theme = "light" | "dark";
 
@@ -10,7 +11,6 @@ type ThemeContextValue = {
   toggleTheme: () => void;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function isTheme(value: unknown): value is Theme {
@@ -58,18 +58,13 @@ export default function ThemeProvider({
   async function saveThemeToUser(nextTheme: Theme) {
     try {
       const savedUser = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
 
-      if (!savedUser || !token) return;
+      if (!savedUser) return;
 
       const user = JSON.parse(savedUser);
 
-      const response = await fetch(`${API_URL}/users/${user.id}/theme`, {
+      const response = await apiFetch(`/users/${user.id}/theme`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           theme: nextTheme,
         }),
@@ -103,7 +98,9 @@ export default function ThemeProvider({
     [theme],
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {

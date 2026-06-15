@@ -6,8 +6,9 @@ import { useAuth } from "@/app/providers/AuthProvider";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
-  enablePushNotifications,
   disablePushNotifications,
+  enablePushNotifications,
+  isPushNotificationsEnabled,
 } from "@/app/hooks/usePushNotifications";
 
 type User = {
@@ -59,6 +60,8 @@ export default function NotificationsPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
   const [pushMessage, setPushMessage] = useState("");
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
   const [extraLoading, setExtraLoading] = useState(true);
 
   const fetchExtraData = useCallback(async () => {
@@ -99,6 +102,15 @@ export default function NotificationsPage() {
 
     fetchExtraData();
   }, [authLoading, fetchExtraData, user]);
+
+  useEffect(() => {
+    async function loadPushStatus() {
+      const enabled = await isPushNotificationsEnabled();
+      setPushEnabled(enabled);
+    }
+
+    loadPushStatus();
+  }, []);
 
   useRealtimeShifts({
     onShiftsUpdated: fetchExtraData,
@@ -152,19 +164,35 @@ export default function NotificationsPage() {
     poolTrades.length;
 
   async function handleEnablePush() {
-    const success = await enablePushNotifications();
+    try {
+      setPushLoading(true);
 
-    setPushMessage(
-      success
-        ? "Push-notifikationer er aktiveret."
-        : "Push-notifikationer kunne ikke aktiveres.",
-    );
+      const success = await enablePushNotifications();
+
+      setPushEnabled(success);
+
+      setPushMessage(
+        success
+          ? "Push-notifikationer er aktiveret."
+          : "Push-notifikationer kunne ikke aktiveres.",
+      );
+    } finally {
+      setPushLoading(false);
+    }
   }
 
   async function handleDisablePush() {
-    await disablePushNotifications();
+    try {
+      setPushLoading(true);
 
-    setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
+      await disablePushNotifications();
+
+      setPushEnabled(false);
+
+      setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
+    } finally {
+      setPushLoading(false);
+    }
   }
 
   async function handleMarkNotificationAsRead(notificationId: number) {
@@ -202,14 +230,20 @@ export default function NotificationsPage() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   onClick={handleEnablePush}
-                  className="rounded-xl bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
+                  disabled={pushLoading || pushEnabled}
+                  className="rounded-xl bg-green-600 px-4 py-2 text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Aktivér push-notifikationer
+                  {pushLoading
+                    ? "Arbejder..."
+                    : pushEnabled
+                      ? "Push er aktiveret"
+                      : "Aktivér push-notifikationer"}
                 </button>
 
                 <button
                   onClick={handleDisablePush}
-                  className="rounded-xl bg-gray-700 px-4 py-2 text-white transition hover:bg-gray-800"
+                  disabled={pushLoading || !pushEnabled}
+                  className="rounded-xl bg-gray-700 px-4 py-2 text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Deaktivér push-notifikationer
                 </button>

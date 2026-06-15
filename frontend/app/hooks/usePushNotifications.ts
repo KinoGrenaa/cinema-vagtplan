@@ -1,6 +1,6 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+import { apiFetch } from "@/app/lib/api";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -38,32 +38,40 @@ export async function enablePushNotifications() {
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     }));
 
-  const token = localStorage.getItem("token");
-
-  if (!token) return false;
-
-  await fetch(`${API_URL}/push-subscriptions`, {
+  const response = await apiFetch("/push-subscriptions", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(subscription),
   });
 
+  if (!response.ok) return false;
+
   return true;
+}
+
+export async function isPushNotificationsEnabled() {
+  if (!("serviceWorker" in navigator)) return false;
+
+  if (!("PushManager" in window)) return false;
+
+  const registration = await navigator.serviceWorker.getRegistration();
+
+  if (!registration) return false;
+
+  const subscription = await registration.pushManager.getSubscription();
+
+  return Boolean(subscription);
 }
 
 export async function disablePushNotifications() {
   const registration = await navigator.serviceWorker.getRegistration();
 
-  if (!registration) return;
+  if (!registration) return false;
 
   const subscription = await registration.pushManager.getSubscription();
 
-  if (subscription) {
-    await subscription.unsubscribe();
-  }
+  if (!subscription) return true;
+
+  return subscription.unsubscribe();
 }
 export function usePushNotifications() {
   return null;

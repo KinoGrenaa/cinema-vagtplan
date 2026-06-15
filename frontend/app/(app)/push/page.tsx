@@ -3,20 +3,29 @@
 import { Bell, BellOff, CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
-  enablePushNotifications,
   disablePushNotifications,
+  enablePushNotifications,
+  isPushNotificationsEnabled,
 } from "@/app/hooks/usePushNotifications";
 
 export default function PushPage() {
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if ("Notification" in window) {
       setPermission(Notification.permission);
     }
+
+    async function loadPushStatus() {
+      const enabled = await isPushNotificationsEnabled();
+      setPushEnabled(enabled);
+    }
+
+    loadPushStatus();
   }, []);
 
   async function enableNotifications() {
@@ -29,6 +38,8 @@ export default function PushPage() {
       if ("Notification" in window) {
         setPermission(Notification.permission);
       }
+
+      setPushEnabled(success);
 
       setMessage(
         success
@@ -51,6 +62,8 @@ export default function PushPage() {
         setPermission(Notification.permission);
       }
 
+      setPushEnabled(false);
+
       setMessage("Push-notifikationer er deaktiveret på denne browser.");
     } finally {
       setLoading(false);
@@ -58,13 +71,23 @@ export default function PushPage() {
   }
 
   function getStatus() {
-    if (permission === "granted") {
+    if (permission === "granted" && pushEnabled) {
       return {
         title: "Aktiveret",
-        text: "Browseren har tilladelse til at modtage push-notifikationer.",
+        text: "Push-notifikationer er aktiveret på denne browser.",
         icon: <CheckCircle2 className="h-10 w-10 text-green-600" />,
         className:
           "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40",
+      };
+    }
+
+    if (permission === "granted" && !pushEnabled) {
+      return {
+        title: "Tilladelse givet",
+        text: "Browseren tillader notifikationer, men push er ikke aktiveret på denne browser.",
+        icon: <Bell className="h-10 w-10 text-yellow-600" />,
+        className:
+          "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40",
       };
     }
 
@@ -135,19 +158,19 @@ export default function PushPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={enableNotifications}
-              disabled={loading || permission === "granted"}
+              disabled={loading || pushEnabled || permission === "denied"}
               className="rounded-xl bg-green-600 px-6 py-3 font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading
                 ? "Arbejder..."
-                : permission === "granted"
+                : pushEnabled
                   ? "Push er aktiveret"
                   : "Aktivér push-notifikationer"}
             </button>
 
             <button
               onClick={disableNotifications}
-              disabled={loading}
+              disabled={loading || !pushEnabled}
               className="rounded-xl bg-gray-700 px-6 py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Deaktivér push-notifikationer

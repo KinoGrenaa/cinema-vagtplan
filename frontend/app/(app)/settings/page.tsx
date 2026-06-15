@@ -9,9 +9,8 @@ import { useTheme } from "@/app/components/ThemeProvider";
 import {
   disablePushNotifications,
   enablePushNotifications,
+  isPushNotificationsEnabled,
 } from "@/app/hooks/usePushNotifications";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type CurrentUser = {
   id: number;
@@ -29,13 +28,11 @@ export default function SettingsPage() {
 
   const [pushLoading, setPushLoading] = useState(false);
 
+  const [pushEnabled, setPushEnabled] = useState(false);
+
   const [pushMessage, setPushMessage] = useState("");
 
   const { theme, setTheme } = useTheme();
-
-  function getToken() {
-    return localStorage.getItem("token");
-  }
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -47,6 +44,13 @@ export default function SettingsPage() {
     if ("Notification" in window) {
       setPermission(Notification.permission);
     }
+
+    async function loadPushStatus() {
+      const enabled = await isPushNotificationsEnabled();
+      setPushEnabled(enabled);
+    }
+
+    loadPushStatus();
   }, []);
 
   async function enableNotifications() {
@@ -59,6 +63,8 @@ export default function SettingsPage() {
       if ("Notification" in window) {
         setPermission(Notification.permission);
       }
+
+      setPushEnabled(success);
 
       setPushMessage(
         success
@@ -81,6 +87,8 @@ export default function SettingsPage() {
         setPermission(Notification.permission);
       }
 
+      setPushEnabled(false);
+
       setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
     } finally {
       setPushLoading(false);
@@ -88,13 +96,23 @@ export default function SettingsPage() {
   }
 
   function getPushStatus() {
-    if (permission === "granted") {
+    if (permission === "granted" && pushEnabled) {
       return {
         title: "Aktiveret",
-        text: "Browseren har tilladelse til at modtage push-notifikationer.",
+        text: "Push-notifikationer er aktiveret på denne browser.",
         icon: <CheckCircle2 className="h-8 w-8 text-green-600" />,
         className:
           "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40",
+      };
+    }
+
+    if (permission === "granted" && !pushEnabled) {
+      return {
+        title: "Tilladelse givet",
+        text: "Browseren tillader notifikationer, men push er ikke aktiveret på denne browser.",
+        icon: <Bell className="h-8 w-8 text-yellow-600" />,
+        className:
+          "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40",
       };
     }
 
@@ -213,19 +231,19 @@ export default function SettingsPage() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={enableNotifications}
-              disabled={pushLoading || permission === "granted"}
+              disabled={pushLoading || pushEnabled || permission === "denied"}
               className="rounded-xl bg-green-600 px-5 py-3 font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {pushLoading
                 ? "Arbejder..."
-                : permission === "granted"
+                : pushEnabled
                   ? "Push er aktiveret"
                   : "Aktivér push-notifikationer"}
             </button>
 
             <button
               onClick={disableNotifications}
-              disabled={pushLoading}
+              disabled={pushLoading || !pushEnabled}
               className="rounded-xl bg-gray-700 px-5 py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Deaktivér push-notifikationer
