@@ -252,6 +252,35 @@ export class PayrollService {
     return `${year}-${month}-${day}`;
   }
 
+  private getPayrollReferenceDate(entry: {
+    clockIn: Date;
+    shift?: { startTime: Date } | null;
+  }) {
+    return entry.shift?.startTime ?? entry.clockIn;
+  }
+
+  private getPayrollReferenceDateFilters(start: Date, end: Date) {
+    return [
+      {
+        shift: {
+          is: {
+            startTime: {
+              gte: start,
+              lte: end,
+            },
+          },
+        },
+      },
+      {
+        shiftId: null,
+        clockIn: {
+          gte: start,
+          lte: end,
+        },
+      },
+    ];
+  }
+
   private createUtcDate(year: number, month: number, day: number) {
     return new Date(Date.UTC(year, month, day));
   }
@@ -527,12 +556,7 @@ export class PayrollService {
         },
         status: 'APPROVED',
         OR: [
-          {
-            clockIn: {
-              gte: start,
-              lte: end,
-            },
-          },
+          ...this.getPayrollReferenceDateFilters(start, end),
           {
             isPayrollAdjustment: true,
             adjustmentPayrollPeriod: {
@@ -603,10 +627,7 @@ export class PayrollService {
       where: {
         ...this.getCinemaFilter(user),
         ...(userId ? { userId: Number(userId) } : {}),
-        clockIn: {
-          gte: start,
-          lte: end,
-        },
+        OR: this.getPayrollReferenceDateFilters(start, end),
         clockOut: {
           not: null,
         },
@@ -618,10 +639,7 @@ export class PayrollService {
       where: {
         ...this.getCinemaFilter(user),
         ...(userId ? { userId: Number(userId) } : {}),
-        clockIn: {
-          gte: start,
-          lte: end,
-        },
+        OR: this.getPayrollReferenceDateFilters(start, end),
         clockOut: {
           not: null,
         },
@@ -733,7 +751,9 @@ export class PayrollService {
 
       userGroup.entries.push({
         id: entry.id,
-        date: this.dateToCopenhagenDateString(entry.clockIn),
+        date: this.dateToCopenhagenDateString(
+          this.getPayrollReferenceDate(entry),
+        ),
         clockIn: entry.clockIn.toISOString(),
         clockOut: entry.clockOut.toISOString(),
         hours: Number(hours.toFixed(2)),
@@ -890,10 +910,7 @@ export class PayrollService {
     const entries = await this.prisma.timeEntry.findMany({
       where: {
         cinemaId,
-        clockIn: {
-          gte: start,
-          lte: end,
-        },
+        OR: this.getPayrollReferenceDateFilters(start, end),
         clockOut: {
           not: null,
         },
@@ -1039,10 +1056,7 @@ export class PayrollService {
       where: {
         ...this.getCinemaFilter(user),
         ...(userId ? { userId: Number(userId) } : {}),
-        clockIn: {
-          gte: start,
-          lte: end,
-        },
+        OR: this.getPayrollReferenceDateFilters(start, end),
         clockOut: {
           not: null,
         },
@@ -1124,10 +1138,7 @@ export class PayrollService {
     const entries = await this.prisma.timeEntry.findMany({
       where: {
         cinemaId,
-        clockIn: {
-          gte: start,
-          lte: end,
-        },
+        OR: this.getPayrollReferenceDateFilters(start, end),
         clockOut: {
           not: null,
         },
