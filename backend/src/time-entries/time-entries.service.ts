@@ -1785,19 +1785,6 @@ export class TimeEntriesService {
       const exportedMinutes = this.getEntryMinutes(existingEntry);
       const adjustedMinutes = this.getEntryMinutes(entry);
 
-      console.log('PAYROLL ADJUSTMENT DEBUG', {
-        timeEntryId: entry.id,
-        payrollPeriodId: payrollPeriod.id,
-        payrollPeriodStatus: payrollPeriod.status,
-        oldClockIn: existingEntry.clockIn,
-        oldClockOut: existingEntry.clockOut,
-        newClockIn: entry.clockIn,
-        newClockOut: entry.clockOut,
-        exportedMinutes,
-        adjustedMinutes,
-        minutesDelta: adjustedMinutes - exportedMinutes,
-      });
-
       await this.createOrUpdatePayrollAdjustment({
         timeEntry: entry,
         originalPayrollPeriodId: payrollPeriod.id,
@@ -2015,10 +2002,6 @@ export class TimeEntriesService {
       );
     }
 
-    if (existingEntry.status !== 'PENDING') {
-      changes.push(`Status: ${existingEntry.status} → PENDING`);
-    }
-
     if (changes.length === 0) {
       throw new BadRequestException('Ingen ændringer registreret');
     }
@@ -2054,11 +2037,14 @@ export class TimeEntriesService {
       },
     });
 
-    const payrollPeriod =
-      await this.payrollService.getPayrollPeriodEntityForDate(
-        existingEntry.cinemaId,
-        existingEntry.clockIn,
-      );
+    const payrollPeriod = existingEntry.payrollPeriodId
+      ? await this.prisma.payrollPeriod.findUnique({
+          where: { id: existingEntry.payrollPeriodId },
+        })
+      : await this.payrollService.getPayrollPeriodEntityForDate(
+          existingEntry.cinemaId,
+          existingEntry.clockIn,
+        );
 
     if (payrollPeriod?.status === 'EXPORTED') {
       const adjustmentPayrollPeriod =

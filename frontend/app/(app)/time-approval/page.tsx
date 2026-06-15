@@ -458,9 +458,23 @@ export default function TimeApprovalPage() {
     try {
       setLoading(true);
 
+      const token = getToken();
+
+      if (!token) {
+        setEntries([]);
+        errorDialog.confirm({
+          title: "Du er ikke logget ind",
+          description:
+            "Din session er udløbet. Log ind igen for at se tidsregistreringer.",
+          confirmText: "OK",
+          onConfirm: async () => {},
+        });
+        return;
+      }
+
       const response = await fetch(`${API_URL}/time-entries`, {
         headers: {
-          Authorization: `Bearer ${getToken()}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -471,7 +485,9 @@ export default function TimeApprovalPage() {
 
       const data = await response.json();
 
-      setEntries(Array.isArray(data) ? data : []);
+      const nextEntries = Array.isArray(data) ? data : [];
+
+      setEntries(nextEntries);
     } catch {
       setEntries([]);
     } finally {
@@ -516,13 +532,20 @@ export default function TimeApprovalPage() {
     errorDialog.confirm({
       title: "Bekræft rettelse",
       description: [
-        `Du er ved at ændre en tidsregistrering for ${employeeName}.`,
+        "Du er ved at rette en tidsregistrering.",
         "",
-        `Nuværende tid: ${oldTime}`,
-        `Ny tid: ${newTime}`,
+        `Medarbejder:`,
+        employeeName,
+        "",
+        `Tidligere registrering:`,
+        oldTime,
+        "",
+        `Ny registrering:`,
+        newTime,
         "",
         "Ændringen gemmes i historikken.",
-        "Hvis registreringen tilhører en eksporteret lønperiode, oprettes der automatisk en efterregulering.",
+        "",
+        "Hvis registreringen allerede indgår i en eksporteret lønperiode, opretter systemet automatisk en efterregulering.",
       ].join("\n"),
       confirmText: "Gem rettelse",
       cancelText: "Annuller",
@@ -847,7 +870,7 @@ export default function TimeApprovalPage() {
               </div>
             )}
 
-            {!loading && entries.length > 0 && (
+            {!loading && (
               <div className="space-y-4">
                 <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -900,7 +923,7 @@ export default function TimeApprovalPage() {
                   </div>
                 </div>
 
-                {visibleEntries.length === 0 ? (
+                {entries.length > 0 && visibleEntries.length === 0 ? (
                   <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
                     <div className="mb-2 text-4xl">🔎</div>
 
@@ -1209,17 +1232,22 @@ export default function TimeApprovalPage() {
               </div>
             )}
 
-            {!loading && entries.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <div className="mb-2 text-4xl">⏱️</div>
+            {!loading &&
+              entries.length === 0 &&
+              activeFilterCount === 0 &&
+              !employeeSearch.trim() && (
+                <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                  <div className="mb-2 text-4xl">⏱️</div>
 
-                <h2 className="text-xl font-bold">Ingen tidsregistreringer</h2>
+                  <h2 className="text-xl font-bold">
+                    Ingen tidsregistreringer
+                  </h2>
 
-                <p className="mt-2 text-gray-500 dark:text-gray-400">
-                  Der er ingen registreringer at godkende lige nu.
-                </p>
-              </div>
-            )}
+                  <p className="mt-2 text-gray-500 dark:text-gray-400">
+                    Der er ingen registreringer at godkende lige nu.
+                  </p>
+                </div>
+              )}
           </div>
         </main>
 
