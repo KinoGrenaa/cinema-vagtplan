@@ -145,10 +145,15 @@ export default function SchedulePage() {
   }, [currentUser?.id, shifts, timeEntries]);
 
   const filteredMovieShowings = useMemo(() => {
-    return movieShowings.filter((movie) => {
-      const movieDate = dateToLocalDateString(new Date(movie.startTime));
+    const dayStart = new Date(`${selectedDate}T00:00:00`);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
 
-      return movieDate === selectedDate;
+    return movieShowings.filter((movie) => {
+      const movieStart = new Date(movie.startTime);
+      const movieEnd = new Date(movie.endTime);
+
+      return movieStart < dayEnd && movieEnd > dayStart;
     });
   }, [movieShowings, selectedDate]);
 
@@ -919,7 +924,10 @@ ${getShiftConfirmText(selectedShift)}`,
                 </div>
               </div>
 
-              <MovieProgram movieShowings={filteredMovieShowings} />
+              <MovieProgram
+                movieShowings={filteredMovieShowings}
+                selectedDate={selectedDate}
+              />
             </div>
 
             {showClockModal && (

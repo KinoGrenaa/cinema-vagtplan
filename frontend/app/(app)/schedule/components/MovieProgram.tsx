@@ -12,6 +12,7 @@ type MovieShowing = {
 
 type MovieProgramProps = {
   movieShowings: MovieShowing[];
+  selectedDate: string;
 };
 
 const DAY_START_HOUR = 0;
@@ -20,13 +21,7 @@ const HOURS = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR + 1 }).map(
   (_, index) => DAY_START_HOUR + index,
 );
 
-function getMinutesFromStart(value: string) {
-  const date = new Date(value);
-
-  return date.getHours() * 60 + date.getMinutes();
-}
-
-function formatTime(value: string) {
+function formatTime(value: string | Date) {
   return new Date(value).toLocaleTimeString("da-DK", {
     hour: "2-digit",
     minute: "2-digit",
@@ -41,9 +36,62 @@ function getTitle(movie: MovieShowing) {
   return movie.title || movie.movieTitle || "Ukendt film";
 }
 
-export default function MovieProgram({ movieShowings }: MovieProgramProps) {
+function getSelectedDayRange(selectedDate: string) {
+  const start = new Date(`${selectedDate}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return { start, end };
+}
+
+function getMoviePosition(movie: MovieShowing, selectedDate: string) {
+  const day = getSelectedDayRange(selectedDate);
+  const movieStart = new Date(movie.startTime);
+  const movieEnd = new Date(movie.endTime);
+
+  const visibleStart =
+    movieStart.getTime() < day.start.getTime() ? day.start : movieStart;
+
+  const visibleEnd =
+    movieEnd.getTime() > day.end.getTime() ? day.end : movieEnd;
+
+  const startMinutes = Math.max(
+    Math.round((visibleStart.getTime() - day.start.getTime()) / 1000 / 60),
+    0,
+  );
+
+  const durationMinutes = Math.max(
+    Math.round((visibleEnd.getTime() - visibleStart.getTime()) / 1000 / 60),
+    1,
+  );
+
   const totalMinutes = (DAY_END_HOUR - DAY_START_HOUR) * 60;
 
+  return {
+    leftPercent: (startMinutes / totalMinutes) * 100,
+    widthPercent: (durationMinutes / totalMinutes) * 100,
+    startsBeforeSelectedDay: movieStart < day.start,
+    endsAfterSelectedDay: movieEnd > day.end,
+  };
+}
+
+function getTimeLabel(
+  movie: MovieShowing,
+  startsBeforeSelectedDay: boolean,
+  endsAfterSelectedDay: boolean,
+) {
+  const prefix = startsBeforeSelectedDay ? "Fra dagen før · " : "";
+  const suffix = endsAfterSelectedDay ? " · fortsætter næste dag" : "";
+
+  return `${prefix}${formatTime(movie.startTime)} - ${formatTime(
+    movie.endTime,
+  )}${suffix}`;
+}
+
+export default function MovieProgram({
+  movieShowings,
+  selectedDate,
+}: MovieProgramProps) {
   const rooms = Array.from(new Set(movieShowings.map(getRoom))).sort();
 
   return (
@@ -133,16 +181,18 @@ export default function MovieProgram({ movieShowings }: MovieProgramProps) {
                     </div>
 
                     {roomMovies.map((movie) => {
-                      const startMinutes = getMinutesFromStart(movie.startTime);
-                      const endMinutes = getMinutesFromStart(movie.endTime);
-                      const durationMinutes = Math.max(
-                        endMinutes - startMinutes,
-                        1,
-                      );
+                      const {
+                        leftPercent,
+                        widthPercent,
+                        startsBeforeSelectedDay,
+                        endsAfterSelectedDay,
+                      } = getMoviePosition(movie, selectedDate);
 
-                      const leftPercent = (startMinutes / totalMinutes) * 100;
-                      const widthPercent =
-                        (durationMinutes / totalMinutes) * 100;
+                      const timeLabel = getTimeLabel(
+                        movie,
+                        startsBeforeSelectedDay,
+                        endsAfterSelectedDay,
+                      );
 
                       return (
                         <div
@@ -152,17 +202,14 @@ export default function MovieProgram({ movieShowings }: MovieProgramProps) {
                             left: `${leftPercent}%`,
                             width: `${widthPercent}%`,
                           }}
-                          title={`${getTitle(movie)} - ${formatTime(
-                            movie.startTime,
-                          )} til ${formatTime(movie.endTime)}`}
+                          title={`${getTitle(movie)} - ${timeLabel}`}
                         >
                           <div className="truncate font-bold">
                             {getTitle(movie)}
                           </div>
 
                           <div className="truncate text-xs">
-                            {formatTime(movie.startTime)} -{" "}
-                            {formatTime(movie.endTime)}
+                            {timeLabel}
                             {typeof movie.ticketsSold === "number"
                               ? ` · ${movie.ticketsSold} billetter`
                               : ""}

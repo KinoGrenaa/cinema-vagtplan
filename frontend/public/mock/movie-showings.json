@@ -15919,5 +15919,14 @@
     "endTime": "2027-05-24T21:13:00",
     "soldSeats": 49,
     "freeSeats": 11
-  }
+  },
+{
+  "id": 1770,
+  "title": "Midnatstest",
+  "hall": "Sal 1",
+  "startTime": "2026-06-30T23:15:00",
+  "endTime": "2026-07-01T01:10:00",
+  "soldSeats": 42,
+  "freeSeats": 302
+}
 ]
