@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/app/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -45,11 +46,6 @@ export default function ProfilePage() {
   const [birthDate, setBirthDate] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [skills, setSkills] = useState("");
-
-  function getToken() {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("token") || "";
-  }
 
   function formatDateForInput(value?: string | null) {
     return value ? value.slice(0, 10) : "";
@@ -101,11 +97,7 @@ export default function ProfilePage() {
       const parsedUser: CurrentUser = JSON.parse(savedUser);
       setCurrentUser(parsedUser);
 
-      const response = await fetch(`${API_URL}/users`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const response = await apiFetch("/users");
 
       if (!response.ok) {
         throw new Error(await readError(response));
@@ -149,13 +141,10 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(
-        `${API_URL}/users/${currentUser.id}/profile-image`,
+      const response = await apiFetch(
+        `/users/${currentUser.id}/profile-image`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
           body: formData,
         },
       );
@@ -198,26 +187,19 @@ export default function ProfilePage() {
       setSaving(true);
       setMessage("");
 
-      const response = await fetch(
-        `${API_URL}/users/${currentUser.id}/profile`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password: password.trim() || undefined,
-            phone: mobileDigits || undefined,
-            profileImage: profileImage || undefined,
-            address: address.trim() || undefined,
-            birthDate: birthDate || null,
-            emergencyPhone: emergencyPhone.trim() || undefined,
-            skills: skills.trim() || undefined,
-          }),
-        },
-      );
+      const response = await apiFetch(`/users/${currentUser.id}/profile`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password.trim() || undefined,
+          phone: mobileDigits || undefined,
+          profileImage: profileImage || undefined,
+          address: address.trim() || undefined,
+          birthDate: birthDate || null,
+          emergencyPhone: emergencyPhone.trim() || undefined,
+          skills: skills.trim() || undefined,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(await readError(response));

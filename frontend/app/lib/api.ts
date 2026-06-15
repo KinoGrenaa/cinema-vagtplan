@@ -14,7 +14,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   const headers = new Headers(options.headers || {});
 
-  if (!headers.has("Content-Type")) {
+  const isFormDataBody =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+
+  if (!headers.has("Content-Type") && !isFormDataBody) {
     headers.set("Content-Type", "application/json");
   }
 

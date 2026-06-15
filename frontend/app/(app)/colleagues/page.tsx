@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import AppMenu from "../../components/AppMenu";
+import { apiFetch } from "@/app/lib/api";
 
 type User = {
   id: number;
@@ -15,19 +15,20 @@ type User = {
 export default function ColleaguesPage() {
   const [users, setUsers] = useState<User[]>([]);
 
-  function getToken() {
-    return localStorage.getItem("token");
-  }
-
   const fetchUsers = useCallback(async () => {
-    const response = await fetch("process.env.NEXT_PUBLIC_API_URL!/users", {
-      headers: {
-        Authorization: `Bearer ${getToken()}`,
-      },
-    });
+    try {
+      const response = await apiFetch("/users");
 
-    const data: User[] = await response.json();
-    setUsers(data);
+      if (!response.ok) {
+        setUsers([]);
+        return;
+      }
+
+      const data = await response.json();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch {
+      setUsers([]);
+    }
   }, []);
 
   useEffect(() => {

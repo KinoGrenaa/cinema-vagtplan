@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
+import { apiFetch } from "@/app/lib/api";
 import { getTodayLocalDate, formatTimeDK } from "@/app/utils/dateTime";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
@@ -49,47 +50,38 @@ export default function LivePage() {
 
   const today = getTodayLocalDate();
 
-  function getToken() {
-    return localStorage.getItem("token");
-  }
-
   const fetchData = useCallback(async () => {
     try {
-      const headers = {
-        Authorization: `Bearer ${getToken()}`,
-      };
-
       const [usersRes, shiftsRes, moviesRes] = await Promise.all([
-        fetch(`${API_URL}/users`, { headers }),
-
-        fetch(`${API_URL}/shifts?date=${today}`, {
-          headers,
-        }),
-
-        fetch(`${API_URL}/movie-showings?date=${today}`, {
-          headers,
-        }),
+        apiFetch("/users"),
+        apiFetch(`/shifts?date=${today}`),
+        apiFetch(`/movie-showings?date=${today}`),
       ]);
 
+      if (!usersRes.ok || !shiftsRes.ok || !moviesRes.ok) {
+        setUsers([]);
+        setShifts([]);
+        setMovies([]);
+        setTimeEntries([]);
+        return;
+      }
+
       const usersData: User[] = await usersRes.json();
-
       const shiftsData: Shift[] = await shiftsRes.json();
-
       const moviesData: MovieShowing[] = await moviesRes.json();
 
-      setUsers(Array.isArray(usersData) ? usersData : []);
+      const safeUsers = Array.isArray(usersData) ? usersData : [];
 
+      setUsers(safeUsers);
       setShifts(Array.isArray(shiftsData) ? shiftsData : []);
-
       setMovies(Array.isArray(moviesData) ? moviesData : []);
 
       const allEntries: TimeEntry[] = [];
 
-      for (const user of usersData) {
-        const res = await fetch(
-          `${API_URL}/time-entries/open?userId=${user.id}`,
-          { headers },
-        );
+      for (const user of safeUsers) {
+        const res = await apiFetch(`/time-entries/open?userId=${user.id}`);
+
+        if (!res.ok) continue;
 
         const entry: TimeEntry | null = await res.json();
 

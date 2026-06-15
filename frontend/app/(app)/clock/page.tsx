@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CurrentUser, Shift, TimeEntry } from "../../../../shared/types";
+import { apiFetch } from "@/app/lib/api";
 import { getTodayLocalDate, formatTimeDK } from "@/app/utils/dateTime";
 import { toast } from "sonner";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 const inputClass =
   "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
@@ -30,10 +29,6 @@ export default function ClockPage() {
 
   const [loading, setLoading] = useState(false);
 
-  function getToken() {
-    return localStorage.getItem("token");
-  }
-
   function toInputDateTime(value: string) {
     const date = new Date(value);
 
@@ -46,11 +41,7 @@ export default function ClockPage() {
 
   const fetchEntries = useCallback(async (userId: number) => {
     try {
-      const response = await fetch(`${API_URL}/time-entries?userId=${userId}`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const response = await apiFetch(`/time-entries?userId=${userId}`);
 
       if (!response.ok) {
         setEntries([]);
@@ -69,11 +60,7 @@ export default function ClockPage() {
     try {
       const today = getTodayLocalDate();
 
-      const response = await fetch(`${API_URL}/shifts?date=${today}`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const response = await apiFetch(`/shifts?date=${today}`);
 
       if (!response.ok) {
         setTodayShifts([]);
@@ -117,12 +104,8 @@ export default function ClockPage() {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/time-entries`, {
+      const response = await apiFetch("/time-entries", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({
           userId: currentUser.id,
           shiftId: selectedShiftId,

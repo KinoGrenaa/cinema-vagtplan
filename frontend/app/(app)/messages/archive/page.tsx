@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+import { apiFetch } from "@/app/lib/api";
 
 type User = {
   id: number;
@@ -32,12 +31,6 @@ export default function ArchivedMessagesPage() {
   );
   const [loading, setLoading] = useState(true);
 
-  function getHeaders() {
-    return {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
-
   const fetchMessages = useCallback(async () => {
     try {
       setLoading(true);
@@ -51,11 +44,8 @@ export default function ArchivedMessagesPage() {
 
       const user: CurrentUser = JSON.parse(savedUser);
 
-      const response = await fetch(
-        `${API_URL}/messages/archive?userId=${user.id}&cinemaId=${user.cinemaId}`,
-        {
-          headers: getHeaders(),
-        },
+      const response = await apiFetch(
+        `/messages/archive?userId=${user.id}&cinemaId=${user.cinemaId}`,
       );
 
       if (!response.ok) {
@@ -120,9 +110,7 @@ export default function ArchivedMessagesPage() {
               Intet arkiv endnu
             </h2>
 
-            <p className="mt-2">
-              Du har endnu ikke arkiveret nogen beskeder.
-            </p>
+            <p className="mt-2">Du har endnu ikke arkiveret nogen beskeder.</p>
           </div>
         )}
 
@@ -139,9 +127,7 @@ export default function ArchivedMessagesPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      setExpandedMessageId(
-                        isExpanded ? null : message.id,
-                      )
+                      setExpandedMessageId(isExpanded ? null : message.id)
                     }
                     className="w-full p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
                   >

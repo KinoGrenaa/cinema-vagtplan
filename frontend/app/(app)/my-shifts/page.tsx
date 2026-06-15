@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+import { apiFetch } from "@/app/lib/api";
 import {
   dateToLocalMonthString,
   formatDateDK,
@@ -9,8 +10,6 @@ import {
 } from "@/app/utils/dateTime";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type CurrentUser = {
   id: number;
@@ -73,17 +72,8 @@ export default function MyShiftsPage() {
     null,
   );
 
-  const getHeaders = useCallback(() => {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }, []);
-
   const fetchShifts = useCallback(async () => {
-    const response = await fetch(`${API_URL}/shifts`, {
-      headers: getHeaders(),
-    });
+    const response = await apiFetch("/shifts");
 
     const data = await response.json();
     setShifts(
@@ -93,25 +83,21 @@ export default function MyShiftsPage() {
           ? data.shifts
           : [],
     );
-  }, [getHeaders]);
+  }, []);
 
   const fetchUsers = useCallback(async () => {
-    const response = await fetch(`${API_URL}/users`, {
-      headers: getHeaders(),
-    });
+    const response = await apiFetch("/users");
 
     const data = await response.json();
     setUsers(Array.isArray(data) ? data : []);
-  }, [getHeaders]);
+  }, []);
 
   const fetchShiftTrades = useCallback(async () => {
-    const response = await fetch(`${API_URL}/shift-trades`, {
-      headers: getHeaders(),
-    });
+    const response = await apiFetch("/shift-trades");
 
     const data = await response.json();
     setShiftTrades(Array.isArray(data) ? data : []);
-  }, [getHeaders]);
+  }, []);
 
   const fetchCinemaSettings = useCallback(async () => {
     const savedUser = localStorage.getItem("user");
@@ -120,9 +106,7 @@ export default function MyShiftsPage() {
 
     const user = JSON.parse(savedUser);
 
-    const response = await fetch(`${API_URL}/cinemas/${user.cinemaId}`, {
-      headers: getHeaders(),
-    });
+    const response = await apiFetch(`/cinemas/${user.cinemaId}`);
 
     if (!response.ok) return;
 
@@ -132,7 +116,7 @@ export default function MyShiftsPage() {
       allowShiftTradePool: Boolean(data.allowShiftTradePool),
       allowShiftTradeDirect: Boolean(data.allowShiftTradeDirect),
     });
-  }, [getHeaders]);
+  }, []);
 
   const refreshData = useCallback(async () => {
     await Promise.all([
@@ -240,9 +224,8 @@ ${getShiftConfirmText(shift)}`,
       cancelText: "Annuller",
       confirmVariant: "primary",
       onConfirm: async () => {
-        const response = await fetch(`${API_URL}/shift-trades`, {
+        const response = await apiFetch("/shift-trades", {
           method: "POST",
-          headers: getHeaders(),
           body: JSON.stringify({
             shiftId,
             offeredByUserId: currentUser.id,
@@ -289,9 +272,8 @@ ${getShiftConfirmText(shift)}`,
       cancelText: "Annuller",
       confirmVariant: "primary",
       onConfirm: async () => {
-        const response = await fetch(`${API_URL}/shift-trades`, {
+        const response = await apiFetch("/shift-trades", {
           method: "POST",
-          headers: getHeaders(),
           body: JSON.stringify({
             shiftId,
             offeredByUserId: currentUser.id,
@@ -339,16 +321,12 @@ ${getShiftConfirmText(shift)}`,
       cancelText: "Annuller",
       confirmVariant: "success",
       onConfirm: async () => {
-        const response = await fetch(
-          `${API_URL}/shift-trades/${tradeId}/accept`,
-          {
-            method: "PATCH",
-            headers: getHeaders(),
-            body: JSON.stringify({
-              acceptedByUserId: currentUser.id,
-            }),
-          },
-        );
+        const response = await apiFetch(`/shift-trades/${tradeId}/accept`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            acceptedByUserId: currentUser.id,
+          }),
+        });
 
         const data = await response.json();
 
@@ -380,13 +358,9 @@ ${getShiftConfirmText(shift)}`,
       cancelText: "Annuller",
       confirmVariant: "danger",
       onConfirm: async () => {
-        const response = await fetch(
-          `${API_URL}/shift-trades/${tradeId}/reject`,
-          {
-            method: "PATCH",
-            headers: getHeaders(),
-          },
-        );
+        const response = await apiFetch(`/shift-trades/${tradeId}/reject`, {
+          method: "PATCH",
+        });
 
         const data = await response.json();
 
@@ -410,13 +384,9 @@ ${getShiftConfirmText(shift)}`,
       cancelText: "Tilbage",
       confirmVariant: "danger",
       onConfirm: async () => {
-        const response = await fetch(
-          `${API_URL}/shift-trades/${tradeId}/cancel`,
-          {
-            method: "PATCH",
-            headers: getHeaders(),
-          },
-        );
+        const response = await apiFetch(`/shift-trades/${tradeId}/cancel`, {
+          method: "PATCH",
+        });
 
         const data = await response.json();
 

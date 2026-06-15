@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
+import { apiFetch } from "@/app/lib/api";
 import { toast } from "sonner";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type User = {
   id: number;
@@ -61,20 +60,11 @@ export default function EmployeesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  function getHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
-
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/users`, {
-        headers: getHeaders(),
-      });
+      const response = await apiFetch("/users");
 
       if (!response.ok) {
         setUsers([]);
@@ -101,9 +91,8 @@ export default function EmployeesPage() {
 
       if (!user) return;
 
-      const response = await fetch(`${API_URL}/users/${userId}`, {
+      const response = await apiFetch(`/users/${userId}`, {
         method: "PATCH",
-        headers: getHeaders(),
         body: JSON.stringify({
           ...user,
           [permission]: value,

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { apiFetch } from "@/app/lib/api";
 import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
@@ -46,9 +47,6 @@ export default function EmployeeDocumentsPage() {
     return JSON.parse(savedUser);
   }, []);
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
   useEffect(() => {
     if (!currentUser) return;
 
@@ -63,11 +61,7 @@ export default function EmployeeDocumentsPage() {
 
   async function fetchUsers() {
     try {
-      const response = await fetch(`${API_URL}/users`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch("/users");
 
       if (!response.ok) return;
 
@@ -87,14 +81,7 @@ export default function EmployeeDocumentsPage() {
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${API_URL}/employee-documents/user/${userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
+      const response = await apiFetch(`/employee-documents/user/${userId}`);
 
       if (!response.ok) {
         setDocuments([]);
@@ -126,11 +113,8 @@ export default function EmployeeDocumentsPage() {
       formData.append("title", title);
       formData.append("userId", String(selectedUserId));
 
-      const response = await fetch(`${API_URL}/employee-documents/upload`, {
+      const response = await apiFetch("/employee-documents/upload", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
       });
 
@@ -162,11 +146,8 @@ export default function EmployeeDocumentsPage() {
       confirmVariant: "danger",
       onConfirm: async () => {
         try {
-          const response = await fetch(`${API_URL}/employee-documents/${id}`, {
+          const response = await apiFetch(`/employee-documents/${id}`, {
             method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
           });
 
           if (!response.ok) {
