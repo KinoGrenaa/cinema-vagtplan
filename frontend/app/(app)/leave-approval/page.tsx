@@ -28,26 +28,57 @@ type LeaveRequest = {
   };
 };
 
-function isFullDayLeave(start: Date, end: Date) {
-  return (
+type LeaveDisplayDateRange = {
+  startDate: string;
+  endDate: string;
+};
+
+function getFullDayDateRange(
+  start: Date,
+  end: Date,
+): LeaveDisplayDateRange | null {
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return null;
+  }
+
+  const isLocalFullDay =
+    start.getHours() === 0 &&
+    start.getMinutes() === 0 &&
+    end.getHours() === 23 &&
+    end.getMinutes() >= 59;
+
+  if (isLocalFullDay) {
+    return {
+      startDate: formatDateDK(start),
+      endDate: formatDateDK(end),
+    };
+  }
+
+  const isUtcFullDay =
     start.getUTCHours() === 0 &&
     start.getUTCMinutes() === 0 &&
     end.getUTCHours() === 23 &&
-    end.getUTCMinutes() >= 59
-  );
+    end.getUTCMinutes() >= 59;
+
+  if (isUtcFullDay) {
+    return {
+      startDate: formatUtcDateDK(start),
+      endDate: formatUtcDateDK(end),
+    };
+  }
+
+  return null;
 }
 
 function formatLeavePeriod(startDateString: string, endDateString: string) {
   const start = new Date(startDateString);
   const end = new Date(endDateString);
+  const fullDayDateRange = getFullDayDateRange(start, end);
 
-  if (isFullDayLeave(start, end)) {
-    const startDate = formatUtcDateDK(start);
-    const endDate = formatUtcDateDK(end);
-
-    return startDate === endDate
-      ? `${startDate} · Heldag`
-      : `${startDate} - ${endDate} · Heldag`;
+  if (fullDayDateRange) {
+    return fullDayDateRange.startDate === fullDayDateRange.endDate
+      ? `${fullDayDateRange.startDate} · Hele dagen`
+      : `${fullDayDateRange.startDate} - ${fullDayDateRange.endDate} · Hele dagen`;
   }
 
   const startDate = formatDateDK(start);

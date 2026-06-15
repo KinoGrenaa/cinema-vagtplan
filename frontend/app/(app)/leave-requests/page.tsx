@@ -19,8 +19,9 @@ import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 import {
   getTomorrowLocalDate,
-  formatUtcDateDK,
+  formatDateDK,
   formatTimeDK,
+  formatUtcDateDK,
   localDateTimeToISOString,
 } from "@/app/utils/dateTime";
 
@@ -45,20 +46,73 @@ const inputClass =
 const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
-function isAllDayRequest(request: LeaveRequest) {
+type LeaveDisplayDateRange = {
+  startDate: string;
+  endDate: string;
+};
+
+function getAllDayDateRange(
+  request: LeaveRequest,
+): LeaveDisplayDateRange | null {
   const start = new Date(request.startDate);
   const end = new Date(request.endDate);
 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return false;
+    return null;
   }
 
-  return (
+  const isLocalAllDay =
     start.getHours() === 0 &&
     start.getMinutes() === 0 &&
     end.getHours() === 23 &&
-    end.getMinutes() >= 59
-  );
+    end.getMinutes() >= 59;
+
+  if (isLocalAllDay) {
+    return {
+      startDate: formatDateDK(start),
+      endDate: formatDateDK(end),
+    };
+  }
+
+  const isUtcAllDay =
+    start.getUTCHours() === 0 &&
+    start.getUTCMinutes() === 0 &&
+    end.getUTCHours() === 23 &&
+    end.getUTCMinutes() >= 59;
+
+  if (isUtcAllDay) {
+    return {
+      startDate: formatUtcDateDK(start),
+      endDate: formatUtcDateDK(end),
+    };
+  }
+
+  return null;
+}
+
+function getPeriodText(request: LeaveRequest) {
+  const allDayDateRange = getAllDayDateRange(request);
+
+  if (allDayDateRange) {
+    return allDayDateRange.startDate === allDayDateRange.endDate
+      ? `${allDayDateRange.startDate} · Hele dagen`
+      : `${allDayDateRange.startDate} - ${allDayDateRange.endDate} · Hele dagen`;
+  }
+
+  const startDate = formatDateDK(request.startDate);
+  const endDate = formatDateDK(request.endDate);
+  const startClock = formatTimeDK(request.startDate);
+  const endClock = formatTimeDK(request.endDate);
+
+  return startDate === endDate
+    ? `${startDate} · kl. ${startClock}-${endClock}`
+    : `${startDate} kl. ${startClock} - ${endDate} kl. ${endClock}`;
+}
+
+function getGroupKey(request: LeaveRequest) {
+  const allDayDateRange = getAllDayDateRange(request);
+
+  return allDayDateRange?.startDate ?? formatDateDK(request.startDate);
 }
 
 function getStatusBadge(status: LeaveStatus) {
@@ -78,32 +132,19 @@ function getStatusBadge(status: LeaveStatus) {
 }
 
 function getStatusLabel(status: LeaveStatus) {
-  if (status === "APPROVED") return "Godkendt";
-  if (status === "REJECTED") return "Afvist";
-  if (status === "CANCELLED") return "Annulleret";
-  return "Afventer";
-}
-
-function getPeriodText(request: LeaveRequest) {
-  const startDate = formatUtcDateDK(request.startDate);
-  const endDate = formatUtcDateDK(request.endDate);
-
-  if (isAllDayRequest(request)) {
-    return startDate === endDate
-      ? `${startDate} · Heldag`
-      : `${startDate} - ${endDate} · Heldag`;
+  if (status === "APPROVED") {
+    return "Godkendt";
   }
 
-  const startClock = formatTimeDK(request.startDate);
-  const endClock = formatTimeDK(request.endDate);
+  if (status === "REJECTED") {
+    return "Afvist";
+  }
 
-  return startDate === endDate
-    ? `${startDate} · kl. ${startClock}-${endClock}`
-    : `${startDate} kl. ${startClock} - ${endDate} kl. ${endClock}`;
-}
+  if (status === "CANCELLED") {
+    return "Annulleret";
+  }
 
-function getGroupKey(request: LeaveRequest) {
-  return formatUtcDateDK(request.startDate);
+  return "Afventer";
 }
 
 export default function LeaveRequestsPage() {

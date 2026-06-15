@@ -233,6 +233,25 @@ export class PayrollService {
     return `${year}-${month}-${day}`;
   }
 
+  private dateToCopenhagenDateString(date: Date) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Copenhagen',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+
+    if (!year || !month || !day) {
+      return this.dateToDateString(date);
+    }
+
+    return `${year}-${month}-${day}`;
+  }
+
   private createUtcDate(year: number, month: number, day: number) {
     return new Date(Date.UTC(year, month, day));
   }
@@ -714,7 +733,7 @@ export class PayrollService {
 
       userGroup.entries.push({
         id: entry.id,
-        date: entry.clockIn.toISOString().slice(0, 10),
+        date: this.dateToCopenhagenDateString(entry.clockIn),
         clockIn: entry.clockIn.toISOString(),
         clockOut: entry.clockOut.toISOString(),
         hours: Number(hours.toFixed(2)),
