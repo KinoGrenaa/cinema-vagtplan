@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/app/lib/api";
 
 type PayrollPeriodModel = "CALENDAR_MONTH" | "FIXED_DAY_TO_DAY" | "BIWEEKLY";
 
@@ -201,13 +200,6 @@ export default function CinemaSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  function getHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
-
   const fetchCinema = useCallback(async () => {
     try {
       setLoading(true);
@@ -222,9 +214,7 @@ export default function CinemaSettingsPage() {
 
       const user: CurrentUser = JSON.parse(savedUser);
 
-      const response = await fetch(`${API_URL}/cinemas/${user.cinemaId}`, {
-        headers: getHeaders(),
-      });
+      const response = await apiFetch(`/cinemas/${user.cinemaId}`);
 
       if (!response.ok) {
         throw new Error();
@@ -253,9 +243,8 @@ export default function CinemaSettingsPage() {
       setSaving(true);
       setMessage("");
 
-      const response = await fetch(`${API_URL}/cinemas/${updatedCinema.id}`, {
+      const response = await apiFetch(`/cinemas/${updatedCinema.id}`, {
         method: "PATCH",
-        headers: getHeaders(),
         body: JSON.stringify({
           allowShiftTradePool: updatedCinema.allowShiftTradePool,
           allowShiftTradeDirect: updatedCinema.allowShiftTradeDirect,
@@ -822,8 +811,6 @@ export default function CinemaSettingsPage() {
                 <div className="font-semibold">Periodeeksempel</div>
                 <div className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                   {periodExample.text}
-                  {periodExample.days !== null &&
-                    ` (${periodExample.days} dage)`}
                 </div>
 
                 {periodExample.warning && (

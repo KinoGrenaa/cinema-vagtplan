@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import PermissionGuard from "@/app/components/PermissionGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { apiFetch } from "@/app/lib/api";
 
 type UserRole = "MASTER" | "ADMIN" | "EMPLOYEE";
 type EmploymentType = "HOURLY" | "SALARIED";
@@ -121,21 +120,12 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  function getToken() {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("token") || "";
-  }
-
   async function fetchUsers() {
     try {
       setLoading(true);
       setErrorMessage("");
 
-      const response = await fetch(`${API_URL}/users`, {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      });
+      const response = await apiFetch("/users");
 
       if (!response.ok) {
         throw new Error(await getErrorMessage(response));
@@ -196,12 +186,8 @@ export default function UsersPage() {
 
       const currentUser = JSON.parse(savedUser);
 
-      const response = await fetch(`${API_URL}/users`, {
+      const response = await apiFetch("/users", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({
           ...newUser,
           firstName: newUser.firstName.trim(),
@@ -244,12 +230,8 @@ export default function UsersPage() {
     try {
       setErrorMessage("");
 
-      const response = await fetch(`${API_URL}/users/${editingUser.id}`, {
+      const response = await apiFetch(`/users/${editingUser.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
         body: JSON.stringify({
           firstName: editingUser.firstName,
           lastName: editingUser.lastName,
@@ -311,11 +293,8 @@ export default function UsersPage() {
         try {
           setErrorMessage("");
 
-          const response = await fetch(`${API_URL}/users/${user.id}`, {
+          const response = await apiFetch(`/users/${user.id}`, {
             method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${getToken()}`,
-            },
           });
 
           if (!response.ok) {
@@ -360,15 +339,9 @@ export default function UsersPage() {
         try {
           setErrorMessage("");
 
-          const response = await fetch(
-            `${API_URL}/users/${user.id}/reactivate`,
-            {
-              method: "PATCH",
-              headers: {
-                Authorization: `Bearer ${getToken()}`,
-              },
-            },
-          );
+          const response = await apiFetch(`/users/${user.id}/reactivate`, {
+            method: "PATCH",
+          });
 
           if (!response.ok) {
             throw new Error(await getErrorMessage(response));
