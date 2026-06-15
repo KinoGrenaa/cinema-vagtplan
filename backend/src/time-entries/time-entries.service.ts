@@ -605,6 +605,14 @@ export class TimeEntriesService {
       include: {
         user: true,
         payrollType: true,
+        payrollAdjustments: {
+          where: {
+            status: 'PENDING',
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
         cinema: {
           select: this.getCinemaDeviationSelect(),
         },

@@ -53,7 +53,7 @@ export default function PayrollEmployeeSummaryTable({
 
             const adjustmentMinutes =
               employee.payrollAdjustments?.reduce(
-                (sum, adjustment) => sum + adjustment.minutesDelta,
+                (sum, adjustment) => sum + Math.round(adjustment.hours * 60),
                 0,
               ) ?? 0;
 

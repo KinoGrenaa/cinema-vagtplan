@@ -45,5 +45,12 @@ export type TimeEntry = {
     };
   } | null;
 
+  payrollAdjustments?: {
+    id: number;
+    minutesDelta: number;
+    reason: string;
+    createdAt: string;
+  }[];
+
   deviation?: TimeEntryDeviation;
 };

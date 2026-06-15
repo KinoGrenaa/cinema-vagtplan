@@ -36,12 +36,24 @@ export type PayrollEntry = {
 
 export type PayrollAdjustment = {
   id: number;
-  minutesDelta: number;
-  exportedMinutes: number;
-  adjustedMinutes: number;
+  timeEntryId: number;
+  type: string;
+  status: string;
+  exportCategory: string;
+  hours: number;
+  exportedHours: number;
+  adjustedHours: number;
+  previousHours: number | null;
+  newHours: number | null;
   reason: string;
   originalPayrollPeriodId: number;
+  originalPayrollPeriodStartDate: string;
+  originalPayrollPeriodEndDate: string;
   settlementPayrollPeriodId?: number | null;
+  payrollCode: string;
+  exportCode: string;
+  payrollName: string;
+  workType: string;
   createdAt: string;
 };
 

@@ -332,6 +332,18 @@ export default function TimeApprovalPage() {
     );
   };
 
+  const formatSignedMinutesAsTime = (minutesValue: number) => {
+    const sign = minutesValue >= 0 ? "+" : "-";
+    const absoluteMinutes = Math.abs(minutesValue);
+    const hours = Math.floor(absoluteMinutes / 60);
+    const minutes = absoluteMinutes % 60;
+
+    return `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+      2,
+      "0",
+    )}`;
+  };
+
   const visibleEntries = entries.filter((entry) => {
     if (!entry.clockIn || !entry.clockOut) return false;
 
@@ -1044,6 +1056,25 @@ export default function TimeApprovalPage() {
                                           "Manuel registrering"}
                                       </p>
                                     </div>
+
+                                    {entry.payrollAdjustments &&
+                                      entry.payrollAdjustments.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                          {entry.payrollAdjustments.map(
+                                            (adjustment) => (
+                                              <span
+                                                key={adjustment.id}
+                                                className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                                              >
+                                                Efterregulering{" "}
+                                                {formatSignedMinutesAsTime(
+                                                  adjustment.minutesDelta,
+                                                )}
+                                              </span>
+                                            ),
+                                          )}
+                                        </div>
+                                      )}
 
                                     <div className="grid gap-2 text-sm">
                                       <div>
