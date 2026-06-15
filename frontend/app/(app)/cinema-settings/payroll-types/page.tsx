@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { apiFetch } from "@/app/lib/api";
 import { toast } from "sonner";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 type PayrollType = {
   id: number;
@@ -32,13 +31,6 @@ export default function PayrollTypesPage() {
   const [message, setMessage] = useState("");
   const confirmDialog = useConfirm();
 
-  function getHeaders() {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    };
-  }
-
   useEffect(() => {
     fetchPayrollTypes();
   }, []);
@@ -47,9 +39,7 @@ export default function PayrollTypesPage() {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/payroll-types`, {
-        headers: getHeaders(),
-      });
+      const response = await apiFetch("/payroll-types");
 
       if (!response.ok) {
         throw new Error("Kunne ikke hente lønarter");
@@ -70,9 +60,8 @@ export default function PayrollTypesPage() {
       setSaving(true);
       setMessage("");
 
-      const response = await fetch(`${API_URL}/payroll-types`, {
+      const response = await apiFetch("/payroll-types", {
         method: "POST",
-        headers: getHeaders(),
         body: JSON.stringify({
           name,
           payrollCode,
@@ -115,16 +104,12 @@ export default function PayrollTypesPage() {
 
   async function toggleActive(payrollType: PayrollType) {
     try {
-      const response = await fetch(
-        `${API_URL}/payroll-types/${payrollType.id}`,
-        {
-          method: "PATCH",
-          headers: getHeaders(),
-          body: JSON.stringify({
-            isActive: !payrollType.isActive,
-          }),
-        },
-      );
+      const response = await apiFetch(`/payroll-types/${payrollType.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          isActive: !payrollType.isActive,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Kunne ikke opdatere lønart");
@@ -139,16 +124,12 @@ export default function PayrollTypesPage() {
 
   async function setDefault(payrollType: PayrollType) {
     try {
-      const response = await fetch(
-        `${API_URL}/payroll-types/${payrollType.id}`,
-        {
-          method: "PATCH",
-          headers: getHeaders(),
-          body: JSON.stringify({
-            isDefault: true,
-          }),
-        },
-      );
+      const response = await apiFetch(`/payroll-types/${payrollType.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          isDefault: true,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Kunne ikke vælge standard lønart");
@@ -170,9 +151,8 @@ export default function PayrollTypesPage() {
       confirmVariant: "danger",
       onConfirm: async () => {
         try {
-          const response = await fetch(`${API_URL}/payroll-types/${id}`, {
+          const response = await apiFetch(`/payroll-types/${id}`, {
             method: "DELETE",
-            headers: getHeaders(),
           });
 
           if (!response.ok) {

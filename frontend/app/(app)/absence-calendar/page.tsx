@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
+import { apiFetch } from "@/app/lib/api";
 import { dateToLocalMonthString, formatDateDK } from "@/app/utils/dateTime";
 
 type User = {
@@ -26,23 +27,21 @@ export default function AbsenceCalendarPage() {
     dateToLocalMonthString(new Date()),
   );
 
-  function getToken() {
-    return localStorage.getItem("token");
-  }
-
   const fetchRequests = useCallback(async () => {
-    const response = await fetch(
-      "process.env.NEXT_PUBLIC_API_URL!/leave-requests",
-      {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-      },
-    );
+    try {
+      const response = await apiFetch("/leave-requests");
 
-    const data = await response.json();
+      if (!response.ok) {
+        setRequests([]);
+        return;
+      }
 
-    setRequests(Array.isArray(data) ? data : []);
+      const data = await response.json();
+
+      setRequests(Array.isArray(data) ? data : []);
+    } catch {
+      setRequests([]);
+    }
   }, []);
 
   useEffect(() => {

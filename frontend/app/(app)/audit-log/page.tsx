@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import PermissionGuard from "@/app/components/PermissionGuard";
+import { apiFetch } from "@/app/lib/api";
 
 type AuditLog = {
   id: number;
@@ -54,16 +55,7 @@ export default function AuditLogPage() {
 
   async function fetchLogs() {
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/audit-logs`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
+      const response = await apiFetch("/audit-logs");
 
       if (!response.ok) {
         throw new Error("Kunne ikke hente audit logs");
