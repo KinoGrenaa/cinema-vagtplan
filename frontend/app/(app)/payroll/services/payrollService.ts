@@ -1,13 +1,12 @@
+import { apiFetch } from "../../../lib/api";
+
 import type {
   CinemaPayrollSettings,
   PayrollAuditHistory,
-  PayrollEmployee,
   PayrollPeriod,
   PayrollReportResponse,
   User,
 } from "../types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export type PayrollExportType = "csv" | "xlsx" | "pdf" | "uniconta";
 
@@ -19,11 +18,6 @@ export type PayrollPeriodParams = {
 export type PayrollReportParams = PayrollPeriodParams & {
   userId?: string;
 };
-
-function getToken() {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("token") || "";
-}
 
 function getCurrentCinemaId() {
   if (typeof window === "undefined") return null;
@@ -38,12 +32,6 @@ function getCurrentCinemaId() {
   } catch {
     return null;
   }
-}
-
-function getAuthHeaders() {
-  return {
-    Authorization: `Bearer ${getToken()}`,
-  };
 }
 
 function buildPayrollParams(params: PayrollReportParams, includeUser = true) {
@@ -84,9 +72,7 @@ export async function fetchCinemaPayrollSettings() {
 
   if (!cinemaId) return null;
 
-  const response = await fetch(`${API_URL}/cinemas/${cinemaId}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await apiFetch(`/cinemas/${cinemaId}`);
 
   if (!response.ok) return null;
 
@@ -94,9 +80,7 @@ export async function fetchCinemaPayrollSettings() {
 }
 
 export async function fetchUsers() {
-  const response = await fetch(`${API_URL}/users`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await apiFetch("/users");
 
   if (!response.ok) return [];
 
@@ -105,11 +89,8 @@ export async function fetchUsers() {
 }
 
 export async function fetchPayrollReport(params: PayrollReportParams) {
-  const response = await fetch(
-    `${API_URL}/payroll?${buildPayrollParams(params).toString()}`,
-    {
-      headers: getAuthHeaders(),
-    },
+  const response = await apiFetch(
+    `/payroll?${buildPayrollParams(params).toString()}`,
   );
 
   if (!response.ok) {
@@ -141,11 +122,8 @@ export async function fetchPayrollReport(params: PayrollReportParams) {
 }
 
 export async function fetchPayrollPeriod(params: PayrollPeriodParams) {
-  const response = await fetch(
-    `${API_URL}/payroll/period?${buildPayrollParams(params, false).toString()}`,
-    {
-      headers: getAuthHeaders(),
-    },
+  const response = await apiFetch(
+    `/payroll/period?${buildPayrollParams(params, false).toString()}`,
   );
 
   if (!response.ok) return null;
@@ -158,11 +136,8 @@ export async function fetchPayrollPeriod(params: PayrollPeriodParams) {
 }
 
 export async function fetchPayrollAuditHistory(params: PayrollPeriodParams) {
-  const response = await fetch(
-    `${API_URL}/payroll/audit-history?${buildPayrollParams(params, false).toString()}`,
-    {
-      headers: getAuthHeaders(),
-    },
+  const response = await apiFetch(
+    `/payroll/audit-history?${buildPayrollParams(params, false).toString()}`,
   );
 
   if (!response.ok) return [];
@@ -177,14 +152,11 @@ export async function downloadPayrollExport(
 ) {
   const endpoint =
     type === "uniconta"
-      ? `${API_URL}/payroll/export/uniconta`
-      : `${API_URL}/payroll/export/${type}`;
+      ? "/payroll/export/uniconta"
+      : `/payroll/export/${type}`;
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${endpoint}?${buildPayrollParams(params).toString()}`,
-    {
-      headers: getAuthHeaders(),
-    },
   );
 
   if (!response.ok) {
@@ -197,12 +169,8 @@ export async function downloadPayrollExport(
 }
 
 export async function lockPayrollPeriod(params: PayrollPeriodParams) {
-  const response = await fetch(`${API_URL}/payroll/period/lock`, {
+  const response = await apiFetch("/payroll/period/lock", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-    },
     body: JSON.stringify(params),
   });
 
@@ -212,12 +180,8 @@ export async function lockPayrollPeriod(params: PayrollPeriodParams) {
 }
 
 export async function unlockPayrollPeriod(periodId: number, note: string) {
-  const response = await fetch(`${API_URL}/payroll/period/${periodId}/unlock`, {
+  const response = await apiFetch(`/payroll/period/${periodId}/unlock`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-    },
     body: JSON.stringify({ note }),
   });
 

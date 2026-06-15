@@ -8,6 +8,7 @@ import InputModal from "@/app/components/modals/InputModal";
 import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import { apiFetch } from "@/app/lib/api";
 import { toast } from "sonner";
 import {
   formatDateTime,
@@ -20,8 +21,6 @@ import type { TimeEntry, TimeEntryStatus } from "./types";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 type TimeEntryRevision = {
   id: number;
@@ -462,33 +461,11 @@ export default function TimeApprovalPage() {
       return nameA.localeCompare(nameB, "da-DK");
     });
 
-  function getToken() {
-    return localStorage.getItem("token");
-  }
-
   const fetchEntries = useCallback(async () => {
     try {
       setLoading(true);
 
-      const token = getToken();
-
-      if (!token) {
-        setEntries([]);
-        errorDialog.confirm({
-          title: "Du er ikke logget ind",
-          description:
-            "Din session er udløbet. Log ind igen for at se tidsregistreringer.",
-          confirmText: "OK",
-          onConfirm: async () => {},
-        });
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/time-entries`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch("/time-entries");
 
       if (!response.ok) {
         setEntries([]);
@@ -582,19 +559,14 @@ export default function TimeApprovalPage() {
         try {
           setSavingEdit(true);
 
-          const response = await fetch(
-            `${API_URL}/time-entries/${editEntry.id}`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${getToken()}`,
-              },
-              body: JSON.stringify(data),
-            },
-          );
+          const response = await apiFetch(`/time-entries/${editEntry.id}`, {
+            method: "PATCH",
+            body: JSON.stringify(data),
+          });
 
           if (!response.ok) {
+            if (response.status === 401) return;
+
             const message = await readErrorMessage(
               response,
               "Kunne ikke redigere timeregistrering",
@@ -625,16 +597,14 @@ export default function TimeApprovalPage() {
       setHistoryEntry(entry);
       setHistoryLoading(true);
 
-      const response = await fetch(
-        `${API_URL}/time-entries/${entry.id}/revisions`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        },
-      );
+      const response = await apiFetch(`/time-entries/${entry.id}/revisions`);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          setHistoryItems([]);
+          return;
+        }
+
         throw new Error(
           await readErrorMessage(response, "Kunne ikke hente historik"),
         );
@@ -692,22 +662,16 @@ export default function TimeApprovalPage() {
     options?: { confirmPayrollAdjustment?: boolean },
   ) {
     try {
-      const response = await fetch(
-        `${API_URL}/time-entries/${entry.id}/approve`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
-          body: JSON.stringify({
-            confirmPayrollAdjustment:
-              options?.confirmPayrollAdjustment ?? false,
-          }),
-        },
-      );
+      const response = await apiFetch(`/time-entries/${entry.id}/approve`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          confirmPayrollAdjustment: options?.confirmPayrollAdjustment ?? false,
+        }),
+      });
 
       if (!response.ok) {
+        if (response.status === 401) return;
+
         if (response.status === 409) {
           const payload = await response.json().catch(() => null);
           const details = getPayrollConflictDetails(payload);
@@ -757,14 +721,13 @@ export default function TimeApprovalPage() {
 
   async function unapprove(id: number) {
     try {
-      const response = await fetch(`${API_URL}/time-entries/${id}/unapprove`, {
+      const response = await apiFetch(`/time-entries/${id}/unapprove`, {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
       });
 
       if (!response.ok) {
+        if (response.status === 401) return;
+
         throw new Error(
           await readErrorMessage(response, "Kunne ikke fjerne godkendelse"),
         );
@@ -800,18 +763,16 @@ export default function TimeApprovalPage() {
           return;
         }
 
-        const response = await fetch(`${API_URL}/time-entries/${id}/reject`, {
+        const response = await apiFetch(`/time-entries/${id}/reject`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
           body: JSON.stringify({
             adminNote,
           }),
         });
 
         if (!response.ok) {
+          if (response.status === 401) return;
+
           const message = await readErrorMessage(
             response,
             "Kunne ikke sende timeregistrering retur",
@@ -851,18 +812,16 @@ export default function TimeApprovalPage() {
           throw new Error("Begrundelse er påkrævet");
         }
 
-        const response = await fetch(`${API_URL}/time-entries/${id}/void`, {
+        const response = await apiFetch(`/time-entries/${id}/void`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
           body: JSON.stringify({
             adminNote,
           }),
         });
 
         if (!response.ok) {
+          if (response.status === 401) return;
+
           throw new Error(
             await readErrorMessage(
               response,
