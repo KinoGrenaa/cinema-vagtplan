@@ -40,7 +40,9 @@ export default function ConfirmModal({
   return (
     <BaseModal open={open} title={title} onClose={onCancel} width="sm">
       <div className="space-y-6">
-        <p className="text-gray-600 dark:text-gray-300">{description}</p>
+        <p className="whitespace-pre-line text-gray-600 dark:text-gray-300">
+          {description}
+        </p>
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           {cancelText && (

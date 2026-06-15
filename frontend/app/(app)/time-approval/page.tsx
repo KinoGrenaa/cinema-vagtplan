@@ -521,6 +521,22 @@ export default function TimeApprovalPage() {
   }) {
     if (!editEntry) return;
 
+    const hasChanges =
+      data.clockIn !== editEntry.clockIn ||
+      (data.clockOut ?? null) !== (editEntry.clockOut ?? null);
+
+    if (!hasChanges) {
+      errorDialog.confirm({
+        title: "Ingen ændringer",
+        description:
+          "Der er ikke foretaget nogen ændringer i tidsregistreringen.",
+        confirmText: "OK",
+        onConfirm: async () => {},
+      });
+
+      return;
+    }
+
     const employeeName = `${editEntry.user.firstName} ${editEntry.user.lastName}`;
     const oldTime = `${formatDateTime(editEntry.clockIn)} - ${
       editEntry.clockOut ? formatDateTime(editEntry.clockOut) : "-"
