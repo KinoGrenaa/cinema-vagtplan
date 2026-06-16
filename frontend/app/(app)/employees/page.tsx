@@ -58,6 +58,20 @@ function getRoleBadge(role: string) {
   return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
 }
 
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (Array.isArray(data.message)) {
+      return data.message.join("\n");
+    }
+
+    return data.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function EmployeesPage() {
   const infoDialog = useInfoModal();
 
@@ -71,15 +85,22 @@ export default function EmployeesPage() {
       const response = await apiFetch("/users");
 
       if (!response.ok) {
-        setUsers([]);
-        return;
+        throw new Error(
+          await readErrorMessage(response, "Medarbejdere kunne ikke hentes."),
+        );
       }
 
       const data = await response.json();
 
       setUsers(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (error) {
       setUsers([]);
+      infoDialog.showError(
+        "Medarbejdere kunne ikke hentes",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl ved hentning af medarbejdere.",
+      );
     } finally {
       setLoading(false);
     }
@@ -104,7 +125,9 @@ export default function EmployeesPage() {
       });
 
       if (!response.ok) {
-        throw new Error();
+        throw new Error(
+          await readErrorMessage(response, "Permission kunne ikke opdateres."),
+        );
       }
 
       setUsers((prev) =>
@@ -117,10 +140,12 @@ export default function EmployeesPage() {
             : u,
         ),
       );
-    } catch {
+    } catch (error) {
       infoDialog.showError(
         "Permission kunne ikke opdateres",
-        "Der opstod en fejl, da permission skulle opdateres. Prøv igen.",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da permission skulle opdateres. Prøv igen.",
       );
     }
   }

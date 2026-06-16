@@ -15,6 +15,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import BaseModal from "@/app/components/modals/BaseModal";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 import {
@@ -147,7 +149,25 @@ function getStatusLabel(status: LeaveStatus) {
   return "Afventer";
 }
 
+
+
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (Array.isArray(data.message)) {
+      return data.message.join("\n");
+    }
+
+    return data.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function LeaveRequestsPage() {
+  const infoDialog = useInfoModal();
+
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
@@ -161,7 +181,6 @@ export default function LeaveRequestsPage() {
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("16:00");
 
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -190,24 +209,37 @@ export default function LeaveRequestsPage() {
     }
   }
 
-  const fetchRequests = useCallback(async () => {
+  const fetchRequests = useCallback(async (showError = true) => {
     try {
       const response = await apiFetch("/leave-requests");
 
       if (!response.ok) {
-        setRequests([]);
-        return;
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Fraværsansøgninger kunne ikke hentes.",
+          ),
+        );
       }
 
       const data = await response.json();
       setRequests(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (error) {
       setRequests([]);
+
+      if (showError) {
+        infoDialog.showError(
+          "Fraværsansøgninger kunne ikke hentes",
+          error instanceof Error
+            ? error.message
+            : "Der opstod en fejl ved hentning af fraværsansøgninger.",
+        );
+      }
     }
   }, []);
 
   useRealtimeCore({
-    onLeaveRequestUpdated: fetchRequests,
+    onLeaveRequestUpdated: () => fetchRequests(false),
   });
 
   useEffect(() => {
@@ -276,7 +308,6 @@ export default function LeaveRequestsPage() {
   async function createLeaveRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    setError("");
     setSuccess("");
 
     try {
@@ -293,11 +324,12 @@ export default function LeaveRequestsPage() {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
         throw new Error(
-          data?.message || "Fraværsansøgningen kunne ikke oprettes.",
+          await readErrorMessage(
+            response,
+            "Fraværsansøgningen kunne ikke oprettes.",
+          ),
         );
       }
 
@@ -306,13 +338,15 @@ export default function LeaveRequestsPage() {
       setSuccess("Fraværsansøgningen er sendt.");
 
       await fetchRequests();
-    } catch (err: any) {
-      setError(err.message || "Der opstod en fejl.");
+    } catch (error) {
+      infoDialog.showError(
+        "Fraværsansøgningen kunne ikke oprettes",
+        error instanceof Error ? error.message : "Der opstod en fejl.",
+      );
     }
   }
 
   async function cancelLeaveRequest(requestId: number) {
-    setError("");
     setSuccess("");
 
     try {
@@ -321,19 +355,23 @@ export default function LeaveRequestsPage() {
         body: JSON.stringify({ status: "CANCELLED" }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
         throw new Error(
-          data?.message || "Fraværsansøgningen kunne ikke annulleres.",
+          await readErrorMessage(
+            response,
+            "Fraværsansøgningen kunne ikke annulleres.",
+          ),
         );
       }
 
       setRequestToCancel(null);
       setSuccess("Fraværsansøgningen er annulleret.");
       await fetchRequests();
-    } catch (err: any) {
-      setError(err.message || "Der opstod en fejl.");
+    } catch (error) {
+      infoDialog.showError(
+        "Fraværsansøgningen kunne ikke annulleres",
+        error instanceof Error ? error.message : "Der opstod en fejl.",
+      );
     }
   }
 
@@ -353,7 +391,6 @@ export default function LeaveRequestsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setError("");
                   setSuccess("");
                   setShowRequestModal(true);
                 }}
@@ -373,12 +410,6 @@ export default function LeaveRequestsPage() {
             </div>
           </div>
         </div>
-
-        {error && (
-          <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700">
-            {error}
-          </div>
-        )}
 
         {success && (
           <div className="rounded-xl border border-green-300 bg-green-50 p-3 text-green-700">
@@ -749,6 +780,15 @@ export default function LeaveRequestsPage() {
           </div>
         )}
       </BaseModal>
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
     </main>
   );
 }

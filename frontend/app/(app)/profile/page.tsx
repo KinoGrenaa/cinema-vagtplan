@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -29,6 +31,8 @@ type CurrentUser = {
 };
 
 export default function ProfilePage() {
+  const infoDialog = useInfoModal();
+
   const [profile, setProfile] = useState<User | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [editing, setEditing] = useState(false);
@@ -113,7 +117,10 @@ export default function ProfilePage() {
       setProfile(me);
       fillForm(me);
     } catch (error) {
-      setMessage(
+      setProfile(null);
+      setMessage("");
+      infoDialog.showError(
+        "Profilen kunne ikke hentes",
         error instanceof Error ? error.message : "Kunne ikke hente profil.",
       );
     } finally {
@@ -129,7 +136,10 @@ export default function ProfilePage() {
     if (!currentUser) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      setMessage("Profilbilledet må maks være 2 MB.");
+      infoDialog.showError(
+        "Profilbillede kunne ikke uploades",
+        "Profilbilledet må maks være 2 MB.",
+      );
       return;
     }
 
@@ -158,7 +168,8 @@ export default function ProfilePage() {
       setProfileImage(data.imageUrl);
       setMessage("Billede uploadet. Husk at gemme profilen.");
     } catch (error) {
-      setMessage(
+      infoDialog.showError(
+        "Upload af billede fejlede",
         error instanceof Error ? error.message : "Upload af billede fejlede.",
       );
     } finally {
@@ -172,14 +183,20 @@ export default function ProfilePage() {
     if (!currentUser) return;
 
     if (password && password.length < 6) {
-      setMessage("Password skal være mindst 6 tegn.");
+      infoDialog.showError(
+        "Profilen kunne ikke gemmes",
+        "Adgangskoden skal være mindst 6 tegn.",
+      );
       return;
     }
 
     const mobileDigits = phone.replace(/\D/g, "");
 
     if (mobileDigits.length > 0 && mobileDigits.length !== 8) {
-      setMessage("Mobilnummer skal bestå af præcis 8 cifre.");
+      infoDialog.showError(
+        "Profilen kunne ikke gemmes",
+        "Mobilnummer skal bestå af præcis 8 cifre.",
+      );
       return;
     }
 
@@ -222,7 +239,8 @@ export default function ProfilePage() {
 
       await fetchProfile();
     } catch (error) {
-      setMessage(
+      infoDialog.showError(
+        "Profilen kunne ikke gemmes",
         error instanceof Error ? error.message : "Kunne ikke gemme profil.",
       );
     } finally {
@@ -244,8 +262,17 @@ export default function ProfilePage() {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-4xl rounded-2xl border border-red-200 bg-white p-6 text-red-600 shadow-sm dark:border-red-900 dark:bg-gray-900">
-          {message || "Kunne ikke hente profil."}
+          Kunne ikke hente profil.
         </div>
+
+        <InfoModal
+          open={infoDialog.open}
+          title={infoDialog.title}
+          description={infoDialog.description}
+          buttonText={infoDialog.buttonText}
+          variant={infoDialog.variant}
+          onClose={infoDialog.close}
+        />
       </main>
     );
   }
@@ -348,12 +375,6 @@ export default function ProfilePage() {
                   onChange={(value) => {
                     const onlyNumbers = value.replace(/\D/g, "").slice(0, 8);
                     setPhone(onlyNumbers);
-
-                    if (onlyNumbers.length > 0 && onlyNumbers.length !== 8) {
-                      setMessage("Mobilnummer skal bestå af præcis 8 cifre.");
-                    } else {
-                      setMessage("");
-                    }
                   }}
                   placeholder="8 cifre"
                   helpText="Mobilnummer skal bestå af præcis 8 cifre."
@@ -443,6 +464,15 @@ export default function ProfilePage() {
           </section>
         )}
       </div>
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
     </main>
   );
 }

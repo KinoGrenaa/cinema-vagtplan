@@ -119,7 +119,13 @@ export default function WorkTypesPage() {
       const response = await apiFetch("/payroll-types");
 
       if (!response.ok) {
-        throw new Error();
+        const errorData = await response.json().catch(() => null);
+
+        throw new Error(
+          typeof errorData?.message === "string"
+            ? errorData.message
+            : "Kunne ikke hente lønarter",
+        );
       }
 
       const data = await response.json();

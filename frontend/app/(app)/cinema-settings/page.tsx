@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
 type PayrollPeriodModel = "CALENDAR_MONTH" | "FIXED_DAY_TO_DAY" | "BIWEEKLY";
@@ -76,6 +78,20 @@ function toIsoDate(date: Date) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (Array.isArray(data.message)) {
+      return data.message.join("\n");
+    }
+
+    return data.message || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function formatDateDk(date: Date) {
@@ -195,6 +211,8 @@ function calculatePeriodExample(cinema: Cinema) {
 }
 
 export default function CinemaSettingsPage() {
+  const infoDialog = useInfoModal();
+
   const [cinema, setCinema] = useState<Cinema | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -217,7 +235,9 @@ export default function CinemaSettingsPage() {
       const response = await apiFetch(`/cinemas/${user.cinemaId}`);
 
       if (!response.ok) {
-        throw new Error();
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke hente biografindstillinger."),
+        );
       }
 
       const data = await response.json();
@@ -226,9 +246,15 @@ export default function CinemaSettingsPage() {
         ...CINEMA_DEFAULTS,
         ...data,
       });
-    } catch {
-      setMessage("Kunne ikke hente biografindstillinger.");
+    } catch (error) {
+      const description =
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke hente biografindstillinger.";
+
+      setMessage("");
       setCinema(null);
+      infoDialog.showError("Indstillinger kunne ikke hentes", description);
     } finally {
       setLoading(false);
     }
@@ -282,7 +308,9 @@ export default function CinemaSettingsPage() {
       });
 
       if (!response.ok) {
-        throw new Error();
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke gemme indstillinger."),
+        );
       }
 
       const savedCinema = await response.json();
@@ -293,8 +321,12 @@ export default function CinemaSettingsPage() {
       });
 
       setMessage("Biografindstillinger gemt.");
-    } catch {
-      setMessage("Kunne ikke gemme indstillinger.");
+    } catch (error) {
+      const description =
+        error instanceof Error ? error.message : "Kunne ikke gemme indstillinger.";
+
+      setMessage("");
+      infoDialog.showError("Indstillinger kunne ikke gemmes", description);
     } finally {
       setSaving(false);
     }
@@ -317,9 +349,18 @@ export default function CinemaSettingsPage() {
       <AdminGuard>
         <main className="min-h-screen bg-gray-100 p-4 dark:bg-gray-950 md:p-8">
           <div className="mx-auto max-w-4xl rounded-2xl border border-red-200 bg-white p-6 text-red-600 shadow-sm dark:border-red-900 dark:bg-gray-900">
-            {message || "Kunne ikke hente biograf."}
+            Kunne ikke hente biograf.
           </div>
         </main>
+
+        <InfoModal
+          open={infoDialog.open}
+          title={infoDialog.title}
+          description={infoDialog.description}
+          buttonText={infoDialog.buttonText}
+          variant={infoDialog.variant}
+          onClose={infoDialog.close}
+        />
       </AdminGuard>
     );
   }
@@ -902,6 +943,15 @@ export default function CinemaSettingsPage() {
           </section>
         </div>
       </main>
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
     </AdminGuard>
   );
 }

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import AdminGuard from "@/app/components/AdminGuard";
 import BaseModal from "@/app/components/modals/BaseModal";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 import {
@@ -118,10 +120,27 @@ function getUserName(request: LeaveRequest) {
   return `${request.user.firstName} ${request.user.lastName}`.trim();
 }
 
+
+
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (Array.isArray(data.message)) {
+      return data.message.join("\n");
+    }
+
+    return data.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function LeaveApprovalPage() {
+  const infoDialog = useInfoModal();
+
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showPending, setShowPending] = useState(true);
@@ -131,31 +150,41 @@ export default function LeaveApprovalPage() {
 
   const [expandedUserIds, setExpandedUserIds] = useState<number[]>([]);
 
-  const fetchRequests = useCallback(async () => {
+  const fetchRequests = useCallback(async (showError = true) => {
     try {
       setLoading(true);
-      setError("");
 
       const response = await apiFetch("/leave-requests");
 
       if (!response.ok) {
-        setRequests([]);
-        setError("Fraværsansøgninger kunne ikke hentes.");
-        return;
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Fraværsansøgninger kunne ikke hentes.",
+          ),
+        );
       }
 
       const data = await response.json();
       setRequests(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (error) {
       setRequests([]);
-      setError("Der opstod en fejl ved hentning af fraværsansøgninger.");
+
+      if (showError) {
+        infoDialog.showError(
+          "Fraværsansøgninger kunne ikke hentes",
+          error instanceof Error
+            ? error.message
+            : "Der opstod en fejl ved hentning af fraværsansøgninger.",
+        );
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useRealtimeCore({
-    onLeaveRequestUpdated: fetchRequests,
+    onLeaveRequestUpdated: () => fetchRequests(false),
   });
 
   useEffect(() => {
@@ -210,22 +239,23 @@ export default function LeaveApprovalPage() {
 
   async function updateStatus(requestId: number, status: LeaveStatus) {
     try {
-      setError("");
-
       const response = await apiFetch(`/leave-requests/${requestId}/status`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data?.message || "Status kunne ikke opdateres.");
+        throw new Error(
+          await readErrorMessage(response, "Status kunne ikke opdateres."),
+        );
       }
 
       await fetchRequests();
-    } catch (err: any) {
-      setError(err.message || "Der opstod en fejl.");
+    } catch (error) {
+      infoDialog.showError(
+        "Status kunne ikke opdateres",
+        error instanceof Error ? error.message : "Der opstod en fejl.",
+      );
     }
   }
 
@@ -253,12 +283,6 @@ export default function LeaveApprovalPage() {
               </button>
             </div>
           </div>
-
-          {error && (
-            <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-              {error}
-            </div>
-          )}
 
           {loading && (
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
@@ -544,6 +568,15 @@ export default function LeaveApprovalPage() {
             </div>
           </div>
         </BaseModal>
+
+        <InfoModal
+          open={infoDialog.open}
+          title={infoDialog.title}
+          description={infoDialog.description}
+          buttonText={infoDialog.buttonText}
+          variant={infoDialog.variant}
+          onClose={infoDialog.close}
+        />
       </main>
     </AdminGuard>
   );

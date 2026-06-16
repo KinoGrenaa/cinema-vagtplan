@@ -1,6 +1,22 @@
 import { apiFetch } from "../lib/api";
 import type { Notification } from "../types/notifications";
 
+
+
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (Array.isArray(data.message)) {
+      return data.message.join("\n");
+    }
+
+    return data.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 async function safeJson<T>(response: Response): Promise<T | null> {
   try {
     if (!response.ok) {
@@ -37,7 +53,9 @@ export async function markNotificationAsRead(
   });
 
   if (!response.ok) {
-    throw new Error("Kunne ikke markere notifikation som læst");
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke markere notifikation som læst"),
+    );
   }
 }
 
@@ -47,6 +65,11 @@ export async function markAllNotificationsAsRead(): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error("Kunne ikke markere alle notifikationer som læst");
+    throw new Error(
+      await readErrorMessage(
+        response,
+        "Kunne ikke markere alle notifikationer som læst",
+      ),
+    );
   }
 }
