@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useMessages } from "../../../hooks/useMessages";
 import type { MessageParticipant } from "../../../types/messages";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
-import { toast } from "sonner";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 
 export default function SentMessagesPage() {
   const confirmDialog = useConfirm();
+  const infoDialog = useInfoModal();
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
   );
@@ -43,7 +45,11 @@ export default function SentMessagesPage() {
           }
         } catch (error) {
           console.error(error);
-          toast.error("Beskeden kunne ikke arkiveres.");
+
+          infoDialog.showError(
+            "Beskeden kunne ikke arkiveres",
+            "Der opstod en fejl, da beskeden skulle arkiveres. Prøv igen.",
+          );
         }
       },
     });
@@ -179,6 +185,15 @@ export default function SentMessagesPage() {
         loading={confirmDialog.loading}
         onConfirm={confirmDialog.handleConfirm}
         onCancel={confirmDialog.handleCancel}
+      />
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
       />
     </main>
   );

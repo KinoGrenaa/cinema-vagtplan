@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
+import InfoModal from "@/app/components/modals/InfoModal";
+
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-import { toast } from "sonner";
 
 type User = {
   id: number;
@@ -57,6 +59,8 @@ function getRoleBadge(role: string) {
 }
 
 export default function EmployeesPage() {
+  const infoDialog = useInfoModal();
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -114,7 +118,10 @@ export default function EmployeesPage() {
         ),
       );
     } catch {
-      toast.error("Kunne ikke opdatere permission");
+      infoDialog.showError(
+        "Permission kunne ikke opdateres",
+        "Der opstod en fejl, da permission skulle opdateres. Prøv igen.",
+      );
     }
   }
 
@@ -241,6 +248,15 @@ export default function EmployeesPage() {
           </section>
         </div>
       </main>
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
     </AdminGuard>
   );
 }

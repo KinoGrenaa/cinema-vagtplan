@@ -20,9 +20,11 @@ import {
 import PermissionGuard from "@/app/components/PermissionGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import ExportModal from "@/app/components/modals/ExportModal";
+import InfoModal from "@/app/components/modals/InfoModal";
 import InputModal from "@/app/components/modals/InputModal";
 
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 
@@ -50,6 +52,7 @@ export default function PayrollPage() {
   const router = useRouter();
   const inputDialog = useInputModal();
   const confirmDialog = useConfirm();
+  const infoDialog = useInfoModal();
 
   const {
     startDate,
@@ -186,10 +189,12 @@ export default function PayrollPage() {
           await refreshPayroll();
         } catch (error) {
           console.error(error);
-          toast.error(
+
+          infoDialog.showError(
+            "Lønperioden kunne ikke låses",
             error instanceof Error && error.message
               ? error.message
-              : "Låsning fejlede",
+              : "Låsning fejlede. Prøv igen.",
           );
         } finally {
           setLocking(false);
@@ -213,10 +218,7 @@ export default function PayrollPage() {
         const note = value.trim();
 
         if (!note) {
-          toast.error(
-            "Du skal skrive en begrundelse for at genåbne lønperioden.",
-          );
-          throw new Error("Unlock note is required");
+          return;
         }
 
         try {
@@ -227,10 +229,12 @@ export default function PayrollPage() {
           await refreshPayroll();
         } catch (error) {
           console.error(error);
-          toast.error(
+
+          infoDialog.showError(
+            "Lønperioden kunne ikke genåbnes",
             error instanceof Error && error.message
               ? error.message
-              : "Genåbning fejlede",
+              : "Genåbning fejlede. Prøv igen.",
           );
         } finally {
           setUnlocking(false);
@@ -859,6 +863,16 @@ export default function PayrollPage() {
         onConfirm={inputDialog.handleConfirm}
         onCancel={inputDialog.handleCancel}
       />
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
+
       <ExportModal
         open={exportModalOpen}
         exporting={exporting}

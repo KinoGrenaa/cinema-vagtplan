@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useApi } from "../../../hooks/useApi";
 import { useAuth } from "../../../providers/AuthProvider";
 import { sendMessage as sendMessageService } from "../../../services/messagesService";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { toast } from "sonner";
 
 type User = {
@@ -29,6 +31,7 @@ export default function SendMessagePage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const infoDialog = useInfoModal();
 
   const fetchUsers = useCallback(async () => {
     if (!user) return;
@@ -65,12 +68,18 @@ export default function SendMessagePage() {
     event.preventDefault();
 
     if (!subject.trim() || !body.trim()) {
-      toast.error("Udfyld både emne og besked.");
+      infoDialog.showError(
+        "Beskeden kan ikke sendes",
+        "Udfyld både emne og besked.",
+      );
       return;
     }
 
     if (!isBroadcast && !receiverId) {
-      toast.error("Vælg en modtager eller send som broadcast.");
+      infoDialog.showError(
+        "Beskeden kan ikke sendes",
+        "Vælg en modtager eller send som broadcast.",
+      );
       return;
     }
 
@@ -92,7 +101,10 @@ export default function SendMessagePage() {
       toast.success("Beskeden er sendt.");
     } catch (error) {
       console.error(error);
-      toast.error("Beskeden kunne ikke sendes.");
+      infoDialog.showError(
+        "Beskeden kunne ikke sendes",
+        "Der opstod en fejl, da beskeden skulle sendes. Prøv igen.",
+      );
     } finally {
       setSending(false);
     }
@@ -197,6 +209,14 @@ export default function SendMessagePage() {
           </button>
         </form>
       </div>
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
     </main>
   );
 }

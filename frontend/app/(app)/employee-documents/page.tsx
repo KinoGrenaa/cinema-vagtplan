@@ -3,8 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
+
 import { apiFetch } from "@/app/lib/api";
+
 import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
@@ -27,6 +31,7 @@ type EmployeeDocument = {
 
 export default function EmployeeDocumentsPage() {
   const confirmDialog = useConfirm();
+  const infoDialog = useInfoModal();
   const [users, setUsers] = useState<User[]>([]);
   const [documents, setDocuments] = useState<EmployeeDocument[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -119,8 +124,13 @@ export default function EmployeeDocumentsPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.message || "Upload fejlede");
+        const error = await response.json().catch(() => null);
+
+        infoDialog.showError(
+          "Upload fejlede",
+          error?.message || "Dokumentet kunne ikke uploades.",
+        );
+
         return;
       }
 
@@ -131,7 +141,11 @@ export default function EmployeeDocumentsPage() {
       toast.success("Dokument uploadet");
     } catch (error) {
       console.error(error);
-      toast.error("Kunne ikke uploade dokument");
+
+      infoDialog.showError(
+        "Upload fejlede",
+        "Dokumentet kunne ikke uploades. Prøv igen.",
+      );
     } finally {
       setUploading(false);
     }
@@ -151,7 +165,11 @@ export default function EmployeeDocumentsPage() {
           });
 
           if (!response.ok) {
-            console.error("Kunne ikke slette dokument");
+            infoDialog.showError(
+              "Dokumentet kunne ikke slettes",
+              "Der opstod en fejl, da dokumentet skulle slettes. Prøv igen.",
+            );
+
             return;
           }
 
@@ -160,6 +178,11 @@ export default function EmployeeDocumentsPage() {
           }
         } catch (error) {
           console.error(error);
+
+          infoDialog.showError(
+            "Dokumentet kunne ikke slettes",
+            "Der opstod en fejl, da dokumentet skulle slettes. Prøv igen.",
+          );
         }
       },
     });
@@ -283,6 +306,15 @@ export default function EmployeeDocumentsPage() {
         loading={confirmDialog.loading}
         onConfirm={confirmDialog.handleConfirm}
         onCancel={confirmDialog.handleCancel}
+      />
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
       />
     </AdminGuard>
   );

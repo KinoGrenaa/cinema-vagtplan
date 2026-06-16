@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import InfoModal from "@/app/components/modals/InfoModal";
+import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
-import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 
 type TimeEntryStatus = "PENDING" | "NEEDS_CHANGES" | "APPROVED" | "VOIDED";
 
@@ -300,6 +302,8 @@ function toInputDateTime(value?: string | null) {
 }
 
 export default function MyTimePage() {
+  const infoDialog = useInfoModal();
+
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [payrollPeriod, setPayrollPeriod] = useState(() => {
@@ -331,7 +335,12 @@ export default function MyTimePage() {
 
       if (!response.ok) {
         setEntries([]);
-        toast.error("Kunne ikke hente dine timer");
+
+        infoDialog.showError(
+          "Kunne ikke hente dine timer",
+          "Der opstod en fejl, da dine timer skulle hentes. Prøv igen.",
+        );
+
         return;
       }
 
@@ -340,7 +349,11 @@ export default function MyTimePage() {
     } catch (error) {
       console.error(error);
       setEntries([]);
-      toast.error("Kunne ikke hente dine timer");
+
+      infoDialog.showError(
+        "Kunne ikke hente dine timer",
+        "Der opstod en fejl, da dine timer skulle hentes. Prøv igen.",
+      );
     } finally {
       setLoading(false);
     }
@@ -354,7 +367,11 @@ export default function MyTimePage() {
         );
 
         if (!response.ok) {
-          toast.error("Kunne ikke hente lønperiode");
+          infoDialog.showError(
+            "Kunne ikke hente lønperiode",
+            "Der opstod en fejl, da lønperioden skulle hentes. Prøv igen.",
+          );
+
           return;
         }
 
@@ -364,7 +381,11 @@ export default function MyTimePage() {
           typeof data?.startDate !== "string" ||
           typeof data?.endDate !== "string"
         ) {
-          toast.error("Ugyldig lønperiode fra serveren");
+          infoDialog.showError(
+            "Ugyldig lønperiode",
+            "Serveren returnerede en ugyldig lønperiode.",
+          );
+
           return;
         }
 
@@ -376,7 +397,11 @@ export default function MyTimePage() {
         setExpandedDayKeys([]);
       } catch (error) {
         console.error(error);
-        toast.error("Kunne ikke hente lønperiode");
+
+        infoDialog.showError(
+          "Kunne ikke hente lønperiode",
+          "Der opstod en fejl, da lønperioden skulle hentes. Prøv igen.",
+        );
       }
     },
     [],
@@ -429,17 +454,29 @@ export default function MyTimePage() {
     const parsedClockOut = editClockOut ? new Date(editClockOut) : null;
 
     if (Number.isNaN(parsedClockIn.getTime())) {
-      toast.error("Ugyldig mødetid");
+      infoDialog.showError(
+        "Ugyldig mødetid",
+        "Mødetiden er ikke en gyldig dato eller tid.",
+      );
+
       return;
     }
 
     if (parsedClockOut && Number.isNaN(parsedClockOut.getTime())) {
-      toast.error("Ugyldig fyraften");
+      infoDialog.showError(
+        "Ugyldig fyraften",
+        "Fyraften er ikke en gyldig dato eller tid.",
+      );
+
       return;
     }
 
     if (parsedClockOut && parsedClockOut <= parsedClockIn) {
-      toast.error("Fyraften skal være efter mødetid");
+      infoDialog.showError(
+        "Ugyldigt tidsrum",
+        "Fyraften skal være efter mødetid.",
+      );
+
       return;
     }
 
@@ -458,7 +495,12 @@ export default function MyTimePage() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        toast.error(getErrorMessage(errorText));
+
+        infoDialog.showError(
+          "Timeregistreringen kunne ikke rettes",
+          getErrorMessage(errorText),
+        );
+
         return;
       }
 
@@ -467,7 +509,11 @@ export default function MyTimePage() {
       toast.success("Timeregistrering rettet");
     } catch (error) {
       console.error(error);
-      toast.error("Kunne ikke rette timeregistrering");
+
+      infoDialog.showError(
+        "Timeregistreringen kunne ikke rettes",
+        "Der opstod en fejl, da timeregistreringen skulle rettes. Prøv igen.",
+      );
     } finally {
       setSavingEdit(false);
     }
@@ -481,7 +527,11 @@ export default function MyTimePage() {
       const response = await apiFetch(`/time-entries/${entry.id}/revisions`);
 
       if (!response.ok) {
-        toast.error("Kunne ikke hente historik");
+        infoDialog.showError(
+          "Kunne ikke hente historik",
+          "Der opstod en fejl, da historikken skulle hentes. Prøv igen.",
+        );
+
         setHistoryEntry(null);
         return;
       }
@@ -491,7 +541,12 @@ export default function MyTimePage() {
       setHistoryItems(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
-      toast.error("Kunne ikke hente historik");
+
+      infoDialog.showError(
+        "Kunne ikke hente historik",
+        "Der opstod en fejl, da historikken skulle hentes. Prøv igen.",
+      );
+
       setHistoryEntry(null);
     } finally {
       setHistoryLoading(false);
@@ -598,393 +653,406 @@ export default function MyTimePage() {
   }, [visibleEntries]);
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Mine timer</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Se dine indberettede og godkendte timer.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-1 text-sm font-medium">Lønperiode</div>
-          <div className="text-base font-semibold">
-            {formatDate(payrollPeriod.startDate)} →{" "}
-            {formatDate(payrollPeriod.endDate)}
+    <>
+      <main className="mx-auto w-full max-w-5xl px-4 py-8">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Mine timer</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Se dine indberettede og godkendte timer.
+            </p>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={goToPreviousPayrollPeriod}
-              className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-            >
-              Forrige
-            </button>
 
-            <button
-              type="button"
-              onClick={goToCurrentPayrollPeriod}
-              className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
-            >
-              Aktuel
-            </button>
-
-            <button
-              type="button"
-              onClick={goToNextPayrollPeriod}
-              className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-            >
-              Næste
-            </button>
-          </div>
-          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Beregnet ud fra biografens lønopsætning.
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Godkendte timer
-          </div>
-          <div className="mt-1 text-2xl font-bold">
-            {approvedHours.toFixed(2)} t
-          </div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Tæller med i løngrundlaget.
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Afventer godkendelse
-          </div>
-          <div className="mt-1 text-2xl font-bold">
-            {pendingHours.toFixed(2)} t
-          </div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Ikke med i løn før godkendelse.
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Kræver handling
-          </div>
-          <div className="mt-1 text-2xl font-bold">{needsChangesCount}</div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Registreringer sendt retur til rettelse.
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-4 flex justify-end">
-        <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <input
-            type="checkbox"
-            checked={showVoidedEntries}
-            onChange={(event) => setShowVoidedEntries(event.target.checked)}
-            className="h-4 w-4"
-          />
-          Vis annullerede
-        </label>
-      </div>
-
-      {loading && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-          Henter timer...
-        </div>
-      )}
-
-      {!loading && visibleEntries.length === 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-          Der er ingen timer i den aktuelle lønperiode.
-        </div>
-      )}
-
-      {!loading && visibleEntries.length > 0 && (
-        <div className="space-y-4">
-          {dayGroups.map((group) => {
-            const isExpanded = expandedDayKeys.includes(group.dayKey);
-
-            return (
-              <div
-                key={group.dayKey}
-                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="mb-1 text-sm font-medium">Lønperiode</div>
+            <div className="text-base font-semibold">
+              {formatDate(payrollPeriod.startDate)} →{" "}
+              {formatDate(payrollPeriod.endDate)}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={goToPreviousPayrollPeriod}
+                className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
               >
-                <button
-                  type="button"
-                  onClick={() => toggleDayGroup(group.dayKey)}
-                  className="flex w-full flex-col gap-3 p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/60 md:flex-row md:items-center md:justify-between"
+                Forrige
+              </button>
+
+              <button
+                type="button"
+                onClick={goToCurrentPayrollPeriod}
+                className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+              >
+                Aktuel
+              </button>
+
+              <button
+                type="button"
+                onClick={goToNextPayrollPeriod}
+                className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+              >
+                Næste
+              </button>
+            </div>
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Beregnet ud fra biografens lønopsætning.
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Godkendte timer
+            </div>
+            <div className="mt-1 text-2xl font-bold">
+              {approvedHours.toFixed(2)} t
+            </div>
+            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Tæller med i løngrundlaget.
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Afventer godkendelse
+            </div>
+            <div className="mt-1 text-2xl font-bold">
+              {pendingHours.toFixed(2)} t
+            </div>
+            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Ikke med i løn før godkendelse.
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Kræver handling
+            </div>
+            <div className="mt-1 text-2xl font-bold">{needsChangesCount}</div>
+            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Registreringer sendt retur til rettelse.
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-4 flex justify-end">
+          <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <input
+              type="checkbox"
+              checked={showVoidedEntries}
+              onChange={(event) => setShowVoidedEntries(event.target.checked)}
+              className="h-4 w-4"
+            />
+            Vis annullerede
+          </label>
+        </div>
+
+        {loading && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            Henter timer...
+          </div>
+        )}
+
+        {!loading && visibleEntries.length === 0 && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            Der er ingen timer i den aktuelle lønperiode.
+          </div>
+        )}
+
+        {!loading && visibleEntries.length > 0 && (
+          <div className="space-y-4">
+            {dayGroups.map((group) => {
+              const isExpanded = expandedDayKeys.includes(group.dayKey);
+
+              return (
+                <div
+                  key={group.dayKey}
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
                 >
-                  <div>
-                    <div className="text-lg font-bold capitalize">
-                      {group.label}
+                  <button
+                    type="button"
+                    onClick={() => toggleDayGroup(group.dayKey)}
+                    className="flex w-full flex-col gap-3 p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/60 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <div className="text-lg font-bold capitalize">
+                        {group.label}
+                      </div>
+
+                      {group.summaryParts.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {group.summaryParts.map((part) => {
+                            let className =
+                              "rounded-full px-2 py-1 text-xs font-medium";
+
+                            if (part.startsWith("Godkendt:")) {
+                              className +=
+                                " bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+                            } else if (part.startsWith("Afventer:")) {
+                              className +=
+                                " bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+                            } else if (part.startsWith("Kræver handling:")) {
+                              className +=
+                                " bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+                            } else if (part.startsWith("Annulleret:")) {
+                              className +=
+                                " bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+                            }
+
+                            return (
+                              <span key={part} className={className}>
+                                {part}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
-                    {group.summaryParts.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {group.summaryParts.map((part) => {
-                          let className =
-                            "rounded-full px-2 py-1 text-xs font-medium";
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-xl border border-gray-300 px-3 py-1 text-sm font-medium dark:border-gray-700">
+                        {isExpanded ? "Fold ind" : "Fold ud"}
+                      </span>
+                    </div>
+                  </button>
 
-                          if (part.startsWith("Godkendt:")) {
-                            className +=
-                              " bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
-                          } else if (part.startsWith("Afventer:")) {
-                            className +=
-                              " bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
-                          } else if (part.startsWith("Kræver handling:")) {
-                            className +=
-                              " bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-                          } else if (part.startsWith("Annulleret:")) {
-                            className +=
-                              " bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
-                          }
+                  {isExpanded && (
+                    <div className="space-y-4 border-t border-gray-200 p-5 dark:border-gray-800">
+                      {group.entries.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950/40"
+                        >
+                          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <h2 className="text-lg font-bold">
+                                {entry.shift?.workType?.name ||
+                                  entry.payrollType?.name ||
+                                  "Timeregistrering"}
+                              </h2>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {formatDateTime(entry.clockIn)}
+                              </p>
+                            </div>
 
-                          return (
-                            <span key={part} className={className}>
-                              {part}
+                            <span
+                              className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                                entry.status,
+                              )}`}
+                            >
+                              {getStatusLabel(entry.status)}
                             </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                          </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-xl border border-gray-300 px-3 py-1 text-sm font-medium dark:border-gray-700">
-                      {isExpanded ? "Fold ind" : "Fold ud"}
-                    </span>
-                  </div>
+                          <div className="grid gap-2 text-sm md:grid-cols-2">
+                            <div>
+                              <span className="font-semibold">Clock ind:</span>{" "}
+                              {formatDateTime(entry.clockIn)}
+                            </div>
+
+                            <div>
+                              <span className="font-semibold">Clock ud:</span>{" "}
+                              {formatDateTime(entry.clockOut)}
+                            </div>
+
+                            <div>
+                              <span className="font-semibold">Timer:</span>{" "}
+                              {getHours(entry)}
+                            </div>
+
+                            <div>
+                              <span className="font-semibold">Status:</span>{" "}
+                              {getStatusLabel(entry.status)}
+                            </div>
+                          </div>
+
+                          {(entry.note ||
+                            entry.clockInNote ||
+                            entry.clockOutNote ||
+                            entry.adminNote) && (
+                            <div className="mt-4 space-y-3">
+                              {shouldShowEntryNoteAsSingleNote(entry) ? (
+                                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                                  <span className="font-semibold">Note:</span>{" "}
+                                  {getEntrySingleNote(entry)}
+                                </div>
+                              ) : (
+                                <>
+                                  {entry.clockInNote && (
+                                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                                      <span className="font-semibold">
+                                        Mødetidsnote:
+                                      </span>{" "}
+                                      {entry.clockInNote}
+                                    </div>
+                                  )}
+
+                                  {entry.clockOutNote && (
+                                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
+                                      <span className="font-semibold">
+                                        Fyraftensnote:
+                                      </span>{" "}
+                                      {entry.clockOutNote}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+
+                              {entry.adminNote && (
+                                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
+                                  <div className="font-semibold">
+                                    {entry.status === "NEEDS_CHANGES"
+                                      ? "Sendt retur til rettelse"
+                                      : entry.status === "VOIDED"
+                                        ? "Annulleret"
+                                        : "Admin note"}
+                                  </div>
+
+                                  <div className="mt-1">{entry.adminNote}</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {entry.status === "NEEDS_CHANGES" && (
+                            <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm font-medium text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
+                              Denne tidsregistrering er sendt retur til rettelse
+                              og skal opdateres før den kan godkendes.
+                            </div>
+                          )}
+
+                          <div className="mt-4 flex justify-end gap-2">
+                            <button
+                              onClick={() => openHistory(entry)}
+                              className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                            >
+                              Historik
+                            </button>
+
+                            {entry.status !== "APPROVED" &&
+                              entry.status !== "VOIDED" && (
+                                <button
+                                  onClick={() => openEdit(entry)}
+                                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                                >
+                                  Redigér
+                                </button>
+                              )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {editingEntry && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+              <div className="mb-4">
+                <h2 className="text-xl font-bold">Redigér timeregistrering</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Du kan kun rette timer, der ikke er godkendt endnu.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    Clock ind
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={editClockIn}
+                    onChange={(event) => setEditClockIn(event.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    Clock ud
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={editClockOut}
+                    onChange={(event) => setEditClockOut(event.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    Mødetidsnote
+                  </label>
+                  <textarea
+                    value={editClockInNote}
+                    onChange={(event) => setEditClockInNote(event.target.value)}
+                    rows={3}
+                    className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                    placeholder="Forklar evt. ændret mødetid"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    Fyraftensnote
+                  </label>
+                  <textarea
+                    value={editClockOutNote}
+                    onChange={(event) =>
+                      setEditClockOutNote(event.target.value)
+                    }
+                    rows={3}
+                    className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+                    placeholder="Forklar evt. ændret fyraften"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  onClick={closeEdit}
+                  disabled={savingEdit}
+                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Annuller
                 </button>
 
-                {isExpanded && (
-                  <div className="space-y-4 border-t border-gray-200 p-5 dark:border-gray-800">
-                    {group.entries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950/40"
-                      >
-                        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div>
-                            <h2 className="text-lg font-bold">
-                              {entry.shift?.workType?.name ||
-                                entry.payrollType?.name ||
-                                "Timeregistrering"}
-                            </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {formatDateTime(entry.clockIn)}
-                            </p>
-                          </div>
-
-                          <span
-                            className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                              entry.status,
-                            )}`}
-                          >
-                            {getStatusLabel(entry.status)}
-                          </span>
-                        </div>
-
-                        <div className="grid gap-2 text-sm md:grid-cols-2">
-                          <div>
-                            <span className="font-semibold">Clock ind:</span>{" "}
-                            {formatDateTime(entry.clockIn)}
-                          </div>
-
-                          <div>
-                            <span className="font-semibold">Clock ud:</span>{" "}
-                            {formatDateTime(entry.clockOut)}
-                          </div>
-
-                          <div>
-                            <span className="font-semibold">Timer:</span>{" "}
-                            {getHours(entry)}
-                          </div>
-
-                          <div>
-                            <span className="font-semibold">Status:</span>{" "}
-                            {getStatusLabel(entry.status)}
-                          </div>
-                        </div>
-
-                        {(entry.note ||
-                          entry.clockInNote ||
-                          entry.clockOutNote ||
-                          entry.adminNote) && (
-                          <div className="mt-4 space-y-3">
-                            {shouldShowEntryNoteAsSingleNote(entry) ? (
-                              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                                <span className="font-semibold">Note:</span>{" "}
-                                {getEntrySingleNote(entry)}
-                              </div>
-                            ) : (
-                              <>
-                                {entry.clockInNote && (
-                                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                                    <span className="font-semibold">
-                                      Mødetidsnote:
-                                    </span>{" "}
-                                    {entry.clockInNote}
-                                  </div>
-                                )}
-
-                                {entry.clockOutNote && (
-                                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                                    <span className="font-semibold">
-                                      Fyraftensnote:
-                                    </span>{" "}
-                                    {entry.clockOutNote}
-                                  </div>
-                                )}
-                              </>
-                            )}
-
-                            {entry.adminNote && (
-                              <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
-                                <div className="font-semibold">
-                                  {entry.status === "NEEDS_CHANGES"
-                                    ? "Sendt retur til rettelse"
-                                    : entry.status === "VOIDED"
-                                      ? "Annulleret"
-                                      : "Admin note"}
-                                </div>
-
-                                <div className="mt-1">{entry.adminNote}</div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {entry.status === "NEEDS_CHANGES" && (
-                          <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm font-medium text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
-                            Denne tidsregistrering er sendt retur til rettelse
-                            og skal opdateres før den kan godkendes.
-                          </div>
-                        )}
-
-                        <div className="mt-4 flex justify-end gap-2">
-                          <button
-                            onClick={() => openHistory(entry)}
-                            className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-                          >
-                            Historik
-                          </button>
-
-                          {entry.status !== "APPROVED" &&
-                            entry.status !== "VOIDED" && (
-                              <button
-                                onClick={() => openEdit(entry)}
-                                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                              >
-                                Redigér
-                              </button>
-                            )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <button
+                  onClick={saveEdit}
+                  disabled={savingEdit}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {savingEdit ? "Gemmer..." : "Gem ændringer"}
+                </button>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {editingEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold">Redigér timeregistrering</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Du kan kun rette timer, der ikke er godkendt endnu.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Clock ind
-                </label>
-                <input
-                  type="datetime-local"
-                  value={editClockIn}
-                  onChange={(event) => setEditClockIn(event.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Clock ud
-                </label>
-                <input
-                  type="datetime-local"
-                  value={editClockOut}
-                  onChange={(event) => setEditClockOut(event.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Mødetidsnote
-                </label>
-                <textarea
-                  value={editClockInNote}
-                  onChange={(event) => setEditClockInNote(event.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                  placeholder="Forklar evt. ændret mødetid"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Fyraftensnote
-                </label>
-                <textarea
-                  value={editClockOutNote}
-                  onChange={(event) => setEditClockOutNote(event.target.value)}
-                  rows={3}
-                  className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                  placeholder="Forklar evt. ændret fyraften"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={closeEdit}
-                disabled={savingEdit}
-                className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
-              >
-                Annuller
-              </button>
-
-              <button
-                onClick={saveEdit}
-                disabled={savingEdit}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
-              >
-                {savingEdit ? "Gemmer..." : "Gem ændringer"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
-      <TimeEntryHistoryModal
-        isOpen={!!historyEntry}
-        onClose={() => {
-          setHistoryEntry(null);
-          setHistoryItems([]);
-        }}
-        revisions={historyItems}
-        currentStatus={historyEntry?.status}
+        )}
+        <TimeEntryHistoryModal
+          isOpen={!!historyEntry}
+          onClose={() => {
+            setHistoryEntry(null);
+            setHistoryItems([]);
+          }}
+          revisions={historyItems}
+          currentStatus={historyEntry?.status}
+        />
+      </main>
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
       />
-    </main>
+    </>
   );
 }

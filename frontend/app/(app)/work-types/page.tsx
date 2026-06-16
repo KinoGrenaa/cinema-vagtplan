@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import InfoModal from "@/app/components/modals/InfoModal";
+
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
+
 import { apiFetch } from "@/app/lib/api";
-import { toast } from "sonner";
 
 type PayrollType = {
   id: number;
@@ -47,6 +50,7 @@ function getCurrentUserFromToken(): CurrentUser | null {
 
 export default function WorkTypesPage() {
   const confirmDialog = useConfirm();
+  const infoDialog = useInfoModal();
 
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
@@ -135,7 +139,9 @@ export default function WorkTypesPage() {
       });
 
       if (!response.ok) {
-        throw new Error();
+        const data = await response.json().catch(() => null);
+
+        throw new Error(data?.message || "Kunne ikke oprette vagttype");
       }
 
       setName("");
@@ -145,7 +151,13 @@ export default function WorkTypesPage() {
       await fetchWorkTypes();
     } catch (error) {
       console.error(error);
-      toast.error("Kunne ikke oprette vagttype");
+
+      infoDialog.showError(
+        "Kunne ikke oprette vagttype",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagttypen skulle oprettes. Prøv igen.",
+      );
     }
   }
 
@@ -175,10 +187,11 @@ export default function WorkTypesPage() {
         } catch (error) {
           console.error(error);
 
-          toast.error(
+          infoDialog.showError(
+            "Kunne ikke arkivere vagttype",
             error instanceof Error
               ? error.message
-              : "Kunne ikke arkivere vagttype",
+              : "Der opstod en fejl, da vagttypen skulle arkiveres. Prøv igen.",
           );
         }
       },
@@ -210,10 +223,11 @@ export default function WorkTypesPage() {
         } catch (error) {
           console.error(error);
 
-          toast.error(
+          infoDialog.showError(
+            "Kunne ikke genaktivere vagttype",
             error instanceof Error
               ? error.message
-              : "Kunne ikke genaktivere vagttype",
+              : "Der opstod en fejl, da vagttypen skulle genaktiveres. Prøv igen.",
           );
         }
       },
@@ -389,6 +403,15 @@ export default function WorkTypesPage() {
         loading={confirmDialog.loading}
         onConfirm={confirmDialog.handleConfirm}
         onCancel={confirmDialog.handleCancel}
+      />
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
       />
     </AdminGuard>
   );
