@@ -172,8 +172,6 @@ export default function SchedulePage() {
   const [note, setNote] = useState("");
   const [userId, setUserId] = useState(0);
   const [workTypeId, setWorkTypeId] = useState(0);
-  const [formError, setFormError] = useState("");
-
   const [showClockModal, setShowClockModal] = useState(false);
   const [clockShiftId, setClockShiftId] = useState<number | null>(null);
   const [clockInTime, setClockInTime] = useState("");
@@ -253,7 +251,6 @@ export default function SchedulePage() {
     setEndTime(`${selectedDate}T22:00`);
 
     setNote("");
-    setFormError("");
   }
 
   function resetClockModal() {
@@ -410,7 +407,6 @@ export default function SchedulePage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFormError("");
 
     const body = {
       startTime: localDateTimeToISOString(startTime),
@@ -429,8 +425,11 @@ export default function SchedulePage() {
 
       clearForm();
     } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Der opstod en fejl",
+      infoDialog.showError(
+        selectedShift ? "Vagten kunne ikke opdateres" : "Vagten kunne ikke oprettes",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagten skulle gemmes. Prøv igen.",
       );
     }
   }
@@ -442,8 +441,11 @@ export default function SchedulePage() {
       await deleteShift(selectedShift.id);
       clearForm();
     } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : "Kunne ikke slette vagt",
+      infoDialog.showError(
+        "Vagten kunne ikke slettes",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagten skulle slettes. Prøv igen.",
       );
     }
   }
@@ -455,7 +457,6 @@ export default function SchedulePage() {
     setNote(shift.note || "");
     setUserId(shift.userId);
     setWorkTypeId(shift.workTypeId);
-    setFormError("");
   }
 
   function changeDate(days: number) {
@@ -468,7 +469,6 @@ export default function SchedulePage() {
     setStartTime(`${nextDate}T14:00`);
     setEndTime(`${nextDate}T22:00`);
     setSelectedShift(null);
-    setFormError("");
   }
 
   function goToToday() {
@@ -478,7 +478,6 @@ export default function SchedulePage() {
     setStartTime(`${today}T14:00`);
     setEndTime(`${today}T22:00`);
     setSelectedShift(null);
-    setFormError("");
   }
 
   function goToDate(nextDate: string) {
@@ -488,7 +487,6 @@ export default function SchedulePage() {
     setStartTime(`${nextDate}T14:00`);
     setEndTime(`${nextDate}T22:00`);
     setSelectedShift(null);
-    setFormError("");
   }
 
   function openRegisterTimeModal() {
@@ -630,23 +628,41 @@ export default function SchedulePage() {
     const newStart = new Date(newVisibleStart.getTime() - visibleOffsetMs);
     const newEnd = new Date(newStart.getTime() + durationMs);
 
-    await updateShift(shift.id, {
-      startTime: newStart.toISOString(),
-      endTime: newEnd.toISOString(),
-      note: shift.note,
-      userId: shift.userId,
-      workTypeId: shift.workTypeId,
-    });
+    try {
+      await updateShift(shift.id, {
+        startTime: newStart.toISOString(),
+        endTime: newEnd.toISOString(),
+        note: shift.note,
+        userId: shift.userId,
+        workTypeId: shift.workTypeId,
+      });
+    } catch (error) {
+      infoDialog.showError(
+        "Vagten kunne ikke flyttes",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagten skulle flyttes. Prøv igen.",
+      );
+    }
   }
 
   async function handleChangeShiftUser(shift: Shift, newUserId: number) {
-    await updateShift(shift.id, {
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      note: shift.note,
-      userId: newUserId,
-      workTypeId: shift.workTypeId,
-    });
+    try {
+      await updateShift(shift.id, {
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        note: shift.note,
+        userId: newUserId,
+        workTypeId: shift.workTypeId,
+      });
+    } catch (error) {
+      infoDialog.showError(
+        "Medarbejder kunne ikke ændres",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagten skulle tildeles en anden medarbejder. Prøv igen.",
+      );
+    }
   }
 
   async function handleResizeShift(
@@ -684,13 +700,22 @@ export default function SchedulePage() {
 
     const newEnd = new Date(newVisibleEnd.getTime() + hiddenAfterMs);
 
-    await updateShift(shift.id, {
-      startTime: newStart.toISOString(),
-      endTime: newEnd.toISOString(),
-      note: shift.note,
-      userId: shift.userId,
-      workTypeId: shift.workTypeId,
-    });
+    try {
+      await updateShift(shift.id, {
+        startTime: newStart.toISOString(),
+        endTime: newEnd.toISOString(),
+        note: shift.note,
+        userId: shift.userId,
+        workTypeId: shift.workTypeId,
+      });
+    } catch (error) {
+      infoDialog.showError(
+        "Vagten kunne ikke ændres",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagtens tidspunkt skulle ændres. Prøv igen.",
+      );
+    }
   }
 
   function formatShiftDate(value: string) {
@@ -1199,26 +1224,6 @@ ${getShiftConfirmText(selectedShift)}`,
               </div>
             )}
 
-            {formError && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-                <div className="mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
-                  <h2 className="mb-4 text-2xl font-bold text-red-600 dark:text-red-400">
-                    Konflikt fundet
-                  </h2>
-
-                  <p className="mb-6 text-gray-700 dark:text-gray-300">
-                    {formError}
-                  </p>
-
-                  <button
-                    onClick={() => setFormError("")}
-                    className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                  >
-                    OK
-                  </button>
-                </div>
-              </div>
-            )}
           </main>
 
           <ConfirmModal
