@@ -22,7 +22,9 @@ import {
 } from "@/app/utils/dateTime";
 import type { Shift, User, WorkType } from "../../../../shared/types";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { toast } from "sonner";
 
 type LeaveRequest = {
@@ -101,6 +103,7 @@ function AiScheduleFeaturesEnabled({
 
 export default function SchedulePage() {
   const confirmDialog = useConfirm();
+  const infoDialog = useInfoModal();
   const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === "true";
   const todayDefault = getTodayLocalDate();
 
@@ -269,7 +272,10 @@ export default function SchedulePage() {
     const shift = shifts.find((s) => s.id === clockShiftId);
 
     if (!shift || !currentUser || !clockShiftId) {
-      toast.error("Vælg en vagt først");
+      infoDialog.showError(
+        "Vælg en vagt",
+        "Du skal vælge en vagt, før tiden kan registreres.",
+      );
       return;
     }
 
@@ -283,7 +289,10 @@ export default function SchedulePage() {
         localDateTimeToISOString(clockOutTime);
 
     if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
-      toast.error("Du skal skrive en note ved afvigelse fra vagtplanen");
+      infoDialog.showError(
+        "Note er påkrævet",
+        "Du skal skrive en note ved afvigelse fra vagtplanen.",
+      );
       return;
     }
 
@@ -298,15 +307,21 @@ export default function SchedulePage() {
       toast.success("Timer sendt til godkendelse");
       resetClockModal();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Kunne ikke registrere timer",
+      infoDialog.showError(
+        "Timerne kunne ikke registreres",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da timerne skulle registreres. Prøv igen.",
       );
     }
   }
 
   async function handleRegisterClockIn() {
     if (!selectedClockShift || !currentUser || !clockShiftId) {
-      toast.error("Vælg en vagt først");
+      infoDialog.showError(
+        "Vælg en vagt",
+        "Du skal vælge en vagt, før mødetid kan registreres.",
+      );
       return;
     }
 
@@ -317,7 +332,10 @@ export default function SchedulePage() {
       localDateTimeToISOString(clockInTime);
 
     if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
-      toast.error("Du skal skrive en note ved ændret mødetid");
+      infoDialog.showError(
+        "Note er påkrævet",
+        "Du skal skrive en note ved ændret mødetid.",
+      );
       return;
     }
 
@@ -327,17 +345,21 @@ export default function SchedulePage() {
       toast.success("Mødetid registreret");
       resetClockModal();
     } catch (error) {
-      toast.error(
+      infoDialog.showError(
+        "Mødetid kunne ikke registreres",
         error instanceof Error
           ? error.message
-          : "Kunne ikke registrere mødetid",
+          : "Der opstod en fejl, da mødetid skulle registreres. Prøv igen.",
       );
     }
   }
 
   async function handleRegisterClockOut() {
     if (!openTimeEntry) {
-      toast.error("Ingen åben tidsregistrering fundet");
+      infoDialog.showError(
+        "Ingen åben tidsregistrering",
+        "Der blev ikke fundet en åben tidsregistrering.",
+      );
       return;
     }
 
@@ -345,7 +367,10 @@ export default function SchedulePage() {
       openTimeEntry.shift || shifts.find((s) => s.id === openTimeEntry.shiftId);
 
     if (!shift) {
-      toast.error("Kunne ikke finde vagten for den åbne tidsregistrering");
+      infoDialog.showError(
+        "Vagten kunne ikke findes",
+        "Kunne ikke finde vagten for den åbne tidsregistrering.",
+      );
       return;
     }
 
@@ -356,7 +381,10 @@ export default function SchedulePage() {
       localDateTimeToISOString(clockOutTime);
 
     if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
-      toast.error("Du skal skrive en note ved ændret fyraften");
+      infoDialog.showError(
+        "Note er påkrævet",
+        "Du skal skrive en note ved ændret fyraften.",
+      );
       return;
     }
 
@@ -366,10 +394,11 @@ export default function SchedulePage() {
       toast.success("Fyraften registreret");
       resetClockModal();
     } catch (error) {
-      toast.error(
+      infoDialog.showError(
+        "Fyraften kunne ikke registreres",
         error instanceof Error
           ? error.message
-          : "Kunne ikke registrere fyraften",
+          : "Der opstod en fejl, da fyraften skulle registreres. Prøv igen.",
       );
     }
   }
@@ -496,12 +525,15 @@ export default function SchedulePage() {
 
   async function handleSubmitManualTimeWithoutShift() {
     if (!currentUser) {
-      toast.error("Du er ikke logget ind");
+      infoDialog.showError(
+        "Du er ikke logget ind",
+        "Du skal være logget ind for at registrere tid.",
+      );
       return;
     }
 
     if (!manualClockInTime || !manualClockOutTime) {
-      toast.error("Udfyld både mødetid og fyraften");
+      infoDialog.showError("Udfyld tider", "Udfyld både mødetid og fyraften.");
       return;
     }
 
@@ -509,17 +541,26 @@ export default function SchedulePage() {
     const clockOut = new Date(localDateTimeToISOString(manualClockOutTime));
 
     if (Number.isNaN(clockIn.getTime()) || Number.isNaN(clockOut.getTime())) {
-      toast.error("Ugyldig mødetid eller fyraften");
+      infoDialog.showError(
+        "Ugyldigt tidsrum",
+        "Mødetid eller fyraften er ikke en gyldig dato eller tid.",
+      );
       return;
     }
 
     if (clockOut <= clockIn) {
-      toast.error("Fyraften skal være efter mødetid");
+      infoDialog.showError(
+        "Ugyldigt tidsrum",
+        "Fyraften skal være efter mødetid.",
+      );
       return;
     }
 
     if (!manualNote.trim()) {
-      toast.error("Du skal skrive en note ved manuel registrering uden vagt");
+      infoDialog.showError(
+        "Note er påkrævet",
+        "Du skal skrive en note ved manuel registrering uden vagt.",
+      );
       return;
     }
 
@@ -534,8 +575,11 @@ export default function SchedulePage() {
       toast.success("Manuel tidsregistrering sendt til godkendelse");
       resetManualTimeModal();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Kunne ikke registrere timer",
+      infoDialog.showError(
+        "Timerne kunne ikke registreres",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da timerne skulle registreres. Prøv igen.",
       );
     }
   }
@@ -684,10 +728,11 @@ ${getShiftConfirmText(selectedShift)}`,
           await offerShiftTrade(selectedShift);
           toast.success("Vagten er sendt i byttepuljen");
         } catch (error) {
-          toast.error(
+          infoDialog.showError(
+            "Vagten kunne ikke sendes i byttepuljen",
             error instanceof Error
               ? error.message
-              : "Kunne ikke sende vagten i byttepuljen",
+              : "Der opstod en fejl, da vagten skulle sendes i byttepuljen. Prøv igen.",
           );
         }
       },
@@ -1180,6 +1225,15 @@ ${getShiftConfirmText(selectedShift)}`,
             loading={confirmDialog.loading}
             onConfirm={confirmDialog.handleConfirm}
             onCancel={confirmDialog.handleCancel}
+          />
+
+          <InfoModal
+            open={infoDialog.open}
+            title={infoDialog.title}
+            description={infoDialog.description}
+            buttonText={infoDialog.buttonText}
+            variant={infoDialog.variant}
+            onClose={infoDialog.close}
           />
         </>
       )}
