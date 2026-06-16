@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
 import FilterModal from "@/app/components/modals/FilterModal";
+import InfoModal from "@/app/components/modals/InfoModal";
 import InputModal from "@/app/components/modals/InputModal";
 import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
@@ -290,6 +292,7 @@ export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const inputDialog = useInputModal();
+  const infoDialog = useInfoModal();
   const errorDialog = useConfirm();
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -614,9 +617,11 @@ export default function TimeApprovalPage() {
 
       setHistoryItems(Array.isArray(data) ? data : []);
     } catch (error) {
-      toast.error(
+      infoDialog.showError(
+        "Kunne ikke hente historik",
         error instanceof Error ? error.message : "Kunne ikke hente historik",
       );
+
       setHistoryItems([]);
     } finally {
       setHistoryLoading(false);
@@ -677,10 +682,12 @@ export default function TimeApprovalPage() {
           const details = getPayrollConflictDetails(payload);
 
           if (details.code === "PAYROLL_PERIOD_LOCKED") {
-            toast.error(
+            infoDialog.showError(
+              "Lønperioden er låst",
               details.message ||
                 "Lås lønperioden op før tidsregistreringen kan godkendes.",
             );
+
             return;
           }
 
@@ -711,7 +718,8 @@ export default function TimeApprovalPage() {
         toast.success("Timeregistrering godkendt");
       }
     } catch (error) {
-      toast.error(
+      infoDialog.showError(
+        "Kunne ikke godkende timeregistrering",
         error instanceof Error
           ? error.message
           : "Kunne ikke godkende timeregistrering",
@@ -736,7 +744,8 @@ export default function TimeApprovalPage() {
       await fetchEntries();
       toast.success("Godkendelse fjernet");
     } catch (error) {
-      toast.error(
+      infoDialog.showError(
+        "Kunne ikke fjerne godkendelse",
         error instanceof Error
           ? error.message
           : "Kunne ikke fjerne godkendelse",
@@ -759,7 +768,11 @@ export default function TimeApprovalPage() {
         const adminNote = value.trim();
 
         if (!adminNote) {
-          toast.error("Besked er påkrævet");
+          infoDialog.showError(
+            "Besked mangler",
+            "Du skal skrive en besked til medarbejderen.",
+          );
+
           return;
         }
 
@@ -1519,6 +1532,15 @@ export default function TimeApprovalPage() {
         loading={errorDialog.loading}
         onConfirm={errorDialog.handleConfirm}
         onCancel={errorDialog.handleCancel}
+      />
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
       />
 
       <InputModal
