@@ -1,22 +1,55 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useMessages } from "../../../hooks/useMessages";
 import type { MessageParticipant } from "../../../types/messages";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
-import { useInfoModal } from "@/app/hooks/useInfoModal";
+
+type ErrorDialogState = {
+  open: boolean;
+  title: string;
+  description: string;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function SentMessagesPage() {
   const confirmDialog = useConfirm();
-  const infoDialog = useInfoModal();
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
+  );
+  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
+    open: false,
+    title: "",
+    description: "",
+  });
+
+  const showErrorDialog = useCallback((title: string, description: string) => {
+    setErrorDialog({
+      open: true,
+      title,
+      description,
+    });
+  }, []);
+
+  const handleMessagesError = useCallback(
+    (message: string) => {
+      showErrorDialog("Kunne ikke hente sendte beskeder", message);
+    },
+    [showErrorDialog],
   );
 
   const { loading, sortedMessages, archive } = useMessages({
     mode: "sent",
+    onError: handleMessagesError,
   });
 
   function getUserName(user?: MessageParticipant | null) {
@@ -44,11 +77,12 @@ export default function SentMessagesPage() {
             setExpandedMessageId(null);
           }
         } catch (error) {
-          console.error(error);
-
-          infoDialog.showError(
+          showErrorDialog(
             "Beskeden kunne ikke arkiveres",
-            "Der opstod en fejl, da beskeden skulle arkiveres. Prøv igen.",
+            getErrorMessage(
+              error,
+              "Der opstod en fejl, da beskeden skulle arkiveres. Prøv igen.",
+            ),
           );
         }
       },
@@ -188,12 +222,18 @@ export default function SentMessagesPage() {
       />
 
       <InfoModal
-        open={infoDialog.open}
-        title={infoDialog.title}
-        description={infoDialog.description}
-        buttonText={infoDialog.buttonText}
-        variant={infoDialog.variant}
-        onClose={infoDialog.close}
+        open={errorDialog.open}
+        title={errorDialog.title}
+        description={errorDialog.description}
+        buttonText="OK"
+        variant="error"
+        onClose={() =>
+          setErrorDialog({
+            open: false,
+            title: "",
+            description: "",
+          })
+        }
       />
     </main>
   );

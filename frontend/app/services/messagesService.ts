@@ -8,12 +8,32 @@ type SendMessageInput = {
   isBroadcast: boolean;
 };
 
-async function safeJson<T>(response: Response): Promise<T | null> {
+async function readErrorMessage(response: Response, fallback: string) {
   try {
-    if (!response.ok) {
-      return null;
+    const data = await response.clone().json();
+
+    if (typeof data?.message === "string") {
+      return data.message;
     }
 
+    if (Array.isArray(data?.message)) {
+      return data.message.join("\n");
+    }
+  } catch {}
+
+  try {
+    const text = await response.text();
+
+    if (text.trim()) {
+      return text;
+    }
+  } catch {}
+
+  return fallback;
+}
+
+async function safeJson<T>(response: Response): Promise<T | null> {
+  try {
     return (await response.json()) as T;
   } catch {
     return null;
@@ -23,6 +43,12 @@ async function safeJson<T>(response: Response): Promise<T | null> {
 export async function fetchInboxMessages(): Promise<Message[]> {
   const response = await apiFetch("/messages");
 
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke hente beskeder"),
+    );
+  }
+
   const data = await safeJson<Message[]>(response);
 
   return Array.isArray(data) ? data : [];
@@ -31,6 +57,12 @@ export async function fetchInboxMessages(): Promise<Message[]> {
 export async function fetchSentMessages(): Promise<Message[]> {
   const response = await apiFetch("/messages/sent");
 
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke hente sendte beskeder"),
+    );
+  }
+
   const data = await safeJson<Message[]>(response);
 
   return Array.isArray(data) ? data : [];
@@ -38,6 +70,12 @@ export async function fetchSentMessages(): Promise<Message[]> {
 
 export async function fetchUnreadMessageCount(): Promise<number> {
   const response = await apiFetch("/messages/unread-count");
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke hente antal ulæste beskeder"),
+    );
+  }
 
   const data = await safeJson<{ count?: number }>(response);
 
@@ -50,7 +88,9 @@ export async function markMessageAsRead(messageId: number): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error("Kunne ikke markere besked som læst");
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke markere besked som læst"),
+    );
   }
 }
 
@@ -60,7 +100,9 @@ export async function archiveMessage(messageId: number): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error("Kunne ikke arkivere besked");
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke arkivere besked"),
+    );
   }
 }
 
@@ -71,9 +113,8 @@ export async function sendMessage(input: SendMessageInput): Promise<void> {
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    console.error("Message send failed:", text);
-
-    throw new Error(`Kunne ikke sende besked: ${text || response.status}`);
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke sende besked"),
+    );
   }
 }

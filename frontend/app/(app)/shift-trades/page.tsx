@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import InfoModal from "@/app/components/modals/InfoModal";
 import { useApi } from "@/app/hooks/useApi";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 
 type User = {
@@ -65,6 +67,7 @@ export default function ShiftTradesPage() {
   const { apiFetch } = useApi();
   const { user } = useAuth();
   const confirmModal = useConfirm();
+  const infoDialog = useInfoModal();
 
   const [trades, setTrades] = useState<ShiftTrade[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
@@ -79,6 +82,12 @@ export default function ShiftTradesPage() {
 
       if (!response.ok) {
         setTrades([]);
+
+        infoDialog.showError(
+          "Kunne ikke hente vagtbytter",
+          "Der opstod en fejl, da vagtbytter skulle hentes. Prøv igen.",
+        );
+
         return;
       }
 
@@ -92,9 +101,13 @@ export default function ShiftTradesPage() {
       } else {
         setShifts([]);
       }
-    } catch (error) {
-      console.error("Kunne ikke hente vagtbytter", error);
+    } catch {
       setTrades([]);
+
+      infoDialog.showError(
+        "Kunne ikke hente vagtbytter",
+        "Der opstod en fejl, da vagtbytter skulle hentes. Prøv igen.",
+      );
     } finally {
       setLoading(false);
     }
@@ -194,7 +207,10 @@ export default function ShiftTradesPage() {
         const data = await response.json().catch(() => null);
 
         if (!response.ok) {
-          setMessage(data?.message || "Kunne ikke acceptere vagten");
+          infoDialog.showError(
+            "Kunne ikke acceptere vagt",
+            data?.message || "Vagten kunne ikke accepteres. Prøv igen.",
+          );
           return;
         }
 
@@ -223,7 +239,10 @@ export default function ShiftTradesPage() {
         const data = await response.json().catch(() => null);
 
         if (!response.ok) {
-          setMessage(data?.message || "Kunne ikke afvise vagten");
+          infoDialog.showError(
+            "Kunne ikke afvise vagt",
+            data?.message || "Vagten kunne ikke afvises. Prøv igen.",
+          );
           return;
         }
 
@@ -381,6 +400,15 @@ export default function ShiftTradesPage() {
         loading={confirmModal.loading}
         onConfirm={confirmModal.handleConfirm}
         onCancel={confirmModal.handleCancel}
+      />
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
       />
     </>
   );

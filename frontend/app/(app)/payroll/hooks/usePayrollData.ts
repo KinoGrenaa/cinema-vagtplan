@@ -19,13 +19,23 @@ type Props = {
   endDate: string;
   userId: string;
   onSettingsLoaded?: (settings: CinemaPayrollSettings) => void;
+  onError?: (title: string, description: string) => void;
 };
+
+function getErrorDescription(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export function usePayrollData({
   startDate,
   endDate,
   userId,
   onSettingsLoaded,
+  onError,
 }: Props) {
   const [cinemaSettings, setCinemaSettings] =
     useState<CinemaPayrollSettings | null>(null);
@@ -48,7 +58,13 @@ export function usePayrollData({
       setCinemaSettings(data);
       onSettingsLoaded?.(data);
     } catch (error) {
-      console.error(error);
+      onError?.(
+        "Kunne ikke hente lønindstillinger",
+        getErrorDescription(
+          error,
+          "Der opstod en fejl, da lønindstillingerne skulle hentes. Prøv igen.",
+        ),
+      );
     }
   }
 
@@ -57,8 +73,15 @@ export function usePayrollData({
       const data = await fetchUsers();
       setUsers(data);
     } catch (error) {
-      console.error(error);
       setUsers([]);
+
+      onError?.(
+        "Kunne ikke hente medarbejdere",
+        getErrorDescription(
+          error,
+          "Der opstod en fejl, da medarbejderlisten skulle hentes. Prøv igen.",
+        ),
+      );
     }
   }
 
@@ -77,11 +100,18 @@ export function usePayrollData({
       setVoidedCount(data.voidedCount);
       setAdjustmentCount(data.adjustmentCount ?? 0);
     } catch (error) {
-      console.error(error);
       setReport([]);
       setPendingCount(0);
       setVoidedCount(0);
       setAdjustmentCount(0);
+
+      onError?.(
+        "Kunne ikke hente lønrapport",
+        getErrorDescription(
+          error,
+          "Der opstod en fejl, da lønrapporten skulle hentes. Prøv igen.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -96,8 +126,15 @@ export function usePayrollData({
 
       setPeriod(data);
     } catch (error) {
-      console.error(error);
       setPeriod(null);
+
+      onError?.(
+        "Kunne ikke hente lønperiodestatus",
+        getErrorDescription(
+          error,
+          "Der opstod en fejl, da lønperiodens status skulle hentes. Prøv igen.",
+        ),
+      );
     }
   }
 
@@ -110,8 +147,15 @@ export function usePayrollData({
 
       setAuditHistory(data);
     } catch (error) {
-      console.error(error);
       setAuditHistory([]);
+
+      onError?.(
+        "Kunne ikke hente lønhistorik",
+        getErrorDescription(
+          error,
+          "Der opstod en fejl, da lønhistorikken skulle hentes. Prøv igen.",
+        ),
+      );
     }
   }
 

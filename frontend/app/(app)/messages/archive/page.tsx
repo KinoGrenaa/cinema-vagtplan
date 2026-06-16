@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
 type User = {
@@ -24,14 +26,33 @@ type CurrentUser = {
   cinemaId: number;
 };
 
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (typeof data?.message === "string") {
+      return data.message;
+    }
+
+    if (Array.isArray(data?.message)) {
+      return data.message.join("\n");
+    }
+  } catch {
+    // Brug fallback hvis svaret ikke er JSON.
+  }
+
+  return fallback;
+}
+
 export default function ArchivedMessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
   );
   const [loading, setLoading] = useState(true);
+  const errorDialog = useInfoModal();
 
-  const fetchMessages = useCallback(async () => {
+  async function fetchMessages() {
     try {
       setLoading(true);
 
@@ -49,6 +70,14 @@ export default function ArchivedMessagesPage() {
       );
 
       if (!response.ok) {
+        errorDialog.showError(
+          "Kunne ikke hente arkiverede beskeder",
+          await readErrorMessage(
+            response,
+            "Der opstod en fejl under hentning af arkiverede beskeder.",
+          ),
+        );
+
         setMessages([]);
         return;
       }
@@ -57,16 +86,22 @@ export default function ArchivedMessagesPage() {
 
       setMessages(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Kunne ikke hente arkiverede beskeder", error);
+      errorDialog.showError(
+        "Kunne ikke hente arkiverede beskeder",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en uventet fejl under hentning af arkiverede beskeder.",
+      );
+
       setMessages([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }
 
   useEffect(() => {
     fetchMessages();
-  }, [fetchMessages]);
+  }, []);
 
   const sortedMessages = useMemo(() => {
     return [...messages].sort(
@@ -196,6 +231,15 @@ export default function ArchivedMessagesPage() {
             })}
           </div>
         )}
+
+        <InfoModal
+          open={errorDialog.open}
+          title={errorDialog.title}
+          description={errorDialog.description}
+          buttonText={errorDialog.buttonText}
+          variant={errorDialog.variant}
+          onClose={errorDialog.close}
+        />
       </div>
     </main>
   );

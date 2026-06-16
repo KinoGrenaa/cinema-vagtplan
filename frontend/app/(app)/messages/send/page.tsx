@@ -5,7 +5,6 @@ import { useApi } from "../../../hooks/useApi";
 import { useAuth } from "../../../providers/AuthProvider";
 import { sendMessage as sendMessageService } from "../../../services/messagesService";
 import InfoModal from "@/app/components/modals/InfoModal";
-import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { toast } from "sonner";
 
 type User = {
@@ -14,6 +13,20 @@ type User = {
   lastName: string;
   role?: string;
 };
+
+type ErrorDialogState = {
+  open: boolean;
+  title: string;
+  description: string;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 const inputClass =
   "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
@@ -31,7 +44,19 @@ export default function SendMessagePage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
-  const infoDialog = useInfoModal();
+  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
+    open: false,
+    title: "",
+    description: "",
+  });
+
+  const showErrorDialog = useCallback((title: string, description: string) => {
+    setErrorDialog({
+      open: true,
+      title,
+      description,
+    });
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     if (!user) return;
@@ -41,17 +66,27 @@ export default function SendMessagePage() {
 
       if (!response.ok) {
         setUsers([]);
+
+        showErrorDialog(
+          "Kunne ikke hente medarbejdere",
+          "Modtagerlisten kunne ikke hentes. Prøv igen.",
+        );
+
         return;
       }
 
       const data = await response.json();
 
       setUsers(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Kunne ikke hente brugere", error);
+    } catch {
       setUsers([]);
+
+      showErrorDialog(
+        "Kunne ikke hente medarbejdere",
+        "Modtagerlisten kunne ikke hentes. Prøv igen.",
+      );
     }
-  }, [apiFetch, user]);
+  }, [apiFetch, showErrorDialog, user]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -68,7 +103,7 @@ export default function SendMessagePage() {
     event.preventDefault();
 
     if (!subject.trim() || !body.trim()) {
-      infoDialog.showError(
+      showErrorDialog(
         "Beskeden kan ikke sendes",
         "Udfyld både emne og besked.",
       );
@@ -76,7 +111,7 @@ export default function SendMessagePage() {
     }
 
     if (!isBroadcast && !receiverId) {
-      infoDialog.showError(
+      showErrorDialog(
         "Beskeden kan ikke sendes",
         "Vælg en modtager eller send som broadcast.",
       );
@@ -100,10 +135,12 @@ export default function SendMessagePage() {
 
       toast.success("Beskeden er sendt.");
     } catch (error) {
-      console.error(error);
-      infoDialog.showError(
+      showErrorDialog(
         "Beskeden kunne ikke sendes",
-        "Der opstod en fejl, da beskeden skulle sendes. Prøv igen.",
+        getErrorMessage(
+          error,
+          "Der opstod en fejl, da beskeden skulle sendes. Prøv igen.",
+        ),
       );
     } finally {
       setSending(false);
@@ -210,12 +247,18 @@ export default function SendMessagePage() {
         </form>
       </div>
       <InfoModal
-        open={infoDialog.open}
-        title={infoDialog.title}
-        description={infoDialog.description}
-        buttonText={infoDialog.buttonText}
-        variant={infoDialog.variant}
-        onClose={infoDialog.close}
+        open={errorDialog.open}
+        title={errorDialog.title}
+        description={errorDialog.description}
+        buttonText="OK"
+        variant="error"
+        onClose={() =>
+          setErrorDialog({
+            open: false,
+            title: "",
+            description: "",
+          })
+        }
       />
     </main>
   );

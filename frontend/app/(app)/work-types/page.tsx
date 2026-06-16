@@ -94,8 +94,6 @@ export default function WorkTypesPage() {
       if (!response.ok) {
         const errorText = await response.text();
 
-        console.error("WorkTypes fetch failed:", response.status, errorText);
-
         throw new Error(errorText || "Kunne ikke hente vagttyper");
       }
 
@@ -103,8 +101,14 @@ export default function WorkTypesPage() {
 
       setWorkTypes(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(error);
       setWorkTypes([]);
+
+      infoDialog.showError(
+        "Kunne ikke hente vagttyper",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagttyper skulle hentes. Prøv igen.",
+      );
     } finally {
       setLoading(false);
     }
@@ -122,8 +126,14 @@ export default function WorkTypesPage() {
 
       setPayrollTypes(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(error);
       setPayrollTypes([]);
+
+      infoDialog.showError(
+        "Kunne ikke hente lønarter",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da lønarter skulle hentes. Prøv igen.",
+      );
     }
   }
 
@@ -150,8 +160,6 @@ export default function WorkTypesPage() {
 
       await fetchWorkTypes();
     } catch (error) {
-      console.error(error);
-
       infoDialog.showError(
         "Kunne ikke oprette vagttype",
         error instanceof Error
@@ -185,8 +193,6 @@ export default function WorkTypesPage() {
 
           await fetchWorkTypes();
         } catch (error) {
-          console.error(error);
-
           infoDialog.showError(
             "Kunne ikke arkivere vagttype",
             error instanceof Error
@@ -221,8 +227,6 @@ export default function WorkTypesPage() {
 
           await fetchWorkTypes();
         } catch (error) {
-          console.error(error);
-
           infoDialog.showError(
             "Kunne ikke genaktivere vagttype",
             error instanceof Error

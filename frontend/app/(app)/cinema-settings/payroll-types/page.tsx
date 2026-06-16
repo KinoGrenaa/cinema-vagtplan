@@ -80,8 +80,6 @@ export default function PayrollTypesPage() {
       const data = await response.json();
       setPayrollTypes(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(error);
-
       setPayrollTypes([]);
 
       infoDialog.showError(
@@ -153,8 +151,6 @@ export default function PayrollTypesPage() {
 
       await fetchPayrollTypes();
     } catch (error) {
-      console.error(error);
-
       infoDialog.showError(
         "Kunne ikke opdatere lønart",
         getErrorMessage(error, "Lønarten kunne ikke opdateres. Prøv igen."),
@@ -179,8 +175,6 @@ export default function PayrollTypesPage() {
 
       await fetchPayrollTypes();
     } catch (error) {
-      console.error(error);
-
       infoDialog.showError(
         "Kunne ikke vælge standard lønart",
         getErrorMessage(error, "Standard lønart kunne ikke vælges. Prøv igen."),
@@ -211,9 +205,7 @@ export default function PayrollTypesPage() {
 
           toast.success("Lønart slettet");
         } catch (error) {
-          console.error(error);
-
-          infoDialog.showError(
+              infoDialog.showError(
             "Kunne ikke slette lønart",
             getErrorMessage(error, "Lønarten kunne ikke slettes. Prøv igen."),
           );

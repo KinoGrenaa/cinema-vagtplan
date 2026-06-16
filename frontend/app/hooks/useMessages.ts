@@ -15,9 +15,20 @@ import { useRealtimeCore } from "./useRealtimeCore";
 
 type UseMessagesInput = {
   mode: "inbox" | "sent";
+  onError?: (message: string) => void;
 };
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export function useMessages(input: UseMessagesInput) {
+  const { mode, onError } = input;
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,13 +40,18 @@ export function useMessages(input: UseMessagesInput) {
         }
 
         const data =
-          input.mode === "sent"
-            ? await fetchSentMessages()
-            : await fetchInboxMessages();
+          mode === "sent" ? await fetchSentMessages() : await fetchInboxMessages();
 
         setMessages(data);
       } catch (error) {
-        console.error("Failed to load messages", error);
+        onError?.(
+          getErrorMessage(
+            error,
+            mode === "sent"
+              ? "Der opstod en fejl under hentning af sendte beskeder."
+              : "Der opstod en fejl under hentning af beskeder.",
+          ),
+        );
 
         setMessages([]);
       } finally {
@@ -44,7 +60,7 @@ export function useMessages(input: UseMessagesInput) {
         }
       }
     },
-    [input.mode],
+    [mode, onError],
   );
 
   useEffect(() => {
@@ -86,14 +102,19 @@ export function useMessages(input: UseMessagesInput) {
 
         await markMessageAsRead(messageId);
       } catch (error) {
-        console.error(error);
+        onError?.(
+          getErrorMessage(
+            error,
+            "Der opstod en fejl under markering af besked som læst.",
+          ),
+        );
 
         setMessages(previousMessages);
 
         await loadMessages(false);
       }
     },
-    [loadMessages, messages],
+    [loadMessages, messages, onError],
   );
 
   const archive = useCallback(
@@ -107,14 +128,19 @@ export function useMessages(input: UseMessagesInput) {
 
         await archiveMessage(messageId);
       } catch (error) {
-        console.error(error);
+        onError?.(
+          getErrorMessage(
+            error,
+            "Der opstod en fejl under arkivering af besked.",
+          ),
+        );
 
         setMessages(previousMessages);
 
         await loadMessages(false);
       }
     },
-    [loadMessages, messages],
+    [loadMessages, messages, onError],
   );
 
   return {

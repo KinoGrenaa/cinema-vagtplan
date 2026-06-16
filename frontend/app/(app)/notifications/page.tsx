@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import InfoModal from "@/app/components/modals/InfoModal";
 import { useApi } from "@/app/hooks/useApi";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useNotifications } from "@/app/hooks/useNotifications";
@@ -44,9 +45,55 @@ type ShiftTrade = {
   };
 };
 
+type ErrorDialogState = {
+  open: boolean;
+  title: string;
+  description: string;
+};
+
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (typeof data?.message === "string") {
+      return data.message;
+    }
+
+    if (Array.isArray(data?.message)) {
+      return data.message.join("\n");
+    }
+  } catch {
+    // Brug fallback hvis svaret ikke er JSON.
+  }
+
+  return fallback;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export default function NotificationsPage() {
   const { apiFetch } = useApi();
   const { user, loading: authLoading } = useAuth();
+
+  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
+    open: false,
+    title: "",
+    description: "",
+  });
+
+  const handleNotificationError = useCallback((message: string) => {
+    setErrorDialog({
+      open: true,
+      title: "Kunne ikke opdatere notifikationer",
+      description: message,
+    });
+  }, []);
 
   const {
     notifications,
@@ -55,7 +102,7 @@ export default function NotificationsPage() {
     loadNotifications,
     markAsRead,
     markAllAsRead,
-  } = useNotifications();
+  } = useNotifications({ onError: handleNotificationError });
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
@@ -64,33 +111,63 @@ export default function NotificationsPage() {
   const [pushLoading, setPushLoading] = useState(false);
   const [extraLoading, setExtraLoading] = useState(true);
 
-  const fetchExtraData = useCallback(async () => {
-    if (!user) return;
+  const fetchExtraData = useCallback(
+    async (showError = true) => {
+      if (!user) return;
 
-    try {
-      setExtraLoading(true);
+      try {
+        setExtraLoading(true);
 
-      const [messagesResponse, tradesResponse] = await Promise.all([
-        apiFetch(`/messages?userId=${user.id}&cinemaId=${user.cinemaId}`),
-        apiFetch("/shift-trades"),
-      ]);
+        const [messagesResponse, tradesResponse] = await Promise.all([
+          apiFetch(`/messages?userId=${user.id}&cinemaId=${user.cinemaId}`),
+          apiFetch("/shift-trades"),
+        ]);
 
-      const [messagesData, tradesData] = await Promise.all([
-        messagesResponse.ok ? messagesResponse.json() : [],
-        tradesResponse.ok ? tradesResponse.json() : [],
-      ]);
+        if (!messagesResponse.ok) {
+          throw new Error(
+            await readErrorMessage(
+              messagesResponse,
+              "Kunne ikke hente ulæste beskeder.",
+            ),
+          );
+        }
 
-      setMessages(Array.isArray(messagesData) ? messagesData : []);
-      setShiftTrades(Array.isArray(tradesData) ? tradesData : []);
-    } catch (error) {
-      console.error("Failed to load notification overview data", error);
+        if (!tradesResponse.ok) {
+          throw new Error(
+            await readErrorMessage(
+              tradesResponse,
+              "Kunne ikke hente vagtbytter.",
+            ),
+          );
+        }
 
-      setMessages([]);
-      setShiftTrades([]);
-    } finally {
-      setExtraLoading(false);
-    }
-  }, [apiFetch, user]);
+        const [messagesData, tradesData] = await Promise.all([
+          messagesResponse.json(),
+          tradesResponse.json(),
+        ]);
+
+        setMessages(Array.isArray(messagesData) ? messagesData : []);
+        setShiftTrades(Array.isArray(tradesData) ? tradesData : []);
+      } catch (error) {
+        if (showError) {
+          setErrorDialog({
+            open: true,
+            title: "Kunne ikke hente notifikationsoversigt",
+            description: getErrorMessage(
+              error,
+              "Der opstod en uventet fejl under hentning af notifikationsoversigten.",
+            ),
+          });
+        }
+
+        setMessages([]);
+        setShiftTrades([]);
+      } finally {
+        setExtraLoading(false);
+      }
+    },
+    [apiFetch, user],
+  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -100,21 +177,37 @@ export default function NotificationsPage() {
       return;
     }
 
-    fetchExtraData();
+    fetchExtraData(true);
   }, [authLoading, fetchExtraData, user]);
 
   useEffect(() => {
     async function loadPushStatus() {
-      const enabled = await isPushNotificationsEnabled();
-      setPushEnabled(enabled);
+      try {
+        const enabled = await isPushNotificationsEnabled();
+
+        setPushEnabled(enabled);
+      } catch (error) {
+        setErrorDialog({
+          open: true,
+          title: "Kunne ikke hente push-status",
+          description: getErrorMessage(
+            error,
+            "Der opstod en uventet fejl under hentning af push-status.",
+          ),
+        });
+      }
     }
 
     loadPushStatus();
   }, []);
 
+  const refreshExtraDataSilently = useCallback(() => {
+    fetchExtraData(false);
+  }, [fetchExtraData]);
+
   useRealtimeShifts({
-    onShiftsUpdated: fetchExtraData,
-    onShiftTradesUpdated: fetchExtraData,
+    onShiftsUpdated: refreshExtraDataSilently,
+    onShiftTradesUpdated: refreshExtraDataSilently,
     enableToasts: false,
   });
 
@@ -171,11 +264,31 @@ export default function NotificationsPage() {
 
       setPushEnabled(success);
 
-      setPushMessage(
-        success
-          ? "Push-notifikationer er aktiveret."
-          : "Push-notifikationer kunne ikke aktiveres.",
-      );
+      if (!success) {
+        setPushMessage("");
+
+        setErrorDialog({
+          open: true,
+          title: "Push kunne ikke aktiveres",
+          description:
+            "Push-notifikationer kunne ikke aktiveres på denne browser.",
+        });
+
+        return;
+      }
+
+      setPushMessage("Push-notifikationer er aktiveret.");
+    } catch (error) {
+      setPushMessage("");
+
+      setErrorDialog({
+        open: true,
+        title: "Push kunne ikke aktiveres",
+        description: getErrorMessage(
+          error,
+          "Der opstod en uventet fejl under aktivering af push-notifikationer.",
+        ),
+      });
     } finally {
       setPushLoading(false);
     }
@@ -190,9 +303,25 @@ export default function NotificationsPage() {
       setPushEnabled(false);
 
       setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
+    } catch (error) {
+      setErrorDialog({
+        open: true,
+        title: "Push kunne ikke deaktiveres",
+        description: getErrorMessage(
+          error,
+          "Der opstod en uventet fejl under deaktivering af push-notifikationer.",
+        ),
+      });
     } finally {
       setPushLoading(false);
     }
+  }
+
+  function closeErrorDialog() {
+    setErrorDialog((current) => ({
+      ...current,
+      open: false,
+    }));
   }
 
   async function handleMarkNotificationAsRead(notificationId: number) {
@@ -211,6 +340,15 @@ export default function NotificationsPage() {
     return (
       <main className="min-h-screen bg-gray-100 p-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
         Indlæser notifikationer...
+
+        <InfoModal
+          open={errorDialog.open}
+          title={errorDialog.title}
+          description={errorDialog.description}
+          variant="error"
+          buttonText="OK"
+          onClose={closeErrorDialog}
+        />
       </main>
     );
   }
@@ -479,6 +617,15 @@ export default function NotificationsPage() {
           </div>
         </section>
       </div>
+
+      <InfoModal
+        open={errorDialog.open}
+        title={errorDialog.title}
+        description={errorDialog.description}
+        variant="error"
+        buttonText="OK"
+        onClose={closeErrorDialog}
+      />
     </main>
   );
 }

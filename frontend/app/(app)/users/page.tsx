@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import PermissionGuard from "@/app/components/PermissionGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
 type UserRole = "MASTER" | "ADMIN" | "EMPLOYEE";
@@ -108,13 +110,13 @@ async function getErrorMessage(response: Response) {
 
 export default function UsersPage() {
   const confirmDialog = useConfirm();
+  const infoDialog = useInfoModal();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState<UserFormData>(emptyUser);
-  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     fetchUsers();
@@ -123,8 +125,6 @@ export default function UsersPage() {
   async function fetchUsers() {
     try {
       setLoading(true);
-      setErrorMessage("");
-
       const response = await apiFetch("/users");
 
       if (!response.ok) {
@@ -143,11 +143,12 @@ export default function UsersPage() {
 
       setUsers(normalizedUsers);
     } catch (error) {
-      console.error(error);
-      setErrorMessage(
+      setUsers([]);
+
+      infoDialog.showError(
+        "Kunne ikke hente brugere",
         error instanceof Error ? error.message : "Kunne ikke hente brugere.",
       );
-      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -168,19 +169,20 @@ export default function UsersPage() {
 
   async function createUser() {
     try {
-      setErrorMessage("");
-
       const validationError = validateCreateUser();
 
       if (validationError) {
-        setErrorMessage(validationError);
+        infoDialog.showError("Bruger kunne ikke oprettes", validationError);
         return;
       }
 
       const savedUser = localStorage.getItem("user");
 
       if (!savedUser) {
-        setErrorMessage("Du er ikke logget ind korrekt. Log ud og ind igen.");
+        infoDialog.showError(
+          "Bruger kunne ikke oprettes",
+          "Du er ikke logget ind korrekt. Log ud og ind igen.",
+        );
         return;
       }
 
@@ -217,8 +219,8 @@ export default function UsersPage() {
       setShowCreate(false);
       setNewUser(emptyUser);
     } catch (error) {
-      console.error(error);
-      setErrorMessage(
+      infoDialog.showError(
+        "Bruger kunne ikke oprettes",
         error instanceof Error ? error.message : "Kunne ikke oprette bruger.",
       );
     }
@@ -228,8 +230,6 @@ export default function UsersPage() {
     if (!editingUser) return;
 
     try {
-      setErrorMessage("");
-
       const response = await apiFetch(`/users/${editingUser.id}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -269,8 +269,8 @@ export default function UsersPage() {
 
       setEditingUser(null);
     } catch (error) {
-      console.error(error);
-      setErrorMessage(
+      infoDialog.showError(
+        "Bruger kunne ikke opdateres",
         error instanceof Error ? error.message : "Kunne ikke opdatere bruger.",
       );
     }
@@ -291,8 +291,6 @@ export default function UsersPage() {
       confirmVariant: "danger",
       onConfirm: async () => {
         try {
-          setErrorMessage("");
-
           const response = await apiFetch(`/users/${user.id}`, {
             method: "DELETE",
           });
@@ -315,8 +313,8 @@ export default function UsersPage() {
             ),
           );
         } catch (error) {
-          console.error(error);
-          setErrorMessage(
+          infoDialog.showError(
+            "Bruger kunne ikke deaktiveres",
             error instanceof Error
               ? error.message
               : "Kunne ikke deaktivere bruger.",
@@ -337,8 +335,6 @@ export default function UsersPage() {
       confirmVariant: "success",
       onConfirm: async () => {
         try {
-          setErrorMessage("");
-
           const response = await apiFetch(`/users/${user.id}/reactivate`, {
             method: "PATCH",
           });
@@ -362,8 +358,8 @@ export default function UsersPage() {
             ),
           );
         } catch (error) {
-          console.error(error);
-          setErrorMessage(
+          infoDialog.showError(
+            "Bruger kunne ikke genaktiveres",
             error instanceof Error
               ? error.message
               : "Kunne ikke genaktivere bruger.",
@@ -406,7 +402,6 @@ export default function UsersPage() {
 
           <button
             onClick={() => {
-              setErrorMessage("");
               setShowCreate(true);
             }}
             className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
@@ -415,12 +410,6 @@ export default function UsersPage() {
           </button>
         </div>
 
-        {errorMessage && (
-          <div className="mb-6 whitespace-pre-line rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-            {errorMessage}
-          </div>
-        )}
-
         {showCreate && (
           <UserModal
             title="Opret bruger"
@@ -428,7 +417,6 @@ export default function UsersPage() {
             setUser={setNewUser}
             onClose={() => {
               setShowCreate(false);
-              setErrorMessage("");
             }}
             onSave={createUser}
             showPassword
@@ -441,7 +429,6 @@ export default function UsersPage() {
             setUser={setEditingUser}
             onClose={() => {
               setEditingUser(null);
-              setErrorMessage("");
             }}
             onSave={updateUser}
           />
@@ -504,7 +491,6 @@ export default function UsersPage() {
                     <td className="space-x-2 p-4 text-right">
                       <button
                         onClick={() => {
-                          setErrorMessage("");
                           setEditingUser({
                             ...user,
                             employmentType: user.employmentType || "HOURLY",
@@ -557,6 +543,15 @@ export default function UsersPage() {
           loading={confirmDialog.loading}
           onConfirm={confirmDialog.handleConfirm}
           onCancel={confirmDialog.handleCancel}
+        />
+
+        <InfoModal
+          open={infoDialog.open}
+          title={infoDialog.title}
+          description={infoDialog.description}
+          buttonText={infoDialog.buttonText}
+          variant={infoDialog.variant}
+          onClose={infoDialog.close}
         />
       </div>
     </PermissionGuard>

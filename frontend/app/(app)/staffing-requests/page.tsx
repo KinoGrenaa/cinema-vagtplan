@@ -60,7 +60,14 @@ export default function StaffingRequestsPage() {
 
       setRequests(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(error);
+      setRequests([]);
+
+      infoDialog.showError(
+        "Kunne ikke hente staffing requests",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da staffing requests skulle hentes. Prøv igen.",
+      );
     } finally {
       setLoading(false);
     }
@@ -90,11 +97,11 @@ export default function StaffingRequestsPage() {
 
       await fetchRequests();
     } catch (error) {
-      console.error(error);
-
       infoDialog.showError(
         "Staffing request kunne ikke accepteres",
-        "Der opstod en fejl, da staffing requesten skulle accepteres. Prøv igen.",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da staffing requesten skulle accepteres. Prøv igen.",
       );
     } finally {
       setProcessingId(null);
@@ -115,11 +122,11 @@ export default function StaffingRequestsPage() {
 
       await fetchRequests();
     } catch (error) {
-      console.error(error);
-
       infoDialog.showError(
         "Staffing request kunne ikke afvises",
-        "Der opstod en fejl, da staffing requesten skulle afvises. Prøv igen.",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da staffing requesten skulle afvises. Prøv igen.",
       );
     } finally {
       setProcessingId(null);

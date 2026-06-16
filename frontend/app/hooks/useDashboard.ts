@@ -26,7 +26,20 @@ import {
   calculateStaffingWarnings,
 } from "../utils/dashboardAnalytics";
 
-export function useDashboard() {
+type UseDashboardInput = {
+  onError?: (message: string) => void;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+export function useDashboard(input: UseDashboardInput = {}) {
+  const { onError } = input;
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -36,6 +49,7 @@ export function useDashboard() {
   const [movies, setMovies] = useState<MovieShowing[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const today = useMemo(() => getTodayLocalDate(), []);
 
@@ -43,6 +57,7 @@ export function useDashboard() {
     async (user: CurrentUser) => {
       try {
         setLoading(true);
+        setErrorMessage(null);
 
         const dashboardData = await fetchDashboardOverview({
           userId: user.id,
@@ -75,7 +90,13 @@ export function useDashboard() {
           Array.isArray(dashboardData.movies) ? dashboardData.movies : [],
         );
       } catch (error) {
-        console.error("Failed to load dashboard", error);
+        const message = getErrorMessage(
+          error,
+          "Der opstod en fejl under hentning af dashboard.",
+        );
+
+        setErrorMessage(message);
+        onError?.(message);
 
         setShifts([]);
         setTimeEntries([]);
@@ -86,7 +107,7 @@ export function useDashboard() {
         setLoading(false);
       }
     },
-    [today],
+    [onError, today],
   );
 
   useEffect(() => {
@@ -97,11 +118,16 @@ export function useDashboard() {
       return;
     }
 
-    const parsedUser: CurrentUser = JSON.parse(savedUser);
+    try {
+      const parsedUser: CurrentUser = JSON.parse(savedUser);
 
-    setCurrentUser(parsedUser);
+      setCurrentUser(parsedUser);
 
-    loadDashboard(parsedUser);
+      loadDashboard(parsedUser);
+    } catch {
+      localStorage.removeItem("user");
+      window.location.href = "/";
+    }
   }, [loadDashboard]);
 
   const todayPlannedHours = useMemo(() => {
@@ -184,6 +210,7 @@ export function useDashboard() {
 
   return {
     loading,
+    errorMessage,
     currentUser,
     shifts,
     timeEntries,

@@ -13,6 +13,31 @@ import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (typeof data?.message === "string") {
+      return data.message;
+    }
+
+    if (Array.isArray(data?.message)) {
+      return data.message.join("\n");
+    }
+  } catch {}
+
+  return fallback;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+
 type User = {
   id: number;
   firstName: string;
@@ -49,7 +74,11 @@ export default function EmployeeDocumentsPage() {
 
     if (!savedUser) return null;
 
-    return JSON.parse(savedUser);
+    try {
+      return JSON.parse(savedUser);
+    } catch {
+      return null;
+    }
   }, []);
 
   useEffect(() => {
@@ -68,17 +97,34 @@ export default function EmployeeDocumentsPage() {
     try {
       const response = await apiFetch("/users");
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke hente medarbejdere"),
+        );
+      }
 
       const data = await response.json();
+      const nextUsers = Array.isArray(data) ? data : [];
 
-      setUsers(Array.isArray(data) ? data : []);
+      setUsers(nextUsers);
 
-      if (Array.isArray(data) && data.length > 0) {
-        setSelectedUserId(data[0].id);
+      if (nextUsers.length > 0) {
+        setSelectedUserId(nextUsers[0].id);
+      } else {
+        setSelectedUserId(null);
+        setDocuments([]);
+        setLoading(false);
       }
     } catch (error) {
-      console.error(error);
+      setUsers([]);
+      setSelectedUserId(null);
+      setDocuments([]);
+      setLoading(false);
+
+      infoDialog.showError(
+        "Kunne ikke hente medarbejdere",
+        getErrorMessage(error, "Medarbejderne kunne ikke hentes. Prøv igen."),
+      );
     }
   }
 
@@ -89,16 +135,21 @@ export default function EmployeeDocumentsPage() {
       const response = await apiFetch(`/employee-documents/user/${userId}`);
 
       if (!response.ok) {
-        setDocuments([]);
-        return;
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke hente dokumenter"),
+        );
       }
 
       const data = await response.json();
 
       setDocuments(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(error);
       setDocuments([]);
+
+      infoDialog.showError(
+        "Kunne ikke hente dokumenter",
+        getErrorMessage(error, "Dokumenterne kunne ikke hentes. Prøv igen."),
+      );
     } finally {
       setLoading(false);
     }
@@ -107,7 +158,29 @@ export default function EmployeeDocumentsPage() {
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!file || !selectedUserId || !title.trim()) return;
+    if (!selectedUserId) {
+      infoDialog.showError(
+        "Dokumentet kan ikke uploades",
+        "Vælg en medarbejder først.",
+      );
+      return;
+    }
+
+    if (!title.trim()) {
+      infoDialog.showError(
+        "Dokumentet kan ikke uploades",
+        "Udfyld en titel først.",
+      );
+      return;
+    }
+
+    if (!file) {
+      infoDialog.showError(
+        "Dokumentet kan ikke uploades",
+        "Vælg en fil først.",
+      );
+      return;
+    }
 
     try {
       setUploading(true);
@@ -115,7 +188,7 @@ export default function EmployeeDocumentsPage() {
       const formData = new FormData();
 
       formData.append("file", file);
-      formData.append("title", title);
+      formData.append("title", title.trim());
       formData.append("userId", String(selectedUserId));
 
       const response = await apiFetch("/employee-documents/upload", {
@@ -124,27 +197,20 @@ export default function EmployeeDocumentsPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => null);
-
-        infoDialog.showError(
-          "Upload fejlede",
-          error?.message || "Dokumentet kunne ikke uploades.",
+        throw new Error(
+          await readErrorMessage(response, "Dokumentet kunne ikke uploades."),
         );
-
-        return;
       }
 
       setTitle("");
       setFile(null);
 
-      fetchDocuments(selectedUserId);
+      await fetchDocuments(selectedUserId);
       toast.success("Dokument uploadet");
     } catch (error) {
-      console.error(error);
-
       infoDialog.showError(
         "Upload fejlede",
-        "Dokumentet kunne ikke uploades. Prøv igen.",
+        getErrorMessage(error, "Dokumentet kunne ikke uploades. Prøv igen."),
       );
     } finally {
       setUploading(false);
@@ -165,28 +231,32 @@ export default function EmployeeDocumentsPage() {
           });
 
           if (!response.ok) {
-            infoDialog.showError(
-              "Dokumentet kunne ikke slettes",
-              "Der opstod en fejl, da dokumentet skulle slettes. Prøv igen.",
+            throw new Error(
+              await readErrorMessage(
+                response,
+                "Dokumentet kunne ikke slettes.",
+              ),
             );
-
-            return;
           }
 
           if (selectedUserId) {
-            fetchDocuments(selectedUserId);
+            await fetchDocuments(selectedUserId);
           }
-        } catch (error) {
-          console.error(error);
 
+          toast.success("Dokument slettet");
+        } catch (error) {
           infoDialog.showError(
             "Dokumentet kunne ikke slettes",
-            "Der opstod en fejl, da dokumentet skulle slettes. Prøv igen.",
+            getErrorMessage(
+              error,
+              "Der opstod en fejl, da dokumentet skulle slettes. Prøv igen.",
+            ),
           );
         }
       },
     });
   }
+
   return (
     <AdminGuard>
       <div className="mx-auto max-w-5xl space-y-6 p-6">

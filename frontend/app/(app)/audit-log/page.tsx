@@ -1,248 +1,246 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
-import PermissionGuard from "@/app/components/PermissionGuard";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
-type AuditLog = {
+type User = {
   id: number;
-  action: string;
-  entityType: string;
-  entityId?: number;
-  description?: string;
+  firstName: string;
+  lastName: string;
+};
+
+type Message = {
+  id: number;
+  subject: string;
+  body: string;
   createdAt: string;
-
-  user?: {
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-
-  cinema?: {
-    name: string;
-  };
+  sender?: User | null;
+  receiver?: User | null;
+  isBroadcast: boolean;
 };
 
-const actionLabels: Record<string, string> = {
-  UPDATE_TIME_ENTRY: "Tidsregistrering rettet",
-  UPDATE_TIME_ENTRY_FIELD: "Felt ændret",
-  APPROVE_TIME_ENTRY: "Tidsregistrering godkendt",
-  UNAPPROVE_TIME_ENTRY: "Godkendelse fjernet",
-  SEND_BACK_TIME_ENTRY: "Tidsregistrering sendt retur til rettelse",
-  LOCK_PAYROLL_PERIOD: "Lønperiode låst",
-  UNLOCK_PAYROLL_PERIOD: "Lønperiode låst op",
+type CurrentUser = {
+  id: number;
+  cinemaId: number;
 };
 
-function getActionLabel(action: string) {
-  return actionLabels[action] || action.replaceAll("_", " ");
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (typeof data?.message === "string") {
+      return data.message;
+    }
+
+    if (Array.isArray(data?.message)) {
+      return data.message.join("\n");
+    }
+  } catch {
+    // Brug fallback hvis svaret ikke er JSON.
+  }
+
+  return fallback;
 }
 
-function getUserName(log: AuditLog) {
-  if (!log.user) return "-";
-  return `${log.user.firstName} ${log.user.lastName}`;
-}
-
-export default function AuditLogPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+export default function ArchivedMessagesPage() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [entityFilter, setEntityFilter] = useState("ALL");
+  const errorDialog = useInfoModal();
 
-  useEffect(() => {
-    fetchLogs();
-  }, []);
-
-  async function fetchLogs() {
+  async function fetchMessages() {
     try {
-      const response = await apiFetch("/audit-logs");
+      setLoading(true);
+
+      const savedUser = localStorage.getItem("user");
+
+      if (!savedUser) {
+        setMessages([]);
+        return;
+      }
+
+      const user: CurrentUser = JSON.parse(savedUser);
+
+      const response = await apiFetch(
+        `/messages/archive?userId=${user.id}&cinemaId=${user.cinemaId}`,
+      );
 
       if (!response.ok) {
-        throw new Error("Kunne ikke hente audit logs");
+        errorDialog.showError(
+          "Kunne ikke hente arkiverede beskeder",
+          await readErrorMessage(
+            response,
+            "Der opstod en fejl under hentning af arkiverede beskeder.",
+          ),
+        );
+
+        setMessages([]);
+        return;
       }
 
       const data = await response.json();
 
-      setLogs(Array.isArray(data) ? data : []);
+      setMessages(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(error);
+      errorDialog.showError(
+        "Kunne ikke hente arkiverede beskeder",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en uventet fejl under hentning af arkiverede beskeder.",
+      );
+
+      setMessages([]);
     } finally {
       setLoading(false);
     }
   }
 
-  const entityTypes = useMemo(() => {
-    return Array.from(new Set(logs.map((log) => log.entityType))).sort();
-  }, [logs]);
+  useEffect(() => {
+    fetchMessages();
+  }, []);
 
-  const visibleLogs = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-
-    return logs.filter((log) => {
-      if (entityFilter !== "ALL" && log.entityType !== entityFilter) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      const haystack = [
-        log.action,
-        getActionLabel(log.action),
-        log.entityType,
-        log.entityId?.toString(),
-        log.description,
-        getUserName(log),
-        log.user?.email,
-        log.cinema?.name,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(normalizedSearch);
-    });
-  }, [logs, search, entityFilter]);
-
-  if (loading) {
-    return (
-      <PermissionGuard permission="canManageUsers">
-        <div className="p-6 text-gray-600 dark:text-gray-300">
-          Indlæser audit log...
-        </div>
-      </PermissionGuard>
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
+  }, [messages]);
+
+  function getUserName(user?: User | null) {
+    if (!user) return null;
+    return `${user.firstName} ${user.lastName}`;
+  }
+
+  function getShortBody(body: string) {
+    if (!body) return "Ingen beskedtekst.";
+    return body.length > 120 ? `${body.slice(0, 120)}...` : body;
   }
 
   return (
-    <PermissionGuard permission="canManageUsers">
-      <div className="p-6 text-gray-900 dark:text-gray-100">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Audit log
-          </h1>
+    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <h1 className="text-3xl font-bold">Arkiverede beskeder</h1>
 
           <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Historik over administrative handlinger og ændringer i systemet.
+            Her kan du se beskeder, du tidligere har arkiveret.
           </p>
         </div>
 
-        <div className="mb-4 grid gap-3 rounded-xl bg-white p-4 shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800 md:grid-cols-[1fr_240px]">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Søg
-            </label>
-
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Søg i handling, beskrivelse, bruger eller biograf..."
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-            />
+        {loading && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            Henter arkiverede beskeder...
           </div>
+        )}
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Type
-            </label>
+        {!loading && sortedMessages.length === 0 && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            <div className="mb-2 text-4xl">🗂️</div>
 
-            <select
-              value={entityFilter}
-              onChange={(event) => setEntityFilter(event.target.value)}
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-            >
-              <option value="ALL">Alle typer</option>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              Intet arkiv endnu
+            </h2>
 
-              {entityTypes.map((entityType) => (
-                <option key={entityType} value={entityType}>
-                  {entityType}
-                </option>
-              ))}
-            </select>
+            <p className="mt-2">Du har endnu ikke arkiveret nogen beskeder.</p>
           </div>
-        </div>
+        )}
 
-        <div className="overflow-hidden rounded-xl bg-white shadow dark:bg-gray-900 dark:shadow-none dark:ring-1 dark:ring-gray-800">
-          <div className="border-b border-gray-200 px-4 py-3 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
-            Viser {visibleLogs.length} af {logs.length} audit logs
-          </div>
+        {!loading && sortedMessages.length > 0 && (
+          <div className="space-y-3">
+            {sortedMessages.map((message) => {
+              const isExpanded = expandedMessageId === message.id;
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-gray-900 dark:text-gray-100">
-              <thead className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                <tr className="text-left">
-                  <th className="p-4">Tidspunkt</th>
-                  <th className="p-4">Handling</th>
-                  <th className="p-4">Type</th>
-                  <th className="p-4">Beskrivelse</th>
-                  <th className="p-4">Bruger</th>
-                  <th className="p-4">Biograf</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {visibleLogs.map((log) => (
-                  <tr
-                    key={log.id}
-                    className="border-t border-gray-200 align-top dark:border-gray-800"
+              return (
+                <div
+                  key={message.id}
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedMessageId(isExpanded ? null : message.id)
+                    }
+                    className="w-full p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
                   >
-                    <td className="whitespace-nowrap p-4 text-sm text-gray-700 dark:text-gray-300">
-                      {new Date(log.createdAt).toLocaleString("da-DK")}
-                    </td>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-gray-700 px-2 py-1 text-xs font-semibold text-white dark:bg-gray-600">
+                            Arkiveret
+                          </span>
 
-                    <td className="p-4">
-                      <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                        {getActionLabel(log.action)}
-                      </span>
-
-                      <div className="mt-1 text-xs text-gray-400">
-                        {log.action}
-                      </div>
-                    </td>
-
-                    <td className="whitespace-nowrap p-4 text-sm text-gray-700 dark:text-gray-300">
-                      <div>{log.entityType}</div>
-
-                      {log.entityId && (
-                        <div className="mt-1 text-xs text-gray-400">
-                          ID: {log.entityId}
+                          {message.isBroadcast && (
+                            <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
+                              Sendt til alle
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </td>
 
-                    <td className="min-w-[320px] p-4 text-gray-700 dark:text-gray-300">
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {log.description || "-"}
+                        <h2 className="truncate text-lg font-bold text-black dark:text-white">
+                          {message.subject}
+                        </h2>
+
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          Fra: {getUserName(message.sender) || "System"}
+                        </p>
+
+                        {!isExpanded && (
+                          <p className="mt-2 line-clamp-1 text-sm text-gray-600 dark:text-gray-300">
+                            {getShortBody(message.body)}
+                          </p>
+                        )}
                       </div>
-                    </td>
 
-                    <td className="whitespace-nowrap p-4 text-sm text-gray-700 dark:text-gray-300">
-                      <div>{getUserName(log)}</div>
+                      <div className="shrink-0 text-sm text-gray-400 dark:text-gray-500 md:text-right">
+                        {new Date(message.createdAt).toLocaleString("da-DK")}
+                      </div>
+                    </div>
+                  </button>
 
-                      {log.user?.email && (
-                        <div className="mt-1 text-xs text-gray-400">
-                          {log.user.email}
+                  {isExpanded && (
+                    <div className="space-y-4 border-t border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+                      <div className="grid gap-1 text-sm text-gray-500 dark:text-gray-400">
+                        <div>
+                          Fra: {getUserName(message.sender) || "System"}
                         </div>
-                      )}
-                    </td>
 
-                    <td className="whitespace-nowrap p-4 text-sm text-gray-700 dark:text-gray-300">
-                      {log.cinema?.name || "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        <div>
+                          Til:{" "}
+                          {message.isBroadcast
+                            ? "Alle"
+                            : getUserName(message.receiver) || "Dig"}
+                        </div>
+
+                        <div>
+                          Sendt:{" "}
+                          {new Date(message.createdAt).toLocaleString("da-DK")}
+                        </div>
+                      </div>
+
+                      <div className="whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+                        {message.body || "Ingen beskedtekst."}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        )}
 
-          {visibleLogs.length === 0 && (
-            <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-              Ingen audit logs fundet
-            </div>
-          )}
-        </div>
+        <InfoModal
+          open={errorDialog.open}
+          title={errorDialog.title}
+          description={errorDialog.description}
+          buttonText={errorDialog.buttonText}
+          variant={errorDialog.variant}
+          onClose={errorDialog.close}
+        />
       </div>
-    </PermissionGuard>
+    </main>
   );
 }

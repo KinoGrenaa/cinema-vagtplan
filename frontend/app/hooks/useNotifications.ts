@@ -12,29 +12,51 @@ import type { Notification } from "../types/notifications";
 
 import { useRealtimeCore } from "./useRealtimeCore";
 
-export function useNotifications() {
+type UseNotificationsInput = {
+  onError?: (message: string) => void;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+export function useNotifications(input: UseNotificationsInput = {}) {
+  const { onError } = input;
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadNotifications = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) {
-        setLoading(true);
+  const loadNotifications = useCallback(
+    async (showLoading = true) => {
+      try {
+        if (showLoading) {
+          setLoading(true);
+        }
+
+        const data = await fetchNotifications();
+
+        setNotifications(data);
+      } catch (error) {
+        onError?.(
+          getErrorMessage(
+            error,
+            "Der opstod en fejl under hentning af notifikationer.",
+          ),
+        );
+
+        setNotifications([]);
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
       }
-
-      const data = await fetchNotifications();
-
-      setNotifications(data);
-    } catch (error) {
-      console.error("Failed to load notifications", error);
-
-      setNotifications([]);
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
-    }
-  }, []);
+    },
+    [onError],
+  );
 
   useEffect(() => {
     loadNotifications();
@@ -66,14 +88,19 @@ export function useNotifications() {
 
         await markNotificationAsRead(notificationId);
       } catch (error) {
-        console.error(error);
+        onError?.(
+          getErrorMessage(
+            error,
+            "Der opstod en fejl under markering af notifikation som læst.",
+          ),
+        );
 
         setNotifications(previousNotifications);
 
         await loadNotifications(false);
       }
     },
-    [loadNotifications, notifications],
+    [loadNotifications, notifications, onError],
   );
 
   const markAllAsRead = useCallback(async () => {
@@ -89,13 +116,18 @@ export function useNotifications() {
 
       await markAllNotificationsAsRead();
     } catch (error) {
-      console.error(error);
+      onError?.(
+        getErrorMessage(
+          error,
+          "Der opstod en fejl under markering af alle notifikationer som læst.",
+        ),
+      );
 
       setNotifications(previousNotifications);
 
       await loadNotifications(false);
     }
-  }, [loadNotifications, notifications]);
+  }, [loadNotifications, notifications, onError]);
 
   return {
     loading,

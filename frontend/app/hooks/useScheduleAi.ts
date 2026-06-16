@@ -128,10 +128,7 @@ export function useScheduleAi({
     (title: string, description: string) => {
       if (showError) {
         showError(title, description);
-        return;
       }
-
-      console.error(`${title}: ${description}`);
     },
     [showError],
   );
@@ -534,8 +531,7 @@ export function useScheduleAi({
         });
 
         toast.success("AI-oprettet vagt blev oprettet.");
-      } catch (error) {
-        console.error(error);
+      } catch {
         showErrorModal(
           "AI-oprettelse fejlede",
           "Der opstod en fejl, da AI-vagten skulle oprettes.",
@@ -617,9 +613,7 @@ export function useScheduleAi({
       }
 
       toast.success("AI dagsplan blev genereret.");
-    } catch (error) {
-      console.error(error);
-
+    } catch {
       showErrorModal(
         "AI dagsplan kunne ikke genereres",
         "Der opstod en fejl, da AI dagsplanen skulle genereres.",
@@ -670,9 +664,7 @@ export function useScheduleAi({
       });
 
       toast.success("AI emergency shift blev oprettet.");
-    } catch (error) {
-      console.error(error);
-
+    } catch {
       showErrorModal(
         "Emergency staffing action fejlede",
         "Der opstod en fejl, da emergency staffing-handlingen skulle udføres.",
@@ -719,9 +711,7 @@ export function useScheduleAi({
         }
 
         return true;
-      } catch (error) {
-        console.error(error);
-
+      } catch {
         showErrorModal(
           "Staffing request kunne ikke sendes",
           "Der opstod en fejl, da staffing requesten skulle sendes.",
@@ -765,9 +755,7 @@ export function useScheduleAi({
         }
 
         toast.success(`Staffing request sendt til ${employeeName}.`);
-      } catch (error) {
-        console.error(error);
-
+      } catch {
         showErrorModal(
           "Staffing request fejlede",
           "Der opstod en fejl, da staffing requesten skulle sendes.",
@@ -819,9 +807,7 @@ export function useScheduleAi({
         toast.success(
           `Emergency shift blev automatisk tildelt til ${employeeName}.`,
         );
-      } catch (error) {
-        console.error(error);
-
+      } catch {
         setAutonomousStaffingStatus("IDLE");
 
         showErrorModal(
@@ -870,9 +856,7 @@ export function useScheduleAi({
       toast.success(
         `${createdRequests} staffing requests blev oprettet. Afventer accept/afvis fra medarbejdere.`,
       );
-    } catch (error) {
-      console.error(error);
-
+    } catch {
       setStaffingLoopStatus("DECLINED");
 
       showErrorModal(

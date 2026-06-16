@@ -81,6 +81,9 @@ export default function PayrollPage() {
     endDate,
     userId,
     onSettingsLoaded: applyCurrentPayrollPeriod,
+    onError: (title, description) => {
+      infoDialog.showError(title, description);
+    },
   });
 
   useRealtimeCore({
@@ -188,8 +191,6 @@ export default function PayrollPage() {
 
           await refreshPayroll();
         } catch (error) {
-          console.error(error);
-
           infoDialog.showError(
             "Lønperioden kunne ikke låses",
             error instanceof Error && error.message
@@ -228,8 +229,6 @@ export default function PayrollPage() {
 
           await refreshPayroll();
         } catch (error) {
-          console.error(error);
-
           infoDialog.showError(
             "Lønperioden kunne ikke genåbnes",
             error instanceof Error && error.message
@@ -885,15 +884,12 @@ export default function PayrollPage() {
             setExportModalOpen(false);
 
             setTimeout(() => {
-              confirmDialog.confirm({
-                title: "Kan ikke eksportere lønperiode",
-                description:
-                  error instanceof Error && error.message
-                    ? error.message
-                    : "Eksporten kunne ikke gennemføres.",
-                confirmText: "OK",
-                onConfirm: async () => {},
-              });
+              infoDialog.showError(
+                "Kan ikke eksportere lønperiode",
+                error instanceof Error && error.message
+                  ? error.message
+                  : "Eksporten kunne ikke gennemføres.",
+              );
             }, 0);
           }
         }}

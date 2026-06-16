@@ -346,8 +346,7 @@ export default function MyTimePage() {
 
       const data = await response.json();
       setEntries(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error(error);
+    } catch {
       setEntries([]);
 
       infoDialog.showError(
@@ -395,9 +394,7 @@ export default function MyTimePage() {
         });
 
         setExpandedDayKeys([]);
-      } catch (error) {
-        console.error(error);
-
+      } catch {
         infoDialog.showError(
           "Kunne ikke hente lønperiode",
           "Der opstod en fejl, da lønperioden skulle hentes. Prøv igen.",
@@ -507,9 +504,7 @@ export default function MyTimePage() {
       await fetchEntries();
       closeEdit();
       toast.success("Timeregistrering rettet");
-    } catch (error) {
-      console.error(error);
-
+    } catch {
       infoDialog.showError(
         "Timeregistreringen kunne ikke rettes",
         "Der opstod en fejl, da timeregistreringen skulle rettes. Prøv igen.",
@@ -539,9 +534,7 @@ export default function MyTimePage() {
       const data = await response.json();
 
       setHistoryItems(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error(error);
-
+    } catch {
       infoDialog.showError(
         "Kunne ikke hente historik",
         "Der opstod en fejl, da historikken skulle hentes. Prøv igen.",
