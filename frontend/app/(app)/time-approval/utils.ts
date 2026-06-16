@@ -25,10 +25,25 @@ export function getStatusClass(status: TimeEntryStatus) {
 export function formatDateTime(value?: string | null) {
   if (!value) return "-";
 
-  return new Date(value).toLocaleString("da-DK", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  const date = new Date(value);
+
+  const datePart = new Intl.DateTimeFormat("da-DK", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "Europe/Copenhagen",
+  }).format(date);
+
+  const timePart = new Intl.DateTimeFormat("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Europe/Copenhagen",
+  })
+    .format(date)
+    .replace(".", ":");
+
+  return `${datePart}, kl. ${timePart}`;
 }
 
 export function formatMinutes(value: number | null | undefined) {

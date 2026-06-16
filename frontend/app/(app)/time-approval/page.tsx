@@ -1084,14 +1084,14 @@ export default function TimeApprovalPage() {
                                       <div>
                                         <span className="font-semibold">
                                           Mødt:
-                                        </span>
+                                        </span>{" "}
                                         {formatDateTime(entry.clockIn)}
                                       </div>
 
                                       <div>
                                         <span className="font-semibold">
                                           Gået hjem:
-                                        </span>
+                                        </span>{" "}
                                         {formatDateTime(entry.clockOut)}
                                       </div>
 
