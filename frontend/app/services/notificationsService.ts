@@ -33,6 +33,18 @@ async function safeJson<T>(response: Response): Promise<T | null> {
   }
 }
 
+function getTimestamp(value: string) {
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function sortNotificationsByCreatedAtDescending(notifications: Notification[]) {
+  return [...notifications].sort(
+    (left, right) =>
+      getTimestamp(right.createdAt) - getTimestamp(left.createdAt),
+  );
+}
+
 export async function fetchNotifications(): Promise<Notification[]> {
   const response = await apiFetch("/notifications");
 
@@ -43,8 +55,9 @@ export async function fetchNotifications(): Promise<Notification[]> {
   }
 
   const data = await safeJson<Notification[]>(response);
-
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data)
+    ? sortNotificationsByCreatedAtDescending(data)
+    : [];
 }
 
 export async function fetchUnreadNotificationCount(): Promise<number> {
@@ -60,7 +73,6 @@ export async function fetchUnreadNotificationCount(): Promise<number> {
   }
 
   const data = await safeJson<{ count?: number }>(response);
-
   return Number(data?.count || 0);
 }
 

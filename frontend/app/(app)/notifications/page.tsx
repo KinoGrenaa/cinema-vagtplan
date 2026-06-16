@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useApi } from "@/app/hooks/useApi";
-import { useAuth } from "@/app/providers/AuthProvider";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+import { useAuth } from "@/app/providers/AuthProvider";
+import type { Notification } from "@/app/types/notifications";
+import {
+  dateToLocalDateString,
+  formatDateDK,
+  formatTimeDK,
+} from "@/app/utils/dateTime";
+
 import {
   disablePushNotifications,
   enablePushNotifications,
@@ -51,6 +59,23 @@ type ErrorDialogState = {
   description: string;
 };
 
+type NotificationGroup = {
+  dateKey: string;
+  dateLabel: string;
+  unreadCount: number;
+  notifications: Notification[];
+};
+
+const notificationTypeLabels: Record<Notification["type"], string> = {
+  SHIFT_TRADE: "Vagtbytte",
+  SHIFT_ACCEPTED: "Vagtbytte accepteret",
+  SHIFT_REJECTED: "Vagtbytte afvist",
+  NEW_MESSAGE: "Ny besked",
+  TIME_ENTRY: "Tidsregistrering",
+  STAFFING_ALERT: "Bemandsadvarsel",
+  SYSTEM: "System",
+};
+
 async function readErrorMessage(response: Response, fallback: string) {
   try {
     const data = await response.json();
@@ -77,6 +102,93 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function getTimestamp(value: string) {
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function getNotificationTypeLabel(type: Notification["type"]) {
+  return notificationTypeLabels[type] ?? "System";
+}
+
+function getNotificationDateKey(createdAt: string) {
+  const date = new Date(createdAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return "ukendt";
+  }
+
+  return dateToLocalDateString(date);
+}
+
+function formatNotificationDateGroupLabel(dateKey: string) {
+  if (dateKey === "ukendt") {
+    return "Ukendt dato";
+  }
+
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return "Ukendt dato";
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  const weekday = new Intl.DateTimeFormat("da-DK", {
+    timeZone: "Europe/Copenhagen",
+    weekday: "long",
+  }).format(date);
+
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${formatDateDK(
+    date,
+  )}`;
+}
+
+function formatDateTimeDK(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Ukendt tidspunkt";
+  }
+
+  return `${formatDateDK(date)}, kl. ${formatTimeDK(date)}`;
+}
+
+function groupNotificationsByDate(
+  notifications: Notification[],
+): NotificationGroup[] {
+  const sortedNotifications = [...notifications].sort(
+    (left, right) =>
+      getTimestamp(right.createdAt) - getTimestamp(left.createdAt),
+  );
+
+  return sortedNotifications.reduce<NotificationGroup[]>(
+    (groups, notification) => {
+      const dateKey = getNotificationDateKey(notification.createdAt);
+      const existingGroup = groups.find((group) => group.dateKey === dateKey);
+
+      if (existingGroup) {
+        existingGroup.notifications.push(notification);
+
+        if (!notification.isRead) {
+          existingGroup.unreadCount += 1;
+        }
+
+        return groups;
+      }
+
+      groups.push({
+        dateKey,
+        dateLabel: formatNotificationDateGroupLabel(dateKey),
+        unreadCount: notification.isRead ? 0 : 1,
+        notifications: [notification],
+      });
+
+      return groups;
+    },
+    [],
+  );
+}
+
 export default function NotificationsPage() {
   const { apiFetch } = useApi();
   const { user, loading: authLoading } = useAuth();
@@ -86,6 +198,9 @@ export default function NotificationsPage() {
     title: "",
     description: "",
   });
+
+  const [expandedNotificationDateKeys, setExpandedNotificationDateKeys] =
+    useState<string[]>([]);
 
   const handleNotificationError = useCallback((message: string) => {
     setErrorDialog({
@@ -110,6 +225,35 @@ export default function NotificationsPage() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [extraLoading, setExtraLoading] = useState(true);
+
+  const groupedNotifications = useMemo(
+    () => groupNotificationsByDate(notifications),
+    [notifications],
+  );
+
+  useEffect(() => {
+    setExpandedNotificationDateKeys((current) => {
+      const validKeys = groupedNotifications.map((group) => group.dateKey);
+
+      if (validKeys.length === 0) {
+        return [];
+      }
+
+      const currentValidKeys = current.filter((dateKey) =>
+        validKeys.includes(dateKey),
+      );
+      const latestDateKey = validKeys[0];
+      const nextKeys = currentValidKeys.includes(latestDateKey)
+        ? currentValidKeys
+        : [latestDateKey, ...currentValidKeys];
+
+      const isUnchanged =
+        nextKeys.length === current.length &&
+        nextKeys.every((dateKey, index) => dateKey === current[index]);
+
+      return isUnchanged ? current : nextKeys;
+    });
+  }, [groupedNotifications]);
 
   const fetchExtraData = useCallback(
     async (showError = true) => {
@@ -184,7 +328,6 @@ export default function NotificationsPage() {
     async function loadPushStatus() {
       try {
         const enabled = await isPushNotificationsEnabled();
-
         setPushEnabled(enabled);
       } catch (error) {
         setErrorDialog({
@@ -216,7 +359,6 @@ export default function NotificationsPage() {
 
     return messages.filter((message) => {
       const isUnread = !message.readAt;
-
       const isForMe =
         message.isBroadcast ||
         message.receiver?.id === user.id ||
@@ -261,26 +403,22 @@ export default function NotificationsPage() {
       setPushLoading(true);
 
       const success = await enablePushNotifications();
-
       setPushEnabled(success);
 
       if (!success) {
         setPushMessage("");
-
         setErrorDialog({
           open: true,
           title: "Push kunne ikke aktiveres",
           description:
             "Push-notifikationer kunne ikke aktiveres på denne browser.",
         });
-
         return;
       }
 
       setPushMessage("Push-notifikationer er aktiveret.");
     } catch (error) {
       setPushMessage("");
-
       setErrorDialog({
         open: true,
         title: "Push kunne ikke aktiveres",
@@ -297,11 +435,8 @@ export default function NotificationsPage() {
   async function handleDisablePush() {
     try {
       setPushLoading(true);
-
       await disablePushNotifications();
-
       setPushEnabled(false);
-
       setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
     } catch (error) {
       setErrorDialog({
@@ -324,6 +459,14 @@ export default function NotificationsPage() {
     }));
   }
 
+  function toggleNotificationDateGroup(dateKey: string) {
+    setExpandedNotificationDateKeys((current) =>
+      current.includes(dateKey)
+        ? current.filter((currentDateKey) => currentDateKey !== dateKey)
+        : [dateKey, ...current],
+    );
+  }
+
   async function handleMarkNotificationAsRead(notificationId: number) {
     await markAsRead(notificationId);
     await loadNotifications();
@@ -340,7 +483,6 @@ export default function NotificationsPage() {
     return (
       <main className="min-h-screen bg-gray-100 p-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
         Indlæser notifikationer...
-
         <InfoModal
           open={errorDialog.open}
           title={errorDialog.title}
@@ -360,7 +502,6 @@ export default function NotificationsPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Notifikationer</h1>
-
               <p className="mt-2 text-gray-500 dark:text-gray-400">
                 Du har {totalCount} aktive notifikationer.
               </p>
@@ -406,63 +547,110 @@ export default function NotificationsPage() {
         </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">Systemnotifikationer</h2>
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 className="text-xl font-bold">Systemnotifikationer</h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {notifications.length} i alt · {unreadCount} ulæste
+              </p>
+            </div>
 
-            <span className="rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold text-white">
+            <span className="w-fit rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold text-white">
               {unreadCount}
             </span>
           </div>
 
           <div className="space-y-3">
-            {notifications.map((notification) => (
-              <a
-                key={notification.id}
-                href="/notifications"
-                onClick={async () => {
-                  if (!notification.isRead) {
-                    await handleMarkNotificationAsRead(notification.id);
-                  }
-                }}
-                className={`block rounded-2xl border p-4 transition hover:scale-[1.01] ${
-                  notification.isRead
-                    ? "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
-                    : "border-purple-300 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/40"
-                }`}
-              >
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      {!notification.isRead && (
-                        <span className="rounded-full bg-purple-600 px-2 py-1 text-xs font-semibold text-white">
-                          Ny
-                        </span>
-                      )}
+            {groupedNotifications.map((group) => {
+              const isExpanded = expandedNotificationDateKeys.includes(
+                group.dateKey,
+              );
 
-                      <span className="rounded-full bg-gray-700 px-2 py-1 text-xs font-semibold text-white">
-                        {notification.type}
-                      </span>
+              return (
+                <div
+                  key={group.dateKey}
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleNotificationDateGroup(group.dateKey)}
+                    aria-expanded={isExpanded}
+                    className="flex w-full flex-col gap-3 p-4 text-left transition hover:bg-gray-100 dark:hover:bg-gray-900 md:flex-row md:items-center md:justify-between"
+                  >
+                    <div>
+                      <div className="font-semibold">{group.dateLabel}</div>
+                      <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {group.notifications.length} notifikationer
+                        {group.unreadCount > 0
+                          ? ` · ${group.unreadCount} ulæste`
+                          : ""}
+                      </div>
                     </div>
 
-                    <div className="font-bold">{notification.title}</div>
+                    <span className="w-fit rounded-full bg-gray-800 px-3 py-1 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-900">
+                      {isExpanded ? "Skjul" : "Vis"}
+                    </span>
+                  </button>
 
-                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                      {notification.message}
-                    </div>
+                  {isExpanded && (
+                    <div className="space-y-3 border-t border-gray-200 p-3 dark:border-gray-800">
+                      {group.notifications.map((notification) => (
+                        <button
+                          key={notification.id}
+                          type="button"
+                          onClick={async () => {
+                            if (!notification.isRead) {
+                              await handleMarkNotificationAsRead(
+                                notification.id,
+                              );
+                            }
+                          }}
+                          className={`block w-full rounded-2xl border p-4 text-left transition hover:scale-[1.01] ${
+                            notification.isRead
+                              ? "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+                              : "border-purple-300 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/40"
+                          }`}
+                        >
+                          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
+                                {!notification.isRead && (
+                                  <span className="rounded-full bg-purple-600 px-2 py-1 text-xs font-semibold text-white">
+                                    Ny
+                                  </span>
+                                )}
 
-                    <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(notification.createdAt).toLocaleString("da-DK")}
-                    </div>
-                  </div>
+                                <span className="rounded-full bg-gray-700 px-2 py-1 text-xs font-semibold text-white">
+                                  {getNotificationTypeLabel(notification.type)}
+                                </span>
+                              </div>
 
-                  {!notification.isRead && (
-                    <div className="rounded-full bg-purple-600 px-3 py-1 text-sm font-bold text-white">
-                      Ny
+                              <div className="font-bold">
+                                {notification.title}
+                              </div>
+
+                              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                {notification.message}
+                              </div>
+
+                              <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                                {formatDateTimeDK(notification.createdAt)}
+                              </div>
+                            </div>
+
+                            {!notification.isRead && (
+                              <div className="w-fit rounded-full bg-purple-600 px-3 py-1 text-sm font-bold text-white">
+                                Ny
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
-              </a>
-            ))}
+              );
+            })}
 
             {notifications.length === 0 && (
               <div className="text-gray-500 dark:text-gray-400">
@@ -557,7 +745,7 @@ export default function NotificationsPage() {
                 </div>
 
                 <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  {new Date(trade.shift.startTime).toLocaleString("da-DK")}
+                  {formatDateTimeDK(trade.shift.startTime)}
                 </div>
               </a>
             ))}
@@ -604,7 +792,7 @@ export default function NotificationsPage() {
                 </div>
 
                 <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  {new Date(trade.shift.startTime).toLocaleString("da-DK")}
+                  {formatDateTimeDK(trade.shift.startTime)}
                 </div>
               </a>
             ))}
