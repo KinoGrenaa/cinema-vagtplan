@@ -175,7 +175,9 @@ export async function lockPayrollPeriod(params: PayrollPeriodParams) {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, "Låsning fejlede"));
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke låse lønperioden"),
+    );
   }
 }
 
@@ -186,6 +188,8 @@ export async function unlockPayrollPeriod(periodId: number, note: string) {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, "Oplåsning fejlede"));
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke genåbne lønperioden"),
+    );
   }
 }

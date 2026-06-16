@@ -50,8 +50,6 @@ export function usePayrollExport({
       window.URL.revokeObjectURL(url);
 
       await refreshPayroll();
-    } catch (error) {
-      throw error;
     } finally {
       setExporting(false);
     }

@@ -575,12 +575,7 @@ export default function TimeApprovalPage() {
               "Kunne ikke redigere timeregistrering",
             );
 
-            errorDialog.confirm({
-              title: "Kunne ikke gemme rettelsen",
-              description: message,
-              confirmText: "OK",
-              onConfirm: async () => {},
-            });
+            infoDialog.showError("Kunne ikke gemme rettelsen", message);
 
             return;
           }
@@ -588,6 +583,13 @@ export default function TimeApprovalPage() {
           await fetchEntries();
           setEditEntry(null);
           toast.success("Timeregistrering opdateret");
+        } catch (error) {
+          infoDialog.showError(
+            "Kunne ikke gemme rettelsen",
+            error instanceof Error && error.message
+              ? error.message
+              : "Der opstod en fejl, da rettelsen skulle gemmes. Prøv igen.",
+          );
         } finally {
           setSavingEdit(false);
         }
@@ -776,33 +778,37 @@ export default function TimeApprovalPage() {
           return;
         }
 
-        const response = await apiFetch(`/time-entries/${id}/reject`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            adminNote,
-          }),
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) return;
-
-          const message = await readErrorMessage(
-            response,
-            "Kunne ikke sende timeregistrering retur",
-          );
-
-          errorDialog.confirm({
-            title: "Kan ikke sendes retur",
-            description: message,
-            confirmText: "OK",
-            onConfirm: async () => {},
+        try {
+          const response = await apiFetch(`/time-entries/${id}/reject`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              adminNote,
+            }),
           });
 
-          return;
-        }
+          if (!response.ok) {
+            if (response.status === 401) return;
 
-        await fetchEntries();
-        toast.success("Timeregistrering sendt retur til rettelse");
+            const message = await readErrorMessage(
+              response,
+              "Kunne ikke sende timeregistrering retur",
+            );
+
+            infoDialog.showError("Kan ikke sendes retur", message);
+
+            return;
+          }
+
+          await fetchEntries();
+          toast.success("Timeregistrering sendt retur til rettelse");
+        } catch (error) {
+          infoDialog.showError(
+            "Kan ikke sendes retur",
+            error instanceof Error && error.message
+              ? error.message
+              : "Der opstod en fejl, da timeregistreringen skulle sendes retur. Prøv igen.",
+          );
+        }
       },
     });
   }
@@ -822,29 +828,48 @@ export default function TimeApprovalPage() {
         const adminNote = value.trim();
 
         if (!adminNote) {
-          throw new Error("Begrundelse er påkrævet");
+          infoDialog.showError(
+            "Begrundelse mangler",
+            "Du skal skrive en begrundelse for annulleringen.",
+          );
+
+          return;
         }
 
-        const response = await apiFetch(`/time-entries/${id}/void`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            adminNote,
-          }),
-        });
+        try {
+          const response = await apiFetch(`/time-entries/${id}/void`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              adminNote,
+            }),
+          });
 
-        if (!response.ok) {
-          if (response.status === 401) return;
+          if (!response.ok) {
+            if (response.status === 401) return;
 
-          throw new Error(
-            await readErrorMessage(
+            const message = await readErrorMessage(
               response,
               "Kunne ikke annullere tidsregistrering",
-            ),
+            );
+
+            infoDialog.showError(
+              "Kunne ikke annullere tidsregistrering",
+              message,
+            );
+
+            return;
+          }
+
+          await fetchEntries();
+          toast.success("Tidsregistrering annulleret");
+        } catch (error) {
+          infoDialog.showError(
+            "Kunne ikke annullere tidsregistrering",
+            error instanceof Error && error.message
+              ? error.message
+              : "Der opstod en fejl, da tidsregistreringen skulle annulleres. Prøv igen.",
           );
         }
-
-        await fetchEntries();
-        toast.success("Tidsregistrering annulleret");
       },
     });
   }
