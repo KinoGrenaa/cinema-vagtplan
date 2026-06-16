@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import { getTodayLocalDate, formatTimeDK } from "@/app/utils/dateTime";
 
@@ -43,6 +45,9 @@ type MovieShowing = {
 };
 
 export default function LivePage() {
+  const infoDialog = useInfoModal();
+  const hasShownLoadError = useRef(false);
+
   const [users, setUsers] = useState<User[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -50,62 +55,73 @@ export default function LivePage() {
 
   const today = getTodayLocalDate();
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [usersRes, shiftsRes, moviesRes] = await Promise.all([
-        apiFetch("/users"),
-        apiFetch(`/shifts?date=${today}`),
-        apiFetch(`/movie-showings?date=${today}`),
-      ]);
+  const fetchData = useCallback(
+    async (showError = false) => {
+      try {
+        const [usersRes, shiftsRes, moviesRes] = await Promise.all([
+          apiFetch("/users"),
+          apiFetch(`/shifts?date=${today}`),
+          apiFetch(`/movie-showings?date=${today}`),
+        ]);
 
-      if (!usersRes.ok || !shiftsRes.ok || !moviesRes.ok) {
+        if (!usersRes.ok || !shiftsRes.ok || !moviesRes.ok) {
+          throw new Error("Live-data kunne ikke hentes.");
+        }
+
+        const usersData: User[] = await usersRes.json();
+        const shiftsData: Shift[] = await shiftsRes.json();
+        const moviesData: MovieShowing[] = await moviesRes.json();
+
+        const safeUsers = Array.isArray(usersData) ? usersData : [];
+
+        setUsers(safeUsers);
+        setShifts(Array.isArray(shiftsData) ? shiftsData : []);
+        setMovies(Array.isArray(moviesData) ? moviesData : []);
+
+        const allEntries: TimeEntry[] = [];
+
+        for (const user of safeUsers) {
+          const res = await apiFetch(`/time-entries/open?userId=${user.id}`);
+
+          if (!res.ok) continue;
+
+          const entry: TimeEntry | null = await res.json();
+
+          if (entry) {
+            allEntries.push({
+              ...entry,
+              userId: user.id,
+            });
+          }
+        }
+
+        setTimeEntries(allEntries);
+        hasShownLoadError.current = false;
+      } catch (error) {
         setUsers([]);
         setShifts([]);
         setMovies([]);
         setTimeEntries([]);
-        return;
-      }
 
-      const usersData: User[] = await usersRes.json();
-      const shiftsData: Shift[] = await shiftsRes.json();
-      const moviesData: MovieShowing[] = await moviesRes.json();
+        if (showError && !hasShownLoadError.current) {
+          hasShownLoadError.current = true;
 
-      const safeUsers = Array.isArray(usersData) ? usersData : [];
-
-      setUsers(safeUsers);
-      setShifts(Array.isArray(shiftsData) ? shiftsData : []);
-      setMovies(Array.isArray(moviesData) ? moviesData : []);
-
-      const allEntries: TimeEntry[] = [];
-
-      for (const user of safeUsers) {
-        const res = await apiFetch(`/time-entries/open?userId=${user.id}`);
-
-        if (!res.ok) continue;
-
-        const entry: TimeEntry | null = await res.json();
-
-        if (entry) {
-          allEntries.push({
-            ...entry,
-            userId: user.id,
-          });
+          infoDialog.showError(
+            "Live-data kunne ikke hentes",
+            error instanceof Error
+              ? error.message
+              : "Der opstod en fejl, da live-data skulle hentes.",
+          );
         }
       }
-
-      setTimeEntries(allEntries);
-    } catch {
-      setUsers([]);
-      setShifts([]);
-      setMovies([]);
-      setTimeEntries([]);
-    }
-  }, [today]);
+    },
+    [today],
+  );
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
 
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(() => fetchData(false), 30000);
 
     return () => clearInterval(interval);
   }, [fetchData]);
@@ -165,7 +181,8 @@ export default function LivePage() {
   }, [movies]);
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+    <>
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <h1 className="text-3xl font-bold">Live driftsskærm</h1>
@@ -292,5 +309,15 @@ export default function LivePage() {
         </div>
       </div>
     </main>
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
+    </>
   );
 }

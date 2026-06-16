@@ -1,14 +1,26 @@
 import { apiFetch } from "../lib/api";
 
-async function safeJson(response: Response) {
+async function readErrorMessage(response: Response, fallback: string) {
   try {
-    if (!response.ok) {
-      return null;
-    }
+    const data = await response.json();
 
+    if (typeof data?.message === "string") {
+      return data.message;
+    }
+  } catch {}
+
+  return fallback;
+}
+
+async function parseJson(response: Response, fallback: string) {
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, fallback));
+  }
+
+  try {
     return await response.json();
   } catch {
-    return null;
+    throw new Error(fallback);
   }
 }
 
@@ -32,18 +44,18 @@ export async function fetchDashboardOverview(input: {
 
   const [shifts, timeEntries, leaveRequests, shiftTrades, movies] =
     await Promise.all([
-      safeJson(shiftsResponse),
-      safeJson(timeEntriesResponse),
-      safeJson(leaveRequestsResponse),
-      safeJson(shiftTradesResponse),
-      safeJson(moviesResponse),
+      parseJson(shiftsResponse, "Kunne ikke hente dagens vagter"),
+      parseJson(timeEntriesResponse, "Kunne ikke hente tidsregistreringer"),
+      parseJson(leaveRequestsResponse, "Kunne ikke hente fravær"),
+      parseJson(shiftTradesResponse, "Kunne ikke hente vagtbytter"),
+      parseJson(moviesResponse, "Kunne ikke hente filmprogram"),
     ]);
 
   return {
-    shifts: shifts ?? [],
-    timeEntries: timeEntries ?? [],
-    leaveRequests: leaveRequests ?? [],
-    shiftTrades: shiftTrades ?? [],
-    movies: movies ?? [],
+    shifts: Array.isArray(shifts) ? shifts : [],
+    timeEntries: Array.isArray(timeEntries) ? timeEntries : [],
+    leaveRequests: Array.isArray(leaveRequests) ? leaveRequests : [],
+    shiftTrades: Array.isArray(shiftTrades) ? shiftTrades : [],
+    movies: Array.isArray(movies) ? movies : [],
   };
 }

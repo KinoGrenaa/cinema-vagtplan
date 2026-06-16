@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import { dateToLocalMonthString, formatDateDK } from "@/app/utils/dateTime";
 
@@ -20,7 +22,21 @@ type LeaveRequest = {
   user: User;
 };
 
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (typeof data?.message === "string") {
+      return data.message;
+    }
+  } catch {}
+
+  return fallback;
+}
+
 export default function AbsenceCalendarPage() {
+  const infoDialog = useInfoModal();
+
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
 
   const [selectedMonth, setSelectedMonth] = useState(
@@ -33,14 +49,30 @@ export default function AbsenceCalendarPage() {
 
       if (!response.ok) {
         setRequests([]);
+
+        infoDialog.showError(
+          "Fraværskalenderen kunne ikke hentes",
+          await readErrorMessage(
+            response,
+            "Der opstod en fejl, da fraværskalenderen skulle hentes.",
+          ),
+        );
+
         return;
       }
 
       const data = await response.json();
 
       setRequests(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (error) {
       setRequests([]);
+
+      infoDialog.showError(
+        "Fraværskalenderen kunne ikke hentes",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da fraværskalenderen skulle hentes.",
+      );
     }
   }, []);
 
@@ -91,91 +123,102 @@ export default function AbsenceCalendarPage() {
   }
 
   return (
-    <AdminGuard>
-      <main className="p-6 max-w-7xl mx-auto space-y-6">
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Ferie/fraværskalender</h1>
+    <>
+      <AdminGuard>
+        <main className="p-6 max-w-7xl mx-auto space-y-6">
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold">Ferie/fraværskalender</h1>
 
-              <p className="text-gray-500">
-                Overblik over ferie, fridage og afventende ansøgninger.
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => changeMonth(-1)}
-                className="bg-gray-200 px-4 py-2 rounded-lg"
-              >
-                Forrige
-              </button>
-
-              <div className="bg-black text-white px-4 py-2 rounded-lg">
-                {selectedMonth}
+                <p className="text-gray-500">
+                  Overblik over ferie, fridage og afventende ansøgninger.
+                </p>
               </div>
 
-              <button
-                onClick={() => changeMonth(1)}
-                className="bg-gray-200 px-4 py-2 rounded-lg"
-              >
-                Næste
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => changeMonth(-1)}
+                  className="bg-gray-200 px-4 py-2 rounded-lg"
+                >
+                  Forrige
+                </button>
+
+                <div className="bg-black text-white px-4 py-2 rounded-lg">
+                  {selectedMonth}
+                </div>
+
+                <button
+                  onClick={() => changeMonth(1)}
+                  className="bg-gray-200 px-4 py-2 rounded-lg"
+                >
+                  Næste
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-xl shadow p-6 overflow-x-auto">
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-3 min-w-[900px]">
-            {daysInMonth.map((date) => {
-              const dayRequests = requests.filter(
-                (request) =>
-                  (request.status === "PENDING" ||
-                    request.status === "APPROVED") &&
-                  requestIsOnDate(request, date),
-              );
+          <div className="bg-white rounded-xl shadow p-6 overflow-x-auto">
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-3 min-w-[900px]">
+              {daysInMonth.map((date) => {
+                const dayRequests = requests.filter(
+                  (request) =>
+                    (request.status === "PENDING" ||
+                      request.status === "APPROVED") &&
+                    requestIsOnDate(request, date),
+                );
 
-              return (
-                <div
-                  key={date}
-                  className="border rounded-xl p-3 min-h-32 bg-gray-50"
-                >
-                  <div className="font-bold mb-2">
-                    {formatDateDK(`${date}T12:00:00`)}
-                  </div>
+                return (
+                  <div
+                    key={date}
+                    className="border rounded-xl p-3 min-h-32 bg-gray-50"
+                  >
+                    <div className="font-bold mb-2">
+                      {formatDateDK(`${date}T12:00:00`)}
+                    </div>
 
-                  <div className="space-y-2">
-                    {dayRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className={`border rounded-lg p-2 text-xs ${getStatusStyle(
-                          request.status,
-                        )}`}
-                      >
-                        <div className="font-bold">
-                          {request.user.firstName} {request.user.lastName}
-                        </div>
-
-                        <div>{request.status}</div>
-
-                        {request.reason && (
-                          <div className="mt-1 opacity-80">
-                            {request.reason}
+                    <div className="space-y-2">
+                      {dayRequests.map((request) => (
+                        <div
+                          key={request.id}
+                          className={`border rounded-lg p-2 text-xs ${getStatusStyle(
+                            request.status,
+                          )}`}
+                        >
+                          <div className="font-bold">
+                            {request.user.firstName} {request.user.lastName}
                           </div>
-                        )}
-                      </div>
-                    ))}
 
-                    {dayRequests.length === 0 && (
-                      <div className="text-xs text-gray-400">Ingen fravær</div>
-                    )}
+                          <div>{request.status}</div>
+
+                          {request.reason && (
+                            <div className="mt-1 opacity-80">
+                              {request.reason}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {dayRequests.length === 0 && (
+                        <div className="text-xs text-gray-400">Ingen fravær</div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </main>
-    </AdminGuard>
+        </main>
+      </AdminGuard>
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
+    </>
   );
 }

@@ -14,6 +14,18 @@ const inputClass =
 const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
+async function readErrorMessage(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+
+    if (typeof data?.message === "string") {
+      return data.message;
+    }
+  } catch {}
+
+  return fallback;
+}
+
 export default function ClockPage() {
   const infoDialog = useInfoModal();
 
@@ -43,45 +55,91 @@ export default function ClockPage() {
       .slice(0, 16);
   }
 
-  const fetchEntries = useCallback(async (userId: number) => {
-    try {
-      const response = await apiFetch(`/time-entries?userId=${userId}`);
+  const fetchEntries = useCallback(
+    async (userId: number, showError = true) => {
+      try {
+        const response = await apiFetch(`/time-entries?userId=${userId}`);
 
-      if (!response.ok) {
+        if (!response.ok) {
+          setEntries([]);
+
+          if (showError) {
+            infoDialog.showError(
+              "Tidsregistreringer kunne ikke hentes",
+              await readErrorMessage(
+                response,
+                "Der opstod en fejl, da tidsregistreringerne skulle hentes.",
+              ),
+            );
+          }
+
+          return;
+        }
+
+        const data = await response.json();
+
+        setEntries(Array.isArray(data) ? data : []);
+      } catch (error) {
         setEntries([]);
-        return;
+
+        if (showError) {
+          infoDialog.showError(
+            "Tidsregistreringer kunne ikke hentes",
+            error instanceof Error
+              ? error.message
+              : "Der opstod en fejl, da tidsregistreringerne skulle hentes.",
+          );
+        }
       }
+    },
+    [],
+  );
 
-      const data = await response.json();
+  const fetchTodayShifts = useCallback(
+    async (userId: number, showError = true) => {
+      try {
+        const today = getTodayLocalDate();
 
-      setEntries(Array.isArray(data) ? data : []);
-    } catch {
-      setEntries([]);
-    }
-  }, []);
+        const response = await apiFetch(`/shifts?date=${today}`);
 
-  const fetchTodayShifts = useCallback(async (userId: number) => {
-    try {
-      const today = getTodayLocalDate();
+        if (!response.ok) {
+          setTodayShifts([]);
 
-      const response = await apiFetch(`/shifts?date=${today}`);
+          if (showError) {
+            infoDialog.showError(
+              "Dagens vagter kunne ikke hentes",
+              await readErrorMessage(
+                response,
+                "Der opstod en fejl, da dagens vagter skulle hentes.",
+              ),
+            );
+          }
 
-      if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        const myShifts = Array.isArray(data)
+          ? data.filter((shift) => shift.user?.id === userId)
+          : [];
+
+        setTodayShifts(myShifts);
+      } catch (error) {
         setTodayShifts([]);
-        return;
+
+        if (showError) {
+          infoDialog.showError(
+            "Dagens vagter kunne ikke hentes",
+            error instanceof Error
+              ? error.message
+              : "Der opstod en fejl, da dagens vagter skulle hentes.",
+          );
+        }
       }
-
-      const data = await response.json();
-
-      const myShifts = Array.isArray(data)
-        ? data.filter((shift) => shift.user?.id === userId)
-        : [];
-
-      setTodayShifts(myShifts);
-    } catch {
-      setTodayShifts([]);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -91,13 +149,18 @@ export default function ClockPage() {
       return;
     }
 
-    const parsedUser: CurrentUser = JSON.parse(savedUser);
+    try {
+      const parsedUser: CurrentUser = JSON.parse(savedUser);
 
-    setCurrentUser(parsedUser);
+      setCurrentUser(parsedUser);
 
-    fetchEntries(parsedUser.id);
+      fetchEntries(parsedUser.id);
 
-    fetchTodayShifts(parsedUser.id);
+      fetchTodayShifts(parsedUser.id, false);
+    } catch {
+      localStorage.removeItem("user");
+      window.location.href = "/";
+    }
   }, [fetchEntries, fetchTodayShifts]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -120,12 +183,12 @@ export default function ClockPage() {
       });
 
       if (!response.ok) {
-        infoDialog.showError(
-          "Tiden kunne ikke registreres",
-          "Der opstod en fejl, da tiden skulle registreres. Prøv igen.",
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Der opstod en fejl, da tiden skulle registreres. Prøv igen.",
+          ),
         );
-
-        return;
       }
 
       setSelectedShiftId(null);
@@ -139,6 +202,13 @@ export default function ClockPage() {
       await fetchEntries(currentUser.id);
 
       toast.success("Tid registreret.");
+    } catch (error) {
+      infoDialog.showError(
+        "Tiden kunne ikke registreres",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da tiden skulle registreres. Prøv igen.",
+      );
     } finally {
       setLoading(false);
     }
