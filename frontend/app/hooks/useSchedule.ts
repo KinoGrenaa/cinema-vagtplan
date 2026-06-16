@@ -141,7 +141,10 @@ export function useSchedule(
           if (reportError) {
             reportBackgroundError(
               "Medarbejdere kunne ikke hentes",
-              await readErrorMessage(response, "Kunne ikke hente medarbejdere."),
+              await readErrorMessage(
+                response,
+                "Kunne ikke hente medarbejdere.",
+              ),
             );
           }
 
@@ -352,6 +355,11 @@ export function useSchedule(
       try {
         const response = await apiFetch(`/time-entries/open?userId=${user.id}`);
 
+        if (response.status === 404 || response.status === 204) {
+          setOpenTimeEntry(null);
+          return true;
+        }
+
         if (!response.ok) {
           setOpenTimeEntry(null);
 
@@ -368,8 +376,14 @@ export function useSchedule(
           return false;
         }
 
-        const data = await response.json();
+        const text = await response.text();
 
+        if (!text.trim()) {
+          setOpenTimeEntry(null);
+          return true;
+        }
+
+        const data = JSON.parse(text);
         setOpenTimeEntry(data ?? null);
         return true;
       } catch {
@@ -416,7 +430,9 @@ export function useSchedule(
 
         const data = await response.json();
 
-        const entriesArray: ScheduleTimeEntry[] = Array.isArray(data) ? data : [];
+        const entriesArray: ScheduleTimeEntry[] = Array.isArray(data)
+          ? data
+          : [];
 
         setTimeEntries(entriesArray);
         return true;
@@ -446,18 +462,43 @@ export function useSchedule(
       }
 
       try {
-        const results = await Promise.all([
-          fetchShifts({ reportError: false }),
-          fetchMovieShowings({ reportError: false }),
-          fetchLeaveRequests({ reportError: false }),
-          fetchOpenTimeEntry({ reportError: false }),
-          fetchMyTimeEntries({ reportError: false }),
-        ]);
+        const dataFetches = [
+          {
+            label: "vagter",
+            run: () => fetchShifts({ reportError: false }),
+          },
+          {
+            label: "filmprogram",
+            run: () => fetchMovieShowings({ reportError: false }),
+          },
+          {
+            label: "fravær",
+            run: () => fetchLeaveRequests({ reportError: false }),
+          },
+          {
+            label: "åben tidsregistrering",
+            run: () => fetchOpenTimeEntry({ reportError: false }),
+          },
+          {
+            label: "mine tidsregistreringer",
+            run: () => fetchMyTimeEntries({ reportError: false }),
+          },
+        ];
 
-        if (showErrors && results.some((success) => !success)) {
+        const results = await Promise.all(
+          dataFetches.map((item) => item.run()),
+        );
+
+        const failedFetches = dataFetches
+          .filter((_, index) => !results[index])
+          .map((item) => item.label);
+
+        if (showErrors && failedFetches.length > 0) {
           reportBackgroundError(
             "Vagtplandata kunne ikke hentes",
-            "Noget af vagtplandata kunne ikke hentes. Prøv at opdatere siden.",
+            `Følgende data kunne ikke hentes: ${failedFetches.join(
+              ", ",
+            )}. Prøv at opdatere siden.`,
           );
         }
       } finally {
