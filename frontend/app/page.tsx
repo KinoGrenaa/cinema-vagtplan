@@ -12,11 +12,26 @@ async function readLoginError(response: Response) {
     const data = await response.json();
 
     if (typeof data?.message === "string") {
+      const message = data.message.toLowerCase();
+
+      if (
+        response.status === 401 ||
+        message.includes("unauthorized") ||
+        message.includes("invalid") ||
+        message.includes("forkert")
+      ) {
+        return "E-mail eller adgangskode er forkert. Prøv igen.";
+      }
+
       return data.message;
     }
   } catch {}
 
-  return "Login fejlede";
+  if (response.status === 401) {
+    return "E-mail eller adgangskode er forkert. Prøv igen.";
+  }
+
+  return "Login kunne ikke gennemføres. Prøv igen om lidt.";
 }
 
 export default function HomePage() {
@@ -40,7 +55,10 @@ export default function HomePage() {
       });
 
       if (!response.ok) {
-        infoDialog.showError("Login fejlede", await readLoginError(response));
+        infoDialog.showError(
+          "Login mislykkedes",
+          await readLoginError(response),
+        );
         return;
       }
 
@@ -48,8 +66,8 @@ export default function HomePage() {
 
       if (!data?.access_token || !data?.user) {
         infoDialog.showError(
-          "Login fejlede",
-          "Serveren svarede ikke med gyldige loginoplysninger.",
+          "Login mislykkedes",
+          "Login lykkedes ikke, fordi serveren ikke sendte de nødvendige loginoplysninger. Prøv igen.",
         );
         return;
       }
@@ -57,12 +75,10 @@ export default function HomePage() {
       login(data.access_token, data.user);
 
       window.location.href = "/dashboard";
-    } catch (error) {
+    } catch {
       infoDialog.showError(
-        "Login fejlede",
-        error instanceof Error
-          ? error.message
-          : "Kunne ikke forbinde til serveren",
+        "Kan ikke forbinde til serveren",
+        "Der kunne ikke oprettes forbindelse til systemet. Tjek forbindelsen og prøv igen.",
       );
     } finally {
       setLoading(false);
