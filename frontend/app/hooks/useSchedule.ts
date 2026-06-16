@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "./useApi";
 import { useAuth } from "../providers/AuthProvider";
 import { localDateTimeToISOString } from "@/app/utils/dateTime";
@@ -70,8 +70,48 @@ type ScheduleTimeEntry = {
   clockOut?: string | null;
 };
 
-export function useSchedule(selectedDate: string) {
+type ScheduleErrorHandler = (title: string, description: string) => void;
+
+type UseScheduleOptions = {
+  onError?: ScheduleErrorHandler;
+};
+
+type BackgroundFetchOptions = {
+  reportError?: boolean;
+};
+
+type RefreshDayDataOptions = {
+  showErrors?: boolean;
+  showLoading?: boolean;
+};
+
+async function readErrorMessage(response: Response, fallback: string) {
+  const payload = await response.json().catch(() => null);
+
+  if (typeof payload?.message === "string") {
+    return payload.message;
+  }
+
+  return fallback;
+}
+
+export function useSchedule(
+  selectedDate: string,
+  options: UseScheduleOptions = {},
+) {
   const { apiFetch } = useApi();
+  const onErrorRef = useRef<ScheduleErrorHandler | undefined>(options.onError);
+
+  useEffect(() => {
+    onErrorRef.current = options.onError;
+  }, [options.onError]);
+
+  const reportBackgroundError = useCallback(
+    (title: string, description: string) => {
+      onErrorRef.current?.(title, description);
+    },
+    [],
+  );
 
   const { user, loading: authLoading, isAdmin } = useAuth();
 
@@ -90,180 +130,351 @@ export function useSchedule(selectedDate: string) {
 
   const canManageShifts = isAdmin;
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await apiFetch("/users");
+  const fetchUsers = useCallback(
+    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      try {
+        const response = await apiFetch("/users");
 
-      if (!response.ok) {
+        if (!response.ok) {
+          setUsers([]);
+
+          if (reportError) {
+            reportBackgroundError(
+              "Medarbejdere kunne ikke hentes",
+              await readErrorMessage(response, "Kunne ikke hente medarbejdere."),
+            );
+          }
+
+          return false;
+        }
+
+        const data = await response.json();
+
+        const usersArray: User[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data.users)
+            ? data.users
+            : [];
+
+        setUsers(usersArray);
+        return true;
+      } catch {
         setUsers([]);
-        return;
+
+        if (reportError) {
+          reportBackgroundError(
+            "Medarbejdere kunne ikke hentes",
+            "Der opstod en fejl, da medarbejdere skulle hentes.",
+          );
+        }
+
+        return false;
       }
+    },
+    [apiFetch, reportBackgroundError],
+  );
 
-      const data = await response.json();
+  const fetchWorkTypes = useCallback(
+    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      try {
+        const response = await apiFetch("/work-types");
 
-      const usersArray: User[] = Array.isArray(data)
-        ? data
-        : Array.isArray(data.users)
-          ? data.users
-          : [];
+        if (!response.ok) {
+          setWorkTypes([]);
 
-      setUsers(usersArray);
-    } catch {
-      setUsers([]);
-    }
-  }, [apiFetch]);
+          if (reportError) {
+            reportBackgroundError(
+              "Vagttyper kunne ikke hentes",
+              await readErrorMessage(response, "Kunne ikke hente vagttyper."),
+            );
+          }
 
-  const fetchWorkTypes = useCallback(async () => {
-    try {
-      const response = await apiFetch("/work-types");
+          return false;
+        }
 
-      if (!response.ok) {
+        const data = await response.json();
+
+        const workTypesArray: WorkType[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data.workTypes)
+            ? data.workTypes
+            : [];
+
+        setWorkTypes(workTypesArray);
+        return true;
+      } catch {
         setWorkTypes([]);
-        return;
+
+        if (reportError) {
+          reportBackgroundError(
+            "Vagttyper kunne ikke hentes",
+            "Der opstod en fejl, da vagttyper skulle hentes.",
+          );
+        }
+
+        return false;
       }
+    },
+    [apiFetch, reportBackgroundError],
+  );
 
-      const data = await response.json();
+  const fetchShifts = useCallback(
+    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      try {
+        const response = await apiFetch(`/shifts?date=${selectedDate}`);
 
-      const workTypesArray: WorkType[] = Array.isArray(data)
-        ? data
-        : Array.isArray(data.workTypes)
-          ? data.workTypes
+        if (!response.ok) {
+          setShifts([]);
+
+          if (reportError) {
+            reportBackgroundError(
+              "Vagter kunne ikke hentes",
+              await readErrorMessage(response, "Kunne ikke hente vagter."),
+            );
+          }
+
+          return false;
+        }
+
+        const data = await response.json();
+
+        const shiftsArray: Shift[] = Array.isArray(data) ? data : [];
+
+        setShifts(shiftsArray);
+        return true;
+      } catch {
+        setShifts([]);
+
+        if (reportError) {
+          reportBackgroundError(
+            "Vagter kunne ikke hentes",
+            "Der opstod en fejl, da vagter skulle hentes.",
+          );
+        }
+
+        return false;
+      }
+    },
+    [apiFetch, reportBackgroundError, selectedDate],
+  );
+
+  const fetchMovieShowings = useCallback(
+    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      try {
+        const response = await fetch("/mock/movie-showings.json");
+
+        if (!response.ok) {
+          setMovieShowings([]);
+
+          if (reportError) {
+            reportBackgroundError(
+              "Filmprogram kunne ikke hentes",
+              "Kunne ikke hente filmprogrammet.",
+            );
+          }
+
+          return false;
+        }
+
+        const data = await response.json();
+
+        const movieShowingsArray: MovieShowing[] = Array.isArray(data)
+          ? data
           : [];
 
-      setWorkTypes(workTypesArray);
-    } catch {
-      setWorkTypes([]);
-    }
-  }, [apiFetch]);
-
-  const fetchShifts = useCallback(async () => {
-    try {
-      const response = await apiFetch(`/shifts?date=${selectedDate}`);
-
-      if (!response.ok) {
-        setShifts([]);
-        return;
-      }
-
-      const data = await response.json();
-
-      const shiftsArray: Shift[] = Array.isArray(data) ? data : [];
-
-      setShifts(shiftsArray);
-    } catch {
-      setShifts([]);
-    }
-  }, [apiFetch, selectedDate]);
-
-  const fetchMovieShowings = useCallback(async () => {
-    try {
-      const response = await fetch("/mock/movie-showings.json");
-
-      if (!response.ok) {
+        setMovieShowings(movieShowingsArray);
+        return true;
+      } catch {
         setMovieShowings([]);
-        return;
+
+        if (reportError) {
+          reportBackgroundError(
+            "Filmprogram kunne ikke hentes",
+            "Der opstod en fejl, da filmprogrammet skulle hentes.",
+          );
+        }
+
+        return false;
       }
+    },
+    [reportBackgroundError],
+  );
 
-      const data = await response.json();
+  const fetchLeaveRequests = useCallback(
+    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      try {
+        const response = await apiFetch("/leave-requests");
 
-      const movieShowingsArray: MovieShowing[] = Array.isArray(data)
-        ? data
-        : [];
+        if (!response.ok) {
+          setLeaveRequests([]);
 
-      setMovieShowings(movieShowingsArray);
-    } catch {
-      setMovieShowings([]);
-    }
-  }, []);
+          if (reportError) {
+            reportBackgroundError(
+              "Fravær kunne ikke hentes",
+              await readErrorMessage(response, "Kunne ikke hente fravær."),
+            );
+          }
 
-  const fetchLeaveRequests = useCallback(async () => {
-    try {
-      const response = await apiFetch("/leave-requests");
+          return false;
+        }
 
-      if (!response.ok) {
+        const data = await response.json();
+
+        const leaveRequestsArray: LeaveRequest[] = Array.isArray(data)
+          ? data
+          : [];
+
+        setLeaveRequests(leaveRequestsArray);
+        return true;
+      } catch {
         setLeaveRequests([]);
-        return;
+
+        if (reportError) {
+          reportBackgroundError(
+            "Fravær kunne ikke hentes",
+            "Der opstod en fejl, da fravær skulle hentes.",
+          );
+        }
+
+        return false;
       }
+    },
+    [apiFetch, reportBackgroundError],
+  );
 
-      const data = await response.json();
-
-      const leaveRequestsArray: LeaveRequest[] = Array.isArray(data)
-        ? data
-        : [];
-
-      setLeaveRequests(leaveRequestsArray);
-    } catch {
-      setLeaveRequests([]);
-    }
-  }, [apiFetch]);
-
-  const fetchOpenTimeEntry = useCallback(async () => {
-    if (!user) {
-      setOpenTimeEntry(null);
-      return;
-    }
-
-    try {
-      const response = await apiFetch(`/time-entries/open?userId=${user.id}`);
-
-      if (!response.ok) {
+  const fetchOpenTimeEntry = useCallback(
+    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      if (!user) {
         setOpenTimeEntry(null);
-        return;
+        return true;
       }
 
-      const data = await response.json();
+      try {
+        const response = await apiFetch(`/time-entries/open?userId=${user.id}`);
 
-      setOpenTimeEntry(data ?? null);
-    } catch {
-      setOpenTimeEntry(null);
-    }
-  }, [apiFetch, user]);
+        if (!response.ok) {
+          setOpenTimeEntry(null);
 
-  const fetchMyTimeEntries = useCallback(async () => {
-    if (!user) {
-      setTimeEntries([]);
-      return;
-    }
+          if (reportError) {
+            reportBackgroundError(
+              "Åben tidsregistrering kunne ikke hentes",
+              await readErrorMessage(
+                response,
+                "Kunne ikke hente åben tidsregistrering.",
+              ),
+            );
+          }
 
-    try {
-      const response = await apiFetch("/time-entries/me");
+          return false;
+        }
 
-      if (!response.ok) {
+        const data = await response.json();
+
+        setOpenTimeEntry(data ?? null);
+        return true;
+      } catch {
+        setOpenTimeEntry(null);
+
+        if (reportError) {
+          reportBackgroundError(
+            "Åben tidsregistrering kunne ikke hentes",
+            "Der opstod en fejl, da åben tidsregistrering skulle hentes.",
+          );
+        }
+
+        return false;
+      }
+    },
+    [apiFetch, reportBackgroundError, user],
+  );
+
+  const fetchMyTimeEntries = useCallback(
+    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      if (!user) {
         setTimeEntries([]);
-        return;
+        return true;
       }
 
-      const data = await response.json();
+      try {
+        const response = await apiFetch("/time-entries/me");
 
-      const entriesArray: ScheduleTimeEntry[] = Array.isArray(data) ? data : [];
+        if (!response.ok) {
+          setTimeEntries([]);
 
-      setTimeEntries(entriesArray);
-    } catch {
-      setTimeEntries([]);
-    }
-  }, [apiFetch, user]);
+          if (reportError) {
+            reportBackgroundError(
+              "Tidsregistreringer kunne ikke hentes",
+              await readErrorMessage(
+                response,
+                "Kunne ikke hente tidsregistreringer.",
+              ),
+            );
+          }
 
-  const refreshDayData = useCallback(async () => {
-    setLoading(true);
+          return false;
+        }
 
-    try {
-      await Promise.all([
-        fetchShifts(),
-        fetchMovieShowings(),
-        fetchLeaveRequests(),
-        fetchOpenTimeEntry(),
-        fetchMyTimeEntries(),
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    fetchShifts,
-    fetchMovieShowings,
-    fetchLeaveRequests,
-    fetchOpenTimeEntry,
-    fetchMyTimeEntries,
-  ]);
+        const data = await response.json();
+
+        const entriesArray: ScheduleTimeEntry[] = Array.isArray(data) ? data : [];
+
+        setTimeEntries(entriesArray);
+        return true;
+      } catch {
+        setTimeEntries([]);
+
+        if (reportError) {
+          reportBackgroundError(
+            "Tidsregistreringer kunne ikke hentes",
+            "Der opstod en fejl, da tidsregistreringer skulle hentes.",
+          );
+        }
+
+        return false;
+      }
+    },
+    [apiFetch, reportBackgroundError, user],
+  );
+
+  const refreshDayData = useCallback(
+    async ({
+      showErrors = true,
+      showLoading = true,
+    }: RefreshDayDataOptions = {}) => {
+      if (showLoading) {
+        setLoading(true);
+      }
+
+      try {
+        const results = await Promise.all([
+          fetchShifts({ reportError: false }),
+          fetchMovieShowings({ reportError: false }),
+          fetchLeaveRequests({ reportError: false }),
+          fetchOpenTimeEntry({ reportError: false }),
+          fetchMyTimeEntries({ reportError: false }),
+        ]);
+
+        if (showErrors && results.some((success) => !success)) {
+          reportBackgroundError(
+            "Vagtplandata kunne ikke hentes",
+            "Noget af vagtplandata kunne ikke hentes. Prøv at opdatere siden.",
+          );
+        }
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [
+      fetchShifts,
+      fetchMovieShowings,
+      fetchLeaveRequests,
+      fetchOpenTimeEntry,
+      fetchMyTimeEntries,
+      reportBackgroundError,
+    ],
+  );
 
   useEffect(() => {
     if (authLoading) return;

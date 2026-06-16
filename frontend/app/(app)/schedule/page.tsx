@@ -135,7 +135,9 @@ export default function SchedulePage() {
     clockOut,
 
     submitManualTime: submitManualTimeEntry,
-  } = useSchedule(selectedDate);
+  } = useSchedule(selectedDate, {
+    onError: infoDialog.showError,
+  });
 
   const shiftsForTimeRegistration = useMemo(() => {
     const entriesByShiftId = new Map(
@@ -208,8 +210,10 @@ export default function SchedulePage() {
   }, [workTypeId, workTypes]);
 
   useRealtimeShifts({
-    onShiftsUpdated: refreshDayData,
-    onShiftTradesUpdated: refreshDayData,
+    onShiftsUpdated: () =>
+      refreshDayData({ showErrors: false, showLoading: false }),
+    onShiftTradesUpdated: () =>
+      refreshDayData({ showErrors: false, showLoading: false }),
     enableToasts: false,
   });
 
