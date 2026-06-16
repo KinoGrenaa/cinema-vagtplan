@@ -1,28 +1,32 @@
 import { apiFetch } from "../lib/api";
 import type { Notification } from "../types/notifications";
 
-
-
 async function readErrorMessage(response: Response, fallback: string) {
   try {
-    const data = await response.json();
+    const data = await response.clone().json();
 
-    if (Array.isArray(data.message)) {
-      return data.message.join("\n");
+    if (typeof data?.message === "string") {
+      return data.message;
     }
 
-    return data.message || fallback;
-  } catch {
-    return fallback;
-  }
+    if (Array.isArray(data?.message)) {
+      return data.message.join("\n");
+    }
+  } catch {}
+
+  try {
+    const text = await response.text();
+
+    if (text.trim()) {
+      return text;
+    }
+  } catch {}
+
+  return fallback;
 }
 
 async function safeJson<T>(response: Response): Promise<T | null> {
   try {
-    if (!response.ok) {
-      return null;
-    }
-
     return (await response.json()) as T;
   } catch {
     return null;
@@ -32,6 +36,12 @@ async function safeJson<T>(response: Response): Promise<T | null> {
 export async function fetchNotifications(): Promise<Notification[]> {
   const response = await apiFetch("/notifications");
 
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(response, "Kunne ikke hente notifikationer"),
+    );
+  }
+
   const data = await safeJson<Notification[]>(response);
 
   return Array.isArray(data) ? data : [];
@@ -39,6 +49,15 @@ export async function fetchNotifications(): Promise<Notification[]> {
 
 export async function fetchUnreadNotificationCount(): Promise<number> {
   const response = await apiFetch("/notifications/unread-count");
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(
+        response,
+        "Kunne ikke hente antal ulæste notifikationer",
+      ),
+    );
+  }
 
   const data = await safeJson<{ count?: number }>(response);
 
@@ -54,7 +73,10 @@ export async function markNotificationAsRead(
 
   if (!response.ok) {
     throw new Error(
-      await readErrorMessage(response, "Kunne ikke markere notifikation som læst"),
+      await readErrorMessage(
+        response,
+        "Kunne ikke markere notifikation som læst",
+      ),
     );
   }
 }

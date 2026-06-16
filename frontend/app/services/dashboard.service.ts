@@ -1,33 +1,64 @@
 import { apiFetch } from "../lib/api";
+import type {
+  LeaveRequest,
+  MovieShowing,
+  Shift,
+  ShiftTrade,
+  TimeEntry,
+} from "../types/dashboard";
+
+type DashboardOverview = {
+  shifts: Shift[];
+  timeEntries: TimeEntry[];
+  leaveRequests: LeaveRequest[];
+  shiftTrades: ShiftTrade[];
+  movies: MovieShowing[];
+};
 
 async function readErrorMessage(response: Response, fallback: string) {
   try {
-    const data = await response.json();
+    const data = await response.clone().json();
 
     if (typeof data?.message === "string") {
       return data.message;
+    }
+
+    if (Array.isArray(data?.message)) {
+      return data.message.join("\n");
+    }
+  } catch {}
+
+  try {
+    const text = await response.text();
+
+    if (text.trim()) {
+      return text;
     }
   } catch {}
 
   return fallback;
 }
 
-async function parseJson(response: Response, fallback: string) {
+async function ensureOk(response: Response, fallback: string) {
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, fallback));
   }
+}
 
+async function safeJsonArray<T>(response: Response): Promise<T[]> {
   try {
-    return await response.json();
+    const data = await response.json();
+
+    return Array.isArray(data) ? (data as T[]) : [];
   } catch {
-    throw new Error(fallback);
+    return [];
   }
 }
 
 export async function fetchDashboardOverview(input: {
   userId: number;
   date: string;
-}) {
+}): Promise<DashboardOverview> {
   const [
     shiftsResponse,
     timeEntriesResponse,
@@ -42,20 +73,28 @@ export async function fetchDashboardOverview(input: {
     apiFetch(`/movie-showings?date=${input.date}`),
   ]);
 
+  await Promise.all([
+    ensureOk(shiftsResponse, "Kunne ikke hente dagens vagter"),
+    ensureOk(timeEntriesResponse, "Kunne ikke hente dine tidsregistreringer"),
+    ensureOk(leaveRequestsResponse, "Kunne ikke hente fraværsansøgninger"),
+    ensureOk(shiftTradesResponse, "Kunne ikke hente vagtbytter"),
+    ensureOk(moviesResponse, "Kunne ikke hente filmprogram"),
+  ]);
+
   const [shifts, timeEntries, leaveRequests, shiftTrades, movies] =
     await Promise.all([
-      parseJson(shiftsResponse, "Kunne ikke hente dagens vagter"),
-      parseJson(timeEntriesResponse, "Kunne ikke hente tidsregistreringer"),
-      parseJson(leaveRequestsResponse, "Kunne ikke hente fravær"),
-      parseJson(shiftTradesResponse, "Kunne ikke hente vagtbytter"),
-      parseJson(moviesResponse, "Kunne ikke hente filmprogram"),
+      safeJsonArray<Shift>(shiftsResponse),
+      safeJsonArray<TimeEntry>(timeEntriesResponse),
+      safeJsonArray<LeaveRequest>(leaveRequestsResponse),
+      safeJsonArray<ShiftTrade>(shiftTradesResponse),
+      safeJsonArray<MovieShowing>(moviesResponse),
     ]);
 
   return {
-    shifts: Array.isArray(shifts) ? shifts : [],
-    timeEntries: Array.isArray(timeEntries) ? timeEntries : [],
-    leaveRequests: Array.isArray(leaveRequests) ? leaveRequests : [],
-    shiftTrades: Array.isArray(shiftTrades) ? shiftTrades : [],
-    movies: Array.isArray(movies) ? movies : [],
+    shifts,
+    timeEntries,
+    leaveRequests,
+    shiftTrades,
+    movies,
   };
 }
