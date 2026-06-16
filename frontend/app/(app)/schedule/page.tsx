@@ -49,6 +49,7 @@ type AiScheduleFeatureProps = {
   workTypes: WorkType[];
   movieShowings: MovieShowing[];
   createShift: UseScheduleAiInput["createShift"];
+  showError: UseScheduleAiInput["showError"];
   children: (ai: AiScheduleData | null) => React.ReactNode;
 };
 
@@ -60,6 +61,7 @@ function AiScheduleFeatures({
   workTypes,
   movieShowings,
   createShift,
+  showError,
   children,
 }: AiScheduleFeatureProps) {
   if (!enabled) {
@@ -74,6 +76,7 @@ function AiScheduleFeatures({
       workTypes={workTypes}
       movieShowings={movieShowings}
       createShift={createShift}
+      showError={showError}
     >
       {children}
     </AiScheduleFeaturesEnabled>
@@ -87,6 +90,7 @@ function AiScheduleFeaturesEnabled({
   workTypes,
   movieShowings,
   createShift,
+  showError,
   children,
 }: Omit<AiScheduleFeatureProps, "enabled">) {
   const ai = useScheduleAi({
@@ -96,6 +100,7 @@ function AiScheduleFeaturesEnabled({
     workTypes,
     movieShowings,
     createShift,
+    showError,
   });
 
   return <>{children(ai)}</>;
@@ -756,6 +761,7 @@ ${getShiftConfirmText(selectedShift)}`,
       workTypes={workTypes}
       movieShowings={filteredMovieShowings}
       createShift={createShift}
+      showError={infoDialog.showError}
     >
       {(ai) => (
         <>

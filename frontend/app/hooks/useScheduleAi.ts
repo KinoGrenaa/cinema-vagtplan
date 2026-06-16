@@ -38,6 +38,7 @@ export type UseScheduleAiInput = {
     userId: number;
     workTypeId: number;
   }) => Promise<void>;
+  showError?: (title: string, description: string) => void;
 };
 
 function getShiftHours(shift: Shift) {
@@ -119,8 +120,21 @@ export function useScheduleAi({
   workTypes,
   movieShowings,
   createShift,
+  showError,
 }: UseScheduleAiInput) {
   const { apiFetch } = useApi();
+
+  const showErrorModal = useCallback(
+    (title: string, description: string) => {
+      if (showError) {
+        showError(title, description);
+        return;
+      }
+
+      console.error(`${title}: ${description}`);
+    },
+    [showError],
+  );
 
   const [currentTick, setCurrentTick] = useState(0);
   const [creatingAiShift, setCreatingAiShift] = useState<number | null>(null);
@@ -490,7 +504,10 @@ export function useScheduleAi({
         const user = getLeastLoadedUser(users, shifts);
 
         if (!user || !workTypeId) {
-          toast.error("Der mangler medarbejder eller arbejdstype.");
+          showErrorModal(
+            "AI-funktion kan ikke fortsætte",
+            "Der mangler medarbejder eller arbejdstype.",
+          );
           return;
         }
 
@@ -519,12 +536,15 @@ export function useScheduleAi({
         toast.success("AI-oprettet vagt blev oprettet.");
       } catch (error) {
         console.error(error);
-        toast.error("AI-oprettelse fejlede.");
+        showErrorModal(
+          "AI-oprettelse fejlede",
+          "Der opstod en fejl, da AI-vagten skulle oprettes.",
+        );
       } finally {
         setCreatingAiShift(null);
       }
     },
-    [createShift, selectedDate, shifts, users, workTypes],
+    [createShift, selectedDate, shifts, showErrorModal, users, workTypes],
   );
 
   const generateAiDaySchedule = useCallback(async () => {
@@ -534,7 +554,10 @@ export function useScheduleAi({
       const defaults = getDefaultCreateValues(users, workTypes);
 
       if (!defaults) {
-        toast.error("Der mangler medarbejder eller arbejdstype.");
+        showErrorModal(
+          "AI-funktion kan ikke fortsætte",
+          "Der mangler medarbejder eller arbejdstype.",
+        );
         return;
       }
 
@@ -597,11 +620,21 @@ export function useScheduleAi({
     } catch (error) {
       console.error(error);
 
-      toast.error("AI dagsplan kunne ikke genereres.");
+      showErrorModal(
+        "AI dagsplan kunne ikke genereres",
+        "Der opstod en fejl, da AI dagsplanen skulle genereres.",
+      );
     } finally {
       setGeneratingAiSchedule(false);
     }
-  }, [createShift, movieShowings, selectedDate, users, workTypes]);
+  }, [
+    createShift,
+    movieShowings,
+    selectedDate,
+    showErrorModal,
+    users,
+    workTypes,
+  ]);
 
   const autoCreateEmergencyShift = useCallback(async () => {
     try {
@@ -613,7 +646,10 @@ export function useScheduleAi({
       const userId = recommendedUserId ?? fallbackUserId;
 
       if (!userId || !workTypeId) {
-        toast.error("Der mangler medarbejder eller arbejdstype.");
+        showErrorModal(
+          "AI-funktion kan ikke fortsætte",
+          "Der mangler medarbejder eller arbejdstype.",
+        );
         return;
       }
 
@@ -637,7 +673,10 @@ export function useScheduleAi({
     } catch (error) {
       console.error(error);
 
-      toast.error("Emergency staffing action fejlede.");
+      showErrorModal(
+        "Emergency staffing action fejlede",
+        "Der opstod en fejl, da emergency staffing-handlingen skulle udføres.",
+      );
     } finally {
       setAutoCreatingEmergencyShift(false);
     }
@@ -646,6 +685,7 @@ export function useScheduleAi({
     selectedDate,
     suggestedEmergencyReplacements,
     users,
+    showErrorModal,
     workTypes,
   ]);
 
@@ -682,14 +722,17 @@ export function useScheduleAi({
       } catch (error) {
         console.error(error);
 
-        toast.error("Kunne ikke sende staffing request.");
+        showErrorModal(
+          "Staffing request kunne ikke sendes",
+          "Der opstod en fejl, da staffing requesten skulle sendes.",
+        );
 
         return false;
       } finally {
         setSendingEmergencyRequest(null);
       }
     },
-    [apiFetch, users],
+    [apiFetch, showErrorModal, users],
   );
 
   const sendRealStaffingMessage = useCallback(
@@ -725,12 +768,15 @@ export function useScheduleAi({
       } catch (error) {
         console.error(error);
 
-        toast.error("Staffing request fejlede.");
+        showErrorModal(
+          "Staffing request fejlede",
+          "Der opstod en fejl, da staffing requesten skulle sendes.",
+        );
       } finally {
         setSendingRealStaffingMessage(null);
       }
     },
-    [apiFetch, users],
+    [apiFetch, showErrorModal, users],
   );
 
   const autoAssignEmergencyShift = useCallback(
@@ -778,10 +824,13 @@ export function useScheduleAi({
 
         setAutonomousStaffingStatus("IDLE");
 
-        toast.error("Autonomous staffing execution fejlede.");
+        showErrorModal(
+          "Autonomous staffing execution fejlede",
+          "Der opstod en fejl, da autonomous staffing-handlingen skulle udføres.",
+        );
       }
     },
-    [createShift, selectedDate, users, workTypes],
+    [createShift, selectedDate, showErrorModal, users, workTypes],
   );
 
   const startAutoEscalation = useCallback(async () => {
@@ -826,11 +875,18 @@ export function useScheduleAi({
 
       setStaffingLoopStatus("DECLINED");
 
-      toast.error("Auto escalation engine fejlede.");
+      showErrorModal(
+        "Auto escalation engine fejlede",
+        "Der opstod en fejl, da auto escalation engine skulle køre.",
+      );
     } finally {
       setSendingEmergencyRequest(null);
     }
-  }, [sendEmergencyStaffingRequest, suggestedEmergencyReplacements]);
+  }, [
+    sendEmergencyStaffingRequest,
+    showErrorModal,
+    suggestedEmergencyReplacements,
+  ]);
 
   return {
     staffingWarnings,
