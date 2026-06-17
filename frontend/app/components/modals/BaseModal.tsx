@@ -29,22 +29,26 @@ export default function BaseModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
       <div
-        className={`relative w-full rounded-3xl border border-gray-200 bg-white shadow-2xl transition-colors dark:border-gray-800 dark:bg-gray-900 ${widthClasses[width]}`}
+        className={`relative w-full overflow-hidden rounded-2xl border border-gray-200 bg-white text-gray-900 shadow-2xl transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100 ${widthClasses[width]}`}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
-          <h2 className="text-xl font-bold">{title}</h2>
+        <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+          <h2 className="text-lg font-semibold leading-7 text-gray-950 dark:text-gray-50">
+            {title}
+          </h2>
 
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-xl p-2 transition hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Luk"
+            className="rounded-xl p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
           >
-            <X size={22} />
+            <X size={20} />
           </button>
         </div>
 
-        <div className="max-h-[80vh] overflow-y-auto p-6">{children}</div>
+        <div className="max-h-[80vh] overflow-y-auto px-5 py-5">{children}</div>
       </div>
     </div>
   );

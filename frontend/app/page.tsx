@@ -8,27 +8,43 @@ import { useAuth } from "./providers/AuthProvider";
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 async function readLoginError(response: Response) {
+  let serverMessage = "";
+
   try {
     const data = await response.json();
 
     if (typeof data?.message === "string") {
-      const message = data.message.toLowerCase();
-
-      if (
-        response.status === 401 ||
-        message.includes("unauthorized") ||
-        message.includes("invalid") ||
-        message.includes("forkert")
-      ) {
-        return "E-mail eller adgangskode er forkert. Prøv igen.";
-      }
-
-      return data.message;
+      serverMessage = data.message;
+    } else if (Array.isArray(data?.message)) {
+      serverMessage = data.message.join("\n");
     }
-  } catch {}
+  } catch {
+    // Brug fallback hvis svaret ikke er JSON.
+  }
 
-  if (response.status === 401) {
+  const normalizedMessage = serverMessage.toLowerCase();
+
+  const isWrongCredentials =
+    response.status === 400 ||
+    response.status === 401 ||
+    response.status === 403 ||
+    normalizedMessage.includes("unauthorized") ||
+    normalizedMessage.includes("invalid") ||
+    normalizedMessage.includes("credentials") ||
+    normalizedMessage.includes("password") ||
+    normalizedMessage.includes("adgangskode") ||
+    normalizedMessage.includes("forkert");
+
+  if (isWrongCredentials) {
     return "E-mail eller adgangskode er forkert. Prøv igen.";
+  }
+
+  if (response.status >= 500) {
+    return "Der er en midlertidig fejl på serveren. Prøv igen om lidt.";
+  }
+
+  if (serverMessage.trim().length > 0) {
+    return serverMessage;
   }
 
   return "Login kunne ikke gennemføres. Prøv igen om lidt.";
