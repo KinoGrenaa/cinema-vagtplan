@@ -11,48 +11,46 @@ export default function PayrollWarnings({
   }
 
   return (
-    <div className="mt-4 space-y-3 text-sm">
+    <div className="mt-5 grid gap-3 text-sm lg:grid-cols-3">
       {pendingCount > 0 && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
           <div className="font-semibold">
-            ⚠ {pendingCount} afventende tidsregistreringer
+            {pendingCount} afventer godkendelse
           </div>
 
-          <div className="mt-1">
-            Disse registreringer er ikke inkluderet i lønrapporten, før de er
-            godkendt.
+          <div className="mt-1 text-sm">
+            Skal håndteres, før perioden kan eksporteres korrekt.
           </div>
 
           <button
+            type="button"
             onClick={onOpenTimeApproval}
-            className="mt-3 rounded-lg border border-amber-400 px-3 py-2 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40"
+            className="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm font-semibold transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-950"
           >
-            Gennemgå tidsregistreringer
+            Gå til timegodkendelse
           </button>
         </div>
       )}
 
       {adjustmentCount > 0 && (
-        <div className="rounded-xl border border-blue-300 bg-blue-50 p-4 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-900 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-blue-200">
           <div className="font-semibold">
-            {adjustmentCount} afventende efterreguleringer
+            {adjustmentCount} efterregulering
+            {adjustmentCount === 1 ? "" : "er"}
           </div>
 
-          <div className="mt-1">
-            Disse efterreguleringer vises separat og vil senere blive medtaget
-            ved løneksport.
+          <div className="mt-1 text-sm">
+            Medtages separat i denne lønperiode.
           </div>
         </div>
       )}
 
       {voidedCount > 0 && (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
-          <div className="font-semibold">
-            {voidedCount} annullerede tidsregistreringer
-          </div>
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-200">
+          <div className="font-semibold">{voidedCount} afvist/annulleret</div>
 
-          <div className="mt-1">
-            Annullerede registreringer indgår ikke i løngrundlaget.
+          <div className="mt-1 text-sm">
+            Indgår ikke i løngrundlaget, men bevares i historikken.
           </div>
         </div>
       )}

@@ -150,8 +150,18 @@ export function formatDateTime(value?: string | null) {
 }
 
 export function formatHours(value: number) {
-  return value.toLocaleString("da-DK", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const totalMinutes = Math.round(Math.abs(value) * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const sign = value < 0 ? "-" : "";
+
+  if (hours === 0) {
+    return `${sign}${minutes} min`;
+  }
+
+  if (minutes === 0) {
+    return `${sign}${hours} t`;
+  }
+
+  return `${sign}${hours} t ${String(minutes).padStart(2, "0")} min`;
 }
