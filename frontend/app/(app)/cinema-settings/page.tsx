@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
@@ -49,6 +49,8 @@ type CurrentUser = {
   role: "MASTER" | "ADMIN" | "EMPLOYEE";
   cinemaId: number | null;
 };
+
+const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 
 const CINEMA_DEFAULTS = {
   aiEnabled: false,
@@ -231,23 +233,37 @@ export default function CinemaSettingsPage() {
       }
 
       const user: CurrentUser = JSON.parse(savedUser);
+      const savedMasterCinemaId = Number(
+        localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
+      );
 
-      if (!user.cinemaId) {
+      const cinemaId =
+        user.role === "MASTER" &&
+        !user.cinemaId &&
+        Number.isInteger(savedMasterCinemaId) &&
+        savedMasterCinemaId > 0
+          ? savedMasterCinemaId
+          : user.cinemaId;
+
+      if (!cinemaId) {
         setCinema(null);
         infoDialog.showError(
           "Biograf skal vælges",
           user.role === "MASTER"
-            ? "MASTER-brugere er ikke tilknyttet én fast biograf. Når master-panelet er oprettet, skal du vælge hvilken biograf du vil administrere."
+            ? "Gå til MASTER-panelet og vælg hvilken biograf du vil administrere."
             : "Din bruger er ikke tilknyttet en biograf. Kontakt en administrator.",
         );
         return;
       }
 
-      const response = await apiFetch(`/cinemas/${user.cinemaId}`);
+      const response = await apiFetch(`/cinemas/${cinemaId}`);
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke hente biografindstillinger."),
+          await readErrorMessage(
+            response,
+            "Kunne ikke hente biografindstillinger.",
+          ),
         );
       }
 
@@ -334,7 +350,9 @@ export default function CinemaSettingsPage() {
       setMessage("Biografindstillinger gemt.");
     } catch (error) {
       const description =
-        error instanceof Error ? error.message : "Kunne ikke gemme indstillinger.";
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke gemme indstillinger.";
 
       setMessage("");
       infoDialog.showError("Indstillinger kunne ikke gemmes", description);
@@ -359,8 +377,17 @@ export default function CinemaSettingsPage() {
     return (
       <AdminGuard>
         <main className="min-h-screen bg-gray-100 p-4 dark:bg-gray-950 md:p-8">
-          <div className="mx-auto max-w-4xl rounded-2xl border border-red-200 bg-white p-6 text-red-600 shadow-sm dark:border-red-900 dark:bg-gray-900">
-            Kunne ikke hente biograf.
+          <div className="mx-auto max-w-4xl rounded-2xl border border-yellow-200 bg-yellow-50 p-6 text-yellow-900 shadow-sm dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-100">
+            <div className="font-semibold">Biograf skal vælges</div>
+            <p className="mt-2 text-sm">
+              MASTER-brugere skal først vælge en biograf i MASTER-panelet.
+            </p>
+            <a
+              href="/master"
+              className="mt-4 inline-flex rounded-xl bg-yellow-700 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-800"
+            >
+              Gå til MASTER-panel
+            </a>
           </div>
         </main>
 
@@ -867,7 +894,7 @@ export default function CinemaSettingsPage() {
 
                 {periodExample.warning && (
                   <div className="mt-3 rounded-xl border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-200">
-                    ⚠ {periodExample.warning}
+                    ⚠️ {periodExample.warning}
                   </div>
                 )}
               </div>

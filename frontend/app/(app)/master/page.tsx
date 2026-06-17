@@ -343,7 +343,6 @@ export default function MasterPage() {
               Valget gemmes lokalt i denne browser.
             </p>
           </div>
-
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -501,5 +500,3 @@ export default function MasterPage() {
     </main>
   );
 }
-
-

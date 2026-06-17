@@ -178,14 +178,14 @@ export class ShiftTradesService {
           userId: trade.targetUserId,
           cinemaId: trade.cinemaId,
           title: 'Ny direkte vagt',
-          message: 'Du har fÃ¥et tilbudt en vagt direkte',
+          message: 'Du har fået tilbudt en vagt direkte',
           type: 'SHIFT_DIRECT',
           linkUrl: '/my-shifts',
         });
 
         await this.push.sendToUser(trade.targetUserId, {
           title: 'Ny direkte vagt',
-          body: 'Du har fÃ¥et tilbudt en vagt direkte',
+          body: 'Du har fået tilbudt en vagt direkte',
           url: '/my-shifts',
         });
       }
@@ -225,7 +225,7 @@ export class ShiftTradesService {
     }
 
     if (trade.status !== ShiftTradeStatus.OPEN) {
-      throw new ForbiddenException('Vagtbyttet er ikke lÃ¦ngere Ã¥bent');
+      throw new ForbiddenException('Vagtbyttet er ikke længere åbent');
     }
 
     if (trade.offeredByUserId === acceptedByUserId) {
@@ -367,7 +367,7 @@ export class ShiftTradesService {
     }
 
     if (existingTrade.status !== ShiftTradeStatus.OPEN) {
-      throw new ForbiddenException('Vagtbyttet er ikke lÃ¦ngere Ã¥bent');
+      throw new ForbiddenException('Vagtbyttet er ikke længere åbent');
     }
 
     if (
@@ -442,7 +442,7 @@ export class ShiftTradesService {
     }
 
     if (existingTrade.status !== ShiftTradeStatus.OPEN) {
-      throw new ForbiddenException('Vagtbyttet er ikke lÃ¦ngere Ã¥bent');
+      throw new ForbiddenException('Vagtbyttet er ikke længere åbent');
     }
 
     const trade = await this.prisma.shiftTrade.update({
@@ -469,4 +469,3 @@ export class ShiftTradesService {
     return trade;
   }
 }
-
