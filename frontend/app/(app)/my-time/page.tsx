@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import FilterModal from "@/app/components/modals/FilterModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
@@ -9,6 +10,20 @@ import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 
 type TimeEntryStatus = "PENDING" | "NEEDS_CHANGES" | "APPROVED" | "VOIDED";
+
+type MyTimeStatusFilters = {
+  approved: boolean;
+  pending: boolean;
+  needsChanges: boolean;
+  voided: boolean;
+};
+
+const DEFAULT_STATUS_FILTERS: MyTimeStatusFilters = {
+  approved: true,
+  pending: false,
+  needsChanges: false,
+  voided: false,
+};
 
 type TimeEntry = {
   id: number;
@@ -65,7 +80,7 @@ type TimeEntryRevision = {
 function getStatusLabel(status: TimeEntryStatus) {
   if (status === "APPROVED") return "Godkendt";
   if (status === "NEEDS_CHANGES") return "Skal rettes";
-  if (status === "VOIDED") return "Annulleret";
+  if (status === "VOIDED") return "Afvist/annulleret";
   return "Afventer";
 }
 
@@ -100,7 +115,7 @@ function getRevisionActionLabel(action: string) {
       return "Sendt retur til rettelse";
 
     case "VOIDED":
-      return "Annulleret";
+      return "Afvist/annulleret";
 
     case "REOPENED":
       return "Genåbnet";
@@ -128,7 +143,7 @@ function getRevisionActorLabel(action: string) {
       return "Sendt retur af";
 
     case "VOIDED":
-      return "Annulleret af";
+      return "Afvist/annulleret af";
 
     case "REOPENED":
       return "Genåbnet af";
@@ -180,7 +195,7 @@ function getStatusHistoryLabel(status?: string | null) {
       return "Skal rettes";
 
     case "VOIDED":
-      return "Annulleret";
+      return "Afvist/annulleret";
 
     default:
       return status;
@@ -219,12 +234,24 @@ function getEntryHoursNumber(entry: TimeEntry) {
   return (end - start) / 1000 / 60 / 60;
 }
 
+function formatHoursDuration(hours: number) {
+  const totalMinutes = Math.round(hours * 60);
+  const wholeHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (minutes === 0) {
+    return `${wholeHours} t`;
+  }
+
+  return `${wholeHours} t ${String(minutes).padStart(2, "0")} min`;
+}
+
 function getHours(entry: TimeEntry) {
   const hours = getEntryHoursNumber(entry);
 
   if (hours <= 0) return "-";
 
-  return `${hours.toFixed(2)} t`;
+  return formatHoursDuration(hours);
 }
 
 function dateToLocalDateString(date: Date) {
@@ -261,10 +288,12 @@ function getDaySummaryParts(entries: TimeEntry[]) {
   ).length;
 
   return [
-    approvedHours > 0 ? `Godkendt: ${approvedHours.toFixed(2)} t` : null,
-    pendingHours > 0 ? `Afventer: ${pendingHours.toFixed(2)} t` : null,
+    approvedHours > 0
+      ? `Godkendt: ${formatHoursDuration(approvedHours)}`
+      : null,
+    pendingHours > 0 ? `Afventer: ${formatHoursDuration(pendingHours)}` : null,
     needsChangesCount > 0 ? `Kræver handling: ${needsChangesCount}` : null,
-    voidedCount > 0 ? `Annulleret: ${voidedCount}` : null,
+    voidedCount > 0 ? `Afvist/annulleret: ${voidedCount}` : null,
   ].filter(Boolean) as string[];
 }
 
@@ -288,6 +317,33 @@ function getEntryDayLabel(dayKey: string) {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+function isEntryVisibleWithStatusFilters(
+  entry: TimeEntry,
+  filters: MyTimeStatusFilters,
+) {
+  if (entry.status === "APPROVED") return filters.approved;
+  if (entry.status === "PENDING") return filters.pending;
+  if (entry.status === "NEEDS_CHANGES") return filters.needsChanges;
+  if (entry.status === "VOIDED") return filters.voided;
+
+  return false;
+}
+
+function getActiveStatusFilterCount(filters: MyTimeStatusFilters) {
+  return Object.values(filters).filter(Boolean).length;
+}
+
+function getStatusFilterSummary(filters: MyTimeStatusFilters) {
+  const labels = [];
+
+  if (filters.approved) labels.push("Godkendte");
+  if (filters.pending) labels.push("Afventer");
+  if (filters.needsChanges) labels.push("Skal rettes");
+  if (filters.voided) labels.push("Afviste/annullerede");
+
+  return labels.length > 0 ? labels.join(", ") : "Ingen statusser valgt";
 }
 
 function toInputDateTime(value?: string | null) {
@@ -320,7 +376,12 @@ export default function MyTimePage() {
   const [editClockInNote, setEditClockInNote] = useState("");
   const [editClockOutNote, setEditClockOutNote] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
-  const [showVoidedEntries, setShowVoidedEntries] = useState(false);
+  const [statusFilters, setStatusFilters] = useState<MyTimeStatusFilters>(
+    DEFAULT_STATUS_FILTERS,
+  );
+  const [draftStatusFilters, setDraftStatusFilters] =
+    useState<MyTimeStatusFilters>(DEFAULT_STATUS_FILTERS);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [expandedDayKeys, setExpandedDayKeys] = useState<string[]>([]);
 
   const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
@@ -546,6 +607,51 @@ export default function MyTimePage() {
     }
   }
 
+  function openFilterModal() {
+    setDraftStatusFilters(statusFilters);
+    setFilterModalOpen(true);
+  }
+
+  function closeFilterModal() {
+    setFilterModalOpen(false);
+  }
+
+  function updateDraftStatusFilter(
+    key: keyof MyTimeStatusFilters,
+    checked: boolean,
+  ) {
+    setDraftStatusFilters((current) => ({
+      ...current,
+      [key]: checked,
+    }));
+  }
+
+  function applyStatusFilters() {
+    setStatusFilters(draftStatusFilters);
+    setExpandedDayKeys([]);
+    setFilterModalOpen(false);
+  }
+
+  function resetStatusFilters() {
+    setDraftStatusFilters(DEFAULT_STATUS_FILTERS);
+    setStatusFilters(DEFAULT_STATUS_FILTERS);
+    setExpandedDayKeys([]);
+    setFilterModalOpen(false);
+  }
+
+  function showNeedsChangesEntries() {
+    const needsChangesOnlyFilters: MyTimeStatusFilters = {
+      approved: false,
+      pending: false,
+      needsChanges: true,
+      voided: false,
+    };
+
+    setStatusFilters(needsChangesOnlyFilters);
+    setDraftStatusFilters(needsChangesOnlyFilters);
+    setExpandedDayKeys([]);
+  }
+
   function toggleDayGroup(dayKey: string) {
     setExpandedDayKeys((current) =>
       current.includes(dayKey)
@@ -586,10 +692,18 @@ export default function MyTimePage() {
   }, [entries, payrollPeriod.endDate, payrollPeriod.startDate]);
 
   const visibleEntries = useMemo(() => {
-    return filteredEntries.filter(
-      (entry) => showVoidedEntries || entry.status !== "VOIDED",
+    return filteredEntries.filter((entry) =>
+      isEntryVisibleWithStatusFilters(entry, statusFilters),
     );
-  }, [filteredEntries, showVoidedEntries]);
+  }, [filteredEntries, statusFilters]);
+
+  const activeStatusFilterCount = useMemo(() => {
+    return getActiveStatusFilterCount(statusFilters);
+  }, [statusFilters]);
+
+  const statusFilterSummary = useMemo(() => {
+    return getStatusFilterSummary(statusFilters);
+  }, [statusFilters]);
 
   const approvedHours = useMemo(() => {
     return filteredEntries.reduce((total, entry) => {
@@ -648,47 +762,85 @@ export default function MyTimePage() {
   return (
     <>
       <main className="mx-auto w-full max-w-5xl px-4 py-8">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Mine timer</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Se dine indberettede og godkendte timer.
-            </p>
-          </div>
+        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Mine timer</h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Se dine indberettede og godkendte timer.
+              </p>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-1 text-sm font-medium">Lønperiode</div>
-            <div className="text-base font-semibold">
-              {formatDate(payrollPeriod.startDate)} →{" "}
-              {formatDate(payrollPeriod.endDate)}
+              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+                <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+                  Viser: {statusFilterSummary}
+                </span>
+
+                {needsChangesCount > 0 && (
+                  <span className="rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
+                    {needsChangesCount} kræver handling
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={openFilterModal}
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                >
+                  Filter
+                  {activeStatusFilterCount > 0
+                    ? ` (${activeStatusFilterCount})`
+                    : ""}
+                </button>
+
+                {needsChangesCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={showNeedsChangesEntries}
+                    className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  >
+                    Vis det der skal rettes
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={goToPreviousPayrollPeriod}
-                className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-              >
-                Forrige
-              </button>
 
-              <button
-                type="button"
-                onClick={goToCurrentPayrollPeriod}
-                className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
-              >
-                Aktuel
-              </button>
+            <div className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40 lg:w-auto lg:min-w-72">
+              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Lønperiode
+              </div>
 
-              <button
-                type="button"
-                onClick={goToNextPayrollPeriod}
-                className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-              >
-                Næste
-              </button>
-            </div>
-            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Beregnet ud fra biografens lønopsætning.
+              <div className="mt-1 text-base font-semibold">
+                {formatDate(payrollPeriod.startDate)} →{" "}
+                {formatDate(payrollPeriod.endDate)}
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={goToPreviousPayrollPeriod}
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                >
+                  Forrige
+                </button>
+
+                <button
+                  type="button"
+                  onClick={goToCurrentPayrollPeriod}
+                  className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                >
+                  Aktuel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={goToNextPayrollPeriod}
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                >
+                  Næste
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -699,7 +851,7 @@ export default function MyTimePage() {
               Godkendte timer
             </div>
             <div className="mt-1 text-2xl font-bold">
-              {approvedHours.toFixed(2)} t
+              {formatHoursDuration(approvedHours)}
             </div>
             <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Tæller med i løngrundlaget.
@@ -711,34 +863,52 @@ export default function MyTimePage() {
               Afventer godkendelse
             </div>
             <div className="mt-1 text-2xl font-bold">
-              {pendingHours.toFixed(2)} t
+              {formatHoursDuration(pendingHours)}
             </div>
             <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Ikke med i løn før godkendelse.
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
+          <div
+            className={`rounded-2xl border bg-white p-5 shadow-sm dark:bg-gray-900 ${
+              needsChangesCount > 0
+                ? "border-orange-300 ring-1 ring-orange-200 dark:border-orange-800 dark:ring-orange-900/60"
+                : "border-gray-200 dark:border-gray-800"
+            }`}
+          >
+            <div
+              className={`text-sm ${
+                needsChangesCount > 0
+                  ? "font-semibold text-orange-700 dark:text-orange-300"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
               Kræver handling
             </div>
-            <div className="mt-1 text-2xl font-bold">{needsChangesCount}</div>
+            <div
+              className={`mt-1 text-2xl font-bold ${
+                needsChangesCount > 0
+                  ? "text-orange-700 dark:text-orange-300"
+                  : ""
+              }`}
+            >
+              {needsChangesCount}
+            </div>
             <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Registreringer sendt retur til rettelse.
             </div>
-          </div>
-        </div>
 
-        <div className="mb-4 flex justify-end">
-          <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <input
-              type="checkbox"
-              checked={showVoidedEntries}
-              onChange={(event) => setShowVoidedEntries(event.target.checked)}
-              className="h-4 w-4"
-            />
-            Vis annullerede
-          </label>
+            {needsChangesCount > 0 && (
+              <button
+                type="button"
+                onClick={showNeedsChangesEntries}
+                className="mt-4 inline-flex items-center justify-center rounded-xl bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-orange-700"
+              >
+                Vis registreringer
+              </button>
+            )}
+          </div>
         </div>
 
         {loading && (
@@ -749,7 +919,8 @@ export default function MyTimePage() {
 
         {!loading && visibleEntries.length === 0 && (
           <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            Der er ingen timer i den aktuelle lønperiode.
+            Der er ingen timer, der matcher det valgte filter i den aktuelle
+            lønperiode.
           </div>
         )}
 
@@ -788,7 +959,7 @@ export default function MyTimePage() {
                             } else if (part.startsWith("Kræver handling:")) {
                               className +=
                                 " bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-                            } else if (part.startsWith("Annulleret:")) {
+                            } else if (part.startsWith("Afvist/annulleret:")) {
                               className +=
                                 " bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
                             }
@@ -840,12 +1011,12 @@ export default function MyTimePage() {
 
                           <div className="grid gap-2 text-sm md:grid-cols-2">
                             <div>
-                              <span className="font-semibold">Clock ind:</span>{" "}
+                              <span className="font-semibold">Mødetid:</span>{" "}
                               {formatDateTime(entry.clockIn)}
                             </div>
 
                             <div>
-                              <span className="font-semibold">Clock ud:</span>{" "}
+                              <span className="font-semibold">Fyraften:</span>{" "}
                               {formatDateTime(entry.clockOut)}
                             </div>
 
@@ -896,10 +1067,8 @@ export default function MyTimePage() {
                                 <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
                                   <div className="font-semibold">
                                     {entry.status === "NEEDS_CHANGES"
-                                      ? "Sendt retur til rettelse"
-                                      : entry.status === "VOIDED"
-                                        ? "Annulleret"
-                                        : "Admin note"}
+                                      ? "Besked fra administrationen"
+                                      : "Note fra administrationen"}
                                   </div>
 
                                   <div className="mt-1">{entry.adminNote}</div>
@@ -956,7 +1125,7 @@ export default function MyTimePage() {
               <div className="space-y-4">
                 <div>
                   <label className="mb-1 block text-sm font-medium">
-                    Clock ind
+                    Mødetid
                   </label>
                   <input
                     type="datetime-local"
@@ -968,7 +1137,7 @@ export default function MyTimePage() {
 
                 <div>
                   <label className="mb-1 block text-sm font-medium">
-                    Clock ud
+                    Fyraften
                   </label>
                   <input
                     type="datetime-local"
@@ -1027,6 +1196,100 @@ export default function MyTimePage() {
             </div>
           </div>
         )}
+        <FilterModal
+          open={filterModalOpen}
+          title="Filtrer mine timer"
+          activeFilterCount={activeStatusFilterCount}
+          applyText="Vis timer"
+          resetText="Nulstil filter"
+          onApply={applyStatusFilters}
+          onReset={resetStatusFilters}
+          onClose={closeFilterModal}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Vælg hvilke tidsregistreringer du vil se i den valgte lønperiode.
+            </p>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                <input
+                  type="checkbox"
+                  checked={draftStatusFilters.approved}
+                  onChange={(event) =>
+                    updateDraftStatusFilter("approved", event.target.checked)
+                  }
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span>
+                  <span className="block font-medium">Godkendte</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Timer der tæller med i løngrundlaget.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                <input
+                  type="checkbox"
+                  checked={draftStatusFilters.pending}
+                  onChange={(event) =>
+                    updateDraftStatusFilter("pending", event.target.checked)
+                  }
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span>
+                  <span className="block font-medium">
+                    Afventer godkendelse
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Timer der endnu ikke er godkendt.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                <input
+                  type="checkbox"
+                  checked={draftStatusFilters.needsChanges}
+                  onChange={(event) =>
+                    updateDraftStatusFilter(
+                      "needsChanges",
+                      event.target.checked,
+                    )
+                  }
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span>
+                  <span className="block font-medium">Skal rettes</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Registreringer som administrationen har sendt retur til
+                    rettelse.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+                <input
+                  type="checkbox"
+                  checked={draftStatusFilters.voided}
+                  onChange={(event) =>
+                    updateDraftStatusFilter("voided", event.target.checked)
+                  }
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span>
+                  <span className="block font-medium">Afviste/annullerede</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Registreringer der ikke indgår i løngrundlaget. Systemet
+                    skelner ikke separat mellem afvist og annulleret endnu.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </FilterModal>
+
         <TimeEntryHistoryModal
           isOpen={!!historyEntry}
           onClose={() => {
