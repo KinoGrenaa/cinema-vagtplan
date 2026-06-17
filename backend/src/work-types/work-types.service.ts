@@ -11,8 +11,10 @@ type AuthUser = {
   sub: number;
   email: string;
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number;
+  cinemaId: number | null;
 };
+
+type CinemaContextValue = number | string | null | undefined;
 
 @Injectable()
 export class WorkTypesService {
@@ -25,20 +27,75 @@ export class WorkTypesService {
     throw new ForbiddenException('Ingen adgang');
   }
 
-  private getCinemaFilter(user: AuthUser) {
-    if (user.role === 'MASTER') {
-      return {};
+  private parseCinemaId(value: CinemaContextValue) {
+    const cinemaId = Number(value);
+
+    if (!Number.isFinite(cinemaId) || cinemaId <= 0) {
+      return null;
     }
 
-    return {
-      cinemaId: user.cinemaId,
-    };
+    return cinemaId;
   }
 
-  async findAll(user: AuthUser, includeArchived = false) {
+  private getRequiredCinemaId(
+    user: AuthUser,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    if (user.role === 'MASTER') {
+      const cinemaId = this.parseCinemaId(selectedCinemaId);
+
+      if (!cinemaId) {
+        throw new BadRequestException(
+          'Vælg en biograf, før du administrerer vagttyper.',
+        );
+      }
+
+      return cinemaId;
+    }
+
+    const cinemaId = this.parseCinemaId(user.cinemaId);
+
+    if (!cinemaId) {
+      throw new BadRequestException('Brugeren mangler biograf.');
+    }
+
+    return cinemaId;
+  }
+
+  private async getPayrollTypeIdForCinema(
+    cinemaId: number,
+    payrollTypeId?: number | null,
+  ) {
+    if (!payrollTypeId) {
+      return null;
+    }
+
+    const payrollType = await this.prisma.payrollType.findFirst({
+      where: {
+        id: payrollTypeId,
+        cinemaId,
+      },
+    });
+
+    if (!payrollType) {
+      throw new BadRequestException(
+        'Lønarten blev ikke fundet for den valgte biograf.',
+      );
+    }
+
+    return payrollType.id;
+  }
+
+  async findAll(
+    user: AuthUser,
+    includeArchived = false,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    const cinemaId = this.getRequiredCinemaId(user, selectedCinemaId);
+
     return this.prisma.workType.findMany({
       where: {
-        ...this.getCinemaFilter(user),
+        cinemaId,
         ...(includeArchived ? {} : { isActive: true }),
       },
 
@@ -62,16 +119,23 @@ export class WorkTypesService {
     data: {
       name: string;
       color?: string;
-      payrollTypeId?: number;
+      payrollTypeId?: number | null;
+      cinemaId?: CinemaContextValue;
     },
   ) {
     this.ensureAdmin(user);
+
+    const cinemaId = this.getRequiredCinemaId(user, data.cinemaId);
+    const payrollTypeId = await this.getPayrollTypeIdForCinema(
+      cinemaId,
+      data.payrollTypeId,
+    );
 
     const existing = await this.prisma.workType.findFirst({
       where: {
         name: data.name,
         isActive: true,
-        ...this.getCinemaFilter(user),
+        cinemaId,
       },
     });
 
@@ -84,9 +148,9 @@ export class WorkTypesService {
         name: data.name,
         color: data.color,
 
-        cinemaId: user.cinemaId,
+        cinemaId,
 
-        payrollTypeId: data.payrollTypeId || null,
+        payrollTypeId,
         isActive: true,
         archivedAt: null,
       },
@@ -104,14 +168,21 @@ export class WorkTypesService {
       name?: string;
       color?: string;
       payrollTypeId?: number | null;
+      cinemaId?: CinemaContextValue;
     },
+    selectedCinemaId?: CinemaContextValue,
   ) {
     this.ensureAdmin(user);
+
+    const cinemaId = this.getRequiredCinemaId(
+      user,
+      selectedCinemaId ?? data.cinemaId,
+    );
 
     const existing = await this.prisma.workType.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user),
+        cinemaId,
       },
     });
 
@@ -127,7 +198,7 @@ export class WorkTypesService {
           id: {
             not: id,
           },
-          ...this.getCinemaFilter(user),
+          cinemaId,
         },
       });
 
@@ -136,16 +207,20 @@ export class WorkTypesService {
       }
     }
 
+    const payrollTypeId =
+      data.payrollTypeId === undefined
+        ? undefined
+        : await this.getPayrollTypeIdForCinema(cinemaId, data.payrollTypeId);
+
     return this.prisma.workType.update({
       where: {
         id,
       },
 
       data: {
-        ...data,
-
-        payrollTypeId:
-          data.payrollTypeId === undefined ? undefined : data.payrollTypeId,
+        name: data.name,
+        color: data.color,
+        payrollTypeId,
       },
 
       include: {
@@ -154,13 +229,19 @@ export class WorkTypesService {
     });
   }
 
-  async remove(user: AuthUser, id: number) {
+  async remove(
+    user: AuthUser,
+    id: number,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
     this.ensureAdmin(user);
+
+    const cinemaId = this.getRequiredCinemaId(user, selectedCinemaId);
 
     const existing = await this.prisma.workType.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user),
+        cinemaId,
       },
     });
 
@@ -188,13 +269,19 @@ export class WorkTypesService {
     });
   }
 
-  async reactivate(user: AuthUser, id: number) {
+  async reactivate(
+    user: AuthUser,
+    id: number,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
     this.ensureAdmin(user);
+
+    const cinemaId = this.getRequiredCinemaId(user, selectedCinemaId);
 
     const existing = await this.prisma.workType.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user),
+        cinemaId,
       },
     });
 
@@ -213,7 +300,7 @@ export class WorkTypesService {
         id: {
           not: id,
         },
-        ...this.getCinemaFilter(user),
+        cinemaId,
       },
     });
 

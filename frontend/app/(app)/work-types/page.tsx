@@ -10,6 +10,8 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 
 import { apiFetch } from "@/app/lib/api";
 
+const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
+
 type PayrollType = {
   id: number;
   name: string;
@@ -30,7 +32,7 @@ type CurrentUser = {
   sub: number;
   email: string;
   role: "MASTER" | "ADMIN" | "EMPLOYEE";
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 function getCurrentUserFromToken(): CurrentUser | null {
@@ -48,11 +50,51 @@ function getCurrentUserFromToken(): CurrentUser | null {
   }
 }
 
+function getSelectedMasterCinemaId() {
+  const selectedCinemaId = Number(
+    localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
+  );
+
+  if (!Number.isFinite(selectedCinemaId) || selectedCinemaId <= 0) {
+    return null;
+  }
+
+  return selectedCinemaId;
+}
+
+function appendCinemaId(path: string, cinemaId: number | null) {
+  if (!cinemaId) {
+    return path;
+  }
+
+  const separator = path.includes("?") ? "&" : "?";
+
+  return `${path}${separator}cinemaId=${cinemaId}`;
+}
+
+async function readErrorMessage(response: Response, fallback: string) {
+  const data = await response.json().catch(() => null);
+
+  if (typeof data?.message === "string") {
+    return data.message;
+  }
+
+  if (Array.isArray(data?.message)) {
+    return data.message.join("\n");
+  }
+
+  return fallback;
+}
+
 export default function WorkTypesPage() {
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
 
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
+    number | null
+  >(null);
+
   const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
   const [payrollTypes, setPayrollTypes] = useState<PayrollType[]>([]);
 
@@ -65,8 +107,36 @@ export default function WorkTypesPage() {
 
   const isMaster = currentUser?.role === "MASTER";
 
+  const activeCinemaId =
+    currentUser?.role === "MASTER" && !currentUser.cinemaId
+      ? selectedMasterCinemaId
+      : (currentUser?.cinemaId ?? null);
+
+  const needsMasterCinemaSelection =
+    currentUser?.role === "MASTER" && !currentUser.cinemaId && !activeCinemaId;
+
   useEffect(() => {
     setCurrentUser(getCurrentUserFromToken());
+
+    const updateSelectedCinema = () => {
+      setSelectedMasterCinemaId(getSelectedMasterCinemaId());
+    };
+
+    updateSelectedCinema();
+
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      updateSelectedCinema,
+    );
+    window.addEventListener("storage", updateSelectedCinema);
+
+    return () => {
+      window.removeEventListener(
+        "masterSelectedCinemaChanged",
+        updateSelectedCinema,
+      );
+      window.removeEventListener("storage", updateSelectedCinema);
+    };
   }, []);
 
   useEffect(() => {
@@ -76,25 +146,36 @@ export default function WorkTypesPage() {
   }, [isMaster, showArchived]);
 
   useEffect(() => {
-    fetchWorkTypes();
-  }, [showArchived]);
+    if (!currentUser) {
+      return;
+    }
 
-  useEffect(() => {
+    if (needsMasterCinemaSelection) {
+      setWorkTypes([]);
+      setPayrollTypes([]);
+      setLoading(false);
+      return;
+    }
+
+    fetchWorkTypes();
     fetchPayrollTypes();
-  }, []);
+  }, [currentUser, activeCinemaId, needsMasterCinemaSelection, showArchived]);
 
   async function fetchWorkTypes() {
     try {
       setLoading(true);
 
       const response = await apiFetch(
-        `/work-types?includeArchived=${showArchived}`,
+        appendCinemaId(
+          `/work-types?includeArchived=${showArchived}`,
+          activeCinemaId,
+        ),
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-
-        throw new Error(errorText || "Kunne ikke hente vagttyper");
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke hente vagttyper"),
+        );
       }
 
       const data = await response.json();
@@ -116,15 +197,13 @@ export default function WorkTypesPage() {
 
   async function fetchPayrollTypes() {
     try {
-      const response = await apiFetch("/payroll-types");
+      const response = await apiFetch(
+        appendCinemaId("/payroll-types", activeCinemaId),
+      );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-
         throw new Error(
-          typeof errorData?.message === "string"
-            ? errorData.message
-            : "Kunne ikke hente lønarter",
+          await readErrorMessage(response, "Kunne ikke hente lønarter"),
         );
       }
 
@@ -144,20 +223,37 @@ export default function WorkTypesPage() {
   }
 
   async function createWorkType() {
+    if (needsMasterCinemaSelection) {
+      infoDialog.showError(
+        "Biograf mangler",
+        "Vælg først en biograf i MASTER-panelet, før du opretter vagttyper.",
+      );
+      return;
+    }
+
+    if (!name.trim()) {
+      infoDialog.showError(
+        "Navn mangler",
+        "Indtast et navn på vagttypen, før du opretter den.",
+      );
+      return;
+    }
+
     try {
       const response = await apiFetch("/work-types", {
         method: "POST",
         body: JSON.stringify({
-          name,
+          name: name.trim(),
           color,
           payrollTypeId: payrollTypeId ? Number(payrollTypeId) : null,
+          cinemaId: activeCinemaId,
         }),
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
-
-        throw new Error(data?.message || "Kunne ikke oprette vagttype");
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke oprette vagttype"),
+        );
       }
 
       setName("");
@@ -187,14 +283,17 @@ export default function WorkTypesPage() {
       confirmVariant: "danger",
       onConfirm: async () => {
         try {
-          const response = await apiFetch(`/work-types/${id}`, {
-            method: "DELETE",
-          });
+          const response = await apiFetch(
+            appendCinemaId(`/work-types/${id}`, activeCinemaId),
+            {
+              method: "DELETE",
+            },
+          );
 
           if (!response.ok) {
-            const data = await response.json().catch(() => null);
-
-            throw new Error(data?.message || "Kunne ikke arkivere vagttype");
+            throw new Error(
+              await readErrorMessage(response, "Kunne ikke arkivere vagttype"),
+            );
           }
 
           await fetchWorkTypes();
@@ -221,14 +320,20 @@ export default function WorkTypesPage() {
       confirmVariant: "success",
       onConfirm: async () => {
         try {
-          const response = await apiFetch(`/work-types/${id}/reactivate`, {
-            method: "PATCH",
-          });
+          const response = await apiFetch(
+            appendCinemaId(`/work-types/${id}/reactivate`, activeCinemaId),
+            {
+              method: "PATCH",
+            },
+          );
 
           if (!response.ok) {
-            const data = await response.json().catch(() => null);
-
-            throw new Error(data?.message || "Kunne ikke genaktivere vagttype");
+            throw new Error(
+              await readErrorMessage(
+                response,
+                "Kunne ikke genaktivere vagttype",
+              ),
+            );
           }
 
           await fetchWorkTypes();
@@ -248,7 +353,7 @@ export default function WorkTypesPage() {
     <AdminGuard>
       <main className="min-h-screen bg-gray-100 p-4 md:p-8 dark:bg-gray-950">
         <div className="mx-auto max-w-6xl space-y-6">
-          <section className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900">
+          <section className="rounded-2xl bg-white p-6 text-gray-900 shadow dark:bg-gray-900 dark:text-gray-100">
             <h1 className="text-3xl font-bold">Vagttyper</h1>
 
             <p className="mt-2 text-gray-600 dark:text-gray-400">
@@ -256,7 +361,27 @@ export default function WorkTypesPage() {
             </p>
           </section>
 
-          <section className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900">
+          {needsMasterCinemaSelection && (
+            <section className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5 text-yellow-900 shadow-sm dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-100">
+              <div className="text-sm font-medium uppercase tracking-wide">
+                Biograf mangler
+              </div>
+
+              <p className="mt-2 text-sm">
+                Vælg først en biograf i MASTER-panelet, før du administrerer
+                vagttyper og lønarter.
+              </p>
+
+              <a
+                href="/master"
+                className="mt-4 inline-flex rounded-xl bg-yellow-700 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-800"
+              >
+                Gå til MASTER-panel
+              </a>
+            </section>
+          )}
+
+          <section className="rounded-2xl bg-white p-6 text-gray-900 shadow dark:bg-gray-900 dark:text-gray-100">
             <h2 className="mb-4 text-2xl font-bold">Opret vagttype</h2>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -266,15 +391,17 @@ export default function WorkTypesPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 className="rounded-xl border p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                disabled={needsMasterCinemaSelection}
               />
 
-              <label className="flex items-center gap-3 rounded-xl border p-3 dark:border-gray-700 dark:bg-gray-800">
+              <label className="flex items-center gap-3 rounded-xl border p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                 <span>Farve</span>
 
                 <input
                   type="color"
                   value={color}
                   onChange={(event) => setColor(event.target.value)}
+                  disabled={needsMasterCinemaSelection}
                 />
               </label>
 
@@ -282,6 +409,7 @@ export default function WorkTypesPage() {
                 value={payrollTypeId}
                 onChange={(event) => setPayrollTypeId(event.target.value)}
                 className="rounded-xl border p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                disabled={needsMasterCinemaSelection}
               >
                 <option value="">Ingen lønart</option>
 
@@ -294,24 +422,30 @@ export default function WorkTypesPage() {
 
               <button
                 onClick={createWorkType}
-                className="rounded-xl bg-black px-4 py-3 font-semibold text-white hover:bg-gray-800"
+                className={`rounded-xl px-4 py-3 font-semibold text-white ${
+                  needsMasterCinemaSelection
+                    ? "cursor-not-allowed bg-gray-400"
+                    : "bg-black hover:bg-gray-800"
+                }`}
+                disabled={needsMasterCinemaSelection}
               >
                 Opret
               </button>
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900">
+          <section className="rounded-2xl bg-white p-6 text-gray-900 shadow dark:bg-gray-900 dark:text-gray-100">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h2 className="text-2xl font-bold">Eksisterende vagttyper</h2>
 
               {isMaster && (
-                <label className="flex items-center gap-2 text-sm text-gray-700">
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                   <input
                     type="checkbox"
                     checked={showArchived}
                     onChange={(event) => setShowArchived(event.target.checked)}
                     className="h-4 w-4"
+                    disabled={needsMasterCinemaSelection}
                   />
                   Vis arkiverede typer
                 </label>
@@ -319,7 +453,9 @@ export default function WorkTypesPage() {
             </div>
 
             {loading ? (
-              <div>Indlæser...</div>
+              <div className="text-gray-700 dark:text-gray-200">
+                Indlæser...
+              </div>
             ) : workTypes.length === 0 ? (
               <div className="rounded-xl border border-dashed p-8 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
                 Ingen vagttyper endnu.

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -13,7 +14,6 @@ import {
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-
 import { PayrollTypesService } from './payroll-types.service';
 
 @Controller('payroll-types')
@@ -23,8 +23,8 @@ export class PayrollTypesController {
   constructor(private payrollTypesService: PayrollTypesService) {}
 
   @Get()
-  findAll(@Req() req: any) {
-    return this.payrollTypesService.findAll(req.user);
+  findAll(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
+    return this.payrollTypesService.findAll(req.user, cinemaId);
   }
 
   @Post()
@@ -38,6 +38,7 @@ export class PayrollTypesController {
       description?: string;
       color?: string;
       isDefault?: boolean;
+      cinemaId?: number | string | null;
     },
   ) {
     return this.payrollTypesService.create(req.user, body);
@@ -56,13 +57,15 @@ export class PayrollTypesController {
       color?: string;
       isDefault?: boolean;
       isActive?: boolean;
+      cinemaId?: number | string | null;
     },
+    @Query('cinemaId') cinemaId?: string,
   ) {
-    return this.payrollTypesService.update(req.user, Number(id), body);
+    return this.payrollTypesService.update(req.user, Number(id), body, cinemaId);
   }
 
   @Delete(':id')
-  remove(@Req() req: any, @Param('id') id: string) {
-    return this.payrollTypesService.remove(req.user, Number(id));
+  remove(@Req() req: any, @Param('id') id: string, @Query('cinemaId') cinemaId?: string) {
+    return this.payrollTypesService.remove(req.user, Number(id), cinemaId);
   }
 }

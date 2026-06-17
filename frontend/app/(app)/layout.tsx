@@ -4,8 +4,11 @@ import ActiveCinemaIndicator from "../components/ActiveCinemaIndicator";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <AppMenu />
-      <ActiveCinemaIndicator />
+      <div className="bg-gray-100 pb-3 pt-2 dark:bg-gray-950">
+        <AppMenu />
+        <ActiveCinemaIndicator />
+      </div>
+
       {children}
     </>
   );

@@ -11,8 +11,10 @@ type AuthUser = {
   sub: number;
   email: string;
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number;
+  cinemaId: number | null;
 };
+
+type CinemaContextValue = number | string | null | undefined;
 
 @Injectable()
 export class PayrollTypesService {
@@ -25,21 +27,50 @@ export class PayrollTypesService {
     throw new ForbiddenException('Ingen adgang');
   }
 
-  private getCinemaFilter(user: AuthUser) {
-    if (user.role === 'MASTER') {
-      return {};
+  private parseCinemaId(value: CinemaContextValue) {
+    const cinemaId = Number(value);
+
+    if (!Number.isFinite(cinemaId) || cinemaId <= 0) {
+      return null;
     }
 
-    return {
-      cinemaId: user.cinemaId,
-    };
+    return cinemaId;
   }
 
-  async findAll(user: AuthUser) {
+  private getRequiredCinemaId(
+    user: AuthUser,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    if (user.role === 'MASTER') {
+      const cinemaId = this.parseCinemaId(selectedCinemaId);
+
+      if (!cinemaId) {
+        throw new BadRequestException(
+          'Vælg en biograf, før du administrerer lønarter.',
+        );
+      }
+
+      return cinemaId;
+    }
+
+    const cinemaId = this.parseCinemaId(user.cinemaId);
+
+    if (!cinemaId) {
+      throw new BadRequestException('Brugeren mangler biograf.');
+    }
+
+    return cinemaId;
+  }
+
+  async findAll(user: AuthUser, selectedCinemaId?: CinemaContextValue) {
     this.ensureAdmin(user);
 
+    const cinemaId = this.getRequiredCinemaId(user, selectedCinemaId);
+
     return this.prisma.payrollType.findMany({
-      where: this.getCinemaFilter(user),
+      where: {
+        cinemaId,
+      },
       orderBy: {
         name: 'asc',
       },
@@ -55,13 +86,16 @@ export class PayrollTypesService {
       description?: string;
       color?: string;
       isDefault?: boolean;
+      cinemaId?: CinemaContextValue;
     },
   ) {
     this.ensureAdmin(user);
 
+    const cinemaId = this.getRequiredCinemaId(user, data.cinemaId);
+
     const existing = await this.prisma.payrollType.findFirst({
       where: {
-        cinemaId: user.cinemaId,
+        cinemaId,
         payrollCode: data.payrollCode,
       },
     });
@@ -73,7 +107,7 @@ export class PayrollTypesService {
     if (data.isDefault) {
       await this.prisma.payrollType.updateMany({
         where: {
-          cinemaId: user.cinemaId,
+          cinemaId,
         },
         data: {
           isDefault: false,
@@ -83,7 +117,7 @@ export class PayrollTypesService {
 
     return this.prisma.payrollType.create({
       data: {
-        cinemaId: user.cinemaId,
+        cinemaId,
         name: data.name,
         payrollCode: data.payrollCode,
         exportCode: data.exportCode,
@@ -105,14 +139,21 @@ export class PayrollTypesService {
       color?: string;
       isDefault?: boolean;
       isActive?: boolean;
+      cinemaId?: CinemaContextValue;
     },
+    selectedCinemaId?: CinemaContextValue,
   ) {
     this.ensureAdmin(user);
+
+    const cinemaId = this.getRequiredCinemaId(
+      user,
+      selectedCinemaId ?? data.cinemaId,
+    );
 
     const existing = await this.prisma.payrollType.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user),
+        cinemaId,
       },
     });
 
@@ -135,17 +176,31 @@ export class PayrollTypesService {
       where: {
         id,
       },
-      data,
+      data: {
+        name: data.name,
+        payrollCode: data.payrollCode,
+        exportCode: data.exportCode,
+        description: data.description,
+        color: data.color,
+        isDefault: data.isDefault,
+        isActive: data.isActive,
+      },
     });
   }
 
-  async remove(user: AuthUser, id: number) {
+  async remove(
+    user: AuthUser,
+    id: number,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
     this.ensureAdmin(user);
+
+    const cinemaId = this.getRequiredCinemaId(user, selectedCinemaId);
 
     const existing = await this.prisma.payrollType.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user),
+        cinemaId,
       },
     });
 

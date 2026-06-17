@@ -20,8 +20,16 @@ export class WorkTypesController {
 
   @UseGuards(JwtGuard)
   @Get()
-  findAll(@Req() req, @Query('includeArchived') includeArchived?: string) {
-    return this.workTypesService.findAll(req.user, includeArchived === 'true');
+  findAll(
+    @Req() req,
+    @Query('includeArchived') includeArchived?: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.workTypesService.findAll(
+      req.user,
+      includeArchived === 'true',
+      cinemaId,
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -32,19 +40,28 @@ export class WorkTypesController {
 
   @UseGuards(JwtGuard)
   @Patch(':id')
-  update(@Req() req, @Param('id') id: string, @Body() body) {
-    return this.workTypesService.update(req.user, Number(id), body);
+  update(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.workTypesService.update(req.user, Number(id), body, cinemaId);
   }
 
   @UseGuards(JwtGuard)
   @Delete(':id')
-  remove(@Req() req, @Param('id') id: string) {
-    return this.workTypesService.remove(req.user, Number(id));
+  remove(@Req() req, @Param('id') id: string, @Query('cinemaId') cinemaId?: string) {
+    return this.workTypesService.remove(req.user, Number(id), cinemaId);
   }
 
   @UseGuards(JwtGuard)
   @Patch(':id/reactivate')
-  reactivate(@Req() req, @Param('id') id: string) {
-    return this.workTypesService.reactivate(req.user, Number(id));
+  reactivate(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.workTypesService.reactivate(req.user, Number(id), cinemaId);
   }
 }
