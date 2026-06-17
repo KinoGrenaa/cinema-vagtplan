@@ -471,16 +471,30 @@ export default function TimeApprovalPage() {
       const response = await apiFetch("/time-entries");
 
       if (!response.ok) {
+        if (response.status !== 401) {
+          const message = await readErrorMessage(
+            response,
+            "Kunne ikke hente tidsregistreringer",
+          );
+
+          infoDialog.showError("Kunne ikke hente tidsregistreringer", message);
+        }
+
         setEntries([]);
         return;
       }
 
       const data = await response.json();
-
       const nextEntries = Array.isArray(data) ? data : [];
-
       setEntries(nextEntries);
-    } catch {
+    } catch (error) {
+      infoDialog.showError(
+        "Kunne ikke hente tidsregistreringer",
+        error instanceof Error && error.message
+          ? error.message
+          : "Der opstod en fejl, da tidsregistreringerne skulle hentes. Prøv igen.",
+      );
+
       setEntries([]);
     } finally {
       setLoading(false);
@@ -815,13 +829,13 @@ export default function TimeApprovalPage() {
 
   function voidEntry(id: number) {
     inputDialog.prompt({
-      title: "Afvis og slet registrering",
+      title: "Afvis registrering",
       description:
-        "Denne tidsregistrering markeres som annulleret og kommer ikke med i løn. Den slettes ikke fra historikken.",
-      label: "Begrundelse",
+        "Denne tidsregistrering markeres som afvist og kommer ikke med i løn. Den slettes ikke fra historikken.",
+      label: "Intern note",
       placeholder:
         "Fx fejlregistrering, dobbeltregistrering eller registrering der ikke skal lønbehandles...",
-      confirmText: "Afvis og slet",
+      confirmText: "Afvis registrering",
       cancelText: "Annuller",
       required: true,
       onConfirm: async (value) => {
@@ -829,8 +843,8 @@ export default function TimeApprovalPage() {
 
         if (!adminNote) {
           infoDialog.showError(
-            "Begrundelse mangler",
-            "Du skal skrive en begrundelse for annulleringen.",
+            "Intern note mangler",
+            "Du skal skrive en intern note for annulleringen.",
           );
 
           return;
@@ -1259,7 +1273,7 @@ export default function TimeApprovalPage() {
                                           onClick={() => voidEntry(entry.id)}
                                           className="rounded-xl bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
                                         >
-                                          Afvis og slet
+                                          Afvis registrering
                                         </button>
                                       )}
                                     </div>

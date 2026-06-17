@@ -53,14 +53,14 @@ export default function TimeEntryEditModal({
 
   async function handleSave() {
     if (!adminNote.trim()) {
-      setError("Begrundelse er påkrævet");
+      setError("Intern note er påkrævet");
       return;
     }
 
     await onSave({
       clockIn: new Date(newClockIn).toISOString(),
       clockOut: newClockOut ? new Date(newClockOut).toISOString() : null,
-      adminNote,
+      adminNote: adminNote.trim(),
     });
   }
 
@@ -96,7 +96,7 @@ export default function TimeEntryEditModal({
 
         <div>
           <label className="mb-1 block text-sm font-medium">
-            Begrundelse for ændring
+            Intern note om rettelsen
           </label>
 
           <textarea
