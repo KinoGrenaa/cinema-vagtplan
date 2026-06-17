@@ -32,6 +32,8 @@ type Message = {
   isBroadcast: boolean;
 };
 
+type ArchiveSection = "received" | "sent";
+
 type MessageDateGroup = {
   dateKey: string;
   dateLabel: string;
@@ -140,11 +142,30 @@ function groupMessagesBySentDate(messages: Message[]): MessageDateGroup[] {
   }, []);
 }
 
+function getMessageArchiveSection(
+  message: Message,
+  currentUserId?: number,
+): ArchiveSection {
+  return currentUserId && message.sender?.id === currentUserId
+    ? "sent"
+    : "received";
+}
+
+function getRestoreTargetLabel(section: ArchiveSection) {
+  return section === "sent" ? "sendte beskeder" : "indbakken";
+}
+
+function getArchiveSectionLabel(section: ArchiveSection) {
+  return section === "sent" ? "Sendte" : "Modtagne";
+}
+
 export default function ArchivedMessagesPage() {
   const { user, loading: authLoading } = useAuth();
   const confirmDialog = useConfirm();
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [activeSection, setActiveSection] =
+    useState<ArchiveSection>("received");
   const [expandedDateKeys, setExpandedDateKeys] = useState<string[]>([]);
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
@@ -225,9 +246,24 @@ export default function ArchivedMessagesPage() {
     onMessage: refreshMessagesSilently,
   });
 
+  const receivedMessages = useMemo(() => {
+    return messages.filter(
+      (message) => getMessageArchiveSection(message, user?.id) === "received",
+    );
+  }, [messages, user?.id]);
+
+  const sentMessages = useMemo(() => {
+    return messages.filter(
+      (message) => getMessageArchiveSection(message, user?.id) === "sent",
+    );
+  }, [messages, user?.id]);
+
+  const activeMessages =
+    activeSection === "sent" ? sentMessages : receivedMessages;
+
   const groupedMessages = useMemo(() => {
-    return groupMessagesBySentDate(messages);
-  }, [messages]);
+    return groupMessagesBySentDate(activeMessages);
+  }, [activeMessages]);
 
   useEffect(() => {
     setExpandedDateKeys((current) => {
@@ -253,6 +289,12 @@ export default function ArchivedMessagesPage() {
     });
   }, [groupedMessages]);
 
+  function switchSection(section: ArchiveSection) {
+    setActiveSection(section);
+    setExpandedMessageId(null);
+    setExpandedDateKeys([]);
+  }
+
   function toggleDateGroup(dateKey: string) {
     setExpandedDateKeys((current) =>
       current.includes(dateKey)
@@ -271,7 +313,7 @@ export default function ArchivedMessagesPage() {
     return body.length > 120 ? `${body.slice(0, 120)}...` : body;
   }
 
-  async function restoreMessage(messageId: number) {
+  async function restoreMessage(messageId: number, section: ArchiveSection) {
     try {
       setRestoringMessageId(messageId);
 
@@ -284,7 +326,9 @@ export default function ArchivedMessagesPage() {
           "Kunne ikke flytte beskeden tilbage",
           await readErrorMessage(
             response,
-            "Der opstod en fejl under flytning af beskeden tilbage til indbakken.",
+            `Der opstod en fejl under flytning af beskeden tilbage til ${getRestoreTargetLabel(
+              section,
+            )}.`,
           ),
         );
 
@@ -302,28 +346,38 @@ export default function ArchivedMessagesPage() {
         "Kunne ikke flytte beskeden tilbage",
         error instanceof Error
           ? error.message
-          : "Der opstod en uventet fejl under flytning af beskeden tilbage til indbakken.",
+          : `Der opstod en uventet fejl under flytning af beskeden tilbage til ${getRestoreTargetLabel(
+              section,
+            )}.`,
       );
     } finally {
       setRestoringMessageId(null);
     }
   }
 
-  function confirmRestoreMessage(message: Message) {
+  function confirmRestoreMessage(message: Message, section: ArchiveSection) {
+    const targetLabel = getRestoreTargetLabel(section);
+
     confirmDialog.confirm({
       title: "Flyt besked tilbage",
-      description: `Vil du flytte "${message.subject}" tilbage til indbakken?`,
+      description: `Vil du flytte "${message.subject}" tilbage til ${targetLabel}?`,
       confirmText: "Flyt tilbage",
       cancelText: "Annuller",
       confirmVariant: "primary",
       onConfirm: async () => {
-        await restoreMessage(message.id);
+        await restoreMessage(message.id, section);
       },
     });
   }
 
   const pageLoading = authLoading || loading;
   const messageCount = messages.length;
+  const activeCount = activeMessages.length;
+  const activeSectionLabel = getArchiveSectionLabel(activeSection);
+  const emptyText =
+    activeSection === "sent"
+      ? "Du har ingen sendte arkiverede beskeder."
+      : "Du har ingen modtagne arkiverede beskeder.";
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -332,8 +386,8 @@ export default function ArchivedMessagesPage() {
           <h1 className="text-3xl font-bold">Arkiverede beskeder</h1>
 
           <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Her kan du se beskeder, du tidligere har arkiveret, og flytte dem
-            tilbage til indbakken.
+            Skift mellem modtagne og sendte arkiverede beskeder. Beskederne er
+            grupperet efter sendtdato.
           </p>
         </div>
 
@@ -345,8 +399,6 @@ export default function ArchivedMessagesPage() {
 
         {!pageLoading && messageCount === 0 && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            <div className="mb-2 text-4xl">Arkiv</div>
-
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               Intet arkiv endnu
             </h2>
@@ -356,11 +408,69 @@ export default function ArchivedMessagesPage() {
         )}
 
         {!pageLoading && messageCount > 0 && (
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-              Viser {messageCount} arkiverede beskeder grupperet efter
-              sendtdato.
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => switchSection("received")}
+                  className={`rounded-xl px-4 py-3 text-left transition ${
+                    activeSection === "received"
+                      ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-950"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-semibold">Modtagne</div>
+
+                    <span
+                      className={`rounded-full px-3 py-1 text-sm font-bold ${
+                        activeSection === "received"
+                          ? "bg-white text-gray-900 dark:bg-gray-950 dark:text-white"
+                          : "bg-white text-gray-700 dark:bg-gray-950 dark:text-gray-200"
+                      }`}
+                    >
+                      {receivedMessages.length}
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => switchSection("sent")}
+                  className={`rounded-xl px-4 py-3 text-left transition ${
+                    activeSection === "sent"
+                      ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-950"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-semibold">Sendte</div>
+
+                    <span
+                      className={`rounded-full px-3 py-1 text-sm font-bold ${
+                        activeSection === "sent"
+                          ? "bg-white text-gray-900 dark:bg-gray-950 dark:text-white"
+                          : "bg-white text-gray-700 dark:bg-gray-950 dark:text-gray-200"
+                      }`}
+                    >
+                      {sentMessages.length}
+                    </span>
+                  </div>
+                </button>
+              </div>
             </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+              Viser {activeCount} {activeSectionLabel.toLowerCase()} arkiverede
+              beskeder.
+            </div>
+
+            {activeCount === 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+                {emptyText}
+              </div>
+            )}
 
             {groupedMessages.map((group) => {
               const isGroupExpanded = expandedDateKeys.includes(group.dateKey);
@@ -396,6 +506,8 @@ export default function ArchivedMessagesPage() {
                       {group.messages.map((message) => {
                         const isExpanded = expandedMessageId === message.id;
                         const isRestoring = restoringMessageId === message.id;
+                        const targetLabel =
+                          getRestoreTargetLabel(activeSection);
 
                         return (
                           <article key={message.id}>
@@ -415,6 +527,18 @@ export default function ArchivedMessagesPage() {
                                       Arkiveret
                                     </span>
 
+                                    <span
+                                      className={`rounded-full px-2 py-1 text-xs font-semibold text-white ${
+                                        activeSection === "sent"
+                                          ? "bg-purple-600"
+                                          : "bg-green-600"
+                                      }`}
+                                    >
+                                      {activeSection === "sent"
+                                        ? "Sendt"
+                                        : "Modtaget"}
+                                    </span>
+
                                     {message.isBroadcast && (
                                       <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
                                         Sendt til alle
@@ -427,8 +551,15 @@ export default function ArchivedMessagesPage() {
                                   </h2>
 
                                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    Fra:{" "}
-                                    {getUserName(message.sender) || "System"}
+                                    {activeSection === "sent"
+                                      ? "Til: "
+                                      : "Fra: "}
+                                    {activeSection === "sent"
+                                      ? message.isBroadcast
+                                        ? "Alle"
+                                        : getUserName(message.receiver) ||
+                                          "Ukendt"
+                                      : getUserName(message.sender) || "System"}
                                   </p>
 
                                   {!isExpanded && (
@@ -476,14 +607,17 @@ export default function ArchivedMessagesPage() {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      confirmRestoreMessage(message)
+                                      confirmRestoreMessage(
+                                        message,
+                                        activeSection,
+                                      )
                                     }
                                     disabled={isRestoring}
                                     className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                                   >
                                     {isRestoring
                                       ? "Flytter tilbage..."
-                                      : "Flyt tilbage til indbakke"}
+                                      : `Flyt tilbage til ${targetLabel}`}
                                   </button>
                                 </div>
                               </div>
