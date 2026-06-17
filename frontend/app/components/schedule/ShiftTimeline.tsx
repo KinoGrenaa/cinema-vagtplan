@@ -246,6 +246,8 @@ function ShiftTimeline({
 }: ShiftTimelineProps) {
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const [timelineWidth, setTimelineWidth] = useState(1);
+  const dragStartPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const resizeStartRef = useRef(false);
 
   useEffect(() => {
     const element = timelineRef.current;
@@ -395,11 +397,30 @@ function ShiftTimeline({
                     x: left,
                     y,
                   }}
+                  onDragStart={(_, data) => {
+                    dragStartPositionRef.current = { x: data.x, y: data.y };
+                  }}
                   onDragStop={(_, data) => {
+                    const dragStartPosition = dragStartPositionRef.current;
+                    dragStartPositionRef.current = null;
+
+                    if (
+                      dragStartPosition &&
+                      Math.round(dragStartPosition.x) === Math.round(data.x) &&
+                      Math.round(dragStartPosition.y) === Math.round(data.y)
+                    ) {
+                      return;
+                    }
+
                     const { hour, minute } = xToTime(data.x, timelineWidth);
                     onMoveShift(shift, hour, minute);
                   }}
+                  onResizeStart={() => {
+                    resizeStartRef.current = true;
+                  }}
                   onResizeStop={(_, __, ref, ___, position) => {
+                    resizeStartRef.current = false;
+
                     const start = xToTime(position.x, timelineWidth);
                     const end = xToTime(
                       position.x + ref.offsetWidth,
@@ -419,9 +440,18 @@ function ShiftTimeline({
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => onSelectShift(shift)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+
+                      if (resizeStartRef.current) {
+                        return;
+                      }
+
+                      onSelectShift(shift);
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
                         onSelectShift(shift);
                       }
                     }}
