@@ -47,7 +47,7 @@ type Cinema = {
 type CurrentUser = {
   id: number;
   role: "MASTER" | "ADMIN" | "EMPLOYEE";
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 const CINEMA_DEFAULTS = {
@@ -231,6 +231,17 @@ export default function CinemaSettingsPage() {
       }
 
       const user: CurrentUser = JSON.parse(savedUser);
+
+      if (!user.cinemaId) {
+        setCinema(null);
+        infoDialog.showError(
+          "Biograf skal vælges",
+          user.role === "MASTER"
+            ? "MASTER-brugere er ikke tilknyttet én fast biograf. Når master-panelet er oprettet, skal du vælge hvilken biograf du vil administrere."
+            : "Din bruger er ikke tilknyttet en biograf. Kontakt en administrator.",
+        );
+        return;
+      }
 
       const response = await apiFetch(`/cinemas/${user.cinemaId}`);
 

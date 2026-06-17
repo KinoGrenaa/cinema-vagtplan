@@ -13,7 +13,7 @@ export type User = {
   lastName: string;
   phone?: string | null;
   role: Role;
-  cinemaId: number;
+  cinemaId: number | null;
   profileImage?: string | null;
 };
 
@@ -71,7 +71,7 @@ export type CurrentUser = {
   id: number;
   email: string;
   role: Role;
-  cinemaId: number;
+  cinemaId: number | null;
   firstName?: string;
   lastName?: string;
 };

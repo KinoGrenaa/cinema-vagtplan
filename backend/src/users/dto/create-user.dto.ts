@@ -30,8 +30,9 @@ export class CreateUserDto {
   @IsEnum(['MASTER', 'ADMIN', 'EMPLOYEE'])
   role?: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
 
+  @IsOptional()
   @IsInt()
-  cinemaId: number;
+  cinemaId?: number | null;
 
   @IsOptional()
   @IsEnum(['HOURLY', 'SALARIED'])

@@ -2,9 +2,10 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 type CurrentUser = {
-  id: number;
+  id?: number;
+  sub?: number;
   role: string;
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 type AuditLogData = {
@@ -13,7 +14,7 @@ type AuditLogData = {
   entityId?: number;
   description?: string;
   userId?: number;
-  cinemaId?: number;
+  cinemaId?: number | null;
 };
 
 type AuditUser = {

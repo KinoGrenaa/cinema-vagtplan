@@ -171,8 +171,8 @@ model User {
   canManageCinemaSettings  Boolean @default(false)
   canSendBroadcastMessages Boolean @default(false)
 
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+  cinemaId Int?
+  cinema   Cinema? @relation(fields: [cinemaId], references: [id])
 
   shifts                     Shift[]
   leaveRequests              LeaveRequest[]

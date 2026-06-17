@@ -16,7 +16,7 @@ type AuthUser = {
   id?: number;
   email: string;
   role: UserRole;
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 @Injectable()
@@ -26,21 +26,30 @@ export class UsersService {
     private auditLogsService: AuditLogsService,
   ) {}
 
+  private getActorUserId(currentUser?: AuthUser) {
+    return currentUser?.sub ?? currentUser?.id;
+  }
+
   private ensureSameCinemaOrMaster(
     currentUser: AuthUser,
-    targetCinemaId: number,
+    targetCinemaId: number | null,
   ) {
-    if (
-      currentUser.role !== 'MASTER' &&
-      currentUser.cinemaId !== targetCinemaId
-    ) {
+    if (currentUser.role === 'MASTER') {
+      return;
+    }
+
+    if (!currentUser.cinemaId || !targetCinemaId) {
+      throw new ForbiddenException('Du har ikke adgang til denne biograf');
+    }
+
+    if (currentUser.cinemaId !== targetCinemaId) {
       throw new ForbiddenException('Du har ikke adgang til denne biograf');
     }
   }
 
   private ensureCanModifyTargetUser(
     currentUser: AuthUser,
-    targetUser: { role: UserRole; cinemaId: number },
+    targetUser: { role: UserRole; cinemaId: number | null },
   ) {
     this.ensureSameCinemaOrMaster(currentUser, targetUser.cinemaId);
 
@@ -49,7 +58,38 @@ export class UsersService {
     }
   }
 
+  private async ensureCinemaExists(cinemaId: number) {
+    const cinema = await this.prisma.cinema.findUnique({
+      where: { id: cinemaId },
+      select: { id: true },
+    });
+
+    if (!cinema) {
+      throw new BadRequestException('Den valgte biograf blev ikke fundet');
+    }
+  }
+
+  private async validateRoleCinema(role: UserRole, cinemaId?: number | null) {
+    if (role === 'MASTER') {
+      return null;
+    }
+
+    if (!cinemaId) {
+      throw new BadRequestException(
+        'Admin og medarbejdere skal tilknyttes en biograf',
+      );
+    }
+
+    await this.ensureCinemaExists(cinemaId);
+
+    return cinemaId;
+  }
+
   async findAll(currentUser: AuthUser) {
+    if (currentUser.role !== 'MASTER' && !currentUser.cinemaId) {
+      throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
+    }
+
     return this.prisma.user.findMany({
       where:
         currentUser.role === 'MASTER'
@@ -92,7 +132,7 @@ export class UsersService {
       phone?: string;
       role?: UserRole;
       employmentType?: EmploymentType;
-      cinemaId: number;
+      cinemaId?: number | null;
       canManageSchedule?: boolean;
       canManageUsers?: boolean;
       canManagePayroll?: boolean;
@@ -102,15 +142,19 @@ export class UsersService {
     },
     currentUser?: AuthUser,
   ) {
-    if (currentUser) {
-      this.ensureSameCinemaOrMaster(currentUser, data.cinemaId);
+    const role = data.role || 'EMPLOYEE';
 
-      if (currentUser.role !== 'MASTER' && data.role === 'MASTER') {
+    if (currentUser) {
+      this.ensureSameCinemaOrMaster(currentUser, data.cinemaId ?? null);
+
+      if (currentUser.role !== 'MASTER' && role === 'MASTER') {
         throw new ForbiddenException(
           'Kun master kan oprette eller tildele master-rolle',
         );
       }
     }
+
+    const cinemaId = await this.validateRoleCinema(role, data.cinemaId);
 
     const existingUser = await this.prisma.user.findUnique({
       where: {
@@ -133,15 +177,18 @@ export class UsersService {
         firstName: data.firstName,
         lastName: data.lastName,
         phone: data.phone,
-        role: data.role || 'EMPLOYEE',
+        role,
         employmentType: data.employmentType || 'HOURLY',
-        cinemaId: data.cinemaId,
-        canManageSchedule: data.canManageSchedule ?? false,
-        canManageUsers: data.canManageUsers ?? false,
-        canManagePayroll: data.canManagePayroll ?? false,
-        canManageLeaveRequests: data.canManageLeaveRequests ?? false,
-        canManageCinemaSettings: data.canManageCinemaSettings ?? false,
-        canSendBroadcastMessages: data.canSendBroadcastMessages ?? false,
+        cinemaId,
+        canManageSchedule: role === 'MASTER' ? true : data.canManageSchedule ?? false,
+        canManageUsers: role === 'MASTER' ? true : data.canManageUsers ?? false,
+        canManagePayroll: role === 'MASTER' ? true : data.canManagePayroll ?? false,
+        canManageLeaveRequests:
+          role === 'MASTER' ? true : data.canManageLeaveRequests ?? false,
+        canManageCinemaSettings:
+          role === 'MASTER' ? true : data.canManageCinemaSettings ?? false,
+        canSendBroadcastMessages:
+          role === 'MASTER' ? true : data.canSendBroadcastMessages ?? false,
         isActive: true,
         deactivatedAt: null,
       },
@@ -152,6 +199,7 @@ export class UsersService {
       entityType: 'User',
       entityId: createdUser.id,
       description: `Oprettede bruger ${createdUser.firstName} ${createdUser.lastName}`,
+      userId: this.getActorUserId(currentUser),
       cinemaId: createdUser.cinemaId,
     });
 
@@ -219,6 +267,12 @@ export class UsersService {
       }
     }
 
+    const nextRole = data.role || user.role;
+    const nextCinemaId = await this.validateRoleCinema(
+      nextRole,
+      nextRole === 'MASTER' ? null : user.cinemaId,
+    );
+
     const updateData: any = {};
 
     if (data.email !== undefined) updateData.email = data.email;
@@ -226,6 +280,7 @@ export class UsersService {
     if (data.lastName !== undefined) updateData.lastName = data.lastName;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.role !== undefined) updateData.role = data.role;
+    updateData.cinemaId = nextCinemaId;
     if (data.employmentType !== undefined) {
       updateData.employmentType = data.employmentType;
     }
@@ -246,22 +301,34 @@ export class UsersService {
     if (data.notes !== undefined) updateData.notes = data.notes;
 
     if (data.canManageSchedule !== undefined) {
-      updateData.canManageSchedule = data.canManageSchedule;
+      updateData.canManageSchedule = nextRole === 'MASTER' ? true : data.canManageSchedule;
     }
     if (data.canManageUsers !== undefined) {
-      updateData.canManageUsers = data.canManageUsers;
+      updateData.canManageUsers = nextRole === 'MASTER' ? true : data.canManageUsers;
     }
     if (data.canManagePayroll !== undefined) {
-      updateData.canManagePayroll = data.canManagePayroll;
+      updateData.canManagePayroll = nextRole === 'MASTER' ? true : data.canManagePayroll;
     }
     if (data.canManageLeaveRequests !== undefined) {
-      updateData.canManageLeaveRequests = data.canManageLeaveRequests;
+      updateData.canManageLeaveRequests =
+        nextRole === 'MASTER' ? true : data.canManageLeaveRequests;
     }
     if (data.canManageCinemaSettings !== undefined) {
-      updateData.canManageCinemaSettings = data.canManageCinemaSettings;
+      updateData.canManageCinemaSettings =
+        nextRole === 'MASTER' ? true : data.canManageCinemaSettings;
     }
     if (data.canSendBroadcastMessages !== undefined) {
-      updateData.canSendBroadcastMessages = data.canSendBroadcastMessages;
+      updateData.canSendBroadcastMessages =
+        nextRole === 'MASTER' ? true : data.canSendBroadcastMessages;
+    }
+
+    if (nextRole === 'MASTER') {
+      updateData.canManageSchedule = true;
+      updateData.canManageUsers = true;
+      updateData.canManagePayroll = true;
+      updateData.canManageLeaveRequests = true;
+      updateData.canManageCinemaSettings = true;
+      updateData.canSendBroadcastMessages = true;
     }
 
     if (data.password && data.password.trim() !== '') {
@@ -278,6 +345,7 @@ export class UsersService {
       entityType: 'User',
       entityId: updatedUser.id,
       description: `Opdaterede bruger ${updatedUser.firstName} ${updatedUser.lastName}`,
+      userId: this.getActorUserId(currentUser),
       cinemaId: updatedUser.cinemaId,
     });
 
@@ -310,6 +378,7 @@ export class UsersService {
       entityType: 'User',
       entityId: deactivatedUser.id,
       description: `Deaktiverede bruger ${deactivatedUser.firstName} ${deactivatedUser.lastName}`,
+      userId: this.getActorUserId(currentUser),
       cinemaId: deactivatedUser.cinemaId,
     });
 
@@ -342,6 +411,7 @@ export class UsersService {
       entityType: 'User',
       entityId: reactivatedUser.id,
       description: `Genaktiverede bruger ${reactivatedUser.firstName} ${reactivatedUser.lastName}`,
+      userId: this.getActorUserId(currentUser),
       cinemaId: reactivatedUser.cinemaId,
     });
 

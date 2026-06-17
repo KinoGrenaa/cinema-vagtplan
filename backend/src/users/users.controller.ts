@@ -30,7 +30,7 @@ export type AuthUser = {
   id?: number;
   email: string;
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 @Controller('users')
@@ -62,6 +62,10 @@ export class UsersController {
     this.validateUserRoleAccess(currentUser, body.role);
 
     if (currentUser.role !== 'MASTER') {
+      if (!currentUser.cinemaId) {
+        throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
+      }
+
       body.cinemaId = currentUser.cinemaId;
     }
 

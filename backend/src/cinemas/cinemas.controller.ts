@@ -17,7 +17,7 @@ type AuthUser = {
   sub: number;
   email: string;
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number;
+  cinemaId: number | null;
   canManageCinemaSettings?: boolean;
 };
 
@@ -56,7 +56,10 @@ export class CinemasController {
     const user = req.user as AuthUser;
     const cinemaId = Number(id);
 
-    if (user.role !== 'MASTER' && user.cinemaId !== cinemaId) {
+    if (
+      user.role !== 'MASTER' &&
+      (!user.cinemaId || user.cinemaId !== cinemaId)
+    ) {
       throw new ForbiddenException('Du har ikke adgang til denne biograf');
     }
 
@@ -73,7 +76,10 @@ export class CinemasController {
     const user = req.user as AuthUser;
     const cinemaId = Number(id);
 
-    if (user.role !== 'MASTER' && user.cinemaId !== cinemaId) {
+    if (
+      user.role !== 'MASTER' &&
+      (!user.cinemaId || user.cinemaId !== cinemaId)
+    ) {
       throw new ForbiddenException('Du har ikke adgang til denne biograf');
     }
 

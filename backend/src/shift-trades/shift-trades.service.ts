@@ -1,4 +1,4 @@
-import {
+﻿import {
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -178,14 +178,14 @@ export class ShiftTradesService {
           userId: trade.targetUserId,
           cinemaId: trade.cinemaId,
           title: 'Ny direkte vagt',
-          message: 'Du har fået tilbudt en vagt direkte',
+          message: 'Du har fÃ¥et tilbudt en vagt direkte',
           type: 'SHIFT_DIRECT',
           linkUrl: '/my-shifts',
         });
 
         await this.push.sendToUser(trade.targetUserId, {
           title: 'Ny direkte vagt',
-          body: 'Du har fået tilbudt en vagt direkte',
+          body: 'Du har fÃ¥et tilbudt en vagt direkte',
           url: '/my-shifts',
         });
       }
@@ -205,10 +205,18 @@ export class ShiftTradesService {
       throw new NotFoundException('Bruger blev ikke fundet');
     }
 
+    const acceptedByUserCinemaId = acceptedByUser.cinemaId;
+
+    if (acceptedByUserCinemaId === null) {
+      throw new ForbiddenException(
+        'Brugeren er ikke tilknyttet en biograf og kan ikke acceptere vagtbytter',
+      );
+    }
+
     const trade = await this.prisma.shiftTrade.findFirst({
       where: {
         id,
-        cinemaId: acceptedByUser.cinemaId,
+        cinemaId: acceptedByUserCinemaId,
       },
     });
 
@@ -217,7 +225,7 @@ export class ShiftTradesService {
     }
 
     if (trade.status !== ShiftTradeStatus.OPEN) {
-      throw new ForbiddenException('Vagtbyttet er ikke længere åbent');
+      throw new ForbiddenException('Vagtbyttet er ikke lÃ¦ngere Ã¥bent');
     }
 
     if (trade.offeredByUserId === acceptedByUserId) {
@@ -339,10 +347,18 @@ export class ShiftTradesService {
       throw new NotFoundException('Bruger blev ikke fundet');
     }
 
+    const rejectedByUserCinemaId = rejectedByUser.cinemaId;
+
+    if (rejectedByUserCinemaId === null) {
+      throw new ForbiddenException(
+        'Brugeren er ikke tilknyttet en biograf og kan ikke afvise vagtbytter',
+      );
+    }
+
     const existingTrade = await this.prisma.shiftTrade.findFirst({
       where: {
         id,
-        cinemaId: rejectedByUser.cinemaId,
+        cinemaId: rejectedByUserCinemaId,
       },
     });
 
@@ -351,7 +367,7 @@ export class ShiftTradesService {
     }
 
     if (existingTrade.status !== ShiftTradeStatus.OPEN) {
-      throw new ForbiddenException('Vagtbyttet er ikke længere åbent');
+      throw new ForbiddenException('Vagtbyttet er ikke lÃ¦ngere Ã¥bent');
     }
 
     if (
@@ -426,7 +442,7 @@ export class ShiftTradesService {
     }
 
     if (existingTrade.status !== ShiftTradeStatus.OPEN) {
-      throw new ForbiddenException('Vagtbyttet er ikke længere åbent');
+      throw new ForbiddenException('Vagtbyttet er ikke lÃ¦ngere Ã¥bent');
     }
 
     const trade = await this.prisma.shiftTrade.update({
@@ -453,3 +469,4 @@ export class ShiftTradesService {
     return trade;
   }
 }
+
