@@ -80,8 +80,12 @@ export class MessagesController {
 
   @UseGuards(JwtGuard)
   @Patch(':id/unarchive')
-  unarchiveMessage(@Param('id') id: string) {
-    return this.messagesService.unarchiveMessage(Number(id));
+  unarchiveMessage(@Req() req: any, @Param('id') id: string) {
+    return this.messagesService.unarchiveMessage(
+      Number(id),
+      Number(req.user.sub),
+      Number(req.user.cinemaId),
+    );
   }
 
   @UseGuards(JwtGuard)

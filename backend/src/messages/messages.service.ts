@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -139,14 +143,14 @@ export class MessagesService {
     });
 
     if (!message) {
-      throw new Error('Besked ikke fundet');
+      throw new NotFoundException('Besked ikke fundet');
     }
 
     const allowed =
       message.senderId === userId || message.receiverId === userId;
 
     if (!allowed) {
-      throw new Error('Ingen adgang');
+      throw new ForbiddenException('Du har ikke adgang til denne besked');
     }
 
     const updatedMessage = await this.prisma.message.update({
@@ -169,7 +173,28 @@ export class MessagesService {
     return updatedMessage;
   }
 
-  async unarchiveMessage(id: number) {
+  async unarchiveMessage(id: number, userId: number, cinemaId: number) {
+    const message = await this.prisma.message.findUnique({
+      where: { id },
+    });
+
+    if (!message) {
+      throw new NotFoundException('Besked ikke fundet');
+    }
+
+    if (message.cinemaId !== cinemaId) {
+      throw new ForbiddenException('Du har ikke adgang til denne besked');
+    }
+
+    const allowed =
+      message.senderId === userId ||
+      message.receiverId === userId ||
+      message.isBroadcast;
+
+    if (!allowed) {
+      throw new ForbiddenException('Du har ikke adgang til denne besked');
+    }
+
     const updatedMessage = await this.prisma.message.update({
       where: { id },
       data: {
@@ -196,11 +221,11 @@ export class MessagesService {
     });
 
     if (!message) {
-      throw new Error('Besked ikke fundet');
+      throw new NotFoundException('Besked ikke fundet');
     }
 
     if (message.senderId !== userId) {
-      throw new Error('Kun afsender kan tilbagekalde beskeden');
+      throw new ForbiddenException('Kun afsender kan tilbagekalde beskeden');
     }
 
     const updatedMessage = await this.prisma.message.update({

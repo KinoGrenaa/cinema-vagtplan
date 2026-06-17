@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+import { useAuth } from "@/app/providers/AuthProvider";
+import { formatDateDK, formatTimeDK } from "@/app/utils/dateTime";
 
 type User = {
   id: number;
@@ -19,11 +21,6 @@ type Message = {
   sender?: User | null;
   receiver?: User | null;
   isBroadcast: boolean;
-};
-
-type CurrentUser = {
-  id: number;
-  cinemaId: number;
 };
 
 async function readErrorMessage(response: Response, fallback: string) {
@@ -44,30 +41,45 @@ async function readErrorMessage(response: Response, fallback: string) {
   return fallback;
 }
 
+function formatDateTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Ukendt tidspunkt";
+  }
+
+  return `${formatDateDK(date)}, kl. ${formatTimeDK(date)}`;
+}
+
+function getTimestamp(value: string) {
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
 export default function ArchivedMessagesPage() {
+  const { user, loading: authLoading } = useAuth();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
   );
   const [loading, setLoading] = useState(true);
+  const [restoringMessageId, setRestoringMessageId] = useState<number | null>(
+    null,
+  );
   const errorDialog = useInfoModal();
 
   async function fetchMessages() {
+    if (!user) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const savedUser = localStorage.getItem("user");
-
-      if (!savedUser) {
-        setMessages([]);
-        return;
-      }
-
-      const user: CurrentUser = JSON.parse(savedUser);
-
-      const response = await apiFetch(
-        `/messages/archive?userId=${user.id}&cinemaId=${user.cinemaId}`,
-      );
+      const response = await apiFetch("/messages/archive");
 
       if (!response.ok) {
         errorDialog.showError(
@@ -100,25 +112,73 @@ export default function ArchivedMessagesPage() {
   }
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      window.location.href = "/";
+      return;
+    }
+
     fetchMessages();
-  }, []);
+  }, [authLoading, user]);
 
   const sortedMessages = useMemo(() => {
     return [...messages].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) => getTimestamp(b.createdAt) - getTimestamp(a.createdAt),
     );
   }, [messages]);
 
-  function getUserName(user?: User | null) {
-    if (!user) return null;
-    return `${user.firstName} ${user.lastName}`;
+  function getUserName(messageUser?: User | null) {
+    if (!messageUser) return null;
+    return `${messageUser.firstName} ${messageUser.lastName}`;
   }
 
   function getShortBody(body: string) {
     if (!body) return "Ingen beskedtekst.";
     return body.length > 120 ? `${body.slice(0, 120)}...` : body;
   }
+
+  async function restoreMessage(messageId: number) {
+    try {
+      setRestoringMessageId(messageId);
+
+      const response = await apiFetch(`/messages/${messageId}/unarchive`, {
+        method: "PATCH",
+      });
+
+      if (!response.ok) {
+        errorDialog.showError(
+          "Kunne ikke flytte beskeden tilbage",
+          await readErrorMessage(
+            response,
+            "Der opstod en fejl under flytning af beskeden tilbage til indbakken.",
+          ),
+        );
+
+        return;
+      }
+
+      setMessages((currentMessages) =>
+        currentMessages.filter((message) => message.id !== messageId),
+      );
+      setExpandedMessageId((currentId) =>
+        currentId === messageId ? null : currentId,
+      );
+    } catch (error) {
+      errorDialog.showError(
+        "Kunne ikke flytte beskeden tilbage",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en uventet fejl under flytning af beskeden tilbage til indbakken.",
+      );
+    } finally {
+      setRestoringMessageId(null);
+    }
+  }
+
+  const pageLoading = authLoading || loading;
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -127,32 +187,34 @@ export default function ArchivedMessagesPage() {
           <h1 className="text-3xl font-bold">Arkiverede beskeder</h1>
 
           <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Her kan du se beskeder, du tidligere har arkiveret.
+            Her kan du se beskeder, du tidligere har arkiveret, og flytte dem
+            tilbage til indbakken.
           </p>
         </div>
 
-        {loading && (
+        {pageLoading && (
           <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
             Henter arkiverede beskeder...
           </div>
         )}
 
-        {!loading && sortedMessages.length === 0 && (
+        {!pageLoading && sortedMessages.length === 0 && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            <div className="mb-2 text-4xl">🗂️</div>
+            <div className="mb-2 text-4xl">Arkiv</div>
 
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               Intet arkiv endnu
             </h2>
 
-            <p className="mt-2">Du har endnu ikke arkiveret nogen beskeder.</p>
+            <p className="mt-2">Du har ingen arkiverede beskeder lige nu.</p>
           </div>
         )}
 
-        {!loading && sortedMessages.length > 0 && (
+        {!pageLoading && sortedMessages.length > 0 && (
           <div className="space-y-3">
             {sortedMessages.map((message) => {
               const isExpanded = expandedMessageId === message.id;
+              const isRestoring = restoringMessageId === message.id;
 
               return (
                 <div
@@ -196,7 +258,7 @@ export default function ArchivedMessagesPage() {
                       </div>
 
                       <div className="shrink-0 text-sm text-gray-400 dark:text-gray-500 md:text-right">
-                        {new Date(message.createdAt).toLocaleString("da-DK")}
+                        {formatDateTime(message.createdAt)}
                       </div>
                     </div>
                   </button>
@@ -215,14 +277,24 @@ export default function ArchivedMessagesPage() {
                             : getUserName(message.receiver) || "Dig"}
                         </div>
 
-                        <div>
-                          Sendt:{" "}
-                          {new Date(message.createdAt).toLocaleString("da-DK")}
-                        </div>
+                        <div>Sendt: {formatDateTime(message.createdAt)}</div>
                       </div>
 
                       <div className="whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
                         {message.body || "Ingen beskedtekst."}
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => restoreMessage(message.id)}
+                          disabled={isRestoring}
+                          className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                        >
+                          {isRestoring
+                            ? "Flytter tilbage..."
+                            : "Flyt tilbage til indbakke"}
+                        </button>
                       </div>
                     </div>
                   )}
