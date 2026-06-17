@@ -34,6 +34,7 @@ type ShiftFormProps = {
   onDelete: () => void;
   onCancel: () => void;
   onOfferTrade: () => void;
+  showHeader?: boolean;
 };
 
 const inputClass =
@@ -221,6 +222,7 @@ export default function ShiftForm({
   onDelete,
   onCancel,
   onOfferTrade,
+  showHeader = true,
 }: ShiftFormProps) {
   const selectedUserLeaveConflict = getUserLeaveConflict(
     userId,
@@ -251,14 +253,16 @@ export default function ShiftForm({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-bold">
-          {selectedShift ? "Rediger vagt" : "Opret vagt"}
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Vælg tidspunkt, medarbejder og arbejdstype for vagten.
-        </p>
-      </div>
+      {showHeader && (
+        <div>
+          <h2 className="text-2xl font-bold">
+            {selectedShift ? "Rediger vagt" : "Opret vagt"}
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Vælg tidspunkt, medarbejder og arbejdstype for vagten.
+          </p>
+        </div>
+      )}
 
       {validationErrors.length > 0 && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">

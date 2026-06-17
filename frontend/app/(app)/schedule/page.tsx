@@ -21,6 +21,7 @@ import {
   toInputDateTime,
 } from "@/app/utils/dateTime";
 import type { Shift, User, WorkType } from "../../../../shared/types";
+import BaseModal from "@/app/components/modals/BaseModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -168,6 +169,7 @@ export default function SchedulePage() {
   }, [movieShowings, selectedDate]);
 
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [showShiftFormModal, setShowShiftFormModal] = useState(false);
 
   const [startTime, setStartTime] = useState(`${todayDefault}T14:00`);
   const [endTime, setEndTime] = useState(`${todayDefault}T22:00`);
@@ -255,6 +257,16 @@ export default function SchedulePage() {
     setEndTime(`${selectedDate}T22:00`);
 
     setNote("");
+  }
+
+  function openCreateShiftModal() {
+    clearForm();
+    setShowShiftFormModal(true);
+  }
+
+  function closeShiftFormModal() {
+    clearForm();
+    setShowShiftFormModal(false);
   }
 
   function resetClockModal() {
@@ -427,7 +439,7 @@ export default function SchedulePage() {
         await createShift(body);
       }
 
-      clearForm();
+      closeShiftFormModal();
     } catch (error) {
       infoDialog.showError(
         selectedShift ? "Vagten kunne ikke opdateres" : "Vagten kunne ikke oprettes",
@@ -443,7 +455,7 @@ export default function SchedulePage() {
 
     try {
       await deleteShift(selectedShift.id);
-      clearForm();
+      closeShiftFormModal();
     } catch (error) {
       infoDialog.showError(
         "Vagten kunne ikke slettes",
@@ -461,6 +473,7 @@ export default function SchedulePage() {
     setNote(shift.note || "");
     setUserId(shift.userId);
     setWorkTypeId(shift.workTypeId);
+    setShowShiftFormModal(true);
   }
 
   function changeDate(days: number) {
@@ -473,6 +486,7 @@ export default function SchedulePage() {
     setStartTime(`${nextDate}T14:00`);
     setEndTime(`${nextDate}T22:00`);
     setSelectedShift(null);
+    setShowShiftFormModal(false);
   }
 
   function goToToday() {
@@ -482,6 +496,7 @@ export default function SchedulePage() {
     setStartTime(`${today}T14:00`);
     setEndTime(`${today}T22:00`);
     setSelectedShift(null);
+    setShowShiftFormModal(false);
   }
 
   function goToDate(nextDate: string) {
@@ -491,6 +506,7 @@ export default function SchedulePage() {
     setStartTime(`${nextDate}T14:00`);
     setEndTime(`${nextDate}T22:00`);
     setSelectedShift(null);
+    setShowShiftFormModal(false);
   }
 
   function openRegisterTimeModal() {
@@ -502,10 +518,6 @@ export default function SchedulePage() {
 
       if (openTimeEntry.shift?.endTime) {
         const value = toInputDateTime(openTimeEntry.shift.endTime);
-
-        console.log("FYRAFTEN DEBUG");
-        console.log("endTime:", openTimeEntry.shift.endTime);
-        console.log("converted:", value);
 
         setClockOutTime(value);
       } else {
@@ -876,39 +888,29 @@ ${getShiftConfirmText(selectedShift)}`,
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-                    <ShiftForm
-                      users={users}
-                      workTypes={workTypes}
-                      startTime={startTime}
-                      setStartTime={setStartTime}
-                      endTime={endTime}
-                      setEndTime={setEndTime}
-                      note={note}
-                      setNote={setNote}
-                      userId={userId}
-                      setUserId={setUserId}
-                      workTypeId={workTypeId}
-                      setWorkTypeId={setWorkTypeId}
-                      selectedShift={selectedShift}
-                      onSubmit={handleSubmit}
-                      onDelete={handleDelete}
-                      onCancel={clearForm}
-                      onOfferTrade={handleOfferTrade}
-                      leaveRequests={leaveRequests}
-                    />
-                  </div>
                 </>
               )}
 
               <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-                <div className="mb-6">
-                  <h2 className="text-3xl font-bold">Dagens vagter</h2>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    {canManageShifts
-                      ? "Administrer, flyt og resize vagter"
-                      : "Se dagens vagtplan"}
-                  </p>
+                <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h2 className="text-3xl font-bold">Dagens vagter</h2>
+                    <p className="text-gray-500 dark:text-gray-400">
+                      {canManageShifts
+                        ? "Administrer, flyt og resize vagter"
+                        : "Se dagens vagtplan"}
+                    </p>
+                  </div>
+
+                  {canManageShifts && (
+                    <button
+                      type="button"
+                      onClick={openCreateShiftModal}
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                    >
+                      Opret vagt
+                    </button>
+                  )}
                 </div>
 
                 <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-800 dark:bg-gray-950">
@@ -1009,6 +1011,35 @@ ${getShiftConfirmText(selectedShift)}`,
                 selectedDate={selectedDate}
               />
             </div>
+
+            <BaseModal
+              open={showShiftFormModal}
+              title={selectedShift ? "Rediger vagt" : "Opret vagt"}
+              width="xl"
+              onClose={closeShiftFormModal}
+            >
+              <ShiftForm
+                users={users}
+                workTypes={workTypes}
+                startTime={startTime}
+                setStartTime={setStartTime}
+                endTime={endTime}
+                setEndTime={setEndTime}
+                note={note}
+                setNote={setNote}
+                userId={userId}
+                setUserId={setUserId}
+                workTypeId={workTypeId}
+                setWorkTypeId={setWorkTypeId}
+                selectedShift={selectedShift}
+                onSubmit={handleSubmit}
+                onDelete={handleDelete}
+                onCancel={closeShiftFormModal}
+                onOfferTrade={handleOfferTrade}
+                leaveRequests={leaveRequests}
+                showHeader={false}
+              />
+            </BaseModal>
 
             {showClockModal && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
