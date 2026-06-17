@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useApi } from "@/app/hooks/useApi";
 import { useNotifications } from "@/app/hooks/useNotifications";
-import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { useAuth } from "@/app/providers/AuthProvider";
 import type { Notification } from "@/app/types/notifications";
 import {
@@ -59,11 +59,17 @@ type ErrorDialogState = {
   description: string;
 };
 
-type NotificationGroup = {
+type NotificationCategory =
+  | "system"
+  | "messages"
+  | "directTrades"
+  | "poolTrades";
+
+type DateGroup<T> = {
   dateKey: string;
   dateLabel: string;
-  unreadCount: number;
-  notifications: Notification[];
+  items: T[];
+  unreadCount?: number;
 };
 
 const notificationTypeLabels: Record<Notification["type"], string> = {
@@ -111,8 +117,8 @@ function getNotificationTypeLabel(type: Notification["type"]) {
   return notificationTypeLabels[type] ?? "System";
 }
 
-function getNotificationDateKey(createdAt: string) {
-  const date = new Date(createdAt);
+function getDateKey(value: string) {
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return "ukendt";
@@ -121,7 +127,7 @@ function getNotificationDateKey(createdAt: string) {
   return dateToLocalDateString(date);
 }
 
-function formatNotificationDateGroupLabel(dateKey: string) {
+function formatDateGroupLabel(dateKey: string) {
   if (dateKey === "ukendt") {
     return "Ukendt dato";
   }
@@ -153,40 +159,71 @@ function formatDateTimeDK(value: string) {
   return `${formatDateDK(date)}, kl. ${formatTimeDK(date)}`;
 }
 
-function groupNotificationsByDate(
-  notifications: Notification[],
-): NotificationGroup[] {
-  const sortedNotifications = [...notifications].sort(
+function getUserName(user?: User | null) {
+  if (!user) return null;
+  return `${user.firstName} ${user.lastName}`;
+}
+
+function groupByDate<T>(
+  items: T[],
+  getDateValue: (item: T) => string,
+  getUnreadValue?: (item: T) => boolean,
+): DateGroup<T>[] {
+  const sortedItems = [...items].sort(
     (left, right) =>
-      getTimestamp(right.createdAt) - getTimestamp(left.createdAt),
+      getTimestamp(getDateValue(right)) - getTimestamp(getDateValue(left)),
   );
 
-  return sortedNotifications.reduce<NotificationGroup[]>(
-    (groups, notification) => {
-      const dateKey = getNotificationDateKey(notification.createdAt);
-      const existingGroup = groups.find((group) => group.dateKey === dateKey);
+  return sortedItems.reduce<DateGroup<T>[]>((groups, item) => {
+    const dateKey = getDateKey(getDateValue(item));
+    const existingGroup = groups.find((group) => group.dateKey === dateKey);
+    const isUnread = getUnreadValue?.(item) ?? false;
 
-      if (existingGroup) {
-        existingGroup.notifications.push(notification);
+    if (existingGroup) {
+      existingGroup.items.push(item);
 
-        if (!notification.isRead) {
-          existingGroup.unreadCount += 1;
-        }
-
-        return groups;
+      if (isUnread) {
+        existingGroup.unreadCount = (existingGroup.unreadCount ?? 0) + 1;
       }
 
-      groups.push({
-        dateKey,
-        dateLabel: formatNotificationDateGroupLabel(dateKey),
-        unreadCount: notification.isRead ? 0 : 1,
-        notifications: [notification],
-      });
-
       return groups;
-    },
-    [],
-  );
+    }
+
+    groups.push({
+      dateKey,
+      dateLabel: formatDateGroupLabel(dateKey),
+      unreadCount: isUnread ? 1 : 0,
+      items: [item],
+    });
+
+    return groups;
+  }, []);
+}
+
+function getCategoryLabel(category: NotificationCategory) {
+  switch (category) {
+    case "system":
+      return "System";
+    case "messages":
+      return "Beskeder";
+    case "directTrades":
+      return "Direkte bytter";
+    case "poolTrades":
+      return "Vagtpulje";
+  }
+}
+
+function getCategoryEmptyText(category: NotificationCategory) {
+  switch (category) {
+    case "system":
+      return "Ingen systemnotifikationer endnu.";
+    case "messages":
+      return "Ingen ulæste beskeder.";
+    case "directTrades":
+      return "Ingen direkte vagtbytter.";
+    case "poolTrades":
+      return "Ingen åbne vagter i puljen.";
+  }
 }
 
 export default function NotificationsPage() {
@@ -198,9 +235,15 @@ export default function NotificationsPage() {
     title: "",
     description: "",
   });
-
-  const [expandedNotificationDateKeys, setExpandedNotificationDateKeys] =
-    useState<string[]>([]);
+  const [activeCategory, setActiveCategory] =
+    useState<NotificationCategory>("system");
+  const [expandedDateKeys, setExpandedDateKeys] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
+  const [pushMessage, setPushMessage] = useState("");
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [extraLoading, setExtraLoading] = useState(true);
 
   const handleNotificationError = useCallback((message: string) => {
     setErrorDialog({
@@ -219,42 +262,6 @@ export default function NotificationsPage() {
     markAllAsRead,
   } = useNotifications({ onError: handleNotificationError });
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
-  const [pushMessage, setPushMessage] = useState("");
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
-  const [extraLoading, setExtraLoading] = useState(true);
-
-  const groupedNotifications = useMemo(
-    () => groupNotificationsByDate(notifications),
-    [notifications],
-  );
-
-  useEffect(() => {
-    setExpandedNotificationDateKeys((current) => {
-      const validKeys = groupedNotifications.map((group) => group.dateKey);
-
-      if (validKeys.length === 0) {
-        return [];
-      }
-
-      const currentValidKeys = current.filter((dateKey) =>
-        validKeys.includes(dateKey),
-      );
-      const latestDateKey = validKeys[0];
-      const nextKeys = currentValidKeys.includes(latestDateKey)
-        ? currentValidKeys
-        : [latestDateKey, ...currentValidKeys];
-
-      const isUnchanged =
-        nextKeys.length === current.length &&
-        nextKeys.every((dateKey, index) => dateKey === current[index]);
-
-      return isUnchanged ? current : nextKeys;
-    });
-  }, [groupedNotifications]);
-
   const fetchExtraData = useCallback(
     async (showError = true) => {
       if (!user) return;
@@ -263,7 +270,7 @@ export default function NotificationsPage() {
         setExtraLoading(true);
 
         const [messagesResponse, tradesResponse] = await Promise.all([
-          apiFetch(`/messages?userId=${user.id}&cinemaId=${user.cinemaId}`),
+          apiFetch("/messages"),
           apiFetch("/shift-trades"),
         ]);
 
@@ -348,10 +355,10 @@ export default function NotificationsPage() {
     fetchExtraData(false);
   }, [fetchExtraData]);
 
-  useRealtimeShifts({
-    onShiftsUpdated: refreshExtraDataSilently,
-    onShiftTradesUpdated: refreshExtraDataSilently,
-    enableToasts: false,
+  useRealtimeCore({
+    onMessage: refreshExtraDataSilently,
+    onShiftUpdated: refreshExtraDataSilently,
+    onShiftTradeUpdated: refreshExtraDataSilently,
   });
 
   const unreadMessages = useMemo(() => {
@@ -392,11 +399,86 @@ export default function NotificationsPage() {
     );
   }, [shiftTrades, user]);
 
+  const systemGroups = useMemo(
+    () =>
+      groupByDate(
+        notifications,
+        (notification) => notification.createdAt,
+        (notification) => !notification.isRead,
+      ),
+    [notifications],
+  );
+
+  const messageGroups = useMemo(
+    () => groupByDate(unreadMessages, (message) => message.createdAt),
+    [unreadMessages],
+  );
+
+  const directTradeGroups = useMemo(
+    () => groupByDate(directTrades, (trade) => trade.shift.startTime),
+    [directTrades],
+  );
+
+  const poolTradeGroups = useMemo(
+    () => groupByDate(poolTrades, (trade) => trade.shift.startTime),
+    [poolTrades],
+  );
+
+  const activeGroups = useMemo(() => {
+    switch (activeCategory) {
+      case "system":
+        return systemGroups;
+      case "messages":
+        return messageGroups;
+      case "directTrades":
+        return directTradeGroups;
+      case "poolTrades":
+        return poolTradeGroups;
+    }
+  }, [
+    activeCategory,
+    directTradeGroups,
+    messageGroups,
+    poolTradeGroups,
+    systemGroups,
+  ]);
+
+  useEffect(() => {
+    setExpandedDateKeys((current) => {
+      const validKeys = activeGroups.map((group) => group.dateKey);
+
+      if (validKeys.length === 0) {
+        return [];
+      }
+
+      const currentValidKeys = current.filter((dateKey) =>
+        validKeys.includes(dateKey),
+      );
+      const latestDateKey = validKeys[0];
+      const nextKeys = currentValidKeys.includes(latestDateKey)
+        ? currentValidKeys
+        : [latestDateKey, ...currentValidKeys];
+
+      const isUnchanged =
+        nextKeys.length === current.length &&
+        nextKeys.every((dateKey, index) => dateKey === current[index]);
+
+      return isUnchanged ? current : nextKeys;
+    });
+  }, [activeGroups]);
+
   const totalCount =
     unreadMessages.length +
     unreadCount +
     directTrades.length +
     poolTrades.length;
+
+  const categoryCounts: Record<NotificationCategory, number> = {
+    system: unreadCount,
+    messages: unreadMessages.length,
+    directTrades: directTrades.length,
+    poolTrades: poolTrades.length,
+  };
 
   async function handleEnablePush() {
     try {
@@ -459,8 +541,13 @@ export default function NotificationsPage() {
     }));
   }
 
-  function toggleNotificationDateGroup(dateKey: string) {
-    setExpandedNotificationDateKeys((current) =>
+  function switchCategory(category: NotificationCategory) {
+    setActiveCategory(category);
+    setExpandedDateKeys([]);
+  }
+
+  function toggleDateGroup(dateKey: string) {
+    setExpandedDateKeys((current) =>
       current.includes(dateKey)
         ? current.filter((currentDateKey) => currentDateKey !== dateKey)
         : [dateKey, ...current],
@@ -478,6 +565,11 @@ export default function NotificationsPage() {
   }
 
   const loading = authLoading || notificationsLoading || extraLoading;
+  const activeCategoryLabel = getCategoryLabel(activeCategory);
+  const activeCount =
+    activeCategory === "system"
+      ? notifications.length
+      : categoryCounts[activeCategory];
 
   if (loading) {
     return (
@@ -508,6 +600,7 @@ export default function NotificationsPage() {
 
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
+                  type="button"
                   onClick={handleEnablePush}
                   disabled={pushLoading || pushEnabled}
                   className="rounded-xl bg-green-600 px-4 py-2 text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -520,6 +613,7 @@ export default function NotificationsPage() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleDisablePush}
                   disabled={pushLoading || !pushEnabled}
                   className="rounded-xl bg-gray-700 px-4 py-2 text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
@@ -535,66 +629,111 @@ export default function NotificationsPage() {
               )}
             </div>
 
-            {unreadCount > 0 && (
+            {activeCategory === "system" && unreadCount > 0 && (
               <button
+                type="button"
                 onClick={handleMarkAllNotificationsAsRead}
                 className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
               >
-                Marker systemnotifikationer som læst
+                Markér systemnotifikationer som læst
               </button>
             )}
           </div>
         </section>
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h2 className="text-xl font-bold">Systemnotifikationer</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {notifications.length} i alt · {unreadCount} ulæste
-              </p>
-            </div>
-
-            <span className="w-fit rounded-full bg-purple-600 px-3 py-1 text-sm font-semibold text-white">
-              {unreadCount}
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {groupedNotifications.map((group) => {
-              const isExpanded = expandedNotificationDateKeys.includes(
-                group.dateKey,
-              );
+        <section className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="grid gap-2 md:grid-cols-4">
+            {(
+              [
+                "system",
+                "messages",
+                "directTrades",
+                "poolTrades",
+              ] as NotificationCategory[]
+            ).map((category) => {
+              const isActive = activeCategory === category;
 
               return (
-                <div
-                  key={group.dateKey}
-                  className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => switchCategory(category)}
+                  className={`rounded-xl px-4 py-3 text-left transition ${
+                    isActive
+                      ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-950"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggleNotificationDateGroup(group.dateKey)}
-                    aria-expanded={isExpanded}
-                    className="flex w-full flex-col gap-3 p-4 text-left transition hover:bg-gray-100 dark:hover:bg-gray-900 md:flex-row md:items-center md:justify-between"
-                  >
-                    <div>
-                      <div className="font-semibold">{group.dateLabel}</div>
-                      <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {group.notifications.length} notifikationer
-                        {group.unreadCount > 0
-                          ? ` · ${group.unreadCount} ulæste`
-                          : ""}
-                      </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-semibold">
+                      {getCategoryLabel(category)}
                     </div>
 
-                    <span className="w-fit rounded-full bg-gray-800 px-3 py-1 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-900">
-                      {isExpanded ? "Skjul" : "Vis"}
+                    <span
+                      className={`rounded-full px-3 py-1 text-sm font-bold ${
+                        isActive
+                          ? "bg-white text-gray-900 dark:bg-gray-950 dark:text-white"
+                          : "bg-white text-gray-700 dark:bg-gray-950 dark:text-gray-200"
+                      }`}
+                    >
+                      {categoryCounts[category]}
                     </span>
-                  </button>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-                  {isExpanded && (
-                    <div className="space-y-3 border-t border-gray-200 p-3 dark:border-gray-800">
-                      {group.notifications.map((notification) => (
+        <section className="space-y-3">
+          <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+            {activeCategory === "system"
+              ? `Viser ${notifications.length} systemnotifikationer · ${unreadCount} ulæste`
+              : `Viser ${activeCount} ${activeCategoryLabel.toLowerCase()}.`}
+          </div>
+
+          {activeCount === 0 && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+              {getCategoryEmptyText(activeCategory)}
+            </div>
+          )}
+
+          {activeGroups.map((group) => {
+            const isExpanded = expandedDateKeys.includes(group.dateKey);
+
+            return (
+              <section
+                key={group.dateKey}
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleDateGroup(group.dateKey)}
+                  aria-expanded={isExpanded}
+                  className="flex w-full flex-col gap-2 border-b border-gray-200 px-5 py-4 text-left transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/70 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {group.dateLabel}
+                    </div>
+
+                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {group.items.length} {activeCategoryLabel.toLowerCase()}
+                      {activeCategory === "system" && group.unreadCount
+                        ? ` · ${group.unreadCount} ulæste`
+                        : ""}
+                    </div>
+                  </div>
+
+                  <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-950">
+                    {isExpanded ? "Skjul" : "Vis"}
+                  </span>
+                </button>
+
+                {isExpanded && (
+                  <div className="divide-y divide-gray-200 dark:divide-gray-800">
+                    {activeCategory === "system" &&
+                      (group.items as Notification[]).map((notification) => (
                         <button
                           key={notification.id}
                           type="button"
@@ -605,10 +744,10 @@ export default function NotificationsPage() {
                               );
                             }
                           }}
-                          className={`block w-full rounded-2xl border p-4 text-left transition hover:scale-[1.01] ${
+                          className={`block w-full p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/70 ${
                             notification.isRead
-                              ? "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
-                              : "border-purple-300 bg-purple-50 dark:border-purple-900 dark:bg-purple-950/40"
+                              ? "bg-white dark:bg-gray-900"
+                              : "bg-purple-50 dark:bg-purple-950/30"
                           }`}
                         >
                           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -632,177 +771,108 @@ export default function NotificationsPage() {
                               <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                                 {notification.message}
                               </div>
-
-                              <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                                {formatDateTimeDK(notification.createdAt)}
-                              </div>
                             </div>
 
-                            {!notification.isRead && (
-                              <div className="w-fit rounded-full bg-purple-600 px-3 py-1 text-sm font-bold text-white">
-                                Ny
-                              </div>
-                            )}
+                            <div className="shrink-0 text-sm text-gray-400 dark:text-gray-500 md:text-right">
+                              {formatDateTimeDK(notification.createdAt)}
+                            </div>
                           </div>
                         </button>
                       ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
 
-            {notifications.length === 0 && (
-              <div className="text-gray-500 dark:text-gray-400">
-                Ingen systemnotifikationer endnu.
-              </div>
-            )}
-          </div>
-        </section>
+                    {activeCategory === "messages" &&
+                      (group.items as Message[]).map((message) => (
+                        <a
+                          key={message.id}
+                          href="/messages"
+                          className="block p-5 transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                        >
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className="rounded-full bg-red-600 px-2 py-1 text-xs font-semibold text-white">
+                              Ulæst
+                            </span>
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">Ulæste beskeder</h2>
+                            {message.isBroadcast && (
+                              <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
+                                Sendt til alle
+                              </span>
+                            )}
+                          </div>
 
-            <span className="rounded-full bg-blue-600 px-3 py-1 text-sm font-semibold text-white">
-              {unreadMessages.length}
-            </span>
-          </div>
+                          <div className="font-bold">{message.subject}</div>
 
-          <div className="space-y-3">
-            {unreadMessages.map((message) => (
-              <a
-                key={message.id}
-                href="/messages"
-                className="block rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
-              >
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="rounded-full bg-red-600 px-2 py-1 text-xs font-semibold text-white">
-                    Ulæst
-                  </span>
+                          <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Fra: {getUserName(message.sender) || "System"}
+                          </div>
 
-                  {message.isBroadcast && (
-                    <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
-                      Sendt til alle
-                    </span>
-                  )}
-                </div>
+                          <div className="mt-2 line-clamp-2 text-sm text-gray-600 dark:text-gray-300">
+                            {message.body}
+                          </div>
 
-                <div className="font-bold">{message.subject}</div>
+                          <div className="mt-3 text-sm text-gray-400 dark:text-gray-500">
+                            {formatDateTimeDK(message.createdAt)}
+                          </div>
+                        </a>
+                      ))}
 
-                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Fra:{" "}
-                  {message.sender
-                    ? `${message.sender.firstName} ${message.sender.lastName}`
-                    : "System"}
-                </div>
+                    {activeCategory === "directTrades" &&
+                      (group.items as ShiftTrade[]).map((trade) => (
+                        <a
+                          key={trade.id}
+                          href="/shift-trades"
+                          className="block p-5 transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                        >
+                          <div className="mb-2">
+                            <span className="rounded-full bg-orange-600 px-2 py-1 text-xs font-semibold text-white">
+                              Direkte bytte
+                            </span>
+                          </div>
 
-                <div className="mt-2 line-clamp-2 text-sm text-gray-600 dark:text-gray-300">
-                  {message.body}
-                </div>
-              </a>
-            ))}
+                          <div className="font-bold">
+                            {trade.shift.workType?.name || "Vagt"}
+                          </div>
 
-            {unreadMessages.length === 0 && (
-              <div className="text-gray-500 dark:text-gray-400">
-                Ingen ulæste beskeder.
-              </div>
-            )}
-          </div>
-        </section>
+                          <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Fra: {getUserName(trade.offeredByUser) || "Ukendt"}
+                          </div>
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">Direkte vagtbytter</h2>
+                          <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                            {formatDateTimeDK(trade.shift.startTime)}
+                          </div>
+                        </a>
+                      ))}
 
-            <span className="rounded-full bg-orange-600 px-3 py-1 text-sm font-semibold text-white">
-              {directTrades.length}
-            </span>
-          </div>
+                    {activeCategory === "poolTrades" &&
+                      (group.items as ShiftTrade[]).map((trade) => (
+                        <a
+                          key={trade.id}
+                          href="/shift-trades"
+                          className="block p-5 transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
+                        >
+                          <div className="mb-2">
+                            <span className="rounded-full bg-green-600 px-2 py-1 text-xs font-semibold text-white">
+                              Åben vagt
+                            </span>
+                          </div>
 
-          <div className="space-y-3">
-            {directTrades.map((trade) => (
-              <a
-                key={trade.id}
-                href="/shift-trades"
-                className="block rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
-              >
-                <div className="mb-2">
-                  <span className="rounded-full bg-orange-600 px-2 py-1 text-xs font-semibold text-white">
-                    Direkte bytte
-                  </span>
-                </div>
+                          <div className="font-bold">
+                            {trade.shift.workType?.name || "Vagt"}
+                          </div>
 
-                <div className="font-bold">
-                  {trade.shift.workType?.name || "Vagt"}
-                </div>
+                          <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Fra: {getUserName(trade.offeredByUser) || "Ukendt"}
+                          </div>
 
-                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Fra:{" "}
-                  {trade.offeredByUser
-                    ? `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`
-                    : "Ukendt"}
-                </div>
-
-                <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  {formatDateTimeDK(trade.shift.startTime)}
-                </div>
-              </a>
-            ))}
-
-            {directTrades.length === 0 && (
-              <div className="text-gray-500 dark:text-gray-400">
-                Ingen direkte vagtbytter.
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">Vagtpulje</h2>
-
-            <span className="rounded-full bg-green-600 px-3 py-1 text-sm font-semibold text-white">
-              {poolTrades.length}
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {poolTrades.map((trade) => (
-              <a
-                key={trade.id}
-                href="/shift-trades"
-                className="block rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
-              >
-                <div className="mb-2">
-                  <span className="rounded-full bg-green-600 px-2 py-1 text-xs font-semibold text-white">
-                    Åben vagt
-                  </span>
-                </div>
-
-                <div className="font-bold">
-                  {trade.shift.workType?.name || "Vagt"}
-                </div>
-
-                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Fra:{" "}
-                  {trade.offeredByUser
-                    ? `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`
-                    : "Ukendt"}
-                </div>
-
-                <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  {formatDateTimeDK(trade.shift.startTime)}
-                </div>
-              </a>
-            ))}
-
-            {poolTrades.length === 0 && (
-              <div className="text-gray-500 dark:text-gray-400">
-                Ingen åbne vagter i puljen.
-              </div>
-            )}
-          </div>
+                          <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                            {formatDateTimeDK(trade.shift.startTime)}
+                          </div>
+                        </a>
+                      ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </section>
       </div>
 
