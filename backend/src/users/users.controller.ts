@@ -7,6 +7,7 @@ import {
   Get,
   Param,
   Patch,
+  Query,
   Post,
   Req,
   UploadedFile,
@@ -47,10 +48,21 @@ export class UsersController {
 
   @UseGuards(JwtGuard)
   @Get()
-  getAllUsers(@Req() req: any) {
+  getAllUsers(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
     const currentUser = req.user as AuthUser;
+    let selectedCinemaId: number | undefined;
 
-    return this.usersService.findAll(currentUser);
+    if (cinemaId) {
+      const parsedCinemaId = Number(cinemaId);
+
+      if (!Number.isInteger(parsedCinemaId) || parsedCinemaId <= 0) {
+        throw new BadRequestException('Biograf skal være et gyldigt ID');
+      }
+
+      selectedCinemaId = parsedCinemaId;
+    }
+
+    return this.usersService.findAll(currentUser, selectedCinemaId);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -63,7 +75,9 @@ export class UsersController {
 
     if (currentUser.role !== 'MASTER') {
       if (!currentUser.cinemaId) {
-        throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
+        throw new ForbiddenException(
+          'Din bruger er ikke tilknyttet en biograf',
+        );
       }
 
       body.cinemaId = currentUser.cinemaId;

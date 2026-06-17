@@ -11,6 +11,13 @@ import { apiFetch } from "@/app/lib/api";
 type UserRole = "MASTER" | "ADMIN" | "EMPLOYEE";
 type EmploymentType = "HOURLY" | "SALARIED";
 
+type CurrentUser = {
+  id?: number;
+  sub?: number;
+  role: UserRole;
+  cinemaId: number | null;
+};
+
 type User = {
   id: number;
   firstName: string;
@@ -27,6 +34,11 @@ type User = {
   canManageLeaveRequests?: boolean;
   canManageCinemaSettings?: boolean;
   canSendBroadcastMessages?: boolean;
+  cinemaId?: number | null;
+  cinema?: {
+    id: number;
+    name: string;
+  } | null;
 };
 
 type UserFormData = {
@@ -44,6 +56,9 @@ type UserFormData = {
   canManageCinemaSettings: boolean;
   canSendBroadcastMessages: boolean;
 };
+
+const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
+const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
 
 const emptyUser: UserFormData = {
   firstName: "",
@@ -108,10 +123,79 @@ async function getErrorMessage(response: Response) {
   }
 }
 
+function getStoredCurrentUser() {
+  const savedUser = localStorage.getItem("user");
+
+  if (!savedUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(savedUser) as CurrentUser;
+  } catch {
+    return null;
+  }
+}
+
+function getStoredMasterCinemaId() {
+  const savedCinemaId = Number(
+    localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
+  );
+
+  if (Number.isInteger(savedCinemaId) && savedCinemaId > 0) {
+    return savedCinemaId;
+  }
+
+  return null;
+}
+
+function getStoredMasterCinemaName() {
+  return localStorage.getItem(MASTER_SELECTED_CINEMA_NAME_KEY) || "";
+}
+
+function getActiveCinemaId(
+  user: CurrentUser | null,
+  selectedMasterCinemaId: number | null,
+) {
+  if (!user) {
+    return null;
+  }
+
+  if (user.role === "MASTER" && !user.cinemaId) {
+    return selectedMasterCinemaId;
+  }
+
+  return user.cinemaId;
+}
+
+function buildUsersEndpoint(
+  user: CurrentUser | null,
+  selectedMasterCinemaId: number | null,
+) {
+  if (!user) {
+    return null;
+  }
+
+  if (user.role === "MASTER" && !user.cinemaId) {
+    if (!selectedMasterCinemaId) {
+      return null;
+    }
+
+    return `/users?cinemaId=${selectedMasterCinemaId}`;
+  }
+
+  return "/users";
+}
+
 export default function UsersPage() {
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
   const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
+    number | null
+  >(null);
+  const [selectedMasterCinemaName, setSelectedMasterCinemaName] = useState("");
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
@@ -119,13 +203,35 @@ export default function UsersPage() {
   const [newUser, setNewUser] = useState<UserFormData>(emptyUser);
 
   useEffect(() => {
-    fetchUsers();
+    const storedUser = getStoredCurrentUser();
+    const storedMasterCinemaId = getStoredMasterCinemaId();
+    const storedMasterCinemaName = getStoredMasterCinemaName();
+
+    setCurrentUser(storedUser);
+    setSelectedMasterCinemaId(storedMasterCinemaId);
+    setSelectedMasterCinemaName(storedMasterCinemaName);
+
+    fetchUsers(storedUser, storedMasterCinemaId);
   }, []);
 
-  async function fetchUsers() {
+  async function fetchUsers(
+    userForRequest = currentUser,
+    masterCinemaIdForRequest = selectedMasterCinemaId,
+  ) {
     try {
       setLoading(true);
-      const response = await apiFetch("/users");
+
+      const endpoint = buildUsersEndpoint(
+        userForRequest,
+        masterCinemaIdForRequest,
+      );
+
+      if (!endpoint) {
+        setUsers([]);
+        return;
+      }
+
+      const response = await apiFetch(endpoint);
 
       if (!response.ok) {
         throw new Error(await getErrorMessage(response));
@@ -176,9 +282,15 @@ export default function UsersPage() {
         return;
       }
 
-      const savedUser = localStorage.getItem("user");
+      const userForRequest = currentUser || getStoredCurrentUser();
+      const masterCinemaIdForRequest =
+        selectedMasterCinemaId || getStoredMasterCinemaId();
+      const activeCinemaId = getActiveCinemaId(
+        userForRequest,
+        masterCinemaIdForRequest,
+      );
 
-      if (!savedUser) {
+      if (!userForRequest) {
         infoDialog.showError(
           "Bruger kunne ikke oprettes",
           "Du er ikke logget ind korrekt. Log ud og ind igen.",
@@ -186,7 +298,15 @@ export default function UsersPage() {
         return;
       }
 
-      const currentUser = JSON.parse(savedUser);
+      if (newUser.role !== "MASTER" && !activeCinemaId) {
+        infoDialog.showError(
+          "Biograf skal vælges",
+          userForRequest.role === "MASTER"
+            ? "Gå til MASTER-panelet og vælg hvilken biograf brugeren skal oprettes i."
+            : "Din bruger er ikke tilknyttet en biograf. Kontakt en administrator.",
+        );
+        return;
+      }
 
       const response = await apiFetch("/users", {
         method: "POST",
@@ -197,7 +317,7 @@ export default function UsersPage() {
           email: newUser.email.trim(),
           phone: newUser.phone?.trim() || undefined,
           employmentType: newUser.employmentType || "HOURLY",
-          cinemaId: currentUser.cinemaId,
+          cinemaId: newUser.role === "MASTER" ? null : activeCinemaId,
         }),
       });
 
@@ -369,6 +489,15 @@ export default function UsersPage() {
     });
   }
 
+  const needsMasterCinemaSelection =
+    currentUser?.role === "MASTER" &&
+    !currentUser.cinemaId &&
+    !selectedMasterCinemaId;
+
+  const activeCinemaName =
+    selectedMasterCinemaName ||
+    (selectedMasterCinemaId ? `Biograf #${selectedMasterCinemaId}` : "");
+
   const visibleUsers = showInactive
     ? users
     : users.filter((user) => user.isActive !== false);
@@ -402,13 +531,70 @@ export default function UsersPage() {
 
           <button
             onClick={() => {
+              if (needsMasterCinemaSelection) {
+                infoDialog.showError(
+                  "Biograf skal vælges",
+                  "Gå til MASTER-panelet og vælg hvilken biograf du vil administrere.",
+                );
+                return;
+              }
+
               setShowCreate(true);
             }}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            className={`rounded-lg px-4 py-2 text-white ${
+              needsMasterCinemaSelection
+                ? "cursor-not-allowed bg-gray-400"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+            disabled={needsMasterCinemaSelection}
           >
             Opret bruger
           </button>
         </div>
+
+        {currentUser?.role === "MASTER" && !currentUser.cinemaId && (
+          <div
+            className={`mb-6 rounded-2xl border p-5 shadow-sm ${
+              needsMasterCinemaSelection
+                ? "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-100"
+                : "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100"
+            }`}
+          >
+            <div className="text-sm font-medium uppercase tracking-wide">
+              Aktiv biograf
+            </div>
+
+            {needsMasterCinemaSelection ? (
+              <>
+                <p className="mt-2 text-sm">
+                  Vælg først en biograf i MASTER-panelet, før du administrerer
+                  brugere.
+                </p>
+                <a
+                  href="/master"
+                  className="mt-4 inline-flex rounded-xl bg-yellow-700 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-800"
+                >
+                  Gå til MASTER-panel
+                </a>
+              </>
+            ) : (
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-xl font-bold">{activeCinemaName}</div>
+                  <p className="text-sm opacity-80">
+                    MASTER administrerer brugere for denne biograf.
+                  </p>
+                </div>
+                <a
+                  href="/master"
+                  className="inline-flex rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                >
+                  Skift biograf
+                </a>
+              </div>
+            )}
+          </div>
+        )}
 
         {showCreate && (
           <UserModal
@@ -455,7 +641,9 @@ export default function UsersPage() {
                     colSpan={7}
                     className="p-6 text-center text-gray-500 dark:text-gray-400"
                   >
-                    Ingen brugere fundet.
+                    {needsMasterCinemaSelection
+                      ? "Vælg en biograf i MASTER-panelet."
+                      : "Ingen brugere fundet."}
                   </td>
                 </tr>
               ) : (

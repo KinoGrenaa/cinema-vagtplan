@@ -85,18 +85,37 @@ export class UsersService {
     return cinemaId;
   }
 
-  async findAll(currentUser: AuthUser) {
-    if (currentUser.role !== 'MASTER' && !currentUser.cinemaId) {
+  async findAll(currentUser: AuthUser, selectedCinemaId?: number) {
+    if (currentUser.role === 'MASTER') {
+      if (selectedCinemaId) {
+        await this.ensureCinemaExists(selectedCinemaId);
+      }
+
+      return this.prisma.user.findMany({
+        where: selectedCinemaId
+          ? {
+              cinemaId: selectedCinemaId,
+            }
+          : {},
+        include: {
+          cinema: true,
+        },
+        orderBy: {
+          firstName: 'asc',
+        },
+      });
+    }
+
+    if (!currentUser.cinemaId) {
       throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
     }
 
+    const cinemaId = currentUser.cinemaId;
+
     return this.prisma.user.findMany({
-      where:
-        currentUser.role === 'MASTER'
-          ? {}
-          : {
-              cinemaId: currentUser.cinemaId,
-            },
+      where: {
+        cinemaId,
+      },
       include: {
         cinema: true,
       },
@@ -180,15 +199,18 @@ export class UsersService {
         role,
         employmentType: data.employmentType || 'HOURLY',
         cinemaId,
-        canManageSchedule: role === 'MASTER' ? true : data.canManageSchedule ?? false,
-        canManageUsers: role === 'MASTER' ? true : data.canManageUsers ?? false,
-        canManagePayroll: role === 'MASTER' ? true : data.canManagePayroll ?? false,
+        canManageSchedule:
+          role === 'MASTER' ? true : (data.canManageSchedule ?? false),
+        canManageUsers:
+          role === 'MASTER' ? true : (data.canManageUsers ?? false),
+        canManagePayroll:
+          role === 'MASTER' ? true : (data.canManagePayroll ?? false),
         canManageLeaveRequests:
-          role === 'MASTER' ? true : data.canManageLeaveRequests ?? false,
+          role === 'MASTER' ? true : (data.canManageLeaveRequests ?? false),
         canManageCinemaSettings:
-          role === 'MASTER' ? true : data.canManageCinemaSettings ?? false,
+          role === 'MASTER' ? true : (data.canManageCinemaSettings ?? false),
         canSendBroadcastMessages:
-          role === 'MASTER' ? true : data.canSendBroadcastMessages ?? false,
+          role === 'MASTER' ? true : (data.canSendBroadcastMessages ?? false),
         isActive: true,
         deactivatedAt: null,
       },
@@ -301,13 +323,16 @@ export class UsersService {
     if (data.notes !== undefined) updateData.notes = data.notes;
 
     if (data.canManageSchedule !== undefined) {
-      updateData.canManageSchedule = nextRole === 'MASTER' ? true : data.canManageSchedule;
+      updateData.canManageSchedule =
+        nextRole === 'MASTER' ? true : data.canManageSchedule;
     }
     if (data.canManageUsers !== undefined) {
-      updateData.canManageUsers = nextRole === 'MASTER' ? true : data.canManageUsers;
+      updateData.canManageUsers =
+        nextRole === 'MASTER' ? true : data.canManageUsers;
     }
     if (data.canManagePayroll !== undefined) {
-      updateData.canManagePayroll = nextRole === 'MASTER' ? true : data.canManagePayroll;
+      updateData.canManagePayroll =
+        nextRole === 'MASTER' ? true : data.canManagePayroll;
     }
     if (data.canManageLeaveRequests !== undefined) {
       updateData.canManageLeaveRequests =
