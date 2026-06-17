@@ -1,7 +1,26 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { PushSubscriptionsService } from './push-subscriptions.service';
+
+function getRequiredCinemaId(req: any) {
+  const cinemaId = Number(req.user?.cinemaId);
+
+  if (!Number.isFinite(cinemaId) || cinemaId <= 0) {
+    throw new BadRequestException(
+      'Vælg en biograf, før du aktiverer push-notifikationer.',
+    );
+  }
+
+  return cinemaId;
+}
 
 @Controller('push-subscriptions')
 export class PushSubscriptionsController {
@@ -13,7 +32,7 @@ export class PushSubscriptionsController {
     return this.pushSubscriptionsService.create(
       {
         id: req.user.sub,
-        cinemaId: req.user.cinemaId,
+        cinemaId: getRequiredCinemaId(req),
       },
       body,
     );

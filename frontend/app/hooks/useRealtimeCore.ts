@@ -28,6 +28,12 @@ export type RealtimeShiftTradePayload = {
   } | null;
 };
 
+type RealtimeUser = {
+  id: number | string;
+  role?: string | null;
+  cinemaId?: number | string | null;
+};
+
 type UseRealtimeCoreInput = {
   onLeaveRequestUpdated?: () => void;
   onShiftUpdated?: () => void;
@@ -41,6 +47,28 @@ type UseRealtimeCoreInput = {
   onNewDirectShiftTrade?: (payload: RealtimeShiftTradePayload) => void;
   onShiftRejected?: (payload: RealtimeShiftTradePayload) => void;
 };
+
+function getRealtimeCinemaId(user: RealtimeUser) {
+  const userCinemaId = Number(user.cinemaId);
+
+  if (Number.isFinite(userCinemaId) && userCinemaId > 0) {
+    return userCinemaId;
+  }
+
+  if (user.role !== "MASTER" || typeof window === "undefined") {
+    return null;
+  }
+
+  const selectedMasterCinemaId = Number(
+    window.localStorage.getItem("masterSelectedCinemaId"),
+  );
+
+  if (Number.isFinite(selectedMasterCinemaId) && selectedMasterCinemaId > 0) {
+    return selectedMasterCinemaId;
+  }
+
+  return null;
+}
 
 export function useRealtimeCore(input: UseRealtimeCoreInput) {
   const { token, user } = useAuth();
@@ -60,7 +88,12 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
 
     socketRef.current = socket;
 
-    socket.emit("joinCinema", user.cinemaId);
+    const cinemaId = getRealtimeCinemaId(user);
+
+    if (cinemaId) {
+      socket.emit("joinCinema", cinemaId);
+    }
+
     socket.emit("joinUser", user.id);
 
     const triggerShiftUpdated = () => {
@@ -97,9 +130,9 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
     socket.on("staffingRequestAccepted", triggerStaffingRequestUpdated);
     socket.on("staffingRequestRejected", triggerStaffingRequestUpdated);
     socket.on("staffingRequestCancelled", triggerStaffingRequestUpdated);
-    socket.on("leaveRequestsUpdated", () => {
-      triggerLeaveRequestUpdated();
-    });
+
+    socket.on("leaveRequestsUpdated", triggerLeaveRequestUpdated);
+
     socket.on("notificationCreated", () => {
       input.onNotification?.();
     });
@@ -122,10 +155,6 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
 
     socket.on("timeEntryUpdated", triggerTimeEntryUpdated);
     socket.on("timeEntriesUpdated", triggerTimeEntryUpdated);
-
-    socket.on("timeEntriesUpdated", () => {
-      input.onTimeEntry?.();
-    });
 
     socket.on("shiftAccepted", (payload: RealtimeShiftTradePayload) => {
       input.onShiftAccepted?.(payload);

@@ -494,10 +494,6 @@ export default function UsersPage() {
     !currentUser.cinemaId &&
     !selectedMasterCinemaId;
 
-  const activeCinemaName =
-    selectedMasterCinemaName ||
-    (selectedMasterCinemaId ? `Biograf #${selectedMasterCinemaId}` : "");
-
   const visibleUsers = showInactive
     ? users
     : users.filter((user) => user.isActive !== false);
@@ -552,47 +548,23 @@ export default function UsersPage() {
           </button>
         </div>
 
-        {currentUser?.role === "MASTER" && !currentUser.cinemaId && (
-          <div
-            className={`mb-6 rounded-2xl border p-5 shadow-sm ${
-              needsMasterCinemaSelection
-                ? "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-100"
-                : "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100"
-            }`}
-          >
+        {needsMasterCinemaSelection && (
+          <div className="mb-6 rounded-2xl border border-yellow-200 bg-yellow-50 p-5 text-yellow-900 shadow-sm dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-100">
             <div className="text-sm font-medium uppercase tracking-wide">
-              Aktiv biograf
+              Biograf mangler
             </div>
 
-            {needsMasterCinemaSelection ? (
-              <>
-                <p className="mt-2 text-sm">
-                  Vælg først en biograf i MASTER-panelet, før du administrerer
-                  brugere.
-                </p>
-                <a
-                  href="/master"
-                  className="mt-4 inline-flex rounded-xl bg-yellow-700 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-800"
-                >
-                  Gå til MASTER-panel
-                </a>
-              </>
-            ) : (
-              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-xl font-bold">{activeCinemaName}</div>
-                  <p className="text-sm opacity-80">
-                    MASTER administrerer brugere for denne biograf.
-                  </p>
-                </div>
-                <a
-                  href="/master"
-                  className="inline-flex rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
-                >
-                  Skift biograf
-                </a>
-              </div>
-            )}
+            <p className="mt-2 text-sm">
+              Vælg først en biograf i MASTER-panelet, før du administrerer
+              brugere.
+            </p>
+
+            <a
+              href="/master"
+              className="mt-4 inline-flex rounded-xl bg-yellow-700 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-800"
+            >
+              Gå til MASTER-panel
+            </a>
           </div>
         )}
 

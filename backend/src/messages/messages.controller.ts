@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,6 +14,16 @@ import { MessagesService } from './messages.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { CreateMessageDto } from './dto/create-message.dto';
 
+function getRequiredCinemaId(req: any) {
+  const cinemaId = Number(req.user?.cinemaId);
+
+  if (!Number.isFinite(cinemaId) || cinemaId <= 0) {
+    throw new BadRequestException('Vælg en biograf, før du bruger beskeder.');
+  }
+
+  return cinemaId;
+}
+
 @Controller('messages')
 export class MessagesController {
   constructor(private messagesService: MessagesService) {}
@@ -22,7 +33,7 @@ export class MessagesController {
   getUnreadCount(@Req() req: any) {
     return this.messagesService.getUnreadCount(
       Number(req.user.sub),
-      Number(req.user.cinemaId),
+      getRequiredCinemaId(req),
     );
   }
 
@@ -31,7 +42,7 @@ export class MessagesController {
   getArchivedMessages(@Req() req: any) {
     return this.messagesService.findArchivedForUser(
       Number(req.user.sub),
-      Number(req.user.cinemaId),
+      getRequiredCinemaId(req),
     );
   }
 
@@ -40,7 +51,7 @@ export class MessagesController {
   getSentMessages(@Req() req: any) {
     return this.messagesService.findSentForUser(
       Number(req.user.sub),
-      Number(req.user.cinemaId),
+      getRequiredCinemaId(req),
     );
   }
 
@@ -49,7 +60,7 @@ export class MessagesController {
   getMessages(@Req() req: any) {
     return this.messagesService.findAllForUser(
       Number(req.user.sub),
-      Number(req.user.cinemaId),
+      getRequiredCinemaId(req),
     );
   }
 
@@ -59,7 +70,7 @@ export class MessagesController {
     return this.messagesService.create({
       ...body,
       senderId: Number(req.user.sub),
-      cinemaId: Number(req.user.cinemaId),
+      cinemaId: getRequiredCinemaId(req),
     });
   }
 
@@ -84,7 +95,7 @@ export class MessagesController {
     return this.messagesService.unarchiveMessage(
       Number(id),
       Number(req.user.sub),
-      Number(req.user.cinemaId),
+      getRequiredCinemaId(req),
     );
   }
 
