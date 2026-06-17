@@ -109,9 +109,12 @@ export function useRealtimeCore(input: UseRealtimeCoreInput) {
       input.onNotification?.();
     });
 
-    socket.on("messageCreated", () => {
+    const triggerMessageUpdated = () => {
       input.onMessage?.();
-    });
+    };
+
+    socket.on("messageCreated", triggerMessageUpdated);
+    socket.on("messagesUpdated", triggerMessageUpdated);
 
     const triggerTimeEntryUpdated = () => {
       input.onTimeEntry?.();

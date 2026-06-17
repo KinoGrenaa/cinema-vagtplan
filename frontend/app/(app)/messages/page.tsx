@@ -1,16 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 import { useMessages } from "../../hooks/useMessages";
 import type { MessageParticipant } from "../../types/messages";
+import { formatDateDK, formatTimeDK } from "@/app/utils/dateTime";
+
+type ErrorDialogState = {
+  open: boolean;
+  title: string;
+  description: string;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Ukendt tidspunkt";
+  }
+
+  return `${formatDateDK(date)}, kl. ${formatTimeDK(date)}`;
+}
 
 export default function MessagesPage() {
+  const confirmDialog = useConfirm();
+
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
+  );
+  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
+    open: false,
+    title: "",
+    description: "",
+  });
+
+  const showErrorDialog = useCallback((title: string, description: string) => {
+    setErrorDialog({
+      open: true,
+      title,
+      description,
+    });
+  }, []);
+
+  const handleMessagesError = useCallback(
+    (message: string) => {
+      showErrorDialog("Kunne ikke hente beskeder", message);
+    },
+    [showErrorDialog],
   );
 
   const { loading, sortedMessages, markAsRead, archive } = useMessages({
     mode: "inbox",
+    onError: handleMessagesError,
   });
 
   function getUserName(user?: MessageParticipant | null) {
@@ -21,6 +73,44 @@ export default function MessagesPage() {
   function getShortBody(body: string) {
     if (!body) return "Ingen beskedtekst.";
     return body.length > 120 ? `${body.slice(0, 120)}...` : body;
+  }
+
+  function handleOpenMessage(messageId: number, isExpanded: boolean) {
+    const message = sortedMessages.find((current) => current.id === messageId);
+
+    if (!isExpanded && message && !message.isRead) {
+      markAsRead(messageId);
+    }
+
+    setExpandedMessageId(isExpanded ? null : messageId);
+  }
+
+  function handleArchive(messageId: number) {
+    confirmDialog.confirm({
+      title: "Arkiver besked",
+      description:
+        "Vil du arkivere denne besked? Du kan flytte den tilbage fra arkivet senere.",
+      confirmText: "Arkiver",
+      cancelText: "Annuller",
+      confirmVariant: "primary",
+      onConfirm: async () => {
+        try {
+          await archive(messageId);
+
+          if (expandedMessageId === messageId) {
+            setExpandedMessageId(null);
+          }
+        } catch (error) {
+          showErrorDialog(
+            "Beskeden kunne ikke arkiveres",
+            getErrorMessage(
+              error,
+              "Der opstod en fejl, da beskeden skulle arkiveres. Prøv igen.",
+            ),
+          );
+        }
+      },
+    });
   }
 
   return (
@@ -42,10 +132,10 @@ export default function MessagesPage() {
 
         {!loading && sortedMessages.length === 0 && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            <div className="mb-2 text-4xl">✉️</div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               Ingen beskeder
             </h2>
+
             <p className="mt-2">Din indbakke er tom lige nu.</p>
           </div>
         )}
@@ -66,13 +156,7 @@ export default function MessagesPage() {
                 >
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!isExpanded && !message.isRead) {
-                        markAsRead(message.id);
-                      }
-
-                      setExpandedMessageId(isExpanded ? null : message.id);
-                    }}
+                    onClick={() => handleOpenMessage(message.id, isExpanded)}
                     className="w-full p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/70"
                   >
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -113,7 +197,7 @@ export default function MessagesPage() {
                       </div>
 
                       <div className="shrink-0 text-sm text-gray-400 dark:text-gray-500 md:text-right">
-                        {new Date(message.createdAt).toLocaleString("da-DK")}
+                        {formatDateTime(message.createdAt)}
                       </div>
                     </div>
                   </button>
@@ -132,10 +216,7 @@ export default function MessagesPage() {
                             : getUserName(message.receiver) || "Dig"}
                         </div>
 
-                        <div>
-                          Sendt:{" "}
-                          {new Date(message.createdAt).toLocaleString("da-DK")}
-                        </div>
+                        <div>Sendt: {formatDateTime(message.createdAt)}</div>
                       </div>
 
                       <div className="whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
@@ -145,7 +226,7 @@ export default function MessagesPage() {
                       <div className="flex justify-end pt-2">
                         <button
                           type="button"
-                          onClick={() => archive(message.id)}
+                          onClick={() => handleArchive(message.id)}
                           className="rounded-xl bg-gray-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-gray-200 dark:text-black dark:hover:bg-white"
                         >
                           Arkiver
@@ -159,6 +240,33 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmVariant={confirmDialog.confirmVariant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.handleConfirm}
+        onCancel={confirmDialog.handleCancel}
+      />
+
+      <InfoModal
+        open={errorDialog.open}
+        title={errorDialog.title}
+        description={errorDialog.description}
+        buttonText="OK"
+        variant="error"
+        onClose={() =>
+          setErrorDialog({
+            open: false,
+            title: "",
+            description: "",
+          })
+        }
+      />
     </main>
   );
 }
