@@ -1,41 +1,55 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
+
+type AuthUser = {
+  sub: number;
+  email?: string;
+  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+  cinemaId: number | null;
+};
 
 @Injectable()
 export class EmployeeDocumentsService {
   constructor(private prisma: PrismaService) {}
 
-  private getUserCinemaFilter(user: any) {
+  private resolveCinemaId(user: AuthUser, selectedCinemaId?: number | null) {
     if (user.role === 'MASTER') {
-      return {};
+      if (!selectedCinemaId) {
+        throw new BadRequestException(
+          'Vælg en biograf, før du administrerer medarbejderdokumenter.',
+        );
+      }
+
+      return selectedCinemaId;
     }
 
-    return {
-      user: {
-        cinemaId: user.cinemaId,
-      },
-    };
-  }
-
-  private getCinemaFilter(user: any) {
-    if (user.role === 'MASTER') {
-      return {};
+    if (!user.cinemaId) {
+      throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
     }
 
-    return {
-      cinemaId: user.cinemaId,
-    };
+    return user.cinemaId;
   }
 
-  findForUser(user: any, userId: number) {
+  async findForUser(
+    user: AuthUser,
+    userId: number,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+    const targetUserId = user.role === 'EMPLOYEE' ? user.sub : userId;
+
     return this.prisma.employeeDocument.findMany({
       where: {
-        userId: user.role === 'EMPLOYEE' ? user.sub : userId,
-        ...this.getUserCinemaFilter(user),
+        userId: targetUserId,
+        user: {
+          cinemaId,
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -44,15 +58,18 @@ export class EmployeeDocumentsService {
   }
 
   async create(
-    user: any,
+    user: AuthUser,
     data: {
       userId: number;
       title: string;
       fileUrl: string;
       fileName: string;
       fileType?: string;
+      cinemaId?: number | null;
     },
   ) {
+    const cinemaId = this.resolveCinemaId(user, data.cinemaId);
+
     if (user.role === 'EMPLOYEE' && data.userId !== user.sub) {
       throw new ForbiddenException(
         'Du kan kun uploade dokumenter til dig selv',
@@ -62,7 +79,7 @@ export class EmployeeDocumentsService {
     const targetUser = await this.prisma.user.findFirst({
       where: {
         id: data.userId,
-        ...this.getCinemaFilter(user),
+        cinemaId,
       },
     });
 
@@ -81,11 +98,19 @@ export class EmployeeDocumentsService {
     });
   }
 
-  async delete(user: any, id: number) {
+  async delete(
+    user: AuthUser,
+    id: number,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+
     const document = await this.prisma.employeeDocument.findFirst({
       where: {
         id,
-        ...this.getUserCinemaFilter(user),
+        user: {
+          cinemaId,
+        },
       },
     });
 

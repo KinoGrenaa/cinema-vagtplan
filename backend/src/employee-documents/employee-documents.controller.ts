@@ -6,12 +6,12 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -25,11 +25,33 @@ import { Roles } from '../auth/roles/roles.decorator';
 export class EmployeeDocumentsController {
   constructor(private employeeDocumentsService: EmployeeDocumentsService) {}
 
+  private parseCinemaId(value?: string | number | null) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    const cinemaId = Number(value);
+
+    if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+      throw new BadRequestException('Biograf skal være et gyldigt ID');
+    }
+
+    return cinemaId;
+  }
+
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER', 'EMPLOYEE')
   @Get('user/:userId')
-  findForUser(@Req() req: any, @Param('userId') userId: string) {
-    return this.employeeDocumentsService.findForUser(req.user, Number(userId));
+  findForUser(
+    @Req() req: any,
+    @Param('userId') userId: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.employeeDocumentsService.findForUser(
+      req.user,
+      Number(userId),
+      this.parseCinemaId(cinemaId),
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -41,15 +63,12 @@ export class EmployeeDocumentsController {
         destination: './uploads/employee-documents',
         filename: (_, file, callback) => {
           const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
-
           callback(null, `${uniqueName}${extname(file.originalname)}`);
         },
       }),
-
       limits: {
         fileSize: 10 * 1024 * 1024,
       },
-
       fileFilter: (_, file, callback) => {
         const allowedTypes = [
           'application/pdf',
@@ -94,7 +113,7 @@ export class EmployeeDocumentsController {
   uploadDocument(
     @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { userId: string; title: string },
+    @Body() body: { userId: string; title: string; cinemaId?: string },
   ) {
     if (!file) {
       throw new BadRequestException('Ingen fil uploadet');
@@ -103,7 +122,8 @@ export class EmployeeDocumentsController {
     return this.employeeDocumentsService.create(req.user, {
       userId: Number(body.userId),
       title: body.title,
-      fileUrl: `${process.env.NEXT_PUBLIC_API_URL}/uploads/employee-documents/${file.filename}`,
+      cinemaId: this.parseCinemaId(body.cinemaId),
+      fileUrl: `/uploads/employee-documents/${file.filename}`,
       fileName: file.originalname,
       fileType: file.mimetype,
     });
@@ -112,7 +132,15 @@ export class EmployeeDocumentsController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER', 'EMPLOYEE')
   @Delete(':id')
-  deleteDocument(@Req() req: any, @Param('id') id: string) {
-    return this.employeeDocumentsService.delete(req.user, Number(id));
+  deleteDocument(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.employeeDocumentsService.delete(
+      req.user,
+      Number(id),
+      this.parseCinemaId(cinemaId),
+    );
   }
 }
