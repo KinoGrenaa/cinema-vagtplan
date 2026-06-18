@@ -12,6 +12,8 @@ import {
 import type { CurrentUser } from "../../../shared/types";
 import BaseModal from "../components/modals/BaseModal";
 import { SESSION_EXPIRED_EVENT } from "../lib/api";
+const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
+const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
 
 type AuthContextValue = {
   user: CurrentUser | null;
@@ -38,6 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function clearAuthState() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
+    window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
 
     setToken(null);
     setUser(null);
@@ -88,6 +93,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function login(newToken: string, newUser: CurrentUser) {
     localStorage.setItem("token", newToken);
     localStorage.setItem("user", JSON.stringify(newUser));
+
+    if (newUser.role === "MASTER") {
+      localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
+      localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
+      window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
+    }
 
     setToken(newToken);
     setUser(newUser);

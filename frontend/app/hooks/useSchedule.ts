@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "./useApi";
 import { useAuth } from "../providers/AuthProvider";
 import { localDateTimeToISOString } from "@/app/utils/dateTime";
@@ -85,6 +85,27 @@ type RefreshDayDataOptions = {
   showLoading?: boolean;
 };
 
+const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
+
+function getSelectedMasterCinemaId() {
+  if (typeof window === "undefined") return null;
+
+  const cinemaId = Number(localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY));
+
+  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+    return null;
+  }
+
+  return cinemaId;
+}
+
+function appendCinemaId(endpoint: string, cinemaId: number | null) {
+  if (!cinemaId) return endpoint;
+
+  const separator = endpoint.includes("?") ? "&" : "?";
+  return `${endpoint}${separator}cinemaId=${cinemaId}`;
+}
+
 async function readErrorMessage(response: Response, fallback: string) {
   const payload = await response.json().catch(() => null);
 
@@ -114,6 +135,55 @@ export function useSchedule(
   );
 
   const { user, loading: authLoading, isAdmin } = useAuth();
+  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
+    number | null
+  >(null);
+
+  useEffect(() => {
+    function updateSelectedCinema() {
+      setSelectedMasterCinemaId(getSelectedMasterCinemaId());
+    }
+
+    updateSelectedCinema();
+
+    window.addEventListener("storage", updateSelectedCinema);
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      updateSelectedCinema,
+    );
+
+    return () => {
+      window.removeEventListener("storage", updateSelectedCinema);
+      window.removeEventListener(
+        "masterSelectedCinemaChanged",
+        updateSelectedCinema,
+      );
+    };
+  }, []);
+
+  const activeCinemaId = useMemo(() => {
+    if (!user) return null;
+
+    if (user.role === "MASTER" && !user.cinemaId) {
+      return selectedMasterCinemaId;
+    }
+
+    return user.cinemaId ?? null;
+  }, [selectedMasterCinemaId, user]);
+
+  const needsMasterCinemaSelection =
+    user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
+
+  const appendActiveCinemaId = useCallback(
+    (endpoint: string) => {
+      if (user?.role === "MASTER" && !user.cinemaId) {
+        return appendCinemaId(endpoint, activeCinemaId);
+      }
+
+      return endpoint;
+    },
+    [activeCinemaId, user],
+  );
 
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -132,8 +202,12 @@ export function useSchedule(
 
   const fetchUsers = useCallback(
     async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      if (needsMasterCinemaSelection) {
+        setUsers([]);
+        return true;
+      }
       try {
-        const response = await apiFetch("/users");
+        const response = await apiFetch(appendActiveCinemaId("/users"));
 
         if (!response.ok) {
           setUsers([]);
@@ -174,13 +248,22 @@ export function useSchedule(
         return false;
       }
     },
-    [apiFetch, reportBackgroundError],
+    [
+      apiFetch,
+      appendActiveCinemaId,
+      needsMasterCinemaSelection,
+      reportBackgroundError,
+    ],
   );
 
   const fetchWorkTypes = useCallback(
     async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      if (needsMasterCinemaSelection) {
+        setWorkTypes([]);
+        return true;
+      }
       try {
-        const response = await apiFetch("/work-types");
+        const response = await apiFetch(appendActiveCinemaId("/work-types"));
 
         if (!response.ok) {
           setWorkTypes([]);
@@ -218,13 +301,24 @@ export function useSchedule(
         return false;
       }
     },
-    [apiFetch, reportBackgroundError],
+    [
+      apiFetch,
+      appendActiveCinemaId,
+      needsMasterCinemaSelection,
+      reportBackgroundError,
+    ],
   );
 
   const fetchShifts = useCallback(
     async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      if (needsMasterCinemaSelection) {
+        setShifts([]);
+        return true;
+      }
       try {
-        const response = await apiFetch(`/shifts?date=${selectedDate}`);
+        const response = await apiFetch(
+          appendActiveCinemaId(`/shifts?date=${selectedDate}`),
+        );
 
         if (!response.ok) {
           setShifts([]);
@@ -258,7 +352,13 @@ export function useSchedule(
         return false;
       }
     },
-    [apiFetch, reportBackgroundError, selectedDate],
+    [
+      apiFetch,
+      appendActiveCinemaId,
+      needsMasterCinemaSelection,
+      reportBackgroundError,
+      selectedDate,
+    ],
   );
 
   const fetchMovieShowings = useCallback(
@@ -305,8 +405,14 @@ export function useSchedule(
 
   const fetchLeaveRequests = useCallback(
     async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      if (needsMasterCinemaSelection) {
+        setLeaveRequests([]);
+        return true;
+      }
       try {
-        const response = await apiFetch("/leave-requests");
+        const response = await apiFetch(
+          appendActiveCinemaId("/leave-requests"),
+        );
 
         if (!response.ok) {
           setLeaveRequests([]);
@@ -342,7 +448,12 @@ export function useSchedule(
         return false;
       }
     },
-    [apiFetch, reportBackgroundError],
+    [
+      apiFetch,
+      appendActiveCinemaId,
+      needsMasterCinemaSelection,
+      reportBackgroundError,
+    ],
   );
 
   const fetchOpenTimeEntry = useCallback(
@@ -539,7 +650,12 @@ export function useSchedule(
     async (input: CreateShiftInput) => {
       const response = await apiFetch("/shifts", {
         method: "POST",
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          ...input,
+          ...(user?.role === "MASTER" && !user.cinemaId
+            ? { cinemaId: activeCinemaId }
+            : {}),
+        }),
       });
 
       if (!response.ok) {
@@ -550,14 +666,19 @@ export function useSchedule(
 
       await refreshDayData();
     },
-    [apiFetch, refreshDayData],
+    [activeCinemaId, apiFetch, refreshDayData, user],
   );
 
   const updateShift = useCallback(
     async (shiftId: number, input: UpdateShiftInput) => {
       const response = await apiFetch(`/shifts/${shiftId}`, {
         method: "PATCH",
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          ...input,
+          ...(user?.role === "MASTER" && !user.cinemaId
+            ? { cinemaId: activeCinemaId }
+            : {}),
+        }),
       });
 
       if (!response.ok) {
@@ -568,14 +689,19 @@ export function useSchedule(
 
       await refreshDayData();
     },
-    [apiFetch, refreshDayData],
+    [activeCinemaId, apiFetch, refreshDayData, user],
   );
 
   const deleteShift = useCallback(
     async (shiftId: number) => {
-      const response = await apiFetch(`/shifts/${shiftId}`, {
-        method: "DELETE",
-      });
+      const response = await apiFetch(
+        user?.role === "MASTER" && !user.cinemaId
+          ? appendCinemaId(`/shifts/${shiftId}`, activeCinemaId)
+          : `/shifts/${shiftId}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!response.ok) {
         throw new Error("Kunne ikke slette vagt");
@@ -583,7 +709,7 @@ export function useSchedule(
 
       await refreshDayData();
     },
-    [apiFetch, refreshDayData],
+    [activeCinemaId, apiFetch, refreshDayData, user],
   );
 
   const offerShiftTrade = useCallback(

@@ -442,7 +442,9 @@ export default function SchedulePage() {
       closeShiftFormModal();
     } catch (error) {
       infoDialog.showError(
-        selectedShift ? "Vagten kunne ikke opdateres" : "Vagten kunne ikke oprettes",
+        selectedShift
+          ? "Vagten kunne ikke opdateres"
+          : "Vagten kunne ikke oprettes",
         error instanceof Error
           ? error.message
           : "Der opstod en fejl, da vagten skulle gemmes. Prøv igen.",
@@ -450,20 +452,36 @@ export default function SchedulePage() {
     }
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!selectedShift) return;
 
-    try {
-      await deleteShift(selectedShift.id);
-      closeShiftFormModal();
-    } catch (error) {
-      infoDialog.showError(
-        "Vagten kunne ikke slettes",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da vagten skulle slettes. Prøv igen.",
-      );
-    }
+    const shiftToDelete = selectedShift;
+
+    confirmDialog.confirm({
+      title: "Slet vagt",
+      description: `Er du sikker på, at du vil slette denne vagt?
+
+${getShiftConfirmText(shiftToDelete)}
+
+Handlingen kan ikke fortrydes.`,
+      confirmText: "Slet vagt",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          await deleteShift(shiftToDelete.id);
+          closeShiftFormModal();
+          toast.success("Vagten er slettet");
+        } catch (error) {
+          infoDialog.showError(
+            "Vagten kunne ikke slettes",
+            error instanceof Error
+              ? error.message
+              : "Der opstod en fejl, da vagten skulle slettes. Prøv igen.",
+          );
+        }
+      },
+    });
   }
 
   function handleSelectShift(shift: Shift) {
@@ -887,7 +905,6 @@ ${getShiftConfirmText(selectedShift)}`,
                       )}
                     </div>
                   </div>
-
                 </>
               )}
 
@@ -1258,7 +1275,6 @@ ${getShiftConfirmText(selectedShift)}`,
                 </div>
               </div>
             )}
-
           </main>
 
           <ConfirmModal

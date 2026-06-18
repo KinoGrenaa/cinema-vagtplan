@@ -13,7 +13,7 @@ type AuthUser = {
   sub: number;
   email: string;
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 @Injectable()
@@ -25,9 +25,28 @@ export class ShiftsService {
     private auditLogsService: AuditLogsService,
   ) {}
 
-  private getCinemaFilter(user: AuthUser) {
-    if (user.role === 'MASTER') return {};
-    return { cinemaId: user.cinemaId };
+  private resolveCinemaId(user: AuthUser, selectedCinemaId?: number | null) {
+    if (user.role === 'MASTER') {
+      if (!selectedCinemaId) {
+        throw new BadRequestException(
+          'Vælg en biograf, før du administrerer vagter.',
+        );
+      }
+
+      return selectedCinemaId;
+    }
+
+    if (!user.cinemaId) {
+      throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
+    }
+
+    return user.cinemaId;
+  }
+
+  private getCinemaFilter(user: AuthUser, selectedCinemaId?: number | null) {
+    return {
+      cinemaId: this.resolveCinemaId(user, selectedCinemaId),
+    };
   }
 
   private getCopenhagenOffsetMs(date: Date) {
@@ -84,9 +103,13 @@ export class ShiftsService {
     };
   }
 
-  async findAll(user: AuthUser, date?: string) {
+  async findAll(
+    user: AuthUser,
+    date?: string,
+    selectedCinemaId?: number | null,
+  ) {
     const where: any = {
-      ...this.getCinemaFilter(user),
+      ...this.getCinemaFilter(user, selectedCinemaId),
     };
 
     if (date) {
@@ -201,11 +224,7 @@ export class ShiftsService {
       workTypeId: number;
     },
   ) {
-    const cinemaId = user.role === 'MASTER' ? data.cinemaId : user.cinemaId;
-
-    if (!cinemaId) {
-      throw new BadRequestException('CinemaId mangler');
-    }
+    const cinemaId = this.resolveCinemaId(user, data.cinemaId);
 
     const shiftUser = await this.prisma.user.findFirst({
       where: {
@@ -286,6 +305,7 @@ export class ShiftsService {
       startTime: string;
       endTime: string;
       note?: string | null;
+      cinemaId?: number;
       userId: number;
       workTypeId: number;
     },
@@ -293,7 +313,7 @@ export class ShiftsService {
     const oldShift = await this.prisma.shift.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user),
+        ...this.getCinemaFilter(user, data.cinemaId),
       },
       include: {
         user: true,
@@ -390,11 +410,15 @@ export class ShiftsService {
     return shift;
   }
 
-  async deleteShift(user: AuthUser, id: number) {
+  async deleteShift(
+    user: AuthUser,
+    id: number,
+    selectedCinemaId?: number | null,
+  ) {
     const shiftToDelete = await this.prisma.shift.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user),
+        ...this.getCinemaFilter(user, selectedCinemaId),
       },
       include: {
         workType: true,

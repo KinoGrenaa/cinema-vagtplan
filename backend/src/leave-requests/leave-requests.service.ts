@@ -14,7 +14,7 @@ type AuthUser = {
   id?: number;
   email?: string;
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 type LeaveStatus = 'APPROVED' | 'REJECTED' | 'CANCELLED';
@@ -52,6 +52,22 @@ export class LeaveRequestsService {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     return tomorrow;
+  }
+
+  private resolveCinemaId(user: AuthUser, selectedCinemaId?: number | null) {
+    if (user.role === 'MASTER') {
+      if (!selectedCinemaId) {
+        throw new BadRequestException('Vælg en biograf, før du henter fravær.');
+      }
+
+      return selectedCinemaId;
+    }
+
+    if (!user.cinemaId) {
+      throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
+    }
+
+    return user.cinemaId;
   }
 
   private validateDates(startDate: Date, endDate: Date) {
@@ -451,13 +467,14 @@ export class LeaveRequestsService {
     }
   }
 
-  findAll(user: AuthUser) {
+  findAll(user: AuthUser, selectedCinemaId?: number | null) {
     const userId = this.getUserId(user);
+    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
     const isAdmin = user.role === 'ADMIN' || user.role === 'MASTER';
 
     return this.prisma.leaveRequest.findMany({
       where: {
-        cinemaId: user.cinemaId,
+        cinemaId,
         ...(isAdmin ? {} : { userId }),
       },
       include: {
@@ -483,24 +500,21 @@ export class LeaveRequestsService {
       throw new ForbiddenException('Brugeren kunne ikke identificeres.');
     }
 
+    const cinemaId = this.resolveCinemaId(user);
+
     const startDate = new Date(data.startDate);
     const endDate = new Date(data.endDate);
 
     this.validateDates(startDate, endDate);
 
-    await this.ensureNoOverlappingShift(
-      userId,
-      user.cinemaId,
-      startDate,
-      endDate,
-    );
+    await this.ensureNoOverlappingShift(userId, cinemaId, startDate, endDate);
 
     const leaveRequest = await this.prisma.leaveRequest.create({
       data: {
         startDate,
         endDate,
         reason: data.reason,
-        cinemaId: user.cinemaId,
+        cinemaId,
         userId,
       },
       include: {
@@ -527,10 +541,12 @@ export class LeaveRequestsService {
       throw new ForbiddenException('Brugeren kunne ikke identificeres.');
     }
 
+    const cinemaId = this.resolveCinemaId(user);
+
     const existing = await this.prisma.leaveRequest.findFirst({
       where: {
         id,
-        cinemaId: user.cinemaId,
+        cinemaId,
       },
     });
 
