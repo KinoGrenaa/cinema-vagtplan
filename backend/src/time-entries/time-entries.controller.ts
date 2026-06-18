@@ -26,18 +26,28 @@ export class TimeEntriesController {
   @UseGuards(JwtGuard)
   @Get('me')
   getMyEntries(@Req() req) {
-    return this.timeEntriesService.findForUser(req.user.sub);
+    return this.timeEntriesService.findForUser(req.user.sub, req.user);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Get()
-  getEntries(@Query('userId') userId?: string) {
+  getEntries(
+    @Req() req,
+    @Query('userId') userId?: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     if (userId) {
-      return this.timeEntriesService.findForUser(Number(userId));
+      return this.timeEntriesService.findForUser(
+        Number(userId),
+        req.user,
+        selectedCinemaId,
+      );
     }
 
-    return this.timeEntriesService.findAll();
+    return this.timeEntriesService.findAll(req.user, selectedCinemaId);
   }
 
   @UseGuards(JwtGuard)
@@ -88,14 +98,18 @@ export class TimeEntriesController {
   approveEntry(
     @Req() req,
     @Param('id') id: string,
+    @Query('cinemaId') cinemaId?: string,
     @Body()
     body?: {
       confirmPayrollAdjustment?: boolean;
     },
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     return this.timeEntriesService.approveEntry(
       Number(id),
-      req.user.sub,
+      req.user,
+      selectedCinemaId,
       body?.confirmPayrollAdjustment ?? false,
     );
   }
@@ -103,8 +117,18 @@ export class TimeEntriesController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id/unapprove')
-  unapproveEntry(@Req() req, @Param('id') id: string) {
-    return this.timeEntriesService.unapproveEntry(Number(id), req.user.sub);
+  unapproveEntry(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.timeEntriesService.unapproveEntry(
+      Number(id),
+      req.user,
+      selectedCinemaId,
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -114,11 +138,15 @@ export class TimeEntriesController {
     @Req() req,
     @Param('id') id: string,
     @Body() body: RejectTimeEntryDto,
+    @Query('cinemaId') cinemaId?: string,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     return this.timeEntriesService.rejectEntry(
       Number(id),
       body.adminNote,
-      req.user.sub,
+      req.user,
+      selectedCinemaId,
     );
   }
 
@@ -129,11 +157,15 @@ export class TimeEntriesController {
     @Req() req,
     @Param('id') id: string,
     @Body() body: RejectTimeEntryDto,
+    @Query('cinemaId') cinemaId?: string,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     return this.timeEntriesService.voidEntry(
       Number(id),
       body.adminNote,
-      req.user.sub,
+      req.user,
+      selectedCinemaId,
     );
   }
 
@@ -154,8 +186,18 @@ export class TimeEntriesController {
 
   @UseGuards(JwtGuard)
   @Get(':id/revisions')
-  getEntryRevisions(@Req() req, @Param('id') id: string) {
-    return this.timeEntriesService.findRevisionsForEntry(req.user, Number(id));
+  getEntryRevisions(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.timeEntriesService.findRevisionsForEntry(
+      req.user,
+      Number(id),
+      selectedCinemaId,
+    );
   }
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
@@ -164,7 +206,15 @@ export class TimeEntriesController {
     @Req() req,
     @Param('id') id: string,
     @Body() body: UpdateTimeEntryDto,
+    @Query('cinemaId') cinemaId?: string,
   ) {
-    return this.timeEntriesService.updateEntry(req.user, Number(id), body);
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.timeEntriesService.updateEntry(
+      req.user,
+      Number(id),
+      body,
+      selectedCinemaId,
+    );
   }
 }

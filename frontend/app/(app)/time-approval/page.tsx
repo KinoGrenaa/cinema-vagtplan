@@ -464,11 +464,24 @@ export default function TimeApprovalPage() {
       return nameA.localeCompare(nameB, "da-DK");
     });
 
+  function getSelectedCinemaQuery() {
+    const selectedCinemaId =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("masterSelectedCinemaId")
+        : null;
+
+    return selectedCinemaId
+      ? `?cinemaId=${encodeURIComponent(selectedCinemaId)}`
+      : "";
+  }
+
   const fetchEntries = useCallback(async () => {
     try {
       setLoading(true);
 
-      const response = await apiFetch("/time-entries");
+      const response = await apiFetch(
+        `/time-entries${getSelectedCinemaQuery()}`,
+      );
 
       if (!response.ok) {
         if (response.status !== 401) {
@@ -576,10 +589,13 @@ export default function TimeApprovalPage() {
         try {
           setSavingEdit(true);
 
-          const response = await apiFetch(`/time-entries/${editEntry.id}`, {
-            method: "PATCH",
-            body: JSON.stringify(data),
-          });
+          const response = await apiFetch(
+            `/time-entries/${editEntry.id}${getSelectedCinemaQuery()}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify(data),
+            },
+          );
 
           if (!response.ok) {
             if (response.status === 401) return;
@@ -616,7 +632,9 @@ export default function TimeApprovalPage() {
       setHistoryEntry(entry);
       setHistoryLoading(true);
 
-      const response = await apiFetch(`/time-entries/${entry.id}/revisions`);
+      const response = await apiFetch(
+        `/time-entries/${entry.id}/revisions${getSelectedCinemaQuery()}`,
+      );
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -683,12 +701,16 @@ export default function TimeApprovalPage() {
     options?: { confirmPayrollAdjustment?: boolean },
   ) {
     try {
-      const response = await apiFetch(`/time-entries/${entry.id}/approve`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          confirmPayrollAdjustment: options?.confirmPayrollAdjustment ?? false,
-        }),
-      });
+      const response = await apiFetch(
+        `/time-entries/${entry.id}/approve${getSelectedCinemaQuery()}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            confirmPayrollAdjustment:
+              options?.confirmPayrollAdjustment ?? false,
+          }),
+        },
+      );
 
       if (!response.ok) {
         if (response.status === 401) return;
@@ -745,9 +767,12 @@ export default function TimeApprovalPage() {
 
   async function unapprove(id: number) {
     try {
-      const response = await apiFetch(`/time-entries/${id}/unapprove`, {
-        method: "PATCH",
-      });
+      const response = await apiFetch(
+        `/time-entries/${id}/unapprove${getSelectedCinemaQuery()}`,
+        {
+          method: "PATCH",
+        },
+      );
 
       if (!response.ok) {
         if (response.status === 401) return;
@@ -793,12 +818,15 @@ export default function TimeApprovalPage() {
         }
 
         try {
-          const response = await apiFetch(`/time-entries/${id}/reject`, {
-            method: "PATCH",
-            body: JSON.stringify({
-              adminNote,
-            }),
-          });
+          const response = await apiFetch(
+            `/time-entries/${id}/reject${getSelectedCinemaQuery()}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({
+                adminNote,
+              }),
+            },
+          );
 
           if (!response.ok) {
             if (response.status === 401) return;
@@ -851,12 +879,15 @@ export default function TimeApprovalPage() {
         }
 
         try {
-          const response = await apiFetch(`/time-entries/${id}/void`, {
-            method: "PATCH",
-            body: JSON.stringify({
-              adminNote,
-            }),
-          });
+          const response = await apiFetch(
+            `/time-entries/${id}/void${getSelectedCinemaQuery()}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({
+                adminNote,
+              }),
+            },
+          );
 
           if (!response.ok) {
             if (response.status === 401) return;

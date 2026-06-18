@@ -116,14 +116,40 @@ export class TimeEntriesService {
     });
   }
 
-  private getCinemaFilter(user?: any) {
-    if (!user || user.role === 'MASTER') {
-      return {};
+  private getCinemaFilter(user: any, selectedCinemaId?: number | null) {
+    if (!user) {
+      throw new BadRequestException('Mangler brugeroplysninger.');
+    }
+
+    if (user.role === 'MASTER') {
+      if (!selectedCinemaId || !Number.isFinite(selectedCinemaId)) {
+        throw new BadRequestException('Vælg en aktiv biograf først.');
+      }
+
+      return {
+        cinemaId: selectedCinemaId,
+      };
+    }
+
+    if (!user.cinemaId) {
+      throw new BadRequestException('Brugeren er ikke tilknyttet en biograf.');
     }
 
     return {
       cinemaId: user.cinemaId,
     };
+  }
+
+  private ensureUserCanAccessEntry(
+    user: any,
+    entry: { cinemaId: number },
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaFilter = this.getCinemaFilter(user, selectedCinemaId);
+
+    if (entry.cinemaId !== cinemaFilter.cinemaId) {
+      throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    }
   }
 
   private ensureEntryEditable(entry: any, user?: any) {
@@ -566,9 +592,16 @@ export class TimeEntriesService {
     });
   }
 
-  async findForUser(userId: number) {
+  async findForUser(
+    userId: number,
+    user: any,
+    selectedCinemaId?: number | null,
+  ) {
     const entries = await this.prisma.timeEntry.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...this.getCinemaFilter(user, selectedCinemaId),
+      },
       include: {
         user: true,
         payrollType: true,
@@ -593,15 +626,17 @@ export class TimeEntriesService {
     return entries.map((entry) => this.withDeviation(entry));
   }
 
-  async findAll(user?: any) {
+  async findAll(user: any, selectedCinemaId?: number | null) {
+    const cinemaFilter = this.getCinemaFilter(user, selectedCinemaId);
+
     const entries = await this.prisma.timeEntry.findMany({
       where:
-        user?.role === 'EMPLOYEE'
+        user.role === 'EMPLOYEE'
           ? {
               userId: user.sub,
-              ...this.getCinemaFilter(user),
+              ...cinemaFilter,
             }
-          : this.getCinemaFilter(user),
+          : cinemaFilter,
       include: {
         user: true,
         payrollType: true,
@@ -1102,9 +1137,11 @@ export class TimeEntriesService {
 
   async approveEntry(
     id: number,
-    changedByUserId?: number | null,
+    user: any,
+    selectedCinemaId?: number | null,
     confirmPayrollAdjustment = false,
   ) {
+    const changedByUserId = user?.sub ?? null;
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
       include: {
@@ -1119,6 +1156,8 @@ export class TimeEntriesService {
     if (!existingEntry) {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
+
+    this.ensureUserCanAccessEntry(user, existingEntry, selectedCinemaId);
 
     const payrollPeriod =
       await this.payrollService.getPayrollPeriodEntityForDate(
@@ -1162,7 +1201,7 @@ export class TimeEntriesService {
       });
     }
 
-    this.ensureEntryEditable(existingEntry);
+    this.ensureEntryEditable(existingEntry, user);
 
     if (existingEntry.status === 'VOIDED') {
       throw new BadRequestException(
@@ -1305,7 +1344,12 @@ export class TimeEntriesService {
     return response;
   }
 
-  async unapproveEntry(id: number, changedByUserId?: number | null) {
+  async unapproveEntry(
+    id: number,
+    user: any,
+    selectedCinemaId?: number | null,
+  ) {
+    const changedByUserId = user?.sub ?? null;
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
       include: {
@@ -1320,7 +1364,8 @@ export class TimeEntriesService {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
 
-    this.ensureEntryEditable(existingEntry);
+    this.ensureUserCanAccessEntry(user, existingEntry, selectedCinemaId);
+    this.ensureEntryEditable(existingEntry, user);
 
     if (existingEntry.status === 'VOIDED') {
       throw new BadRequestException(
@@ -1394,9 +1439,11 @@ export class TimeEntriesService {
 
   async rejectEntry(
     id: number,
-    adminNote?: string,
-    changedByUserId?: number | null,
+    adminNote: string | undefined,
+    user: any,
+    selectedCinemaId?: number | null,
   ) {
+    const changedByUserId = user?.sub ?? null;
     if (!adminNote?.trim()) {
       throw new BadRequestException(
         'Admin-begrundelse er påkrævet ved send retur til rettelse',
@@ -1417,7 +1464,8 @@ export class TimeEntriesService {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
 
-    this.ensureEntryEditable(existingEntry);
+    this.ensureUserCanAccessEntry(user, existingEntry, selectedCinemaId);
+    this.ensureEntryEditable(existingEntry, user);
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
@@ -1486,9 +1534,11 @@ export class TimeEntriesService {
 
   async voidEntry(
     id: number,
-    adminNote?: string,
-    changedByUserId?: number | null,
+    adminNote: string | undefined,
+    user: any,
+    selectedCinemaId?: number | null,
   ) {
+    const changedByUserId = user?.sub ?? null;
     if (!adminNote?.trim()) {
       throw new BadRequestException(
         'Admin-begrundelse er påkrævet ved annullering af tidsregistrering',
@@ -1509,7 +1559,8 @@ export class TimeEntriesService {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
 
-    this.ensureEntryEditable(existingEntry);
+    this.ensureUserCanAccessEntry(user, existingEntry, selectedCinemaId);
+    this.ensureEntryEditable(existingEntry, user);
 
     if (existingEntry.status === 'VOIDED') {
       throw new BadRequestException(
@@ -1869,6 +1920,7 @@ export class TimeEntriesService {
       clockOutNote?: string | null;
       adminNote?: string | null;
     },
+    selectedCinemaId?: number | null,
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
@@ -1885,6 +1937,7 @@ export class TimeEntriesService {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
 
+    this.ensureUserCanAccessEntry(user, existingEntry, selectedCinemaId);
     this.ensureEntryEditable(existingEntry, user);
 
     if (!this.hasText(data.adminNote)) {
@@ -2141,7 +2194,11 @@ export class TimeEntriesService {
     return response;
   }
 
-  async findRevisionsForEntry(user: any, id: number) {
+  async findRevisionsForEntry(
+    user: any,
+    id: number,
+    selectedCinemaId?: number | null,
+  ) {
     const entry = await this.prisma.timeEntry.findUnique({
       where: { id },
       select: {
@@ -2161,11 +2218,7 @@ export class TimeEntriesService {
       );
     }
 
-    if (user.role !== 'MASTER' && entry.cinemaId !== user.cinemaId) {
-      throw new BadRequestException(
-        'Du kan kun se historik for din egen biograf',
-      );
-    }
+    this.ensureUserCanAccessEntry(user, entry, selectedCinemaId);
 
     return this.prisma.timeEntryRevision.findMany({
       where: {
