@@ -7,7 +7,7 @@ import { useRealtimeCore } from "./useRealtimeCore";
 
 export function useRealtimeBadges() {
   const { apiFetch } = useApi();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const [poolCount, setPoolCount] = useState(0);
   const [directCount, setDirectCount] = useState(0);
@@ -38,6 +38,19 @@ export function useRealtimeBadges() {
     return data.filter((request) => request?.status === "PENDING").length;
   };
 
+  const getMasterCinemaQuery = () => {
+    if (typeof window === "undefined") return "";
+    if (user?.role !== "MASTER" || user.cinemaId) return "";
+
+    const selectedCinemaId = window.localStorage.getItem(
+      "masterSelectedCinemaId",
+    );
+
+    return selectedCinemaId
+      ? `?cinemaId=${encodeURIComponent(selectedCinemaId)}`
+      : "";
+  };
+
   const refreshBadges = useCallback(async () => {
     if (!token) return;
 
@@ -50,8 +63,8 @@ export function useRealtimeBadges() {
         staffingRes,
         leaveRequestsRes,
       ] = await Promise.all([
-        apiFetch("/shift-trades/pool-count"),
-        apiFetch("/shift-trades/direct-count"),
+        apiFetch(`/shift-trades/pool-count${getMasterCinemaQuery()}`),
+        apiFetch(`/shift-trades/direct-count${getMasterCinemaQuery()}`),
         apiFetch("/messages/unread-count"),
         apiFetch("/notifications/unread-count"),
         apiFetch("/staffing-requests/mine"),
@@ -88,7 +101,7 @@ export function useRealtimeBadges() {
       setStaffingRequestCount(0);
       setLeaveRequestCount(0);
     }
-  }, [apiFetch, token]);
+  }, [apiFetch, token, user]);
 
   useEffect(() => {
     refreshBadges();

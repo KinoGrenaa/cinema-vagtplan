@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -18,24 +19,32 @@ export class ShiftTradesController {
   constructor(private shiftTradesService: ShiftTradesService) {}
 
   @Get('pool-count')
-  getPoolCount(@Req() req: any) {
+  getPoolCount(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     return this.shiftTradesService.getPoolCount(
-      req.user.cinemaId,
+      req.user,
       req.user.sub,
+      selectedCinemaId,
     );
   }
 
   @Get('direct-count')
-  getDirectCount(@Req() req: any) {
+  getDirectCount(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     return this.shiftTradesService.getDirectCount(
-      req.user.cinemaId,
+      req.user,
       req.user.sub,
+      selectedCinemaId,
     );
   }
 
   @Get()
-  findAll(@Req() req: any) {
-    return this.shiftTradesService.findAll(req.user);
+  findAll(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.shiftTradesService.findAll(req.user, selectedCinemaId);
   }
 
   @Post()

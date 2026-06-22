@@ -74,11 +74,39 @@ export default function ShiftTradesPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const getMasterCinemaQuery = useCallback(() => {
+    if (typeof window === "undefined") return "";
+    if (user?.role !== "MASTER" || user.cinemaId) return "";
+
+    const selectedCinemaId = window.localStorage.getItem(
+      "masterSelectedCinemaId",
+    );
+
+    return selectedCinemaId
+      ? `?cinemaId=${encodeURIComponent(selectedCinemaId)}`
+      : "";
+  }, [user]);
+
   const fetchTrades = useCallback(async () => {
+    if (!user) {
+      setTrades([]);
+      setShifts([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const response = await apiFetch("/shift-trades");
+      const masterCinemaQuery = getMasterCinemaQuery();
+
+      if (user.role === "MASTER" && !user.cinemaId && !masterCinemaQuery) {
+        setTrades([]);
+        setShifts([]);
+        return;
+      }
+
+      const response = await apiFetch(`/shift-trades${masterCinemaQuery}`);
 
       if (!response.ok) {
         setTrades([]);
@@ -93,7 +121,7 @@ export default function ShiftTradesPage() {
 
       const data = await response.json();
       setTrades(Array.isArray(data) ? data : []);
-      const shiftsResponse = await apiFetch("/shifts");
+      const shiftsResponse = await apiFetch(`/shifts${masterCinemaQuery}`);
 
       if (shiftsResponse.ok) {
         const shiftsData = await shiftsResponse.json();
@@ -111,7 +139,7 @@ export default function ShiftTradesPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiFetch]);
+  }, [apiFetch, getMasterCinemaQuery, user]);
 
   useEffect(() => {
     fetchTrades();

@@ -1,4 +1,5 @@
 ﻿import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -18,19 +19,31 @@ export class ShiftTradesService {
     private push: PushService,
   ) {}
 
-  private getCinemaFilter(user: any) {
+  private resolveCinemaId(user: any, selectedCinemaId?: number | null) {
     if (user?.role === 'MASTER') {
-      return {};
+      if (!selectedCinemaId || !Number.isFinite(selectedCinemaId)) {
+        throw new BadRequestException('Vælg en aktiv biograf først.');
+      }
+
+      return selectedCinemaId;
     }
 
+    if (!user?.cinemaId) {
+      throw new BadRequestException('Brugeren er ikke tilknyttet en biograf.');
+    }
+
+    return user.cinemaId;
+  }
+
+  private getCinemaFilter(user: any, selectedCinemaId?: number | null) {
     return {
-      cinemaId: user.cinemaId,
+      cinemaId: this.resolveCinemaId(user, selectedCinemaId),
     };
   }
 
-  findAll(user?: any) {
+  findAll(user: any, selectedCinemaId?: number | null) {
     return this.prisma.shiftTrade.findMany({
-      where: user ? this.getCinemaFilter(user) : {},
+      where: this.getCinemaFilter(user, selectedCinemaId),
       include: {
         shift: {
           include: {
@@ -49,7 +62,12 @@ export class ShiftTradesService {
     });
   }
 
-  async getPoolCount(cinemaId: number, userId: number) {
+  async getPoolCount(
+    user: any,
+    userId: number,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
     const count = await this.prisma.shiftTrade.count({
       where: {
         cinemaId,
@@ -69,7 +87,12 @@ export class ShiftTradesService {
     return { count };
   }
 
-  async getDirectCount(cinemaId: number, userId: number) {
+  async getDirectCount(
+    user: any,
+    userId: number,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
     const count = await this.prisma.shiftTrade.count({
       where: {
         cinemaId,
