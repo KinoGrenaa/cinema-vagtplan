@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
-import FilterModal from "@/app/components/modals/FilterModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import InputModal from "@/app/components/modals/InputModal";
 import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
@@ -20,6 +19,7 @@ import {
   readErrorMessage,
 } from "./utils";
 import type { TimeEntry, TimeEntryStatus } from "./types";
+import TimeApprovalFilterModal from "./components/TimeApprovalFilterModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -1351,156 +1351,37 @@ export default function TimeApprovalPage() {
           />
         )}
 
-        <FilterModal
+        <TimeApprovalFilterModal
           open={showFilterModal}
-          title="Filtre"
           activeFilterCount={activeFilterCount}
+          pendingCount={pendingCount}
+          needsChangesCount={needsChangesCount}
+          approvedCount={approvedCount}
+          voidedCount={voidedCount}
+          showPending={showPending}
+          showNeedsChanges={showNeedsChanges}
+          showApproved={showApproved}
+          showVoided={showVoided}
+          showPlannedEntries={showPlannedEntries}
+          showManualEntries={showManualEntries}
+          onlyWithDeviations={onlyWithDeviations}
+          onlyWithNotes={onlyWithNotes}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
           onApply={() => setShowFilterModal(false)}
           onClose={() => setShowFilterModal(false)}
           onReset={resetFilters}
-        >
-          <div className="space-y-6">
-            <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Status
-              </h3>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={showPending}
-                    onChange={(event) => setShowPending(event.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  Afventer godkendelse ({pendingCount})
-                </label>
-
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={showNeedsChanges}
-                    onChange={(event) =>
-                      setShowNeedsChanges(event.target.checked)
-                    }
-                    className="h-4 w-4"
-                  />
-                  Sendt retur ({needsChangesCount})
-                </label>
-
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={showApproved}
-                    onChange={(event) => setShowApproved(event.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  Godkendte ({approvedCount})
-                </label>
-
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={showVoided}
-                    onChange={(event) => setShowVoided(event.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  Annullerede ({voidedCount})
-                </label>
-              </div>
-            </section>
-
-            <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Registreringstype
-              </h3>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={showPlannedEntries}
-                    onChange={(event) =>
-                      setShowPlannedEntries(event.target.checked)
-                    }
-                    className="h-4 w-4"
-                  />
-                  Planlagte vagter
-                </label>
-
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={showManualEntries}
-                    onChange={(event) =>
-                      setShowManualEntries(event.target.checked)
-                    }
-                    className="h-4 w-4"
-                  />
-                  Manuelle registreringer
-                </label>
-              </div>
-            </section>
-
-            <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Indhold
-              </h3>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={onlyWithDeviations}
-                    onChange={(event) =>
-                      setOnlyWithDeviations(event.target.checked)
-                    }
-                    className="h-4 w-4"
-                  />
-                  Kun registreringer med afvigelser
-                </label>
-
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={onlyWithNotes}
-                    onChange={(event) => setOnlyWithNotes(event.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  Kun registreringer med noter
-                </label>
-              </div>
-            </section>
-
-            <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                Dato
-              </h3>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Fra
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(event) => setDateFrom(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-900"
-                  />
-                </label>
-
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Til
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(event) => setDateTo(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-900"
-                  />
-                </label>
-              </div>
-            </section>
-          </div>
-        </FilterModal>
+          onShowPendingChange={setShowPending}
+          onShowNeedsChangesChange={setShowNeedsChanges}
+          onShowApprovedChange={setShowApproved}
+          onShowVoidedChange={setShowVoided}
+          onShowPlannedEntriesChange={setShowPlannedEntries}
+          onShowManualEntriesChange={setShowManualEntries}
+          onOnlyWithDeviationsChange={setOnlyWithDeviations}
+          onOnlyWithNotesChange={setOnlyWithNotes}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+        />
       </AdminGuard>
 
       <TimeEntryHistoryModal
