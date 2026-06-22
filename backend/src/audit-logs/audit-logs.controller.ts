@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -12,8 +12,10 @@ export class AuditLogsController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Get()
-  getAuditLogs(@Req() req: any) {
-    return this.auditLogsService.findAll(req.user);
+  getAuditLogs(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.auditLogsService.findAll(req.user, selectedCinemaId);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -23,11 +25,15 @@ export class AuditLogsController {
     @Req() req: any,
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,
+    @Query('cinemaId') cinemaId?: string,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     return this.auditLogsService.findByEntity(
       req.user,
       entityType,
       Number(entityId),
+      selectedCinemaId,
     );
   }
 }

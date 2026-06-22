@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 type CurrentUser = {
@@ -80,9 +84,9 @@ export class AuditLogsService {
     });
   }
 
-  async findAll(currentUser: CurrentUser) {
+  async findAll(currentUser: CurrentUser, selectedCinemaId?: number | null) {
     const logs = await this.prisma.auditLog.findMany({
-      where: this.getAccessWhere(currentUser),
+      where: this.getAccessWhere(currentUser, selectedCinemaId),
       select: auditLogSelect,
       orderBy: {
         createdAt: 'desc',
@@ -97,10 +101,11 @@ export class AuditLogsService {
     currentUser: CurrentUser,
     entityType: string,
     entityId: number,
+    selectedCinemaId?: number | null,
   ) {
     const logs = await this.prisma.auditLog.findMany({
       where: {
-        ...this.getAccessWhere(currentUser),
+        ...this.getAccessWhere(currentUser, selectedCinemaId),
         entityType,
         entityId,
       },
@@ -113,9 +118,18 @@ export class AuditLogsService {
     return this.addSubjectUsers(logs);
   }
 
-  private getAccessWhere(currentUser: CurrentUser) {
+  private getAccessWhere(
+    currentUser: CurrentUser,
+    selectedCinemaId?: number | null,
+  ) {
     if (currentUser.role === 'MASTER') {
-      return {};
+      if (!selectedCinemaId || !Number.isFinite(selectedCinemaId)) {
+        throw new BadRequestException('Vælg en aktiv biograf først.');
+      }
+
+      return {
+        cinemaId: selectedCinemaId,
+      };
     }
 
     if (!currentUser.cinemaId) {

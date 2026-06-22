@@ -238,24 +238,71 @@ async function readErrorMessage(response: Response, fallback: string) {
 }
 
 export default function AuditLogPage() {
-  const { isMaster } = useAuth();
+  const { isMaster, user } = useAuth();
 
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState("ALL");
   const [expandedDateKeys, setExpandedDateKeys] = useState<string[]>([]);
+  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
+    string | null
+  >(null);
   const errorDialog = useInfoModal();
+
+  const needsMasterCinemaSelection =
+    user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
+
+  useEffect(() => {
+    function updateSelectedMasterCinema() {
+      setSelectedMasterCinemaId(
+        window.localStorage.getItem("masterSelectedCinemaId"),
+      );
+    }
+
+    updateSelectedMasterCinema();
+
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      updateSelectedMasterCinema,
+    );
+    window.addEventListener("storage", updateSelectedMasterCinema);
+
+    return () => {
+      window.removeEventListener(
+        "masterSelectedCinemaChanged",
+        updateSelectedMasterCinema,
+      );
+      window.removeEventListener("storage", updateSelectedMasterCinema);
+    };
+  }, []);
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [selectedMasterCinemaId, user?.role, user?.cinemaId]);
 
   async function fetchLogs() {
+    if (!user) {
+      setLogs([]);
+      setLoading(false);
+      return;
+    }
+
+    if (needsMasterCinemaSelection) {
+      setLogs([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const response = await apiFetch("/audit-logs");
+      const endpoint =
+        user.role === "MASTER" && !user.cinemaId && selectedMasterCinemaId
+          ? `/audit-logs?cinemaId=${encodeURIComponent(selectedMasterCinemaId)}`
+          : "/audit-logs";
+
+      const response = await apiFetch(endpoint);
 
       if (!response.ok) {
         throw new Error(
@@ -358,7 +405,7 @@ export default function AuditLogPage() {
     return (
       <PermissionGuard permission="canManageUsers">
         <>
-          <div className="p-6 text-gray-600 dark:text-gray-300">
+          <div className="min-h-screen bg-gray-50 p-6 text-gray-600 dark:bg-gray-950 dark:text-gray-300">
             Indlæser ændringshistorik...
           </div>
 
@@ -375,10 +422,36 @@ export default function AuditLogPage() {
     );
   }
 
+  if (needsMasterCinemaSelection) {
+    return (
+      <PermissionGuard permission="canManageUsers">
+        <div className="min-h-screen bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+          <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm dark:border-amber-800 dark:bg-amber-950/30">
+            <h1 className="text-xl font-bold text-amber-950 dark:text-amber-100">
+              Ingen aktiv biograf valgt
+            </h1>
+            <p className="mt-1 text-sm text-amber-900 dark:text-amber-100/80">
+              Vælg en biograf i MASTER-panelet, før du kan se ændringshistorik.
+            </p>
+          </section>
+
+          <InfoModal
+            open={errorDialog.open}
+            title={errorDialog.title}
+            description={errorDialog.description}
+            buttonText={errorDialog.buttonText}
+            variant={errorDialog.variant}
+            onClose={errorDialog.close}
+          />
+        </div>
+      </PermissionGuard>
+    );
+  }
+
   return (
     <PermissionGuard permission="canManageUsers">
-      <div className="p-6 text-gray-900 dark:text-gray-100">
-        <div className="mb-6">
+      <div className="min-h-screen bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             Ændringshistorik
           </h1>
