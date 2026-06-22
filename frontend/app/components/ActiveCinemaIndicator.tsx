@@ -18,6 +18,7 @@ type IndicatorState =
       description: string;
       href: string;
       linkText: string;
+      logoUrl: string | null;
     }
   | {
       visible: true;
@@ -31,8 +32,11 @@ type IndicatorState =
       visible: false;
     };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
+const MASTER_SELECTED_CINEMA_LOGO_URL_KEY = "masterSelectedCinemaLogoUrl";
 
 function notifyMasterSelectedCinemaChanged() {
   window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
@@ -41,7 +45,22 @@ function notifyMasterSelectedCinemaChanged() {
 function clearMasterSelectedCinema() {
   localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
   localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
+  localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
   notifyMasterSelectedCinemaChanged();
+}
+
+function getLogoSrc(logoUrl?: string | null) {
+  if (!logoUrl) return null;
+
+  if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
+    return logoUrl;
+  }
+
+  if (logoUrl.startsWith("/")) {
+    return `${API_URL}${logoUrl}`;
+  }
+
+  return `${API_URL}/${logoUrl}`;
 }
 
 function readIndicatorState(): IndicatorState {
@@ -68,6 +87,8 @@ function readIndicatorState(): IndicatorState {
   );
   const selectedCinemaName =
     localStorage.getItem(MASTER_SELECTED_CINEMA_NAME_KEY) || "";
+  const selectedCinemaLogoUrl =
+    localStorage.getItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY) || "";
 
   if (!Number.isInteger(selectedCinemaId) || selectedCinemaId <= 0) {
     return {
@@ -88,6 +109,7 @@ function readIndicatorState(): IndicatorState {
     description: "Du administrerer denne biograf som MASTER.",
     href: "/master",
     linkText: "Skift biograf",
+    logoUrl: selectedCinemaLogoUrl || null,
   };
 }
 
@@ -117,6 +139,7 @@ export default function ActiveCinemaIndicator() {
 
   const isMissing = state.variant === "missing";
   const isSelected = state.variant === "selected";
+  const logoSrc = isSelected ? getLogoSrc(state.logoUrl) : null;
 
   function handleClearSelectedCinema() {
     clearMasterSelectedCinema();
@@ -132,9 +155,21 @@ export default function ActiveCinemaIndicator() {
       }`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold">{state.label}</div>
-          <div className="mt-1 text-xs opacity-80">{state.description}</div>
+        <div className="flex min-w-0 items-center gap-3">
+          {logoSrc ? (
+            <div className="flex h-14 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-blue-200 bg-white shadow-sm dark:border-blue-800 dark:bg-white">
+              <img
+                src={logoSrc}
+                alt=""
+                className="h-full w-full object-contain p-2"
+              />
+            </div>
+          ) : null}
+
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold">{state.label}</div>
+            <div className="mt-1 text-xs opacity-80">{state.description}</div>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">

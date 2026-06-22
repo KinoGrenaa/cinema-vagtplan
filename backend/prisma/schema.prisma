@@ -90,6 +90,7 @@ enum PayrollAdjustmentRevisionAction {
 model Cinema {
   id                    Int      @id @default(autoincrement())
   name                  String
+  logoUrl               String?
   createdAt             DateTime @default(now())
   allowShiftTradePool   Boolean  @default(false)
   allowShiftTradeDirect Boolean  @default(false)

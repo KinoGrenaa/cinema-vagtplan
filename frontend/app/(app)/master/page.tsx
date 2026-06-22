@@ -16,6 +16,7 @@ type CurrentUser = {
 type Cinema = {
   id: number;
   name: string;
+  logoUrl?: string | null;
   createdAt?: string;
   _count?: {
     users?: number;
@@ -26,6 +27,7 @@ type Cinema = {
 
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
+const MASTER_SELECTED_CINEMA_LOGO_URL_KEY = "masterSelectedCinemaLogoUrl";
 
 function notifyMasterSelectedCinemaChanged() {
   window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
@@ -162,6 +164,13 @@ export default function MasterPage() {
   function saveSelectedCinema(cinema: Cinema) {
     localStorage.setItem(MASTER_SELECTED_CINEMA_ID_KEY, String(cinema.id));
     localStorage.setItem(MASTER_SELECTED_CINEMA_NAME_KEY, cinema.name);
+
+    if (cinema.logoUrl) {
+      localStorage.setItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY, cinema.logoUrl);
+    } else {
+      localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
+    }
+
     setSelectedCinemaId(cinema.id);
     notifyMasterSelectedCinemaChanged();
     setMessage(`${cinema.name} er valgt som aktiv biograf for MASTER-panelet.`);
@@ -170,6 +179,7 @@ export default function MasterPage() {
   function clearSelectedCinema() {
     localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
     localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
     setSelectedCinemaId(null);
     notifyMasterSelectedCinemaChanged();
   }
@@ -269,6 +279,16 @@ export default function MasterPage() {
           MASTER_SELECTED_CINEMA_NAME_KEY,
           updatedCinema.name,
         );
+
+        if (updatedCinema.logoUrl) {
+          localStorage.setItem(
+            MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
+            updatedCinema.logoUrl,
+          );
+        } else {
+          localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
+        }
+
         notifyMasterSelectedCinemaChanged();
       }
 

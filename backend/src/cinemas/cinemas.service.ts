@@ -11,6 +11,7 @@ type CreateCinemaData = {
 
 type UpdateCinemaSettingsData = {
   name?: string;
+  logoUrl?: string | null;
   allowShiftTradePool?: boolean;
   allowShiftTradeDirect?: boolean;
   aiEnabled?: boolean;
@@ -72,7 +73,9 @@ export class CinemasService {
     });
 
     if (existingCinema) {
-      throw new BadRequestException('Der findes allerede en biograf med dette navn');
+      throw new BadRequestException(
+        'Der findes allerede en biograf med dette navn',
+      );
     }
 
     return this.prisma.cinema.create({
@@ -137,12 +140,12 @@ export class CinemasService {
       where: { id },
       data: {
         name: nextName,
+        logoUrl: data.logoUrl,
         allowShiftTradePool: data.allowShiftTradePool,
         allowShiftTradeDirect: data.allowShiftTradeDirect,
         aiEnabled: data.aiEnabled,
         payrollRulesEnabled: data.payrollRulesEnabled,
-        clockInDeviationToleranceMinutes:
-          data.clockInDeviationToleranceMinutes,
+        clockInDeviationToleranceMinutes: data.clockInDeviationToleranceMinutes,
         clockOutDeviationToleranceMinutes:
           data.clockOutDeviationToleranceMinutes,
         requireNoteForClockInDeviation: data.requireNoteForClockInDeviation,
@@ -163,6 +166,25 @@ export class CinemasService {
             : undefined,
         payrollPayoutRule: data.payrollPayoutRule,
         payrollPayoutDay: data.payrollPayoutDay,
+      },
+    });
+  }
+  async updateLogo(id: number, logoUrl: string | null) {
+    const cinema = await this.prisma.cinema.findUnique({
+      where: { id },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!cinema) {
+      throw new NotFoundException('Biograf blev ikke fundet');
+    }
+
+    return this.prisma.cinema.update({
+      where: { id },
+      data: {
+        logoUrl,
       },
     });
   }

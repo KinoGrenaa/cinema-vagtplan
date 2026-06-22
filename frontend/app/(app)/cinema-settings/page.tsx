@@ -13,6 +13,7 @@ type PayrollPayoutRule = "LAST_WEEKDAY_OF_MONTH" | "FIXED_DAY_OF_MONTH";
 type Cinema = {
   id: number;
   name: string;
+  logoUrl: string | null;
 
   allowShiftTradePool: boolean;
   allowShiftTradeDirect: boolean;
@@ -50,7 +51,11 @@ type CurrentUser = {
   cinemaId: number | null;
 };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
+const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
+const MASTER_SELECTED_CINEMA_LOGO_URL_KEY = "masterSelectedCinemaLogoUrl";
 
 const CINEMA_DEFAULTS = {
   aiEnabled: false,
@@ -94,6 +99,57 @@ async function readErrorMessage(response: Response, fallback: string) {
   } catch {
     return fallback;
   }
+}
+
+function notifyMasterSelectedCinemaChanged() {
+  window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
+}
+
+function getLogoSrc(logoUrl?: string | null) {
+  if (!logoUrl) return "";
+
+  if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
+    return logoUrl;
+  }
+
+  if (logoUrl.startsWith("/")) {
+    return `${API_URL}${logoUrl}`;
+  }
+
+  return `${API_URL}/${logoUrl}`;
+}
+
+function syncMasterSelectedCinemaStorage(cinema: Cinema) {
+  const savedUser = localStorage.getItem("user");
+
+  if (!savedUser) {
+    return;
+  }
+
+  try {
+    const user = JSON.parse(savedUser) as CurrentUser;
+    const selectedCinemaId = Number(
+      localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
+    );
+
+    if (
+      user.role !== "MASTER" ||
+      !Number.isInteger(selectedCinemaId) ||
+      selectedCinemaId !== cinema.id
+    ) {
+      return;
+    }
+
+    localStorage.setItem(MASTER_SELECTED_CINEMA_NAME_KEY, cinema.name);
+
+    if (cinema.logoUrl) {
+      localStorage.setItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY, cinema.logoUrl);
+    } else {
+      localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
+    }
+
+    notifyMasterSelectedCinemaChanged();
+  } catch {}
 }
 
 function formatDateDk(date: Date) {
@@ -269,10 +325,13 @@ export default function CinemaSettingsPage() {
 
       const data = await response.json();
 
-      setCinema({
+      const nextCinema = {
         ...CINEMA_DEFAULTS,
         ...data,
-      });
+      };
+
+      setCinema(nextCinema);
+      syncMasterSelectedCinemaStorage(nextCinema);
     } catch (error) {
       const description =
         error instanceof Error
@@ -342,10 +401,13 @@ export default function CinemaSettingsPage() {
 
       const savedCinema = await response.json();
 
-      setCinema({
+      const nextCinema = {
         ...CINEMA_DEFAULTS,
         ...savedCinema,
-      });
+      };
+
+      setCinema(nextCinema);
+      syncMasterSelectedCinemaStorage(nextCinema);
 
       setMessage("Biografindstillinger gemt.");
     } catch (error) {
@@ -356,6 +418,104 @@ export default function CinemaSettingsPage() {
 
       setMessage("");
       infoDialog.showError("Indstillinger kunne ikke gemmes", description);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function uploadCinemaLogo(file: File | null) {
+    if (!cinema || !file) {
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      infoDialog.showError(
+        "Logo kunne ikke uploades",
+        "Kun JPG, PNG og WEBP er tilladt.",
+      );
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      infoDialog.showError(
+        "Logo kunne ikke uploades",
+        "Logoet må højst være 2 MB.",
+      );
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setMessage("");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await apiFetch(`/cinemas/${cinema.id}/logo`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke uploade logo."),
+        );
+      }
+
+      const savedCinema = await response.json();
+      const nextCinema = {
+        ...CINEMA_DEFAULTS,
+        ...savedCinema,
+      };
+
+      setCinema(nextCinema);
+      syncMasterSelectedCinemaStorage(nextCinema);
+      setMessage("Logo gemt.");
+    } catch (error) {
+      infoDialog.showError(
+        "Logo kunne ikke uploades",
+        error instanceof Error ? error.message : "Kunne ikke uploade logo.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeCinemaLogo() {
+    if (!cinema) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setMessage("");
+
+      const response = await apiFetch(`/cinemas/${cinema.id}/logo`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke fjerne logo."),
+        );
+      }
+
+      const savedCinema = await response.json();
+      const nextCinema = {
+        ...CINEMA_DEFAULTS,
+        ...savedCinema,
+      };
+
+      setCinema(nextCinema);
+      syncMasterSelectedCinemaStorage(nextCinema);
+      setMessage("Logo fjernet.");
+    } catch (error) {
+      infoDialog.showError(
+        "Logo kunne ikke fjernes",
+        error instanceof Error ? error.message : "Kunne ikke fjerne logo.",
+      );
     } finally {
       setSaving(false);
     }
@@ -420,6 +580,63 @@ export default function CinemaSettingsPage() {
               {cinema.name}
             </p>
           </div>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <h2 className="text-2xl font-bold">Branding</h2>
+
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              Upload biografens logo. Logoet vises for MASTER, når biografen er
+              valgt som aktiv biograf.
+            </p>
+
+            <div className="mt-6 flex flex-col gap-5 md:flex-row md:items-center">
+              <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
+                {cinema.logoUrl ? (
+                  <img
+                    src={getLogoSrc(cinema.logoUrl)}
+                    alt={`${cinema.name} logo`}
+                    className="h-full w-full object-contain p-3"
+                  />
+                ) : (
+                  <span className="px-3 text-center text-sm text-gray-500 dark:text-gray-400">
+                    Intet logo
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="inline-flex cursor-pointer rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
+                  Upload logo
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={saving}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      uploadCinemaLogo(file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+
+                {cinema.logoUrl ? (
+                  <button
+                    type="button"
+                    onClick={removeCinemaLogo}
+                    disabled={saving}
+                    className="ml-0 inline-flex rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40 md:ml-3"
+                  >
+                    Fjern logo
+                  </button>
+                ) : null}
+
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Tilladte filtyper: JPG, PNG og WEBP. Maks. 2 MB.
+                </p>
+              </div>
+            </div>
+          </section>
 
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <h2 className="mb-6 text-2xl font-bold">Vagtbytte-funktioner</h2>
