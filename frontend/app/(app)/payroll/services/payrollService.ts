@@ -27,7 +27,15 @@ function getCurrentCinemaId() {
   if (!savedUser) return null;
 
   try {
-    const user = JSON.parse(savedUser) as { cinemaId?: number };
+    const user = JSON.parse(savedUser) as {
+      role?: string;
+      cinemaId?: number | null;
+    };
+
+    if (user.role === "MASTER") {
+      return localStorage.getItem("masterSelectedCinemaId") || null;
+    }
+
     return user.cinemaId || null;
   } catch {
     return null;
@@ -39,6 +47,12 @@ function buildPayrollParams(params: PayrollReportParams, includeUser = true) {
     startDate: params.startDate,
     endDate: params.endDate,
   });
+
+  const cinemaId = getCurrentCinemaId();
+
+  if (cinemaId) {
+    searchParams.set("cinemaId", String(cinemaId));
+  }
 
   if (includeUser && params.userId) {
     searchParams.set("userId", params.userId);
@@ -80,7 +94,12 @@ export async function fetchCinemaPayrollSettings() {
 }
 
 export async function fetchUsers() {
-  const response = await apiFetch("/users");
+  const cinemaId = getCurrentCinemaId();
+  const endpoint = cinemaId
+    ? `/users?cinemaId=${encodeURIComponent(String(cinemaId))}`
+    : "/users";
+
+  const response = await apiFetch(endpoint);
 
   if (!response.ok) return [];
 
@@ -169,9 +188,14 @@ export async function downloadPayrollExport(
 }
 
 export async function lockPayrollPeriod(params: PayrollPeriodParams) {
+  const cinemaId = getCurrentCinemaId();
+
   const response = await apiFetch("/payroll/period/lock", {
     method: "POST",
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      ...params,
+      ...(cinemaId ? { cinemaId } : {}),
+    }),
   });
 
   if (!response.ok) {
@@ -182,9 +206,14 @@ export async function lockPayrollPeriod(params: PayrollPeriodParams) {
 }
 
 export async function unlockPayrollPeriod(periodId: number, note: string) {
+  const cinemaId = getCurrentCinemaId();
+
   const response = await apiFetch(`/payroll/period/${periodId}/unlock`, {
     method: "POST",
-    body: JSON.stringify({ note }),
+    body: JSON.stringify({
+      note,
+      ...(cinemaId ? { cinemaId } : {}),
+    }),
   });
 
   if (!response.ok) {

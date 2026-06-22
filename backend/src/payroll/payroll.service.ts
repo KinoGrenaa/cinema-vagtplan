@@ -213,8 +213,19 @@ export class PayrollService {
     }
   }
 
-  private getCinemaFilter(user: AuthUser) {
-    if (user.role === 'MASTER') return {};
+  private getCinemaFilter(user: AuthUser, selectedCinemaId?: number | null) {
+    if (user.role === 'MASTER') {
+      if (!selectedCinemaId || !Number.isFinite(selectedCinemaId)) {
+        throw new BadRequestException('Vælg en aktiv biograf først.');
+      }
+
+      return { cinemaId: selectedCinemaId };
+    }
+
+    if (!user.cinemaId) {
+      throw new BadRequestException('Brugeren er ikke tilknyttet en biograf.');
+    }
+
     return { cinemaId: user.cinemaId };
   }
 
@@ -426,10 +437,12 @@ export class PayrollService {
     };
   }
 
-  async getPayrollPeriodForDate(user: AuthUser, referenceDate: string) {
-    if (!user.cinemaId) {
-      throw new BadRequestException('Der mangler cinemaId på brugeren');
-    }
+  async getPayrollPeriodForDate(
+    user: AuthUser,
+    referenceDate: string,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = this.getCinemaFilter(user, selectedCinemaId).cinemaId;
 
     const reference = new Date(`${referenceDate}T00:00:00.000Z`);
 
@@ -439,7 +452,7 @@ export class PayrollService {
 
     const cinema = await this.prisma.cinema.findUnique({
       where: {
-        id: user.cinemaId,
+        id: cinemaId,
       },
     });
 
@@ -511,12 +524,15 @@ export class PayrollService {
     };
   }
 
-  private async getPayrollRulesEnabled(user: AuthUser): Promise<boolean> {
-    if (!user.cinemaId) return false;
+  private async getPayrollRulesEnabled(
+    user: AuthUser,
+    selectedCinemaId?: number | null,
+  ): Promise<boolean> {
+    const cinemaId = this.getCinemaFilter(user, selectedCinemaId).cinemaId;
 
     const cinema = await this.prisma.cinema.findUnique({
       where: {
-        id: user.cinemaId,
+        id: cinemaId,
       },
     });
 
@@ -542,14 +558,17 @@ export class PayrollService {
     startDate: string,
     endDate: string,
     userId?: string,
+    selectedCinemaId?: number | null,
   ) {
     this.ensurePayrollAccess(user);
 
     const { start, end } = this.getPeriodDates(startDate, endDate);
 
+    const cinemaFilter = this.getCinemaFilter(user, selectedCinemaId);
+
     const entries = await this.prisma.timeEntry.findMany({
       where: {
-        ...this.getCinemaFilter(user),
+        ...cinemaFilter,
         ...(userId ? { userId: Number(userId) } : {}),
         clockOut: {
           not: null,
@@ -589,7 +608,7 @@ export class PayrollService {
 
     const payrollAdjustments = await this.prisma.payrollAdjustment.findMany({
       where: {
-        ...this.getCinemaFilter(user),
+        ...cinemaFilter,
         ...(userId ? { userId: Number(userId) } : {}),
         status: 'PENDING',
         settlementPayrollPeriodId: null,
@@ -625,7 +644,7 @@ export class PayrollService {
 
     const pendingCount = await this.prisma.timeEntry.count({
       where: {
-        ...this.getCinemaFilter(user),
+        ...cinemaFilter,
         ...(userId ? { userId: Number(userId) } : {}),
         OR: this.getPayrollReferenceDateFilters(start, end),
         clockOut: {
@@ -637,7 +656,7 @@ export class PayrollService {
 
     const voidedCount = await this.prisma.timeEntry.count({
       where: {
-        ...this.getCinemaFilter(user),
+        ...cinemaFilter,
         ...(userId ? { userId: Number(userId) } : {}),
         OR: this.getPayrollReferenceDateFilters(start, end),
         clockOut: {
@@ -854,14 +873,19 @@ export class PayrollService {
     };
   }
 
-  async getPeriod(user: AuthUser, startDate: string, endDate: string) {
+  async getPeriod(
+    user: AuthUser,
+    startDate: string,
+    endDate: string,
+    selectedCinemaId?: number | null,
+  ) {
     this.ensurePayrollAccess(user);
 
     const { start, end } = this.getPeriodDates(startDate, endDate);
 
     return this.prisma.payrollPeriod.findFirst({
       where: {
-        ...this.getCinemaFilter(user),
+        ...this.getCinemaFilter(user, selectedCinemaId),
         startDate: start,
         endDate: end,
       },
@@ -871,7 +895,12 @@ export class PayrollService {
     });
   }
 
-  async lockPeriod(user: AuthUser, startDate: string, endDate: string) {
+  async lockPeriod(
+    user: AuthUser,
+    startDate: string,
+    endDate: string,
+    selectedCinemaId?: number | null,
+  ) {
     this.ensurePayrollAccess(user);
 
     if (
@@ -886,11 +915,7 @@ export class PayrollService {
 
     const { start, end } = this.getPeriodDates(startDate, endDate);
 
-    if (!user.cinemaId) {
-      throw new BadRequestException('Der mangler cinemaId på brugeren');
-    }
-
-    const cinemaId = user.cinemaId;
+    const cinemaId = this.getCinemaFilter(user, selectedCinemaId).cinemaId;
 
     const existingPeriod = await this.prisma.payrollPeriod.findFirst({
       where: {
@@ -984,7 +1009,12 @@ export class PayrollService {
     return period;
   }
 
-  async unlockPeriod(user: AuthUser, periodId: number, note?: string) {
+  async unlockPeriod(
+    user: AuthUser,
+    periodId: number,
+    note?: string,
+    selectedCinemaId?: number | null,
+  ) {
     this.ensurePayrollAccess(user);
     this.ensureMaster(user);
 
@@ -993,6 +1023,12 @@ export class PayrollService {
     });
 
     if (!period) {
+      throw new NotFoundException('Lønperioden blev ikke fundet');
+    }
+
+    const cinemaId = this.getCinemaFilter(user, selectedCinemaId).cinemaId;
+
+    if (period.cinemaId !== cinemaId) {
       throw new NotFoundException('Lønperioden blev ikke fundet');
     }
 
@@ -1009,6 +1045,7 @@ export class PayrollService {
     await this.prisma.timeEntry.updateMany({
       where: {
         payrollPeriodId: periodId,
+        cinemaId,
       },
       data: {
         payrollLocked: false,
@@ -1021,7 +1058,12 @@ export class PayrollService {
     return updatedPeriod;
   }
 
-  async unlockTimeEntry(user: AuthUser, timeEntryId: number, note?: string) {
+  async unlockTimeEntry(
+    user: AuthUser,
+    timeEntryId: number,
+    note?: string,
+    selectedCinemaId?: number | null,
+  ) {
     this.ensurePayrollAccess(user);
     this.ensureMaster(user);
 
@@ -1030,6 +1072,12 @@ export class PayrollService {
     });
 
     if (!entry) {
+      throw new NotFoundException('Tidsregistreringen blev ikke fundet');
+    }
+
+    const cinemaId = this.getCinemaFilter(user, selectedCinemaId).cinemaId;
+
+    if (entry.cinemaId !== cinemaId) {
       throw new NotFoundException('Tidsregistreringen blev ikke fundet');
     }
 
@@ -1049,12 +1097,13 @@ export class PayrollService {
     startDate: string,
     endDate: string,
     userId?: string,
+    selectedCinemaId?: number | null,
   ) {
     const { start, end } = this.getPeriodDates(startDate, endDate);
 
     const unapprovedEntries = await this.prisma.timeEntry.findMany({
       where: {
-        ...this.getCinemaFilter(user),
+        ...this.getCinemaFilter(user, selectedCinemaId),
         ...(userId ? { userId: Number(userId) } : {}),
         OR: this.getPayrollReferenceDateFilters(start, end),
         clockOut: {
@@ -1084,12 +1133,12 @@ export class PayrollService {
     startDate: string,
     endDate: string,
     userId?: string,
+    selectedCinemaId?: number | null,
   ) {
     if (userId) return;
-    if (!user.cinemaId) return;
 
     const { start, end } = this.getPeriodDates(startDate, endDate);
-    const cinemaId = user.cinemaId;
+    const cinemaId = this.getCinemaFilter(user, selectedCinemaId).cinemaId;
     const now = new Date();
 
     const existingPeriod = await this.prisma.payrollPeriod.findFirst({
@@ -1183,18 +1232,32 @@ export class PayrollService {
     startDate: string,
     endDate: string,
     userId?: string,
+    selectedCinemaId?: number | null,
   ) {
     this.ensurePayrollExportAccess(user);
 
-    await this.ensureEntriesApproved(user, startDate, endDate, userId);
+    await this.ensureEntriesApproved(
+      user,
+      startDate,
+      endDate,
+      userId,
+      selectedCinemaId,
+    );
 
-    await this.markPeriodAsExported(user, startDate, endDate, userId);
+    await this.markPeriodAsExported(
+      user,
+      startDate,
+      endDate,
+      userId,
+      selectedCinemaId,
+    );
 
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
 
     const rows = [
@@ -1255,21 +1318,38 @@ export class PayrollService {
     startDate: string,
     endDate: string,
     userId?: string,
+    selectedCinemaId?: number | null,
   ) {
     this.ensurePayrollExportAccess(user);
 
-    await this.ensureEntriesApproved(user, startDate, endDate, userId);
+    await this.ensureEntriesApproved(
+      user,
+      startDate,
+      endDate,
+      userId,
+      selectedCinemaId,
+    );
 
-    await this.markPeriodAsExported(user, startDate, endDate, userId);
+    await this.markPeriodAsExported(
+      user,
+      startDate,
+      endDate,
+      userId,
+      selectedCinemaId,
+    );
 
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
 
-    const usePayrollRules = await this.getPayrollRulesEnabled(user);
+    const usePayrollRules = await this.getPayrollRulesEnabled(
+      user,
+      selectedCinemaId,
+    );
     const rows = [['Employee', 'PayrollCode', 'Date', 'Hours', 'Text']];
 
     for (const employee of report.employees) {
@@ -1304,18 +1384,32 @@ export class PayrollService {
     startDate: string,
     endDate: string,
     userId?: string,
+    selectedCinemaId?: number | null,
   ) {
     this.ensurePayrollExportAccess(user);
 
-    await this.ensureEntriesApproved(user, startDate, endDate, userId);
+    await this.ensureEntriesApproved(
+      user,
+      startDate,
+      endDate,
+      userId,
+      selectedCinemaId,
+    );
 
-    await this.markPeriodAsExported(user, startDate, endDate, userId);
+    await this.markPeriodAsExported(
+      user,
+      startDate,
+      endDate,
+      userId,
+      selectedCinemaId,
+    );
 
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
 
     const workbook = new ExcelJS.Workbook();
@@ -1377,18 +1471,32 @@ export class PayrollService {
     startDate: string,
     endDate: string,
     userId?: string,
+    selectedCinemaId?: number | null,
   ): Promise<Buffer> {
     this.ensurePayrollExportAccess(user);
 
-    await this.ensureEntriesApproved(user, startDate, endDate, userId);
+    await this.ensureEntriesApproved(
+      user,
+      startDate,
+      endDate,
+      userId,
+      selectedCinemaId,
+    );
 
-    await this.markPeriodAsExported(user, startDate, endDate, userId);
+    await this.markPeriodAsExported(
+      user,
+      startDate,
+      endDate,
+      userId,
+      selectedCinemaId,
+    );
 
     const report = await this.getPayrollReport(
       user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
 
     const chunks: Buffer[] = [];
@@ -1458,6 +1566,7 @@ export class PayrollService {
     user: AuthUser,
     startDate: string,
     endDate: string,
+    selectedCinemaId?: number | null,
   ) {
     this.ensurePayrollAccess(user);
 
@@ -1465,7 +1574,7 @@ export class PayrollService {
 
     const periods = await this.prisma.payrollPeriod.findMany({
       where: {
-        ...this.getCinemaFilter(user),
+        ...this.getCinemaFilter(user, selectedCinemaId),
         startDate: {
           gte: start,
         },

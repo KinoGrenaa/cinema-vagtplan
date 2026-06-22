@@ -18,6 +18,7 @@ type Props = {
   startDate: string;
   endDate: string;
   userId: string;
+  enabled?: boolean;
   onSettingsLoaded?: (settings: CinemaPayrollSettings) => void;
   onError?: (title: string, description: string) => void;
 };
@@ -34,6 +35,7 @@ export function usePayrollData({
   startDate,
   endDate,
   userId,
+  enabled = true,
   onSettingsLoaded,
   onError,
 }: Props) {
@@ -48,6 +50,18 @@ export function usePayrollData({
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [auditHistory, setAuditHistory] = useState<PayrollAuditHistory[]>([]);
   const [loading, setLoading] = useState(false);
+
+  function resetPayrollData() {
+    setCinemaSettings(null);
+    setUsers([]);
+    setReport([]);
+    setPendingCount(0);
+    setVoidedCount(0);
+    setAdjustmentCount(0);
+    setPeriod(null);
+    setAuditHistory([]);
+    setLoading(false);
+  }
 
   async function loadCinemaSettings() {
     try {
@@ -160,19 +174,29 @@ export function usePayrollData({
   }
 
   async function refreshPayroll() {
+    if (!enabled) {
+      resetPayrollData();
+      return;
+    }
+
     await loadReport();
     await loadPeriod();
     await loadAuditHistory();
   }
 
   useEffect(() => {
+    if (!enabled) {
+      resetPayrollData();
+      return;
+    }
+
     loadUsers();
     loadCinemaSettings();
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     refreshPayroll();
-  }, [startDate, endDate, userId]);
+  }, [enabled, startDate, endDate, userId]);
 
   return {
     cinemaSettings,

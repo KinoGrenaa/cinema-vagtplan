@@ -30,12 +30,16 @@ export class PayrollController {
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Query('userId') userId?: string,
+    @Query('cinemaId') cinemaId?: string,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     return this.payrollService.getPayrollReport(
       req.user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
   }
 
@@ -44,14 +48,32 @@ export class PayrollController {
     @Req() req: any,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
+    @Query('cinemaId') cinemaId?: string,
   ) {
-    return this.payrollService.getPeriod(req.user, startDate, endDate);
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.payrollService.getPeriod(
+      req.user,
+      startDate,
+      endDate,
+      selectedCinemaId,
+    );
   }
 
   @Get('period-for-date')
   @Roles('EMPLOYEE', 'ADMIN', 'MASTER')
-  getPeriodForDate(@Req() req: any, @Query('date') date: string) {
-    return this.payrollService.getPayrollPeriodForDate(req.user, date);
+  getPeriodForDate(
+    @Req() req: any,
+    @Query('date') date: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.payrollService.getPayrollPeriodForDate(
+      req.user,
+      date,
+      selectedCinemaId,
+    );
   }
 
   @Get('audit-history')
@@ -59,11 +81,15 @@ export class PayrollController {
     @Req() req: any,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
+    @Query('cinemaId') cinemaId?: string,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     return this.payrollService.getPayrollAuditHistory(
       req.user,
       startDate,
       endDate,
+      selectedCinemaId,
     );
   }
 
@@ -72,8 +98,16 @@ export class PayrollController {
     @Req() req: any,
     @Body('startDate') startDate: string,
     @Body('endDate') endDate: string,
+    @Body('cinemaId') cinemaId?: number | string,
   ) {
-    return this.payrollService.lockPeriod(req.user, startDate, endDate);
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.payrollService.lockPeriod(
+      req.user,
+      startDate,
+      endDate,
+      selectedCinemaId,
+    );
   }
 
   @Post('period/:id/unlock')
@@ -81,8 +115,16 @@ export class PayrollController {
     @Req() req: any,
     @Param('id') id: string,
     @Body('note') note?: string,
+    @Body('cinemaId') cinemaId?: number | string,
   ) {
-    return this.payrollService.unlockPeriod(req.user, Number(id), note);
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.payrollService.unlockPeriod(
+      req.user,
+      Number(id),
+      note,
+      selectedCinemaId,
+    );
   }
 
   @Post('time-entry/:id/unlock')
@@ -90,8 +132,16 @@ export class PayrollController {
     @Req() req: any,
     @Param('id') id: string,
     @Body('note') note?: string,
+    @Body('cinemaId') cinemaId?: number | string,
   ) {
-    return this.payrollService.unlockTimeEntry(req.user, Number(id), note);
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
+    return this.payrollService.unlockTimeEntry(
+      req.user,
+      Number(id),
+      note,
+      selectedCinemaId,
+    );
   }
 
   @Get('export/csv')
@@ -102,12 +152,16 @@ export class PayrollController {
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Query('userId') userId?: string,
+    @Query('cinemaId') cinemaId?: string,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     const csv = await this.payrollService.exportPayrollCsv(
       req.user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
 
     res.setHeader(
@@ -129,12 +183,16 @@ export class PayrollController {
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Query('userId') userId?: string,
+    @Query('cinemaId') cinemaId?: string,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     const buffer = await this.payrollService.exportPayrollXlsx(
       req.user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
 
     res.setHeader(
@@ -153,12 +211,16 @@ export class PayrollController {
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Query('userId') userId?: string,
+    @Query('cinemaId') cinemaId?: string,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     const buffer = await this.payrollService.exportPayrollPdf(
       req.user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
 
     res.setHeader(
@@ -174,13 +236,17 @@ export class PayrollController {
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
     @Query('userId') userId?: string,
+    @Query('cinemaId') cinemaId?: string,
     @Res() res?,
   ) {
+    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+
     const csv = await this.payrollService.exportUnicontaCsv(
       req.user,
       startDate,
       endDate,
       userId,
+      selectedCinemaId,
     );
 
     res.setHeader('Content-Type', 'text/csv');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bar,
@@ -27,6 +27,7 @@ import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 import { formatDateDK } from "@/app/utils/dateTime";
 
@@ -48,9 +49,42 @@ import { usePayrollExport } from "./hooks/usePayrollExport";
 
 export default function PayrollPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const inputDialog = useInputModal();
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
+  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    function updateSelectedMasterCinema() {
+      setSelectedMasterCinemaId(
+        window.localStorage.getItem("masterSelectedCinemaId"),
+      );
+    }
+
+    updateSelectedMasterCinema();
+
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      updateSelectedMasterCinema,
+    );
+    window.addEventListener("storage", updateSelectedMasterCinema);
+
+    return () => {
+      window.removeEventListener(
+        "masterSelectedCinemaChanged",
+        updateSelectedMasterCinema,
+      );
+      window.removeEventListener("storage", updateSelectedMasterCinema);
+    };
+  }, []);
+
+  const isMasterWithoutActiveCinema =
+    user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
+
+  const payrollDataEnabled = Boolean(user) && !isMasterWithoutActiveCinema;
 
   const {
     startDate,
@@ -78,6 +112,7 @@ export default function PayrollPage() {
     startDate,
     endDate,
     userId,
+    enabled: payrollDataEnabled,
     onSettingsLoaded: applyCurrentPayrollPeriod,
     onError: (title, description) => {
       infoDialog.showError(title, description);
@@ -86,7 +121,9 @@ export default function PayrollPage() {
 
   useRealtimeCore({
     onTimeEntry: () => {
-      refreshPayroll();
+      if (payrollDataEnabled) {
+        refreshPayroll();
+      }
     },
   });
 
@@ -241,9 +278,45 @@ export default function PayrollPage() {
     });
   }
 
+  if (isMasterWithoutActiveCinema) {
+    return (
+      <PermissionGuard permission="canManagePayroll">
+        <div className="min-h-screen bg-gray-50 px-4 py-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+          <div className="mx-auto max-w-7xl space-y-6">
+            <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-sm dark:border-amber-800 dark:bg-amber-950/30">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h1 className="text-xl font-bold text-amber-950 dark:text-amber-100">
+                    Ingen aktiv biograf valgt
+                  </h1>
+                  <p className="mt-1 text-sm text-amber-900 dark:text-amber-100/80">
+                    Vælg en biograf i MASTER-panelet, før du kan se eller
+                    administrere løn.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => router.push("/master")}
+                  className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+                >
+                  Vælg biograf
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </PermissionGuard>
+    );
+  }
+
   return (
     <PermissionGuard permission="canManagePayroll">
-      <div className="mx-auto max-w-7xl space-y-6 p-6 text-gray-900 dark:text-gray-100">
+      <div className="relative mx-auto min-h-screen max-w-7xl space-y-6 bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 -z-10 bg-gray-50 dark:bg-gray-950"
+        />
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div>
