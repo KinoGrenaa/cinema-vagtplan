@@ -142,6 +142,32 @@ export class UsersService {
     });
   }
 
+  async findOwnProfile(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+        cinemaId: true,
+        profileImage: true,
+        address: true,
+        birthDate: true,
+        emergencyPhone: true,
+        skills: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Bruger blev ikke fundet');
+    }
+
+    return user;
+  }
+
   async createUser(
     data: {
       email: string;

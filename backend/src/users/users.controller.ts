@@ -65,6 +65,18 @@ export class UsersController {
     return this.usersService.findAll(currentUser, selectedCinemaId);
   }
 
+  @UseGuards(JwtGuard)
+  @Get('me/profile')
+  getOwnProfile(@Req() req: any) {
+    const currentUserId = req.user?.sub ?? req.user?.id;
+
+    if (!currentUserId) {
+      throw new ForbiddenException('Brugeren kunne ikke identificeres');
+    }
+
+    return this.usersService.findOwnProfile(Number(currentUserId));
+  }
+
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Post()

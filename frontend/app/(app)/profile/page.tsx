@@ -27,7 +27,7 @@ type CurrentUser = {
   firstName: string;
   lastName: string;
   role: string;
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 export default function ProfilePage() {
@@ -101,18 +101,13 @@ export default function ProfilePage() {
       const parsedUser: CurrentUser = JSON.parse(savedUser);
       setCurrentUser(parsedUser);
 
-      const response = await apiFetch("/users");
+      const response = await apiFetch("/users/me/profile");
 
       if (!response.ok) {
         throw new Error(await readError(response));
       }
 
-      const users: User[] = await response.json();
-      const me = users.find((user) => user.id === parsedUser.id) || null;
-
-      if (!me) {
-        throw new Error("Kunne ikke finde din profil.");
-      }
+      const me: User = await response.json();
 
       setProfile(me);
       fillForm(me);
