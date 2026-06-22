@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 
 import { Bell, BellOff, CheckCircle2, Moon, Sun } from "lucide-react";
 
+import InfoModal from "@/app/components/modals/InfoModal";
 import { useTheme } from "@/app/components/ThemeProvider";
+import { useInfoModal } from "@/app/hooks/useInfoModal";
 
 import {
   disablePushNotifications,
@@ -15,10 +17,12 @@ import {
 type CurrentUser = {
   id: number;
   role: string;
-  cinemaId: number;
+  cinemaId: number | null;
 };
 
 export default function SettingsPage() {
+  const infoDialog = useInfoModal();
+
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   const [message, setMessage] = useState("");
@@ -33,6 +37,9 @@ export default function SettingsPage() {
   const [pushMessage, setPushMessage] = useState("");
 
   const { theme, setTheme } = useTheme();
+
+  const isMasterWithoutOwnCinema =
+    currentUser?.role === "MASTER" && !currentUser.cinemaId;
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -54,6 +61,14 @@ export default function SettingsPage() {
   }, []);
 
   async function enableNotifications() {
+    if (isMasterWithoutOwnCinema) {
+      infoDialog.showError(
+        "Push-notifikationer er ikke tilgængelige for MASTER",
+        "MASTER-brugere er ikke tilknyttet en konkret biograf. Push-notifikationer kan aktiveres for almindelige biografbrugere.",
+      );
+      return;
+    }
+
     try {
       setPushLoading(true);
       setPushMessage("");
@@ -231,7 +246,12 @@ export default function SettingsPage() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={enableNotifications}
-              disabled={pushLoading || pushEnabled || permission === "denied"}
+              disabled={
+                pushLoading ||
+                pushEnabled ||
+                permission === "denied" ||
+                isMasterWithoutOwnCinema
+              }
               className="rounded-xl bg-green-600 px-5 py-3 font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {pushLoading
@@ -262,8 +282,24 @@ export default function SettingsPage() {
               i browserens indstillinger.
             </div>
           )}
+          {isMasterWithoutOwnCinema && (
+            <div className="mt-5 rounded-xl border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900 dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-100">
+              MASTER-brugere er globale og er ikke tilknyttet en konkret
+              biograf. Push-notifikationer kan aktiveres for almindelige
+              biografbrugere.
+            </div>
+          )}
         </section>
       </div>
+
+      <InfoModal
+        open={infoDialog.open}
+        title={infoDialog.title}
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
+        variant={infoDialog.variant}
+        onClose={infoDialog.close}
+      />
     </main>
   );
 }
