@@ -174,6 +174,8 @@ export function useSchedule(
   const needsMasterCinemaSelection =
     user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
 
+  const isGlobalMaster = user?.role === "MASTER" && !user.cinemaId;
+
   const appendActiveCinemaId = useCallback(
     (endpoint: string) => {
       if (user?.role === "MASTER" && !user.cinemaId) {
@@ -363,6 +365,11 @@ export function useSchedule(
 
   const fetchMovieShowings = useCallback(
     async ({ reportError = true }: BackgroundFetchOptions = {}) => {
+      if (needsMasterCinemaSelection) {
+        setMovieShowings([]);
+        return true;
+      }
+
       try {
         const response = await fetch("/mock/movie-showings.json");
 
@@ -400,7 +407,7 @@ export function useSchedule(
         return false;
       }
     },
-    [reportBackgroundError],
+    [needsMasterCinemaSelection, reportBackgroundError],
   );
 
   const fetchLeaveRequests = useCallback(
@@ -458,13 +465,15 @@ export function useSchedule(
 
   const fetchOpenTimeEntry = useCallback(
     async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (!user) {
+      if (!user || isGlobalMaster) {
         setOpenTimeEntry(null);
         return true;
       }
 
       try {
-        const response = await apiFetch(`/time-entries/open?userId=${user.id}`);
+        const response = await apiFetch(
+          appendActiveCinemaId(`/time-entries/open?userId=${user.id}`),
+        );
 
         if (response.status === 404 || response.status === 204) {
           setOpenTimeEntry(null);
@@ -510,18 +519,26 @@ export function useSchedule(
         return false;
       }
     },
-    [apiFetch, reportBackgroundError, user],
+    [
+      apiFetch,
+      appendActiveCinemaId,
+      isGlobalMaster,
+      reportBackgroundError,
+      user,
+    ],
   );
 
   const fetchMyTimeEntries = useCallback(
     async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (!user) {
+      if (!user || isGlobalMaster) {
         setTimeEntries([]);
         return true;
       }
 
       try {
-        const response = await apiFetch("/time-entries/me");
+        const response = await apiFetch(
+          appendActiveCinemaId("/time-entries/me"),
+        );
 
         if (!response.ok) {
           setTimeEntries([]);
@@ -560,7 +577,13 @@ export function useSchedule(
         return false;
       }
     },
-    [apiFetch, reportBackgroundError, user],
+    [
+      apiFetch,
+      appendActiveCinemaId,
+      isGlobalMaster,
+      reportBackgroundError,
+      user,
+    ],
   );
 
   const refreshDayData = useCallback(
@@ -648,6 +671,10 @@ export function useSchedule(
 
   const createShift = useCallback(
     async (input: CreateShiftInput) => {
+      if (needsMasterCinemaSelection || !activeCinemaId) {
+        throw new Error("Vælg en biograf, før du opretter vagter.");
+      }
+
       const response = await apiFetch("/shifts", {
         method: "POST",
         body: JSON.stringify({
@@ -666,11 +693,21 @@ export function useSchedule(
 
       await refreshDayData();
     },
-    [activeCinemaId, apiFetch, refreshDayData, user],
+    [
+      activeCinemaId,
+      apiFetch,
+      needsMasterCinemaSelection,
+      refreshDayData,
+      user,
+    ],
   );
 
   const updateShift = useCallback(
     async (shiftId: number, input: UpdateShiftInput) => {
+      if (needsMasterCinemaSelection || !activeCinemaId) {
+        throw new Error("Vælg en biograf, før du redigerer vagter.");
+      }
+
       const response = await apiFetch(`/shifts/${shiftId}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -689,11 +726,21 @@ export function useSchedule(
 
       await refreshDayData();
     },
-    [activeCinemaId, apiFetch, refreshDayData, user],
+    [
+      activeCinemaId,
+      apiFetch,
+      needsMasterCinemaSelection,
+      refreshDayData,
+      user,
+    ],
   );
 
   const deleteShift = useCallback(
     async (shiftId: number) => {
+      if (needsMasterCinemaSelection || !activeCinemaId) {
+        throw new Error("Vælg en biograf, før du sletter vagter.");
+      }
+
       const response = await apiFetch(
         user?.role === "MASTER" && !user.cinemaId
           ? appendCinemaId(`/shifts/${shiftId}`, activeCinemaId)
@@ -709,19 +756,29 @@ export function useSchedule(
 
       await refreshDayData();
     },
-    [activeCinemaId, apiFetch, refreshDayData, user],
+    [
+      activeCinemaId,
+      apiFetch,
+      needsMasterCinemaSelection,
+      refreshDayData,
+      user,
+    ],
   );
 
   const offerShiftTrade = useCallback(
     async (shift: Shift) => {
       if (!user) return;
 
+      if (!activeCinemaId) {
+        throw new Error("Vælg en biograf, før du sender vagten i byttepuljen.");
+      }
+
       const response = await apiFetch("/shift-trades", {
         method: "POST",
         body: JSON.stringify({
           shiftId: shift.id,
           offeredByUserId: shift.userId,
-          cinemaId: user.cinemaId,
+          cinemaId: activeCinemaId,
           message: "",
         }),
       });
@@ -732,18 +789,22 @@ export function useSchedule(
 
       await refreshDayData();
     },
-    [apiFetch, refreshDayData, user],
+    [activeCinemaId, apiFetch, refreshDayData, user],
   );
 
   const clockIn = useCallback(
     async (shiftId?: number | null, clockInTime?: string, note?: string) => {
       if (!user) return;
 
+      if (!activeCinemaId) {
+        throw new Error("Vælg en biograf, før du registrerer tid.");
+      }
+
       const response = await apiFetch("/time-entries/clock-in", {
         method: "POST",
         body: JSON.stringify({
           userId: user.id,
-          cinemaId: user.cinemaId,
+          cinemaId: activeCinemaId,
           shiftId: shiftId ?? null,
           clockIn: clockInTime
             ? localDateTimeToISOString(clockInTime)
@@ -761,7 +822,7 @@ export function useSchedule(
       setOpenTimeEntry(data ?? null);
       await refreshDayData();
     },
-    [apiFetch, refreshDayData, user],
+    [activeCinemaId, apiFetch, refreshDayData, user],
   );
 
   const clockOut = useCallback(
@@ -799,11 +860,15 @@ export function useSchedule(
     async (input: ManualTimeInput) => {
       if (!user) return;
 
+      if (!activeCinemaId) {
+        throw new Error("Vælg en biograf, før du registrerer tid.");
+      }
+
       const response = await apiFetch("/time-entries/manual", {
         method: "POST",
         body: JSON.stringify({
           userId: user.id,
-          cinemaId: user.cinemaId,
+          cinemaId: activeCinemaId,
           shiftId: input.shiftId ?? null,
           clockIn: localDateTimeToISOString(input.clockIn),
           clockOut: localDateTimeToISOString(input.clockOut),
@@ -819,13 +884,14 @@ export function useSchedule(
 
       await refreshDayData();
     },
-    [apiFetch, refreshDayData, user],
+    [activeCinemaId, apiFetch, refreshDayData, user],
   );
 
   return {
     user,
     loading,
     canManageShifts,
+    needsMasterCinemaSelection,
 
     shifts,
     users,

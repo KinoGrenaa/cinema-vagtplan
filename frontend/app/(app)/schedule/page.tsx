@@ -119,6 +119,7 @@ export default function SchedulePage() {
     user: currentUser,
     loading,
     canManageShifts,
+    needsMasterCinemaSelection,
     shifts,
     users,
     workTypes,
@@ -139,6 +140,13 @@ export default function SchedulePage() {
   } = useSchedule(selectedDate, {
     onError: infoDialog.showError,
   });
+
+  function showMissingActiveCinemaMessage() {
+    infoDialog.showError(
+      "Ingen aktiv biograf valgt",
+      "Vælg en biograf i MASTER-panelet, før du bruger vagtplanen.",
+    );
+  }
 
   const shiftsForTimeRegistration = useMemo(() => {
     const entriesByShiftId = new Map(
@@ -260,6 +268,11 @@ export default function SchedulePage() {
   }
 
   function openCreateShiftModal() {
+    if (needsMasterCinemaSelection) {
+      showMissingActiveCinemaMessage();
+      return;
+    }
+
     clearForm();
     setShowShiftFormModal(true);
   }
@@ -528,6 +541,11 @@ Handlingen kan ikke fortrydes.`,
   }
 
   function openRegisterTimeModal() {
+    if (needsMasterCinemaSelection) {
+      showMissingActiveCinemaMessage();
+      return;
+    }
+
     setClockNote("");
 
     if (openTimeEntry?.shiftId) {
@@ -554,6 +572,11 @@ Handlingen kan ikke fortrydes.`,
   }
 
   function openManualTimeModal() {
+    if (needsMasterCinemaSelection) {
+      showMissingActiveCinemaMessage();
+      return;
+    }
+
     setManualClockInTime(`${selectedDate}T14:00`);
     setManualClockOutTime(`${selectedDate}T22:00`);
     setManualNote("");
@@ -561,6 +584,11 @@ Handlingen kan ikke fortrydes.`,
   }
 
   async function handleSubmitManualTimeWithoutShift() {
+    if (needsMasterCinemaSelection) {
+      showMissingActiveCinemaMessage();
+      return;
+    }
+
     if (!currentUser) {
       infoDialog.showError(
         "Du er ikke logget ind",
@@ -859,7 +887,8 @@ ${getShiftConfirmText(selectedShift)}`,
 
                     <button
                       onClick={openManualTimeModal}
-                      className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+                      disabled={needsMasterCinemaSelection}
+                      className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
                     >
                       Manuel registrering
                     </button>
@@ -919,7 +948,7 @@ ${getShiftConfirmText(selectedShift)}`,
                     </p>
                   </div>
 
-                  {canManageShifts && (
+                  {canManageShifts && !needsMasterCinemaSelection && (
                     <button
                       type="button"
                       onClick={openCreateShiftModal}
@@ -1023,10 +1052,12 @@ ${getShiftConfirmText(selectedShift)}`,
                 </div>
               </div>
 
-              <MovieProgram
-                movieShowings={filteredMovieShowings}
-                selectedDate={selectedDate}
-              />
+              {!needsMasterCinemaSelection && (
+                <MovieProgram
+                  movieShowings={filteredMovieShowings}
+                  selectedDate={selectedDate}
+                />
+              )}
             </div>
 
             <BaseModal
