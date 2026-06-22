@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
@@ -14,6 +14,7 @@ type User = {
   lastName: string;
   email: string;
   role: string;
+  cinemaId?: number | null;
 
   canManageSchedule?: boolean;
   canManageUsers?: boolean;
@@ -23,6 +24,13 @@ type User = {
   canSendBroadcastMessages?: boolean;
 };
 
+type StoredUser = {
+  id?: number;
+  sub?: number;
+  role?: "MASTER" | "ADMIN" | "EMPLOYEE";
+  cinemaId?: number | null;
+};
+
 type PermissionKey =
   | "canManageSchedule"
   | "canManageUsers"
@@ -30,6 +38,8 @@ type PermissionKey =
   | "canManageLeaveRequests"
   | "canManageCinemaSettings"
   | "canSendBroadcastMessages";
+
+const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 
 const permissionLabels: { key: PermissionKey; label: string }[] = [
   { key: "canManageSchedule", label: "Vagtplan" },
@@ -58,6 +68,45 @@ function getRoleBadge(role: string) {
   return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
 }
 
+function getStoredUser() {
+  const savedUser = window.localStorage.getItem("user");
+
+  if (!savedUser) {
+    return null;
+  }
+
+  try {
+    const parsedUser = JSON.parse(savedUser) as StoredUser;
+
+    if (!parsedUser || typeof parsedUser !== "object") {
+      return null;
+    }
+
+    return parsedUser;
+  } catch {
+    return null;
+  }
+}
+
+function getSelectedMasterCinemaId() {
+  const cinemaId = Number(
+    window.localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
+  );
+
+  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+    return null;
+  }
+
+  return cinemaId;
+}
+
+function appendCinemaId(endpoint: string, cinemaId: number | null) {
+  if (!cinemaId) return endpoint;
+
+  const separator = endpoint.includes("?") ? "&" : "?";
+  return `${endpoint}${separator}cinemaId=${cinemaId}`;
+}
+
 async function readErrorMessage(response: Response, fallback: string) {
   try {
     const data = await response.json();
@@ -78,11 +127,54 @@ export default function EmployeesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
+  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
+    number | null
+  >(null);
+
+  const activeCinemaId = useMemo(() => {
+    if (!currentUser) {
+      return null;
+    }
+
+    if (currentUser.role === "MASTER" && !currentUser.cinemaId) {
+      return selectedMasterCinemaId;
+    }
+
+    return currentUser.cinemaId ?? null;
+  }, [currentUser, selectedMasterCinemaId]);
+
+  const needsMasterCinemaSelection =
+    currentUser?.role === "MASTER" &&
+    !currentUser.cinemaId &&
+    !selectedMasterCinemaId;
+
+  const appendActiveCinemaId = useCallback(
+    (endpoint: string) => {
+      if (currentUser?.role === "MASTER" && !currentUser.cinemaId) {
+        return appendCinemaId(endpoint, activeCinemaId);
+      }
+
+      return endpoint;
+    },
+    [activeCinemaId, currentUser],
+  );
+
   const fetchUsers = useCallback(async () => {
+    if (!currentUser) {
+      return;
+    }
+
+    if (needsMasterCinemaSelection) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const response = await apiFetch("/users");
+      const response = await apiFetch(appendActiveCinemaId("/users"));
 
       if (!response.ok) {
         throw new Error(
@@ -104,25 +196,45 @@ export default function EmployeesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [appendActiveCinemaId, currentUser, needsMasterCinemaSelection]);
 
   async function updatePermission(
     userId: number,
     permission: PermissionKey,
     value: boolean,
   ) {
+    if (needsMasterCinemaSelection) {
+      infoDialog.showError(
+        "Ingen aktiv biograf valgt",
+        "Vælg en biograf i MASTER-panelet, før du ændrer medarbejderrettigheder.",
+      );
+      return;
+    }
+
     try {
       const user = users.find((u) => u.id === userId);
 
       if (!user) return;
 
-      const response = await apiFetch(`/users/${userId}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          ...user,
-          [permission]: value,
-        }),
-      });
+      const response = await apiFetch(
+        appendActiveCinemaId(`/users/${userId}`),
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            canManageSchedule: user.canManageSchedule ?? false,
+            canManageUsers: user.canManageUsers ?? false,
+            canManagePayroll: user.canManagePayroll ?? false,
+            canManageLeaveRequests: user.canManageLeaveRequests ?? false,
+            canManageCinemaSettings: user.canManageCinemaSettings ?? false,
+            canSendBroadcastMessages: user.canSendBroadcastMessages ?? false,
+            [permission]: value,
+          }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -151,8 +263,35 @@ export default function EmployeesPage() {
   }
 
   useEffect(() => {
+    function syncActiveCinemaContext() {
+      setCurrentUser(getStoredUser());
+      setSelectedMasterCinemaId(getSelectedMasterCinemaId());
+    }
+
+    syncActiveCinemaContext();
+
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      syncActiveCinemaContext,
+    );
+    window.addEventListener("storage", syncActiveCinemaContext);
+
+    return () => {
+      window.removeEventListener(
+        "masterSelectedCinemaChanged",
+        syncActiveCinemaContext,
+      );
+      window.removeEventListener("storage", syncActiveCinemaContext);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+
     fetchUsers();
-  }, [fetchUsers]);
+  }, [currentUser, fetchUsers, selectedMasterCinemaId]);
 
   return (
     <AdminGuard>
@@ -166,14 +305,26 @@ export default function EmployeesPage() {
             </p>
           </div>
 
+          {needsMasterCinemaSelection && (
+            <div className="rounded-2xl border border-yellow-300 bg-yellow-50 p-5 text-yellow-900 shadow-sm dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-100">
+              <h2 className="text-lg font-semibold">
+                Ingen aktiv biograf valgt
+              </h2>
+              <p className="mt-2 text-sm">
+                Vælg en biograf i MASTER-panelet, før du kan se eller ændre
+                medarbejderrettigheder.
+              </p>
+            </div>
+          )}
+
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            {loading && (
+            {!needsMasterCinemaSelection && loading && (
               <div className="p-6 text-gray-500 dark:text-gray-400">
                 Henter medarbejdere...
               </div>
             )}
 
-            {!loading && users.length > 0 && (
+            {!needsMasterCinemaSelection && !loading && users.length > 0 && (
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse">
                   <thead className="bg-gray-50 dark:bg-gray-950">
@@ -259,7 +410,7 @@ export default function EmployeesPage() {
               </div>
             )}
 
-            {!loading && users.length === 0 && (
+            {!needsMasterCinemaSelection && !loading && users.length === 0 && (
               <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                 <div className="mb-2 text-4xl">👥</div>
 
@@ -268,6 +419,12 @@ export default function EmployeesPage() {
                 </h2>
 
                 <p className="mt-2">Der blev ikke fundet nogen medarbejdere.</p>
+              </div>
+            )}
+
+            {needsMasterCinemaSelection && (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                Medarbejderlisten vises, når der er valgt en aktiv biograf.
               </div>
             )}
           </section>
