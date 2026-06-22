@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
+import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useApi } from "@/app/hooks/useApi";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
@@ -9,10 +11,23 @@ import { useAuth } from "@/app/providers/AuthProvider";
 
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 
+type StaffingRequestStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "EXPIRED"
+  | "CANCELLED";
+
+type StaffingRequestType =
+  | "EXTRA_SHIFT"
+  | "EMERGENCY"
+  | "REPLACEMENT"
+  | "OVERTIME";
+
 type StaffingRequest = {
   id: number;
-  type: "EXTRA_SHIFT" | "EMERGENCY" | "REPLACEMENT" | "OVERTIME";
-  status: "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED";
+  type: StaffingRequestType;
+  status: StaffingRequestStatus;
   priority: number;
   message?: string | null;
   aiGenerated: boolean;
@@ -20,10 +35,12 @@ type StaffingRequest = {
   acceptedAt?: string | null;
   rejectedAt?: string | null;
   requestedByUser?: {
+    id?: number;
     firstName: string;
     lastName: string;
   } | null;
   targetUser?: {
+    id?: number;
     firstName: string;
     lastName: string;
   } | null;
@@ -71,9 +88,74 @@ function getSelectedMasterCinemaId() {
   return cinemaId;
 }
 
+function getCurrentUserId(user: unknown) {
+  const currentUser = user as { id?: number; sub?: number } | null;
+
+  if (!currentUser) return null;
+
+  if (typeof currentUser.id === "number") return currentUser.id;
+  if (typeof currentUser.sub === "number") return currentUser.sub;
+
+  return null;
+}
+
+function getFullName(
+  user?: { firstName: string; lastName: string } | null,
+  fallback = "Ukendt",
+) {
+  if (!user) return fallback;
+
+  return `${user.firstName} ${user.lastName}`.trim() || fallback;
+}
+
+function getStatusLabel(status: StaffingRequestStatus) {
+  switch (status) {
+    case "ACCEPTED":
+      return "Accepteret";
+    case "REJECTED":
+      return "Afvist";
+    case "EXPIRED":
+      return "Udløbet";
+    case "CANCELLED":
+      return "Annulleret";
+    default:
+      return "Afventer";
+  }
+}
+
+function getTypeLabel(type: StaffingRequestType) {
+  switch (type) {
+    case "EMERGENCY":
+      return "Akut";
+    case "REPLACEMENT":
+      return "Erstatning";
+    case "OVERTIME":
+      return "Overarbejde";
+    default:
+      return "Ekstra vagt";
+  }
+}
+
+function getDefaultMessage(type: StaffingRequestType) {
+  if (type === "EMERGENCY") {
+    return "Der er akut behov for ekstra bemanding.";
+  }
+
+  if (type === "REPLACEMENT") {
+    return "Der er behov for en erstatning til en vagt.";
+  }
+
+  if (type === "OVERTIME") {
+    return "Der er behov for ekstra bemanding eller overarbejde.";
+  }
+
+  return "Der er behov for ekstra bemanding.";
+}
+
 export default function StaffingRequestsPage() {
   const { apiFetch } = useApi();
   const { user } = useAuth();
+  const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
 
   const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
@@ -99,6 +181,10 @@ export default function StaffingRequestsPage() {
     return null;
   }, [selectedMasterCinemaId, user]);
 
+  const currentUserId = useMemo(() => getCurrentUserId(user), [user]);
+
+  const isManager = user?.role === "MASTER" || user?.role === "ADMIN";
+
   const needsMasterCinemaSelection =
     user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
 
@@ -110,7 +196,10 @@ export default function StaffingRequestsPage() {
     updateSelectedCinema();
 
     window.addEventListener("storage", updateSelectedCinema);
-    window.addEventListener("masterSelectedCinemaChanged", updateSelectedCinema);
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      updateSelectedCinema,
+    );
 
     return () => {
       window.removeEventListener("storage", updateSelectedCinema);
@@ -170,10 +259,11 @@ export default function StaffingRequestsPage() {
   useRealtimeShifts({
     onShiftsUpdated: fetchRequests,
     onShiftTradesUpdated: fetchRequests,
+    onStaffingRequestsUpdated: fetchRequests,
     enableToasts: false,
   });
 
-  async function handleAccept(id: number) {
+  async function acceptRequest(id: number) {
     try {
       setProcessingId(id);
 
@@ -206,7 +296,7 @@ export default function StaffingRequestsPage() {
     }
   }
 
-  async function handleReject(id: number) {
+  async function rejectRequest(id: number) {
     try {
       setProcessingId(id);
 
@@ -239,6 +329,69 @@ export default function StaffingRequestsPage() {
     }
   }
 
+  async function cancelRequest(id: number) {
+    try {
+      setProcessingId(id);
+
+      const response = await apiFetch(
+        appendCinemaId(`/staffing-requests/${id}/cancel`, activeCinemaId),
+        {
+          method: "PATCH",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Kunne ikke annullere bemandingsforespørgsel",
+          ),
+        );
+      }
+
+      await fetchRequests();
+    } catch (error) {
+      infoDialog.showError(
+        "Bemandingsforespørgslen kunne ikke annulleres",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da bemandingsforespørgslen skulle annulleres. Prøv igen.",
+      );
+    } finally {
+      setProcessingId(null);
+    }
+  }
+
+  function handleAccept(id: number) {
+    void acceptRequest(id);
+  }
+
+  function handleReject(request: StaffingRequest) {
+    confirmDialog.confirm({
+      title: "Afvis bemandingsforespørgsel",
+      description:
+        `Vil du afvise forespørgsel #${request.id}?\n\n` +
+        "Forespørgslen markeres som afvist.",
+      confirmText: "Afvis",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: () => rejectRequest(request.id),
+    });
+  }
+
+  function handleCancel(request: StaffingRequest) {
+    confirmDialog.confirm({
+      title: "Annuller bemandingsforespørgsel",
+      description:
+        `Vil du annullere forespørgsel #${request.id}?\n\n` +
+        "Forespørgslen fjernes ikke, men den kan ikke længere accepteres.",
+      confirmText: "Annuller forespørgsel",
+      cancelText: "Behold",
+      confirmVariant: "danger",
+      onConfirm: () => cancelRequest(request.id),
+    });
+  }
+
   const groupedRequests = useMemo(() => {
     return {
       emergency: requests.filter((request) => request.type === "EMERGENCY"),
@@ -247,7 +400,7 @@ export default function StaffingRequestsPage() {
     };
   }, [requests]);
 
-  function getStatusStyle(status: StaffingRequest["status"]) {
+  function getStatusStyle(status: StaffingRequestStatus) {
     switch (status) {
       case "ACCEPTED":
         return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
@@ -276,13 +429,22 @@ export default function StaffingRequestsPage() {
   function formatDateTime(value: string) {
     const date = new Date(value);
 
-    return date.toLocaleString("da-DK", {
+    if (Number.isNaN(date.getTime())) {
+      return "Ukendt tidspunkt";
+    }
+
+    const datePart = date.toLocaleDateString("da-DK", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+    });
+
+    const timePart = date.toLocaleTimeString("da-DK", {
       hour: "2-digit",
       minute: "2-digit",
     });
+
+    return `${datePart} kl. ${timePart}`;
   }
 
   if (loading) {
@@ -301,12 +463,12 @@ export default function StaffingRequestsPage() {
             <h1 className="text-3xl font-bold">Bemandingsforespørgsler</h1>
 
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Overblik over ekstra bemanding, akutte forespørgsler og realtime
+              Overblik over ekstra bemanding, akutte forespørgsler og
               bemandingsbehov.
             </p>
           </section>
 
-          {needsMasterCinemaSelection && (
+          {needsMasterCinemaSelection ? (
             <section className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5 text-yellow-900 shadow-sm dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-100">
               <div className="text-sm font-medium uppercase tracking-wide">
                 Biograf mangler
@@ -324,166 +486,206 @@ export default function StaffingRequestsPage() {
                 Gå til MASTER-panel
               </a>
             </section>
-          )}
-
-          <section className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl bg-white p-5 shadow dark:bg-gray-900">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Akutte
-              </div>
-              <div className="mt-2 text-3xl font-bold">
-                {groupedRequests.emergency.length}
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white p-5 shadow dark:bg-gray-900">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Afventer
-              </div>
-              <div className="mt-2 text-3xl font-bold">
-                {groupedRequests.pending.length}
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white p-5 shadow dark:bg-gray-900">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Behandlede
-              </div>
-              <div className="mt-2 text-3xl font-bold">
-                {groupedRequests.completed.length}
-              </div>
-            </div>
-          </section>
-
-          {requests.length === 0 ? (
-            <section className="rounded-2xl border border-dashed bg-white p-8 text-center text-gray-500 shadow dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
-              Ingen bemandingsforespørgsler fundet.
-            </section>
           ) : (
-            <section className="space-y-4">
-              {requests.map((request) => {
-                const canRespond =
-                  request.status === "PENDING" &&
-                  request.targetUser &&
-                  user &&
-                  request.targetUser.firstName &&
-                  request.targetUser.lastName;
+            <>
+              <section className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl bg-white p-5 shadow dark:bg-gray-900">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Akutte
+                  </div>
+                  <div className="mt-2 text-3xl font-bold">
+                    {groupedRequests.emergency.length}
+                  </div>
+                </div>
 
-                return (
-                  <article
-                    key={request.id}
-                    className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900"
-                  >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="flex flex-wrap gap-2">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold ${getPriorityStyle(
-                              request.priority,
-                            )}`}
-                          >
-                            PRIORITET {request.priority}
-                          </span>
+                <div className="rounded-2xl bg-white p-5 shadow dark:bg-gray-900">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Afventer
+                  </div>
+                  <div className="mt-2 text-3xl font-bold">
+                    {groupedRequests.pending.length}
+                  </div>
+                </div>
 
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
-                              request.status,
-                            )}`}
-                          >
-                            {request.status}
-                          </span>
+                <div className="rounded-2xl bg-white p-5 shadow dark:bg-gray-900">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Behandlede
+                  </div>
+                  <div className="mt-2 text-3xl font-bold">
+                    {groupedRequests.completed.length}
+                  </div>
+                </div>
+              </section>
 
-                          {request.aiGenerated && (
-                            <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800 dark:bg-purple-950/40 dark:text-purple-200">
-                              AI
-                            </span>
-                          )}
+              {requests.length === 0 ? (
+                <section className="rounded-2xl border border-dashed bg-white p-8 text-center text-gray-500 shadow dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
+                  Ingen bemandingsforespørgsler fundet.
+                </section>
+              ) : (
+                <section className="space-y-4">
+                  {requests.map((request) => {
+                    const targetUserId = request.targetUser?.id ?? null;
+                    const isPending = request.status === "PENDING";
+
+                    const canAccept =
+                      isPending &&
+                      user?.role === "EMPLOYEE" &&
+                      currentUserId !== null &&
+                      (!targetUserId || targetUserId === currentUserId);
+
+                    const canReject =
+                      isPending &&
+                      user?.role === "EMPLOYEE" &&
+                      currentUserId !== null &&
+                      targetUserId === currentUserId;
+
+                    const canCancel = isPending && isManager;
+
+                    return (
+                      <article
+                        key={request.id}
+                        className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900"
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <div className="flex flex-wrap gap-2">
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-bold ${getPriorityStyle(
+                                  request.priority,
+                                )}`}
+                              >
+                                PRIORITET {request.priority}
+                              </span>
+
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
+                                  request.status,
+                                )}`}
+                              >
+                                {getStatusLabel(request.status)}
+                              </span>
+
+                              {request.aiGenerated && (
+                                <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800 dark:bg-purple-950/40 dark:text-purple-200">
+                                  AI
+                                </span>
+                              )}
+                            </div>
+
+                            <h2 className="mt-4 text-2xl font-bold">
+                              Forespørgsel #{request.id}
+                            </h2>
+
+                            <p className="mt-2 text-gray-700 dark:text-gray-300">
+                              {request.message ||
+                                getDefaultMessage(request.type)}
+                            </p>
+                          </div>
+
+                          <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                            {getTypeLabel(request.type)}
+                          </div>
                         </div>
 
-                        <h2 className="mt-4 text-2xl font-bold">
-                          Forespørgsel #{request.id}
-                        </h2>
+                        <div className="mt-6 grid gap-4 text-sm md:grid-cols-4">
+                          <div>
+                            <div className="font-semibold text-gray-500 dark:text-gray-400">
+                              Oprettet af
+                            </div>
+                            <div>
+                              {getFullName(request.requestedByUser, "System")}
+                            </div>
+                          </div>
 
-                        <p className="mt-2 text-gray-700 dark:text-gray-300">
-                          {request.message || "Ekstra bemanding nødvendig."}
-                        </p>
-                      </div>
+                          <div>
+                            <div className="font-semibold text-gray-500 dark:text-gray-400">
+                              Målgruppe
+                            </div>
+                            <div>
+                              {request.targetUser
+                                ? getFullName(request.targetUser)
+                                : "Alle medarbejdere"}
+                            </div>
+                          </div>
 
-                      <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                        {request.type}
-                      </div>
-                    </div>
+                          <div>
+                            <div className="font-semibold text-gray-500 dark:text-gray-400">
+                              Oprettet
+                            </div>
+                            <div>{formatDateTime(request.createdAt)}</div>
+                          </div>
 
-                    <div className="mt-6 grid gap-4 text-sm md:grid-cols-4">
-                      <div>
-                        <div className="font-semibold text-gray-500 dark:text-gray-400">
-                          Oprettet af
+                          <div>
+                            <div className="font-semibold text-gray-500 dark:text-gray-400">
+                              Vagt
+                            </div>
+                            <div>{request.shift?.workType?.name || "Akut"}</div>
+                            {request.shift && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatDateTime(request.shift.startTime)} →{" "}
+                                {formatDateTime(request.shift.endTime)}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          {request.requestedByUser
-                            ? `${request.requestedByUser.firstName} ${request.requestedByUser.lastName}`
-                            : "System"}
-                        </div>
-                      </div>
 
-                      <div>
-                        <div className="font-semibold text-gray-500 dark:text-gray-400">
-                          Målgruppe
-                        </div>
-                        <div>
-                          {request.targetUser
-                            ? `${request.targetUser.firstName} ${request.targetUser.lastName}`
-                            : "Alle medarbejdere"}
-                        </div>
-                      </div>
+                        {(canAccept || canReject || canCancel) && (
+                          <div className="mt-6 flex flex-wrap gap-3">
+                            {canAccept ? (
+                              <button
+                                type="button"
+                                onClick={() => handleAccept(request.id)}
+                                disabled={processingId === request.id}
+                                className="rounded-2xl bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50"
+                              >
+                                Acceptér
+                              </button>
+                            ) : null}
 
-                      <div>
-                        <div className="font-semibold text-gray-500 dark:text-gray-400">
-                          Oprettet
-                        </div>
-                        <div>{formatDateTime(request.createdAt)}</div>
-                      </div>
+                            {canReject ? (
+                              <button
+                                type="button"
+                                onClick={() => handleReject(request)}
+                                disabled={processingId === request.id}
+                                className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
+                              >
+                                Afvis
+                              </button>
+                            ) : null}
 
-                      <div>
-                        <div className="font-semibold text-gray-500 dark:text-gray-400">
-                          Vagt
-                        </div>
-                        <div>{request.shift?.workType?.name || "Akut"}</div>
-                        {request.shift && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatDateTime(request.shift.startTime)} →{" "}
-                            {formatDateTime(request.shift.endTime)}
+                            {canCancel ? (
+                              <button
+                                type="button"
+                                onClick={() => handleCancel(request)}
+                                disabled={processingId === request.id}
+                                className="rounded-2xl border border-red-300 px-5 py-3 text-sm font-bold text-red-700 shadow-sm transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                              >
+                                Annuller
+                              </button>
+                            ) : null}
                           </div>
                         )}
-                      </div>
-                    </div>
-
-                    {canRespond && (
-                      <div className="mt-6 flex flex-wrap gap-3">
-                        <button
-                          onClick={() => handleAccept(request.id)}
-                          disabled={processingId === request.id}
-                          className="rounded-2xl bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50"
-                        >
-                          Acceptér
-                        </button>
-
-                        <button
-                          onClick={() => handleReject(request.id)}
-                          disabled={processingId === request.id}
-                          className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
-                        >
-                          Afvis
-                        </button>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </section>
+                      </article>
+                    );
+                  })}
+                </section>
+              )}
+            </>
           )}
         </div>
       </main>
+
+      <ConfirmModal
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmVariant={confirmDialog.confirmVariant}
+        loading={confirmDialog.loading}
+        onConfirm={confirmDialog.handleConfirm}
+        onCancel={confirmDialog.handleCancel}
+      />
 
       <InfoModal
         open={infoDialog.open}

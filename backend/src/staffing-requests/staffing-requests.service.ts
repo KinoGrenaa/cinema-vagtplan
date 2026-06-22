@@ -22,6 +22,18 @@ type CreateStaffingRequestInput = CreateStaffingRequestDto & {
   cinemaId?: number | null;
 };
 
+const requestInclude = {
+  cinema: true,
+  shift: {
+    include: {
+      user: true,
+      workType: true,
+    },
+  },
+  requestedByUser: true,
+  targetUser: true,
+};
+
 @Injectable()
 export class StaffingRequestsService {
   constructor(
@@ -71,17 +83,7 @@ export class StaffingRequestsService {
       where: {
         cinemaId,
       },
-      include: {
-        cinema: true,
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        requestedByUser: true,
-        targetUser: true,
-      },
+      include: requestInclude,
       orderBy: [{ status: 'asc' }, { priority: 'desc' }, { createdAt: 'desc' }],
     });
   }
@@ -92,26 +94,22 @@ export class StaffingRequestsService {
     return this.prisma.staffingRequest.findMany({
       where: {
         cinemaId,
-        OR: [{ targetUserId: user.sub }, { requestedByUserId: user.sub }],
+        OR: [
+          { targetUserId: user.sub },
+          { requestedByUserId: user.sub },
+          { targetUserId: null },
+        ],
       },
-      include: {
-        cinema: true,
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        requestedByUser: true,
-        targetUser: true,
-      },
+      include: requestInclude,
       orderBy: [{ status: 'asc' }, { priority: 'desc' }, { createdAt: 'desc' }],
     });
   }
 
   async create(user: AuthUser, dto: CreateStaffingRequestInput) {
-    if (!this.canManageStaffing(user) && !dto.aiGenerated) {
-      throw new ForbiddenException('Du må ikke oprette bemandingsforespørgsler');
+    if (!this.canManageStaffing(user)) {
+      throw new ForbiddenException(
+        'Du må ikke oprette bemandingsforespørgsler',
+      );
     }
 
     const cinemaId = this.resolveCinemaId(user, dto.cinemaId);
@@ -154,17 +152,7 @@ export class StaffingRequestsService {
         aiGenerated: dto.aiGenerated ?? false,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
       },
-      include: {
-        cinema: true,
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        requestedByUser: true,
-        targetUser: true,
-      },
+      include: requestInclude,
     });
 
     await this.createNotificationForRequest(request.id);
@@ -173,22 +161,22 @@ export class StaffingRequestsService {
     return request;
   }
 
-  async accept(
-    user: AuthUser,
-    id: number,
-    selectedCinemaId?: number | null,
-  ) {
+  async accept(user: AuthUser, id: number, selectedCinemaId?: number | null) {
     const request = await this.findOneForUser(user, id, selectedCinemaId);
 
     if (request.status !== StaffingRequestStatus.PENDING) {
-      throw new BadRequestException('Bemandingsforespørgslen er ikke længere åben');
+      throw new BadRequestException(
+        'Bemandingsforespørgslen er ikke længere åben',
+      );
     }
 
-    if (
-      user.role === 'EMPLOYEE' &&
-      request.targetUserId &&
-      request.targetUserId !== user.sub
-    ) {
+    if (user.role !== 'EMPLOYEE') {
+      throw new ForbiddenException(
+        'Kun medarbejdere kan acceptere bemandingsforespørgsler',
+      );
+    }
+
+    if (request.targetUserId && request.targetUserId !== user.sub) {
       throw new ForbiddenException('Du kan ikke acceptere denne forespørgsel');
     }
 
@@ -200,17 +188,7 @@ export class StaffingRequestsService {
         status: StaffingRequestStatus.ACCEPTED,
         acceptedAt: new Date(),
       },
-      include: {
-        cinema: true,
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        requestedByUser: true,
-        targetUser: true,
-      },
+      include: requestInclude,
     });
 
     if (!updated.shiftId) {
@@ -245,9 +223,7 @@ export class StaffingRequestsService {
         const admins = await this.prisma.user.findMany({
           where: {
             cinemaId: updated.cinemaId,
-            role: {
-              in: ['MASTER', 'ADMIN'],
-            },
+            role: 'ADMIN',
           },
           select: {
             id: true,
@@ -267,41 +243,49 @@ export class StaffingRequestsService {
       }
     }
 
-    await this.prisma.staffingRequest.updateMany({
-      where: {
-        cinemaId: updated.cinemaId,
-        id: {
-          not: updated.id,
+    if (updated.shiftId) {
+      await this.prisma.staffingRequest.updateMany({
+        where: {
+          cinemaId: updated.cinemaId,
+          id: {
+            not: updated.id,
+          },
+          shiftId: updated.shiftId,
+          status: StaffingRequestStatus.PENDING,
         },
-        status: StaffingRequestStatus.PENDING,
-        type: updated.type,
-      },
-      data: {
-        status: StaffingRequestStatus.CANCELLED,
-      },
-    });
+        data: {
+          status: StaffingRequestStatus.CANCELLED,
+        },
+      });
+    }
 
     this.emitUpdate(updated.cinemaId);
 
     return updated;
   }
 
-  async reject(
-    user: AuthUser,
-    id: number,
-    selectedCinemaId?: number | null,
-  ) {
+  async reject(user: AuthUser, id: number, selectedCinemaId?: number | null) {
     const request = await this.findOneForUser(user, id, selectedCinemaId);
 
     if (request.status !== StaffingRequestStatus.PENDING) {
-      throw new BadRequestException('Bemandingsforespørgslen er ikke længere åben');
+      throw new BadRequestException(
+        'Bemandingsforespørgslen er ikke længere åben',
+      );
     }
 
-    if (
-      user.role === 'EMPLOYEE' &&
-      request.targetUserId &&
-      request.targetUserId !== user.sub
-    ) {
+    if (user.role !== 'EMPLOYEE') {
+      throw new ForbiddenException(
+        'Kun medarbejdere kan afvise bemandingsforespørgsler',
+      );
+    }
+
+    if (!request.targetUserId) {
+      throw new ForbiddenException(
+        'En forespørgsel til alle medarbejdere kan ikke afvises individuelt.',
+      );
+    }
+
+    if (request.targetUserId !== user.sub) {
       throw new ForbiddenException('Du kan ikke afvise denne forespørgsel');
     }
 
@@ -313,17 +297,7 @@ export class StaffingRequestsService {
         status: StaffingRequestStatus.REJECTED,
         rejectedAt: new Date(),
       },
-      include: {
-        cinema: true,
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        requestedByUser: true,
-        targetUser: true,
-      },
+      include: requestInclude,
     });
 
     this.emitUpdate(updated.cinemaId);
@@ -331,13 +305,11 @@ export class StaffingRequestsService {
     return updated;
   }
 
-  async cancel(
-    user: AuthUser,
-    id: number,
-    selectedCinemaId?: number | null,
-  ) {
+  async cancel(user: AuthUser, id: number, selectedCinemaId?: number | null) {
     if (!this.canManageStaffing(user)) {
-      throw new ForbiddenException('Du må ikke annullere bemandingsforespørgsler');
+      throw new ForbiddenException(
+        'Du må ikke annullere bemandingsforespørgsler',
+      );
     }
 
     const request = await this.findOneForUser(user, id, selectedCinemaId);
@@ -353,17 +325,7 @@ export class StaffingRequestsService {
       data: {
         status: StaffingRequestStatus.CANCELLED,
       },
-      include: {
-        cinema: true,
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        requestedByUser: true,
-        targetUser: true,
-      },
+      include: requestInclude,
     });
 
     this.emitUpdate(updated.cinemaId);
@@ -397,10 +359,10 @@ export class StaffingRequestsService {
           targetUserId: candidate.userId,
           shiftId: params.shiftId,
           type: 'EMERGENCY',
-          status: 'PENDING',
+          status: StaffingRequestStatus.PENDING,
           priority: Math.max(1, Math.round(candidate.totalScore)),
           aiGenerated: true,
-          message: params.message || 'AI detected emergency staffing need.',
+          message: params.message || 'Der er akut behov for ekstra bemanding.',
         },
         include: {
           targetUser: true,
@@ -474,7 +436,7 @@ export class StaffingRequestsService {
           request.message ||
           'Der er brug for ekstra bemanding. Kan du tage en vagt?',
         type: 'STAFFING_REQUEST',
-        linkUrl: '/my-shifts',
+        linkUrl: '/staffing-requests',
       },
     });
   }
