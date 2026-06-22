@@ -78,6 +78,12 @@ export class ScheduleOptimizationService {
     }[] = [];
 
     for (const shift of shifts) {
+      const userId = shift.userId;
+
+      if (userId === null) {
+        continue;
+      }
+
       const profile = shift.user?.staffingAiProfile;
 
       if (!profile) {
@@ -86,20 +92,20 @@ export class ScheduleOptimizationService {
 
       if (profile.fatigueScore >= 60) {
         fatigueWarnings.push({
-          userId: shift.userId,
+          userId,
           score: profile.fatigueScore,
         });
 
-        recommendations.push(`Reduce fatigue load for user ${shift.userId}`);
+        recommendations.push(`Reduce fatigue load for user ${userId}`);
       }
 
       if (profile.overtimeScore >= 60) {
         overtimeWarnings.push({
-          userId: shift.userId,
+          userId,
           score: profile.overtimeScore,
         });
 
-        recommendations.push(`Reduce overtime load for user ${shift.userId}`);
+        recommendations.push(`Reduce overtime load for user ${userId}`);
       }
     }
 
@@ -112,6 +118,10 @@ export class ScheduleOptimizationService {
     >();
 
     for (const shift of shifts) {
+      if (shift.userId === null) {
+        continue;
+      }
+
       const hourKey = new Date(shift.startTime).toISOString();
 
       if (!groupedHours.has(hourKey)) {

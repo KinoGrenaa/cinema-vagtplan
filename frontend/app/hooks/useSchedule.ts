@@ -26,7 +26,7 @@ type CreateShiftInput = {
   startTime: string;
   endTime: string;
   note?: string;
-  userId: number;
+  userId?: number | null;
   workTypeId: number;
 };
 
@@ -34,7 +34,7 @@ type UpdateShiftInput = {
   startTime: string;
   endTime: string;
   note?: string | null;
-  userId: number;
+  userId?: number | null;
   workTypeId: number;
 };
 
@@ -43,6 +43,23 @@ type ManualTimeInput = {
   clockIn: string;
   clockOut: string;
   note: string;
+};
+
+type StaffingRequestType =
+  | "EXTRA_SHIFT"
+  | "EMERGENCY"
+  | "REPLACEMENT"
+  | "OVERTIME";
+
+type CreateStaffingRequestInput = {
+  shiftId?: number | null;
+  targetUserId?: number | null;
+  type: StaffingRequestType;
+  priority: number;
+  message: string;
+  requestStartTime?: string | null;
+  requestEndTime?: string | null;
+  workTypeId?: number | null;
 };
 
 type OpenTimeEntry = {
@@ -773,11 +790,17 @@ export function useSchedule(
         throw new Error("Vælg en biograf, før du sender vagten i byttepuljen.");
       }
 
+      const shiftUserId = (shift as Shift & { userId?: number | null }).userId;
+
+      if (!shiftUserId) {
+        throw new Error("Vagten er ikke tildelt en medarbejder endnu.");
+      }
+
       const response = await apiFetch("/shift-trades", {
         method: "POST",
         body: JSON.stringify({
           shiftId: shift.id,
-          offeredByUserId: shift.userId,
+          offeredByUserId: shiftUserId,
           cinemaId: activeCinemaId,
           message: "",
         }),
@@ -790,6 +813,48 @@ export function useSchedule(
       await refreshDayData();
     },
     [activeCinemaId, apiFetch, refreshDayData, user],
+  );
+
+  const createStaffingRequest = useCallback(
+    async (input: CreateStaffingRequestInput) => {
+      if (needsMasterCinemaSelection || !activeCinemaId) {
+        throw new Error(
+          "Vælg en biograf, før du sender bemandingsforespørgsler.",
+        );
+      }
+
+      const response = await apiFetch("/staffing-requests", {
+        method: "POST",
+        body: JSON.stringify({
+          shiftId: input.shiftId ?? null,
+          targetUserId: input.targetUserId ?? null,
+          type: input.type,
+          priority: input.priority,
+          message: input.message.trim(),
+          requestStartTime: input.requestStartTime ?? null,
+          requestEndTime: input.requestEndTime ?? null,
+          workTypeId: input.workTypeId ?? null,
+          cinemaId: activeCinemaId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Kunne ikke sende bemandingsforespørgsel.",
+          ),
+        );
+      }
+
+      await refreshDayData({ showErrors: false, showLoading: false });
+    },
+    [
+      activeCinemaId,
+      apiFetch,
+      needsMasterCinemaSelection,
+      refreshDayData,
+    ],
   );
 
   const clockIn = useCallback(
@@ -909,6 +974,7 @@ export function useSchedule(
     deleteShift,
 
     offerShiftTrade,
+    createStaffingRequest,
 
     openTimeEntry,
     timeEntries,

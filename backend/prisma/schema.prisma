@@ -211,7 +211,8 @@ model WorkType {
   payrollTypeId Int?
   payrollType   PayrollType? @relation(fields: [payrollTypeId], references: [id])
 
-  shifts Shift[]
+  shifts           Shift[]
+  staffingRequests StaffingRequest[]
 }
 
 model Shift {
@@ -224,8 +225,8 @@ model Shift {
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
 
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id])
 
   workTypeId Int
   workType   WorkType @relation(fields: [workTypeId], references: [id])
@@ -639,6 +640,12 @@ model StaffingRequest {
   shiftId Int?
   shift   Shift? @relation(fields: [shiftId], references: [id])
 
+  requestStartTime DateTime?
+  requestEndTime   DateTime?
+
+  workTypeId Int?
+  workType   WorkType? @relation(fields: [workTypeId], references: [id])
+
   requestedByUserId Int
   requestedByUser   User @relation("RequestedStaffingRequests", fields: [requestedByUserId], references: [id])
 
@@ -664,6 +671,8 @@ model StaffingRequest {
 
   @@index([cinemaId])
   @@index([shiftId])
+  @@index([workTypeId])
+  @@index([requestStartTime])
   @@index([requestedByUserId])
   @@index([targetUserId])
   @@index([status])

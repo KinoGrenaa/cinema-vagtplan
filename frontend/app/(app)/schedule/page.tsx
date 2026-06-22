@@ -40,6 +40,32 @@ type LeaveRequest = {
   };
 };
 
+type StaffingRequestType =
+  | "EXTRA_SHIFT"
+  | "EMERGENCY"
+  | "REPLACEMENT"
+  | "OVERTIME";
+
+type StaffingTargetMode = "ALL" | "USER";
+
+const STAFFING_REQUEST_TYPES: {
+  value: StaffingRequestType;
+  label: string;
+}[] = [
+  { value: "EMERGENCY", label: "Akut" },
+  { value: "EXTRA_SHIFT", label: "Ekstra vagt" },
+  { value: "REPLACEMENT", label: "Erstatning" },
+  { value: "OVERTIME", label: "Overarbejde" },
+];
+
+const STAFFING_PRIORITIES = [
+  { value: 1, label: "Lav" },
+  { value: 2, label: "Normal" },
+  { value: 3, label: "Høj" },
+  { value: 4, label: "Meget høj" },
+  { value: 5, label: "Akut" },
+];
+
 type AiScheduleData = ReturnType<typeof useScheduleAi>;
 
 type AiScheduleFeatureProps = {
@@ -130,6 +156,7 @@ export default function SchedulePage() {
     updateShift,
     deleteShift,
     offerShiftTrade,
+    createStaffingRequest,
 
     openTimeEntry,
     timeEntries,
@@ -156,7 +183,7 @@ export default function SchedulePage() {
     );
 
     return shifts
-      .filter((shift) => shift.userId === currentUser?.id)
+      .filter((shift) => getShiftUserId(shift) === currentUser?.id)
       .map((shift) => ({
         shift,
         timeEntry: entriesByShiftId.get(shift.id) ?? null,
@@ -199,6 +226,45 @@ export default function SchedulePage() {
   );
   const [manualNote, setManualNote] = useState("");
 
+  const [showStaffingRequestModal, setShowStaffingRequestModal] =
+    useState(false);
+  const [staffingRequestShiftId, setStaffingRequestShiftId] = useState<
+    number | null
+  >(null);
+  const [staffingRequestTargetMode, setStaffingRequestTargetMode] =
+    useState<StaffingTargetMode>("ALL");
+  const [staffingRequestTargetUserId, setStaffingRequestTargetUserId] =
+    useState(0);
+  const [staffingRequestType, setStaffingRequestType] =
+    useState<StaffingRequestType>("EXTRA_SHIFT");
+  const [staffingRequestPriority, setStaffingRequestPriority] = useState(2);
+  const [staffingRequestMessage, setStaffingRequestMessage] = useState("");
+  const [staffingRequestStartTime, setStaffingRequestStartTime] = useState(
+    `${todayDefault}T14:00`,
+  );
+  const [staffingRequestEndTime, setStaffingRequestEndTime] = useState(
+    `${todayDefault}T22:00`,
+  );
+  const [staffingRequestWorkTypeId, setStaffingRequestWorkTypeId] =
+    useState(0);
+
+  const staffingTargetUsers = useMemo(() => {
+    return users.filter((candidate) => {
+      const userWithMeta = candidate as User & {
+        isActive?: boolean;
+        role?: string;
+      };
+
+      return userWithMeta.isActive !== false && userWithMeta.role !== "MASTER";
+    });
+  }, [users]);
+
+  const selectedStaffingRequestShift = useMemo(() => {
+    if (!staffingRequestShiftId) return null;
+
+    return shifts.find((shift) => shift.id === staffingRequestShiftId) ?? null;
+  }, [shifts, staffingRequestShiftId]);
+
   useEffect(() => {
     if (
       userId !== 0 &&
@@ -218,6 +284,17 @@ export default function SchedulePage() {
       setWorkTypeId(0);
     }
   }, [workTypeId, workTypes]);
+
+  useEffect(() => {
+    if (
+      staffingRequestTargetUserId !== 0 &&
+      !staffingTargetUsers.some(
+        (targetUser) => targetUser.id === staffingRequestTargetUserId,
+      )
+    ) {
+      setStaffingRequestTargetUserId(0);
+    }
+  }, [staffingRequestTargetUserId, staffingTargetUsers]);
 
   useRealtimeShifts({
     onShiftsUpdated: () =>
@@ -295,6 +372,19 @@ export default function SchedulePage() {
     setManualClockInTime(`${selectedDate}T14:00`);
     setManualClockOutTime(`${selectedDate}T22:00`);
     setManualNote("");
+  }
+
+  function resetStaffingRequestModal() {
+    setShowStaffingRequestModal(false);
+    setStaffingRequestShiftId(null);
+    setStaffingRequestTargetMode("ALL");
+    setStaffingRequestTargetUserId(0);
+    setStaffingRequestType("EXTRA_SHIFT");
+    setStaffingRequestPriority(2);
+    setStaffingRequestMessage("");
+    setStaffingRequestStartTime(`${selectedDate}T14:00`);
+    setStaffingRequestEndTime(`${selectedDate}T22:00`);
+    setStaffingRequestWorkTypeId(0);
   }
 
   const requireNoteOnTimeDeviation = true;
@@ -441,7 +531,7 @@ export default function SchedulePage() {
       startTime: localDateTimeToISOString(startTime),
       endTime: localDateTimeToISOString(endTime),
       note,
-      userId,
+      userId: userId > 0 ? userId : null,
       workTypeId,
     };
 
@@ -502,7 +592,7 @@ Handlingen kan ikke fortrydes.`,
     setStartTime(toInputDateTime(shift.startTime));
     setEndTime(toInputDateTime(shift.endTime));
     setNote(shift.note || "");
-    setUserId(shift.userId);
+    setUserId(getShiftUserId(shift) ?? 0);
     setWorkTypeId(shift.workTypeId);
     setShowShiftFormModal(true);
   }
@@ -695,7 +785,7 @@ Handlingen kan ikke fortrydes.`,
         startTime: newStart.toISOString(),
         endTime: newEnd.toISOString(),
         note: shift.note,
-        userId: shift.userId,
+        userId: getShiftUserId(shift),
         workTypeId: shift.workTypeId,
       });
     } catch (error) {
@@ -708,7 +798,10 @@ Handlingen kan ikke fortrydes.`,
     }
   }
 
-  async function handleChangeShiftUser(shift: Shift, newUserId: number) {
+  async function handleChangeShiftUser(
+    shift: Shift,
+    newUserId: number | null,
+  ) {
     try {
       await updateShift(shift.id, {
         startTime: shift.startTime,
@@ -767,7 +860,7 @@ Handlingen kan ikke fortrydes.`,
         startTime: newStart.toISOString(),
         endTime: newEnd.toISOString(),
         note: shift.note,
-        userId: shift.userId,
+        userId: getShiftUserId(shift),
         workTypeId: shift.workTypeId,
       });
     } catch (error) {
@@ -804,8 +897,213 @@ ${formatShiftDate(shift.startTime)}
 ${formatShiftTimeRange(shift)}`;
   }
 
+  function getUserDisplayName(user: User) {
+    return (
+      `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+      user.email ||
+      `Medarbejder #${user.id}`
+    );
+  }
+
+  function getShiftUserId(shift: Shift) {
+    return (shift as Shift & { userId?: number | null }).userId ?? null;
+  }
+
+  function getShiftUserDisplayName(shift: Shift) {
+    const shiftWithUser = shift as Shift & {
+      user?: {
+        firstName?: string | null;
+        lastName?: string | null;
+        email?: string | null;
+      } | null;
+    };
+
+    const directName = `${shiftWithUser.user?.firstName ?? ""} ${
+      shiftWithUser.user?.lastName ?? ""
+    }`.trim();
+
+    if (directName) {
+      return directName;
+    }
+
+    if (shiftWithUser.user?.email) {
+      return shiftWithUser.user.email;
+    }
+
+    const shiftUserId = getShiftUserId(shift);
+
+    if (!shiftUserId) {
+      return "Ikke tildelt";
+    }
+
+    const listedUser = users.find((candidate) => candidate.id === shiftUserId);
+
+    return listedUser ? getUserDisplayName(listedUser) : `Medarbejder #${shiftUserId}`;
+  }
+
+  function getStaffingShiftOptionText(shift: Shift) {
+    return `${formatShiftTimeRange(shift)} · ${getShiftWorkTypeName(
+      shift,
+    )} · ${getShiftUserDisplayName(shift)}`;
+  }
+
+  function getDefaultStaffingMessage(
+    shift: Shift | null,
+    type: StaffingRequestType,
+  ) {
+    if (shift) {
+      return `Kan du hjælpe med denne vagt?
+
+${getShiftConfirmText(shift)}`;
+    }
+
+    if (type === "EMERGENCY") {
+      return "Der er akut brug for ekstra bemanding. Kan du hjælpe?";
+    }
+
+    return "Der er brug for ekstra bemanding. Kan du hjælpe?";
+  }
+
+  function applyStaffingRequestShift(shift: Shift | null) {
+    setStaffingRequestShiftId(shift?.id ?? null);
+
+    if (shift) {
+      setStaffingRequestStartTime(toInputDateTime(shift.startTime));
+      setStaffingRequestEndTime(toInputDateTime(shift.endTime));
+      setStaffingRequestWorkTypeId(shift.workTypeId ?? 0);
+      return;
+    }
+
+    setStaffingRequestStartTime(`${selectedDate}T14:00`);
+    setStaffingRequestEndTime(`${selectedDate}T22:00`);
+    setStaffingRequestWorkTypeId(workTypes[0]?.id ?? 0);
+  }
+
+  function openStaffingRequestModal(shift: Shift | null = null) {
+    if (needsMasterCinemaSelection) {
+      showMissingActiveCinemaMessage();
+      return;
+    }
+
+    const defaultType: StaffingRequestType = shift ? "REPLACEMENT" : "EXTRA_SHIFT";
+
+    applyStaffingRequestShift(shift);
+    setStaffingRequestTargetMode("ALL");
+    setStaffingRequestTargetUserId(0);
+    setStaffingRequestType(defaultType);
+    setStaffingRequestPriority(shift ? 3 : 2);
+    setStaffingRequestMessage(getDefaultStaffingMessage(shift, defaultType));
+    setShowShiftFormModal(false);
+    setShowStaffingRequestModal(true);
+  }
+
+  function handleOpenStaffingRequestForSelectedShift() {
+    if (!selectedShift) return;
+
+    openStaffingRequestModal(selectedShift);
+  }
+
+  async function handleSubmitStaffingRequest(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (needsMasterCinemaSelection) {
+      showMissingActiveCinemaMessage();
+      return;
+    }
+
+    if (
+      staffingRequestTargetMode === "USER" &&
+      (!staffingRequestTargetUserId || staffingRequestTargetUserId <= 0)
+    ) {
+      infoDialog.showError(
+        "Vælg medarbejder",
+        "Vælg hvilken medarbejder forespørgslen skal sendes til.",
+      );
+      return;
+    }
+
+    if (!staffingRequestShiftId) {
+      if (!staffingRequestStartTime || !staffingRequestEndTime) {
+        infoDialog.showError(
+          "Vælg tidsinterval",
+          "Vælg hvornår bemandingsbehovet starter og slutter.",
+        );
+        return;
+      }
+
+      const requestStart = new Date(staffingRequestStartTime);
+      const requestEnd = new Date(staffingRequestEndTime);
+
+      if (requestEnd <= requestStart) {
+        infoDialog.showError(
+          "Tidsintervallet er ikke gyldigt",
+          "Sluttidspunktet skal være efter starttidspunktet.",
+        );
+        return;
+      }
+
+      if (!staffingRequestWorkTypeId || staffingRequestWorkTypeId <= 0) {
+        infoDialog.showError(
+          "Vælg jobfunktion",
+          "Vælg hvilken jobfunktion bemandingsbehovet gælder.",
+        );
+        return;
+      }
+    }
+
+    if (!staffingRequestMessage.trim()) {
+      infoDialog.showError(
+        "Skriv en besked",
+        "Skriv hvad medarbejderne skal svare på.",
+      );
+      return;
+    }
+
+    try {
+      await createStaffingRequest({
+        shiftId: staffingRequestShiftId,
+        targetUserId:
+          staffingRequestTargetMode === "USER"
+            ? staffingRequestTargetUserId
+            : null,
+        type: staffingRequestType,
+        priority: staffingRequestPriority,
+        message: staffingRequestMessage,
+        requestStartTime: staffingRequestShiftId
+          ? null
+          : localDateTimeToISOString(staffingRequestStartTime),
+        requestEndTime: staffingRequestShiftId
+          ? null
+          : localDateTimeToISOString(staffingRequestEndTime),
+        workTypeId: staffingRequestShiftId
+          ? null
+          : staffingRequestWorkTypeId || null,
+      });
+
+      toast.success("Bemandingsforespørgslen er sendt");
+      resetStaffingRequestModal();
+    } catch (error) {
+      infoDialog.showError(
+        "Bemandingsforespørgslen kunne ikke sendes",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da bemandingsforespørgslen skulle sendes. Prøv igen.",
+      );
+    }
+  }
+
   function handleOfferTrade() {
     if (!selectedShift) return;
+
+    if (!getShiftUserId(selectedShift)) {
+      infoDialog.showError(
+        "Vagten er ikke tildelt",
+        "Vagten skal tildeles en medarbejder, før den kan sendes i byttepuljen.",
+      );
+      return;
+    }
 
     confirmDialog.confirm({
       title: "Send vagt i byttepulje",
@@ -949,13 +1247,23 @@ ${getShiftConfirmText(selectedShift)}`,
                   </div>
 
                   {canManageShifts && !needsMasterCinemaSelection && (
-                    <button
-                      type="button"
-                      onClick={openCreateShiftModal}
-                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                    >
-                      Opret vagt
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openStaffingRequestModal(null)}
+                        className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                      >
+                        Send forespørgsel
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={openCreateShiftModal}
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                      >
+                        Opret vagt
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -1084,9 +1392,233 @@ ${getShiftConfirmText(selectedShift)}`,
                 onDelete={handleDelete}
                 onCancel={closeShiftFormModal}
                 onOfferTrade={handleOfferTrade}
+                onSendStaffingRequest={handleOpenStaffingRequestForSelectedShift}
                 leaveRequests={leaveRequests}
                 showHeader={false}
               />
+            </BaseModal>
+
+            <BaseModal
+              open={showStaffingRequestModal}
+              title="Send bemandingsforespørgsel"
+              width="xl"
+              onClose={resetStaffingRequestModal}
+            >
+              <form onSubmit={handleSubmitStaffingRequest} className="space-y-4">
+                <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900 dark:border-purple-900/60 dark:bg-purple-950/30 dark:text-purple-100">
+                  Send en forespørgsel fra vagtplanen. Svarene håndteres i
+                  bemandingsindbakken.
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">
+                    Vagt eller behov
+                  </label>
+                  <select
+                    value={staffingRequestShiftId ?? ""}
+                    onChange={(event) => {
+                      const nextShiftId = event.target.value
+                        ? Number(event.target.value)
+                        : null;
+
+                      const nextShift = nextShiftId
+                        ? shifts.find((shift) => shift.id === nextShiftId) ?? null
+                        : null;
+
+                      applyStaffingRequestShift(nextShift);
+                      setStaffingRequestMessage(
+                        getDefaultStaffingMessage(nextShift, staffingRequestType),
+                      );
+                    }}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                  >
+                    <option value="">Intet konkret vagtkort / bemandingsbehov</option>
+                    {shifts.map((shift) => (
+                      <option key={shift.id} value={shift.id}>
+                        {getStaffingShiftOptionText(shift)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedStaffingRequestShift ? (
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-800 dark:bg-gray-950">
+                    <div className="font-semibold">Koblet til vagt</div>
+                    <div className="mt-1 text-gray-700 dark:text-gray-300">
+                      {getStaffingShiftOptionText(selectedStaffingRequestShift)}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">
+                        Fra
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={staffingRequestStartTime}
+                        onChange={(event) =>
+                          setStaffingRequestStartTime(event.target.value)
+                        }
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">
+                        Til
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={staffingRequestEndTime}
+                        onChange={(event) =>
+                          setStaffingRequestEndTime(event.target.value)
+                        }
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">
+                        Jobfunktion
+                      </label>
+                      <select
+                        value={staffingRequestWorkTypeId}
+                        onChange={(event) =>
+                          setStaffingRequestWorkTypeId(Number(event.target.value))
+                        }
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                      >
+                        <option value={0}>Vælg jobfunktion</option>
+                        {workTypes.map((workType) => (
+                          <option key={workType.id} value={workType.id}>
+                            {workType.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold">
+                      Målgruppe
+                    </label>
+                    <select
+                      value={staffingRequestTargetMode}
+                      onChange={(event) => {
+                        const nextMode = event.target.value as StaffingTargetMode;
+
+                        setStaffingRequestTargetMode(nextMode);
+
+                        if (nextMode === "ALL") {
+                          setStaffingRequestTargetUserId(0);
+                        }
+                      }}
+                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                    >
+                      <option value="ALL">Alle medarbejdere</option>
+                      <option value="USER">Bestemt medarbejder</option>
+                    </select>
+                  </div>
+
+                  {staffingRequestTargetMode === "USER" && (
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">
+                        Medarbejder
+                      </label>
+                      <select
+                        value={staffingRequestTargetUserId}
+                        onChange={(event) =>
+                          setStaffingRequestTargetUserId(Number(event.target.value))
+                        }
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                      >
+                        <option value={0}>Vælg medarbejder</option>
+                        {staffingTargetUsers.map((targetUser) => (
+                          <option key={targetUser.id} value={targetUser.id}>
+                            {getUserDisplayName(targetUser)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold">
+                      Type
+                    </label>
+                    <select
+                      value={staffingRequestType}
+                      onChange={(event) =>
+                        setStaffingRequestType(
+                          event.target.value as StaffingRequestType,
+                        )
+                      }
+                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                    >
+                      {STAFFING_REQUEST_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold">
+                      Prioritet
+                    </label>
+                    <select
+                      value={staffingRequestPriority}
+                      onChange={(event) =>
+                        setStaffingRequestPriority(Number(event.target.value))
+                      }
+                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                    >
+                      {STAFFING_PRIORITIES.map((priority) => (
+                        <option key={priority.value} value={priority.value}>
+                          {priority.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">
+                    Besked
+                  </label>
+                  <textarea
+                    value={staffingRequestMessage}
+                    onChange={(event) =>
+                      setStaffingRequestMessage(event.target.value)
+                    }
+                    className="min-h-32 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+                    placeholder="Skriv hvad medarbejderne skal tage stilling til"
+                  />
+                </div>
+
+                <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
+                  <button
+                    type="button"
+                    onClick={resetStaffingRequestModal}
+                    className="rounded-xl bg-gray-200 px-5 py-2 font-semibold transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Annuller
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-purple-600 px-5 py-2 font-semibold text-white transition hover:bg-purple-700"
+                  >
+                    Send forespørgsel
+                  </button>
+                </div>
+              </form>
             </BaseModal>
 
             {showClockModal && (

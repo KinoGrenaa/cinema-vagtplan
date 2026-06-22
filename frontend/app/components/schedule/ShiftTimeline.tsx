@@ -20,7 +20,10 @@ type ShiftTimelineProps = {
     newStartHour: number,
     newStartMinute: number,
   ) => Promise<void> | void;
-  onChangeShiftUser: (shift: Shift, newUserId: number) => Promise<void> | void;
+  onChangeShiftUser: (
+    shift: Shift,
+    newUserId: number | null,
+  ) => Promise<void> | void;
   onResizeShift: (
     shift: Shift,
     newStartHour: number,
@@ -49,19 +52,25 @@ const TOP_OFFSET = 52;
 const SNAP_MINUTES = 15;
 const MIN_SHIFT_WIDTH = 36;
 
+function getShiftUserId(shift: Shift) {
+  return (shift as Shift & { userId?: number | null }).userId ?? null;
+}
+
 function getShiftUserName(shift: Shift) {
   const maybeShift = shift as Shift & {
     user?: {
       firstName?: string;
       lastName?: string;
-    };
+    } | null;
   };
 
   if (maybeShift.user?.firstName || maybeShift.user?.lastName) {
     return `${maybeShift.user.firstName ?? ""} ${maybeShift.user.lastName ?? ""}`.trim();
   }
 
-  return `Medarbejder #${shift.userId}`;
+  const shiftUserId = getShiftUserId(shift);
+
+  return shiftUserId ? `Medarbejder #${shiftUserId}` : "Ikke tildelt";
 }
 
 function getShiftWorkTypeName(shift: Shift) {
@@ -372,6 +381,7 @@ function ShiftTimeline({
           >
             {timelineShifts.map(({ shift, left, width, lane }) => {
               const y = lane * (SHIFT_HEIGHT + LANE_GAP);
+              const shiftUserId = getShiftUserId(shift);
 
               return (
                 <Rnd
@@ -477,13 +487,19 @@ function ShiftTimeline({
 
                     {users.length > 0 && (
                       <select
-                        value={shift.userId}
+                        value={shiftUserId ?? ""}
                         onClick={(event) => event.stopPropagation()}
                         onChange={(event) =>
-                          onChangeShiftUser(shift, Number(event.target.value))
+                          onChangeShiftUser(
+                            shift,
+                            event.target.value
+                              ? Number(event.target.value)
+                              : null,
+                          )
                         }
                         className="mt-1 w-full rounded-lg border border-white/30 bg-white/90 px-2 py-0.5 text-[11px] text-gray-900 dark:bg-gray-950 dark:text-gray-100"
                       >
+                        <option value="">Ikke tildelt</option>
                         {users.map((user) => (
                           <option key={user.id} value={user.id}>
                             {user.firstName} {user.lastName}

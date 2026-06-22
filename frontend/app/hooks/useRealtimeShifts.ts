@@ -88,11 +88,10 @@ export function useRealtimeShifts({
 }: UseRealtimeShiftsProps) {
   const { user } = useAuth();
 
-  // Staffing request events were previously registered with loose socket.on(...)
-  // calls outside the hook. That breaks scope and can cause build/runtime errors.
-  // Keep the callback in the API for now, but do not register staffing listeners
-  // here until useRealtimeCore exposes those events cleanly.
-  void onStaffingRequestsUpdated;
+  const handleStaffingRequestsUpdated = useCallback(() => {
+    onStaffingRequestsUpdated?.();
+    onShiftsUpdated?.();
+  }, [onShiftsUpdated, onStaffingRequestsUpdated]);
 
   const handleShiftAccepted = useCallback(
     (trade: ShiftTradeEvent) => {
@@ -150,6 +149,7 @@ export function useRealtimeShifts({
   useRealtimeCore({
     onShiftUpdated: onShiftsUpdated,
     onShiftTradeUpdated: onShiftTradesUpdated,
+    onStaffingRequestUpdated: handleStaffingRequestsUpdated,
     onShiftAccepted: handleShiftAccepted,
     onNewShiftTrade: handleNewShiftTrade,
     onNewDirectShiftTrade: handleNewDirectShiftTrade,

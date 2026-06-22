@@ -32,6 +32,8 @@ type StaffingRequest = {
   message?: string | null;
   aiGenerated: boolean;
   createdAt: string;
+  requestStartTime?: string | null;
+  requestEndTime?: string | null;
   acceptedAt?: string | null;
   rejectedAt?: string | null;
   requestedByUser?: {
@@ -50,6 +52,9 @@ type StaffingRequest = {
     workType?: {
       name: string;
     } | null;
+  } | null;
+  workType?: {
+    name: string;
   } | null;
 };
 
@@ -164,6 +169,7 @@ export default function StaffingRequestsPage() {
   const [requests, setRequests] = useState<StaffingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [showCompletedRequests, setShowCompletedRequests] = useState(false);
 
   const activeCinemaId = useMemo(() => {
     if (!user) return null;
@@ -255,13 +261,6 @@ export default function StaffingRequestsPage() {
     fetchRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, activeCinemaId, needsMasterCinemaSelection]);
-
-  useRealtimeShifts({
-    onShiftsUpdated: fetchRequests,
-    onShiftTradesUpdated: fetchRequests,
-    onStaffingRequestsUpdated: fetchRequests,
-    enableToasts: false,
-  });
 
   async function acceptRequest(id: number) {
     try {
@@ -400,6 +399,10 @@ export default function StaffingRequestsPage() {
     };
   }, [requests]);
 
+  const visibleRequests = showCompletedRequests
+    ? requests
+    : groupedRequests.pending;
+
   function getStatusStyle(status: StaffingRequestStatus) {
     switch (status) {
       case "ACCEPTED":
@@ -445,6 +448,36 @@ export default function StaffingRequestsPage() {
     });
 
     return `${datePart} kl. ${timePart}`;
+  }
+
+  function getRequestWorkTypeName(request: StaffingRequest) {
+    return (
+      request.shift?.workType?.name ||
+      request.workType?.name ||
+      getTypeLabel(request.type)
+    );
+  }
+
+  function getRequestTitle(request: StaffingRequest) {
+    const typeLabel = getTypeLabel(request.type);
+    const workTypeName = getRequestWorkTypeName(request);
+
+    if (workTypeName === typeLabel) {
+      return typeLabel;
+    }
+
+    return `${typeLabel} · ${workTypeName}`;
+  }
+
+  function getRequestTimeRange(request: StaffingRequest) {
+    const startTime = request.shift?.startTime || request.requestStartTime;
+    const endTime = request.shift?.endTime || request.requestEndTime;
+
+    if (!startTime || !endTime) {
+      return null;
+    }
+
+    return `${formatDateTime(startTime)} → ${formatDateTime(endTime)}`;
   }
 
   if (loading) {
@@ -523,19 +556,25 @@ export default function StaffingRequestsPage() {
                 </section>
               ) : (
                 <section className="space-y-4">
-                  {requests.map((request) => {
+                  {visibleRequests.length === 0 ? (
+                    <article className="rounded-2xl border border-dashed bg-white p-8 text-center text-gray-500 shadow dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400">
+                      Ingen afventende bemandingsforespørgsler.
+                    </article>
+                  ) : null}
+
+                  {visibleRequests.map((request) => {
                     const targetUserId = request.targetUser?.id ?? null;
                     const isPending = request.status === "PENDING";
 
                     const canAccept =
                       isPending &&
-                      user?.role === "EMPLOYEE" &&
+                      (user?.role === "EMPLOYEE" || user?.role === "ADMIN") &&
                       currentUserId !== null &&
                       (!targetUserId || targetUserId === currentUserId);
 
                     const canReject =
                       isPending &&
-                      user?.role === "EMPLOYEE" &&
+                      (user?.role === "EMPLOYEE" || user?.role === "ADMIN") &&
                       currentUserId !== null &&
                       targetUserId === currentUserId;
 
@@ -573,8 +612,12 @@ export default function StaffingRequestsPage() {
                             </div>
 
                             <h2 className="mt-4 text-2xl font-bold">
-                              Forespørgsel #{request.id}
+                              {getRequestTitle(request)}
                             </h2>
+
+                            <div className="mt-1 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                              Intern reference #{request.id}
+                            </div>
 
                             <p className="mt-2 text-gray-700 dark:text-gray-300">
                               {request.message ||
@@ -617,15 +660,14 @@ export default function StaffingRequestsPage() {
 
                           <div>
                             <div className="font-semibold text-gray-500 dark:text-gray-400">
-                              Vagt
+                              Vagt / behov
                             </div>
-                            <div>{request.shift?.workType?.name || "Akut"}</div>
-                            {request.shift && (
+                            <div>{getRequestWorkTypeName(request)}</div>
+                            {getRequestTimeRange(request) ? (
                               <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {formatDateTime(request.shift.startTime)} →{" "}
-                                {formatDateTime(request.shift.endTime)}
+                                {getRequestTimeRange(request)}
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         </div>
 
@@ -638,7 +680,9 @@ export default function StaffingRequestsPage() {
                                 disabled={processingId === request.id}
                                 className="rounded-2xl bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50"
                               >
-                                Acceptér
+                                {user?.role === "ADMIN"
+                                  ? "Acceptér selv"
+                                  : "Acceptér"}
                               </button>
                             ) : null}
 
@@ -668,6 +712,22 @@ export default function StaffingRequestsPage() {
                       </article>
                     );
                   })}
+
+                  {groupedRequests.completed.length > 0 ? (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowCompletedRequests((current) => !current)
+                        }
+                        className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                      >
+                        {showCompletedRequests
+                          ? "Skjul behandlede"
+                          : `Vis behandlede (${groupedRequests.completed.length})`}
+                      </button>
+                    </div>
+                  ) : null}
                 </section>
               )}
             </>

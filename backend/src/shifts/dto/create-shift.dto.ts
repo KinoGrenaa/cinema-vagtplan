@@ -1,8 +1,9 @@
 import { IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateShiftDto {
+  @IsOptional()
   @IsInt()
-  userId: number;
+  userId?: number | null;
 
   @IsInt()
   workTypeId: number;

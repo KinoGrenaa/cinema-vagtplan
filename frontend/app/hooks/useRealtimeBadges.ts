@@ -39,7 +39,7 @@ export function useRealtimeBadges() {
   };
 
   const getMasterCinemaQuery = () => {
-    if (typeof window === "undefined") return "";
+    if (typeof window === "undefined") return null;
     if (user?.role !== "MASTER" || user.cinemaId) return "";
 
     const selectedCinemaId = window.localStorage.getItem(
@@ -48,11 +48,23 @@ export function useRealtimeBadges() {
 
     return selectedCinemaId
       ? `?cinemaId=${encodeURIComponent(selectedCinemaId)}`
-      : "";
+      : null;
   };
 
   const refreshBadges = useCallback(async () => {
     if (!token) return;
+
+    const masterCinemaQuery = getMasterCinemaQuery();
+
+    if (masterCinemaQuery === null) {
+      setPoolCount(0);
+      setDirectCount(0);
+      setUnreadMessages(0);
+      setNotificationCount(0);
+      setStaffingRequestCount(0);
+      setLeaveRequestCount(0);
+      return;
+    }
 
     try {
       const [
@@ -63,12 +75,12 @@ export function useRealtimeBadges() {
         staffingRes,
         leaveRequestsRes,
       ] = await Promise.all([
-        apiFetch(`/shift-trades/pool-count${getMasterCinemaQuery()}`),
-        apiFetch(`/shift-trades/direct-count${getMasterCinemaQuery()}`),
-        apiFetch("/messages/unread-count"),
-        apiFetch("/notifications/unread-count"),
-        apiFetch("/staffing-requests/mine"),
-        apiFetch("/leave-requests"),
+        apiFetch(`/shift-trades/pool-count${masterCinemaQuery}`),
+        apiFetch(`/shift-trades/direct-count${masterCinemaQuery}`),
+        apiFetch(`/messages/unread-count${masterCinemaQuery}`),
+        apiFetch(`/notifications/unread-count${masterCinemaQuery}`),
+        apiFetch(`/staffing-requests/mine${masterCinemaQuery}`),
+        apiFetch(`/leave-requests${masterCinemaQuery}`),
       ]);
 
       const [

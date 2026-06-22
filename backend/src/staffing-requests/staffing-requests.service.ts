@@ -30,6 +30,7 @@ const requestInclude = {
       workType: true,
     },
   },
+  workType: true,
   requestedByUser: true,
   targetUser: true,
 };
@@ -62,6 +63,18 @@ export class StaffingRequestsService {
 
   private canManageStaffing(user: AuthUser) {
     return user.role === 'MASTER' || user.role === 'ADMIN';
+  }
+
+  private parseRequestDate(value?: string | null) {
+    if (!value) return null;
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('Tidsintervallet er ikke gyldigt.');
+    }
+
+    return date;
   }
 
   private emitUpdate(cinemaId: number) {
@@ -127,11 +140,15 @@ export class StaffingRequestsService {
       throw new NotFoundException('Medarbejder blev ikke fundet');
     }
 
-    const shift = dto.shiftId
+    let shift = dto.shiftId
       ? await this.prisma.shift.findFirst({
           where: {
             id: dto.shiftId,
             cinemaId,
+          },
+          include: {
+            user: true,
+            workType: true,
           },
         })
       : null;
@@ -140,12 +157,76 @@ export class StaffingRequestsService {
       throw new NotFoundException('Vagt blev ikke fundet');
     }
 
+    const requestStartTime = shift
+      ? shift.startTime
+      : this.parseRequestDate(dto.requestStartTime);
+    const requestEndTime = shift
+      ? shift.endTime
+      : this.parseRequestDate(dto.requestEndTime);
+
+    if (!shift && (!requestStartTime || !requestEndTime)) {
+      throw new BadRequestException(
+        'Vælg dato og tidsinterval for bemandingsbehovet.',
+      );
+    }
+
+    if (
+      requestStartTime &&
+      requestEndTime &&
+      requestEndTime <= requestStartTime
+    ) {
+      throw new BadRequestException(
+        'Sluttidspunktet skal være efter starttidspunktet.',
+      );
+    }
+
+    const requestedWorkTypeId = shift?.workTypeId ?? dto.workTypeId ?? null;
+
+    if (!requestedWorkTypeId) {
+      throw new BadRequestException('Vælg jobfunktion for bemandingsbehovet.');
+    }
+
+    const workType = await this.prisma.workType.findFirst({
+      where: {
+        id: requestedWorkTypeId,
+        cinemaId,
+      },
+    });
+
+    if (!workType) {
+      throw new NotFoundException('Jobfunktionen blev ikke fundet');
+    }
+
+    if (!shift) {
+      shift = await this.prisma.shift.create({
+        data: {
+          cinemaId,
+          userId: null,
+          workTypeId: requestedWorkTypeId,
+          startTime: requestStartTime!,
+          endTime: requestEndTime!,
+          note:
+            dto.message?.trim() ||
+            'Ikke tildelt vagt oprettet fra bemandingsforespørgsel',
+        },
+        include: {
+          user: true,
+          workType: true,
+        },
+      });
+
+      this.realtimeGateway.notifyCinema(cinemaId, 'shiftsUpdated', shift);
+    }
+
     const request = await this.prisma.staffingRequest.create({
       data: {
         cinemaId,
         requestedByUserId: user.sub,
         targetUserId: dto.targetUserId ?? null,
-        shiftId: dto.shiftId ?? null,
+        shiftId: shift.id,
+        requestStartTime: shift.startTime,
+        requestEndTime: shift.endTime,
+        workTypeId: requestedWorkTypeId,
         type: dto.type,
         priority: dto.priority ?? 1,
         message: dto.message,
@@ -170,14 +251,75 @@ export class StaffingRequestsService {
       );
     }
 
-    if (user.role !== 'EMPLOYEE') {
+    if (user.role !== 'EMPLOYEE' && user.role !== 'ADMIN') {
       throw new ForbiddenException(
-        'Kun medarbejdere kan acceptere bemandingsforespørgsler',
+        'Kun medarbejdere og administratorer kan acceptere bemandingsforespørgsler',
       );
     }
 
     if (request.targetUserId && request.targetUserId !== user.sub) {
       throw new ForbiddenException('Du kan ikke acceptere denne forespørgsel');
+    }
+
+    const requestShift = request.shiftId
+      ? await this.prisma.shift.findFirst({
+          where: {
+            id: request.shiftId,
+            cinemaId: request.cinemaId,
+          },
+          select: {
+            id: true,
+            userId: true,
+            startTime: true,
+            endTime: true,
+          },
+        })
+      : null;
+
+    if (request.shiftId && !requestShift) {
+      throw new NotFoundException('Vagt blev ikke fundet');
+    }
+
+    if (requestShift?.userId && requestShift.userId !== user.sub) {
+      throw new BadRequestException(
+        'Vagten er allerede tildelt en anden medarbejder.',
+      );
+    }
+
+    const startTime = requestShift?.startTime ?? request.requestStartTime;
+    const endTime = requestShift?.endTime ?? request.requestEndTime;
+
+    if (!startTime || !endTime) {
+      throw new BadRequestException(
+        'Bemandingsforespørgslen mangler et gyldigt tidsinterval.',
+      );
+    }
+
+    const overlappingShift = await this.prisma.shift.findFirst({
+      where: {
+        cinemaId: request.cinemaId,
+        userId: user.sub,
+        id: requestShift
+          ? {
+              not: requestShift.id,
+            }
+          : undefined,
+        startTime: {
+          lt: endTime,
+        },
+        endTime: {
+          gt: startTime,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (overlappingShift) {
+      throw new BadRequestException(
+        'Du har allerede en vagt i det tidsrum.',
+      );
     }
 
     const updated = await this.prisma.staffingRequest.update({
@@ -191,45 +333,38 @@ export class StaffingRequestsService {
       include: requestInclude,
     });
 
-    if (!updated.shiftId) {
-      const defaultWorkType = await this.prisma.workType.findFirst({
+    if (updated.shiftId && updated.shift && !updated.shift.userId) {
+      const assignedShift = await this.prisma.shift.update({
         where: {
-          cinemaId: updated.cinemaId,
+          id: updated.shiftId,
         },
-        orderBy: {
-          id: 'asc',
+        data: {
+          userId: user.sub,
+        },
+        include: {
+          user: true,
+          workType: true,
         },
       });
 
-      if (defaultWorkType) {
-        const now = new Date();
-        const startTime = new Date(now);
-        startTime.setMinutes(0, 0, 0);
+      this.realtimeGateway.notifyCinema(
+        updated.cinemaId,
+        'shiftsUpdated',
+        assignedShift,
+      );
 
-        const endTime = new Date(startTime);
-        endTime.setHours(endTime.getHours() + 2);
+      const admins = await this.prisma.user.findMany({
+        where: {
+          cinemaId: updated.cinemaId,
+          role: 'ADMIN',
+          isActive: true,
+        },
+        select: {
+          id: true,
+        },
+      });
 
-        await this.prisma.shift.create({
-          data: {
-            cinemaId: updated.cinemaId,
-            userId: user.sub,
-            workTypeId: defaultWorkType.id,
-            startTime,
-            endTime,
-            note: `Auto-created from staffing request #${updated.id}`,
-          },
-        });
-
-        const admins = await this.prisma.user.findMany({
-          where: {
-            cinemaId: updated.cinemaId,
-            role: 'ADMIN',
-          },
-          select: {
-            id: true,
-          },
-        });
-
+      if (admins.length > 0) {
         await this.prisma.notification.createMany({
           data: admins.map((admin) => ({
             cinemaId: updated.cinemaId,
@@ -261,7 +396,12 @@ export class StaffingRequestsService {
 
     this.emitUpdate(updated.cinemaId);
 
-    return updated;
+    return this.prisma.staffingRequest.findUnique({
+      where: {
+        id: updated.id,
+      },
+      include: requestInclude,
+    });
   }
 
   async reject(user: AuthUser, id: number, selectedCinemaId?: number | null) {
@@ -273,9 +413,9 @@ export class StaffingRequestsService {
       );
     }
 
-    if (user.role !== 'EMPLOYEE') {
+    if (user.role !== 'EMPLOYEE' && user.role !== 'ADMIN') {
       throw new ForbiddenException(
-        'Kun medarbejdere kan afvise bemandingsforespørgsler',
+        'Kun medarbejdere og administratorer kan afvise bemandingsforespørgsler',
       );
     }
 
@@ -425,19 +565,50 @@ export class StaffingRequestsService {
       },
     });
 
-    if (!request || !request.targetUserId) return;
+    if (!request) return;
 
-    await this.prisma.notification.create({
-      data: {
+    const notification = {
+      title: 'Ny bemandingsforespørgsel',
+      message:
+        request.message ||
+        'Der er brug for ekstra bemanding. Kan du tage en vagt?',
+      type: 'STAFFING_REQUEST',
+      linkUrl: '/staffing-requests',
+    };
+
+    if (request.targetUserId) {
+      await this.prisma.notification.create({
+        data: {
+          cinemaId: request.cinemaId,
+          userId: request.targetUserId,
+          ...notification,
+        },
+      });
+
+      return;
+    }
+
+    const staffUsers = await this.prisma.user.findMany({
+      where: {
         cinemaId: request.cinemaId,
-        userId: request.targetUserId,
-        title: 'Ny bemandingsforespørgsel',
-        message:
-          request.message ||
-          'Der er brug for ekstra bemanding. Kan du tage en vagt?',
-        type: 'STAFFING_REQUEST',
-        linkUrl: '/staffing-requests',
+        role: {
+          in: ['ADMIN', 'EMPLOYEE'],
+        },
+        isActive: true,
       },
+      select: {
+        id: true,
+      },
+    });
+
+    if (staffUsers.length === 0) return;
+
+    await this.prisma.notification.createMany({
+      data: staffUsers.map((staffUser) => ({
+        cinemaId: request.cinemaId,
+        userId: staffUser.id,
+        ...notification,
+      })),
     });
   }
 }

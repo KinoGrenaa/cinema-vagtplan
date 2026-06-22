@@ -34,6 +34,7 @@ type ShiftFormProps = {
   onDelete: () => void;
   onCancel: () => void;
   onOfferTrade: () => void;
+  onSendStaffingRequest?: () => void;
   showHeader?: boolean;
 };
 
@@ -188,15 +189,11 @@ function validateShiftForm({
     }
   }
 
-  if (!userId || userId <= 0) {
-    errors.push("Medarbejder skal vælges.");
-  }
-
   if (!workTypeId || workTypeId <= 0) {
     errors.push("Arbejdstype skal vælges.");
   }
 
-  if (selectedUserLeaveConflict === "APPROVED") {
+  if (userId > 0 && selectedUserLeaveConflict === "APPROVED") {
     errors.push("Den valgte medarbejder har godkendt fri i dette tidsrum.");
   }
 
@@ -222,6 +219,7 @@ export default function ShiftForm({
   onDelete,
   onCancel,
   onOfferTrade,
+  onSendStaffingRequest,
   showHeader = true,
 }: ShiftFormProps) {
   const selectedUserLeaveConflict = getUserLeaveConflict(
@@ -340,7 +338,7 @@ export default function ShiftForm({
             value={userId}
             onChange={(e) => setUserId(Number(e.target.value))}
           >
-            <option value={0}>Vælg medarbejder</option>
+            <option value={0}>Ikke tildelt</option>
 
             {users.map((user) => {
               const leaveConflict = getUserLeaveConflict(
@@ -441,13 +439,25 @@ export default function ShiftForm({
             Annuller
           </button>
 
-          <button
-            type="button"
-            onClick={onOfferTrade}
-            className="rounded-xl bg-blue-600 px-5 py-2 text-white transition hover:bg-blue-700"
-          >
-            Send i byttepulje
-          </button>
+          {selectedShift.userId && selectedShift.userId > 0 && (
+            <button
+              type="button"
+              onClick={onOfferTrade}
+              className="rounded-xl bg-blue-600 px-5 py-2 text-white transition hover:bg-blue-700"
+            >
+              Send i byttepulje
+            </button>
+          )}
+
+          {onSendStaffingRequest && (
+            <button
+              type="button"
+              onClick={onSendStaffingRequest}
+              className="rounded-xl bg-purple-600 px-5 py-2 text-white transition hover:bg-purple-700"
+            >
+              Send bemandingsforespørgsel
+            </button>
+          )}
         </div>
       )}
     </div>
