@@ -36,10 +36,15 @@ export class LeaveRequestsController {
 
   @UseGuards(JwtGuard)
   @Get()
-  getAllLeaveRequests(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
+  getAllLeaveRequests(
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+    @Query('includeAll') includeAll?: string,
+  ) {
     return this.leaveRequestsService.findAll(
       req.user,
       this.parseCinemaId(cinemaId),
+      includeAll === 'true',
     );
   }
 
@@ -55,11 +60,13 @@ export class LeaveRequestsController {
     @Req() req: any,
     @Param('id') id: string,
     @Body() body: UpdateLeaveStatusDto,
+    @Query('cinemaId') cinemaId?: string,
   ) {
     return this.leaveRequestsService.updateStatus(
       req.user,
       Number(id),
       body.status,
+      this.parseCinemaId(cinemaId),
     );
   }
 }

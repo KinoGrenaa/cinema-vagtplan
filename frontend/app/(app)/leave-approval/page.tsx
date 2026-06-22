@@ -380,11 +380,64 @@ async function readErrorMessage(response: Response, fallback: string) {
   }
 }
 
+const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
+
+type StoredUser = {
+  id?: number;
+  sub?: number;
+  role?: "MASTER" | "ADMIN" | "EMPLOYEE";
+  cinemaId?: number | null;
+};
+
+function getStoredUser() {
+  const savedUser = window.localStorage.getItem("user");
+
+  if (!savedUser) {
+    return null;
+  }
+
+  try {
+    const parsedUser = JSON.parse(savedUser) as StoredUser;
+
+    if (!parsedUser || typeof parsedUser !== "object") {
+      return null;
+    }
+
+    return parsedUser;
+  } catch {
+    return null;
+  }
+}
+
+function getSelectedMasterCinemaId() {
+  const cinemaId = Number(
+    window.localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
+  );
+
+  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+    return null;
+  }
+
+  return cinemaId;
+}
+
+function appendCinemaId(endpoint: string, cinemaId: number | null) {
+  if (!cinemaId) return endpoint;
+
+  const separator = endpoint.includes("?") ? "&" : "?";
+  return `${endpoint}${separator}cinemaId=${cinemaId}`;
+}
+
 export default function LeaveApprovalPage() {
   const infoDialog = useInfoModal();
 
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
+  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
+    number | null
+  >(null);
 
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [statusFilters, setStatusFilters] = useState<LeaveStatusFilters>(
@@ -402,46 +455,116 @@ export default function LeaveApprovalPage() {
     [],
   );
 
-  const fetchRequests = useCallback(async (showError = true) => {
-    try {
-      setLoading(true);
-
-      const response = await apiFetch("/leave-requests");
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(
-            response,
-            "Fraværsansøgninger kunne ikke hentes.",
-          ),
-        );
-      }
-
-      const data = await response.json();
-      setRequests(Array.isArray(data) ? data : []);
-    } catch (error) {
-      setRequests([]);
-
-      if (showError) {
-        infoDialog.showError(
-          "Fraværsansøgninger kunne ikke hentes",
-          error instanceof Error
-            ? error.message
-            : "Der opstod en fejl ved hentning af fraværsansøgninger.",
-        );
-      }
-    } finally {
-      setLoading(false);
+  const activeCinemaId = useMemo(() => {
+    if (!currentUser) {
+      return null;
     }
-  }, []);
+
+    if (currentUser.role === "MASTER" && !currentUser.cinemaId) {
+      return selectedMasterCinemaId;
+    }
+
+    return currentUser.cinemaId ?? null;
+  }, [currentUser, selectedMasterCinemaId]);
+
+  const needsMasterCinemaSelection =
+    currentUser?.role === "MASTER" &&
+    !currentUser.cinemaId &&
+    !selectedMasterCinemaId;
+
+  const appendActiveCinemaId = useCallback(
+    (endpoint: string) => {
+      if (currentUser?.role === "MASTER" && !currentUser.cinemaId) {
+        return appendCinemaId(endpoint, activeCinemaId);
+      }
+
+      return endpoint;
+    },
+    [activeCinemaId, currentUser],
+  );
+
+  const fetchRequests = useCallback(
+    async (showError = true) => {
+      if (!currentUser) {
+        return;
+      }
+
+      if (needsMasterCinemaSelection) {
+        setRequests([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        const response = await apiFetch(
+          appendActiveCinemaId("/leave-requests?includeAll=true"),
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(
+              response,
+              "Fraværsansøgninger kunne ikke hentes.",
+            ),
+          );
+        }
+
+        const data = await response.json();
+        setRequests(Array.isArray(data) ? data : []);
+      } catch (error) {
+        setRequests([]);
+
+        if (showError) {
+          infoDialog.showError(
+            "Fraværsansøgninger kunne ikke hentes",
+            error instanceof Error
+              ? error.message
+              : "Der opstod en fejl ved hentning af fraværsansøgninger.",
+          );
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appendActiveCinemaId, currentUser, needsMasterCinemaSelection],
+  );
 
   useRealtimeCore({
     onLeaveRequestUpdated: () => fetchRequests(false),
   });
 
   useEffect(() => {
+    function syncActiveCinemaContext() {
+      setCurrentUser(getStoredUser());
+      setSelectedMasterCinemaId(getSelectedMasterCinemaId());
+    }
+
+    syncActiveCinemaContext();
+
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      syncActiveCinemaContext,
+    );
+    window.addEventListener("storage", syncActiveCinemaContext);
+
+    return () => {
+      window.removeEventListener(
+        "masterSelectedCinemaChanged",
+        syncActiveCinemaContext,
+      );
+      window.removeEventListener("storage", syncActiveCinemaContext);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+
     fetchRequests();
-  }, [fetchRequests]);
+  }, [currentUser, fetchRequests, selectedMasterCinemaId]);
 
   const statusCounts = useMemo(() => {
     return requests.reduce(
@@ -612,10 +735,21 @@ export default function LeaveApprovalPage() {
 
   async function updateStatus(requestId: number, status: LeaveStatus) {
     try {
-      const response = await apiFetch(`/leave-requests/${requestId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
+      if (needsMasterCinemaSelection) {
+        infoDialog.showError(
+          "Ingen aktiv biograf valgt",
+          "Vælg en biograf i MASTER-panelet, før du behandler fravær.",
+        );
+        return;
+      }
+
+      const response = await apiFetch(
+        appendActiveCinemaId(`/leave-requests/${requestId}/status`),
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(
@@ -686,7 +820,19 @@ export default function LeaveApprovalPage() {
             </div>
           </div>
 
-          {!loading && (
+          {needsMasterCinemaSelection && (
+            <div className="rounded-2xl border border-yellow-300 bg-yellow-50 p-5 text-yellow-900 shadow-sm dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-100">
+              <h2 className="text-lg font-semibold">
+                Ingen aktiv biograf valgt
+              </h2>
+              <p className="mt-2 text-sm">
+                Vælg en biograf i MASTER-panelet, før du kan se eller behandle
+                fravær.
+              </p>
+            </div>
+          )}
+
+          {!needsMasterCinemaSelection && !loading && (
             <div className="grid gap-4 md:grid-cols-4">
               <div
                 className={`rounded-2xl border p-5 shadow-sm transition-colors ${
@@ -750,7 +896,7 @@ export default function LeaveApprovalPage() {
             </div>
           )}
 
-          {!loading && (
+          {!needsMasterCinemaSelection && !loading && (
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
               <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                 <div>

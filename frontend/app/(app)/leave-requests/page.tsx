@@ -330,6 +330,8 @@ export default function LeaveRequestsPage() {
 
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isMasterWithoutOwnCinema, setIsMasterWithoutOwnCinema] =
+    useState(false);
 
   const minDate = getTomorrowLocalDate();
 
@@ -374,34 +376,42 @@ export default function LeaveRequestsPage() {
     }
   }
 
-  const fetchRequests = useCallback(async (showError = true) => {
-    try {
-      const response = await apiFetch("/leave-requests");
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(
-            response,
-            "Fraværsansøgninger kunne ikke hentes.",
-          ),
-        );
+  const fetchRequests = useCallback(
+    async (showError = true) => {
+      if (isMasterWithoutOwnCinema) {
+        setRequests([]);
+        return;
       }
 
-      const data = await response.json();
-      setRequests(Array.isArray(data) ? data : []);
-    } catch (error) {
-      setRequests([]);
+      try {
+        const response = await apiFetch("/leave-requests");
 
-      if (showError) {
-        infoDialog.showError(
-          "Fraværsansøgninger kunne ikke hentes",
-          error instanceof Error
-            ? error.message
-            : "Der opstod en fejl ved hentning af fraværsansøgninger.",
-        );
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(
+              response,
+              "Fraværsansøgninger kunne ikke hentes.",
+            ),
+          );
+        }
+
+        const data = await response.json();
+        setRequests(Array.isArray(data) ? data : []);
+      } catch (error) {
+        setRequests([]);
+
+        if (showError) {
+          infoDialog.showError(
+            "Fraværsansøgninger kunne ikke hentes",
+            error instanceof Error
+              ? error.message
+              : "Der opstod en fejl ved hentning af fraværsansøgninger.",
+          );
+        }
       }
-    }
-  }, []);
+    },
+    [isMasterWithoutOwnCinema],
+  );
 
   useRealtimeCore({
     onLeaveRequestUpdated: () => fetchRequests(false),
@@ -411,8 +421,22 @@ export default function LeaveRequestsPage() {
     const savedUser = localStorage.getItem("user");
 
     if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setCurrentUserId(parsedUser.id ?? parsedUser.sub ?? null);
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        const masterWithoutOwnCinema =
+          parsedUser.role === "MASTER" && !parsedUser.cinemaId;
+
+        setCurrentUserId(parsedUser.id ?? parsedUser.sub ?? null);
+        setIsMasterWithoutOwnCinema(masterWithoutOwnCinema);
+
+        if (masterWithoutOwnCinema) {
+          setRequests([]);
+          return;
+        }
+      } catch {
+        setCurrentUserId(null);
+        setIsMasterWithoutOwnCinema(false);
+      }
     }
 
     fetchRequests();
@@ -536,6 +560,14 @@ export default function LeaveRequestsPage() {
 
     setSuccess("");
 
+    if (isMasterWithoutOwnCinema) {
+      infoDialog.showError(
+        "Egen fraværsansøgning er ikke tilgængelig for MASTER",
+        "MASTER-brugere skal oprette og behandle fravær via Fraværsgodkendelse for den aktive biograf.",
+      );
+      return;
+    }
+
     try {
       const response = await apiFetch("/leave-requests", {
         method: "POST",
@@ -616,11 +648,12 @@ export default function LeaveRequestsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
+                disabled={isMasterWithoutOwnCinema}
                 onClick={() => {
                   setSuccess("");
                   setShowRequestModal(true);
                 }}
-                className="rounded-xl bg-black px-4 py-2 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                className="rounded-xl bg-black px-4 py-2 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
               >
                 Ansøg om fravær
               </button>
@@ -640,6 +673,18 @@ export default function LeaveRequestsPage() {
         {success && (
           <div className="rounded-xl border border-green-300 bg-green-50 p-3 text-green-700">
             {success}
+          </div>
+        )}
+
+        {isMasterWithoutOwnCinema && (
+          <div className="rounded-2xl border border-yellow-300 bg-yellow-50 p-5 text-yellow-900 shadow-sm dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-100">
+            <h2 className="text-lg font-semibold">
+              Denne side er til egne fraværsansøgninger
+            </h2>
+            <p className="mt-2 text-sm">
+              MASTER-brugere skal oprette og behandle fravær via
+              Fraværsgodkendelse for den aktive biograf.
+            </p>
           </div>
         )}
 

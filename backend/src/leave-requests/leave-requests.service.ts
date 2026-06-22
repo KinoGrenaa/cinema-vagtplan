@@ -467,15 +467,25 @@ export class LeaveRequestsService {
     }
   }
 
-  findAll(user: AuthUser, selectedCinemaId?: number | null) {
+  findAll(
+    user: AuthUser,
+    selectedCinemaId?: number | null,
+    includeAll = false,
+  ) {
     const userId = this.getUserId(user);
+
+    if (!userId) {
+      throw new ForbiddenException('Brugeren kunne ikke identificeres.');
+    }
+
     const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
-    const isAdmin = user.role === 'ADMIN' || user.role === 'MASTER';
+    const canViewAll =
+      includeAll && (user.role === 'ADMIN' || user.role === 'MASTER');
 
     return this.prisma.leaveRequest.findMany({
       where: {
         cinemaId,
-        ...(isAdmin ? {} : { userId }),
+        ...(canViewAll ? {} : { userId }),
       },
       include: {
         user: true,
@@ -534,14 +544,19 @@ export class LeaveRequestsService {
     };
   }
 
-  async updateStatus(user: AuthUser, id: number, status: LeaveStatus) {
+  async updateStatus(
+    user: AuthUser,
+    id: number,
+    status: LeaveStatus,
+    selectedCinemaId?: number | null,
+  ) {
     const userId = this.getUserId(user);
 
     if (!userId) {
       throw new ForbiddenException('Brugeren kunne ikke identificeres.');
     }
 
-    const cinemaId = this.resolveCinemaId(user);
+    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
 
     const existing = await this.prisma.leaveRequest.findFirst({
       where: {
