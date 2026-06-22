@@ -61,6 +61,54 @@ export class RealtimeGateway
     };
   }
 
+  @SubscribeMessage('joinUser')
+  handleJoinUser(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() userId: number,
+  ) {
+    const numericUserId = Number(userId);
+
+    if (!Number.isFinite(numericUserId) || numericUserId <= 0) {
+      return {
+        joined: null,
+      };
+    }
+
+    const room = `user-${numericUserId}`;
+
+    client.join(room);
+
+    console.log(`Client ${client.id} joined realtime room ${room}`);
+
+    return {
+      joined: room,
+    };
+  }
+
+  @SubscribeMessage('leaveUser')
+  handleLeaveUser(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() userId: number,
+  ) {
+    const numericUserId = Number(userId);
+
+    if (!Number.isFinite(numericUserId) || numericUserId <= 0) {
+      return {
+        left: null,
+      };
+    }
+
+    const room = `user-${numericUserId}`;
+
+    client.leave(room);
+
+    console.log(`Client ${client.id} left realtime room ${room}`);
+
+    return {
+      left: room,
+    };
+  }
+
   notifyCinema(cinemaId: number, event: string, data: any) {
     this.server.to(`cinema-${cinemaId}`).emit(event, data);
   }
