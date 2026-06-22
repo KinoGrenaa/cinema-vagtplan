@@ -6,6 +6,10 @@ import StaffingRequestModal, {
   type StaffingRequestType,
   type StaffingTargetMode,
 } from "./components/StaffingRequestModal";
+import {
+  ManualTimeRegistrationModal,
+  TimeRegistrationModal,
+} from "./components/TimeRegistrationModals";
 import ShiftTimeline from "../../components/schedule/ShiftTimeline";
 import MovieProgram from "./components/MovieProgram";
 import AiSuggestionsPanel from "../../components/schedule/AiSuggestionsPanel";
@@ -223,8 +227,7 @@ export default function SchedulePage() {
   const [staffingRequestEndTime, setStaffingRequestEndTime] = useState(
     `${todayDefault}T22:00`,
   );
-  const [staffingRequestWorkTypeId, setStaffingRequestWorkTypeId] =
-    useState(0);
+  const [staffingRequestWorkTypeId, setStaffingRequestWorkTypeId] = useState(0);
 
   const staffingTargetUsers = useMemo(() => {
     return users.filter((candidate) => {
@@ -776,10 +779,7 @@ Handlingen kan ikke fortrydes.`,
     }
   }
 
-  async function handleChangeShiftUser(
-    shift: Shift,
-    newUserId: number | null,
-  ) {
+  async function handleChangeShiftUser(shift: Shift, newUserId: number | null) {
     try {
       await updateShift(shift.id, {
         startTime: shift.startTime,
@@ -916,7 +916,9 @@ ${formatShiftTimeRange(shift)}`;
 
     const listedUser = users.find((candidate) => candidate.id === shiftUserId);
 
-    return listedUser ? getUserDisplayName(listedUser) : `Medarbejder #${shiftUserId}`;
+    return listedUser
+      ? getUserDisplayName(listedUser)
+      : `Medarbejder #${shiftUserId}`;
   }
 
   function getStaffingShiftOptionText(shift: Shift) {
@@ -963,7 +965,9 @@ ${getShiftConfirmText(shift)}`;
       return;
     }
 
-    const defaultType: StaffingRequestType = shift ? "REPLACEMENT" : "EXTRA_SHIFT";
+    const defaultType: StaffingRequestType = shift
+      ? "REPLACEMENT"
+      : "EXTRA_SHIFT";
 
     applyStaffingRequestShift(shift);
     setStaffingRequestTargetMode("ALL");
@@ -1370,7 +1374,9 @@ ${getShiftConfirmText(selectedShift)}`,
                 onDelete={handleDelete}
                 onCancel={closeShiftFormModal}
                 onOfferTrade={handleOfferTrade}
-                onSendStaffingRequest={handleOpenStaffingRequestForSelectedShift}
+                onSendStaffingRequest={
+                  handleOpenStaffingRequestForSelectedShift
+                }
                 leaveRequests={leaveRequests}
                 showHeader={false}
               />
@@ -1417,223 +1423,36 @@ ${getShiftConfirmText(selectedShift)}`,
               getUserDisplayName={getUserDisplayName}
             />
 
-            {showClockModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-                <div className="mx-4 w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
-                  <div className="mb-6 flex items-center justify-between">
-                    <h2 className="text-2xl font-bold">Registrer tid</h2>
+            <TimeRegistrationModal
+              open={showClockModal}
+              onClose={resetClockModal}
+              openTimeEntry={openTimeEntry}
+              clockShiftId={clockShiftId}
+              setClockShiftId={setClockShiftId}
+              shifts={shifts}
+              shiftsForTimeRegistration={shiftsForTimeRegistration}
+              selectedClockShift={selectedClockShift}
+              clockInTime={clockInTime}
+              setClockInTime={setClockInTime}
+              clockOutTime={clockOutTime}
+              setClockOutTime={setClockOutTime}
+              clockNote={clockNote}
+              setClockNote={setClockNote}
+              onRegisterClockIn={handleRegisterClockIn}
+              onRegisterClockOut={handleRegisterClockOut}
+            />
 
-                    <button onClick={resetClockModal} className="text-2xl">
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {!openTimeEntry && (
-                      <select
-                        value={clockShiftId || ""}
-                        onChange={(event) => {
-                          const shiftId = Number(event.target.value);
-                          setClockShiftId(shiftId);
-
-                          const shift = shifts.find((s) => s.id === shiftId);
-                          if (!shift) return;
-
-                          setClockInTime(toInputDateTime(shift.startTime));
-                          setClockOutTime(toInputDateTime(shift.endTime));
-                          setClockNote("");
-                        }}
-                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                      >
-                        <option value="">Vælg vagt</option>
-
-                        {shiftsForTimeRegistration.map(
-                          ({ shift, timeEntry }) => {
-                            const isDisabled = Boolean(timeEntry);
-
-                            const statusText =
-                              timeEntry?.status === "APPROVED"
-                                ? "Godkendt"
-                                : timeEntry?.status === "PENDING"
-                                  ? "Afventer godkendelse"
-                                  : timeEntry?.status === "NEEDS_CHANGES"
-                                    ? "Kræver rettelse"
-                                    : "";
-
-                            return (
-                              <option
-                                key={shift.id}
-                                value={shift.id}
-                                disabled={isDisabled}
-                              >
-                                {formatTimeDK(shift.startTime)} -{" "}
-                                {formatTimeDK(shift.endTime)}
-                                {" · "}
-                                {shift.workType.name}
-                                {statusText ? ` · ${statusText}` : ""}
-                              </option>
-                            );
-                          },
-                        )}
-                      </select>
-                    )}
-
-                    {selectedClockShift && (
-                      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
-                        <div className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                          Planlagt vagt
-                        </div>
-
-                        <div className="mt-1 text-lg font-bold">
-                          {formatTimeDK(selectedClockShift.startTime)} -{" "}
-                          {formatTimeDK(selectedClockShift.endTime)}
-                        </div>
-
-                        <div className="text-sm text-blue-700 dark:text-blue-300">
-                          {selectedClockShift.workType.name}
-                        </div>
-                      </div>
-                    )}
-
-                    {!openTimeEntry && clockShiftId && (
-                      <>
-                        <label className="block text-sm font-semibold">
-                          Faktisk mødetid
-                        </label>
-
-                        <input
-                          type="datetime-local"
-                          value={clockInTime}
-                          onChange={(event) =>
-                            setClockInTime(event.target.value)
-                          }
-                          className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                        />
-
-                        <textarea
-                          value={clockNote}
-                          onChange={(event) => setClockNote(event.target.value)}
-                          className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                          placeholder="Forklar eventuel ændret mødetid"
-                        />
-
-                        <button
-                          onClick={handleRegisterClockIn}
-                          className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                        >
-                          Registrer mødetid
-                        </button>
-                      </>
-                    )}
-
-                    {openTimeEntry && (
-                      <>
-                        <label className="block text-sm font-semibold">
-                          Faktisk fyraften
-                        </label>
-
-                        <input
-                          type="datetime-local"
-                          value={clockOutTime}
-                          onChange={(event) =>
-                            setClockOutTime(event.target.value)
-                          }
-                          className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                        />
-
-                        <textarea
-                          value={clockNote}
-                          onChange={(event) => setClockNote(event.target.value)}
-                          className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                          placeholder="Forklar eventuel ændret fyraften"
-                        />
-
-                        <button
-                          onClick={handleRegisterClockOut}
-                          className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                        >
-                          Registrer fyraften
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {showManualTimeModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-                <div className="mx-4 w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
-                  <div className="mb-6 flex items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold">
-                        Manuel registrering
-                      </h2>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Bruges til arbejde uden planlagt vagt. Registreringen
-                        sendes til godkendelse.
-                      </p>
-                    </div>
-
-                    <button onClick={resetManualTimeModal} className="text-2xl">
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold">
-                        Mødetid
-                      </label>
-
-                      <input
-                        type="datetime-local"
-                        value={manualClockInTime}
-                        onChange={(event) =>
-                          setManualClockInTime(event.target.value)
-                        }
-                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold">
-                        Fyraften
-                      </label>
-
-                      <input
-                        type="datetime-local"
-                        value={manualClockOutTime}
-                        onChange={(event) =>
-                          setManualClockOutTime(event.target.value)
-                        }
-                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-sm font-semibold">
-                        Note / begrundelse
-                      </label>
-
-                      <textarea
-                        value={manualNote}
-                        onChange={(event) => setManualNote(event.target.value)}
-                        className="min-h-28 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
-                        placeholder="Skriv hvorfor timerne registreres uden planlagt vagt"
-                      />
-                    </div>
-
-                    <button
-                      onClick={handleSubmitManualTimeWithoutShift}
-                      className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                    >
-                      Send til godkendelse
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <ManualTimeRegistrationModal
+              open={showManualTimeModal}
+              onClose={resetManualTimeModal}
+              clockInTime={manualClockInTime}
+              setClockInTime={setManualClockInTime}
+              clockOutTime={manualClockOutTime}
+              setClockOutTime={setManualClockOutTime}
+              note={manualNote}
+              setNote={setManualNote}
+              onSubmit={handleSubmitManualTimeWithoutShift}
+            />
           </main>
 
           <ConfirmModal
