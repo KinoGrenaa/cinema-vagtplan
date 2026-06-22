@@ -171,6 +171,7 @@ export default function MasterPage() {
     localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
     localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
     setSelectedCinemaId(null);
+    notifyMasterSelectedCinemaChanged();
   }
 
   async function createCinema() {

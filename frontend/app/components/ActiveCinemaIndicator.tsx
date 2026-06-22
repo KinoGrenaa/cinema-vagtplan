@@ -34,6 +34,16 @@ type IndicatorState =
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
 
+function notifyMasterSelectedCinemaChanged() {
+  window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
+}
+
+function clearMasterSelectedCinema() {
+  localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
+  localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
+  notifyMasterSelectedCinemaChanged();
+}
+
 function readIndicatorState(): IndicatorState {
   const savedUser = localStorage.getItem("user");
 
@@ -106,6 +116,12 @@ export default function ActiveCinemaIndicator() {
   }
 
   const isMissing = state.variant === "missing";
+  const isSelected = state.variant === "selected";
+
+  function handleClearSelectedCinema() {
+    clearMasterSelectedCinema();
+    setState(readIndicatorState());
+  }
 
   return (
     <div
@@ -121,16 +137,28 @@ export default function ActiveCinemaIndicator() {
           <div className="mt-1 text-xs opacity-80">{state.description}</div>
         </div>
 
-        <Link
-          href={state.href}
-          className={`inline-flex w-fit shrink-0 rounded-xl px-3 py-2 text-sm font-semibold text-white transition ${
-            isMissing
-              ? "bg-yellow-700 hover:bg-yellow-800"
-              : "bg-blue-700 hover:bg-blue-800"
-          }`}
-        >
-          {state.linkText}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={state.href}
+            className={`inline-flex w-fit shrink-0 rounded-xl px-3 py-2 text-sm font-semibold text-white transition ${
+              isMissing
+                ? "bg-yellow-700 hover:bg-yellow-800"
+                : "bg-blue-700 hover:bg-blue-800"
+            }`}
+          >
+            {state.linkText}
+          </Link>
+
+          {isSelected ? (
+            <button
+              type="button"
+              onClick={handleClearSelectedCinema}
+              className="inline-flex w-fit shrink-0 rounded-xl border border-blue-300 bg-white/80 px-3 py-2 text-sm font-semibold text-blue-900 transition hover:bg-white dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:bg-blue-900/60"
+            >
+              Ryd valg
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

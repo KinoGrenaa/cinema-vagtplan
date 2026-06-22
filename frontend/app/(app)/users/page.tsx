@@ -501,7 +501,7 @@ export default function UsersPage() {
   if (loading) {
     return (
       <PermissionGuard permission="canManageUsers">
-        <div className="p-6 text-gray-900 dark:text-gray-100">
+        <div className="min-h-screen bg-gray-100 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
           Indlæser brugere...
         </div>
       </PermissionGuard>
@@ -510,7 +510,7 @@ export default function UsersPage() {
 
   return (
     <PermissionGuard permission="canManageUsers">
-      <div className="p-6 text-gray-900 dark:text-gray-100">
+      <div className="min-h-screen bg-gray-100 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Brugere</h1>
