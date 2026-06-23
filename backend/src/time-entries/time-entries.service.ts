@@ -24,6 +24,7 @@ import {
   ensureUserCanAccessTimeEntry,
   getTimeEntryCinemaFilter,
 } from './helpers/time-entry-access';
+import { createTimeEntryRevision } from './helpers/time-entry-revisions';
 
 @Injectable()
 export class TimeEntriesService {
@@ -36,70 +37,6 @@ export class TimeEntriesService {
     private auditLogsService: AuditLogsService,
     private readonly payrollService: PayrollService,
   ) {}
-
-  private async createRevision(params: {
-    timeEntryId: number;
-    changedByUserId?: number | null;
-    action: string;
-    before?: {
-      status?: any;
-      clockIn?: Date | string | null;
-      clockOut?: Date | string | null;
-      note?: string | null;
-      clockInNote?: string | null;
-      clockOutNote?: string | null;
-      adminNote?: string | null;
-    } | null;
-    after?: {
-      status?: any;
-      clockIn?: Date | string | null;
-      clockOut?: Date | string | null;
-      note?: string | null;
-      clockInNote?: string | null;
-      clockOutNote?: string | null;
-      adminNote?: string | null;
-    } | null;
-    reason?: string | null;
-  }) {
-    return this.prisma.timeEntryRevision.create({
-      data: {
-        timeEntryId: params.timeEntryId,
-        changedByUserId: params.changedByUserId ?? null,
-        action: params.action,
-
-        previousStatus: params.before?.status ?? null,
-        newStatus: params.after?.status ?? null,
-
-        previousClockIn: params.before?.clockIn
-          ? new Date(params.before.clockIn)
-          : null,
-        newClockIn: params.after?.clockIn
-          ? new Date(params.after.clockIn)
-          : null,
-
-        previousClockOut: params.before?.clockOut
-          ? new Date(params.before.clockOut)
-          : null,
-        newClockOut: params.after?.clockOut
-          ? new Date(params.after.clockOut)
-          : null,
-
-        previousNote: params.before?.note ?? null,
-        newNote: params.after?.note ?? null,
-
-        previousClockInNote: params.before?.clockInNote ?? null,
-        newClockInNote: params.after?.clockInNote ?? null,
-
-        previousClockOutNote: params.before?.clockOutNote ?? null,
-        newClockOutNote: params.after?.clockOutNote ?? null,
-
-        previousAdminNote: params.before?.adminNote ?? null,
-        newAdminNote: params.after?.adminNote ?? null,
-
-        reason: params.reason ?? null,
-      },
-    });
-  }
 
   private getPayrollAdjustmentExportCategory(entry: any) {
     if (entry.user?.employmentType === 'SALARIED') {
@@ -599,7 +536,7 @@ export class TimeEntriesService {
       },
     });
 
-    await this.createRevision({
+    await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
       changedByUserId: data.userId,
       action: 'CREATED',
@@ -734,7 +671,7 @@ export class TimeEntriesService {
       },
     });
 
-    await this.createRevision({
+    await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
       changedByUserId: data.userId,
       action: 'CREATED',
@@ -1028,7 +965,7 @@ export class TimeEntriesService {
       });
     }
 
-    await this.createRevision({
+    await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
       changedByUserId: changedByUserId ?? null,
       action: 'APPROVED',
@@ -1121,7 +1058,7 @@ export class TimeEntriesService {
       },
     });
 
-    await this.createRevision({
+    await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
       changedByUserId: changedByUserId ?? null,
       action: 'UNAPPROVED',
@@ -1216,7 +1153,7 @@ export class TimeEntriesService {
       },
     });
 
-    await this.createRevision({
+    await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
       changedByUserId: changedByUserId ?? null,
       action: 'NEEDS_CHANGES',
@@ -1344,7 +1281,7 @@ export class TimeEntriesService {
       });
     }
 
-    await this.createRevision({
+    await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
       changedByUserId: changedByUserId ?? null,
       action: 'VOIDED',
@@ -1587,7 +1524,7 @@ export class TimeEntriesService {
       });
     }
 
-    await this.createRevision({
+    await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
       changedByUserId: user.sub,
       action: 'UPDATED',
@@ -1859,7 +1796,7 @@ export class TimeEntriesService {
       });
     }
 
-    await this.createRevision({
+    await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
       changedByUserId: user?.sub ?? null,
       action: 'UPDATED',
