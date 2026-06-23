@@ -26,6 +26,10 @@ import {
 } from './helpers/time-entry-access';
 import { createTimeEntryRevision } from './helpers/time-entry-revisions';
 import { createOrUpdateTimeEntryPayrollAdjustment } from './helpers/time-entry-payroll-adjustments';
+import {
+  getAdminTimeEntryUpdateChanges,
+  getOwnTimeEntryUpdateChanges,
+} from './helpers/time-entry-update-changes';
 
 @Injectable()
 export class TimeEntriesService {
@@ -1191,11 +1195,6 @@ export class TimeEntriesService {
 
     ensureTimeEntryEditable(existingEntry, user);
 
-    const oldClockIn = existingEntry.clockIn;
-    const oldClockOut = existingEntry.clockOut;
-    const oldClockInNote = existingEntry.clockInNote;
-    const oldClockOutNote = existingEntry.clockOutNote;
-
     const newClockIn = new Date(data.clockIn);
     const newClockOut = data.clockOut ? new Date(data.clockOut) : null;
     const newClockInNote = data.clockInNote ?? null;
@@ -1253,33 +1252,13 @@ export class TimeEntriesService {
       );
     }
 
-    const changes: string[] = [];
-
-    if (oldClockIn.getTime() !== newClockIn.getTime()) {
-      changes.push(
-        `Mødetid: ${oldClockIn.toLocaleString('da-DK')} → ${newClockIn.toLocaleString('da-DK')}`,
-      );
-    }
-
-    if ((oldClockOut?.getTime() ?? null) !== (newClockOut?.getTime() ?? null)) {
-      changes.push(
-        `Fyraften: ${
-          oldClockOut ? oldClockOut.toLocaleString('da-DK') : '-'
-        } → ${newClockOut ? newClockOut.toLocaleString('da-DK') : '-'}`,
-      );
-    }
-
-    if ((oldClockInNote ?? '') !== (newClockInNote ?? '')) {
-      changes.push('Mødetidsnote ændret');
-    }
-
-    if ((oldClockOutNote ?? '') !== (newClockOutNote ?? '')) {
-      changes.push('Fyraftensnote ændret');
-    }
-
-    if (existingEntry.status !== 'PENDING') {
-      changes.push(`Status: ${existingEntry.status} → PENDING`);
-    }
+    const changes = getOwnTimeEntryUpdateChanges({
+      existingEntry,
+      newClockIn,
+      newClockOut,
+      newClockInNote,
+      newClockOutNote,
+    });
 
     if (changes.length === 0) {
       throw new BadRequestException('Ingen ændringer registreret');
@@ -1491,59 +1470,12 @@ export class TimeEntriesService {
       );
     }
 
-    const changes: string[] = [];
-
-    if (existingEntry.clockIn.getTime() !== nextClockIn.getTime()) {
-      changes.push(
-        `Mødetid ændret fra ${existingEntry.clockIn.toLocaleString('da-DK')} til ${nextClockIn.toLocaleString('da-DK')}`,
-      );
-    }
-
-    if (
-      (existingEntry.clockOut?.getTime() ?? null) !==
-      (nextClockOut?.getTime() ?? null)
-    ) {
-      changes.push(
-        `Fyraften ændret fra ${
-          existingEntry.clockOut
-            ? existingEntry.clockOut.toLocaleString('da-DK')
-            : '-'
-        } til ${nextClockOut ? nextClockOut.toLocaleString('da-DK') : '-'}`,
-      );
-    }
-
-    if (
-      data.clockInNote !== undefined &&
-      data.clockInNote !== existingEntry.clockInNote
-    ) {
-      changes.push(
-        `Mødetidsnote ændret fra "${
-          existingEntry.clockInNote ?? '-'
-        }" til "${data.clockInNote ?? '-'}"`,
-      );
-    }
-
-    if (
-      data.clockOutNote !== undefined &&
-      data.clockOutNote !== existingEntry.clockOutNote
-    ) {
-      changes.push(
-        `Fyraftensnote ændret fra "${
-          existingEntry.clockOutNote ?? '-'
-        }" til "${data.clockOutNote ?? '-'}"`,
-      );
-    }
-
-    if (
-      data.adminNote !== undefined &&
-      data.adminNote !== existingEntry.adminNote
-    ) {
-      changes.push(
-        `Admin-note ændret fra "${
-          existingEntry.adminNote ?? '-'
-        }" til "${data.adminNote ?? '-'}"`,
-      );
-    }
+    const changes = getAdminTimeEntryUpdateChanges({
+      existingEntry,
+      nextClockIn,
+      nextClockOut,
+      data,
+    });
 
     if (changes.length === 0) {
       throw new BadRequestException('Ingen ændringer registreret');
