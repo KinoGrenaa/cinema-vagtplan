@@ -370,6 +370,7 @@ export default function MyTimePage() {
       endDate: today,
     };
   });
+  const [payrollPeriodLoading, setPayrollPeriodLoading] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
@@ -422,6 +423,8 @@ export default function MyTimePage() {
   const fetchPayrollPeriodForDate = useCallback(
     async (referenceDate: string) => {
       try {
+        setPayrollPeriodLoading(true);
+
         const response = await apiFetch(
           `/payroll/period-for-date?date=${encodeURIComponent(referenceDate)}`,
         );
@@ -460,6 +463,8 @@ export default function MyTimePage() {
           "Kunne ikke hente lønperiode",
           "Der opstod en fejl, da lønperioden skulle hentes. Prøv igen.",
         );
+      } finally {
+        setPayrollPeriodLoading(false);
       }
     },
     [],
@@ -761,8 +766,9 @@ export default function MyTimePage() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-5xl px-4 py-8">
-        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <main className="min-h-screen bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        <div className="mx-auto w-full max-w-5xl">
+          <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h1 className="text-3xl font-bold">Mine timer</h1>
@@ -816,11 +822,18 @@ export default function MyTimePage() {
                 {formatDate(payrollPeriod.endDate)}
               </div>
 
+              {payrollPeriodLoading && (
+                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Henter lønperiode...
+                </div>
+              )}
+
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={goToPreviousPayrollPeriod}
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                  disabled={payrollPeriodLoading}
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
                 >
                   Forrige
                 </button>
@@ -828,7 +841,8 @@ export default function MyTimePage() {
                 <button
                   type="button"
                   onClick={goToCurrentPayrollPeriod}
-                  className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                  disabled={payrollPeriodLoading}
+                  className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Aktuel
                 </button>
@@ -836,7 +850,8 @@ export default function MyTimePage() {
                 <button
                   type="button"
                   onClick={goToNextPayrollPeriod}
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                  disabled={payrollPeriodLoading}
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
                 >
                   Næste
                 </button>
@@ -1299,6 +1314,7 @@ export default function MyTimePage() {
           revisions={historyItems}
           currentStatus={historyEntry?.status}
         />
+        </div>
       </main>
 
       <InfoModal
