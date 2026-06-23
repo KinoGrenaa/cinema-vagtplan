@@ -21,7 +21,7 @@ import PayrollAdjustmentConfirmationModal, {
 } from "./components/PayrollAdjustmentConfirmationModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import TimeApprovalToolbar from "./components/TimeApprovalToolbar";
-import TimeApprovalEntryCard from "./components/TimeApprovalEntryCard";
+import TimeApprovalUserGroup from "./components/TimeApprovalUserGroup";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 
@@ -826,100 +826,22 @@ export default function TimeApprovalPage() {
                     </p>
                   </div>
                 ) : (
-                  groupedEntries.map((group) => {
-                    const isExpanded = expandedUserIds.includes(group.userId);
-
-                    return (
-                      <div
-                        key={group.userId}
-                        className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleUserGroup(group.userId)}
-                          className="flex w-full flex-col gap-4 p-6 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/60 lg:flex-row lg:items-center lg:justify-between"
-                        >
-                          <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <h2 className="text-xl font-bold">
-                                {group.user.firstName} {group.user.lastName}
-                              </h2>
-
-                              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                                {group.entries.length} registrering
-                                {group.entries.length === 1 ? "" : "er"}
-                              </span>
-                            </div>
-
-                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                              {group.user.email}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            {group.pendingCount > 0 && (
-                              <span className="rounded-full bg-yellow-100 px-3 py-1 font-semibold text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
-                                Afventer: {group.pendingCount}
-                              </span>
-                            )}
-
-                            {group.needsChangesCount > 0 && (
-                              <span className="rounded-full bg-red-100 px-3 py-1 font-semibold text-red-800 dark:bg-red-950/40 dark:text-red-200">
-                                Skal rettes: {group.needsChangesCount}
-                              </span>
-                            )}
-
-                            {group.approvedCount > 0 && (
-                              <span className="rounded-full bg-green-100 px-3 py-1 font-semibold text-green-800 dark:bg-green-950/40 dark:text-green-200">
-                                Godkendte: {group.approvedCount}
-                              </span>
-                            )}
-
-                            {group.voidedCount > 0 && (
-                              <span className="rounded-full bg-gray-100 px-3 py-1 font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                                Annullerede: {group.voidedCount}
-                              </span>
-                            )}
-
-                            {group.manualCount > 0 && (
-                              <span className="rounded-full bg-orange-100 px-3 py-1 font-semibold text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
-                                Manuel: {group.manualCount}
-                              </span>
-                            )}
-
-                            {group.deviationCount > 0 && (
-                              <span className="rounded-full bg-orange-100 px-3 py-1 font-semibold text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
-                                Afvigelser: {group.deviationCount}
-                              </span>
-                            )}
-
-                            <span className="ml-1 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-900">
-                              {isExpanded ? "Skjul timer" : "Vis timer"}
-                            </span>
-                          </div>
-                        </button>
-
-                        {isExpanded && (
-                          <div className="space-y-4 border-t border-gray-200 p-6 dark:border-gray-800">
-                            {group.entries.map((entry) => (
-                              <TimeApprovalEntryCard
-                                key={entry.id}
-                                entry={entry}
-                                isExpanded={expandedEntryIds.includes(entry.id)}
-                                onToggleDetails={toggleEntryDetails}
-                                onEdit={setEditEntry}
-                                onOpenHistory={openHistory}
-                                onApprove={approve}
-                                onUnapprove={unapprove}
-                                onSendBackForChanges={sendBackForChanges}
-                                onVoid={voidEntry}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
+                  groupedEntries.map((group) => (
+                    <TimeApprovalUserGroup
+                      key={group.userId}
+                      group={group}
+                      isExpanded={expandedUserIds.includes(group.userId)}
+                      expandedEntryIds={expandedEntryIds}
+                      onToggleGroup={toggleUserGroup}
+                      onToggleEntryDetails={toggleEntryDetails}
+                      onEdit={setEditEntry}
+                      onOpenHistory={openHistory}
+                      onApprove={approve}
+                      onUnapprove={unapprove}
+                      onSendBackForChanges={sendBackForChanges}
+                      onVoid={voidEntry}
+                    />
+                  ))
                 )}
               </div>
             )}
