@@ -10,14 +10,10 @@ import {
   ManualTimeRegistrationModal,
   TimeRegistrationModal,
 } from "./components/TimeRegistrationModals";
-import {
-  ScheduleDateNavigation,
-  SchedulePageHeader,
-} from "./components/ScheduleHeader";
+import { SchedulePageHeader } from "./components/ScheduleHeader";
 import ScheduleLeaveOverview from "./components/ScheduleLeaveOverview";
-import ShiftTimeline from "../../components/schedule/ShiftTimeline";
+import ScheduleShiftsPanel from "./components/ScheduleShiftsPanel";
 import MovieProgram from "./components/MovieProgram";
-import AiSuggestionsPanel from "../../components/schedule/AiSuggestionsPanel";
 import { useSchedule } from "../../hooks/useSchedule";
 import {
   useScheduleAi,
@@ -1116,91 +1112,24 @@ ${getShiftConfirmText(selectedShift)}`,
                 />
               )}
 
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-                <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <h2 className="text-3xl font-bold">Dagens vagter</h2>
-                    <p className="text-gray-500 dark:text-gray-400">
-                      {canManageShifts
-                        ? "Administrer, flyt og resize vagter"
-                        : "Se dagens vagtplan"}
-                    </p>
-                  </div>
-
-                  {canManageShifts && !needsMasterCinemaSelection && (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openStaffingRequestModal(null)}
-                        className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
-                      >
-                        Send forespørgsel
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={openCreateShiftModal}
-                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                      >
-                        Opret vagt
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-800 dark:bg-gray-950">
-                  {ai && (
-                    <AiSuggestionsPanel
-                      shifts={shifts}
-                      staffingWarnings={ai.staffingWarnings}
-                      staffingSuggestions={ai.staffingSuggestions}
-                      recommendedEmployees={ai.recommendedEmployees}
-                      aiScheduleSuggestions={ai.aiScheduleSuggestions}
-                      creatingAiShift={ai.creatingAiShift}
-                      liveStaffingAlerts={ai.liveStaffingAlerts}
-                      emergencyAiActions={ai.emergencyAiActions}
-                      autoCreatingEmergencyShift={ai.autoCreatingEmergencyShift}
-                      autoStaffingNotifications={ai.autoStaffingNotifications}
-                      suggestedEmergencyReplacements={
-                        ai.suggestedEmergencyReplacements
-                      }
-                      sendingEmergencyRequest={ai.sendingEmergencyRequest}
-                      autoEscalationQueue={ai.autoEscalationQueue}
-                      sendingRealStaffingMessage={ai.sendingRealStaffingMessage}
-                      staffingLoopStatus={ai.staffingLoopStatus}
-                      autonomousStaffingStatus={ai.autonomousStaffingStatus}
-                      createAiSuggestedShift={ai.createAiSuggestedShift}
-                      autoCreateEmergencyShift={ai.autoCreateEmergencyShift}
-                      startAutoEscalation={ai.startAutoEscalation}
-                      sendRealStaffingMessage={ai.sendRealStaffingMessage}
-                    />
-                  )}
-
-                  <ScheduleDateNavigation
-                    selectedDate={selectedDate}
-                    onPreviousDay={() => changeDate(-1)}
-                    onToday={goToToday}
-                    onDateChange={goToDate}
-                    onNextDay={() => changeDate(1)}
-                  />
-
-                  <ShiftTimeline
-                    shifts={shifts}
-                    users={users}
-                    selectedDate={selectedDate}
-                    onSelectShift={
-                      canManageShifts ? handleSelectShift : () => {}
-                    }
-                    onMoveShift={canManageShifts ? handleMoveShift : () => {}}
-                    onChangeShiftUser={
-                      canManageShifts ? handleChangeShiftUser : () => {}
-                    }
-                    onResizeShift={
-                      canManageShifts ? handleResizeShift : () => {}
-                    }
-                  />
-                </div>
-              </div>
+              <ScheduleShiftsPanel
+                ai={ai}
+                shifts={shifts}
+                users={users}
+                selectedDate={selectedDate}
+                canManageShifts={canManageShifts}
+                needsMasterCinemaSelection={needsMasterCinemaSelection}
+                onOpenStaffingRequest={() => openStaffingRequestModal(null)}
+                onOpenCreateShiftModal={openCreateShiftModal}
+                onPreviousDay={() => changeDate(-1)}
+                onToday={goToToday}
+                onDateChange={goToDate}
+                onNextDay={() => changeDate(1)}
+                onSelectShift={handleSelectShift}
+                onMoveShift={handleMoveShift}
+                onChangeShiftUser={handleChangeShiftUser}
+                onResizeShift={handleResizeShift}
+              />
 
               {!needsMasterCinemaSelection && (
                 <MovieProgram
