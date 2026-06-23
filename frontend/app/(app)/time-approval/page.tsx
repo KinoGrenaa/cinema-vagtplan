@@ -11,12 +11,7 @@ import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 import { toast } from "sonner";
-import {
-  formatDateTime,
-  getStatusClass,
-  getStatusLabel,
-  readErrorMessage,
-} from "./utils";
+import { formatDateTime, readErrorMessage } from "./utils";
 import type { TimeEntry, TimeEntryStatus } from "./types";
 import TimeApprovalFilterModal from "./components/TimeApprovalFilterModal";
 import DeviationPanel from "./components/DeviationPanel";
@@ -28,6 +23,7 @@ import PayrollAdjustmentConfirmationModal, {
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import TimeApprovalToolbar from "./components/TimeApprovalToolbar";
 import TimeApprovalEntryNotes from "./components/TimeApprovalEntryNotes";
+import TimeApprovalEntryActions from "./components/TimeApprovalEntryActions";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 
@@ -1032,76 +1028,15 @@ export default function TimeApprovalPage() {
                                     </div>
                                   </div>
 
-                                  <div className="flex flex-col items-start gap-3 lg:items-end">
-                                    <span
-                                      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                                        entry.status,
-                                      )}`}
-                                    >
-                                      {getStatusLabel(entry.status)}
-                                    </span>
-
-                                    {entry.deviation?.hasDeviation && (
-                                      <span className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
-                                        {entry.shift
-                                          ? "Afvigelse"
-                                          : "Manuel registrering"}
-                                      </span>
-                                    )}
-
-                                    <div className="flex flex-wrap gap-2">
-                                      <button
-                                        onClick={() => setEditEntry(entry)}
-                                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                                      >
-                                        Redigér
-                                      </button>
-
-                                      <button
-                                        onClick={() => openHistory(entry)}
-                                        className="rounded-xl bg-gray-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
-                                      >
-                                        Historik
-                                      </button>
-
-                                      {entry.status === "PENDING" && (
-                                        <button
-                                          onClick={() => approve(entry)}
-                                          className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
-                                        >
-                                          Godkend
-                                        </button>
-                                      )}
-
-                                      {entry.status === "APPROVED" && (
-                                        <button
-                                          onClick={() => unapprove(entry.id)}
-                                          className="rounded-xl bg-yellow-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-700"
-                                        >
-                                          Fjern godkendelse
-                                        </button>
-                                      )}
-
-                                      {entry.status === "PENDING" && (
-                                        <button
-                                          onClick={() =>
-                                            sendBackForChanges(entry.id)
-                                          }
-                                          className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
-                                        >
-                                          Send retur
-                                        </button>
-                                      )}
-                                      {entry.status !== "VOIDED" && (
-                                        <button
-                                          onClick={() => voidEntry(entry.id)}
-                                          className="rounded-xl bg-red-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-900"
-                                        >
-                                          Afvis registrering
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
+                                  <TimeApprovalEntryActions
+                                    entry={entry}
+                                    onEdit={setEditEntry}
+                                    onOpenHistory={openHistory}
+                                    onApprove={approve}
+                                    onUnapprove={unapprove}
+                                    onSendBackForChanges={sendBackForChanges}
+                                    onVoid={voidEntry}
+                                  />
                                 </div>
                               </div>
                             ))}
