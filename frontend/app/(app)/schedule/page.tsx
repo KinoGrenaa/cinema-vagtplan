@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ShiftForm from "./components/ShiftForm";
 import StaffingRequestModal, {
   type StaffingRequestType,
   type StaffingTargetMode,
@@ -13,6 +12,7 @@ import {
 import { SchedulePageHeader } from "./components/ScheduleHeader";
 import ScheduleLeaveOverview from "./components/ScheduleLeaveOverview";
 import ScheduleShiftsPanel from "./components/ScheduleShiftsPanel";
+import ScheduleShiftFormModal from "./components/ScheduleShiftFormModal";
 import MovieProgram from "./components/MovieProgram";
 import { useSchedule } from "../../hooks/useSchedule";
 import AiScheduleFeatures from "./components/AiScheduleFeatures";
@@ -26,7 +26,6 @@ import {
   toInputDateTime,
 } from "@/app/utils/dateTime";
 import type { Shift, User, WorkType } from "../../../../shared/types";
-import BaseModal from "@/app/components/modals/BaseModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -1068,37 +1067,28 @@ ${getShiftConfirmText(selectedShift)}`,
               )}
             </div>
 
-            <BaseModal
+            <ScheduleShiftFormModal
               open={showShiftFormModal}
-              title={selectedShift ? "Rediger vagt" : "Opret vagt"}
-              width="xl"
-              onClose={closeShiftFormModal}
-            >
-              <ShiftForm
-                users={users}
-                workTypes={workTypes}
-                startTime={startTime}
-                setStartTime={setStartTime}
-                endTime={endTime}
-                setEndTime={setEndTime}
-                note={note}
-                setNote={setNote}
-                userId={userId}
-                setUserId={setUserId}
-                workTypeId={workTypeId}
-                setWorkTypeId={setWorkTypeId}
-                selectedShift={selectedShift}
-                onSubmit={handleSubmit}
-                onDelete={handleDelete}
-                onCancel={closeShiftFormModal}
-                onOfferTrade={handleOfferTrade}
-                onSendStaffingRequest={
-                  handleOpenStaffingRequestForSelectedShift
-                }
-                leaveRequests={leaveRequests}
-                showHeader={false}
-              />
-            </BaseModal>
+              selectedShift={selectedShift}
+              users={users}
+              workTypes={workTypes}
+              startTime={startTime}
+              setStartTime={setStartTime}
+              endTime={endTime}
+              setEndTime={setEndTime}
+              note={note}
+              setNote={setNote}
+              userId={userId}
+              setUserId={setUserId}
+              workTypeId={workTypeId}
+              setWorkTypeId={setWorkTypeId}
+              onSubmit={handleSubmit}
+              onDelete={handleDelete}
+              onCancel={closeShiftFormModal}
+              onOfferTrade={handleOfferTrade}
+              onSendStaffingRequest={handleOpenStaffingRequestForSelectedShift}
+              leaveRequests={leaveRequests}
+            />
 
             <StaffingRequestModal
               open={showStaffingRequestModal}
