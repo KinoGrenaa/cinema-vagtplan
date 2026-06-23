@@ -1,0 +1,147 @@
+import { BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import {
+  getPayrollCinemaFilter,
+  type PayrollAuthUser,
+} from './payroll-access';
+import {
+  getPayrollReferenceDateFilters,
+  getPeriodDates,
+} from './payroll-periods';
+
+export async function ensurePayrollEntriesApproved(
+  prisma: PrismaService,
+  user: PayrollAuthUser,
+  startDate: string,
+  endDate: string,
+  userId?: string,
+  selectedCinemaId?: number | null,
+) {
+  const { start, end } = getPeriodDates(startDate, endDate);
+
+  const unapprovedEntries = await prisma.timeEntry.findMany({
+    where: {
+      ...getPayrollCinemaFilter(user, selectedCinemaId),
+      ...(userId ? { userId: Number(userId) } : {}),
+      OR: getPayrollReferenceDateFilters(start, end),
+      clockOut: {
+        not: null,
+      },
+      status: 'PENDING',
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  if (unapprovedEntries.length > 0) {
+    const names = unapprovedEntries
+      .map((entry) => `${entry.user.firstName} ${entry.user.lastName}`)
+      .filter((name, index, arr) => arr.indexOf(name) === index)
+      .join(', ');
+
+    throw new BadRequestException(
+      `Kan ikke eksportere. Der findes ${unapprovedEntries.length} afventende tidsregistreringer i perioden: ${names}`,
+    );
+  }
+}
+
+export async function markPayrollPeriodAsExported(
+  prisma: PrismaService,
+  user: PayrollAuthUser,
+  startDate: string,
+  endDate: string,
+  userId?: string,
+  selectedCinemaId?: number | null,
+) {
+  if (userId) return;
+
+  const { start, end } = getPeriodDates(startDate, endDate);
+  const cinemaId = getPayrollCinemaFilter(user, selectedCinemaId).cinemaId;
+  const now = new Date();
+
+  const existingPeriod = await prisma.payrollPeriod.findFirst({
+    where: {
+      cinemaId,
+      startDate: start,
+      endDate: end,
+    },
+  });
+
+  const period = existingPeriod
+    ? await prisma.payrollPeriod.update({
+        where: { id: existingPeriod.id },
+        data: {
+          status: 'EXPORTED',
+          lockedAt: existingPeriod.lockedAt || now,
+          lockedByUserId: existingPeriod.lockedByUserId || user.sub,
+          exportedAt: now,
+          exportedByUserId: user.sub,
+          unlockedAt: null,
+          unlockedByUserId: null,
+          unlockNote: null,
+        },
+      })
+    : await prisma.payrollPeriod.create({
+        data: {
+          cinemaId,
+          startDate: start,
+          endDate: end,
+          status: 'EXPORTED',
+          lockedAt: now,
+          lockedByUserId: user.sub,
+          exportedAt: now,
+          exportedByUserId: user.sub,
+        },
+      });
+
+  const defaultPayrollType = await prisma.payrollType.findFirst({
+    where: {
+      cinemaId,
+      isDefault: true,
+      isActive: true,
+    },
+  });
+
+  const entries = await prisma.timeEntry.findMany({
+    where: {
+      cinemaId,
+      OR: getPayrollReferenceDateFilters(start, end),
+      clockOut: {
+        not: null,
+      },
+      status: 'APPROVED',
+    },
+    include: {
+      payrollType: true,
+      shift: {
+        include: {
+          workType: {
+            include: {
+              payrollType: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  for (const entry of entries) {
+    const payrollType =
+      entry.payrollType ||
+      entry.shift?.workType?.payrollType ||
+      defaultPayrollType;
+
+    await prisma.timeEntry.update({
+      where: { id: entry.id },
+      data: {
+        payrollPeriodId: period.id,
+        payrollLocked: true,
+        payrollUnlockedByMaster: false,
+        payrollUnlockedAt: null,
+        payrollLockNote: null,
+        payrollTypeId: payrollType?.id || null,
+      },
+    });
+  }
+}
