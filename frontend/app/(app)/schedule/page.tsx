@@ -16,13 +16,18 @@ import AiScheduleFeatures from "./components/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
   dateToLocalDateString,
-  formatDateDK,
-  formatTimeDK,
   getTodayLocalDate,
   localDateTimeToISOString,
   toInputDateTime,
 } from "@/app/utils/dateTime";
 import type { Shift, User, WorkType } from "../../../../shared/types";
+import {
+  getDefaultStaffingMessage,
+  getShiftConfirmText,
+  getShiftUserId,
+  getStaffingShiftOptionText,
+  getUserDisplayName,
+} from "./helpers/scheduleShiftText";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -739,99 +744,6 @@ Handlingen kan ikke fortrydes.`,
     }
   }
 
-  function formatShiftDate(value: string) {
-    return formatDateDK(value);
-  }
-
-  function formatShiftTimeRange(shift: Shift) {
-    return `${formatTimeDK(shift.startTime)} - ${formatTimeDK(shift.endTime)}`;
-  }
-
-  function getShiftWorkTypeName(shift: Shift) {
-    const maybeShift = shift as Shift & {
-      workType?: {
-        name?: string;
-      };
-    };
-
-    return maybeShift.workType?.name ?? `Arbejdstype #${shift.workTypeId}`;
-  }
-
-  function getShiftConfirmText(shift: Shift) {
-    return `${getShiftWorkTypeName(shift)}
-${formatShiftDate(shift.startTime)}
-${formatShiftTimeRange(shift)}`;
-  }
-
-  function getUserDisplayName(user: User) {
-    return (
-      `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
-      user.email ||
-      `Medarbejder #${user.id}`
-    );
-  }
-
-  function getShiftUserId(shift: Shift) {
-    return (shift as Shift & { userId?: number | null }).userId ?? null;
-  }
-
-  function getShiftUserDisplayName(shift: Shift) {
-    const shiftWithUser = shift as Shift & {
-      user?: {
-        firstName?: string | null;
-        lastName?: string | null;
-        email?: string | null;
-      } | null;
-    };
-
-    const directName = `${shiftWithUser.user?.firstName ?? ""} ${
-      shiftWithUser.user?.lastName ?? ""
-    }`.trim();
-
-    if (directName) {
-      return directName;
-    }
-
-    if (shiftWithUser.user?.email) {
-      return shiftWithUser.user.email;
-    }
-
-    const shiftUserId = getShiftUserId(shift);
-
-    if (!shiftUserId) {
-      return "Ikke tildelt";
-    }
-
-    const listedUser = users.find((candidate) => candidate.id === shiftUserId);
-
-    return listedUser
-      ? getUserDisplayName(listedUser)
-      : `Medarbejder #${shiftUserId}`;
-  }
-
-  function getStaffingShiftOptionText(shift: Shift) {
-    return `${formatShiftTimeRange(shift)} · ${getShiftWorkTypeName(
-      shift,
-    )} · ${getShiftUserDisplayName(shift)}`;
-  }
-
-  function getDefaultStaffingMessage(
-    shift: Shift | null,
-    type: StaffingRequestType,
-  ) {
-    if (shift) {
-      return `Kan du hjælpe med denne vagt?
-
-${getShiftConfirmText(shift)}`;
-    }
-
-    if (type === "EMERGENCY") {
-      return "Der er akut brug for ekstra bemanding. Kan du hjælpe?";
-    }
-
-    return "Der er brug for ekstra bemanding. Kan du hjælpe?";
-  }
-
   function applyStaffingRequestShift(shift: Shift | null) {
     setStaffingRequestShiftId(shift?.id ?? null);
 
@@ -1104,7 +1016,9 @@ ${getShiftConfirmText(selectedShift)}`,
               onEndTimeChange={setStaffingRequestEndTime}
               workTypeId={staffingRequestWorkTypeId}
               onWorkTypeIdChange={setStaffingRequestWorkTypeId}
-              getShiftOptionText={getStaffingShiftOptionText}
+              getShiftOptionText={(shift) =>
+                getStaffingShiftOptionText(shift, users)
+              }
               getUserDisplayName={getUserDisplayName}
             />
 
