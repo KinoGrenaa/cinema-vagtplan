@@ -27,6 +27,7 @@ import PayrollAdjustmentConfirmationModal, {
 } from "./components/PayrollAdjustmentConfirmationModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import TimeApprovalToolbar from "./components/TimeApprovalToolbar";
+import TimeApprovalEntryNotes from "./components/TimeApprovalEntryNotes";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 
@@ -1027,63 +1028,7 @@ export default function TimeApprovalPage() {
                                         </>
                                       )}
 
-                                      {(entry.clockInNote ||
-                                        entry.clockOutNote ||
-                                        entry.note) && (
-                                        <div className="space-y-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-                                          {!entry.shift &&
-                                          entry.clockInNote &&
-                                          entry.clockInNote ===
-                                            entry.clockOutNote ? (
-                                            <div>
-                                              <span className="font-semibold">
-                                                Note:
-                                              </span>{" "}
-                                              {entry.clockInNote}
-                                            </div>
-                                          ) : (
-                                            <>
-                                              {entry.clockInNote && (
-                                                <div>
-                                                  <span className="font-semibold">
-                                                    Mødetidsnote:
-                                                  </span>{" "}
-                                                  {entry.clockInNote}
-                                                </div>
-                                              )}
-
-                                              {entry.clockOutNote && (
-                                                <div>
-                                                  <span className="font-semibold">
-                                                    Fyraftensnote:
-                                                  </span>{" "}
-                                                  {entry.clockOutNote}
-                                                </div>
-                                              )}
-                                            </>
-                                          )}
-
-                                          {!entry.clockInNote &&
-                                            !entry.clockOutNote &&
-                                            entry.note && (
-                                              <div>
-                                                <span className="font-semibold">
-                                                  Medarbejder note:
-                                                </span>{" "}
-                                                {entry.note}
-                                              </div>
-                                            )}
-                                        </div>
-                                      )}
-
-                                      {entry.adminNote && (
-                                        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
-                                          <span className="font-semibold">
-                                            Admin note:
-                                          </span>{" "}
-                                          {entry.adminNote}
-                                        </div>
-                                      )}
+                                      <TimeApprovalEntryNotes entry={entry} />
                                     </div>
                                   </div>
 
