@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { formatDateTime, readErrorMessage } from "./utils";
 import type { TimeEntry, TimeEntryStatus } from "./types";
 import TimeApprovalFilterModal from "./components/TimeApprovalFilterModal";
-import DeviationPanel from "./components/DeviationPanel";
 import PayrollAdjustmentConfirmationModal, {
   type PayrollAdjustmentConfirmation,
   type PayrollApprovalConflict,
@@ -22,8 +21,7 @@ import PayrollAdjustmentConfirmationModal, {
 } from "./components/PayrollAdjustmentConfirmationModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import TimeApprovalToolbar from "./components/TimeApprovalToolbar";
-import TimeApprovalEntryNotes from "./components/TimeApprovalEntryNotes";
-import TimeApprovalEntryActions from "./components/TimeApprovalEntryActions";
+import TimeApprovalEntryCard from "./components/TimeApprovalEntryCard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 
@@ -210,18 +208,6 @@ export default function TimeApprovalPage() {
     );
   };
 
-  const formatSignedMinutesAsTime = (minutesValue: number) => {
-    const sign = minutesValue >= 0 ? "+" : "-";
-    const absoluteMinutes = Math.abs(minutesValue);
-    const hours = Math.floor(absoluteMinutes / 60);
-    const minutes = absoluteMinutes % 60;
-
-    return `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0",
-    )}`;
-  };
-
   const visibleEntries = entries.filter((entry) => {
     if (!entry.clockIn || !entry.clockOut) return false;
 
@@ -397,17 +383,6 @@ export default function TimeApprovalPage() {
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
-
-  function getHours(entry: TimeEntry) {
-    if (!entry.clockOut) return "-";
-
-    const start = new Date(entry.clockIn);
-    const end = new Date(entry.clockOut);
-
-    const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-
-    return hours.toFixed(2);
-  }
 
   async function saveEdit(data: {
     clockIn: string;
@@ -927,118 +902,18 @@ export default function TimeApprovalPage() {
                         {isExpanded && (
                           <div className="space-y-4 border-t border-gray-200 p-6 dark:border-gray-800">
                             {group.entries.map((entry) => (
-                              <div
+                              <TimeApprovalEntryCard
                                 key={entry.id}
-                                className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
-                              >
-                                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                                  <div className="space-y-4">
-                                    <div>
-                                      <h3 className="text-lg font-semibold">
-                                        {formatDateTime(entry.clockIn)}
-                                      </h3>
-
-                                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        {entry.shift?.workType?.name ||
-                                          "Manuel registrering"}
-                                      </p>
-                                    </div>
-
-                                    {entry.payrollAdjustments &&
-                                      entry.payrollAdjustments.length > 0 && (
-                                        <div className="mt-2 flex flex-wrap gap-2">
-                                          {entry.payrollAdjustments.map(
-                                            (adjustment) => (
-                                              <span
-                                                key={adjustment.id}
-                                                className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                                              >
-                                                Efterregulering{" "}
-                                                {formatSignedMinutesAsTime(
-                                                  adjustment.minutesDelta,
-                                                )}
-                                              </span>
-                                            ),
-                                          )}
-                                        </div>
-                                      )}
-
-                                    <div className="grid gap-2 text-sm">
-                                      <div>
-                                        <span className="font-semibold">
-                                          Arbejdstype:
-                                        </span>{" "}
-                                        {entry.shift?.workType?.name || "-"}
-                                      </div>
-
-                                      <div>
-                                        <span className="font-semibold">
-                                          Mødt:
-                                        </span>{" "}
-                                        {formatDateTime(entry.clockIn)}
-                                      </div>
-
-                                      <div>
-                                        <span className="font-semibold">
-                                          Gået hjem:
-                                        </span>{" "}
-                                        {formatDateTime(entry.clockOut)}
-                                      </div>
-
-                                      <div>
-                                        <span className="font-semibold">
-                                          Timer:
-                                        </span>{" "}
-                                        {getHours(entry)}
-                                      </div>
-
-                                      <div className="pt-2">
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            toggleEntryDetails(entry.id)
-                                          }
-                                          className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                                            entry.deviation?.hasDeviation ||
-                                            entry.clockInNote ||
-                                            entry.clockOutNote ||
-                                            entry.note ||
-                                            entry.adminNote
-                                              ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/50"
-                                              : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                                          }`}
-                                        >
-                                          {entry.deviation?.hasDeviation ||
-                                          entry.clockInNote ||
-                                          entry.clockOutNote ||
-                                          entry.note ||
-                                          entry.adminNote
-                                            ? "⚠ Vis detaljer"
-                                            : "Vis detaljer"}
-                                        </button>
-                                      </div>
-
-                                      {expandedEntryIds.includes(entry.id) && (
-                                        <>
-                                          <DeviationPanel entry={entry} />
-                                        </>
-                                      )}
-
-                                      <TimeApprovalEntryNotes entry={entry} />
-                                    </div>
-                                  </div>
-
-                                  <TimeApprovalEntryActions
-                                    entry={entry}
-                                    onEdit={setEditEntry}
-                                    onOpenHistory={openHistory}
-                                    onApprove={approve}
-                                    onUnapprove={unapprove}
-                                    onSendBackForChanges={sendBackForChanges}
-                                    onVoid={voidEntry}
-                                  />
-                                </div>
-                              </div>
+                                entry={entry}
+                                isExpanded={expandedEntryIds.includes(entry.id)}
+                                onToggleDetails={toggleEntryDetails}
+                                onEdit={setEditEntry}
+                                onOpenHistory={openHistory}
+                                onApprove={approve}
+                                onUnapprove={unapprove}
+                                onSendBackForChanges={sendBackForChanges}
+                                onVoid={voidEntry}
+                              />
                             ))}
                           </div>
                         )}
