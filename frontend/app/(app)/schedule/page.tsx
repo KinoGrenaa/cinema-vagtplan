@@ -28,6 +28,10 @@ import {
   getStaffingShiftOptionText,
   getUserDisplayName,
 } from "./helpers/scheduleShiftText";
+import {
+  getMovedShiftTimes,
+  getResizedShiftTimes,
+} from "./helpers/scheduleShiftTime";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -613,46 +617,17 @@ Handlingen kan ikke fortrydes.`,
     }
   }
 
-  function createDateTimeFromSelectedDate(hour: number, minute: number) {
-    const date = new Date(`${selectedDate}T00:00:00`);
-
-    date.setHours(hour, minute, 0, 0);
-
-    return date;
-  }
-
-  function getSelectedDayRange() {
-    const start = new Date(`${selectedDate}T00:00:00`);
-    const end = new Date(start);
-
-    end.setDate(end.getDate() + 1);
-
-    return { start, end };
-  }
-
   async function handleMoveShift(
     shift: Shift,
     newStartHour: number,
     newStartMinute: number,
   ) {
-    const oldStart = new Date(shift.startTime);
-    const oldEnd = new Date(shift.endTime);
-    const durationMs = oldEnd.getTime() - oldStart.getTime();
-
-    const { start: dayStart } = getSelectedDayRange();
-
-    const visibleStart =
-      oldStart.getTime() > dayStart.getTime() ? oldStart : dayStart;
-
-    const visibleOffsetMs = visibleStart.getTime() - oldStart.getTime();
-
-    const newVisibleStart = createDateTimeFromSelectedDate(
+    const { newStart, newEnd } = getMovedShiftTimes({
+      shift,
+      selectedDate,
       newStartHour,
       newStartMinute,
-    );
-
-    const newStart = new Date(newVisibleStart.getTime() - visibleOffsetMs);
-    const newEnd = new Date(newStart.getTime() + durationMs);
+    });
 
     try {
       await updateShift(shift.id, {
@@ -698,33 +673,14 @@ Handlingen kan ikke fortrydes.`,
     newEndHour: number,
     newEndMinute: number,
   ) {
-    const oldStart = new Date(shift.startTime);
-    const oldEnd = new Date(shift.endTime);
-
-    const { start: dayStart, end: dayEnd } = getSelectedDayRange();
-
-    const visibleStart =
-      oldStart.getTime() > dayStart.getTime() ? oldStart : dayStart;
-
-    const visibleEnd = oldEnd.getTime() < dayEnd.getTime() ? oldEnd : dayEnd;
-
-    const hiddenBeforeMs = visibleStart.getTime() - oldStart.getTime();
-
-    const hiddenAfterMs = oldEnd.getTime() - visibleEnd.getTime();
-
-    const newVisibleStart = createDateTimeFromSelectedDate(
+    const { newStart, newEnd } = getResizedShiftTimes({
+      shift,
+      selectedDate,
       newStartHour,
       newStartMinute,
-    );
-
-    const newVisibleEnd = createDateTimeFromSelectedDate(
       newEndHour,
       newEndMinute,
-    );
-
-    const newStart = new Date(newVisibleStart.getTime() - hiddenBeforeMs);
-
-    const newEnd = new Date(newVisibleEnd.getTime() + hiddenAfterMs);
+    });
 
     try {
       await updateShift(shift.id, {
