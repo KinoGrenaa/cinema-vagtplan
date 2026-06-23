@@ -11,10 +11,7 @@ import LeaveApprovalSummaryCards from "./components/LeaveApprovalSummaryCards";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
-import {
-  formatDateDK,
-  formatUtcDateDK,
-} from "@/app/utils/dateTime";
+import { formatDateDK, formatUtcDateDK } from "@/app/utils/dateTime";
 
 type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
