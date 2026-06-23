@@ -21,6 +21,12 @@ import PayrollAdjustmentConfirmationModal, {
 } from "./components/PayrollAdjustmentConfirmationModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import TimeApprovalContent from "./components/TimeApprovalContent";
+import {
+  getActiveFilterCount,
+  getGroupedEntries,
+  getTimeApprovalStatusCounts,
+  getVisibleEntries,
+} from "./helpers/timeApprovalFilters";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 
@@ -143,24 +149,6 @@ function shouldShowCreatedNoteAsSingleNote(item: TimeEntryRevision) {
   return clockInNote.length > 0 && clockInNote === clockOutNote;
 }
 
-function hasEntryNote(entry: TimeEntry) {
-  return Boolean(
-    entry.clockInNote?.trim() ||
-    entry.clockOutNote?.trim() ||
-    entry.note?.trim() ||
-    entry.adminNote?.trim(),
-  );
-}
-
-function getEntryLocalDate(entry: TimeEntry) {
-  return new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Copenhagen",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(entry.clockIn));
-}
-
 export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,68 +195,30 @@ export default function TimeApprovalPage() {
     );
   };
 
-  const visibleEntries = entries.filter((entry) => {
-    if (!entry.clockIn || !entry.clockOut) return false;
-
-    if (entry.status === "PENDING" && !showPending) return false;
-    if (entry.status === "NEEDS_CHANGES" && !showNeedsChanges) return false;
-    if (entry.status === "APPROVED" && !showApproved) return false;
-    if (entry.status === "VOIDED" && !showVoided) return false;
-
-    const isManualEntry = !entry.shift;
-
-    if (isManualEntry && !showManualEntries) return false;
-    if (!isManualEntry && !showPlannedEntries) return false;
-
-    if (onlyWithDeviations && !entry.deviation?.hasDeviation) return false;
-    if (onlyWithNotes && !hasEntryNote(entry)) return false;
-
-    const entryDate = getEntryLocalDate(entry);
-
-    if (dateFrom && entryDate < dateFrom) return false;
-    if (dateTo && entryDate > dateTo) return false;
-
-    const search = employeeSearch.trim().toLowerCase();
-
-    if (search) {
-      const haystack =
-        `${entry.user.firstName} ${entry.user.lastName} ${entry.user.email}`.toLowerCase();
-
-      if (!haystack.includes(search)) return false;
-    }
-
-    return true;
-  });
-
-  const pendingCount = entries.filter(
-    (entry) => entry.clockIn && entry.clockOut && entry.status === "PENDING",
-  ).length;
-
-  const approvedCount = entries.filter(
-    (entry) => entry.clockIn && entry.clockOut && entry.status === "APPROVED",
-  ).length;
-
-  const needsChangesCount = entries.filter(
-    (entry) =>
-      entry.clockIn && entry.clockOut && entry.status === "NEEDS_CHANGES",
-  ).length;
-
-  const voidedCount = entries.filter(
-    (entry) => entry.clockIn && entry.clockOut && entry.status === "VOIDED",
-  ).length;
-
-  const activeFilterCount = [
-    !showPending,
-    !showNeedsChanges,
+  const filters = {
+    employeeSearch,
+    showPending,
+    showNeedsChanges,
     showApproved,
     showVoided,
-    !showPlannedEntries,
-    !showManualEntries,
+    showPlannedEntries,
+    showManualEntries,
     onlyWithDeviations,
     onlyWithNotes,
-    Boolean(dateFrom),
-    Boolean(dateTo),
-  ].filter(Boolean).length;
+    dateFrom,
+    dateTo,
+  };
+
+  const visibleEntries = getVisibleEntries(entries, filters);
+
+  const {
+    pendingCount,
+    approvedCount,
+    needsChangesCount,
+    voidedCount,
+  } = getTimeApprovalStatusCounts(entries);
+
+  const activeFilterCount = getActiveFilterCount(filters);
 
   function resetFilters() {
     setShowPending(true);
@@ -283,47 +233,7 @@ export default function TimeApprovalPage() {
     setDateTo("");
   }
 
-  const groupedEntries = Array.from(
-    visibleEntries.reduce((groups, entry) => {
-      const userKey = entry.user.email;
-      const existingGroup = groups.get(userKey);
-
-      if (existingGroup) {
-        existingGroup.entries.push(entry);
-      } else {
-        groups.set(userKey, {
-          user: entry.user,
-          entries: [entry],
-        });
-      }
-
-      return groups;
-    }, new Map<string, { user: TimeEntry["user"]; entries: TimeEntry[] }>()),
-  )
-    .map(([userId, group]) => ({
-      userId,
-      ...group,
-      pendingCount: group.entries.filter((entry) => entry.status === "PENDING")
-        .length,
-      needsChangesCount: group.entries.filter(
-        (entry) => entry.status === "NEEDS_CHANGES",
-      ).length,
-      approvedCount: group.entries.filter(
-        (entry) => entry.status === "APPROVED",
-      ).length,
-      voidedCount: group.entries.filter((entry) => entry.status === "VOIDED")
-        .length,
-      manualCount: group.entries.filter((entry) => !entry.shift).length,
-      deviationCount: group.entries.filter(
-        (entry) => entry.shift && entry.deviation?.hasDeviation,
-      ).length,
-    }))
-    .sort((a, b) => {
-      const nameA = `${a.user.firstName} ${a.user.lastName}`.toLowerCase();
-      const nameB = `${b.user.firstName} ${b.user.lastName}`.toLowerCase();
-
-      return nameA.localeCompare(nameB, "da-DK");
-    });
+  const groupedEntries = getGroupedEntries(visibleEntries);
 
   function getSelectedCinemaQuery() {
     const selectedCinemaId =
