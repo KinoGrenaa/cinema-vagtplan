@@ -63,91 +63,6 @@ type TimeEntryRevision = {
   } | null;
 };
 
-function getRevisionActionLabel(action: string) {
-  switch (action) {
-    case "CREATED":
-      return "Oprettet";
-
-    case "UPDATED":
-      return "Rettet";
-
-    case "APPROVED":
-      return "Godkendt";
-
-    case "UNAPPROVED":
-      return "Godkendelse fjernet";
-
-    case "NEEDS_CHANGES":
-      return "Sendt retur til rettelse";
-
-    case "VOIDED":
-      return "Annulleret";
-
-    case "REOPENED":
-      return "Genåbnet";
-
-    default:
-      return action;
-  }
-}
-
-function getRevisionActorLabel(action: string) {
-  switch (action) {
-    case "CREATED":
-      return "Oprettet af";
-
-    case "UPDATED":
-      return "Rettet af";
-
-    case "APPROVED":
-      return "Godkendt af";
-
-    case "UNAPPROVED":
-      return "Godkendelse fjernet af";
-
-    case "NEEDS_CHANGES":
-      return "Sendt retur af";
-
-    case "VOIDED":
-      return "Annulleret af";
-
-    case "REOPENED":
-      return "Genåbnet af";
-
-    default:
-      return "Udført af";
-  }
-}
-
-function getStatusHistoryLabel(status?: string | null) {
-  if (!status) return "-";
-
-  switch (status) {
-    case "PENDING":
-      return "Afventer";
-
-    case "APPROVED":
-      return "Godkendt";
-
-    case "NEEDS_CHANGES":
-      return "Skal rettes";
-
-    case "VOIDED":
-      return "Annulleret";
-
-    default:
-      return status;
-  }
-}
-
-function shouldShowCreatedNoteAsSingleNote(item: TimeEntryRevision) {
-  if (item.action !== "CREATED") return false;
-
-  const clockInNote = item.newClockInNote?.trim() || "";
-  const clockOutNote = item.newClockOutNote?.trim() || "";
-
-  return clockInNote.length > 0 && clockInNote === clockOutNote;
-}
 
 export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -211,12 +126,8 @@ export default function TimeApprovalPage() {
 
   const visibleEntries = getVisibleEntries(entries, filters);
 
-  const {
-    pendingCount,
-    approvedCount,
-    needsChangesCount,
-    voidedCount,
-  } = getTimeApprovalStatusCounts(entries);
+  const { pendingCount, approvedCount, needsChangesCount, voidedCount } =
+    getTimeApprovalStatusCounts(entries);
 
   const activeFilterCount = getActiveFilterCount(filters);
 
