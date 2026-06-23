@@ -15,11 +15,7 @@ import ScheduleLeaveOverview from "./components/ScheduleLeaveOverview";
 import ScheduleShiftsPanel from "./components/ScheduleShiftsPanel";
 import MovieProgram from "./components/MovieProgram";
 import { useSchedule } from "../../hooks/useSchedule";
-import {
-  useScheduleAi,
-  type MovieShowing,
-  type UseScheduleAiInput,
-} from "../../hooks/useScheduleAi";
+import AiScheduleFeatures from "./components/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
   dateToLocalDateString,
@@ -36,73 +32,6 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { toast } from "sonner";
-
-type AiScheduleData = ReturnType<typeof useScheduleAi>;
-
-type AiScheduleFeatureProps = {
-  enabled: boolean;
-  selectedDate: string;
-  shifts: Shift[];
-  users: User[];
-  workTypes: WorkType[];
-  movieShowings: MovieShowing[];
-  createShift: UseScheduleAiInput["createShift"];
-  showError: UseScheduleAiInput["showError"];
-  children: (ai: AiScheduleData | null) => React.ReactNode;
-};
-
-function AiScheduleFeatures({
-  enabled,
-  selectedDate,
-  shifts,
-  users,
-  workTypes,
-  movieShowings,
-  createShift,
-  showError,
-  children,
-}: AiScheduleFeatureProps) {
-  if (!enabled) {
-    return <>{children(null)}</>;
-  }
-
-  return (
-    <AiScheduleFeaturesEnabled
-      selectedDate={selectedDate}
-      shifts={shifts}
-      users={users}
-      workTypes={workTypes}
-      movieShowings={movieShowings}
-      createShift={createShift}
-      showError={showError}
-    >
-      {children}
-    </AiScheduleFeaturesEnabled>
-  );
-}
-
-function AiScheduleFeaturesEnabled({
-  selectedDate,
-  shifts,
-  users,
-  workTypes,
-  movieShowings,
-  createShift,
-  showError,
-  children,
-}: Omit<AiScheduleFeatureProps, "enabled">) {
-  const ai = useScheduleAi({
-    selectedDate,
-    shifts,
-    users,
-    workTypes,
-    movieShowings,
-    createShift,
-    showError,
-  });
-
-  return <>{children(ai)}</>;
-}
 
 export default function SchedulePage() {
   const confirmDialog = useConfirm();
