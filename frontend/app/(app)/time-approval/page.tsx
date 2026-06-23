@@ -20,8 +20,7 @@ import PayrollAdjustmentConfirmationModal, {
   type PayrollPeriodInfo,
 } from "./components/PayrollAdjustmentConfirmationModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
-import TimeApprovalToolbar from "./components/TimeApprovalToolbar";
-import TimeApprovalUserGroup from "./components/TimeApprovalUserGroup";
+import TimeApprovalContent from "./components/TimeApprovalContent";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 
@@ -783,87 +782,29 @@ export default function TimeApprovalPage() {
   return (
     <>
       <AdminGuard>
-        <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-          <div className="mx-auto max-w-7xl space-y-6">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-              <h1 className="text-3xl font-bold">Godkend timer</h1>
-
-              <p className="mt-2 text-gray-500 dark:text-gray-400">
-                Gennemgå, godkend eller send mødetid og fyraften retur til
-                rettelse med tydelig sammenligning mellem vagtplan og
-                registreret tid.
-              </p>
-            </div>
-
-            {loading && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-                Henter tidsregistreringer...
-              </div>
-            )}
-
-            {!loading && (
-              <div className="space-y-4">
-                <TimeApprovalToolbar
-                  activeFilterCount={activeFilterCount}
-                  employeeSearch={employeeSearch}
-                  pendingCount={pendingCount}
-                  needsChangesCount={needsChangesCount}
-                  onEmployeeSearchChange={setEmployeeSearch}
-                  onOpenFilters={() => setShowFilterModal(true)}
-                  onResetFilters={resetFilters}
-                />
-
-                {entries.length > 0 && visibleEntries.length === 0 ? (
-                  <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                    <div className="mb-2 text-4xl">🔎</div>
-
-                    <h2 className="text-xl font-bold">
-                      Ingen tidsregistreringer matcher filteret
-                    </h2>
-
-                    <p className="mt-2 text-gray-500 dark:text-gray-400">
-                      Justér filteret for at se flere registreringer.
-                    </p>
-                  </div>
-                ) : (
-                  groupedEntries.map((group) => (
-                    <TimeApprovalUserGroup
-                      key={group.userId}
-                      group={group}
-                      isExpanded={expandedUserIds.includes(group.userId)}
-                      expandedEntryIds={expandedEntryIds}
-                      onToggleGroup={toggleUserGroup}
-                      onToggleEntryDetails={toggleEntryDetails}
-                      onEdit={setEditEntry}
-                      onOpenHistory={openHistory}
-                      onApprove={approve}
-                      onUnapprove={unapprove}
-                      onSendBackForChanges={sendBackForChanges}
-                      onVoid={voidEntry}
-                    />
-                  ))
-                )}
-              </div>
-            )}
-
-            {!loading &&
-              entries.length === 0 &&
-              activeFilterCount === 0 &&
-              !employeeSearch.trim() && (
-                <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                  <div className="mb-2 text-4xl">⏱️</div>
-
-                  <h2 className="text-xl font-bold">
-                    Ingen tidsregistreringer
-                  </h2>
-
-                  <p className="mt-2 text-gray-500 dark:text-gray-400">
-                    Der er ingen registreringer at godkende lige nu.
-                  </p>
-                </div>
-              )}
-          </div>
-        </main>
+        <TimeApprovalContent
+          loading={loading}
+          entriesCount={entries.length}
+          visibleEntriesCount={visibleEntries.length}
+          activeFilterCount={activeFilterCount}
+          employeeSearch={employeeSearch}
+          pendingCount={pendingCount}
+          needsChangesCount={needsChangesCount}
+          groups={groupedEntries}
+          expandedUserIds={expandedUserIds}
+          expandedEntryIds={expandedEntryIds}
+          onEmployeeSearchChange={setEmployeeSearch}
+          onOpenFilters={() => setShowFilterModal(true)}
+          onResetFilters={resetFilters}
+          onToggleGroup={toggleUserGroup}
+          onToggleEntryDetails={toggleEntryDetails}
+          onEdit={setEditEntry}
+          onOpenHistory={openHistory}
+          onApprove={approve}
+          onUnapprove={unapprove}
+          onSendBackForChanges={sendBackForChanges}
+          onVoid={voidEntry}
+        />
 
         {editEntry && (
           <TimeEntryEditModal
