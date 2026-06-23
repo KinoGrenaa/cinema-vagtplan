@@ -8,6 +8,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { PayrollRulesService } from './payroll-rules.service';
+import {
+  analyzePayrollTimeEntryDeviation,
+  type TimeEntryDeviation,
+} from './helpers/payroll-deviation';
 
 type AuthUser = {
   sub: number;
@@ -29,163 +33,8 @@ type PayrollExportSegment = {
   payrollName: string;
 };
 
-type TimeEntryDeviationType =
-  | 'NONE'
-  | 'OPEN_ENTRY'
-  | 'MANUAL_WITHOUT_SHIFT'
-  | 'EARLY_CLOCK_IN'
-  | 'LATE_CLOCK_IN'
-  | 'EARLY_CLOCK_OUT'
-  | 'LATE_CLOCK_OUT'
-  | 'TIME_DIFFERENCE';
-
-type TimeEntryDeviation = {
-  hasDeviation: boolean;
-  requiresNote: boolean;
-  types: TimeEntryDeviationType[];
-  plannedMinutes: number | null;
-  registeredMinutes: number | null;
-  differenceMinutes: number | null;
-  clockInDeviationMinutes: number | null;
-  clockOutDeviationMinutes: number | null;
-  messages: string[];
-};
-
 @Injectable()
 export class PayrollService {
-  private readonly deviationGraceMinutes = 5;
-
-  private formatDeviationMinutes(minutes: number): string {
-    const absoluteMinutes = Math.abs(minutes);
-
-    const hours = Math.floor(absoluteMinutes / 60);
-    const remainingMinutes = absoluteMinutes % 60;
-
-    if (hours === 0) {
-      return `${remainingMinutes} minutter`;
-    }
-
-    if (remainingMinutes === 0) {
-      return `${hours} timer`;
-    }
-
-    return `${hours} timer ${remainingMinutes} minutter`;
-  }
-
-  private minutesBetween(start: Date, end: Date) {
-    return Math.round((end.getTime() - start.getTime()) / 60000);
-  }
-
-  private analyzeDeviation(entry: any): TimeEntryDeviation {
-    const messages: string[] = [];
-    const types: TimeEntryDeviationType[] = [];
-    const shift = entry.shift;
-
-    if (!entry.clockOut) {
-      return {
-        hasDeviation: true,
-        requiresNote: false,
-        types: ['OPEN_ENTRY'],
-        plannedMinutes: shift
-          ? this.minutesBetween(shift.startTime, shift.endTime)
-          : null,
-        registeredMinutes: null,
-        differenceMinutes: null,
-        clockInDeviationMinutes: shift
-          ? this.minutesBetween(shift.startTime, entry.clockIn)
-          : null,
-        clockOutDeviationMinutes: null,
-        messages: ['Tidsregistreringen er stadig åben'],
-      };
-    }
-
-    if (!shift) {
-      return {
-        hasDeviation: true,
-        requiresNote: true,
-        types: ['MANUAL_WITHOUT_SHIFT'],
-        plannedMinutes: null,
-        registeredMinutes: this.minutesBetween(entry.clockIn, entry.clockOut),
-        differenceMinutes: null,
-        clockInDeviationMinutes: null,
-        clockOutDeviationMinutes: null,
-        messages: ['Tidsregistreringen er ikke tilknyttet en planlagt vagt'],
-      };
-    }
-
-    const plannedMinutes = this.minutesBetween(shift.startTime, shift.endTime);
-    const registeredMinutes = this.minutesBetween(
-      entry.clockIn,
-      entry.clockOut,
-    );
-    const differenceMinutes = registeredMinutes - plannedMinutes;
-    const clockInDeviationMinutes = this.minutesBetween(
-      shift.startTime,
-      entry.clockIn,
-    );
-    const clockOutDeviationMinutes = this.minutesBetween(
-      shift.endTime,
-      entry.clockOut,
-    );
-
-    if (clockInDeviationMinutes > this.deviationGraceMinutes) {
-      types.push('LATE_CLOCK_IN');
-      messages.push(
-        `Mødt ${this.formatDeviationMinutes(clockInDeviationMinutes)} for sent`,
-      );
-    }
-
-    if (clockInDeviationMinutes < -this.deviationGraceMinutes) {
-      types.push('EARLY_CLOCK_IN');
-      messages.push(
-        `Mødt ${this.formatDeviationMinutes(clockInDeviationMinutes)} før planlagt`,
-      );
-    }
-
-    if (clockOutDeviationMinutes < -this.deviationGraceMinutes) {
-      types.push('EARLY_CLOCK_OUT');
-      messages.push(
-        `Gået ${this.formatDeviationMinutes(clockOutDeviationMinutes)} efter planlagt`,
-      );
-    }
-
-    if (clockOutDeviationMinutes > this.deviationGraceMinutes) {
-      types.push('LATE_CLOCK_OUT');
-      messages.push(
-        `Gået ${this.formatDeviationMinutes(clockOutDeviationMinutes)} efter planlagt`,
-      );
-    }
-
-    if (
-      types.length === 0 &&
-      Math.abs(differenceMinutes) > this.deviationGraceMinutes
-    ) {
-      types.push('TIME_DIFFERENCE');
-      messages.push(
-        `Registreret tid afviger med ${this.formatDeviationMinutes(differenceMinutes)} fra vagtplanen`,
-      );
-    }
-
-    if (types.length === 0) {
-      types.push('NONE');
-      messages.push('Ingen væsentlig afvigelse');
-    }
-
-    const hasDeviation = types.some((type) => type !== 'NONE');
-
-    return {
-      hasDeviation,
-      requiresNote: hasDeviation,
-      types,
-      plannedMinutes,
-      registeredMinutes,
-      differenceMinutes,
-      clockInDeviationMinutes,
-      clockOutDeviationMinutes,
-      messages,
-    };
-  }
-
   constructor(
     private prisma: PrismaService,
     private payrollRulesService: PayrollRulesService,
@@ -755,7 +604,7 @@ export class PayrollService {
       if (!userGroup) continue;
 
       const payrollData = this.resolvePayrollData(entry);
-      const deviation = this.analyzeDeviation(entry);
+      const deviation = analyzePayrollTimeEntryDeviation(entry);
 
       userGroup.totalHours += hours;
 
