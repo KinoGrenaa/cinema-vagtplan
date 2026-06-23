@@ -1,0 +1,268 @@
+import { ChevronDown, ChevronRight } from "lucide-react";
+import LeaveApprovalRequestCard from "./LeaveApprovalRequestCard";
+
+type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+
+type LeaveRequest = {
+  id: number;
+  startDate: string;
+  endDate: string;
+  reason?: string | null;
+  status: LeaveStatus;
+  createdAt?: string;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+};
+
+type LeaveDateGroup = {
+  key: string;
+  title: string;
+  sortTime: number;
+  requests: LeaveRequest[];
+};
+
+type LeaveUserGroup = {
+  userId: number;
+  userName: string;
+  requests: LeaveRequest[];
+  dateGroups: LeaveDateGroup[];
+};
+
+type LeaveApprovalRequestsSectionProps = {
+  requests: LeaveRequest[];
+  visibleRequests: LeaveRequest[];
+  groupedRequests: LeaveUserGroup[];
+  statusFilterSummary: string;
+  dateFilterSummary: string;
+  expandedUserIds: number[];
+  isDateGroupExpanded: (userId: number, dateKey: string) => boolean;
+  onToggleUserGroup: (userId: number) => void;
+  onToggleDateGroup: (userId: number, dateKey: string) => void;
+  onUpdateStatus: (requestId: number, status: LeaveStatus) => void;
+};
+
+function getStatusBadge(status: LeaveStatus) {
+  if (status === "APPROVED") {
+    return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
+  }
+
+  if (status === "REJECTED") {
+    return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
+  }
+
+  if (status === "CANCELLED") {
+    return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+  }
+
+  return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
+}
+
+function getStatusCountsForRequests(requests: LeaveRequest[]) {
+  return requests.reduce(
+    (counts, request) => ({
+      ...counts,
+      [request.status]: counts[request.status] + 1,
+    }),
+    {
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      CANCELLED: 0,
+    } satisfies Record<LeaveStatus, number>,
+  );
+}
+
+function getStatusSummaryParts(requests: LeaveRequest[]) {
+  const counts = getStatusCountsForRequests(requests);
+
+  return [
+    { label: "Afventer", count: counts.PENDING, status: "PENDING" as const },
+    { label: "Godkendt", count: counts.APPROVED, status: "APPROVED" as const },
+    { label: "Afvist", count: counts.REJECTED, status: "REJECTED" as const },
+    {
+      label: "Annulleret",
+      count: counts.CANCELLED,
+      status: "CANCELLED" as const,
+    },
+  ].filter((item) => item.count > 0);
+}
+
+export default function LeaveApprovalRequestsSection({
+  requests,
+  visibleRequests,
+  groupedRequests,
+  statusFilterSummary,
+  dateFilterSummary,
+  expandedUserIds,
+  isDateGroupExpanded,
+  onToggleUserGroup,
+  onToggleDateGroup,
+  onUpdateStatus,
+}: LeaveApprovalRequestsSectionProps) {
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Ansøgninger</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Viser {visibleRequests.length} af {requests.length} ansøgninger.
+          </p>
+        </div>
+
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          {statusFilterSummary} · {dateFilterSummary}
+        </div>
+      </div>
+
+      {groupedRequests.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 p-8 text-center dark:border-gray-800">
+          <h3 className="text-xl font-bold">Ingen fraværsansøgninger</h3>
+
+          <p className="mt-2 text-gray-500 dark:text-gray-400">
+            Ingen ansøgninger matcher det valgte filter.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {groupedRequests.map((group) => {
+            const isExpanded = expandedUserIds.includes(group.userId);
+
+            return (
+              <div
+                key={group.userId}
+                className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+              >
+                <button
+                  type="button"
+                  onClick={() => onToggleUserGroup(group.userId)}
+                  className="flex w-full items-center justify-between gap-4 bg-gray-50 p-4 text-left transition hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 font-semibold">
+                      {isExpanded ? (
+                        <ChevronDown size={18} />
+                      ) : (
+                        <ChevronRight size={18} />
+                      )}
+                      {group.userName}
+                    </div>
+
+                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {group.requests.length} ansøgning
+                      {group.requests.length === 1 ? "" : "er"}
+                    </div>
+                  </div>
+
+                  <div className="text-right text-sm text-gray-500 dark:text-gray-400">
+                    {[
+                      {
+                        label: "Afventer",
+                        count: group.requests.filter(
+                          (request) => request.status === "PENDING",
+                        ).length,
+                      },
+                      {
+                        label: "Godkendt",
+                        count: group.requests.filter(
+                          (request) => request.status === "APPROVED",
+                        ).length,
+                      },
+                      {
+                        label: "Afvist",
+                        count: group.requests.filter(
+                          (request) => request.status === "REJECTED",
+                        ).length,
+                      },
+                      {
+                        label: "Annulleret",
+                        count: group.requests.filter(
+                          (request) => request.status === "CANCELLED",
+                        ).length,
+                      },
+                    ]
+                      .filter((item) => item.count > 0)
+                      .map((item) => `${item.label}: ${item.count}`)
+                      .join(" · ")}
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="space-y-3 p-4">
+                    {group.dateGroups.map((dateGroup) => {
+                      const isDateExpanded = isDateGroupExpanded(
+                        group.userId,
+                        dateGroup.key,
+                      );
+                      const statusSummary = getStatusSummaryParts(
+                        dateGroup.requests,
+                      );
+
+                      return (
+                        <div
+                          key={dateGroup.key}
+                          className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onToggleDateGroup(group.userId, dateGroup.key)
+                            }
+                            className="flex w-full flex-col gap-3 bg-gray-50 p-4 text-left transition hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900 md:flex-row md:items-center md:justify-between"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 font-semibold">
+                                {isDateExpanded ? (
+                                  <ChevronDown size={18} />
+                                ) : (
+                                  <ChevronRight size={18} />
+                                )}
+                                {dateGroup.title}
+                              </div>
+
+                              <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                {dateGroup.requests.length} ansøgning
+                                {dateGroup.requests.length === 1 ? "" : "er"}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 md:justify-end">
+                              {statusSummary.map((item) => (
+                                <span
+                                  key={item.status}
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
+                                    item.status,
+                                  )}`}
+                                >
+                                  {item.label}: {item.count}
+                                </span>
+                              ))}
+                            </div>
+                          </button>
+
+                          {isDateExpanded && (
+                            <div className="space-y-3 border-t border-gray-200 p-4 dark:border-gray-800">
+                              {dateGroup.requests.map((request) => (
+                                <LeaveApprovalRequestCard
+                                  key={request.id}
+                                  request={request}
+                                  onUpdateStatus={onUpdateStatus}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
