@@ -14,11 +14,14 @@ import {
   getCinemaDeviationSelect,
   getEntryMinutes,
   hasText,
-  requiresClockInDeviationNote,
-  requiresClockOutDeviationNote,
-  requiresGeneralDeviationNote,
   withTimeEntryDeviation,
 } from './helpers/time-entry-deviation';
+import {
+  ensureAdminTimeEntryDeviationNotes,
+  ensureApprovalDeviationNotes,
+  ensureManualEntryDeviationNotes,
+  ensureOwnTimeEntryDeviationNotes,
+} from './helpers/time-entry-deviation-notes';
 import {
   ensureTimeEntryEditable,
   ensureUserCanAccessTimeEntry,
@@ -294,25 +297,11 @@ export class TimeEntriesService {
         shift.cinema,
       );
 
-      if (
-        deviation.requiresNote &&
-        requiresClockInDeviationNote(deviation) &&
-        !hasText(clockInNote)
-      ) {
-        throw new BadRequestException(
-          'Du skal skrive en mødetidsnote, når mødetiden afviger fra vagtplanen',
-        );
-      }
-
-      if (
-        deviation.requiresNote &&
-        requiresClockOutDeviationNote(deviation) &&
-        !hasText(clockOutNote)
-      ) {
-        throw new BadRequestException(
-          'Du skal skrive en fyraftensnote, når fyraften afviger fra vagtplanen',
-        );
-      }
+      ensureManualEntryDeviationNotes({
+        deviation,
+        clockInNote,
+        clockOutNote,
+      });
 
       const existingEntry = await this.prisma.timeEntry.findFirst({
         where: {
@@ -706,16 +695,12 @@ export class TimeEntriesService {
       );
     }
 
-    if (
-      deviation.requiresNote &&
-      !hasText(existingEntry.clockInNote) &&
-      !hasText(existingEntry.clockOutNote) &&
-      !hasText(existingEntry.note)
-    ) {
-      throw new BadRequestException(
-        'Tidsregistreringen har afvigelser og kræver en medarbejder-note før godkendelse',
-      );
-    }
+    ensureApprovalDeviationNotes({
+      deviation,
+      clockInNote: existingEntry.clockInNote,
+      clockOutNote: existingEntry.clockOutNote,
+      note: existingEntry.note,
+    });
 
     let adjustmentPayrollPeriodId: number | null = null;
     let adjustmentPayrollPeriod: any = null;
@@ -1221,36 +1206,11 @@ export class TimeEntriesService {
       existingEntry.cinema,
     );
 
-    if (
-      deviation.requiresNote &&
-      requiresClockInDeviationNote(deviation) &&
-      !hasText(newClockInNote)
-    ) {
-      throw new BadRequestException(
-        'Du skal skrive en mødetidsnote, når mødetiden afviger fra vagtplanen',
-      );
-    }
-
-    if (
-      deviation.requiresNote &&
-      requiresClockOutDeviationNote(deviation) &&
-      !hasText(newClockOutNote)
-    ) {
-      throw new BadRequestException(
-        'Du skal skrive en fyraftensnote, når fyraften afviger fra vagtplanen',
-      );
-    }
-
-    if (
-      deviation.requiresNote &&
-      requiresGeneralDeviationNote(deviation) &&
-      !hasText(newClockInNote) &&
-      !hasText(newClockOutNote)
-    ) {
-      throw new BadRequestException(
-        'Du skal skrive en note, når tiderne afviger fra vagtplanen',
-      );
-    }
+    ensureOwnTimeEntryDeviationNotes({
+      deviation,
+      clockInNote: newClockInNote,
+      clockOutNote: newClockOutNote,
+    });
 
     const changes = getOwnTimeEntryUpdateChanges({
       existingEntry,
@@ -1448,27 +1408,12 @@ export class TimeEntriesService {
       existingEntry.cinema,
     );
 
-    if (
-      deviation.requiresNote &&
-      requiresClockInDeviationNote(deviation) &&
-      !hasText(nextClockInNote) &&
-      !hasText(data.adminNote)
-    ) {
-      throw new BadRequestException(
-        'Mødetidsnote eller admin-note er påkrævet, når mødetiden afviger fra vagtplanen',
-      );
-    }
-
-    if (
-      deviation.requiresNote &&
-      requiresClockOutDeviationNote(deviation) &&
-      !hasText(nextClockOutNote) &&
-      !hasText(data.adminNote)
-    ) {
-      throw new BadRequestException(
-        'Fyraftensnote eller admin-note er påkrævet, når fyraften afviger fra vagtplanen',
-      );
-    }
+    ensureAdminTimeEntryDeviationNotes({
+      deviation,
+      clockInNote: nextClockInNote,
+      clockOutNote: nextClockOutNote,
+      adminNote: data.adminNote,
+    });
 
     const changes = getAdminTimeEntryUpdateChanges({
       existingEntry,
