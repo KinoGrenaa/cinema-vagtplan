@@ -9,11 +9,8 @@ import {
   ManualTimeRegistrationModal,
   TimeRegistrationModal,
 } from "./components/TimeRegistrationModals";
-import { SchedulePageHeader } from "./components/ScheduleHeader";
-import ScheduleLeaveOverview from "./components/ScheduleLeaveOverview";
-import ScheduleShiftsPanel from "./components/ScheduleShiftsPanel";
 import ScheduleShiftFormModal from "./components/ScheduleShiftFormModal";
-import MovieProgram from "./components/MovieProgram";
+import ScheduleMainContent from "./components/ScheduleMainContent";
 import { useSchedule } from "../../hooks/useSchedule";
 import AiScheduleFeatures from "./components/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
@@ -1024,48 +1021,28 @@ ${getShiftConfirmText(selectedShift)}`,
       {(ai) => (
         <>
           <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-            <div className="mx-auto space-y-6">
-              <SchedulePageHeader
-                aiGenerateDaySchedule={ai?.generateAiDaySchedule}
-                aiGeneratingDaySchedule={ai?.generatingAiSchedule ?? false}
-                onOpenRegisterTimeModal={openRegisterTimeModal}
-                onOpenManualTimeModal={openManualTimeModal}
-                disableManualTimeModal={needsMasterCinemaSelection}
-              />
-
-              {canManageShifts && (
-                <ScheduleLeaveOverview
-                  leaveRequests={leaveRequests}
-                  selectedDate={selectedDate}
-                />
-              )}
-
-              <ScheduleShiftsPanel
-                ai={ai}
-                shifts={shifts}
-                users={users}
-                selectedDate={selectedDate}
-                canManageShifts={canManageShifts}
-                needsMasterCinemaSelection={needsMasterCinemaSelection}
-                onOpenStaffingRequest={() => openStaffingRequestModal(null)}
-                onOpenCreateShiftModal={openCreateShiftModal}
-                onPreviousDay={() => changeDate(-1)}
-                onToday={goToToday}
-                onDateChange={goToDate}
-                onNextDay={() => changeDate(1)}
-                onSelectShift={handleSelectShift}
-                onMoveShift={handleMoveShift}
-                onChangeShiftUser={handleChangeShiftUser}
-                onResizeShift={handleResizeShift}
-              />
-
-              {!needsMasterCinemaSelection && (
-                <MovieProgram
-                  movieShowings={filteredMovieShowings}
-                  selectedDate={selectedDate}
-                />
-              )}
-            </div>
+            <ScheduleMainContent
+              ai={ai}
+              shifts={shifts}
+              users={users}
+              selectedDate={selectedDate}
+              canManageShifts={canManageShifts}
+              needsMasterCinemaSelection={needsMasterCinemaSelection}
+              leaveRequests={leaveRequests}
+              movieShowings={filteredMovieShowings}
+              onOpenRegisterTimeModal={openRegisterTimeModal}
+              onOpenManualTimeModal={openManualTimeModal}
+              onOpenStaffingRequest={() => openStaffingRequestModal(null)}
+              onOpenCreateShiftModal={openCreateShiftModal}
+              onPreviousDay={() => changeDate(-1)}
+              onToday={goToToday}
+              onDateChange={goToDate}
+              onNextDay={() => changeDate(1)}
+              onSelectShift={handleSelectShift}
+              onMoveShift={handleMoveShift}
+              onChangeShiftUser={handleChangeShiftUser}
+              onResizeShift={handleResizeShift}
+            />
 
             <ScheduleShiftFormModal
               open={showShiftFormModal}
