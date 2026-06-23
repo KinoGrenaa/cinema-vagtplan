@@ -26,18 +26,11 @@ import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
 } from './helpers/payroll-access';
-
-type PayrollData = {
-  payrollCode: string;
-  exportCode: string;
-  payrollName: string;
-};
-
-type PayrollExportSegment = {
-  hours: number;
-  exportCode: string;
-  payrollName: string;
-};
+import {
+  formatPayrollCsvRows,
+  getSimplePayrollSegment,
+  resolvePayrollData,
+} from './helpers/payroll-export';
 
 @Injectable()
 export class PayrollService {
@@ -101,38 +94,6 @@ export class PayrollService {
     return this.getPayrollPeriodEntityForDate(cinemaId, new Date());
   }
 
-  private resolvePayrollData(timeEntry: any): PayrollData {
-    const directPayrollType = timeEntry.payrollType;
-
-    if (directPayrollType) {
-      return {
-        payrollCode: directPayrollType.payrollCode,
-        exportCode:
-          directPayrollType.exportCode || directPayrollType.payrollCode,
-        payrollName: directPayrollType.name,
-      };
-    }
-
-    const workTypePayrollType = timeEntry.shift?.workType?.payrollType;
-
-    if (workTypePayrollType) {
-      return {
-        payrollCode: workTypePayrollType.payrollCode,
-        exportCode:
-          workTypePayrollType.exportCode || workTypePayrollType.payrollCode,
-        payrollName: workTypePayrollType.name,
-      };
-    }
-
-    const fallbackName = timeEntry.shift?.workType?.name || 'Standard';
-
-    return {
-      payrollCode: fallbackName.toUpperCase(),
-      exportCode: fallbackName.toUpperCase(),
-      payrollName: fallbackName,
-    };
-  }
-
   private async getPayrollRulesEnabled(
     user: PayrollAuthUser,
     selectedCinemaId?: number | null,
@@ -146,20 +107,6 @@ export class PayrollService {
     });
 
     return Boolean((cinema as any)?.payrollRulesEnabled);
-  }
-
-  private getSimplePayrollSegment(entry: {
-    hours: number;
-    exportCode: string;
-    payrollName: string;
-  }): PayrollExportSegment[] {
-    return [
-      {
-        hours: entry.hours,
-        exportCode: entry.exportCode,
-        payrollName: entry.payrollName,
-      },
-    ];
   }
 
   async getPayrollReport(
@@ -363,7 +310,7 @@ export class PayrollService {
       const userGroup = grouped.get(entry.userId);
       if (!userGroup) continue;
 
-      const payrollData = this.resolvePayrollData(entry);
+      const payrollData = resolvePayrollData(entry);
       const deviation = analyzePayrollTimeEntryDeviation(entry);
 
       userGroup.totalHours += hours;
@@ -913,11 +860,7 @@ export class PayrollService {
       }
     }
 
-    return rows
-      .map((row) =>
-        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(';'),
-      )
-      .join('\n');
+    return formatPayrollCsvRows(rows);
   }
 
   async exportUnicontaCsv(
@@ -963,7 +906,7 @@ export class PayrollService {
       for (const entry of employee.entries) {
         const segments = usePayrollRules
           ? this.payrollRulesService.calculateSegments(entry)
-          : this.getSimplePayrollSegment(entry);
+          : getSimplePayrollSegment(entry);
 
         for (const segment of segments) {
           rows.push([
@@ -979,11 +922,7 @@ export class PayrollService {
       }
     }
 
-    return rows
-      .map((row) =>
-        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(';'),
-      )
-      .join('\n');
+    return formatPayrollCsvRows(rows);
   }
 
   async exportPayrollXlsx(
