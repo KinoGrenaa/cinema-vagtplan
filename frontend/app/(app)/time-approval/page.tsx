@@ -20,6 +20,11 @@ import {
 import type { TimeEntry, TimeEntryStatus } from "./types";
 import TimeApprovalFilterModal from "./components/TimeApprovalFilterModal";
 import DeviationPanel from "./components/DeviationPanel";
+import PayrollAdjustmentConfirmationModal, {
+  type PayrollAdjustmentConfirmation,
+  type PayrollApprovalConflict,
+  type PayrollPeriodInfo,
+} from "./components/PayrollAdjustmentConfirmationModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -55,25 +60,6 @@ type TimeEntryRevision = {
     email: string;
     role: string;
   } | null;
-};
-
-type PayrollPeriodInfo = {
-  id: number;
-  startDate: string;
-  endDate: string;
-};
-
-type PayrollApprovalConflict = {
-  code?: string;
-  title?: string;
-  message?: string;
-  originalPayrollPeriod?: PayrollPeriodInfo | null;
-  adjustmentPayrollPeriod?: PayrollPeriodInfo | null;
-};
-
-type PayrollAdjustmentConfirmation = {
-  entry: TimeEntry;
-  details: PayrollApprovalConflict;
 };
 
 function getRevisionActionLabel(action: string) {
@@ -580,14 +566,6 @@ export default function TimeApprovalPage() {
     };
   }
 
-  function formatPayrollPeriod(period?: PayrollPeriodInfo | null) {
-    if (!period) return "-";
-
-    return `${formatDateTime(period.startDate)} – ${formatDateTime(
-      period.endDate,
-    )}`;
-  }
-
   async function approve(
     entry: TimeEntry,
     options?: { confirmPayrollAdjustment?: boolean },
@@ -654,6 +632,24 @@ export default function TimeApprovalPage() {
           ? error.message
           : "Kunne ikke godkende timeregistrering",
       );
+    }
+  }
+
+  async function confirmPayrollAdjustmentApproval() {
+    if (!payrollAdjustmentConfirmation) return;
+
+    const entry = payrollAdjustmentConfirmation.entry;
+
+    try {
+      setConfirmingPayrollAdjustment(true);
+
+      await approve(entry, {
+        confirmPayrollAdjustment: true,
+      });
+
+      setPayrollAdjustmentConfirmation(null);
+    } finally {
+      setConfirmingPayrollAdjustment(false);
     }
   }
 
@@ -1286,84 +1282,12 @@ export default function TimeApprovalPage() {
         currentStatus={historyEntry?.status}
       />
 
-      {payrollAdjustmentConfirmation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-            <h2 className="text-xl font-bold">
-              Lønperioden er allerede eksporteret
-            </h2>
-
-            <div className="mt-4 space-y-4 text-sm text-gray-700 dark:text-gray-200">
-              <p>
-                Denne tidsregistrering tilhører en lønperiode, der allerede er
-                eksporteret.
-              </p>
-
-              <div className="rounded-xl bg-gray-100 p-3 dark:bg-gray-800">
-                <div className="font-semibold">Oprindelig lønperiode</div>
-                <div>
-                  {formatPayrollPeriod(
-                    payrollAdjustmentConfirmation.details.originalPayrollPeriod,
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-orange-50 p-3 text-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
-                <div className="font-semibold">
-                  Efterreguleres i lønperioden
-                </div>
-                <div>
-                  {formatPayrollPeriod(
-                    payrollAdjustmentConfirmation.details
-                      .adjustmentPayrollPeriod,
-                  )}
-                </div>
-              </div>
-
-              <p>
-                Hvis du fortsætter, bliver registreringen markeret som
-                efterregulering.
-              </p>
-            </div>
-
-            <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                disabled={confirmingPayrollAdjustment}
-                onClick={() => setPayrollAdjustmentConfirmation(null)}
-                className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-              >
-                Annuller
-              </button>
-
-              <button
-                type="button"
-                disabled={confirmingPayrollAdjustment}
-                onClick={async () => {
-                  const entry = payrollAdjustmentConfirmation.entry;
-
-                  try {
-                    setConfirmingPayrollAdjustment(true);
-
-                    await approve(entry, {
-                      confirmPayrollAdjustment: true,
-                    });
-
-                    setPayrollAdjustmentConfirmation(null);
-                  } finally {
-                    setConfirmingPayrollAdjustment(false);
-                  }
-                }}
-                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
-              >
-                {confirmingPayrollAdjustment
-                  ? "Godkender..."
-                  : "Godkend som efterregulering"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PayrollAdjustmentConfirmationModal
+        confirmation={payrollAdjustmentConfirmation}
+        loading={confirmingPayrollAdjustment}
+        onCancel={() => setPayrollAdjustmentConfirmation(null)}
+        onConfirm={confirmPayrollAdjustmentApproval}
+      />
 
       <ConfirmModal
         open={errorDialog.open}
