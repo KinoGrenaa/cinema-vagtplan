@@ -12,12 +12,10 @@ import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 import { toast } from "sonner";
 import { formatDateTime, readErrorMessage } from "./utils";
-import type { TimeEntry, TimeEntryStatus } from "./types";
+import type { TimeEntry } from "./types";
 import TimeApprovalFilterModal from "./components/TimeApprovalFilterModal";
 import PayrollAdjustmentConfirmationModal, {
   type PayrollAdjustmentConfirmation,
-  type PayrollApprovalConflict,
-  type PayrollPeriodInfo,
 } from "./components/PayrollAdjustmentConfirmationModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import TimeApprovalContent from "./components/TimeApprovalContent";
@@ -27,6 +25,10 @@ import {
   getTimeApprovalStatusCounts,
   getVisibleEntries,
 } from "./helpers/timeApprovalFilters";
+import {
+  getPayrollConflictDetails,
+  getSelectedCinemaQuery,
+} from "./helpers/timeApprovalRequests";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 
@@ -62,7 +64,6 @@ type TimeEntryRevision = {
     role: string;
   } | null;
 };
-
 
 export default function TimeApprovalPage() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -145,17 +146,6 @@ export default function TimeApprovalPage() {
   }
 
   const groupedEntries = getGroupedEntries(visibleEntries);
-
-  function getSelectedCinemaQuery() {
-    const selectedCinemaId =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("masterSelectedCinemaId")
-        : null;
-
-    return selectedCinemaId
-      ? `?cinemaId=${encodeURIComponent(selectedCinemaId)}`
-      : "";
-  }
 
   const fetchEntries = useCallback(async () => {
     try {
@@ -331,32 +321,6 @@ export default function TimeApprovalPage() {
     } finally {
       setHistoryLoading(false);
     }
-  }
-
-  function getPayrollConflictDetails(
-    payload: unknown,
-  ): PayrollApprovalConflict {
-    if (!payload || typeof payload !== "object") return {};
-
-    const data = payload as {
-      code?: string;
-      title?: string;
-      message?: string | PayrollApprovalConflict;
-      originalPayrollPeriod?: PayrollPeriodInfo | null;
-      adjustmentPayrollPeriod?: PayrollPeriodInfo | null;
-    };
-
-    if (data.message && typeof data.message === "object") {
-      return data.message;
-    }
-
-    return {
-      code: data.code,
-      title: data.title,
-      message: typeof data.message === "string" ? data.message : undefined,
-      originalPayrollPeriod: data.originalPayrollPeriod,
-      adjustmentPayrollPeriod: data.adjustmentPayrollPeriod,
-    };
   }
 
   async function approve(
