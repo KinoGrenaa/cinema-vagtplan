@@ -33,53 +33,16 @@ import {
   getAdminTimeEntryUpdateChanges,
   getOwnTimeEntryUpdateChanges,
 } from './helpers/time-entry-update-changes';
+import { findMatchingShiftForClockIn } from './helpers/time-entry-shifts';
 
 @Injectable()
 export class TimeEntriesService {
-  private readonly shiftMatchBeforeMinutes = 120;
-  private readonly shiftMatchAfterMinutes = 240;
-
   constructor(
     private prisma: PrismaService,
     private realtimeGateway: RealtimeGateway,
     private auditLogsService: AuditLogsService,
     private readonly payrollService: PayrollService,
   ) {}
-
-  private async findMatchingShiftForClockIn(data: {
-    userId: number;
-    cinemaId: number;
-    clockIn: Date;
-  }) {
-    const from = new Date(
-      data.clockIn.getTime() - this.shiftMatchBeforeMinutes * 60000,
-    );
-    const to = new Date(
-      data.clockIn.getTime() + this.shiftMatchAfterMinutes * 60000,
-    );
-
-    return this.prisma.shift.findFirst({
-      where: {
-        userId: data.userId,
-        cinemaId: data.cinemaId,
-        startTime: {
-          lte: to,
-        },
-        endTime: {
-          gte: from,
-        },
-      },
-      include: {
-        workType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-      },
-      orderBy: {
-        startTime: 'asc',
-      },
-    });
-  }
 
   async findForUser(
     userId: number,
@@ -430,7 +393,7 @@ export class TimeEntriesService {
         );
       }
     } else {
-      shift = await this.findMatchingShiftForClockIn({
+      shift = await findMatchingShiftForClockIn(this.prisma, {
         userId: data.userId,
         cinemaId: data.cinemaId,
         clockIn,
