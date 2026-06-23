@@ -32,6 +32,11 @@ import {
   getMovedShiftTimes,
   getResizedShiftTimes,
 } from "./helpers/scheduleShiftTime";
+import {
+  getMovieShowingsForDate,
+  getScheduleStaffingTargetUsers,
+  getShiftsForTimeRegistration,
+} from "./helpers/scheduleDerivedData";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -80,33 +85,15 @@ export default function SchedulePage() {
     );
   }
 
-  const shiftsForTimeRegistration = useMemo(() => {
-    const entriesByShiftId = new Map(
-      timeEntries
-        .filter((entry) => entry.shiftId && entry.status !== "VOIDED")
-        .map((entry) => [entry.shiftId, entry]),
-    );
+  const shiftsForTimeRegistration = useMemo(
+    () => getShiftsForTimeRegistration(shifts, timeEntries, currentUser?.id),
+    [currentUser?.id, shifts, timeEntries],
+  );
 
-    return shifts
-      .filter((shift) => getShiftUserId(shift) === currentUser?.id)
-      .map((shift) => ({
-        shift,
-        timeEntry: entriesByShiftId.get(shift.id) ?? null,
-      }));
-  }, [currentUser?.id, shifts, timeEntries]);
-
-  const filteredMovieShowings = useMemo(() => {
-    const dayStart = new Date(`${selectedDate}T00:00:00`);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
-
-    return movieShowings.filter((movie) => {
-      const movieStart = new Date(movie.startTime);
-      const movieEnd = new Date(movie.endTime);
-
-      return movieStart < dayEnd && movieEnd > dayStart;
-    });
-  }, [movieShowings, selectedDate]);
+  const filteredMovieShowings = useMemo(
+    () => getMovieShowingsForDate(movieShowings, selectedDate),
+    [movieShowings, selectedDate],
+  );
 
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [showShiftFormModal, setShowShiftFormModal] = useState(false);
@@ -152,16 +139,10 @@ export default function SchedulePage() {
   );
   const [staffingRequestWorkTypeId, setStaffingRequestWorkTypeId] = useState(0);
 
-  const staffingTargetUsers = useMemo(() => {
-    return users.filter((candidate) => {
-      const userWithMeta = candidate as User & {
-        isActive?: boolean;
-        role?: string;
-      };
-
-      return userWithMeta.isActive !== false && userWithMeta.role !== "MASTER";
-    });
-  }, [users]);
+  const staffingTargetUsers = useMemo(
+    () => getScheduleStaffingTargetUsers(users),
+    [users],
+  );
 
   const selectedStaffingRequestShift = useMemo(() => {
     if (!staffingRequestShiftId) return null;
