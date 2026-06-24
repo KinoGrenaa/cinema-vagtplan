@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import StaffingRequestModal from "./components/StaffingRequestModal";
 import {
   ManualTimeRegistrationModal,
@@ -8,6 +8,8 @@ import {
 } from "./components/TimeRegistrationModals";
 import ScheduleShiftFormModal from "./components/ScheduleShiftFormModal";
 import ScheduleMainContent from "./components/ScheduleMainContent";
+import { useScheduleShiftForm } from "./hooks/useScheduleShiftForm";
+import { useScheduleShiftTimelineActions } from "./hooks/useScheduleShiftTimelineActions";
 import { useScheduleStaffingRequest } from "./hooks/useScheduleStaffingRequest";
 import { useScheduleTimeRegistration } from "./hooks/useScheduleTimeRegistration";
 import { useSchedule } from "../../hooks/useSchedule";
@@ -16,26 +18,16 @@ import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
   dateToLocalDateString,
   getTodayLocalDate,
-  localDateTimeToISOString,
-  toInputDateTime,
 } from "@/app/utils/dateTime";
-import type { Shift } from "../../../../shared/types";
 import {
-  getShiftConfirmText,
-  getShiftUserId,
   getStaffingShiftOptionText,
   getUserDisplayName,
 } from "./helpers/scheduleShiftText";
-import {
-  getMovedShiftTimes,
-  getResizedShiftTimes,
-} from "./helpers/scheduleShiftTime";
 import { getMovieShowingsForDate } from "./helpers/scheduleDerivedData";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import { toast } from "sonner";
 
 export default function SchedulePage() {
   const confirmDialog = useConfirm();
@@ -84,33 +76,50 @@ export default function SchedulePage() {
     [movieShowings, selectedDate],
   );
 
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
-  const [showShiftFormModal, setShowShiftFormModal] = useState(false);
+  const {
+    selectedShift,
+    showShiftFormModal,
+    startTime,
+    setStartTime,
+    endTime,
+    setEndTime,
+    note,
+    setNote,
+    userId,
+    setUserId,
+    workTypeId,
+    setWorkTypeId,
+    openCreateShiftModal,
+    hideShiftFormModal,
+    closeShiftFormModal,
+    resetShiftFormForDate,
+    handleSubmit,
+    handleDelete,
+    handleSelectShift,
+    handleOfferTrade,
+  } = useScheduleShiftForm({
+    selectedDate,
+    users,
+    workTypes,
+    needsMasterCinemaSelection,
+    showMissingActiveCinemaMessage,
+    createShift,
+    updateShift,
+    deleteShift,
+    offerShiftTrade,
+    confirmDialog,
+    infoDialog,
+  });
 
-  const [startTime, setStartTime] = useState(`${todayDefault}T14:00`);
-  const [endTime, setEndTime] = useState(`${todayDefault}T22:00`);
-  const [note, setNote] = useState("");
-  const [userId, setUserId] = useState(0);
-  const [workTypeId, setWorkTypeId] = useState(0);
-  useEffect(() => {
-    if (
-      userId !== 0 &&
-      users.length > 0 &&
-      !users.some((user) => user.id === userId)
-    ) {
-      setUserId(0);
-    }
-  }, [userId, users]);
-
-  useEffect(() => {
-    if (
-      workTypeId !== 0 &&
-      workTypes.length > 0 &&
-      !workTypes.some((workType) => workType.id === workTypeId)
-    ) {
-      setWorkTypeId(0);
-    }
-  }, [workTypeId, workTypes]);
+  const {
+    handleMoveShift,
+    handleChangeShiftUser,
+    handleResizeShift,
+  } = useScheduleShiftTimelineActions({
+    selectedDate,
+    updateShift,
+    infoDialog,
+  });
 
   const {
     showClockModal,
@@ -185,7 +194,7 @@ export default function SchedulePage() {
     workTypes,
     needsMasterCinemaSelection,
     showMissingActiveCinemaMessage,
-    hideShiftFormModal: () => setShowShiftFormModal(false),
+    hideShiftFormModal,
     infoDialog,
     createStaffingRequest,
   });
@@ -204,106 +213,6 @@ export default function SchedulePage() {
     enableToasts: false,
   });
 
-  function clearForm() {
-    setSelectedShift(null);
-
-    setUserId(0);
-    setWorkTypeId(0);
-
-    setStartTime(`${selectedDate}T14:00`);
-    setEndTime(`${selectedDate}T22:00`);
-
-    setNote("");
-  }
-
-  function openCreateShiftModal() {
-    if (needsMasterCinemaSelection) {
-      showMissingActiveCinemaMessage();
-      return;
-    }
-
-    clearForm();
-    setShowShiftFormModal(true);
-  }
-
-  function closeShiftFormModal() {
-    clearForm();
-    setShowShiftFormModal(false);
-  }
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const body = {
-      startTime: localDateTimeToISOString(startTime),
-      endTime: localDateTimeToISOString(endTime),
-      note,
-      userId: userId > 0 ? userId : null,
-      workTypeId,
-    };
-
-    try {
-      if (selectedShift) {
-        await updateShift(selectedShift.id, body);
-      } else {
-        await createShift(body);
-      }
-
-      closeShiftFormModal();
-    } catch (error) {
-      infoDialog.showError(
-        selectedShift
-          ? "Vagten kunne ikke opdateres"
-          : "Vagten kunne ikke oprettes",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da vagten skulle gemmes. Prøv igen.",
-      );
-    }
-  }
-
-  function handleDelete() {
-    if (!selectedShift) return;
-
-    const shiftToDelete = selectedShift;
-
-    confirmDialog.confirm({
-      title: "Slet vagt",
-      description: `Er du sikker på, at du vil slette denne vagt?
-
-${getShiftConfirmText(shiftToDelete)}
-
-Handlingen kan ikke fortrydes.`,
-      confirmText: "Slet vagt",
-      cancelText: "Annuller",
-      confirmVariant: "danger",
-      onConfirm: async () => {
-        try {
-          await deleteShift(shiftToDelete.id);
-          closeShiftFormModal();
-          toast.success("Vagten er slettet");
-        } catch (error) {
-          infoDialog.showError(
-            "Vagten kunne ikke slettes",
-            error instanceof Error
-              ? error.message
-              : "Der opstod en fejl, da vagten skulle slettes. Prøv igen.",
-          );
-        }
-      },
-    });
-  }
-
-  function handleSelectShift(shift: Shift) {
-    setSelectedShift(shift);
-    setStartTime(toInputDateTime(shift.startTime));
-    setEndTime(toInputDateTime(shift.endTime));
-    setNote(shift.note || "");
-    setUserId(getShiftUserId(shift) ?? 0);
-    setWorkTypeId(shift.workTypeId);
-    setShowShiftFormModal(true);
-  }
-
   function changeDate(days: number) {
     const date = new Date(`${selectedDate}T12:00:00`);
     date.setDate(date.getDate() + days);
@@ -311,148 +220,21 @@ Handlingen kan ikke fortrydes.`,
     const nextDate = dateToLocalDateString(date);
 
     setSelectedDate(nextDate);
-    setStartTime(`${nextDate}T14:00`);
-    setEndTime(`${nextDate}T22:00`);
-    setSelectedShift(null);
-    setShowShiftFormModal(false);
+    resetShiftFormForDate(nextDate);
   }
 
   function goToToday() {
     const today = getTodayLocalDate();
 
     setSelectedDate(today);
-    setStartTime(`${today}T14:00`);
-    setEndTime(`${today}T22:00`);
-    setSelectedShift(null);
-    setShowShiftFormModal(false);
+    resetShiftFormForDate(today);
   }
 
   function goToDate(nextDate: string) {
     if (!nextDate) return;
 
     setSelectedDate(nextDate);
-    setStartTime(`${nextDate}T14:00`);
-    setEndTime(`${nextDate}T22:00`);
-    setSelectedShift(null);
-    setShowShiftFormModal(false);
-  }
-
-  async function handleMoveShift(
-    shift: Shift,
-    newStartHour: number,
-    newStartMinute: number,
-  ) {
-    const { newStart, newEnd } = getMovedShiftTimes({
-      shift,
-      selectedDate,
-      newStartHour,
-      newStartMinute,
-    });
-
-    try {
-      await updateShift(shift.id, {
-        startTime: newStart.toISOString(),
-        endTime: newEnd.toISOString(),
-        note: shift.note,
-        userId: getShiftUserId(shift),
-        workTypeId: shift.workTypeId,
-      });
-    } catch (error) {
-      infoDialog.showError(
-        "Vagten kunne ikke flyttes",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da vagten skulle flyttes. Prøv igen.",
-      );
-    }
-  }
-
-  async function handleChangeShiftUser(shift: Shift, newUserId: number | null) {
-    try {
-      await updateShift(shift.id, {
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        note: shift.note,
-        userId: newUserId,
-        workTypeId: shift.workTypeId,
-      });
-    } catch (error) {
-      infoDialog.showError(
-        "Medarbejder kunne ikke ændres",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da vagten skulle tildeles en anden medarbejder. Prøv igen.",
-      );
-    }
-  }
-
-  async function handleResizeShift(
-    shift: Shift,
-    newStartHour: number,
-    newStartMinute: number,
-    newEndHour: number,
-    newEndMinute: number,
-  ) {
-    const { newStart, newEnd } = getResizedShiftTimes({
-      shift,
-      selectedDate,
-      newStartHour,
-      newStartMinute,
-      newEndHour,
-      newEndMinute,
-    });
-
-    try {
-      await updateShift(shift.id, {
-        startTime: newStart.toISOString(),
-        endTime: newEnd.toISOString(),
-        note: shift.note,
-        userId: getShiftUserId(shift),
-        workTypeId: shift.workTypeId,
-      });
-    } catch (error) {
-      infoDialog.showError(
-        "Vagten kunne ikke ændres",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da vagtens tidspunkt skulle ændres. Prøv igen.",
-      );
-    }
-  }
-
-  function handleOfferTrade() {
-    if (!selectedShift) return;
-
-    if (!getShiftUserId(selectedShift)) {
-      infoDialog.showError(
-        "Vagten er ikke tildelt",
-        "Vagten skal tildeles en medarbejder, før den kan sendes i byttepuljen.",
-      );
-      return;
-    }
-
-    confirmDialog.confirm({
-      title: "Send vagt i byttepulje",
-      description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen?
-
-${getShiftConfirmText(selectedShift)}`,
-      confirmText: "Send i pulje",
-      cancelText: "Annuller",
-      confirmVariant: "primary",
-      onConfirm: async () => {
-        try {
-          await offerShiftTrade(selectedShift);
-          toast.success("Vagten er sendt i byttepuljen");
-        } catch (error) {
-          infoDialog.showError(
-            "Vagten kunne ikke sendes i byttepuljen",
-            error instanceof Error
-              ? error.message
-              : "Der opstod en fejl, da vagten skulle sendes i byttepuljen. Prøv igen.",
-          );
-        }
-      },
-    });
+    resetShiftFormForDate(nextDate);
   }
 
   if (loading) {
