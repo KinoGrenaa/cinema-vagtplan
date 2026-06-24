@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PermissionGuard from "@/app/components/PermissionGuard";
 
@@ -9,11 +9,6 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { useAuth } from "@/app/providers/AuthProvider";
-
-import {
-  lockPayrollPeriod,
-  unlockPayrollPeriod,
-} from "./services/payrollService";
 
 import PayrollAttentionTable from "./components/PayrollAttentionTable";
 import PayrollPeriodStatus from "./components/PayrollPeriodStatus";
@@ -30,6 +25,8 @@ import { usePayrollData } from "./hooks/usePayrollData";
 import { usePayrollStats } from "./hooks/usePayrollStats";
 import { usePayrollExport } from "./hooks/usePayrollExport";
 import { usePayrollEmployeeExpansion } from "./hooks/usePayrollEmployeeExpansion";
+import { usePayrollMasterCinema } from "./hooks/usePayrollMasterCinema";
+import { usePayrollPeriodActions } from "./hooks/usePayrollPeriodActions";
 
 export default function PayrollPage() {
   const router = useRouter();
@@ -37,36 +34,7 @@ export default function PayrollPage() {
   const inputDialog = useInputModal();
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
-  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
-    string | null
-  >(null);
-
-  useEffect(() => {
-    function updateSelectedMasterCinema() {
-      setSelectedMasterCinemaId(
-        window.localStorage.getItem("masterSelectedCinemaId"),
-      );
-    }
-
-    updateSelectedMasterCinema();
-
-    window.addEventListener(
-      "masterSelectedCinemaChanged",
-      updateSelectedMasterCinema,
-    );
-    window.addEventListener("storage", updateSelectedMasterCinema);
-
-    return () => {
-      window.removeEventListener(
-        "masterSelectedCinemaChanged",
-        updateSelectedMasterCinema,
-      );
-      window.removeEventListener("storage", updateSelectedMasterCinema);
-    };
-  }, []);
-
-  const isMasterWithoutActiveCinema =
-    user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
+  const { isMasterWithoutActiveCinema } = usePayrollMasterCinema(user);
 
   const payrollDataEnabled = Boolean(user) && !isMasterWithoutActiveCinema;
 
@@ -142,81 +110,20 @@ export default function PayrollPage() {
     refreshPayroll,
   });
 
-  const [locking, setLocking] = useState(false);
-  const [unlocking, setUnlocking] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const { expandedEmployeeIds, toggleEmployeeGroup } =
     usePayrollEmployeeExpansion();
-
-  function lockPeriod() {
-    confirmDialog.confirm({
-      title: "Lås lønperiode",
-      description: `Er du sikker på, at du vil låse lønperioden ${startDate} til ${endDate}?`,
-      confirmText: "Lås lønperiode",
-      cancelText: "Annuller",
-      confirmVariant: "danger",
-      onConfirm: async () => {
-        try {
-          setLocking(true);
-
-          await lockPayrollPeriod({
-            startDate,
-            endDate,
-          });
-
-          await refreshPayroll();
-        } catch (error) {
-          infoDialog.showError(
-            "Lønperioden kunne ikke låses",
-            error instanceof Error && error.message
-              ? error.message
-              : "Låsning fejlede. Prøv igen.",
-          );
-        } finally {
-          setLocking(false);
-        }
-      },
+  const { locking, lockPeriod, unlocking, unlockPeriod } =
+    usePayrollPeriodActions({
+      confirmDialog,
+      endDate,
+      infoDialog,
+      inputDialog,
+      periodId: period?.id,
+      refreshPayroll,
+      startDate,
     });
-  }
-
-  function unlockPeriod() {
-    if (!period?.id) return;
-
-    inputDialog.prompt({
-      title: "Genåbn lønperiode",
-      description: `Skriv en intern note om hvorfor lønperioden ${startDate} til ${endDate} skal genåbnes.`,
-      label: "Intern note",
-      placeholder: "Skriv intern note...",
-      confirmText: "Genåbn lønperiode",
-      cancelText: "Annuller",
-      required: true,
-      onConfirm: async (value) => {
-        const note = value.trim();
-
-        if (!note) {
-          return;
-        }
-
-        try {
-          setUnlocking(true);
-
-          await unlockPayrollPeriod(period.id, note);
-
-          await refreshPayroll();
-        } catch (error) {
-          infoDialog.showError(
-            "Lønperioden kunne ikke genåbnes",
-            error instanceof Error && error.message
-              ? error.message
-              : "Genåbning fejlede. Prøv igen.",
-          );
-        } finally {
-          setUnlocking(false);
-        }
-      },
-    });
-  }
 
   if (isMasterWithoutActiveCinema) {
     return (
