@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import PermissionGuard from "@/app/components/PermissionGuard";
 
@@ -27,6 +26,8 @@ import { usePayrollExport } from "./hooks/usePayrollExport";
 import { usePayrollEmployeeExpansion } from "./hooks/usePayrollEmployeeExpansion";
 import { usePayrollMasterCinema } from "./hooks/usePayrollMasterCinema";
 import { usePayrollPeriodActions } from "./hooks/usePayrollPeriodActions";
+import { usePayrollAdvancedFilters } from "./hooks/usePayrollAdvancedFilters";
+import { usePayrollExportModal } from "./hooks/usePayrollExportModal";
 
 export default function PayrollPage() {
   const router = useRouter();
@@ -110,8 +111,13 @@ export default function PayrollPage() {
     refreshPayroll,
   });
 
-  const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const { exportModalOpen, openExportModal, closeExportModal, exportPayroll } =
+    usePayrollExportModal({
+      downloadExport,
+      showError: infoDialog.showError,
+    });
+  const { showAdvancedFilters, toggleAdvancedFilters } =
+    usePayrollAdvancedFilters();
   const { expandedEmployeeIds, toggleEmployeeGroup } =
     usePayrollEmployeeExpansion();
   const { locking, lockPeriod, unlocking, unlockPeriod } =
@@ -157,9 +163,7 @@ export default function PayrollPage() {
           onSetEndDate={setEndDate}
           onSetStartDate={setStartDate}
           onSetUserId={setUserId}
-          onToggleAdvancedFilters={() =>
-            setShowAdvancedFilters((value) => !value)
-          }
+          onToggleAdvancedFilters={toggleAdvancedFilters}
         />
 
         <PayrollPeriodStatus
@@ -173,7 +177,7 @@ export default function PayrollPage() {
           exporting={exporting}
           onLockPeriod={lockPeriod}
           onUnlockPeriod={unlockPeriod}
-          onOpenExportModal={() => setExportModalOpen(true)}
+          onOpenExportModal={openExportModal}
           onOpenTimeApproval={() => router.push("/time-approval")}
         />
 
@@ -215,24 +219,8 @@ export default function PayrollPage() {
         exporting={exporting}
         infoDialog={infoDialog}
         inputDialog={inputDialog}
-        onCloseExportModal={() => setExportModalOpen(false)}
-        onExport={async (format) => {
-          try {
-            await downloadExport(format);
-            setExportModalOpen(false);
-          } catch (error) {
-            setExportModalOpen(false);
-
-            setTimeout(() => {
-              infoDialog.showError(
-                "Kan ikke eksportere lønperiode",
-                error instanceof Error && error.message
-                  ? error.message
-                  : "Eksporten kunne ikke gennemføres.",
-              );
-            }, 0);
-          }
-        }}
+        onCloseExportModal={closeExportModal}
+        onExport={exportPayroll}
       />
     </PermissionGuard>
   );
