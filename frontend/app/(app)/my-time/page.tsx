@@ -17,10 +17,6 @@ import {
 } from "./helpers/myTimeDate";
 import {
   formatHoursDuration,
-  getDaySummaryParts,
-  getEntryDayKey,
-  getEntryDayLabel,
-  getEntryHoursNumber,
   getHours,
   isEntryVisibleWithStatusFilters,
   isInPayrollPeriod,
@@ -34,6 +30,12 @@ import {
   getStatusFilterSummary,
   getStatusLabel,
 } from "./helpers/myTimeStatus";
+import {
+  getApprovedHours,
+  getMyTimeDayGroups,
+  getNeedsChangesCount,
+  getPendingHours,
+} from "./helpers/myTimeSummary";
 
 
 type TimeEntry = {
@@ -523,57 +525,19 @@ export default function MyTimePage() {
   }, [statusFilters]);
 
   const approvedHours = useMemo(() => {
-    return filteredEntries.reduce((total, entry) => {
-      if (entry.status !== "APPROVED") return total;
-      return total + getEntryHoursNumber(entry);
-    }, 0);
+    return getApprovedHours(filteredEntries);
   }, [filteredEntries]);
 
   const pendingHours = useMemo(() => {
-    return filteredEntries.reduce((total, entry) => {
-      if (entry.status !== "PENDING") return total;
-      return total + getEntryHoursNumber(entry);
-    }, 0);
+    return getPendingHours(filteredEntries);
   }, [filteredEntries]);
 
   const needsChangesCount = useMemo(() => {
-    return filteredEntries.filter((entry) => entry.status === "NEEDS_CHANGES")
-      .length;
+    return getNeedsChangesCount(filteredEntries);
   }, [filteredEntries]);
 
   const dayGroups = useMemo(() => {
-    type DayGroup = {
-      dayKey: string;
-      label: string;
-      entries: TimeEntry[];
-      summaryParts: string[];
-    };
-
-    return Array.from(
-      visibleEntries.reduce((groups, entry) => {
-        const dayKey = getEntryDayKey(entry);
-        const existingGroup = groups.get(dayKey);
-
-        if (existingGroup) {
-          existingGroup.entries.push(entry);
-          return groups;
-        }
-
-        groups.set(dayKey, {
-          dayKey,
-          label: getEntryDayLabel(dayKey),
-          entries: [entry],
-          summaryParts: [],
-        });
-
-        return groups;
-      }, new Map<string, DayGroup>()),
-    )
-      .map(([, group]) => ({
-        ...group,
-        summaryParts: getDaySummaryParts(group.entries),
-      }))
-      .sort((a, b) => b.dayKey.localeCompare(a.dayKey));
+    return getMyTimeDayGroups(visibleEntries);
   }, [visibleEntries]);
 
   return (
