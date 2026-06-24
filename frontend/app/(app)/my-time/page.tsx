@@ -1,30 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
-import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import MyTimeDayGroupsSection from "./components/MyTimeDayGroupsSection";
-import MyTimeEditModal from "./components/MyTimeEditModal";
-import MyTimeFilterModal from "./components/MyTimeFilterModal";
 import MyTimeHeader from "./components/MyTimeHeader";
+import MyTimeModals from "./components/MyTimeModals";
 import MyTimeSummaryCards from "./components/MyTimeSummaryCards";
-import {
-  isEntryVisibleWithStatusFilters,
-  isInPayrollPeriod,
-} from "./helpers/myTimeEntries";
-import { useMyTimeStatusFilters } from "./hooks/useMyTimeStatusFilters";
 import { useMyTimeDayGroupsExpansion } from "./hooks/useMyTimeDayGroupsExpansion";
-import { useMyTimeHistory } from "./hooks/useMyTimeHistory";
+import { useMyTimeDerivedData } from "./hooks/useMyTimeDerivedData";
 import { useMyTimeEdit } from "./hooks/useMyTimeEdit";
 import { useMyTimeEntries } from "./hooks/useMyTimeEntries";
+import { useMyTimeHistory } from "./hooks/useMyTimeHistory";
 import { useMyTimePayrollPeriod } from "./hooks/useMyTimePayrollPeriod";
-import {
-  getApprovedHours,
-  getMyTimeDayGroups,
-  getNeedsChangesCount,
-  getPendingHours,
-} from "./helpers/myTimeSummary";
+import { useMyTimeStatusFilters } from "./hooks/useMyTimeStatusFilters";
 
 export default function MyTimePage() {
   const infoDialog = useInfoModal();
@@ -85,33 +73,17 @@ export default function MyTimePage() {
     onError: infoDialog.showError,
   });
 
-  const filteredEntries = useMemo(() => {
-    return entries.filter((entry) =>
-      isInPayrollPeriod(entry, payrollPeriod.startDate, payrollPeriod.endDate),
-    );
-  }, [entries, payrollPeriod.endDate, payrollPeriod.startDate]);
-
-  const visibleEntries = useMemo(() => {
-    return filteredEntries.filter((entry) =>
-      isEntryVisibleWithStatusFilters(entry, statusFilters),
-    );
-  }, [filteredEntries, statusFilters]);
-
-  const approvedHours = useMemo(() => {
-    return getApprovedHours(filteredEntries);
-  }, [filteredEntries]);
-
-  const pendingHours = useMemo(() => {
-    return getPendingHours(filteredEntries);
-  }, [filteredEntries]);
-
-  const needsChangesCount = useMemo(() => {
-    return getNeedsChangesCount(filteredEntries);
-  }, [filteredEntries]);
-
-  const dayGroups = useMemo(() => {
-    return getMyTimeDayGroups(visibleEntries);
-  }, [visibleEntries]);
+  const {
+    visibleEntries,
+    approvedHours,
+    pendingHours,
+    needsChangesCount,
+    dayGroups,
+  } = useMyTimeDerivedData({
+    entries,
+    payrollPeriod,
+    statusFilters,
+  });
 
   return (
     <>
@@ -147,7 +119,7 @@ export default function MyTimePage() {
             onHistory={openHistory}
           />
 
-          <MyTimeEditModal
+          <MyTimeModals
             editingEntry={editingEntry}
             editClockIn={editClockIn}
             editClockOut={editClockOut}
@@ -158,24 +130,18 @@ export default function MyTimePage() {
             onClockOutChange={setEditClockOut}
             onClockInNoteChange={setEditClockInNote}
             onClockOutNoteChange={setEditClockOutNote}
-            onClose={closeEdit}
-            onSave={saveEdit}
-          />
-          <MyTimeFilterModal
-            open={filterModalOpen}
-            activeFilterCount={activeStatusFilterCount}
+            onCloseEdit={closeEdit}
+            onSaveEdit={saveEdit}
+            filterModalOpen={filterModalOpen}
+            activeStatusFilterCount={activeStatusFilterCount}
             draftStatusFilters={draftStatusFilters}
-            onApply={applyStatusFilters}
-            onReset={resetStatusFilters}
-            onClose={closeFilterModal}
+            onApplyStatusFilters={applyStatusFilters}
+            onResetStatusFilters={resetStatusFilters}
+            onCloseFilterModal={closeFilterModal}
             onStatusFilterChange={updateDraftStatusFilter}
-          />
-
-          <TimeEntryHistoryModal
-            isOpen={!!historyEntry}
-            onClose={closeHistory}
-            revisions={historyItems}
-            currentStatus={historyEntry?.status}
+            historyEntry={historyEntry}
+            historyItems={historyItems}
+            onCloseHistory={closeHistory}
           />
         </div>
       </main>
