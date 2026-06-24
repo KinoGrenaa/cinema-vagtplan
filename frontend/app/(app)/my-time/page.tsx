@@ -13,11 +13,13 @@ import MyTimeEditModal from "./components/MyTimeEditModal";
 import MyTimeFilterModal from "./components/MyTimeFilterModal";
 import MyTimeHeader from "./components/MyTimeHeader";
 import MyTimeSummaryCards from "./components/MyTimeSummaryCards";
+import { toInputDateTime } from "./helpers/myTimeDate";
 import {
-  addDays,
-  dateToLocalDateString,
-  toInputDateTime,
-} from "./helpers/myTimeDate";
+  getCurrentPayrollPeriodReferenceDate,
+  getInitialPayrollPeriod,
+  getNextPayrollPeriodReferenceDate,
+  getPreviousPayrollPeriodReferenceDate,
+} from "./helpers/myTimePayrollPeriod";
 import {
   isEntryVisibleWithStatusFilters,
   isInPayrollPeriod,
@@ -41,14 +43,7 @@ export default function MyTimePage() {
 
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [payrollPeriod, setPayrollPeriod] = useState(() => {
-    const today = dateToLocalDateString(new Date());
-
-    return {
-      startDate: today,
-      endDate: today,
-    };
-  });
+  const [payrollPeriod, setPayrollPeriod] = useState(getInitialPayrollPeriod);
   const [payrollPeriodLoading, setPayrollPeriodLoading] = useState(false);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
@@ -170,7 +165,6 @@ export default function MyTimePage() {
     setEditClockInNote("");
     setEditClockOutNote("");
   }
-
 
   async function saveEdit() {
     if (!editingEntry) return;
@@ -328,27 +322,21 @@ export default function MyTimePage() {
   }
 
   function goToPreviousPayrollPeriod() {
-    const referenceDate = dateToLocalDateString(
-      addDays(new Date(`${payrollPeriod.startDate}T00:00:00`), -1),
+    fetchPayrollPeriodForDate(
+      getPreviousPayrollPeriodReferenceDate(payrollPeriod),
     );
-
-    fetchPayrollPeriodForDate(referenceDate);
   }
 
   function goToCurrentPayrollPeriod() {
-    fetchPayrollPeriodForDate(dateToLocalDateString(new Date()));
+    fetchPayrollPeriodForDate(getCurrentPayrollPeriodReferenceDate());
   }
 
   function goToNextPayrollPeriod() {
-    const referenceDate = dateToLocalDateString(
-      addDays(new Date(`${payrollPeriod.endDate}T00:00:00`), 1),
-    );
-
-    fetchPayrollPeriodForDate(referenceDate);
+    fetchPayrollPeriodForDate(getNextPayrollPeriodReferenceDate(payrollPeriod));
   }
 
   useEffect(() => {
-    fetchPayrollPeriodForDate(dateToLocalDateString(new Date()));
+    fetchPayrollPeriodForDate(getCurrentPayrollPeriodReferenceDate());
     fetchEntries();
   }, [fetchEntries, fetchPayrollPeriodForDate]);
 
