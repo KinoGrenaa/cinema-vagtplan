@@ -26,13 +26,14 @@ import {
 } from "./helpers/myTimeEntries";
 import { useMyTimeStatusFilters } from "./hooks/useMyTimeStatusFilters";
 import { useMyTimeDayGroupsExpansion } from "./hooks/useMyTimeDayGroupsExpansion";
+import { useMyTimeHistory } from "./hooks/useMyTimeHistory";
 import {
   getApprovedHours,
   getMyTimeDayGroups,
   getNeedsChangesCount,
   getPendingHours,
 } from "./helpers/myTimeSummary";
-import type { TimeEntry, TimeEntryRevision } from "./helpers/myTimeTypes";
+import type { TimeEntry } from "./helpers/myTimeTypes";
 
 export default function MyTimePage() {
   const infoDialog = useInfoModal();
@@ -66,9 +67,8 @@ export default function MyTimePage() {
     onFiltersChanged: resetExpandedDayKeys,
   });
 
-  const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyItems, setHistoryItems] = useState<TimeEntryRevision[]>([]);
+  const { historyEntry, historyItems, openHistory, closeHistory } =
+    useMyTimeHistory(infoDialog.showError);
 
   const fetchEntries = useCallback(async () => {
     try {
@@ -243,38 +243,6 @@ export default function MyTimePage() {
     }
   }
 
-  async function openHistory(entry: TimeEntry) {
-    try {
-      setHistoryLoading(true);
-      setHistoryEntry(entry);
-
-      const response = await apiFetch(`/time-entries/${entry.id}/revisions`);
-
-      if (!response.ok) {
-        infoDialog.showError(
-          "Kunne ikke hente historik",
-          "Der opstod en fejl, da historikken skulle hentes. Prøv igen.",
-        );
-
-        setHistoryEntry(null);
-        return;
-      }
-
-      const data = await response.json();
-
-      setHistoryItems(Array.isArray(data) ? data : []);
-    } catch {
-      infoDialog.showError(
-        "Kunne ikke hente historik",
-        "Der opstod en fejl, da historikken skulle hentes. Prøv igen.",
-      );
-
-      setHistoryEntry(null);
-    } finally {
-      setHistoryLoading(false);
-    }
-  }
-
   function goToPreviousPayrollPeriod() {
     fetchPayrollPeriodForDate(
       getPreviousPayrollPeriodReferenceDate(payrollPeriod),
@@ -382,10 +350,7 @@ export default function MyTimePage() {
 
           <TimeEntryHistoryModal
             isOpen={!!historyEntry}
-            onClose={() => {
-              setHistoryEntry(null);
-              setHistoryItems([]);
-            }}
+            onClose={closeHistory}
             revisions={historyItems}
             currentStatus={historyEntry?.status}
           />
