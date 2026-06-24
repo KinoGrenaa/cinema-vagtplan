@@ -6,6 +6,8 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
+import CinemaSettingsBrandingSection from "./components/CinemaSettingsBrandingSection";
+import CinemaSettingsFeatureTogglesSection from "./components/CinemaSettingsFeatureTogglesSection";
 import {
   CINEMA_DEFAULTS,
   MASTER_SELECTED_CINEMA_ID_KEY,
@@ -14,7 +16,6 @@ import type { Cinema, CurrentUser } from "./helpers/cinemaSettingsTypes";
 import {
   calculatePeriodExample,
   clampDay,
-  getLogoSrc,
   readErrorMessage,
   syncMasterSelectedCinemaStorage,
   toIsoDate,
@@ -334,155 +335,18 @@ export default function CinemaSettingsPage() {
             </p>
           </div>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 className="text-2xl font-bold">Branding</h2>
+          <CinemaSettingsBrandingSection
+            cinema={cinema}
+            saving={saving}
+            uploadCinemaLogo={uploadCinemaLogo}
+            removeCinemaLogo={removeCinemaLogo}
+          />
 
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              Upload biografens logo. Logoet vises for MASTER, når biografen er
-              valgt som aktiv biograf.
-            </p>
-
-            <div className="mt-6 flex flex-col gap-5 md:flex-row md:items-center">
-              <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
-                {cinema.logoUrl ? (
-                  <img
-                    src={getLogoSrc(cinema.logoUrl)}
-                    alt={`${cinema.name} logo`}
-                    className="h-full w-full object-contain p-3"
-                  />
-                ) : (
-                  <span className="px-3 text-center text-sm text-gray-500 dark:text-gray-400">
-                    Intet logo
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <label className="inline-flex cursor-pointer rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
-                  Upload logo
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    disabled={saving}
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] || null;
-                      uploadCinemaLogo(file);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </label>
-
-                {cinema.logoUrl ? (
-                  <button
-                    type="button"
-                    onClick={removeCinemaLogo}
-                    disabled={saving}
-                    className="ml-0 inline-flex rounded-xl border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40 md:ml-3"
-                  >
-                    Fjern logo
-                  </button>
-                ) : null}
-
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Tilladte filtyper: JPG, PNG og WEBP. Maks. 2 MB.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 className="mb-6 text-2xl font-bold">Vagtbytte-funktioner</h2>
-
-            <div className="space-y-5">
-              <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-                <div>
-                  <div className="font-semibold">Tillad vagtpulje</div>
-
-                  <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Medarbejdere kan sende vagter ud i den åbne vagtpulje.
-                  </div>
-                </div>
-
-                <button
-                  onClick={() =>
-                    updateCinemaSettings({
-                      ...cinema,
-                      allowShiftTradePool: !cinema.allowShiftTradePool,
-                    })
-                  }
-                  disabled={saving}
-                  className={`rounded-xl px-4 py-2 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                    cinema.allowShiftTradePool
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-gray-600 hover:bg-gray-700"
-                  }`}
-                >
-                  {cinema.allowShiftTradePool ? "Aktiveret" : "Deaktiveret"}
-                </button>
-              </div>
-
-              <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-                <div>
-                  <div className="font-semibold">Tillad direkte vagtbytter</div>
-
-                  <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Medarbejdere kan tilbyde vagter direkte til specifikke
-                    brugere.
-                  </div>
-                </div>
-
-                <button
-                  onClick={() =>
-                    updateCinemaSettings({
-                      ...cinema,
-                      allowShiftTradeDirect: !cinema.allowShiftTradeDirect,
-                    })
-                  }
-                  disabled={saving}
-                  className={`rounded-xl px-4 py-2 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                    cinema.allowShiftTradeDirect
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-gray-600 hover:bg-gray-700"
-                  }`}
-                >
-                  {cinema.allowShiftTradeDirect ? "Aktiveret" : "Deaktiveret"}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <h2 className="mb-6 text-2xl font-bold">AI-funktioner</h2>
-
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-              <div>
-                <div className="font-semibold">Aktivér AI</div>
-
-                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Aktiverer AI-dashboard, AI-analyser og fremtidige
-                  AI-funktioner for denne biograf.
-                </div>
-              </div>
-
-              <button
-                onClick={() =>
-                  updateCinemaSettings({
-                    ...cinema,
-                    aiEnabled: !cinema.aiEnabled,
-                  })
-                }
-                disabled={saving}
-                className={`rounded-xl px-4 py-2 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                  cinema.aiEnabled
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-gray-600 hover:bg-gray-700"
-                }`}
-              >
-                {cinema.aiEnabled ? "Aktiveret" : "Deaktiveret"}
-              </button>
-            </div>
-          </section>
+          <CinemaSettingsFeatureTogglesSection
+            cinema={cinema}
+            saving={saving}
+            updateCinemaSettings={updateCinemaSettings}
+          />
 
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <h2 className="mb-6 text-2xl font-bold">
