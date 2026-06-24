@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import FilterModal from "@/app/components/modals/FilterModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
+import MyTimeFilterModal from "./components/MyTimeFilterModal";
 import {
   addDays,
   dateToLocalDateString,
@@ -857,99 +857,15 @@ export default function MyTimePage() {
             </div>
           </div>
         )}
-        <FilterModal
+        <MyTimeFilterModal
           open={filterModalOpen}
-          title="Filtrer mine timer"
           activeFilterCount={activeStatusFilterCount}
-          applyText="Vis timer"
-          resetText="Nulstil filter"
+          draftStatusFilters={draftStatusFilters}
           onApply={applyStatusFilters}
           onReset={resetStatusFilters}
           onClose={closeFilterModal}
-        >
-          <div className="space-y-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Vælg hvilke tidsregistreringer du vil se i den valgte lønperiode.
-            </p>
-
-            <div className="space-y-3">
-              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                <input
-                  type="checkbox"
-                  checked={draftStatusFilters.approved}
-                  onChange={(event) =>
-                    updateDraftStatusFilter("approved", event.target.checked)
-                  }
-                  className="mt-0.5 h-4 w-4"
-                />
-                <span>
-                  <span className="block font-medium">Godkendte</span>
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">
-                    Timer der tæller med i løngrundlaget.
-                  </span>
-                </span>
-              </label>
-
-              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                <input
-                  type="checkbox"
-                  checked={draftStatusFilters.pending}
-                  onChange={(event) =>
-                    updateDraftStatusFilter("pending", event.target.checked)
-                  }
-                  className="mt-0.5 h-4 w-4"
-                />
-                <span>
-                  <span className="block font-medium">
-                    Afventer godkendelse
-                  </span>
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">
-                    Timer der endnu ikke er godkendt.
-                  </span>
-                </span>
-              </label>
-
-              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                <input
-                  type="checkbox"
-                  checked={draftStatusFilters.needsChanges}
-                  onChange={(event) =>
-                    updateDraftStatusFilter(
-                      "needsChanges",
-                      event.target.checked,
-                    )
-                  }
-                  className="mt-0.5 h-4 w-4"
-                />
-                <span>
-                  <span className="block font-medium">Skal rettes</span>
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">
-                    Registreringer som administrationen har sendt retur til
-                    rettelse.
-                  </span>
-                </span>
-              </label>
-
-              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-                <input
-                  type="checkbox"
-                  checked={draftStatusFilters.voided}
-                  onChange={(event) =>
-                    updateDraftStatusFilter("voided", event.target.checked)
-                  }
-                  className="mt-0.5 h-4 w-4"
-                />
-                <span>
-                  <span className="block font-medium">Afviste/annullerede</span>
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">
-                    Registreringer der ikke indgår i løngrundlaget. Systemet
-                    skelner ikke separat mellem afvist og annulleret endnu.
-                  </span>
-                </span>
-              </label>
-            </div>
-          </div>
-        </FilterModal>
+          onStatusFilterChange={updateDraftStatusFilter}
+        />
 
         <TimeEntryHistoryModal
           isOpen={!!historyEntry}
