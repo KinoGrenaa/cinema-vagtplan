@@ -7,6 +7,7 @@ import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistor
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
+import MyTimeEditModal from "./components/MyTimeEditModal";
 import MyTimeFilterModal from "./components/MyTimeFilterModal";
 import {
   addDays,
@@ -773,90 +774,20 @@ export default function MyTimePage() {
           </div>
         )}
 
-        {editingEntry && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-              <div className="mb-4">
-                <h2 className="text-xl font-bold">Redigér timeregistrering</h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Du kan kun rette timer, der ikke er godkendt endnu.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Mødetid
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={editClockIn}
-                    onChange={(event) => setEditClockIn(event.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Fyraften
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={editClockOut}
-                    onChange={(event) => setEditClockOut(event.target.value)}
-                    className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Mødetidsnote
-                  </label>
-                  <textarea
-                    value={editClockInNote}
-                    onChange={(event) => setEditClockInNote(event.target.value)}
-                    rows={3}
-                    className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                    placeholder="Forklar evt. ændret mødetid"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    Fyraftensnote
-                  </label>
-                  <textarea
-                    value={editClockOutNote}
-                    onChange={(event) =>
-                      setEditClockOutNote(event.target.value)
-                    }
-                    rows={3}
-                    className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
-                    placeholder="Forklar evt. ændret fyraften"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-2">
-                <button
-                  onClick={closeEdit}
-                  disabled={savingEdit}
-                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Annuller
-                </button>
-
-                <button
-                  onClick={saveEdit}
-                  disabled={savingEdit}
-                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {savingEdit ? "Gemmer..." : "Gem ændringer"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <MyTimeEditModal
+          editingEntry={editingEntry}
+          editClockIn={editClockIn}
+          editClockOut={editClockOut}
+          editClockInNote={editClockInNote}
+          editClockOutNote={editClockOutNote}
+          savingEdit={savingEdit}
+          onClockInChange={setEditClockIn}
+          onClockOutChange={setEditClockOut}
+          onClockInNoteChange={setEditClockInNote}
+          onClockOutNoteChange={setEditClockOutNote}
+          onClose={closeEdit}
+          onSave={saveEdit}
+        />
         <MyTimeFilterModal
           open={filterModalOpen}
           activeFilterCount={activeStatusFilterCount}
