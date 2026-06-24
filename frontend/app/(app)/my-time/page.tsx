@@ -1,22 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
-import { apiFetch } from "@/app/lib/api";
 import MyTimeDayGroupsSection from "./components/MyTimeDayGroupsSection";
 import MyTimeEditModal from "./components/MyTimeEditModal";
 import MyTimeFilterModal from "./components/MyTimeFilterModal";
 import MyTimeHeader from "./components/MyTimeHeader";
 import MyTimeSummaryCards from "./components/MyTimeSummaryCards";
-import {
-  getCurrentPayrollPeriodReferenceDate,
-  getInitialPayrollPeriod,
-  getNextPayrollPeriodReferenceDate,
-  getPreviousPayrollPeriodReferenceDate,
-} from "./helpers/myTimePayrollPeriod";
 import {
   isEntryVisibleWithStatusFilters,
   isInPayrollPeriod,
@@ -25,21 +17,18 @@ import { useMyTimeStatusFilters } from "./hooks/useMyTimeStatusFilters";
 import { useMyTimeDayGroupsExpansion } from "./hooks/useMyTimeDayGroupsExpansion";
 import { useMyTimeHistory } from "./hooks/useMyTimeHistory";
 import { useMyTimeEdit } from "./hooks/useMyTimeEdit";
+import { useMyTimeEntries } from "./hooks/useMyTimeEntries";
+import { useMyTimePayrollPeriod } from "./hooks/useMyTimePayrollPeriod";
 import {
   getApprovedHours,
   getMyTimeDayGroups,
   getNeedsChangesCount,
   getPendingHours,
 } from "./helpers/myTimeSummary";
-import type { TimeEntry } from "./helpers/myTimeTypes";
 
 export default function MyTimePage() {
   const infoDialog = useInfoModal();
 
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [payrollPeriod, setPayrollPeriod] = useState(getInitialPayrollPeriod);
-  const [payrollPeriodLoading, setPayrollPeriodLoading] = useState(false);
   const { expandedDayKeys, resetExpandedDayKeys, toggleDayGroup } =
     useMyTimeDayGroupsExpansion();
 
@@ -59,39 +48,23 @@ export default function MyTimePage() {
     onFiltersChanged: resetExpandedDayKeys,
   });
 
+  const { entries, loading, fetchEntries } = useMyTimeEntries(
+    infoDialog.showError,
+  );
+
+  const {
+    payrollPeriod,
+    payrollPeriodLoading,
+    goToPreviousPayrollPeriod,
+    goToCurrentPayrollPeriod,
+    goToNextPayrollPeriod,
+  } = useMyTimePayrollPeriod({
+    onError: infoDialog.showError,
+    onPayrollPeriodChanged: resetExpandedDayKeys,
+  });
+
   const { historyEntry, historyItems, openHistory, closeHistory } =
     useMyTimeHistory(infoDialog.showError);
-
-  const fetchEntries = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const response = await apiFetch("/time-entries/me");
-
-      if (!response.ok) {
-        setEntries([]);
-
-        infoDialog.showError(
-          "Kunne ikke hente dine timer",
-          "Der opstod en fejl, da dine timer skulle hentes. Prøv igen.",
-        );
-
-        return;
-      }
-
-      const data = await response.json();
-      setEntries(Array.isArray(data) ? data : []);
-    } catch {
-      setEntries([]);
-
-      infoDialog.showError(
-        "Kunne ikke hente dine timer",
-        "Der opstod en fejl, da dine timer skulle hentes. Prøv igen.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const {
     editingEntry,
@@ -111,79 +84,6 @@ export default function MyTimePage() {
     onSaved: fetchEntries,
     onError: infoDialog.showError,
   });
-
-  const fetchPayrollPeriodForDate = useCallback(
-    async (referenceDate: string) => {
-      try {
-        setPayrollPeriodLoading(true);
-
-        const response = await apiFetch(
-          `/payroll/period-for-date?date=${encodeURIComponent(referenceDate)}`,
-        );
-
-        if (!response.ok) {
-          infoDialog.showError(
-            "Kunne ikke hente lønperiode",
-            "Der opstod en fejl, da lønperioden skulle hentes. Prøv igen.",
-          );
-
-          return;
-        }
-
-        const data = await response.json();
-
-        if (
-          typeof data?.startDate !== "string" ||
-          typeof data?.endDate !== "string"
-        ) {
-          infoDialog.showError(
-            "Ugyldig lønperiode",
-            "Serveren returnerede en ugyldig lønperiode.",
-          );
-
-          return;
-        }
-
-        setPayrollPeriod({
-          startDate: data.startDate.slice(0, 10),
-          endDate: data.endDate.slice(0, 10),
-        });
-
-        resetExpandedDayKeys();
-      } catch {
-        infoDialog.showError(
-          "Kunne ikke hente lønperiode",
-          "Der opstod en fejl, da lønperioden skulle hentes. Prøv igen.",
-        );
-      } finally {
-        setPayrollPeriodLoading(false);
-      }
-    },
-    [resetExpandedDayKeys],
-  );
-
-  useRealtimeCore({
-    onTimeEntry: fetchEntries,
-  });
-
-  function goToPreviousPayrollPeriod() {
-    fetchPayrollPeriodForDate(
-      getPreviousPayrollPeriodReferenceDate(payrollPeriod),
-    );
-  }
-
-  function goToCurrentPayrollPeriod() {
-    fetchPayrollPeriodForDate(getCurrentPayrollPeriodReferenceDate());
-  }
-
-  function goToNextPayrollPeriod() {
-    fetchPayrollPeriodForDate(getNextPayrollPeriodReferenceDate(payrollPeriod));
-  }
-
-  useEffect(() => {
-    fetchPayrollPeriodForDate(getCurrentPayrollPeriodReferenceDate());
-    fetchEntries();
-  }, [fetchEntries, fetchPayrollPeriodForDate]);
 
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) =>
