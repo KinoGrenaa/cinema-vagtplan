@@ -7,8 +7,8 @@ import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistor
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
+import MyTimeDayGroupsSection from "./components/MyTimeDayGroupsSection";
 import MyTimeEditModal from "./components/MyTimeEditModal";
-import MyTimeEntryCard from "./components/MyTimeEntryCard";
 import MyTimeFilterModal from "./components/MyTimeFilterModal";
 import MyTimeSummaryCards from "./components/MyTimeSummaryCards";
 import {
@@ -409,225 +409,147 @@ export default function MyTimePage() {
       <main className="min-h-screen bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
         <div className="mx-auto w-full max-w-5xl">
           <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Mine timer</h1>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Se dine indberettede og godkendte timer.
-              </p>
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">Mine timer</h1>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Se dine indberettede og godkendte timer.
+                </p>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-                  Viser: {statusFilterSummary}
-                </span>
-
-                {needsChangesCount > 0 && (
-                  <span className="rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
-                    {needsChangesCount} kræver handling
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+                    Viser: {statusFilterSummary}
                   </span>
-                )}
-              </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={openFilterModal}
-                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                >
-                  Filter
-                  {activeStatusFilterCount > 0
-                    ? ` (${activeStatusFilterCount})`
-                    : ""}
-                </button>
-
-                {needsChangesCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={showNeedsChangesEntries}
-                    className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                  >
-                    Vis det der skal rettes
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40 lg:w-auto lg:min-w-72">
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Lønperiode
-              </div>
-
-              <div className="mt-1 text-base font-semibold">
-                {formatDate(payrollPeriod.startDate)} →{" "}
-                {formatDate(payrollPeriod.endDate)}
-              </div>
-
-              {payrollPeriodLoading && (
-                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Henter lønperiode...
-                </div>
-              )}
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={goToPreviousPayrollPeriod}
-                  disabled={payrollPeriodLoading}
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
-                >
-                  Forrige
-                </button>
-
-                <button
-                  type="button"
-                  onClick={goToCurrentPayrollPeriod}
-                  disabled={payrollPeriodLoading}
-                  className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Aktuel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={goToNextPayrollPeriod}
-                  disabled={payrollPeriodLoading}
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
-                >
-                  Næste
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <MyTimeSummaryCards
-          approvedHours={approvedHours}
-          pendingHours={pendingHours}
-          needsChangesCount={needsChangesCount}
-          onShowNeedsChangesEntries={showNeedsChangesEntries}
-        />
-
-        {loading && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            Henter timer...
-          </div>
-        )}
-
-        {!loading && visibleEntries.length === 0 && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-            Der er ingen timer, der matcher det valgte filter i den aktuelle
-            lønperiode.
-          </div>
-        )}
-
-        {!loading && visibleEntries.length > 0 && (
-          <div className="space-y-4">
-            {dayGroups.map((group) => {
-              const isExpanded = expandedDayKeys.includes(group.dayKey);
-
-              return (
-                <div
-                  key={group.dayKey}
-                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleDayGroup(group.dayKey)}
-                    className="flex w-full flex-col gap-3 p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/60 md:flex-row md:items-center md:justify-between"
-                  >
-                    <div>
-                      <div className="text-lg font-bold capitalize">
-                        {group.label}
-                      </div>
-
-                      {group.summaryParts.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {group.summaryParts.map((part) => {
-                            let className =
-                              "rounded-full px-2 py-1 text-xs font-medium";
-
-                            if (part.startsWith("Godkendt:")) {
-                              className +=
-                                " bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
-                            } else if (part.startsWith("Afventer:")) {
-                              className +=
-                                " bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
-                            } else if (part.startsWith("Kræver handling:")) {
-                              className +=
-                                " bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-                            } else if (part.startsWith("Afvist/annulleret:")) {
-                              className +=
-                                " bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
-                            }
-
-                            return (
-                              <span key={part} className={className}>
-                                {part}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="rounded-xl border border-gray-300 px-3 py-1 text-sm font-medium dark:border-gray-700">
-                        {isExpanded ? "Fold ind" : "Fold ud"}
-                      </span>
-                    </div>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="space-y-4 border-t border-gray-200 p-5 dark:border-gray-800">
-                      {group.entries.map((entry) => (
-                        <MyTimeEntryCard
-                          key={entry.id}
-                          entry={entry}
-                          onEdit={openEdit}
-                          onHistory={openHistory}
-                        />
-                      ))}
-                    </div>
+                  {needsChangesCount > 0 && (
+                    <span className="rounded-full bg-orange-50 px-3 py-1 font-medium text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
+                      {needsChangesCount} kræver handling
+                    </span>
                   )}
                 </div>
-              );
-            })}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={openFilterModal}
+                    className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  >
+                    Filter
+                    {activeStatusFilterCount > 0
+                      ? ` (${activeStatusFilterCount})`
+                      : ""}
+                  </button>
+
+                  {needsChangesCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={showNeedsChangesEntries}
+                      className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                    >
+                      Vis det der skal rettes
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40 lg:w-auto lg:min-w-72">
+                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Lønperiode
+                </div>
+
+                <div className="mt-1 text-base font-semibold">
+                  {formatDate(payrollPeriod.startDate)} →{" "}
+                  {formatDate(payrollPeriod.endDate)}
+                </div>
+
+                {payrollPeriodLoading && (
+                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Henter lønperiode...
+                  </div>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={goToPreviousPayrollPeriod}
+                    disabled={payrollPeriodLoading}
+                    className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                  >
+                    Forrige
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={goToCurrentPayrollPeriod}
+                    disabled={payrollPeriodLoading}
+                    className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Aktuel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={goToNextPayrollPeriod}
+                    disabled={payrollPeriodLoading}
+                    className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                  >
+                    Næste
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
 
-        <MyTimeEditModal
-          editingEntry={editingEntry}
-          editClockIn={editClockIn}
-          editClockOut={editClockOut}
-          editClockInNote={editClockInNote}
-          editClockOutNote={editClockOutNote}
-          savingEdit={savingEdit}
-          onClockInChange={setEditClockIn}
-          onClockOutChange={setEditClockOut}
-          onClockInNoteChange={setEditClockInNote}
-          onClockOutNoteChange={setEditClockOutNote}
-          onClose={closeEdit}
-          onSave={saveEdit}
-        />
-        <MyTimeFilterModal
-          open={filterModalOpen}
-          activeFilterCount={activeStatusFilterCount}
-          draftStatusFilters={draftStatusFilters}
-          onApply={applyStatusFilters}
-          onReset={resetStatusFilters}
-          onClose={closeFilterModal}
-          onStatusFilterChange={updateDraftStatusFilter}
-        />
+          <MyTimeSummaryCards
+            approvedHours={approvedHours}
+            pendingHours={pendingHours}
+            needsChangesCount={needsChangesCount}
+            onShowNeedsChangesEntries={showNeedsChangesEntries}
+          />
 
-        <TimeEntryHistoryModal
-          isOpen={!!historyEntry}
-          onClose={() => {
-            setHistoryEntry(null);
-            setHistoryItems([]);
-          }}
-          revisions={historyItems}
-          currentStatus={historyEntry?.status}
-        />
+          <MyTimeDayGroupsSection
+            loading={loading}
+            visibleEntryCount={visibleEntries.length}
+            dayGroups={dayGroups}
+            expandedDayKeys={expandedDayKeys}
+            onToggleDayGroup={toggleDayGroup}
+            onEdit={openEdit}
+            onHistory={openHistory}
+          />
+
+          <MyTimeEditModal
+            editingEntry={editingEntry}
+            editClockIn={editClockIn}
+            editClockOut={editClockOut}
+            editClockInNote={editClockInNote}
+            editClockOutNote={editClockOutNote}
+            savingEdit={savingEdit}
+            onClockInChange={setEditClockIn}
+            onClockOutChange={setEditClockOut}
+            onClockInNoteChange={setEditClockInNote}
+            onClockOutNoteChange={setEditClockOutNote}
+            onClose={closeEdit}
+            onSave={saveEdit}
+          />
+          <MyTimeFilterModal
+            open={filterModalOpen}
+            activeFilterCount={activeStatusFilterCount}
+            draftStatusFilters={draftStatusFilters}
+            onApply={applyStatusFilters}
+            onReset={resetStatusFilters}
+            onClose={closeFilterModal}
+            onStatusFilterChange={updateDraftStatusFilter}
+          />
+
+          <TimeEntryHistoryModal
+            isOpen={!!historyEntry}
+            onClose={() => {
+              setHistoryEntry(null);
+              setHistoryItems([]);
+            }}
+            revisions={historyItems}
+            currentStatus={historyEntry?.status}
+          />
         </div>
       </main>
 
