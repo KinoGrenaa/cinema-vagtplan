@@ -34,13 +34,14 @@ import {
   unlockPayrollPeriod,
 } from "./services/payrollService";
 
-import { formatDateTime, formatHours } from "./utils";
+import { formatDateTime } from "./utils";
 
-import PayrollEmployeeSummaryTable from "./components/PayrollEmployeeSummaryTable";
 import PayrollAttentionTable from "./components/PayrollAttentionTable";
 import PayrollPeriodStatus from "./components/PayrollPeriodStatus";
 import PayrollHeader from "./components/PayrollHeader";
 import PayrollSummaryCards from "./components/PayrollSummaryCards";
+import PayrollEmployeesSection from "./components/PayrollEmployeesSection";
+import PayrollAdjustmentsSection from "./components/PayrollAdjustmentsSection";
 
 import { usePayrollFilters } from "./hooks/usePayrollFilters";
 import { usePayrollData } from "./hooks/usePayrollData";
@@ -150,42 +151,6 @@ export default function PayrollPage() {
       payrollAdjustments: employee.payrollAdjustments ?? [],
     }))
     .filter((employee) => employee.payrollAdjustments.length > 0);
-
-  const formatSignedHoursAsTime = (hoursValue: number) => {
-    const sign = hoursValue >= 0 ? "+" : "-";
-    const absoluteMinutes = Math.round(Math.abs(hoursValue) * 60);
-    const hours = Math.floor(absoluteMinutes / 60);
-    const minutes = absoluteMinutes % 60;
-
-    return `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0",
-    )}`;
-  };
-
-  const formatHoursAsTime = (hoursValue: number) => {
-    const absoluteMinutes = Math.round(Math.abs(hoursValue) * 60);
-    const hours = Math.floor(absoluteMinutes / 60);
-    const minutes = absoluteMinutes % 60;
-
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0",
-    )}`;
-  };
-
-  const formatAdjustmentReason = (reason: string) => {
-    switch (reason) {
-      case "EDIT_AFTER_EXPORT":
-        return "Rettet efter eksport";
-      case "APPROVAL_AFTER_EXPORT":
-        return "Godkendt efter eksport";
-      case "MANUAL_ENTRY_IN_EXPORTED_PERIOD":
-        return "Manuel registrering i eksporteret periode";
-      default:
-        return "Efterregulering";
-    }
-  };
 
   const { exporting, downloadExport } = usePayrollExport({
     startDate,
@@ -371,236 +336,14 @@ export default function PayrollPage() {
           <PayrollAttentionTable overtimeWarnings={overtimeWarnings} />
         )}
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Medarbejdere
-              </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Overblik over løngrundlag, afvigelser og efterreguleringer pr.
-                medarbejder.
-              </p>
-            </div>
+        <PayrollEmployeesSection
+          expandedEmployeeIds={expandedEmployeeIds}
+          loading={loading}
+          report={report}
+          onToggleEmployeeGroup={toggleEmployeeGroup}
+        />
 
-            <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-              {report.length} medarbejder{report.length === 1 ? "" : "e"}
-            </div>
-          </div>
-
-          <PayrollEmployeeSummaryTable report={report} />
-
-          <div className="mt-6 border-t border-gray-200 pt-5 dark:border-gray-800">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Detaljer pr. medarbejder
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Fold en medarbejder ud for at se de enkelte tidsregistreringer.
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="rounded-xl bg-gray-50 py-8 text-center text-sm text-gray-500 dark:bg-gray-950/40 dark:text-gray-400">
-                Indlæser...
-              </div>
-            ) : report.length === 0 ? (
-              <div className="rounded-xl bg-gray-50 py-8 text-center text-sm text-gray-500 dark:bg-gray-950/40 dark:text-gray-400">
-                Ingen tidsregistreringer i perioden.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {report.map((employee) => {
-                  const isExpanded = expandedEmployeeIds.includes(
-                    employee.userId,
-                  );
-
-                  return (
-                    <div
-                      key={employee.userId}
-                      className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleEmployeeGroup(employee.userId)}
-                        className="flex w-full flex-wrap items-center justify-between gap-3 bg-gray-50 p-4 text-left transition hover:bg-gray-100 dark:bg-gray-950/40 dark:hover:bg-gray-800"
-                      >
-                        <div>
-                          <div className="font-bold text-gray-900 dark:text-gray-100">
-                            {employee.name}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">
-                            {employee.email}
-                          </div>
-                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {employee.entries.length} registrering
-                            {employee.entries.length === 1 ? "" : "er"}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-4 text-right">
-                          <div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              Timer
-                            </div>
-                            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                              {formatHours(employee.totalHours)}
-                            </div>
-                          </div>
-
-                          <div className="rounded-full border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-600 dark:text-gray-200">
-                            {isExpanded ? "Skjul" : "Vis"}
-                          </div>
-                        </div>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="overflow-x-auto border-t border-gray-200 dark:border-gray-800">
-                          <table className="w-full min-w-[900px] text-sm text-gray-900 dark:text-gray-100">
-                            <thead>
-                              <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-700 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                                <th className="p-2">Dato</th>
-                                <th className="p-2">Mødetid</th>
-                                <th className="p-2">Fyraften</th>
-                                <th className="p-2 text-right">Timer</th>
-                                <th className="p-2">Arbejdstype</th>
-                                <th className="p-2">Lønart</th>
-                                <th className="p-2">Løntype</th>
-                                <th className="p-2">Afvigelse</th>
-                                <th className="p-2">Låst</th>
-                              </tr>
-                            </thead>
-
-                            <tbody>
-                              {employee.entries.map((entry, index) => (
-                                <tr
-                                  key={
-                                    entry.id || `${employee.userId}-${index}`
-                                  }
-                                  className="border-b border-gray-200 last:border-0 dark:border-gray-800"
-                                >
-                                  <td className="p-2">{entry.date}</td>
-                                  <td className="p-2">
-                                    {formatDateTime(entry.clockIn)}
-                                  </td>
-                                  <td className="p-2">
-                                    {formatDateTime(entry.clockOut)}
-                                  </td>
-                                  <td className="p-2 text-right font-medium">
-                                    {formatHours(entry.hours)}
-                                  </td>
-                                  <td className="p-2">{entry.workType}</td>
-                                  <td className="p-2">
-                                    {entry.payrollCode || "-"}
-                                  </td>
-                                  <td className="p-2">
-                                    {entry.payrollName || "-"}
-                                  </td>
-                                  <td className="p-2">
-                                    {entry.deviation?.hasDeviation ? (
-                                      <div className="space-y-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                                        {entry.deviation.messages.length > 0 ? (
-                                          entry.deviation.messages.map(
-                                            (message, messageIndex) => (
-                                              <div
-                                                key={`${entry.id || index}-deviation-${messageIndex}`}
-                                              >
-                                                ⚠ {message}
-                                              </div>
-                                            ),
-                                          )
-                                        ) : (
-                                          <div>⚠ Afvigelse</div>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <span className="text-xs font-medium text-green-700 dark:text-green-400">
-                                        OK
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="p-2">
-                                    {entry.payrollLocked ? "Ja" : "Nej"}
-                                    {entry.payrollUnlockedByMaster
-                                      ? " / genåbnet"
-                                      : ""}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {payrollAdjustmentEmployees.length > 0 && (
-          <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm dark:border-blue-900/60 dark:bg-gray-900">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                Efterreguleringer i denne lønperiode
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Rettelser fra tidligere eller lukkede perioder, som medtages i
-                den valgte lønkørsel.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              {payrollAdjustmentEmployees.map((employee) => (
-                <div
-                  key={employee.userId}
-                  className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40"
-                >
-                  <div className="mb-3">
-                    <div className="font-bold text-gray-900 dark:text-gray-100">
-                      {employee.name}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {employee.email}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {employee.payrollAdjustments.map((adjustment) => (
-                      <div
-                        key={adjustment.id}
-                        className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                              Efterregulering{" "}
-                              {formatSignedHoursAsTime(adjustment.hours)}
-                            </div>
-
-                            <div className="mt-1 text-sm text-gray-700 dark:text-gray-300">
-                              {formatAdjustmentReason(adjustment.reason)}
-                            </div>
-
-                            <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                              Fra {formatHoursAsTime(adjustment.exportedHours)}{" "}
-                              til {formatHoursAsTime(adjustment.adjustedHours)}
-                            </div>
-                          </div>
-
-                          <div className="text-right text-xs text-gray-500 dark:text-gray-400">
-                            Oprettet: {formatDateTime(adjustment.createdAt)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        <PayrollAdjustmentsSection employees={payrollAdjustmentEmployees} />
 
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
