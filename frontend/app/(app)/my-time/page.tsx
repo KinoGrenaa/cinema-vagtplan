@@ -7,6 +7,7 @@ import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistor
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
+import { getErrorMessage } from "./helpers/myTimeErrors";
 import MyTimeDayGroupsSection from "./components/MyTimeDayGroupsSection";
 import MyTimeEditModal from "./components/MyTimeEditModal";
 import MyTimeFilterModal from "./components/MyTimeFilterModal";
@@ -170,23 +171,6 @@ export default function MyTimePage() {
     setEditClockOutNote("");
   }
 
-  function getErrorMessage(errorText: string) {
-    try {
-      const parsed = JSON.parse(errorText);
-
-      if (typeof parsed?.message === "string") {
-        return parsed.message;
-      }
-
-      if (Array.isArray(parsed?.message)) {
-        return parsed.message.join("\n");
-      }
-    } catch {
-      // Ikke JSON - brug teksten som den er
-    }
-
-    return errorText || "Kunne ikke rette timeregistrering";
-  }
 
   async function saveEdit() {
     if (!editingEntry) return;
