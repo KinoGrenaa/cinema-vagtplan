@@ -1,52 +1,61 @@
 "use client";
 
-import { FormEvent, useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import { apiFetch } from "@/app/lib/api";
-import {
-  getTomorrowLocalDate,
-  localDateTimeToISOString,
-} from "@/app/utils/dateTime";
 import LeaveRequestsCancelModal from "./components/LeaveRequestsCancelModal";
 import LeaveRequestsFilterModal from "./components/LeaveRequestsFilterModal";
 import LeaveRequestFormModal from "./components/LeaveRequestFormModal";
 import LeaveRequestsHeader from "./components/LeaveRequestsHeader";
 import LeaveRequestsListSection from "./components/LeaveRequestsListSection";
 import LeaveRequestsSummaryCards from "./components/LeaveRequestsSummaryCards";
-import type { LeaveRequest } from "./helpers/leaveRequestTypes";
-import { readErrorMessage } from "./helpers/leaveRequestHelpers";
-import { useLeaveRequestsData } from "./hooks/useLeaveRequestsData";
+import { useLeaveRequestCancel } from "./hooks/useLeaveRequestCancel";
 import { useLeaveRequestFilters } from "./hooks/useLeaveRequestFilters";
+import { useLeaveRequestForm } from "./hooks/useLeaveRequestForm";
+import { useLeaveRequestsData } from "./hooks/useLeaveRequestsData";
 
 export default function LeaveRequestsPage() {
   const infoDialog = useInfoModal();
 
+  const { currentUserId, fetchRequests, isMasterWithoutOwnCinema, requests } =
+    useLeaveRequestsData({
+      showError: (title, description) =>
+        infoDialog.showError(title, description ?? ""),
+    });
+
   const {
-    currentUserId,
+    allDay,
+    endDate,
+    endTime,
+    minDate,
+    reason,
+    showRequestModal,
+    startDate,
+    startTime,
+    success,
+    createLeaveRequest,
+    openRequestModal,
+    setAllDay,
+    setEndDate,
+    setEndTime,
+    setReason,
+    setShowRequestModal,
+    setStartDate,
+    setStartTime,
+    setSuccess,
+  } = useLeaveRequestForm({
     fetchRequests,
     isMasterWithoutOwnCinema,
-    requests,
-  } = useLeaveRequestsData({
-    showError: infoDialog.showError,
+    showError: (title, description) =>
+      infoDialog.showError(title, description ?? ""),
   });
 
-  const minDate = getTomorrowLocalDate();
-
-  const [startDate, setStartDate] = useState(minDate);
-  const [endDate, setEndDate] = useState(minDate);
-  const [reason, setReason] = useState("");
-
-  const [allDay, setAllDay] = useState(false);
-  const [startTime, setStartTime] = useState("08:00");
-  const [endTime, setEndTime] = useState("16:00");
-
-  const [success, setSuccess] = useState("");
-
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [requestToCancel, setRequestToCancel] = useState<LeaveRequest | null>(
-    null,
-  );
+  const { cancelLeaveRequest, requestToCancel, setRequestToCancel } =
+    useLeaveRequestCancel({
+      fetchRequests,
+      setSuccess,
+      showError: (title, description) =>
+        infoDialog.showError(title, description ?? ""),
+    });
 
   const {
     activeFilterCount,
@@ -70,103 +79,13 @@ export default function LeaveRequestsPage() {
     setDraftFilterStartDate,
   } = useLeaveRequestFilters(requests);
 
-  function resetForm() {
-    setStartDate(minDate);
-    setEndDate(minDate);
-    setReason("");
-    setAllDay(false);
-    setStartTime("08:00");
-    setEndTime("16:00");
-  }
-
-  async function createLeaveRequest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    setSuccess("");
-
-    if (isMasterWithoutOwnCinema) {
-      infoDialog.showError(
-        "Egen fraværsansøgning er ikke tilgængelig for MASTER",
-        "MASTER-brugere skal oprette og behandle fravær via Fraværsgodkendelse for den aktive biograf.",
-      );
-      return;
-    }
-
-    try {
-      const response = await apiFetch("/leave-requests", {
-        method: "POST",
-        body: JSON.stringify({
-          startDate: allDay
-            ? localDateTimeToISOString(`${startDate}T00:00`)
-            : localDateTimeToISOString(`${startDate}T${startTime}`),
-          endDate: allDay
-            ? localDateTimeToISOString(`${endDate}T23:59`)
-            : localDateTimeToISOString(`${endDate}T${endTime}`),
-          reason,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(
-            response,
-            "Fraværsansøgningen kunne ikke oprettes.",
-          ),
-        );
-      }
-
-      resetForm();
-      setShowRequestModal(false);
-      setSuccess("Fraværsansøgningen er sendt.");
-
-      await fetchRequests();
-    } catch (error) {
-      infoDialog.showError(
-        "Fraværsansøgningen kunne ikke oprettes",
-        error instanceof Error ? error.message : "Der opstod en fejl.",
-      );
-    }
-  }
-
-  async function cancelLeaveRequest(requestId: number) {
-    setSuccess("");
-
-    try {
-      const response = await apiFetch(`/leave-requests/${requestId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: "CANCELLED" }),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(
-            response,
-            "Fraværsansøgningen kunne ikke annulleres.",
-          ),
-        );
-      }
-
-      setRequestToCancel(null);
-      setSuccess("Fraværsansøgningen er annulleret.");
-      await fetchRequests();
-    } catch (error) {
-      infoDialog.showError(
-        "Fraværsansøgningen kunne ikke annulleres",
-        error instanceof Error ? error.message : "Der opstod en fejl.",
-      );
-    }
-  }
-
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <LeaveRequestsHeader
           activeFilterCount={activeFilterCount}
           isMasterWithoutOwnCinema={isMasterWithoutOwnCinema}
-          onOpenRequestModal={() => {
-            setSuccess("");
-            setShowRequestModal(true);
-          }}
+          onOpenRequestModal={openRequestModal}
           onOpenFilterModal={openFilterModal}
         />
 
