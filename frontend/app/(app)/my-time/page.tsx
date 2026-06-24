@@ -22,6 +22,10 @@ import {
   isInPayrollPeriod,
 } from "./helpers/myTimeEntries";
 import {
+  getEntrySingleNote,
+  shouldShowEntryNoteAsSingleNote,
+} from "./helpers/myTimeNotes";
+import {
   DEFAULT_STATUS_FILTERS,
   type MyTimeStatusFilters,
   getActiveStatusFilterCount,
@@ -36,87 +40,6 @@ import {
   getPendingHours,
 } from "./helpers/myTimeSummary";
 import type { TimeEntry, TimeEntryRevision } from "./helpers/myTimeTypes";
-
-function getRevisionActionLabel(action: string) {
-  switch (action) {
-    case "CREATED":
-      return "Oprettet";
-
-    case "UPDATED":
-      return "Rettet";
-
-    case "APPROVED":
-      return "Godkendt";
-
-    case "NEEDS_CHANGES":
-      return "Sendt retur til rettelse";
-
-    case "VOIDED":
-      return "Afvist/annulleret";
-
-    case "REOPENED":
-      return "Genåbnet";
-
-    case "UNAPPROVED":
-      return "Godkendelse fjernet";
-
-    default:
-      return action;
-  }
-}
-
-function getRevisionActorLabel(action: string) {
-  switch (action) {
-    case "CREATED":
-      return "Oprettet af";
-
-    case "UPDATED":
-      return "Rettet af";
-
-    case "APPROVED":
-      return "Godkendt af";
-
-    case "NEEDS_CHANGES":
-      return "Sendt retur af";
-
-    case "VOIDED":
-      return "Afvist/annulleret af";
-
-    case "REOPENED":
-      return "Genåbnet af";
-
-    case "UNAPPROVED":
-      return "Godkendelse fjernet af";
-
-    default:
-      return "Udført af";
-  }
-}
-
-function shouldShowCreatedNoteAsSingleNote(item: TimeEntryRevision) {
-  if (item.action !== "CREATED") return false;
-
-  const clockInNote = item.newClockInNote?.trim() || "";
-  const clockOutNote = item.newClockOutNote?.trim() || "";
-
-  return clockInNote.length > 0 && clockInNote === clockOutNote;
-}
-
-function shouldShowEntryNoteAsSingleNote(entry: TimeEntry) {
-  const clockInNote = entry.clockInNote?.trim() || "";
-  const clockOutNote = entry.clockOutNote?.trim() || "";
-
-  return !entry.shift && clockInNote.length > 0 && clockInNote === clockOutNote;
-}
-
-function getEntrySingleNote(entry: TimeEntry) {
-  return (
-    entry.note?.trim() ||
-    entry.clockInNote?.trim() ||
-    entry.clockOutNote?.trim() ||
-    ""
-  );
-}
 
 export default function MyTimePage() {
   const infoDialog = useInfoModal();
