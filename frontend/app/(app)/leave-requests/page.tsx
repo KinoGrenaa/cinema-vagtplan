@@ -8,9 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { Calendar, ChevronDown, ChevronRight } from "lucide-react";
+import { Calendar } from "lucide-react";
 import BaseModal from "@/app/components/modals/BaseModal";
-import FilterModal from "@/app/components/modals/FilterModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
@@ -19,7 +18,9 @@ import {
   getTomorrowLocalDate,
   localDateTimeToISOString,
 } from "@/app/utils/dateTime";
+import LeaveRequestsFilterModal from "./components/LeaveRequestsFilterModal";
 import LeaveRequestsHeader from "./components/LeaveRequestsHeader";
+import LeaveRequestsListSection from "./components/LeaveRequestsListSection";
 import LeaveRequestsSummaryCards from "./components/LeaveRequestsSummaryCards";
 import {
   DEFAULT_STATUS_FILTERS,
@@ -29,14 +30,9 @@ import {
 import {
   countLeaveStatuses,
   getActiveFilterCount,
-  getEmptyReasonText,
   getFilterSummary,
   getGroupKey,
   getPeriodText,
-  getStatusBadge,
-  getStatusDescription,
-  getStatusLabel,
-  getStatusSummaryParts,
   isRequestVisibleByStatus,
   readErrorMessage,
   requestOverlapsDateFilter,
@@ -392,141 +388,17 @@ export default function LeaveRequestsPage() {
           onShowPendingOnly={showPendingOnly}
         />
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Mine ansøgninger</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Viser {visibleRequests.length} af {requests.length} ansøgninger.
-              </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Filter: {filterSummary}
-              </p>
-            </div>
-          </div>
+        <LeaveRequestsListSection
+          currentUserId={currentUserId}
+          expandedGroupKeys={expandedGroupKeys}
+          filterSummary={filterSummary}
+          groupedRequests={groupedRequests}
+          totalRequestCount={requests.length}
+          visibleRequestCount={visibleRequests.length}
+          onSelectCancelRequest={setRequestToCancel}
+          onToggleGroup={toggleGroup}
+        />
 
-          {groupedRequests.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 p-6 text-center text-gray-500 dark:border-gray-800 dark:text-gray-400">
-              Ingen fraværsansøgninger matcher det valgte filter.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {groupedRequests.map((group) => {
-                const isExpanded = expandedGroupKeys.includes(group.key);
-
-                return (
-                  <div
-                    key={group.key}
-                    className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(group.key)}
-                      className="flex w-full items-center justify-between gap-4 bg-gray-50 p-4 text-left transition hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2 font-semibold">
-                          {isExpanded ? (
-                            <ChevronDown size={18} />
-                          ) : (
-                            <ChevronRight size={18} />
-                          )}
-                          {group.key}
-                        </div>
-
-                        <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          {group.requests.length} ansøgning
-                          {group.requests.length === 1 ? "" : "er"}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {getStatusSummaryParts(group.requests).map((part) => (
-                          <span
-                            key={part}
-                            className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                          >
-                            {part}
-                          </span>
-                        ))}
-                      </div>
-                    </button>
-
-                    {isExpanded && (
-                      <div className="space-y-3 p-4">
-                        {group.requests.map((request) => (
-                          <div
-                            key={request.id}
-                            className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800"
-                          >
-                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                              <div>
-                                <div className="text-lg font-semibold">
-                                  {getPeriodText(request)}
-                                </div>
-
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  <span
-                                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
-                                      request.status,
-                                    )}`}
-                                  >
-                                    {getStatusDescription(request.status)}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {(request.status === "PENDING" ||
-                                request.status === "APPROVED") &&
-                                request.user.id === currentUserId && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setRequestToCancel(request)}
-                                    className="rounded-lg bg-gray-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
-                                  >
-                                    Annullér
-                                  </button>
-                                )}
-                            </div>
-
-                            <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-                              <div>
-                                <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                                  Periode
-                                </div>
-                                <div className="mt-1">
-                                  {getPeriodText(request)}
-                                </div>
-                              </div>
-
-                              <div>
-                                <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                                  Årsag
-                                </div>
-                                <div className="mt-1">
-                                  {getEmptyReasonText(request.reason)}
-                                </div>
-                              </div>
-
-                              <div>
-                                <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                                  Status
-                                </div>
-                                <div className="mt-1">
-                                  {getStatusLabel(request.status)}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
       </div>
 
       <BaseModal
@@ -645,132 +517,19 @@ export default function LeaveRequestsPage() {
         </form>
       </BaseModal>
 
-      <FilterModal
-        open={showFilterModal}
-        title="Filter"
+      <LeaveRequestsFilterModal
         activeFilterCount={activeFilterCount}
-        applyText="Vis ansøgninger"
-        resetText="Nulstil filter"
+        draftFilterEndDate={draftFilterEndDate}
+        draftFilterStartDate={draftFilterStartDate}
+        draftStatusFilters={draftStatusFilters}
+        open={showFilterModal}
         onApply={applyFilter}
-        onReset={resetFilter}
         onClose={closeFilterModal}
-      >
-        <div className="space-y-5">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Vælg hvilke fraværsansøgninger du vil se.
-          </p>
-
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Status
-            </h3>
-
-            <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-              <input
-                type="checkbox"
-                checked={draftStatusFilters.pending}
-                onChange={(event) =>
-                  updateDraftStatusFilter("pending", event.target.checked)
-                }
-                className="mt-0.5 h-4 w-4"
-              />
-              <span>
-                <span className="block font-medium">Afventer</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Ansøgninger der endnu ikke er behandlet.
-                </span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-              <input
-                type="checkbox"
-                checked={draftStatusFilters.approved}
-                onChange={(event) =>
-                  updateDraftStatusFilter("approved", event.target.checked)
-                }
-                className="mt-0.5 h-4 w-4"
-              />
-              <span>
-                <span className="block font-medium">Godkendte</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Fravær der er godkendt.
-                </span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-              <input
-                type="checkbox"
-                checked={draftStatusFilters.rejected}
-                onChange={(event) =>
-                  updateDraftStatusFilter("rejected", event.target.checked)
-                }
-                className="mt-0.5 h-4 w-4"
-              />
-              <span>
-                <span className="block font-medium">Afviste</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Ansøgninger der er afvist.
-                </span>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-              <input
-                type="checkbox"
-                checked={draftStatusFilters.cancelled}
-                onChange={(event) =>
-                  updateDraftStatusFilter("cancelled", event.target.checked)
-                }
-                className="mt-0.5 h-4 w-4"
-              />
-              <span>
-                <span className="block font-medium">Annullerede</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Ansøgninger der er annulleret.
-                </span>
-              </span>
-            </label>
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Periode
-            </h3>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>Fra dato</label>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={draftFilterStartDate}
-                  onChange={(event) =>
-                    setDraftFilterStartDate(event.target.value)
-                  }
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Til dato</label>
-                <input
-                  type="date"
-                  className={inputClass}
-                  value={draftFilterEndDate}
-                  onChange={(event) =>
-                    setDraftFilterEndDate(event.target.value)
-                  }
-                />
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Datofilteret viser ansøgninger, der overlapper den valgte periode.
-            </p>
-          </div>
-        </div>
-      </FilterModal>
+        onReset={resetFilter}
+        onSetDraftFilterEndDate={setDraftFilterEndDate}
+        onSetDraftFilterStartDate={setDraftFilterStartDate}
+        onUpdateDraftStatusFilter={updateDraftStatusFilter}
+      />
 
       <BaseModal
         open={Boolean(requestToCancel)}
