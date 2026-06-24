@@ -7,96 +7,22 @@ import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import { apiFetch } from "@/app/lib/api";
+import { dateToLocalMonthString } from "@/app/utils/dateTime";
+import MyShiftsDirectTradesSection from "./components/MyShiftsDirectTradesSection";
+import MyShiftsListSection from "./components/MyShiftsListSection";
 import {
-  dateToLocalMonthString,
-  formatDateDK,
-  formatTimeDK,
-} from "@/app/utils/dateTime";
-
-type CurrentUser = {
-  id: number;
-  role: string;
-  cinemaId: number | null;
-};
-
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
-};
-
-type Shift = {
-  id: number;
-  startTime: string;
-  endTime: string;
-  note?: string | null;
-  userId: number;
-  workType: {
-    name: string;
-    color: string;
-  };
-};
-
-type ShiftTrade = {
-  id: number;
-  status: "OPEN" | "ACCEPTED" | "REJECTED" | "CANCELLED";
-  type: "POOL" | "DIRECT";
-  shiftId: number;
-  offeredByUserId: number;
-  targetUserId?: number | null;
-  offeredByUser?: User | null;
-  targetUser?: User | null;
-  shift?: {
-    startTime: string;
-    endTime: string;
-    workType?: {
-      name: string;
-    };
-  };
-};
-
-type CinemaSettings = {
-  allowShiftTradePool: boolean;
-  allowShiftTradeDirect: boolean;
-};
-
-async function readErrorMessage(response: Response, fallback: string) {
-  try {
-    const data = await response.json();
-
-    if (Array.isArray(data.message)) {
-      return data.message.join("\n");
-    }
-
-    return data.message || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function getStoredUser() {
-  const savedUser = window.localStorage.getItem("user");
-
-  if (!savedUser) {
-    return null;
-  }
-
-  try {
-    const parsedUser = JSON.parse(savedUser) as CurrentUser;
-
-    if (!parsedUser || typeof parsedUser !== "object") {
-      return null;
-    }
-
-    return parsedUser;
-  } catch {
-    return null;
-  }
-}
-
-function hasOwnCinema(user: CurrentUser | null) {
-  return Boolean(user?.cinemaId && Number(user.cinemaId) > 0);
-}
+  getShiftConfirmText,
+  getStoredUser,
+  hasOwnCinema,
+  readErrorMessage,
+} from "./helpers/myShiftsHelpers";
+import type {
+  CinemaSettings,
+  CurrentUser,
+  Shift,
+  ShiftTrade,
+  User,
+} from "./helpers/myShiftsTypes";
 
 export default function MyShiftsPage() {
   const confirmDialog = useConfirm();
@@ -322,34 +248,6 @@ export default function MyShiftsPage() {
       return total + (end.getTime() - start.getTime()) / 1000 / 60 / 60;
     }, 0);
   }, [myMonthShifts]);
-
-  function formatShiftDate(value: string) {
-    return formatDateDK(value);
-  }
-
-  function formatShiftTimeRange(shift: { startTime: string; endTime: string }) {
-    return `${formatTimeDK(shift.startTime)} - ${formatTimeDK(shift.endTime)}`;
-  }
-
-  function getShiftWorkTypeName(shift: {
-    workType?: {
-      name: string;
-    };
-  }) {
-    return shift.workType?.name ?? "Ukendt arbejdstype";
-  }
-
-  function getShiftConfirmText(shift: {
-    startTime: string;
-    endTime: string;
-    workType?: {
-      name: string;
-    };
-  }) {
-    return `${getShiftWorkTypeName(shift)}
-${formatShiftDate(shift.startTime)}
-${formatShiftTimeRange(shift)}`;
-  }
 
   function sendToPool(shiftId: number) {
     if (!currentUser || !hasOwnCinema(currentUser)) return;
@@ -636,80 +534,11 @@ ${getShiftConfirmText(shift)}`,
               </div>
             )}
 
-            {directTradesForMe.length > 0 && (
-              <section className="space-y-4">
-                <h2 className="text-xl font-bold">Direkte tilbudte vagter</h2>
-
-                {directTradesForMe.map((trade) => (
-                  <div
-                    key={trade.id}
-                    className="rounded-2xl border border-blue-300 bg-blue-50 p-5 shadow-sm dark:border-blue-900 dark:bg-blue-950/40"
-                  >
-                    <p className="font-bold">
-                      Du har fået tilbudt en vagt direkte
-                    </p>
-
-                    <p className="mt-1 text-gray-700 dark:text-gray-300">
-                      Fra:{" "}
-                      {trade.offeredByUser
-                        ? `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`
-                        : "Ukendt"}
-                    </p>
-
-                    {trade.shift && (
-                      <div className="mt-3 rounded-xl border border-blue-200 bg-white/70 p-3 text-sm dark:border-blue-900 dark:bg-gray-950/50">
-                        <p>
-                          {new Date(trade.shift.startTime).toLocaleDateString(
-                            "da-DK",
-                            {
-                              weekday: "long",
-                              day: "2-digit",
-                              month: "long",
-                            },
-                          )}
-                        </p>
-
-                        <p>
-                          {new Date(trade.shift.startTime).toLocaleTimeString(
-                            "da-DK",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}{" "}
-                          -{" "}
-                          {new Date(trade.shift.endTime).toLocaleTimeString(
-                            "da-DK",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
-                        </p>
-
-                        <p>{trade.shift.workType?.name}</p>
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <button
-                        onClick={() => acceptTrade(trade.id)}
-                        className="rounded-xl bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
-                      >
-                        Accepter vagt
-                      </button>
-
-                      <button
-                        onClick={() => rejectTrade(trade.id)}
-                        className="rounded-xl bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
-                      >
-                        Afvis vagt
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </section>
-            )}
+            <MyShiftsDirectTradesSection
+              directTradesForMe={directTradesForMe}
+              acceptTrade={acceptTrade}
+              rejectTrade={rejectTrade}
+            />
 
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
               <h2 className="text-xl font-bold">Samlet timer</h2>
@@ -719,172 +548,16 @@ ${getShiftConfirmText(shift)}`,
               </p>
             </section>
 
-            <section className="space-y-4">
-              <h2 className="text-xl font-bold">Vagter</h2>
-
-              {myMonthShifts.map((shift) => {
-                const canTrade = new Date(shift.startTime) > new Date();
-                const openTrade = getOpenTradeForShift(shift.id);
-                const isSent = Boolean(openTrade);
-
-                return (
-                  <div
-                    key={shift.id}
-                    className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
-                  >
-                    <div
-                      className="h-2 w-full"
-                      style={{ backgroundColor: shift.workType.color }}
-                    />
-
-                    <div className="space-y-4 p-5">
-                      <div>
-                        <h3 className="text-xl font-bold">
-                          {new Date(shift.startTime).toLocaleDateString(
-                            "da-DK",
-                            {
-                              weekday: "long",
-                              day: "2-digit",
-                              month: "long",
-                            },
-                          )}
-                        </h3>
-
-                        <p className="mt-1 text-gray-600 dark:text-gray-400">
-                          {new Date(shift.startTime).toLocaleTimeString(
-                            "da-DK",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}{" "}
-                          -{" "}
-                          {new Date(shift.endTime).toLocaleTimeString("da-DK", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-
-                        <p className="font-medium">{shift.workType.name}</p>
-
-                        {shift.note && (
-                          <p className="mt-2 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-950">
-                            Note: {shift.note}
-                          </p>
-                        )}
-
-                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                          {(
-                            (new Date(shift.endTime).getTime() -
-                              new Date(shift.startTime).getTime()) /
-                            1000 /
-                            60 /
-                            60
-                          ).toFixed(2)}{" "}
-                          timer
-                        </p>
-                      </div>
-
-                      {openTrade && (
-                        <div className="rounded-xl border border-orange-300 bg-orange-100 p-3 text-sm dark:border-orange-900 dark:bg-orange-950/40">
-                          {openTrade.type === "POOL" && (
-                            <p>Denne vagt er sendt i vagtpuljen.</p>
-                          )}
-
-                          {openTrade.type === "DIRECT" && (
-                            <p>
-                              Denne vagt er sendt direkte til{" "}
-                              <strong>
-                                {openTrade.targetUser
-                                  ? `${openTrade.targetUser.firstName} ${openTrade.targetUser.lastName}`
-                                  : "en kollega"}
-                              </strong>
-                              .
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {canTrade && (
-                        <div className="flex flex-wrap items-center gap-3">
-                          {cinemaSettings?.allowShiftTradePool ? (
-                            <button
-                              onClick={() => sendToPool(shift.id)}
-                              disabled={isSent}
-                              className={
-                                isSent
-                                  ? "cursor-not-allowed rounded-xl bg-gray-300 px-4 py-2 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                                  : "rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                              }
-                            >
-                              Send til fælles pulje
-                            </button>
-                          ) : (
-                            <button
-                              disabled
-                              title="Vagtpulje er slået fra i biografindstillinger"
-                              className="cursor-not-allowed rounded-xl bg-gray-300 px-4 py-2 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                            >
-                              Vagtpulje deaktiveret
-                            </button>
-                          )}
-
-                          <select
-                            disabled={
-                              isSent || !cinemaSettings?.allowShiftTradeDirect
-                            }
-                            defaultValue=""
-                            onChange={(event) => {
-                              const targetUserId = Number(event.target.value);
-
-                              if (targetUserId) {
-                                sendDirect(shift.id, targetUserId);
-                                event.target.value = "";
-                              }
-                            }}
-                            className={
-                              isSent || !cinemaSettings?.allowShiftTradeDirect
-                                ? "cursor-not-allowed rounded-xl border border-gray-300 bg-gray-200 p-2 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                                : "rounded-xl border border-gray-300 bg-white p-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                            }
-                          >
-                            <option value="">
-                              {cinemaSettings?.allowShiftTradeDirect
-                                ? "Send direkte til kollega"
-                                : "Direkte vagtbytte deaktiveret"}
-                            </option>
-
-                            {users
-                              .filter((user) => user.id !== currentUser?.id)
-                              .map((user) => (
-                                <option key={user.id} value={user.id}>
-                                  {user.firstName} {user.lastName}
-                                </option>
-                              ))}
-                          </select>
-
-                          {openTrade &&
-                            openTrade.offeredByUserId === currentUser?.id && (
-                              <button
-                                onClick={() => cancelTrade(openTrade.id)}
-                                className="rounded-xl bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
-                              >
-                                Annuller udsendelse
-                              </button>
-                            )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {myMonthShifts.length === 0 && (
-                <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-                  Ingen vagter i denne måned.
-                </div>
-              )}
-            </section>
+            <MyShiftsListSection
+              myMonthShifts={myMonthShifts}
+              users={users}
+              currentUserId={currentUser?.id}
+              cinemaSettings={cinemaSettings}
+              getOpenTradeForShift={getOpenTradeForShift}
+              sendToPool={sendToPool}
+              sendDirect={sendDirect}
+              cancelTrade={cancelTrade}
+            />
           </>
         )}
       </div>
