@@ -1,71 +1,22 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-
-type CurrentUser = {
-  id?: number;
-  sub?: number;
-  email: string;
-  role: "MASTER" | "ADMIN" | "EMPLOYEE";
-  cinemaId: number | null;
-};
-
-type Cinema = {
-  id: number;
-  name: string;
-  logoUrl?: string | null;
-  createdAt?: string;
-  _count?: {
-    users?: number;
-    shifts?: number;
-    workTypes?: number;
-  };
-};
-
-const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
-const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
-const MASTER_SELECTED_CINEMA_LOGO_URL_KEY = "masterSelectedCinemaLogoUrl";
-
-function notifyMasterSelectedCinemaChanged() {
-  window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
-}
-
-async function readErrorMessage(response: Response, fallback: string) {
-  try {
-    const data = await response.json();
-
-    if (Array.isArray(data?.message)) {
-      return data.message.join("\n");
-    }
-
-    if (typeof data?.message === "string") {
-      return data.message;
-    }
-  } catch {}
-
-  return fallback;
-}
-
-function formatDateDK(value?: string) {
-  if (!value) return "Ukendt";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "Ukendt";
-
-  return date.toLocaleDateString("da-DK", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function sortCinemas(cinemas: Cinema[]) {
-  return [...cinemas].sort((a, b) => a.name.localeCompare(b.name, "da"));
-}
+import MasterCinemasListSection from "./components/MasterCinemasListSection";
+import MasterCreateCinemaSection from "./components/MasterCreateCinemaSection";
+import MasterHeader from "./components/MasterHeader";
+import MasterSummaryCards from "./components/MasterSummaryCards";
+import {
+  MASTER_SELECTED_CINEMA_ID_KEY,
+  MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
+  MASTER_SELECTED_CINEMA_NAME_KEY,
+  notifyMasterSelectedCinemaChanged,
+  readErrorMessage,
+  sortCinemas,
+} from "./helpers/masterHelpers";
+import type { Cinema, CurrentUser } from "./helpers/masterTypes";
 
 export default function MasterPage() {
   const infoDialog = useInfoModal();
@@ -328,74 +279,16 @@ export default function MasterPage() {
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-wide text-purple-700 dark:text-purple-300">
-                Global administration
-              </p>
-              <h1 className="mt-1 text-3xl font-bold">MASTER-panel</h1>
-              <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
-                Administrer biografer på tværs af systemet. MASTER-brugeren er
-                stadig global og bliver ikke bundet til en fast biograf.
-              </p>
-            </div>
+        <MasterHeader onRefresh={fetchCinemas} />
 
-            <button
-              type="button"
-              onClick={fetchCinemas}
-              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-            >
-              Opdater liste
-            </button>
-          </div>
-        </div>
+        <MasterSummaryCards cinemas={cinemas} selectedCinema={selectedCinema} />
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Biografer
-            </div>
-            <div className="mt-2 text-3xl font-bold">{cinemas.length}</div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Valgt biograf
-            </div>
-            <div className="mt-2 text-xl font-bold">
-              {selectedCinema ? selectedCinema.name : "Ingen valgt"}
-            </div>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Valget gemmes lokalt i denne browser.
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="text-xl font-bold">Opret biograf</h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Opretter en ny biograf med standardindstillinger. Admins og
-            medarbejdere kan tilknyttes senere.
-          </p>
-
-          <div className="mt-4 flex flex-col gap-3 md:flex-row">
-            <input
-              value={newCinemaName}
-              onChange={(event) => setNewCinemaName(event.target.value)}
-              placeholder="Biografnavn"
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950"
-            />
-            <button
-              type="button"
-              onClick={createCinema}
-              disabled={creating}
-              className="rounded-xl bg-purple-700 px-5 py-3 font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {creating ? "Opretter..." : "Opret biograf"}
-            </button>
-          </div>
-        </div>
+        <MasterCreateCinemaSection
+          newCinemaName={newCinemaName}
+          creating={creating}
+          onNewCinemaNameChange={setNewCinemaName}
+          onCreateCinema={createCinema}
+        />
 
         {message && (
           <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">
@@ -403,117 +296,18 @@ export default function MasterPage() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="border-b border-gray-200 p-6 dark:border-gray-800">
-            <h2 className="text-xl font-bold">Biografer</h2>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Vælg hvilken biograf MASTER-panelet skal arbejde videre med.
-            </p>
-          </div>
-
-          {cinemas.length === 0 ? (
-            <div className="p-6 text-sm text-gray-600 dark:text-gray-400">
-              Der er ingen biografer endnu.
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200 dark:divide-gray-800">
-              {cinemas.map((cinema) => {
-                const isSelected = selectedCinemaId === cinema.id;
-                const isEditing = editingCinemaId === cinema.id;
-
-                return (
-                  <div
-                    key={cinema.id}
-                    className={`p-6 ${
-                      isSelected
-                        ? "bg-purple-50 dark:bg-purple-950/20"
-                        : "bg-white dark:bg-gray-900"
-                    }`}
-                  >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 flex-1">
-                        {isEditing ? (
-                          <div className="flex flex-col gap-3 md:flex-row">
-                            <input
-                              value={editingCinemaName}
-                              onChange={(event) =>
-                                setEditingCinemaName(event.target.value)
-                              }
-                              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => saveCinemaName(cinema)}
-                              disabled={savingCinemaId === cinema.id}
-                              className="rounded-xl bg-green-700 px-4 py-3 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              Gem
-                            </button>
-                            <button
-                              type="button"
-                              onClick={cancelEditingCinema}
-                              disabled={savingCinemaId === cinema.id}
-                              className="rounded-xl border border-gray-300 px-4 py-3 font-semibold hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                            >
-                              Annuller
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-lg font-bold">
-                                {cinema.name}
-                              </h3>
-                              {isSelected && (
-                                <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-100">
-                                  Valgt
-                                </span>
-                              )}
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
-                              <span>ID: {cinema.id}</span>
-                              <span>
-                                Oprettet: {formatDateDK(cinema.createdAt)}
-                              </span>
-                              <span>Brugere: {cinema._count?.users ?? 0}</span>
-                              <span>Vagter: {cinema._count?.shifts ?? 0}</span>
-                              <span>
-                                Jobfunktioner: {cinema._count?.workTypes ?? 0}
-                              </span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {!isEditing && (
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => saveSelectedCinema(cinema)}
-                            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                              isSelected
-                                ? "bg-purple-700 text-white hover:bg-purple-800"
-                                : "border border-purple-300 bg-white text-purple-800 hover:bg-purple-50 dark:border-purple-800 dark:bg-gray-950 dark:text-purple-200 dark:hover:bg-purple-950/40"
-                            }`}
-                          >
-                            {isSelected ? "Valgt" : "Vælg"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => startEditingCinema(cinema)}
-                            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-                          >
-                            Rediger navn
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <MasterCinemasListSection
+          cinemas={cinemas}
+          selectedCinemaId={selectedCinemaId}
+          editingCinemaId={editingCinemaId}
+          editingCinemaName={editingCinemaName}
+          savingCinemaId={savingCinemaId}
+          onEditingCinemaNameChange={setEditingCinemaName}
+          onSaveSelectedCinema={saveSelectedCinema}
+          onStartEditingCinema={startEditingCinema}
+          onCancelEditingCinema={cancelEditingCinema}
+          onSaveCinemaName={saveCinemaName}
+        />
       </div>
 
       <InfoModal
