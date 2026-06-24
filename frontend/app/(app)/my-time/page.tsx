@@ -8,6 +8,13 @@ import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistor
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
+import {
+  addDays,
+  dateToLocalDateString,
+  formatDate,
+  formatDateTime,
+  toInputDateTime,
+} from "./helpers/myTimeDate";
 
 type TimeEntryStatus = "PENDING" | "NEEDS_CHANGES" | "APPROVED" | "VOIDED";
 
@@ -202,25 +209,6 @@ function getStatusHistoryLabel(status?: string | null) {
   }
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "-";
-
-  return new Date(value).toLocaleString("da-DK", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return "-";
-
-  return new Date(`${value}T00:00:00`).toLocaleDateString("da-DK", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
 function getEntryHoursNumber(entry: TimeEntry) {
   if (!entry.clockOut) return 0;
 
@@ -252,20 +240,6 @@ function getHours(entry: TimeEntry) {
   if (hours <= 0) return "-";
 
   return formatHoursDuration(hours);
-}
-
-function dateToLocalDateString(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function addDays(date: Date, days: number) {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
 }
 
 function getDaySummaryParts(entries: TimeEntry[]) {
@@ -344,17 +318,6 @@ function getStatusFilterSummary(filters: MyTimeStatusFilters) {
   if (filters.voided) labels.push("Afviste/annullerede");
 
   return labels.length > 0 ? labels.join(", ") : "Ingen statusser valgt";
-}
-
-function toInputDateTime(value?: string | null) {
-  if (!value) return "";
-
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-
-  return new Date(date.getTime() - offset * 60 * 1000)
-    .toISOString()
-    .slice(0, 16);
 }
 
 export default function MyTimePage() {
