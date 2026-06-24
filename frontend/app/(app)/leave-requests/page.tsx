@@ -8,12 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  Calendar,
-  ChevronDown,
-  ChevronRight,
-  SlidersHorizontal,
-} from "lucide-react";
+import { Calendar, ChevronDown, ChevronRight } from "lucide-react";
 import BaseModal from "@/app/components/modals/BaseModal";
 import FilterModal from "@/app/components/modals/FilterModal";
 import InfoModal from "@/app/components/modals/InfoModal";
@@ -24,6 +19,8 @@ import {
   getTomorrowLocalDate,
   localDateTimeToISOString,
 } from "@/app/utils/dateTime";
+import LeaveRequestsHeader from "./components/LeaveRequestsHeader";
+import LeaveRequestsSummaryCards from "./components/LeaveRequestsSummaryCards";
 import {
   DEFAULT_STATUS_FILTERS,
   type LeaveRequest,
@@ -362,39 +359,15 @@ export default function LeaveRequestsPage() {
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Fraværsansøgninger</h1>
-              <p className="mt-2 text-gray-500 dark:text-gray-400">
-                Ansøg om fravær og se status på dine ansøgninger.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={isMasterWithoutOwnCinema}
-                onClick={() => {
-                  setSuccess("");
-                  setShowRequestModal(true);
-                }}
-                className="rounded-xl bg-black px-4 py-2 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-              >
-                Ansøg om fravær
-              </button>
-
-              <button
-                type="button"
-                onClick={openFilterModal}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 font-medium text-gray-900 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
-              >
-                <SlidersHorizontal size={18} />
-                Filter{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-              </button>
-            </div>
-          </div>
-        </div>
+        <LeaveRequestsHeader
+          activeFilterCount={activeFilterCount}
+          isMasterWithoutOwnCinema={isMasterWithoutOwnCinema}
+          onOpenRequestModal={() => {
+            setSuccess("");
+            setShowRequestModal(true);
+          }}
+          onOpenFilterModal={openFilterModal}
+        />
 
         {success && (
           <div className="rounded-xl border border-green-300 bg-green-50 p-3 text-green-700">
@@ -414,71 +387,10 @@ export default function LeaveRequestsPage() {
           </div>
         )}
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <div
-            className={`rounded-2xl border p-5 shadow-sm transition-colors ${
-              statusCounts.pending > 0
-                ? "border-yellow-300 bg-yellow-50 dark:border-yellow-900/70 dark:bg-yellow-950/30"
-                : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
-            }`}
-          >
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Afventer
-            </div>
-            <div className="mt-1 text-3xl font-bold">
-              {statusCounts.pending}
-            </div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Ansøgninger der afventer behandling.
-            </div>
-
-            {statusCounts.pending > 0 && (
-              <button
-                type="button"
-                onClick={showPendingOnly}
-                className="mt-3 rounded-xl bg-yellow-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-yellow-700"
-              >
-                Vis afventende
-              </button>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Godkendte
-            </div>
-            <div className="mt-1 text-3xl font-bold">
-              {statusCounts.approved}
-            </div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Fravær der er godkendt.
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Afviste
-            </div>
-            <div className="mt-1 text-3xl font-bold">
-              {statusCounts.rejected}
-            </div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Ansøgninger der er afvist.
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Annullerede
-            </div>
-            <div className="mt-1 text-3xl font-bold">
-              {statusCounts.cancelled}
-            </div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Ansøgninger du eller administrationen har annulleret.
-            </div>
-          </div>
-        </section>
+        <LeaveRequestsSummaryCards
+          statusCounts={statusCounts}
+          onShowPendingOnly={showPendingOnly}
+        />
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
