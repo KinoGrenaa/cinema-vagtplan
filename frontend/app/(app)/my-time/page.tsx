@@ -24,12 +24,7 @@ import {
   isEntryVisibleWithStatusFilters,
   isInPayrollPeriod,
 } from "./helpers/myTimeEntries";
-import {
-  DEFAULT_STATUS_FILTERS,
-  type MyTimeStatusFilters,
-  getActiveStatusFilterCount,
-  getStatusFilterSummary,
-} from "./helpers/myTimeStatus";
+import { useMyTimeStatusFilters } from "./hooks/useMyTimeStatusFilters";
 import {
   getApprovedHours,
   getMyTimeDayGroups,
@@ -51,13 +46,23 @@ export default function MyTimePage() {
   const [editClockInNote, setEditClockInNote] = useState("");
   const [editClockOutNote, setEditClockOutNote] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
-  const [statusFilters, setStatusFilters] = useState<MyTimeStatusFilters>(
-    DEFAULT_STATUS_FILTERS,
-  );
-  const [draftStatusFilters, setDraftStatusFilters] =
-    useState<MyTimeStatusFilters>(DEFAULT_STATUS_FILTERS);
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [expandedDayKeys, setExpandedDayKeys] = useState<string[]>([]);
+
+  const {
+    statusFilters,
+    draftStatusFilters,
+    filterModalOpen,
+    activeStatusFilterCount,
+    statusFilterSummary,
+    openFilterModal,
+    closeFilterModal,
+    updateDraftStatusFilter,
+    applyStatusFilters,
+    resetStatusFilters,
+    showNeedsChangesEntries,
+  } = useMyTimeStatusFilters({
+    onFiltersChanged: () => setExpandedDayKeys([]),
+  });
 
   const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -268,51 +273,6 @@ export default function MyTimePage() {
     }
   }
 
-  function openFilterModal() {
-    setDraftStatusFilters(statusFilters);
-    setFilterModalOpen(true);
-  }
-
-  function closeFilterModal() {
-    setFilterModalOpen(false);
-  }
-
-  function updateDraftStatusFilter(
-    key: keyof MyTimeStatusFilters,
-    checked: boolean,
-  ) {
-    setDraftStatusFilters((current) => ({
-      ...current,
-      [key]: checked,
-    }));
-  }
-
-  function applyStatusFilters() {
-    setStatusFilters(draftStatusFilters);
-    setExpandedDayKeys([]);
-    setFilterModalOpen(false);
-  }
-
-  function resetStatusFilters() {
-    setDraftStatusFilters(DEFAULT_STATUS_FILTERS);
-    setStatusFilters(DEFAULT_STATUS_FILTERS);
-    setExpandedDayKeys([]);
-    setFilterModalOpen(false);
-  }
-
-  function showNeedsChangesEntries() {
-    const needsChangesOnlyFilters: MyTimeStatusFilters = {
-      approved: false,
-      pending: false,
-      needsChanges: true,
-      voided: false,
-    };
-
-    setStatusFilters(needsChangesOnlyFilters);
-    setDraftStatusFilters(needsChangesOnlyFilters);
-    setExpandedDayKeys([]);
-  }
-
   function toggleDayGroup(dayKey: string) {
     setExpandedDayKeys((current) =>
       current.includes(dayKey)
@@ -351,14 +311,6 @@ export default function MyTimePage() {
       isEntryVisibleWithStatusFilters(entry, statusFilters),
     );
   }, [filteredEntries, statusFilters]);
-
-  const activeStatusFilterCount = useMemo(() => {
-    return getActiveStatusFilterCount(statusFilters);
-  }, [statusFilters]);
-
-  const statusFilterSummary = useMemo(() => {
-    return getStatusFilterSummary(statusFilters);
-  }, [statusFilters]);
 
   const approvedHours = useMemo(() => {
     return getApprovedHours(filteredEntries);
