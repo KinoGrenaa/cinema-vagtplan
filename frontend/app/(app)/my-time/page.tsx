@@ -1,19 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import InfoModal from "@/app/components/modals/InfoModal";
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
-import { getErrorMessage } from "./helpers/myTimeErrors";
 import MyTimeDayGroupsSection from "./components/MyTimeDayGroupsSection";
 import MyTimeEditModal from "./components/MyTimeEditModal";
 import MyTimeFilterModal from "./components/MyTimeFilterModal";
 import MyTimeHeader from "./components/MyTimeHeader";
 import MyTimeSummaryCards from "./components/MyTimeSummaryCards";
-import { toInputDateTime } from "./helpers/myTimeDate";
 import {
   getCurrentPayrollPeriodReferenceDate,
   getInitialPayrollPeriod,
@@ -27,6 +24,7 @@ import {
 import { useMyTimeStatusFilters } from "./hooks/useMyTimeStatusFilters";
 import { useMyTimeDayGroupsExpansion } from "./hooks/useMyTimeDayGroupsExpansion";
 import { useMyTimeHistory } from "./hooks/useMyTimeHistory";
+import { useMyTimeEdit } from "./hooks/useMyTimeEdit";
 import {
   getApprovedHours,
   getMyTimeDayGroups,
@@ -42,12 +40,6 @@ export default function MyTimePage() {
   const [loading, setLoading] = useState(true);
   const [payrollPeriod, setPayrollPeriod] = useState(getInitialPayrollPeriod);
   const [payrollPeriodLoading, setPayrollPeriodLoading] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
-  const [editClockIn, setEditClockIn] = useState("");
-  const [editClockOut, setEditClockOut] = useState("");
-  const [editClockInNote, setEditClockInNote] = useState("");
-  const [editClockOutNote, setEditClockOutNote] = useState("");
-  const [savingEdit, setSavingEdit] = useState(false);
   const { expandedDayKeys, resetExpandedDayKeys, toggleDayGroup } =
     useMyTimeDayGroupsExpansion();
 
@@ -100,6 +92,25 @@ export default function MyTimePage() {
       setLoading(false);
     }
   }, []);
+
+  const {
+    editingEntry,
+    editClockIn,
+    editClockOut,
+    editClockInNote,
+    editClockOutNote,
+    savingEdit,
+    openEdit,
+    closeEdit,
+    saveEdit,
+    setEditClockIn,
+    setEditClockOut,
+    setEditClockInNote,
+    setEditClockOutNote,
+  } = useMyTimeEdit({
+    onSaved: fetchEntries,
+    onError: infoDialog.showError,
+  });
 
   const fetchPayrollPeriodForDate = useCallback(
     async (referenceDate: string) => {
@@ -154,94 +165,6 @@ export default function MyTimePage() {
   useRealtimeCore({
     onTimeEntry: fetchEntries,
   });
-
-  function openEdit(entry: TimeEntry) {
-    setEditingEntry(entry);
-    setEditClockIn(toInputDateTime(entry.clockIn));
-    setEditClockOut(toInputDateTime(entry.clockOut));
-    setEditClockInNote(entry.clockInNote ?? "");
-    setEditClockOutNote(entry.clockOutNote ?? "");
-  }
-
-  function closeEdit() {
-    if (savingEdit) return;
-
-    setEditingEntry(null);
-    setEditClockIn("");
-    setEditClockOut("");
-    setEditClockInNote("");
-    setEditClockOutNote("");
-  }
-
-  async function saveEdit() {
-    if (!editingEntry) return;
-
-    const parsedClockIn = new Date(editClockIn);
-    const parsedClockOut = editClockOut ? new Date(editClockOut) : null;
-
-    if (Number.isNaN(parsedClockIn.getTime())) {
-      infoDialog.showError(
-        "Ugyldig mødetid",
-        "Mødetiden er ikke en gyldig dato eller tid.",
-      );
-
-      return;
-    }
-
-    if (parsedClockOut && Number.isNaN(parsedClockOut.getTime())) {
-      infoDialog.showError(
-        "Ugyldig fyraften",
-        "Fyraften er ikke en gyldig dato eller tid.",
-      );
-
-      return;
-    }
-
-    if (parsedClockOut && parsedClockOut <= parsedClockIn) {
-      infoDialog.showError(
-        "Ugyldigt tidsrum",
-        "Fyraften skal være efter mødetid.",
-      );
-
-      return;
-    }
-
-    try {
-      setSavingEdit(true);
-
-      const response = await apiFetch(`/time-entries/me/${editingEntry.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          clockIn: parsedClockIn.toISOString(),
-          clockOut: parsedClockOut ? parsedClockOut.toISOString() : null,
-          clockInNote: editClockInNote,
-          clockOutNote: editClockOutNote,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-
-        infoDialog.showError(
-          "Timeregistreringen kunne ikke rettes",
-          getErrorMessage(errorText),
-        );
-
-        return;
-      }
-
-      await fetchEntries();
-      closeEdit();
-      toast.success("Timeregistrering rettet");
-    } catch {
-      infoDialog.showError(
-        "Timeregistreringen kunne ikke rettes",
-        "Der opstod en fejl, da timeregistreringen skulle rettes. Prøv igen.",
-      );
-    } finally {
-      setSavingEdit(false);
-    }
-  }
 
   function goToPreviousPayrollPeriod() {
     fetchPayrollPeriodForDate(
