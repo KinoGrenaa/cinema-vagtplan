@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  FormEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { Calendar } from "lucide-react";
-import BaseModal from "@/app/components/modals/BaseModal";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
@@ -18,7 +9,9 @@ import {
   getTomorrowLocalDate,
   localDateTimeToISOString,
 } from "@/app/utils/dateTime";
+import LeaveRequestsCancelModal from "./components/LeaveRequestsCancelModal";
 import LeaveRequestsFilterModal from "./components/LeaveRequestsFilterModal";
+import LeaveRequestFormModal from "./components/LeaveRequestFormModal";
 import LeaveRequestsHeader from "./components/LeaveRequestsHeader";
 import LeaveRequestsListSection from "./components/LeaveRequestsListSection";
 import LeaveRequestsSummaryCards from "./components/LeaveRequestsSummaryCards";
@@ -32,17 +25,10 @@ import {
   getActiveFilterCount,
   getFilterSummary,
   getGroupKey,
-  getPeriodText,
   isRequestVisibleByStatus,
   readErrorMessage,
   requestOverlapsDateFilter,
 } from "./helpers/leaveRequestHelpers";
-
-const inputClass =
-  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
-
-const labelClass =
-  "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 export default function LeaveRequestsPage() {
   const infoDialog = useInfoModal();
@@ -81,19 +67,6 @@ export default function LeaveRequestsPage() {
   const [draftFilterEndDate, setDraftFilterEndDate] = useState("");
 
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<string[]>([]);
-
-  const startDateInputRef = useRef<HTMLInputElement | null>(null);
-  const endDateInputRef = useRef<HTMLInputElement | null>(null);
-
-  function openDatePicker(input: HTMLInputElement | null) {
-    if (!input) return;
-
-    input.focus();
-
-    if (typeof input.showPicker === "function") {
-      input.showPicker();
-    }
-  }
 
   const fetchRequests = useCallback(
     async (showError = true) => {
@@ -398,124 +371,26 @@ export default function LeaveRequestsPage() {
           onSelectCancelRequest={setRequestToCancel}
           onToggleGroup={toggleGroup}
         />
-
       </div>
 
-      <BaseModal
+      <LeaveRequestFormModal
+        allDay={allDay}
+        endDate={endDate}
+        endTime={endTime}
+        minDate={minDate}
         open={showRequestModal}
+        reason={reason}
+        startDate={startDate}
+        startTime={startTime}
         onClose={() => setShowRequestModal(false)}
-        title="Ansøg om fravær"
-      >
-        <form onSubmit={createLeaveRequest} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className={labelClass}>Fra dato</label>
-              <div className="relative">
-                <input
-                  ref={startDateInputRef}
-                  type="date"
-                  min={minDate}
-                  className={`${inputClass} pr-11 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0`}
-                  value={startDate}
-                  onChange={(event) => setStartDate(event.target.value)}
-                />
-
-                <button
-                  type="button"
-                  aria-label="Åbn kalender for fra dato"
-                  onClick={() => openDatePicker(startDateInputRef.current)}
-                  className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                >
-                  <Calendar size={18} />
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className={labelClass}>Til dato</label>
-              <div className="relative">
-                <input
-                  ref={endDateInputRef}
-                  type="date"
-                  min={minDate}
-                  className={`${inputClass} pr-11 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0`}
-                  value={endDate}
-                  onChange={(event) => setEndDate(event.target.value)}
-                />
-
-                <button
-                  type="button"
-                  aria-label="Åbn kalender for til dato"
-                  onClick={() => openDatePicker(endDateInputRef.current)}
-                  className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-                >
-                  <Calendar size={18} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <label className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
-            <input
-              type="checkbox"
-              checked={allDay}
-              onChange={(event) => setAllDay(event.target.checked)}
-            />
-            Hele dagen
-          </label>
-
-          {!allDay && (
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className={labelClass}>Fra tidspunkt</label>
-                <input
-                  type="time"
-                  className={inputClass}
-                  value={startTime}
-                  onChange={(event) => setStartTime(event.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Til tidspunkt</label>
-                <input
-                  type="time"
-                  className={inputClass}
-                  value={endTime}
-                  onChange={(event) => setEndTime(event.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className={labelClass}>Årsag</label>
-            <input
-              className={inputClass}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder="Valgfrit"
-            />
-          </div>
-
-          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={() => setShowRequestModal(false)}
-              className="rounded-xl border border-gray-300 px-4 py-2 font-medium transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-            >
-              Annullér
-            </button>
-
-            <button
-              type="submit"
-              className="rounded-xl bg-black px-4 py-2 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-            >
-              Send ansøgning
-            </button>
-          </div>
-        </form>
-      </BaseModal>
+        onSetAllDay={setAllDay}
+        onSetEndDate={setEndDate}
+        onSetEndTime={setEndTime}
+        onSetReason={setReason}
+        onSetStartDate={setStartDate}
+        onSetStartTime={setStartTime}
+        onSubmit={createLeaveRequest}
+      />
 
       <LeaveRequestsFilterModal
         activeFilterCount={activeFilterCount}
@@ -531,50 +406,11 @@ export default function LeaveRequestsPage() {
         onUpdateDraftStatusFilter={updateDraftStatusFilter}
       />
 
-      <BaseModal
-        open={Boolean(requestToCancel)}
+      <LeaveRequestsCancelModal
+        requestToCancel={requestToCancel}
         onClose={() => setRequestToCancel(null)}
-        title="Annullér fraværsansøgning"
-      >
-        {requestToCancel && (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Du er ved at annullere denne fraværsansøgning:
-            </p>
-
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-              <div className="font-semibold">
-                {getPeriodText(requestToCancel)}
-              </div>
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Årsag: {requestToCancel.reason || "-"}
-              </div>
-            </div>
-
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Er du sikker?
-            </p>
-
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setRequestToCancel(null)}
-                className="rounded-xl border border-gray-300 px-4 py-2 font-medium transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-              >
-                Fortryd
-              </button>
-
-              <button
-                type="button"
-                onClick={() => cancelLeaveRequest(requestToCancel.id)}
-                className="rounded-xl bg-red-600 px-4 py-2 font-medium text-white transition hover:bg-red-700"
-              >
-                Annullér ansøgning
-              </button>
-            </div>
-          </div>
-        )}
-      </BaseModal>
+        onConfirm={cancelLeaveRequest}
+      />
 
       <InfoModal
         open={infoDialog.open}
