@@ -29,18 +29,18 @@ import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { useAuth } from "@/app/providers/AuthProvider";
 
-import { formatDateDK } from "@/app/utils/dateTime";
-
 import {
   lockPayrollPeriod,
   unlockPayrollPeriod,
 } from "./services/payrollService";
 
-import { describePayrollModel, formatDateTime, formatHours } from "./utils";
+import { formatDateTime, formatHours } from "./utils";
 
 import PayrollEmployeeSummaryTable from "./components/PayrollEmployeeSummaryTable";
 import PayrollAttentionTable from "./components/PayrollAttentionTable";
 import PayrollPeriodStatus from "./components/PayrollPeriodStatus";
+import PayrollHeader from "./components/PayrollHeader";
+import PayrollSummaryCards from "./components/PayrollSummaryCards";
 
 import { usePayrollFilters } from "./hooks/usePayrollFilters";
 import { usePayrollData } from "./hooks/usePayrollData";
@@ -317,152 +317,29 @@ export default function PayrollPage() {
           aria-hidden="true"
           className="fixed inset-0 -z-10 bg-gray-50 dark:bg-gray-950"
         />
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                Løn
-              </h1>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Gennemgå timer, håndter afvigelser og klargør lønperioden til
-                eksport.
-              </p>
-
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-                  {describePayrollModel(cinemaSettings)}
-                </span>
-
-                {pendingCount > 0 && (
-                  <span className="rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                    {pendingCount} afventer godkendelse
-                  </span>
-                )}
-
-                {adjustmentCount > 0 && (
-                  <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-                    {adjustmentCount} efterregulering
-                    {adjustmentCount === 1 ? "" : "er"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="w-full rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40 xl:w-auto xl:min-w-[420px]">
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Valgt lønperiode
-              </div>
-
-              <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {formatDateDK(startDate)} → {formatDateDK(endDate)}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => previousPayrollPeriod(cinemaSettings)}
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
-                >
-                  Forrige
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => applyCurrentPayrollPeriod(cinemaSettings)}
-                  className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  Aktuel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => nextPayrollPeriod(cinemaSettings)}
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
-                >
-                  Næste
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedFilters((value) => !value)}
-                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
-                >
-                  {showAdvancedFilters ? "Skjul filter" : "Filter"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {showAdvancedFilters && (
-            <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40">
-              <div className="mb-3">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Avanceret filter
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Brug kun dette, hvis du skal se en anden periode eller én
-                  medarbejder.
-                </p>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Startdato
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(event) => setStartDate(event.target.value)}
-                    className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Slutdato
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(event) => setEndDate(event.target.value)}
-                    className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Medarbejder
-                  </label>
-                  <select
-                    value={userId}
-                    onChange={(event) => setUserId(event.target.value)}
-                    className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                  >
-                    <option value="">Alle medarbejdere</option>
-
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.firstName} {user.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-end">
-                  <button
-                    type="button"
-                    onClick={refreshPayroll}
-                    disabled={loading}
-                    className="w-full rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {loading ? "Henter..." : "Opdater"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
+        <PayrollHeader
+          adjustmentCount={adjustmentCount}
+          cinemaSettings={cinemaSettings}
+          endDate={endDate}
+          loading={loading}
+          pendingCount={pendingCount}
+          showAdvancedFilters={showAdvancedFilters}
+          startDate={startDate}
+          userId={userId}
+          users={users}
+          onApplyCurrentPayrollPeriod={() =>
+            applyCurrentPayrollPeriod(cinemaSettings)
+          }
+          onNextPayrollPeriod={() => nextPayrollPeriod(cinemaSettings)}
+          onPreviousPayrollPeriod={() => previousPayrollPeriod(cinemaSettings)}
+          onRefreshPayroll={refreshPayroll}
+          onSetEndDate={setEndDate}
+          onSetStartDate={setStartDate}
+          onSetUserId={setUserId}
+          onToggleAdvancedFilters={() =>
+            setShowAdvancedFilters((value) => !value)
+          }
+        />
 
         <PayrollPeriodStatus
           period={period}
@@ -479,83 +356,16 @@ export default function PayrollPage() {
           onOpenTimeApproval={() => router.push("/time-approval")}
         />
 
-        <section className="grid gap-4 lg:grid-cols-5">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Godkendte timer
-            </div>
-            <div className="mt-2 text-2xl font-bold">
-              {formatHours(totalHours)}
-            </div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Tæller med i løngrundlaget.
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Afventer
-            </div>
-            <div className="mt-2 text-2xl font-bold text-amber-700 dark:text-amber-300">
-              {pendingCount}
-            </div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Skal håndteres før eksport.
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Afviste/annullerede
-            </div>
-            <div className="mt-2 text-2xl font-bold">{voidedCount}</div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Indgår ikke i løn.
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Efterreguleringer
-            </div>
-            <div className="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-300">
-              {adjustmentCount}
-            </div>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Medtages separat i lønkørslen.
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Tillæg og belastning
-            </div>
-            <div className="mt-2 grid gap-1 text-sm">
-              <div className="flex justify-between gap-3">
-                <span>Overtid</span>
-                <span className="font-semibold">
-                  {formatHours(overtimeHours)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-3">
-                <span>Weekend</span>
-                <span className="font-semibold">
-                  {formatHours(weekendHours)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-3">
-                <span>Aften</span>
-                <span className="font-semibold">
-                  {formatHours(eveningHours)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-3">
-                <span>Nat</span>
-                <span className="font-semibold">{formatHours(nightHours)}</span>
-              </div>
-            </div>
-          </div>
-        </section>
+        <PayrollSummaryCards
+          adjustmentCount={adjustmentCount}
+          eveningHours={eveningHours}
+          nightHours={nightHours}
+          overtimeHours={overtimeHours}
+          pendingCount={pendingCount}
+          totalHours={totalHours}
+          voidedCount={voidedCount}
+          weekendHours={weekendHours}
+        />
 
         {overtimeWarnings.length > 0 && (
           <PayrollAttentionTable overtimeWarnings={overtimeWarnings} />
