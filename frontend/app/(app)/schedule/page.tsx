@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import StaffingRequestModal, {
-  type StaffingRequestType,
-  type StaffingTargetMode,
-} from "./components/StaffingRequestModal";
+import StaffingRequestModal from "./components/StaffingRequestModal";
 import {
   ManualTimeRegistrationModal,
   TimeRegistrationModal,
 } from "./components/TimeRegistrationModals";
 import ScheduleShiftFormModal from "./components/ScheduleShiftFormModal";
 import ScheduleMainContent from "./components/ScheduleMainContent";
+import { useScheduleStaffingRequest } from "./hooks/useScheduleStaffingRequest";
+import { useScheduleTimeRegistration } from "./hooks/useScheduleTimeRegistration";
 import { useSchedule } from "../../hooks/useSchedule";
 import AiScheduleFeatures from "./components/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
@@ -20,9 +19,8 @@ import {
   localDateTimeToISOString,
   toInputDateTime,
 } from "@/app/utils/dateTime";
-import type { Shift, User, WorkType } from "../../../../shared/types";
+import type { Shift } from "../../../../shared/types";
 import {
-  getDefaultStaffingMessage,
   getShiftConfirmText,
   getShiftUserId,
   getStaffingShiftOptionText,
@@ -32,11 +30,7 @@ import {
   getMovedShiftTimes,
   getResizedShiftTimes,
 } from "./helpers/scheduleShiftTime";
-import {
-  getMovieShowingsForDate,
-  getScheduleStaffingTargetUsers,
-  getShiftsForTimeRegistration,
-} from "./helpers/scheduleDerivedData";
+import { getMovieShowingsForDate } from "./helpers/scheduleDerivedData";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -85,11 +79,6 @@ export default function SchedulePage() {
     );
   }
 
-  const shiftsForTimeRegistration = useMemo(
-    () => getShiftsForTimeRegistration(shifts, timeEntries, currentUser?.id),
-    [currentUser?.id, shifts, timeEntries],
-  );
-
   const filteredMovieShowings = useMemo(
     () => getMovieShowingsForDate(movieShowings, selectedDate),
     [movieShowings, selectedDate],
@@ -103,53 +92,6 @@ export default function SchedulePage() {
   const [note, setNote] = useState("");
   const [userId, setUserId] = useState(0);
   const [workTypeId, setWorkTypeId] = useState(0);
-  const [showClockModal, setShowClockModal] = useState(false);
-  const [clockShiftId, setClockShiftId] = useState<number | null>(null);
-  const [clockInTime, setClockInTime] = useState("");
-  const [clockOutTime, setClockOutTime] = useState("");
-  const [clockNote, setClockNote] = useState("");
-
-  const [showManualTimeModal, setShowManualTimeModal] = useState(false);
-  const [manualClockInTime, setManualClockInTime] = useState(
-    `${todayDefault}T14:00`,
-  );
-  const [manualClockOutTime, setManualClockOutTime] = useState(
-    `${todayDefault}T22:00`,
-  );
-  const [manualNote, setManualNote] = useState("");
-
-  const [showStaffingRequestModal, setShowStaffingRequestModal] =
-    useState(false);
-  const [staffingRequestShiftId, setStaffingRequestShiftId] = useState<
-    number | null
-  >(null);
-  const [staffingRequestTargetMode, setStaffingRequestTargetMode] =
-    useState<StaffingTargetMode>("ALL");
-  const [staffingRequestTargetUserId, setStaffingRequestTargetUserId] =
-    useState(0);
-  const [staffingRequestType, setStaffingRequestType] =
-    useState<StaffingRequestType>("EXTRA_SHIFT");
-  const [staffingRequestPriority, setStaffingRequestPriority] = useState(2);
-  const [staffingRequestMessage, setStaffingRequestMessage] = useState("");
-  const [staffingRequestStartTime, setStaffingRequestStartTime] = useState(
-    `${todayDefault}T14:00`,
-  );
-  const [staffingRequestEndTime, setStaffingRequestEndTime] = useState(
-    `${todayDefault}T22:00`,
-  );
-  const [staffingRequestWorkTypeId, setStaffingRequestWorkTypeId] = useState(0);
-
-  const staffingTargetUsers = useMemo(
-    () => getScheduleStaffingTargetUsers(users),
-    [users],
-  );
-
-  const selectedStaffingRequestShift = useMemo(() => {
-    if (!staffingRequestShiftId) return null;
-
-    return shifts.find((shift) => shift.id === staffingRequestShiftId) ?? null;
-  }, [shifts, staffingRequestShiftId]);
-
   useEffect(() => {
     if (
       userId !== 0 &&
@@ -170,16 +112,89 @@ export default function SchedulePage() {
     }
   }, [workTypeId, workTypes]);
 
-  useEffect(() => {
-    if (
-      staffingRequestTargetUserId !== 0 &&
-      !staffingTargetUsers.some(
-        (targetUser) => targetUser.id === staffingRequestTargetUserId,
-      )
-    ) {
-      setStaffingRequestTargetUserId(0);
-    }
-  }, [staffingRequestTargetUserId, staffingTargetUsers]);
+  const {
+    showClockModal,
+    resetClockModal,
+    clockShiftId,
+    setClockShiftId,
+    clockInTime,
+    setClockInTime,
+    clockOutTime,
+    setClockOutTime,
+    clockNote,
+    setClockNote,
+    showManualTimeModal,
+    resetManualTimeModal,
+    manualClockInTime,
+    setManualClockInTime,
+    manualClockOutTime,
+    setManualClockOutTime,
+    manualNote,
+    setManualNote,
+    selectedClockShift,
+    shiftsForTimeRegistration,
+    handleRegisterClockIn,
+    handleRegisterClockOut,
+    openRegisterTimeModal,
+    openManualTimeModal,
+    handleSubmitManualTimeWithoutShift,
+  } = useScheduleTimeRegistration({
+    selectedDate,
+    shifts,
+    timeEntries,
+    currentUser,
+    currentUserId: currentUser?.id,
+    openTimeEntry,
+    needsMasterCinemaSelection,
+    showMissingActiveCinemaMessage,
+    infoDialog,
+    clockIn,
+    clockOut,
+    submitManualTimeEntry,
+  });
+
+  const {
+    showStaffingRequestModal,
+    resetStaffingRequestModal,
+    staffingTargetUsers,
+    selectedStaffingRequestShift,
+    staffingRequestShiftId,
+    staffingRequestTargetMode,
+    staffingRequestTargetUserId,
+    setStaffingRequestTargetUserId,
+    staffingRequestType,
+    setStaffingRequestType,
+    staffingRequestPriority,
+    setStaffingRequestPriority,
+    staffingRequestMessage,
+    setStaffingRequestMessage,
+    staffingRequestStartTime,
+    setStaffingRequestStartTime,
+    staffingRequestEndTime,
+    setStaffingRequestEndTime,
+    staffingRequestWorkTypeId,
+    setStaffingRequestWorkTypeId,
+    openStaffingRequestModal,
+    handleStaffingRequestShiftChange,
+    handleStaffingRequestTargetModeChange,
+    handleSubmitStaffingRequest,
+  } = useScheduleStaffingRequest({
+    selectedDate,
+    shifts,
+    users,
+    workTypes,
+    needsMasterCinemaSelection,
+    showMissingActiveCinemaMessage,
+    hideShiftFormModal: () => setShowShiftFormModal(false),
+    infoDialog,
+    createStaffingRequest,
+  });
+
+  function handleOpenStaffingRequestForSelectedShift() {
+    if (!selectedShift) return;
+
+    openStaffingRequestModal(selectedShift);
+  }
 
   useRealtimeShifts({
     onShiftsUpdated: () =>
@@ -188,8 +203,6 @@ export default function SchedulePage() {
       refreshDayData({ showErrors: false, showLoading: false }),
     enableToasts: false,
   });
-
-  const selectedClockShift = shifts.find((shift) => shift.id === clockShiftId);
 
   function clearForm() {
     setSelectedShift(null);
@@ -216,171 +229,6 @@ export default function SchedulePage() {
   function closeShiftFormModal() {
     clearForm();
     setShowShiftFormModal(false);
-  }
-
-  function resetClockModal() {
-    setShowClockModal(false);
-    setClockShiftId(null);
-    setClockInTime("");
-    setClockOutTime("");
-    setClockNote("");
-  }
-
-  function resetManualTimeModal() {
-    setShowManualTimeModal(false);
-    setManualClockInTime(`${selectedDate}T14:00`);
-    setManualClockOutTime(`${selectedDate}T22:00`);
-    setManualNote("");
-  }
-
-  function resetStaffingRequestModal() {
-    setShowStaffingRequestModal(false);
-    setStaffingRequestShiftId(null);
-    setStaffingRequestTargetMode("ALL");
-    setStaffingRequestTargetUserId(0);
-    setStaffingRequestType("EXTRA_SHIFT");
-    setStaffingRequestPriority(2);
-    setStaffingRequestMessage("");
-    setStaffingRequestStartTime(`${selectedDate}T14:00`);
-    setStaffingRequestEndTime(`${selectedDate}T22:00`);
-    setStaffingRequestWorkTypeId(0);
-  }
-
-  const requireNoteOnTimeDeviation = true;
-
-  async function submitManualTime() {
-    const shift = shifts.find((s) => s.id === clockShiftId);
-
-    if (!shift || !currentUser || !clockShiftId) {
-      infoDialog.showError(
-        "Vælg en vagt",
-        "Du skal vælge en vagt, før tiden kan registreres.",
-      );
-      return;
-    }
-
-    const plannedStart = toInputDateTime(shift.startTime);
-    const plannedEnd = toInputDateTime(shift.endTime);
-
-    const hasDeviation =
-      localDateTimeToISOString(plannedStart) !==
-        localDateTimeToISOString(clockInTime) ||
-      localDateTimeToISOString(plannedEnd) !==
-        localDateTimeToISOString(clockOutTime);
-
-    if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
-      infoDialog.showError(
-        "Note er påkrævet",
-        "Du skal skrive en note ved afvigelse fra vagtplanen.",
-      );
-      return;
-    }
-
-    try {
-      await submitManualTimeEntry({
-        shiftId: clockShiftId,
-        clockIn: clockInTime,
-        clockOut: clockOutTime,
-        note: clockNote,
-      });
-
-      toast.success("Timer sendt til godkendelse");
-      resetClockModal();
-    } catch (error) {
-      infoDialog.showError(
-        "Timerne kunne ikke registreres",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da timerne skulle registreres. Prøv igen.",
-      );
-    }
-  }
-
-  async function handleRegisterClockIn() {
-    if (!selectedClockShift || !currentUser || !clockShiftId) {
-      infoDialog.showError(
-        "Vælg en vagt",
-        "Du skal vælge en vagt, før mødetid kan registreres.",
-      );
-      return;
-    }
-
-    const plannedStart = toInputDateTime(selectedClockShift.startTime);
-
-    const hasDeviation =
-      localDateTimeToISOString(plannedStart) !==
-      localDateTimeToISOString(clockInTime);
-
-    if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
-      infoDialog.showError(
-        "Note er påkrævet",
-        "Du skal skrive en note ved ændret mødetid.",
-      );
-      return;
-    }
-
-    try {
-      await clockIn(clockShiftId, clockInTime, clockNote);
-
-      toast.success("Mødetid registreret");
-      resetClockModal();
-    } catch (error) {
-      infoDialog.showError(
-        "Mødetid kunne ikke registreres",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da mødetid skulle registreres. Prøv igen.",
-      );
-    }
-  }
-
-  async function handleRegisterClockOut() {
-    if (!openTimeEntry) {
-      infoDialog.showError(
-        "Ingen åben tidsregistrering",
-        "Der blev ikke fundet en åben tidsregistrering.",
-      );
-      return;
-    }
-
-    const shift =
-      openTimeEntry.shift || shifts.find((s) => s.id === openTimeEntry.shiftId);
-
-    if (!shift) {
-      infoDialog.showError(
-        "Vagten kunne ikke findes",
-        "Kunne ikke finde vagten for den åbne tidsregistrering.",
-      );
-      return;
-    }
-
-    const plannedEnd = toInputDateTime(shift.endTime);
-
-    const hasDeviation =
-      localDateTimeToISOString(plannedEnd) !==
-      localDateTimeToISOString(clockOutTime);
-
-    if (requireNoteOnTimeDeviation && hasDeviation && !clockNote.trim()) {
-      infoDialog.showError(
-        "Note er påkrævet",
-        "Du skal skrive en note ved ændret fyraften.",
-      );
-      return;
-    }
-
-    try {
-      await clockOut(clockOutTime, clockNote);
-
-      toast.success("Fyraften registreret");
-      resetClockModal();
-    } catch (error) {
-      infoDialog.showError(
-        "Fyraften kunne ikke registreres",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da fyraften skulle registreres. Prøv igen.",
-      );
-    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -489,115 +337,6 @@ Handlingen kan ikke fortrydes.`,
     setShowShiftFormModal(false);
   }
 
-  function openRegisterTimeModal() {
-    if (needsMasterCinemaSelection) {
-      showMissingActiveCinemaMessage();
-      return;
-    }
-
-    setClockNote("");
-
-    if (openTimeEntry?.shiftId) {
-      setClockShiftId(openTimeEntry.shiftId);
-      setClockInTime(toInputDateTime(openTimeEntry.clockIn));
-
-      if (openTimeEntry.shift?.endTime) {
-        const value = toInputDateTime(openTimeEntry.shift.endTime);
-
-        setClockOutTime(value);
-      } else {
-        const shift = shifts.find((s) => s.id === openTimeEntry.shiftId);
-        setClockOutTime(shift ? toInputDateTime(shift.endTime) : "");
-      }
-
-      setShowClockModal(true);
-      return;
-    }
-
-    setClockShiftId(null);
-    setClockInTime("");
-    setClockOutTime("");
-    setShowClockModal(true);
-  }
-
-  function openManualTimeModal() {
-    if (needsMasterCinemaSelection) {
-      showMissingActiveCinemaMessage();
-      return;
-    }
-
-    setManualClockInTime(`${selectedDate}T14:00`);
-    setManualClockOutTime(`${selectedDate}T22:00`);
-    setManualNote("");
-    setShowManualTimeModal(true);
-  }
-
-  async function handleSubmitManualTimeWithoutShift() {
-    if (needsMasterCinemaSelection) {
-      showMissingActiveCinemaMessage();
-      return;
-    }
-
-    if (!currentUser) {
-      infoDialog.showError(
-        "Du er ikke logget ind",
-        "Du skal være logget ind for at registrere tid.",
-      );
-      return;
-    }
-
-    if (!manualClockInTime || !manualClockOutTime) {
-      infoDialog.showError("Udfyld tider", "Udfyld både mødetid og fyraften.");
-      return;
-    }
-
-    const clockIn = new Date(localDateTimeToISOString(manualClockInTime));
-    const clockOut = new Date(localDateTimeToISOString(manualClockOutTime));
-
-    if (Number.isNaN(clockIn.getTime()) || Number.isNaN(clockOut.getTime())) {
-      infoDialog.showError(
-        "Ugyldigt tidsrum",
-        "Mødetid eller fyraften er ikke en gyldig dato eller tid.",
-      );
-      return;
-    }
-
-    if (clockOut <= clockIn) {
-      infoDialog.showError(
-        "Ugyldigt tidsrum",
-        "Fyraften skal være efter mødetid.",
-      );
-      return;
-    }
-
-    if (!manualNote.trim()) {
-      infoDialog.showError(
-        "Note er påkrævet",
-        "Du skal skrive en note ved manuel registrering uden vagt.",
-      );
-      return;
-    }
-
-    try {
-      await submitManualTimeEntry({
-        shiftId: null,
-        clockIn: manualClockInTime,
-        clockOut: manualClockOutTime,
-        note: manualNote,
-      });
-
-      toast.success("Manuel tidsregistrering sendt til godkendelse");
-      resetManualTimeModal();
-    } catch (error) {
-      infoDialog.showError(
-        "Timerne kunne ikke registreres",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da timerne skulle registreres. Prøv igen.",
-      );
-    }
-  }
-
   async function handleMoveShift(
     shift: Shift,
     newStartHour: number,
@@ -677,138 +416,6 @@ Handlingen kan ikke fortrydes.`,
         error instanceof Error
           ? error.message
           : "Der opstod en fejl, da vagtens tidspunkt skulle ændres. Prøv igen.",
-      );
-    }
-  }
-
-  function applyStaffingRequestShift(shift: Shift | null) {
-    setStaffingRequestShiftId(shift?.id ?? null);
-
-    if (shift) {
-      setStaffingRequestStartTime(toInputDateTime(shift.startTime));
-      setStaffingRequestEndTime(toInputDateTime(shift.endTime));
-      setStaffingRequestWorkTypeId(shift.workTypeId ?? 0);
-      return;
-    }
-
-    setStaffingRequestStartTime(`${selectedDate}T14:00`);
-    setStaffingRequestEndTime(`${selectedDate}T22:00`);
-    setStaffingRequestWorkTypeId(workTypes[0]?.id ?? 0);
-  }
-
-  function openStaffingRequestModal(shift: Shift | null = null) {
-    if (needsMasterCinemaSelection) {
-      showMissingActiveCinemaMessage();
-      return;
-    }
-
-    const defaultType: StaffingRequestType = shift
-      ? "REPLACEMENT"
-      : "EXTRA_SHIFT";
-
-    applyStaffingRequestShift(shift);
-    setStaffingRequestTargetMode("ALL");
-    setStaffingRequestTargetUserId(0);
-    setStaffingRequestType(defaultType);
-    setStaffingRequestPriority(shift ? 3 : 2);
-    setStaffingRequestMessage(getDefaultStaffingMessage(shift, defaultType));
-    setShowShiftFormModal(false);
-    setShowStaffingRequestModal(true);
-  }
-
-  function handleOpenStaffingRequestForSelectedShift() {
-    if (!selectedShift) return;
-
-    openStaffingRequestModal(selectedShift);
-  }
-
-  async function handleSubmitStaffingRequest(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    if (needsMasterCinemaSelection) {
-      showMissingActiveCinemaMessage();
-      return;
-    }
-
-    if (
-      staffingRequestTargetMode === "USER" &&
-      (!staffingRequestTargetUserId || staffingRequestTargetUserId <= 0)
-    ) {
-      infoDialog.showError(
-        "Vælg medarbejder",
-        "Vælg hvilken medarbejder forespørgslen skal sendes til.",
-      );
-      return;
-    }
-
-    if (!staffingRequestShiftId) {
-      if (!staffingRequestStartTime || !staffingRequestEndTime) {
-        infoDialog.showError(
-          "Vælg tidsinterval",
-          "Vælg hvornår bemandingsbehovet starter og slutter.",
-        );
-        return;
-      }
-
-      const requestStart = new Date(staffingRequestStartTime);
-      const requestEnd = new Date(staffingRequestEndTime);
-
-      if (requestEnd <= requestStart) {
-        infoDialog.showError(
-          "Tidsintervallet er ikke gyldigt",
-          "Sluttidspunktet skal være efter starttidspunktet.",
-        );
-        return;
-      }
-
-      if (!staffingRequestWorkTypeId || staffingRequestWorkTypeId <= 0) {
-        infoDialog.showError(
-          "Vælg jobfunktion",
-          "Vælg hvilken jobfunktion bemandingsbehovet gælder.",
-        );
-        return;
-      }
-    }
-
-    if (!staffingRequestMessage.trim()) {
-      infoDialog.showError(
-        "Skriv en besked",
-        "Skriv hvad medarbejderne skal svare på.",
-      );
-      return;
-    }
-
-    try {
-      await createStaffingRequest({
-        shiftId: staffingRequestShiftId,
-        targetUserId:
-          staffingRequestTargetMode === "USER"
-            ? staffingRequestTargetUserId
-            : null,
-        type: staffingRequestType,
-        priority: staffingRequestPriority,
-        message: staffingRequestMessage,
-        requestStartTime: staffingRequestShiftId
-          ? null
-          : localDateTimeToISOString(staffingRequestStartTime),
-        requestEndTime: staffingRequestShiftId
-          ? null
-          : localDateTimeToISOString(staffingRequestEndTime),
-        workTypeId: staffingRequestShiftId
-          ? null
-          : staffingRequestWorkTypeId || null,
-      });
-
-      toast.success("Bemandingsforespørgslen er sendt");
-      resetStaffingRequestModal();
-    } catch (error) {
-      infoDialog.showError(
-        "Bemandingsforespørgslen kunne ikke sendes",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da bemandingsforespørgslen skulle sendes. Prøv igen.",
       );
     }
   }
@@ -925,20 +532,9 @@ ${getShiftConfirmText(selectedShift)}`,
               staffingTargetUsers={staffingTargetUsers}
               selectedShift={selectedStaffingRequestShift}
               selectedShiftId={staffingRequestShiftId}
-              onShiftChange={(nextShift) => {
-                applyStaffingRequestShift(nextShift);
-                setStaffingRequestMessage(
-                  getDefaultStaffingMessage(nextShift, staffingRequestType),
-                );
-              }}
+              onShiftChange={handleStaffingRequestShiftChange}
               targetMode={staffingRequestTargetMode}
-              onTargetModeChange={(nextMode) => {
-                setStaffingRequestTargetMode(nextMode);
-
-                if (nextMode === "ALL") {
-                  setStaffingRequestTargetUserId(0);
-                }
-              }}
+              onTargetModeChange={handleStaffingRequestTargetModeChange}
               targetUserId={staffingRequestTargetUserId}
               onTargetUserIdChange={setStaffingRequestTargetUserId}
               requestType={staffingRequestType}
