@@ -62,11 +62,15 @@ export default function MyTimeEntryCard({
         </div>
       </div>
 
-      {(entry.note || entry.clockInNote || entry.clockOutNote || entry.adminNote) && (
+      {(entry.note ||
+        entry.clockInNote ||
+        entry.clockOutNote ||
+        entry.adminNote) && (
         <div className="mt-4 space-y-3">
           {shouldShowEntryNoteAsSingleNote(entry) ? (
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
-              <span className="font-semibold">Note:</span> {getEntrySingleNote(entry)}
+              <span className="font-semibold">Note:</span>{" "}
+              {getEntrySingleNote(entry)}
             </div>
           ) : (
             <>
@@ -102,8 +106,8 @@ export default function MyTimeEntryCard({
 
       {entry.status === "NEEDS_CHANGES" && (
         <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm font-medium text-orange-900 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-100">
-          Denne tidsregistrering er sendt retur til rettelse og skal opdateres før
-          den kan godkendes.
+          Denne tidsregistrering er sendt retur til rettelse og skal opdateres
+          før den kan godkendes.
         </div>
       )}
 

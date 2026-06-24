@@ -1,4 +1,8 @@
-export type TimeEntryStatus = "PENDING" | "NEEDS_CHANGES" | "APPROVED" | "VOIDED";
+export type TimeEntryStatus =
+  | "PENDING"
+  | "NEEDS_CHANGES"
+  | "APPROVED"
+  | "VOIDED";
 
 export type MyTimeStatusFilters = {
   approved: boolean;

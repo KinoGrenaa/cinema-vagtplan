@@ -86,7 +86,8 @@ export default function MyTimeFilterModal({
             <span>
               <span className="block font-medium">Skal rettes</span>
               <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Registreringer som administrationen har sendt retur til rettelse.
+                Registreringer som administrationen har sendt retur til
+                rettelse.
               </span>
             </span>
           </label>
