@@ -3,10 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PermissionGuard from "@/app/components/PermissionGuard";
-import ConfirmModal from "@/app/components/modals/ConfirmModal";
-import ExportModal from "@/app/components/modals/ExportModal";
-import InfoModal from "@/app/components/modals/InfoModal";
-import InputModal from "@/app/components/modals/InputModal";
 
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
@@ -27,11 +23,13 @@ import PayrollEmployeesSection from "./components/PayrollEmployeesSection";
 import PayrollAdjustmentsSection from "./components/PayrollAdjustmentsSection";
 import PayrollAdvancedAnalysisSection from "./components/PayrollAdvancedAnalysisSection";
 import PayrollMasterCinemaRequired from "./components/PayrollMasterCinemaRequired";
+import PayrollModals from "./components/PayrollModals";
 
 import { usePayrollFilters } from "./hooks/usePayrollFilters";
 import { usePayrollData } from "./hooks/usePayrollData";
 import { usePayrollStats } from "./hooks/usePayrollStats";
 import { usePayrollExport } from "./hooks/usePayrollExport";
+import { usePayrollEmployeeExpansion } from "./hooks/usePayrollEmployeeExpansion";
 
 export default function PayrollPage() {
   const router = useRouter();
@@ -148,15 +146,8 @@ export default function PayrollPage() {
   const [unlocking, setUnlocking] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [expandedEmployeeIds, setExpandedEmployeeIds] = useState<number[]>([]);
-
-  const toggleEmployeeGroup = (employeeId: number) => {
-    setExpandedEmployeeIds((current) =>
-      current.includes(employeeId)
-        ? current.filter((id) => id !== employeeId)
-        : [...current, employeeId],
-    );
-  };
+  const { expandedEmployeeIds, toggleEmployeeGroup } =
+    usePayrollEmployeeExpansion();
 
   function lockPeriod() {
     confirmDialog.confirm({
@@ -311,46 +302,13 @@ export default function PayrollPage() {
         />
       </div>
 
-      <ConfirmModal
-        open={confirmDialog.open}
-        title={confirmDialog.title}
-        description={confirmDialog.description}
-        confirmText={confirmDialog.confirmText}
-        cancelText={confirmDialog.cancelText}
-        confirmVariant={confirmDialog.confirmVariant}
-        loading={confirmDialog.loading}
-        onConfirm={confirmDialog.handleConfirm}
-        onCancel={confirmDialog.handleCancel}
-      />
-      <InputModal
-        open={inputDialog.open}
-        loading={inputDialog.loading}
-        value={inputDialog.value}
-        title={inputDialog.title}
-        description={inputDialog.description}
-        label={inputDialog.label}
-        placeholder={inputDialog.placeholder}
-        confirmText={inputDialog.confirmText}
-        cancelText={inputDialog.cancelText}
-        required={inputDialog.required}
-        onChange={inputDialog.setValue}
-        onConfirm={inputDialog.handleConfirm}
-        onCancel={inputDialog.handleCancel}
-      />
-
-      <InfoModal
-        open={infoDialog.open}
-        title={infoDialog.title}
-        description={infoDialog.description}
-        buttonText={infoDialog.buttonText}
-        variant={infoDialog.variant}
-        onClose={infoDialog.close}
-      />
-
-      <ExportModal
-        open={exportModalOpen}
+      <PayrollModals
+        confirmDialog={confirmDialog}
+        exportModalOpen={exportModalOpen}
         exporting={exporting}
-        onClose={() => setExportModalOpen(false)}
+        infoDialog={infoDialog}
+        inputDialog={inputDialog}
+        onCloseExportModal={() => setExportModalOpen(false)}
         onExport={async (format) => {
           try {
             await downloadExport(format);
