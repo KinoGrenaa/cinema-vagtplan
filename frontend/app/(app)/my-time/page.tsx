@@ -25,6 +25,7 @@ import {
   isInPayrollPeriod,
 } from "./helpers/myTimeEntries";
 import { useMyTimeStatusFilters } from "./hooks/useMyTimeStatusFilters";
+import { useMyTimeDayGroupsExpansion } from "./hooks/useMyTimeDayGroupsExpansion";
 import {
   getApprovedHours,
   getMyTimeDayGroups,
@@ -46,7 +47,8 @@ export default function MyTimePage() {
   const [editClockInNote, setEditClockInNote] = useState("");
   const [editClockOutNote, setEditClockOutNote] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
-  const [expandedDayKeys, setExpandedDayKeys] = useState<string[]>([]);
+  const { expandedDayKeys, resetExpandedDayKeys, toggleDayGroup } =
+    useMyTimeDayGroupsExpansion();
 
   const {
     statusFilters,
@@ -61,7 +63,7 @@ export default function MyTimePage() {
     resetStatusFilters,
     showNeedsChangesEntries,
   } = useMyTimeStatusFilters({
-    onFiltersChanged: () => setExpandedDayKeys([]),
+    onFiltersChanged: resetExpandedDayKeys,
   });
 
   const [historyEntry, setHistoryEntry] = useState<TimeEntry | null>(null);
@@ -136,7 +138,7 @@ export default function MyTimePage() {
           endDate: data.endDate.slice(0, 10),
         });
 
-        setExpandedDayKeys([]);
+        resetExpandedDayKeys();
       } catch {
         infoDialog.showError(
           "Kunne ikke hente lønperiode",
@@ -146,7 +148,7 @@ export default function MyTimePage() {
         setPayrollPeriodLoading(false);
       }
     },
-    [],
+    [resetExpandedDayKeys],
   );
 
   useRealtimeCore({
@@ -271,14 +273,6 @@ export default function MyTimePage() {
     } finally {
       setHistoryLoading(false);
     }
-  }
-
-  function toggleDayGroup(dayKey: string) {
-    setExpandedDayKeys((current) =>
-      current.includes(dayKey)
-        ? current.filter((key) => key !== dayKey)
-        : [...current, dayKey],
-    );
   }
 
   function goToPreviousPayrollPeriod() {
