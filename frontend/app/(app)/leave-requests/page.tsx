@@ -1,9 +1,8 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 import {
   getTomorrowLocalDate,
@@ -15,28 +14,22 @@ import LeaveRequestFormModal from "./components/LeaveRequestFormModal";
 import LeaveRequestsHeader from "./components/LeaveRequestsHeader";
 import LeaveRequestsListSection from "./components/LeaveRequestsListSection";
 import LeaveRequestsSummaryCards from "./components/LeaveRequestsSummaryCards";
-import {
-  DEFAULT_STATUS_FILTERS,
-  type LeaveRequest,
-  type LeaveStatusFilters,
-} from "./helpers/leaveRequestTypes";
-import {
-  countLeaveStatuses,
-  getActiveFilterCount,
-  getFilterSummary,
-  getGroupKey,
-  isRequestVisibleByStatus,
-  readErrorMessage,
-  requestOverlapsDateFilter,
-} from "./helpers/leaveRequestHelpers";
+import type { LeaveRequest } from "./helpers/leaveRequestTypes";
+import { readErrorMessage } from "./helpers/leaveRequestHelpers";
+import { useLeaveRequestsData } from "./hooks/useLeaveRequestsData";
+import { useLeaveRequestFilters } from "./hooks/useLeaveRequestFilters";
 
 export default function LeaveRequestsPage() {
   const infoDialog = useInfoModal();
 
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const [isMasterWithoutOwnCinema, setIsMasterWithoutOwnCinema] =
-    useState(false);
+  const {
+    currentUserId,
+    fetchRequests,
+    isMasterWithoutOwnCinema,
+    requests,
+  } = useLeaveRequestsData({
+    showError: infoDialog.showError,
+  });
 
   const minDate = getTomorrowLocalDate();
 
@@ -51,192 +44,31 @@ export default function LeaveRequestsPage() {
   const [success, setSuccess] = useState("");
 
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
   const [requestToCancel, setRequestToCancel] = useState<LeaveRequest | null>(
     null,
   );
 
-  const [statusFilters, setStatusFilters] = useState<LeaveStatusFilters>(
-    DEFAULT_STATUS_FILTERS,
-  );
-  const [draftStatusFilters, setDraftStatusFilters] =
-    useState<LeaveStatusFilters>(DEFAULT_STATUS_FILTERS);
-  const [filterStartDate, setFilterStartDate] = useState("");
-  const [filterEndDate, setFilterEndDate] = useState("");
-  const [draftFilterStartDate, setDraftFilterStartDate] = useState("");
-  const [draftFilterEndDate, setDraftFilterEndDate] = useState("");
-
-  const [expandedGroupKeys, setExpandedGroupKeys] = useState<string[]>([]);
-
-  const fetchRequests = useCallback(
-    async (showError = true) => {
-      if (isMasterWithoutOwnCinema) {
-        setRequests([]);
-        return;
-      }
-
-      try {
-        const response = await apiFetch("/leave-requests");
-
-        if (!response.ok) {
-          throw new Error(
-            await readErrorMessage(
-              response,
-              "Fraværsansøgninger kunne ikke hentes.",
-            ),
-          );
-        }
-
-        const data = await response.json();
-        setRequests(Array.isArray(data) ? data : []);
-      } catch (error) {
-        setRequests([]);
-
-        if (showError) {
-          infoDialog.showError(
-            "Fraværsansøgninger kunne ikke hentes",
-            error instanceof Error
-              ? error.message
-              : "Der opstod en fejl ved hentning af fraværsansøgninger.",
-          );
-        }
-      }
-    },
-    [isMasterWithoutOwnCinema],
-  );
-
-  useRealtimeCore({
-    onLeaveRequestUpdated: () => fetchRequests(false),
-  });
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        const masterWithoutOwnCinema =
-          parsedUser.role === "MASTER" && !parsedUser.cinemaId;
-
-        setCurrentUserId(parsedUser.id ?? parsedUser.sub ?? null);
-        setIsMasterWithoutOwnCinema(masterWithoutOwnCinema);
-
-        if (masterWithoutOwnCinema) {
-          setRequests([]);
-          return;
-        }
-      } catch {
-        setCurrentUserId(null);
-        setIsMasterWithoutOwnCinema(false);
-      }
-    }
-
-    fetchRequests();
-  }, [fetchRequests]);
-
-  const visibleRequests = useMemo(() => {
-    return requests.filter(
-      (request) =>
-        isRequestVisibleByStatus(request, statusFilters) &&
-        requestOverlapsDateFilter(request, filterStartDate, filterEndDate),
-    );
-  }, [filterEndDate, filterStartDate, requests, statusFilters]);
-
-  const statusCounts = useMemo(() => countLeaveStatuses(requests), [requests]);
-
-  const activeFilterCount = useMemo(
-    () => getActiveFilterCount(statusFilters, filterStartDate, filterEndDate),
-    [filterEndDate, filterStartDate, statusFilters],
-  );
-
-  const filterSummary = useMemo(
-    () => getFilterSummary(statusFilters, filterStartDate, filterEndDate),
-    [filterEndDate, filterStartDate, statusFilters],
-  );
-
-  const groupedRequests = useMemo(() => {
-    const groups = new Map<string, LeaveRequest[]>();
-
-    for (const request of visibleRequests) {
-      const key = getGroupKey(request);
-      const existing = groups.get(key) || [];
-      groups.set(key, [...existing, request]);
-    }
-
-    return Array.from(groups.entries())
-      .map(([key, groupRequests]) => ({
-        key,
-        requests: groupRequests.sort(
-          (a, b) =>
-            new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
-        ),
-      }))
-      .sort(
-        (a, b) =>
-          new Date(a.requests[0].startDate).getTime() -
-          new Date(b.requests[0].startDate).getTime(),
-      );
-  }, [visibleRequests]);
-
-  function openFilterModal() {
-    setDraftStatusFilters(statusFilters);
-    setDraftFilterStartDate(filterStartDate);
-    setDraftFilterEndDate(filterEndDate);
-    setShowFilterModal(true);
-  }
-
-  function closeFilterModal() {
-    setShowFilterModal(false);
-  }
-
-  function updateDraftStatusFilter(
-    key: keyof LeaveStatusFilters,
-    checked: boolean,
-  ) {
-    setDraftStatusFilters((current) => ({
-      ...current,
-      [key]: checked,
-    }));
-  }
-
-  function applyFilter() {
-    setStatusFilters(draftStatusFilters);
-    setFilterStartDate(draftFilterStartDate);
-    setFilterEndDate(draftFilterEndDate);
-    setExpandedGroupKeys([]);
-    setShowFilterModal(false);
-  }
-
-  function resetFilter() {
-    setDraftStatusFilters(DEFAULT_STATUS_FILTERS);
-    setStatusFilters(DEFAULT_STATUS_FILTERS);
-    setDraftFilterStartDate("");
-    setDraftFilterEndDate("");
-    setFilterStartDate("");
-    setFilterEndDate("");
-    setExpandedGroupKeys([]);
-    setShowFilterModal(false);
-  }
-
-  function showPendingOnly() {
-    setStatusFilters({
-      pending: true,
-      approved: false,
-      rejected: false,
-      cancelled: false,
-    });
-    setFilterStartDate("");
-    setFilterEndDate("");
-    setExpandedGroupKeys([]);
-  }
-
-  function toggleGroup(groupKey: string) {
-    setExpandedGroupKeys((current) =>
-      current.includes(groupKey)
-        ? current.filter((key) => key !== groupKey)
-        : [...current, groupKey],
-    );
-  }
+  const {
+    activeFilterCount,
+    draftFilterEndDate,
+    draftFilterStartDate,
+    draftStatusFilters,
+    expandedGroupKeys,
+    filterSummary,
+    groupedRequests,
+    showFilterModal,
+    statusCounts,
+    visibleRequests,
+    applyFilter,
+    closeFilterModal,
+    openFilterModal,
+    resetFilter,
+    showPendingOnly,
+    toggleGroup,
+    updateDraftStatusFilter,
+    setDraftFilterEndDate,
+    setDraftFilterStartDate,
+  } = useLeaveRequestFilters(requests);
 
   function resetForm() {
     setStartDate(minDate);
