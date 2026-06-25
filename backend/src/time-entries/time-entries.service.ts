@@ -11,7 +11,6 @@ import { PayrollService } from '../payroll/payroll.service';
 import {
   analyzeTimeEntryDeviation,
   formatSignedDuration,
-  getCinemaDeviationSelect,
   getEntryMinutes,
   hasText,
   withTimeEntryDeviation,
@@ -34,6 +33,14 @@ import {
   getOwnTimeEntryUpdateChanges,
 } from './helpers/time-entry-update-changes';
 import { findMatchingShiftForClockIn } from './helpers/time-entry-shifts';
+import {
+  getOpenTimeEntryInclude,
+  getShiftWithWorkTypeAndCinemaInclude,
+  getTimeEntryResponseInclude,
+  getTimeEntryWithCinemaShiftInclude,
+  getTimeEntryWithUserCinemaInclude,
+  getTimeEntryWithUserCinemaShiftInclude,
+} from './helpers/time-entry-includes';
 
 @Injectable()
 export class TimeEntriesService {
@@ -54,22 +61,7 @@ export class TimeEntriesService {
         userId,
         ...getTimeEntryCinemaFilter(user, selectedCinemaId),
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
       orderBy: {
         clockIn: 'desc',
       },
@@ -90,26 +82,13 @@ export class TimeEntriesService {
             }
           : cinemaFilter,
       include: {
-        user: true,
-        payrollType: true,
+        ...getTimeEntryResponseInclude(),
         payrollAdjustments: {
           where: {
             status: 'PENDING',
           },
           orderBy: {
             createdAt: 'desc',
-          },
-        },
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
           },
         },
       },
@@ -129,16 +108,7 @@ export class TimeEntriesService {
         clockOut: null,
         status: 'PENDING',
       },
-      include: {
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: true,
-          },
-        },
-      },
+      include: getOpenTimeEntryInclude(),
       orderBy: {
         clockIn: 'desc',
       },
@@ -228,12 +198,7 @@ export class TimeEntriesService {
             id: data.shiftId,
             cinemaId: data.cinemaId,
           },
-          include: {
-            workType: true,
-            cinema: {
-              select: getCinemaDeviationSelect(),
-            },
-          },
+          include: getShiftWithWorkTypeAndCinemaInclude(),
         })
       : null;
 
@@ -294,22 +259,7 @@ export class TimeEntriesService {
         clockOutNote,
         status: 'PENDING',
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     await createTimeEntryRevision(this.prisma, {
@@ -429,22 +379,7 @@ export class TimeEntriesService {
         clockInNote: note,
         status: 'PENDING',
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     await createTimeEntryRevision(this.prisma, {
@@ -495,12 +430,7 @@ export class TimeEntriesService {
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: true,
-      },
+      include: getTimeEntryWithCinemaShiftInclude(),
     });
 
     if (!existingEntry) {
@@ -535,22 +465,7 @@ export class TimeEntriesService {
         note: combinedNote || null,
         clockOutNote: clockOutNote || null,
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     await this.auditLogsService.create({
@@ -582,13 +497,7 @@ export class TimeEntriesService {
     const changedByUserId = user?.sub ?? null;
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: true,
-      },
+      include: getTimeEntryWithUserCinemaShiftInclude(),
     });
 
     if (!existingEntry) {
@@ -702,22 +611,7 @@ export class TimeEntriesService {
             ? 'Godkendt som efterregulering, fordi lønperioden allerede var eksporteret.'
             : null,
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     if (payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment) {
@@ -786,12 +680,7 @@ export class TimeEntriesService {
     const changedByUserId = user?.sub ?? null;
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-      },
+      include: getTimeEntryWithUserCinemaInclude(),
     });
 
     if (!existingEntry) {
@@ -812,22 +701,7 @@ export class TimeEntriesService {
       data: {
         status: 'PENDING',
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     await createTimeEntryRevision(this.prisma, {
@@ -886,12 +760,7 @@ export class TimeEntriesService {
 
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-      },
+      include: getTimeEntryWithUserCinemaInclude(),
     });
 
     if (!existingEntry) {
@@ -907,22 +776,7 @@ export class TimeEntriesService {
         status: 'NEEDS_CHANGES',
         adminNote: adminNote.trim(),
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     await createTimeEntryRevision(this.prisma, {
@@ -981,12 +835,7 @@ export class TimeEntriesService {
 
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-      },
+      include: getTimeEntryWithUserCinemaInclude(),
     });
 
     if (!existingEntry) {
@@ -1008,22 +857,7 @@ export class TimeEntriesService {
         status: 'VOIDED',
         adminNote: adminNote.trim(),
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     const payrollPeriod =
@@ -1110,13 +944,7 @@ export class TimeEntriesService {
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: true,
-      },
+      include: getTimeEntryWithUserCinemaShiftInclude(),
     });
 
     if (!existingEntry) {
@@ -1196,22 +1024,7 @@ export class TimeEntriesService {
         clockOutNote: newClockOutNote,
         status: 'PENDING',
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     const payrollPeriod =
@@ -1308,13 +1121,7 @@ export class TimeEntriesService {
   ) {
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
-      include: {
-        user: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: true,
-      },
+      include: getTimeEntryWithUserCinemaShiftInclude(),
     });
 
     if (!existingEntry) {
@@ -1402,22 +1209,7 @@ export class TimeEntriesService {
             : data.adminNote,
         status: existingEntry.status,
       },
-      include: {
-        user: true,
-        payrollType: true,
-        cinema: {
-          select: getCinemaDeviationSelect(),
-        },
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
+      include: getTimeEntryResponseInclude(),
     });
 
     const payrollPeriod = existingEntry.payrollPeriodId
