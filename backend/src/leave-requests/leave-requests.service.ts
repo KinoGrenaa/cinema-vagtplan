@@ -8,6 +8,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  formatLeavePeriod,
+  formatUserName,
+} from './helpers/leave-request-formatting';
 
 type AuthUser = {
   sub?: number;
@@ -153,136 +157,6 @@ export class LeaveRequestsService {
     });
   }
 
-  private formatUserName(user?: {
-    firstName?: string | null;
-    lastName?: string | null;
-    email?: string | null;
-  }) {
-    const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim();
-
-    return fullName || user?.email || 'Ukendt bruger';
-  }
-
-  private pad(value: number) {
-    return value.toString().padStart(2, '0');
-  }
-
-  private formatDate(date: Date) {
-    return new Intl.DateTimeFormat('da-DK', {
-      timeZone: 'Europe/Copenhagen',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(date);
-  }
-
-  private formatTime(date: Date) {
-    return new Intl.DateTimeFormat('da-DK', {
-      timeZone: 'Europe/Copenhagen',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(date);
-  }
-
-  private getCopenhagenDateTimeParts(date: Date) {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Copenhagen',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      hourCycle: 'h23',
-    }).formatToParts(date);
-
-    const getPart = (type: string) =>
-      parts.find((part) => part.type === type)?.value ?? '';
-
-    const year = getPart('year');
-    const month = getPart('month');
-    const day = getPart('day');
-    const hour = getPart('hour');
-    const minute = getPart('minute');
-
-    return {
-      dateKey: `${year}-${month}-${day}`,
-      hour,
-      minute,
-    };
-  }
-
-  private formatUtcDate(date: Date) {
-    return `${this.pad(date.getUTCDate())}.${this.pad(
-      date.getUTCMonth() + 1,
-    )}.${date.getUTCFullYear()}`;
-  }
-
-  private isSameCopenhagenDate(left: Date, right: Date) {
-    return (
-      this.getCopenhagenDateTimeParts(left).dateKey ===
-      this.getCopenhagenDateTimeParts(right).dateKey
-    );
-  }
-
-  private getAllDayDateRange(startDate: Date, endDate: Date) {
-    const startLocal = this.getCopenhagenDateTimeParts(startDate);
-    const endLocal = this.getCopenhagenDateTimeParts(endDate);
-
-    const isLocalAllDay =
-      startLocal.hour === '00' &&
-      startLocal.minute === '00' &&
-      endLocal.hour === '23' &&
-      Number(endLocal.minute) >= 59;
-
-    if (isLocalAllDay) {
-      return {
-        startDateText: this.formatDate(startDate),
-        endDateText: this.formatDate(endDate),
-      };
-    }
-
-    const isUtcAllDay =
-      startDate.getUTCHours() === 0 &&
-      startDate.getUTCMinutes() === 0 &&
-      endDate.getUTCHours() === 23 &&
-      endDate.getUTCMinutes() >= 59;
-
-    if (isUtcAllDay) {
-      return {
-        startDateText: this.formatUtcDate(startDate),
-        endDateText: this.formatUtcDate(endDate),
-      };
-    }
-
-    return null;
-  }
-
-  private formatLeavePeriod(startDate: Date, endDate: Date) {
-    const allDayDateRange = this.getAllDayDateRange(startDate, endDate);
-
-    if (allDayDateRange) {
-      return allDayDateRange.startDateText === allDayDateRange.endDateText
-        ? `${allDayDateRange.startDateText} · Hele dagen`
-        : `${allDayDateRange.startDateText} - ${allDayDateRange.endDateText} · Hele dagen`;
-    }
-
-    const startDateText = this.formatDate(startDate);
-    const endDateText = this.formatDate(endDate);
-    const sameDate = this.isSameCopenhagenDate(startDate, endDate);
-
-    if (sameDate) {
-      return `${startDateText} kl. ${this.formatTime(startDate)}-${this.formatTime(
-        endDate,
-      )}`;
-    }
-
-    return `${startDateText} kl. ${this.formatTime(
-      startDate,
-    )} - ${endDateText} kl. ${this.formatTime(endDate)}`;
-  }
-
   private async getLeaveManagers(cinemaId: number, excludeUserId?: number) {
     return this.prisma.user.findMany({
       where: {
@@ -356,15 +230,15 @@ export class LeaveRequestsService {
       },
     });
 
-    return this.formatUserName(actor ?? undefined);
+    return formatUserName(actor ?? undefined);
   }
 
   private async notifyLeaveRequestCreated(
     leaveRequest: LeaveRequestWithUser,
     actorUserId: number,
   ) {
-    const employeeName = this.formatUserName(leaveRequest.user);
-    const period = this.formatLeavePeriod(
+    const employeeName = formatUserName(leaveRequest.user);
+    const period = formatLeavePeriod(
       leaveRequest.startDate,
       leaveRequest.endDate,
     );
@@ -384,7 +258,7 @@ export class LeaveRequestsService {
     status: LeaveStatus;
   }) {
     const actorName = await this.getActorName(params.actorUserId);
-    const period = this.formatLeavePeriod(
+    const period = formatLeavePeriod(
       params.leaveRequest.startDate,
       params.leaveRequest.endDate,
     );
@@ -422,7 +296,7 @@ export class LeaveRequestsService {
       params.leaveRequest.userId === params.actorUserId;
 
     if (isCancelledByOwner) {
-      const employeeName = this.formatUserName(params.leaveRequest.user);
+      const employeeName = formatUserName(params.leaveRequest.user);
 
       await this.notifyLeaveManagers({
         cinemaId: params.leaveRequest.cinemaId,
