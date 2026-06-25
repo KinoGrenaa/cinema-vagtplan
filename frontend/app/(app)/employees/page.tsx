@@ -8,118 +8,17 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  cinemaId?: number | null;
-
-  canManageSchedule?: boolean;
-  canManageUsers?: boolean;
-  canManagePayroll?: boolean;
-  canManageLeaveRequests?: boolean;
-  canManageCinemaSettings?: boolean;
-  canSendBroadcastMessages?: boolean;
-};
-
-type StoredUser = {
-  id?: number;
-  sub?: number;
-  role?: "MASTER" | "ADMIN" | "EMPLOYEE";
-  cinemaId?: number | null;
-};
-
-type PermissionKey =
-  | "canManageSchedule"
-  | "canManageUsers"
-  | "canManagePayroll"
-  | "canManageLeaveRequests"
-  | "canManageCinemaSettings"
-  | "canSendBroadcastMessages";
-
-const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
-
-const permissionLabels: { key: PermissionKey; label: string }[] = [
-  { key: "canManageSchedule", label: "Vagtplan" },
-  { key: "canManageUsers", label: "Brugere" },
-  { key: "canManagePayroll", label: "Payroll" },
-  { key: "canManageLeaveRequests", label: "Fravær" },
-  { key: "canManageCinemaSettings", label: "Biograf" },
-  { key: "canSendBroadcastMessages", label: "Broadcast" },
-];
-
-function getRoleLabel(role: string) {
-  if (role === "MASTER") return "Master";
-  if (role === "ADMIN") return "Administrator";
-  return "Medarbejder";
-}
-
-function getRoleBadge(role: string) {
-  if (role === "MASTER") {
-    return "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-200";
-  }
-
-  if (role === "ADMIN") {
-    return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200";
-  }
-
-  return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
-}
-
-function getStoredUser() {
-  const savedUser = window.localStorage.getItem("user");
-
-  if (!savedUser) {
-    return null;
-  }
-
-  try {
-    const parsedUser = JSON.parse(savedUser) as StoredUser;
-
-    if (!parsedUser || typeof parsedUser !== "object") {
-      return null;
-    }
-
-    return parsedUser;
-  } catch {
-    return null;
-  }
-}
-
-function getSelectedMasterCinemaId() {
-  const cinemaId = Number(
-    window.localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
-  );
-
-  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
-    return null;
-  }
-
-  return cinemaId;
-}
-
-function appendCinemaId(endpoint: string, cinemaId: number | null) {
-  if (!cinemaId) return endpoint;
-
-  const separator = endpoint.includes("?") ? "&" : "?";
-  return `${endpoint}${separator}cinemaId=${cinemaId}`;
-}
-
-async function readErrorMessage(response: Response, fallback: string) {
-  try {
-    const data = await response.json();
-
-    if (Array.isArray(data.message)) {
-      return data.message.join("\n");
-    }
-
-    return data.message || fallback;
-  } catch {
-    return fallback;
-  }
-}
+import { EmployeesEmptyState, EmployeesMasterCinemaPlaceholder } from "./components/EmployeesEmptyState";
+import EmployeesHeader from "./components/EmployeesHeader";
+import EmployeesMasterCinemaNotice from "./components/EmployeesMasterCinemaNotice";
+import EmployeesTable from "./components/EmployeesTable";
+import {
+  appendCinemaId,
+  getSelectedMasterCinemaId,
+  getStoredUser,
+  readErrorMessage,
+} from "./helpers/employeeHelpers";
+import type { PermissionKey, StoredUser, User } from "./helpers/employeeTypes";
 
 export default function EmployeesPage() {
   const infoDialog = useInfoModal();
@@ -297,25 +196,9 @@ export default function EmployeesPage() {
     <AdminGuard>
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-7xl space-y-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            <h1 className="text-3xl font-bold">Medarbejdere</h1>
+          <EmployeesHeader />
 
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-              Oversigt over medarbejdere i biografen.
-            </p>
-          </div>
-
-          {needsMasterCinemaSelection && (
-            <div className="rounded-2xl border border-yellow-300 bg-yellow-50 p-5 text-yellow-900 shadow-sm dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-100">
-              <h2 className="text-lg font-semibold">
-                Ingen aktiv biograf valgt
-              </h2>
-              <p className="mt-2 text-sm">
-                Vælg en biograf i MASTER-panelet, før du kan se eller ændre
-                medarbejderrettigheder.
-              </p>
-            </div>
-          )}
+          {needsMasterCinemaSelection && <EmployeesMasterCinemaNotice />}
 
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
             {!needsMasterCinemaSelection && loading && (
@@ -325,108 +208,17 @@ export default function EmployeesPage() {
             )}
 
             {!needsMasterCinemaSelection && !loading && users.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse">
-                  <thead className="bg-gray-50 dark:bg-gray-950">
-                    <tr className="text-left text-sm text-gray-600 dark:text-gray-400">
-                      <th className="px-4 py-3">Navn</th>
-                      <th className="px-4 py-3">Email</th>
-                      <th className="px-4 py-3">Rolle</th>
-                      <th className="px-4 py-3">Permissions</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {users.map((user) => {
-                      const permissionsDisabled =
-                        user.role === "MASTER" || user.role === "ADMIN";
-
-                      return (
-                        <tr
-                          key={user.id}
-                          className="border-t border-gray-200 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/60"
-                        >
-                          <td className="px-4 py-4 font-medium">
-                            {user.firstName} {user.lastName}
-                          </td>
-
-                          <td className="px-4 py-4 text-gray-600 dark:text-gray-400">
-                            {user.email}
-                          </td>
-
-                          <td className="px-4 py-4">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRoleBadge(
-                                user.role,
-                              )}`}
-                            >
-                              {getRoleLabel(user.role)}
-                            </span>
-
-                            {permissionsDisabled && (
-                              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                Har adgang via rolle.
-                              </p>
-                            )}
-                          </td>
-
-                          <td className="px-4 py-4">
-                            <div className="grid gap-2 text-sm md:grid-cols-2">
-                              {permissionLabels.map((permission) => (
-                                <label
-                                  key={permission.key}
-                                  className={`flex items-center gap-2 ${
-                                    permissionsDisabled
-                                      ? "text-gray-400"
-                                      : "text-gray-700 dark:text-gray-300"
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    disabled={permissionsDisabled}
-                                    checked={
-                                      permissionsDisabled ||
-                                      !!user[permission.key]
-                                    }
-                                    onChange={(event) =>
-                                      updatePermission(
-                                        user.id,
-                                        permission.key,
-                                        event.target.checked,
-                                      )
-                                    }
-                                  />
-
-                                  {permission.label}
-                                </label>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <EmployeesTable
+                users={users}
+                onPermissionChange={updatePermission}
+              />
             )}
 
             {!needsMasterCinemaSelection && !loading && users.length === 0 && (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                <div className="mb-2 text-4xl">👥</div>
-
-                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  Ingen medarbejdere fundet
-                </h2>
-
-                <p className="mt-2">Der blev ikke fundet nogen medarbejdere.</p>
-              </div>
+              <EmployeesEmptyState />
             )}
 
-            {needsMasterCinemaSelection && (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                Medarbejderlisten vises, når der er valgt en aktiv biograf.
-              </div>
-            )}
+            {needsMasterCinemaSelection && <EmployeesMasterCinemaPlaceholder />}
           </section>
         </div>
       </main>
