@@ -8,32 +8,15 @@ import { StaffingRequestStatus } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { CreateStaffingRequestDto } from './dto/create-staffing-request.dto';
 import { StaffingAiService } from '../staffing-ai/staffing-ai.service';
-
-type AuthUser = {
-  sub: number;
-  email: string;
-  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number | null;
-};
-
-type CreateStaffingRequestInput = CreateStaffingRequestDto & {
-  cinemaId?: number | null;
-};
-
-const requestInclude = {
-  cinema: true,
-  shift: {
-    include: {
-      user: true,
-      workType: true,
-    },
-  },
-  workType: true,
-  requestedByUser: true,
-  targetUser: true,
-};
+import {
+  AuthUser,
+  canManageStaffing,
+  CreateStaffingRequestInput,
+  parseStaffingRequestDate,
+  resolveStaffingCinemaId,
+  staffingRequestInclude,
+} from './helpers/staffing-request-helpers';
 
 @Injectable()
 export class StaffingRequestsService {
@@ -42,40 +25,6 @@ export class StaffingRequestsService {
     private readonly realtimeGateway: RealtimeGateway,
     private readonly staffingAiService: StaffingAiService,
   ) {}
-
-  private resolveCinemaId(user: AuthUser, selectedCinemaId?: number | null) {
-    if (user.role === 'MASTER') {
-      if (!selectedCinemaId) {
-        throw new BadRequestException(
-          'Vælg en biograf, før du administrerer bemandingsforespørgsler.',
-        );
-      }
-
-      return selectedCinemaId;
-    }
-
-    if (!user.cinemaId) {
-      throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
-    }
-
-    return user.cinemaId;
-  }
-
-  private canManageStaffing(user: AuthUser) {
-    return user.role === 'MASTER' || user.role === 'ADMIN';
-  }
-
-  private parseRequestDate(value?: string | null) {
-    if (!value) return null;
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException('Tidsintervallet er ikke gyldigt.');
-    }
-
-    return date;
-  }
 
   private emitUpdate(cinemaId: number) {
     this.realtimeGateway.server
@@ -86,23 +35,23 @@ export class StaffingRequestsService {
   }
 
   async findAll(user: AuthUser, selectedCinemaId?: number | null) {
-    if (!this.canManageStaffing(user)) {
+    if (!canManageStaffing(user)) {
       return this.findMine(user, selectedCinemaId);
     }
 
-    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+    const cinemaId = resolveStaffingCinemaId(user, selectedCinemaId);
 
     return this.prisma.staffingRequest.findMany({
       where: {
         cinemaId,
       },
-      include: requestInclude,
+      include: staffingRequestInclude,
       orderBy: [{ status: 'asc' }, { priority: 'desc' }, { createdAt: 'desc' }],
     });
   }
 
   async findMine(user: AuthUser, selectedCinemaId?: number | null) {
-    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+    const cinemaId = resolveStaffingCinemaId(user, selectedCinemaId);
 
     return this.prisma.staffingRequest.findMany({
       where: {
@@ -113,19 +62,19 @@ export class StaffingRequestsService {
           { targetUserId: null },
         ],
       },
-      include: requestInclude,
+      include: staffingRequestInclude,
       orderBy: [{ status: 'asc' }, { priority: 'desc' }, { createdAt: 'desc' }],
     });
   }
 
   async create(user: AuthUser, dto: CreateStaffingRequestInput) {
-    if (!this.canManageStaffing(user)) {
+    if (!canManageStaffing(user)) {
       throw new ForbiddenException(
         'Du må ikke oprette bemandingsforespørgsler',
       );
     }
 
-    const cinemaId = this.resolveCinemaId(user, dto.cinemaId);
+    const cinemaId = resolveStaffingCinemaId(user, dto.cinemaId);
 
     const targetUser = dto.targetUserId
       ? await this.prisma.user.findFirst({
@@ -159,10 +108,10 @@ export class StaffingRequestsService {
 
     const requestStartTime = shift
       ? shift.startTime
-      : this.parseRequestDate(dto.requestStartTime);
+      : parseStaffingRequestDate(dto.requestStartTime);
     const requestEndTime = shift
       ? shift.endTime
-      : this.parseRequestDate(dto.requestEndTime);
+      : parseStaffingRequestDate(dto.requestEndTime);
 
     if (!shift && (!requestStartTime || !requestEndTime)) {
       throw new BadRequestException(
@@ -233,7 +182,7 @@ export class StaffingRequestsService {
         aiGenerated: dto.aiGenerated ?? false,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
       },
-      include: requestInclude,
+      include: staffingRequestInclude,
     });
 
     await this.createNotificationForRequest(request.id);
@@ -330,7 +279,7 @@ export class StaffingRequestsService {
         status: StaffingRequestStatus.ACCEPTED,
         acceptedAt: new Date(),
       },
-      include: requestInclude,
+      include: staffingRequestInclude,
     });
 
     if (updated.shiftId && updated.shift && !updated.shift.userId) {
@@ -400,7 +349,7 @@ export class StaffingRequestsService {
       where: {
         id: updated.id,
       },
-      include: requestInclude,
+      include: staffingRequestInclude,
     });
   }
 
@@ -437,7 +386,7 @@ export class StaffingRequestsService {
         status: StaffingRequestStatus.REJECTED,
         rejectedAt: new Date(),
       },
-      include: requestInclude,
+      include: staffingRequestInclude,
     });
 
     this.emitUpdate(updated.cinemaId);
@@ -446,7 +395,7 @@ export class StaffingRequestsService {
   }
 
   async cancel(user: AuthUser, id: number, selectedCinemaId?: number | null) {
-    if (!this.canManageStaffing(user)) {
+    if (!canManageStaffing(user)) {
       throw new ForbiddenException(
         'Du må ikke annullere bemandingsforespørgsler',
       );
@@ -465,7 +414,7 @@ export class StaffingRequestsService {
       data: {
         status: StaffingRequestStatus.CANCELLED,
       },
-      include: requestInclude,
+      include: staffingRequestInclude,
     });
 
     this.emitUpdate(updated.cinemaId);
@@ -538,7 +487,7 @@ export class StaffingRequestsService {
     id: number,
     selectedCinemaId?: number | null,
   ) {
-    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+    const cinemaId = resolveStaffingCinemaId(user, selectedCinemaId);
 
     const request = await this.prisma.staffingRequest.findFirst({
       where: {
