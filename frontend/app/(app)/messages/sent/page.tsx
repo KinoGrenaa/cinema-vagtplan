@@ -1,125 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
-import { useConfirm } from "@/app/hooks/useConfirm";
-import { useMessages } from "../../../hooks/useMessages";
 import SentMessagesEmptyState from "./components/SentMessagesEmptyState";
 import SentMessagesHeader from "./components/SentMessagesHeader";
 import SentMessagesList from "./components/SentMessagesList";
-import {
-  getErrorMessage,
-  groupMessagesBySentDate,
-} from "./helpers/sentMessageHelpers";
-
-type ErrorDialogState = {
-  open: boolean;
-  title: string;
-  description: string;
-};
+import { useSentMessagesPage } from "./hooks/useSentMessagesPage";
 
 export default function SentMessagesPage() {
-  const confirmDialog = useConfirm();
-  const [expandedDateKeys, setExpandedDateKeys] = useState<string[]>([]);
-  const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
-    null,
-  );
-  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
-    open: false,
-    title: "",
-    description: "",
-  });
-
-  const showErrorDialog = useCallback((title: string, description: string) => {
-    setErrorDialog({
-      open: true,
-      title,
-      description,
-    });
-  }, []);
-
-  const handleMessagesError = useCallback(
-    (message: string) => {
-      showErrorDialog("Kunne ikke hente sendte beskeder", message);
-    },
-    [showErrorDialog],
-  );
-
-  const { loading, sortedMessages, archive } = useMessages({
-    mode: "sent",
-    onError: handleMessagesError,
-  });
-
-  const groupedMessages = useMemo(() => {
-    return groupMessagesBySentDate(sortedMessages);
-  }, [sortedMessages]);
-
-  useEffect(() => {
-    setExpandedDateKeys((current) => {
-      const validKeys = groupedMessages.map((group) => group.dateKey);
-
-      if (validKeys.length === 0) {
-        return [];
-      }
-
-      const currentValidKeys = current.filter((dateKey) =>
-        validKeys.includes(dateKey),
-      );
-      const latestDateKey = validKeys[0];
-      const nextKeys = currentValidKeys.includes(latestDateKey)
-        ? currentValidKeys
-        : [latestDateKey, ...currentValidKeys];
-
-      const isUnchanged =
-        nextKeys.length === current.length &&
-        nextKeys.every((dateKey, index) => dateKey === current[index]);
-
-      return isUnchanged ? current : nextKeys;
-    });
-  }, [groupedMessages]);
-
-  function toggleDateGroup(dateKey: string) {
-    setExpandedDateKeys((current) =>
-      current.includes(dateKey)
-        ? current.filter((currentDateKey) => currentDateKey !== dateKey)
-        : [dateKey, ...current],
-    );
-  }
-
-  function toggleMessage(messageId: number) {
-    setExpandedMessageId((current) =>
-      current === messageId ? null : messageId,
-    );
-  }
-
-  function handleArchive(messageId: number) {
-    confirmDialog.confirm({
-      title: "Arkiver besked",
-      description: "Vil du arkivere denne besked?",
-      confirmText: "Arkiver",
-      cancelText: "Annuller",
-      confirmVariant: "primary",
-      onConfirm: async () => {
-        try {
-          await archive(messageId);
-
-          if (expandedMessageId === messageId) {
-            setExpandedMessageId(null);
-          }
-        } catch (error) {
-          showErrorDialog(
-            "Beskeden kunne ikke arkiveres",
-            getErrorMessage(
-              error,
-              "Der opstod en fejl, da beskeden skulle arkiveres. Prøv igen.",
-            ),
-          );
-        }
-      },
-    });
-  }
+  const {
+    loading,
+    sortedMessages,
+    groupedMessages,
+    expandedDateKeys,
+    expandedMessageId,
+    errorDialog,
+    confirmDialog,
+    toggleDateGroup,
+    toggleMessage,
+    handleArchive,
+    closeErrorDialog,
+  } = useSentMessagesPage();
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -165,13 +66,7 @@ export default function SentMessagesPage() {
         description={errorDialog.description}
         buttonText="OK"
         variant="error"
-        onClose={() =>
-          setErrorDialog({
-            open: false,
-            title: "",
-            description: "",
-          })
-        }
+        onClose={closeErrorDialog}
       />
     </main>
   );
