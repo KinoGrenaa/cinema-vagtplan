@@ -33,6 +33,10 @@ import {
 } from './helpers/time-entry-revision-snapshots';
 import { createOrUpdateTimeEntryPayrollAdjustment } from './helpers/time-entry-payroll-adjustments';
 import {
+  createEditAfterExportPayrollAdjustmentIfNeeded,
+  createVoidAfterExportPayrollAdjustmentIfNeeded,
+} from './helpers/time-entry-exported-payroll-adjustments';
+import {
   getAdminTimeEntryUpdateChanges,
   getOwnTimeEntryUpdateChanges,
 } from './helpers/time-entry-update-changes';
@@ -812,32 +816,14 @@ export class TimeEntriesService {
       include: getTimeEntryResponseInclude(),
     });
 
-    const payrollPeriod =
-      await this.payrollService.getPayrollPeriodEntityForDate(
-        existingEntry.cinemaId,
-        existingEntry.clockIn,
-      );
-
-    if (payrollPeriod?.status === 'EXPORTED') {
-      const adjustmentPayrollPeriod =
-        await this.payrollService.getCurrentPayrollPeriodEntity(
-          existingEntry.cinemaId,
-        );
-      const exportedMinutes = getEntryMinutes(existingEntry);
-
-      await createOrUpdateTimeEntryPayrollAdjustment(this.prisma, {
-        timeEntry: entry,
-        originalPayrollPeriodId: payrollPeriod.id,
-        settlementPayrollPeriodId: adjustmentPayrollPeriod?.id ?? null,
-        type: 'EDIT_AFTER_EXPORT',
-        exportedMinutes,
-        adjustedMinutes: 0,
-        reason: `Tidsregistrering annulleret efter eksport. Efterregulering: ${formatSignedDuration(
-          -exportedMinutes,
-        )}. Årsag: ${adminNote.trim()}`,
-        changedByUserId: changedByUserId ?? null,
-      });
-    }
+    await createVoidAfterExportPayrollAdjustmentIfNeeded({
+      prisma: this.prisma,
+      payrollService: this.payrollService,
+      existingEntry,
+      entry,
+      reason: adminNote.trim(),
+      changedByUserId: changedByUserId ?? null,
+    });
 
     await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
@@ -963,37 +949,14 @@ export class TimeEntriesService {
       include: getTimeEntryResponseInclude(),
     });
 
-    const payrollPeriod =
-      await this.payrollService.getPayrollPeriodEntityForDate(
-        existingEntry.cinemaId,
-        existingEntry.clockIn,
-      );
-
-    if (payrollPeriod?.status === 'EXPORTED') {
-      const adjustmentPayrollPeriod =
-        await this.payrollService.getCurrentPayrollPeriodEntity(
-          existingEntry.cinemaId,
-        );
-      const exportedMinutes = getEntryMinutes(existingEntry);
-      const adjustedMinutes = getEntryMinutes(entry);
-
-      await createOrUpdateTimeEntryPayrollAdjustment(this.prisma, {
-        timeEntry: entry,
-        originalPayrollPeriodId: payrollPeriod.id,
-        settlementPayrollPeriodId: adjustmentPayrollPeriod?.id ?? null,
-        type: 'EDIT_AFTER_EXPORT',
-        exportedMinutes,
-        adjustedMinutes,
-        reason: `Tidsregistrering rettet efter eksport. Tidligere registreret: ${formatSignedDuration(
-          exportedMinutes,
-        ).replace('+', '')}. Ny registrering: ${formatSignedDuration(
-          adjustedMinutes,
-        ).replace('+', '')}. Efterregulering: ${formatSignedDuration(
-          adjustedMinutes - exportedMinutes,
-        )}. Årsag: Tidsregistrering rettet af medarbejderen`,
-        changedByUserId: user.sub,
-      });
-    }
+    await createEditAfterExportPayrollAdjustmentIfNeeded({
+      prisma: this.prisma,
+      payrollService: this.payrollService,
+      existingEntry,
+      entry,
+      reason: 'Tidsregistrering rettet af medarbejderen',
+      changedByUserId: user.sub,
+    });
 
     await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
@@ -1132,41 +1095,15 @@ export class TimeEntriesService {
       include: getTimeEntryResponseInclude(),
     });
 
-    const payrollPeriod = existingEntry.payrollPeriodId
-      ? await this.prisma.payrollPeriod.findUnique({
-          where: { id: existingEntry.payrollPeriodId },
-        })
-      : await this.payrollService.getPayrollPeriodEntityForDate(
-          existingEntry.cinemaId,
-          existingEntry.clockIn,
-        );
-
-    if (payrollPeriod?.status === 'EXPORTED') {
-      const adjustmentPayrollPeriod =
-        await this.payrollService.getCurrentPayrollPeriodEntity(
-          existingEntry.cinemaId,
-        );
-
-      const exportedMinutes = getEntryMinutes(existingEntry);
-      const adjustedMinutes = getEntryMinutes(entry);
-
-      await createOrUpdateTimeEntryPayrollAdjustment(this.prisma, {
-        timeEntry: entry,
-        originalPayrollPeriodId: payrollPeriod.id,
-        settlementPayrollPeriodId: adjustmentPayrollPeriod?.id ?? null,
-        type: 'EDIT_AFTER_EXPORT',
-        exportedMinutes,
-        adjustedMinutes,
-        reason: `Tidsregistrering rettet efter eksport. Tidligere registreret: ${formatSignedDuration(
-          exportedMinutes,
-        ).replace('+', '')}. Ny registrering: ${formatSignedDuration(
-          adjustedMinutes,
-        ).replace('+', '')}. Efterregulering: ${formatSignedDuration(
-          adjustedMinutes - exportedMinutes,
-        )}. Årsag: ${data.adminNote}`,
-        changedByUserId: user?.sub ?? null,
-      });
-    }
+    await createEditAfterExportPayrollAdjustmentIfNeeded({
+      prisma: this.prisma,
+      payrollService: this.payrollService,
+      existingEntry,
+      entry,
+      reason: data.adminNote ?? '',
+      changedByUserId: user?.sub ?? null,
+      useLinkedPayrollPeriod: true,
+    });
 
     await createTimeEntryRevision(this.prisma, {
       timeEntryId: entry.id,
