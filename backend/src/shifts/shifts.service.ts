@@ -8,22 +8,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { PushService } from '../push/push.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
-
-type AuthUser = {
-  sub: number;
-  email: string;
-  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number | null;
-};
-
-type ShiftWriteData = {
-  startTime: string;
-  endTime: string;
-  note?: string | null;
-  cinemaId?: number;
-  userId?: number | null;
-  workTypeId: number;
-};
+import {
+  AuthUser,
+  ShiftWriteData,
+  formatShiftTime as formatShiftTimeHelper,
+  getCopenhagenDayRange,
+  getShiftCinemaFilter,
+  getShiftUserLabel,
+  resolveShiftCinemaId,
+  validateShiftTimes,
+} from './helpers/shift-service-helpers';
 
 @Injectable()
 export class ShiftsService {
@@ -34,108 +28,17 @@ export class ShiftsService {
     private auditLogsService: AuditLogsService,
   ) {}
 
-  private resolveCinemaId(user: AuthUser, selectedCinemaId?: number | null) {
-    if (user.role === 'MASTER') {
-      if (!selectedCinemaId) {
-        throw new BadRequestException(
-          'Vælg en biograf, før du administrerer vagter.',
-        );
-      }
-
-      return selectedCinemaId;
-    }
-
-    if (!user.cinemaId) {
-      throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
-    }
-
-    return user.cinemaId;
-  }
-
-  private getCinemaFilter(user: AuthUser, selectedCinemaId?: number | null) {
-    return {
-      cinemaId: this.resolveCinemaId(user, selectedCinemaId),
-    };
-  }
-
-  private getCopenhagenOffsetMs(date: Date) {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Europe/Copenhagen',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hourCycle: 'h23',
-    }).formatToParts(date);
-
-    const values = Object.fromEntries(
-      parts
-        .filter((part) => part.type !== 'literal')
-        .map((part) => [part.type, part.value]),
-    );
-
-    const asUtc = Date.UTC(
-      Number(values.year),
-      Number(values.month) - 1,
-      Number(values.day),
-      Number(values.hour),
-      Number(values.minute),
-      Number(values.second),
-    );
-
-    return asUtc - date.getTime();
-  }
-
-  private copenhagenLocalMidnightToUtc(
-    year: number,
-    month: number,
-    day: number,
-  ) {
-    const utcGuess = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
-    const offsetMs = this.getCopenhagenOffsetMs(utcGuess);
-
-    return new Date(utcGuess.getTime() - offsetMs);
-  }
-
-  private getCopenhagenDayRange(date: string) {
-    const [year, month, day] = date.split('-').map(Number);
-
-    if (!year || !month || !day) {
-      throw new BadRequestException('Ugyldig dato');
-    }
-
-    return {
-      start: this.copenhagenLocalMidnightToUtc(year, month, day),
-      end: this.copenhagenLocalMidnightToUtc(year, month, day + 1),
-    };
-  }
-
-  private getShiftUserLabel(shift: {
-    user?: { firstName?: string | null; lastName?: string | null } | null;
-    userId?: number | null;
-  }) {
-    const name = `${shift.user?.firstName ?? ''} ${
-      shift.user?.lastName ?? ''
-    }`.trim();
-
-    if (name) return name;
-
-    return shift.userId ? `Medarbejder #${shift.userId}` : 'Ikke tildelt';
-  }
-
   async findAll(
     user: AuthUser,
     date?: string,
     selectedCinemaId?: number | null,
   ) {
     const where: any = {
-      ...this.getCinemaFilter(user, selectedCinemaId),
+      ...getShiftCinemaFilter(user, selectedCinemaId),
     };
 
     if (date) {
-      const { start, end } = this.getCopenhagenDayRange(date);
+      const { start, end } = getCopenhagenDayRange(date);
 
       where.AND = [
         {
@@ -164,32 +67,7 @@ export class ShiftsService {
   }
 
   formatShiftTime(startTime: Date, endTime: Date) {
-    const date = startTime.toLocaleDateString('da-DK');
-    const start = startTime.toLocaleTimeString('da-DK', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const end = endTime.toLocaleTimeString('da-DK', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    return `${date} kl. ${start}-${end}`;
-  }
-
-  private validateShiftTimes(startTime: Date, endTime: Date) {
-    if (
-      Number.isNaN(startTime.getTime()) ||
-      Number.isNaN(endTime.getTime())
-    ) {
-      throw new BadRequestException('Start- eller sluttidspunkt er ikke gyldigt');
-    }
-
-    if (endTime <= startTime) {
-      throw new BadRequestException(
-        'Sluttidspunkt skal være efter starttidspunkt',
-      );
-    }
+    return formatShiftTimeHelper(startTime, endTime);
   }
 
   async checkConflicts(data: {
@@ -199,7 +77,7 @@ export class ShiftsService {
     cinemaId: number;
     ignoreShiftId?: number;
   }) {
-    this.validateShiftTimes(data.startTime, data.endTime);
+    validateShiftTimes(data.startTime, data.endTime);
 
     const overlappingShift = await this.prisma.shift.findFirst({
       where: {
@@ -247,7 +125,7 @@ export class ShiftsService {
   }
 
   async createShift(user: AuthUser, data: ShiftWriteData) {
-    const cinemaId = this.resolveCinemaId(user, data.cinemaId);
+    const cinemaId = resolveShiftCinemaId(user, data.cinemaId);
     const assignedUserId = data.userId ?? null;
 
     const workType = await this.prisma.workType.findFirst({
@@ -277,7 +155,7 @@ export class ShiftsService {
     const startTime = new Date(data.startTime);
     const endTime = new Date(data.endTime);
 
-    this.validateShiftTimes(startTime, endTime);
+    validateShiftTimes(startTime, endTime);
 
     if (assignedUserId) {
       await this.checkConflicts({
@@ -307,7 +185,7 @@ export class ShiftsService {
       action: 'CREATE_SHIFT',
       entityType: 'Shift',
       entityId: shift.id,
-      description: `Oprettede vagt til ${this.getShiftUserLabel(shift)}: ${
+      description: `Oprettede vagt til ${getShiftUserLabel(shift)}: ${
         shift.workType.name
       } - ${this.formatShiftTime(shift.startTime, shift.endTime)}`,
       userId: user.sub,
@@ -331,7 +209,7 @@ export class ShiftsService {
     const oldShift = await this.prisma.shift.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user, data.cinemaId),
+        ...getShiftCinemaFilter(user, data.cinemaId),
       },
       include: {
         user: true,
@@ -373,7 +251,7 @@ export class ShiftsService {
     const startTime = new Date(data.startTime);
     const endTime = new Date(data.endTime);
 
-    this.validateShiftTimes(startTime, endTime);
+    validateShiftTimes(startTime, endTime);
 
     if (assignedUserId) {
       await this.checkConflicts({
@@ -409,7 +287,7 @@ export class ShiftsService {
       description: `Opdaterede vagt fra ${oldShift.workType.name} - ${this.formatShiftTime(
         oldShift.startTime,
         oldShift.endTime,
-      )} til ${this.getShiftUserLabel(shift)}: ${
+      )} til ${getShiftUserLabel(shift)}: ${
         shift.workType.name
       } - ${this.formatShiftTime(shift.startTime, shift.endTime)}`,
       userId: user.sub,
@@ -447,7 +325,7 @@ export class ShiftsService {
     const shiftToDelete = await this.prisma.shift.findFirst({
       where: {
         id,
-        ...this.getCinemaFilter(user, selectedCinemaId),
+        ...getShiftCinemaFilter(user, selectedCinemaId),
       },
       include: {
         workType: true,
@@ -469,7 +347,7 @@ export class ShiftsService {
       action: 'DELETE_SHIFT',
       entityType: 'Shift',
       entityId: shiftToDelete.id,
-      description: `Slettede vagt for ${this.getShiftUserLabel(
+      description: `Slettede vagt for ${getShiftUserLabel(
         shiftToDelete,
       )}: ${shiftToDelete.workType.name} - ${this.formatShiftTime(
         shiftToDelete.startTime,
