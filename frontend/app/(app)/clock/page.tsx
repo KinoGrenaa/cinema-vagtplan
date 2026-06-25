@@ -5,26 +5,12 @@ import type { CurrentUser, Shift, TimeEntry } from "../../../../shared/types";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-import { getTodayLocalDate, formatTimeDK } from "@/app/utils/dateTime";
+import { getTodayLocalDate } from "@/app/utils/dateTime";
 import { toast } from "sonner";
-
-const inputClass =
-  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
-
-const labelClass =
-  "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
-
-async function readErrorMessage(response: Response, fallback: string) {
-  try {
-    const data = await response.json();
-
-    if (typeof data?.message === "string") {
-      return data.message;
-    }
-  } catch {}
-
-  return fallback;
-}
+import ClockEntriesSection from "./components/ClockEntriesSection";
+import ClockEntryForm from "./components/ClockEntryForm";
+import ClockHeader from "./components/ClockHeader";
+import { calculateTotalHours, readErrorMessage } from "./helpers/clockHelpers";
 
 export default function ClockPage() {
   const infoDialog = useInfoModal();
@@ -44,16 +30,6 @@ export default function ClockPage() {
   const [note, setNote] = useState("");
 
   const [loading, setLoading] = useState(false);
-
-  function toInputDateTime(value: string) {
-    const date = new Date(value);
-
-    const offset = date.getTimezoneOffset();
-
-    return new Date(date.getTime() - offset * 60 * 1000)
-      .toISOString()
-      .slice(0, 16);
-  }
 
   const fetchEntries = useCallback(
     async (userId: number, showError = true) => {
@@ -214,186 +190,29 @@ export default function ClockPage() {
     }
   }
 
-  const totalHours = useMemo(() => {
-    return entries.reduce((total, entry) => {
-      if (!entry.clockOut) return total;
-
-      const start = new Date(entry.clockIn);
-
-      const end = new Date(entry.clockOut);
-
-      return total + (end.getTime() - start.getTime()) / 1000 / 60 / 60;
-    }, 0);
-  }, [entries]);
+  const totalHours = useMemo(() => calculateTotalHours(entries), [entries]);
 
   return (
     <>
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-6xl space-y-6">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            <h1 className="text-3xl font-bold">Clock ind / ud</h1>
+          <ClockHeader />
 
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-              Registrer arbejdstid og se tidligere registreringer.
-            </p>
-          </div>
+          <ClockEntryForm
+            todayShifts={todayShifts}
+            selectedShiftId={selectedShiftId}
+            clockIn={clockIn}
+            clockOut={clockOut}
+            note={note}
+            loading={loading}
+            onSelectedShiftIdChange={setSelectedShiftId}
+            onClockInChange={setClockIn}
+            onClockOutChange={setClockOut}
+            onNoteChange={setNote}
+            onSubmit={handleSubmit}
+          />
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            <h2 className="mb-5 text-2xl font-bold">Ny registrering</h2>
-
-            <form
-              onSubmit={handleSubmit}
-              className="grid grid-cols-1 gap-4 md:grid-cols-2"
-            >
-              <div className="md:col-span-2">
-                <label className={labelClass}>Vagt</label>
-
-                <select
-                  className={inputClass}
-                  value={selectedShiftId ?? ""}
-                  onChange={(e) =>
-                    setSelectedShiftId(
-                      e.target.value ? Number(e.target.value) : null,
-                    )
-                  }
-                >
-                  <option value="">Ingen tilknyttet vagt</option>
-
-                  {todayShifts.map((shift) => (
-                    <option key={shift.id} value={shift.id}>
-                      {formatTimeDK(shift.startTime)}
-                      {" - "}
-                      {formatTimeDK(shift.endTime)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelClass}>Clock ind</label>
-
-                <input
-                  type="datetime-local"
-                  className={inputClass}
-                  value={clockIn}
-                  onChange={(e) => setClockIn(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Clock ud</label>
-
-                <input
-                  type="datetime-local"
-                  className={inputClass}
-                  value={clockOut}
-                  onChange={(e) => setClockOut(e.target.value)}
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className={labelClass}>Note</label>
-
-                <textarea
-                  className="min-h-28 w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Valgfri note..."
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-xl bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                >
-                  {loading ? "Gemmer..." : "Gem registrering"}
-                </button>
-              </div>
-            </form>
-          </section>
-
-          <section className="rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-            <div className="flex flex-col gap-4 border-b border-gray-200 p-6 dark:border-gray-800 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">Mine registreringer</h2>
-
-                <p className="mt-1 text-gray-500 dark:text-gray-400">
-                  Oversigt over tidligere clock ind/ud.
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-black px-5 py-3 text-white dark:bg-white dark:text-black">
-                <div className="text-sm opacity-80">Samlede timer</div>
-
-                <div className="text-2xl font-bold">
-                  {totalHours.toFixed(2)}
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-gray-50 dark:bg-gray-950">
-                  <tr className="text-left text-sm text-gray-600 dark:text-gray-400">
-                    <th className="px-4 py-3">Clock ind</th>
-
-                    <th className="px-4 py-3">Clock ud</th>
-
-                    <th className="px-4 py-3">Timer</th>
-
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {entries.map((entry) => {
-                    const hours = entry.clockOut
-                      ? (
-                          (new Date(entry.clockOut).getTime() -
-                            new Date(entry.clockIn).getTime()) /
-                          1000 /
-                          60 /
-                          60
-                        ).toFixed(2)
-                      : "-";
-
-                    return (
-                      <tr
-                        key={entry.id}
-                        className="border-t border-gray-200 dark:border-gray-800"
-                      >
-                        <td className="px-4 py-4">
-                          {toInputDateTime(entry.clockIn).replace("T", " ")}
-                        </td>
-
-                        <td className="px-4 py-4">
-                          {entry.clockOut
-                            ? toInputDateTime(entry.clockOut).replace("T", " ")
-                            : "-"}
-                        </td>
-
-                        <td className="px-4 py-4 font-semibold">{hours}</td>
-
-                        <td className="px-4 py-4">
-                          <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
-                            {entry.status || "PENDING"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {entries.length === 0 && (
-                <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                  Ingen registreringer endnu.
-                </div>
-              )}
-            </div>
-          </section>
+          <ClockEntriesSection entries={entries} totalHours={totalHours} />
         </div>
       </main>
 
