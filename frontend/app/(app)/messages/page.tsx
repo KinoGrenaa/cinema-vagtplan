@@ -1,88 +1,23 @@
 "use client";
 
-import { useCallback, useState } from "react";
-
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
-import { useConfirm } from "@/app/hooks/useConfirm";
-import { useMessages } from "../../hooks/useMessages";
 import InboxMessagesEmptyState from "./components/InboxMessagesEmptyState";
 import InboxMessagesHeader from "./components/InboxMessagesHeader";
 import InboxMessagesList from "./components/InboxMessagesList";
-import {
-  getErrorMessage,
-  type ErrorDialogState,
-} from "./helpers/inboxMessageHelpers";
+import { useInboxMessagesPage } from "./hooks/useInboxMessagesPage";
 
 export default function MessagesPage() {
-  const confirmDialog = useConfirm();
-
-  const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
-    null,
-  );
-  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
-    open: false,
-    title: "",
-    description: "",
-  });
-
-  const showErrorDialog = useCallback((title: string, description: string) => {
-    setErrorDialog({
-      open: true,
-      title,
-      description,
-    });
-  }, []);
-
-  const handleMessagesError = useCallback(
-    (message: string) => {
-      showErrorDialog("Kunne ikke hente beskeder", message);
-    },
-    [showErrorDialog],
-  );
-
-  const { loading, sortedMessages, markAsRead, archive } = useMessages({
-    mode: "inbox",
-    onError: handleMessagesError,
-  });
-
-  function handleOpenMessage(messageId: number, isExpanded: boolean) {
-    const message = sortedMessages.find((current) => current.id === messageId);
-
-    if (!isExpanded && message && !message.isRead) {
-      markAsRead(messageId);
-    }
-
-    setExpandedMessageId(isExpanded ? null : messageId);
-  }
-
-  function handleArchive(messageId: number) {
-    confirmDialog.confirm({
-      title: "Arkiver besked",
-      description:
-        "Vil du arkivere denne besked? Du kan flytte den tilbage fra arkivet senere.",
-      confirmText: "Arkiver",
-      cancelText: "Annuller",
-      confirmVariant: "primary",
-      onConfirm: async () => {
-        try {
-          await archive(messageId);
-
-          if (expandedMessageId === messageId) {
-            setExpandedMessageId(null);
-          }
-        } catch (error) {
-          showErrorDialog(
-            "Beskeden kunne ikke arkiveres",
-            getErrorMessage(
-              error,
-              "Der opstod en fejl, da beskeden skulle arkiveres. Prøv igen.",
-            ),
-          );
-        }
-      },
-    });
-  }
+  const {
+    confirmDialog,
+    loading,
+    sortedMessages,
+    expandedMessageId,
+    errorDialog,
+    handleOpenMessage,
+    handleArchive,
+    closeErrorDialog,
+  } = useInboxMessagesPage();
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -125,13 +60,7 @@ export default function MessagesPage() {
         description={errorDialog.description}
         buttonText="OK"
         variant="error"
-        onClose={() =>
-          setErrorDialog({
-            open: false,
-            title: "",
-            description: "",
-          })
-        }
+        onClose={closeErrorDialog}
       />
     </main>
   );
