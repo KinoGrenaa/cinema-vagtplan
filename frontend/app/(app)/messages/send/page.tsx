@@ -1,38 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
+import InfoModal from "@/app/components/modals/InfoModal";
+import { toast } from "sonner";
 import { useApi } from "../../../hooks/useApi";
 import { useAuth } from "../../../providers/AuthProvider";
 import { sendMessage as sendMessageService } from "../../../services/messagesService";
-import InfoModal from "@/app/components/modals/InfoModal";
-import { toast } from "sonner";
-
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  role?: string;
-};
-
-type ErrorDialogState = {
-  open: boolean;
-  title: string;
-  description: string;
-};
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-}
-
-const inputClass =
-  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
-
-const labelClass =
-  "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
+import SendMessageForm from "./components/SendMessageForm";
+import SendMessagesHeader from "./components/SendMessagesHeader";
+import { getErrorMessage } from "./helpers/sendMessageHelpers";
+import type { ErrorDialogState, User } from "./helpers/sendMessageTypes";
 
 export default function SendMessagePage() {
   const { apiFetch } = useApi();
@@ -99,7 +76,7 @@ export default function SendMessagePage() {
     fetchUsers();
   }, [authLoading, fetchUsers, user]);
 
-  async function handleSendMessage(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!subject.trim() || !body.trim()) {
@@ -160,92 +137,23 @@ export default function SendMessagePage() {
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-          <h1 className="text-3xl font-bold">Send besked</h1>
+        <SendMessagesHeader />
 
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Send en besked til en medarbejder eller til hele biografen.
-          </p>
-        </div>
-
-        <form
+        <SendMessageForm
+          users={users}
+          receiverId={receiverId}
+          isBroadcast={isBroadcast}
+          subject={subject}
+          body={body}
+          sending={sending}
+          onReceiverIdChange={setReceiverId}
+          onBroadcastChange={setIsBroadcast}
+          onSubjectChange={setSubject}
+          onBodyChange={setBody}
           onSubmit={handleSendMessage}
-          className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
-        >
-          <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-            <input
-              id="broadcast"
-              type="checkbox"
-              checked={isBroadcast}
-              onChange={(event) => {
-                setIsBroadcast(event.target.checked);
-
-                if (event.target.checked) {
-                  setReceiverId("");
-                }
-              }}
-              className="h-4 w-4"
-            />
-
-            <label
-              htmlFor="broadcast"
-              className="font-medium text-gray-800 dark:text-gray-200"
-            >
-              Send til alle medarbejdere
-            </label>
-          </div>
-
-          {!isBroadcast && (
-            <div>
-              <label className={labelClass}>Modtager</label>
-
-              <select
-                value={receiverId}
-                onChange={(event) => setReceiverId(event.target.value)}
-                className={inputClass}
-              >
-                <option value="">Vælg medarbejder</option>
-
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.firstName} {user.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <label className={labelClass}>Emne</label>
-
-            <input
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-              className={inputClass}
-              placeholder="Skriv emne"
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Besked</label>
-
-            <textarea
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              className="min-h-48 w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
-              placeholder="Skriv din besked..."
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={sending}
-            className="w-full rounded-xl bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-          >
-            {sending ? "Sender besked..." : "Send besked"}
-          </button>
-        </form>
+        />
       </div>
+
       <InfoModal
         open={errorDialog.open}
         title={errorDialog.title}
