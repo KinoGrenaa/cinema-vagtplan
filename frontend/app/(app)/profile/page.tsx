@@ -4,31 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+import ProfileAvatar from "./components/ProfileAvatar";
+import ProfileInfo from "./components/ProfileInfo";
+import ProfileInput from "./components/ProfileInput";
+import { formatDate, formatDateForInput, readError } from "./helpers/profileHelpers";
+import type { CurrentUser, User } from "./helpers/profileTypes";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-type User = {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone?: string | null;
-  role: "MASTER" | "ADMIN" | "EMPLOYEE";
-  profileImage?: string | null;
-  address?: string | null;
-  birthDate?: string | null;
-  emergencyPhone?: string | null;
-  skills?: string | null;
-};
-
-type CurrentUser = {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  cinemaId: number | null;
-};
 
 export default function ProfilePage() {
   const infoDialog = useInfoModal();
@@ -51,15 +33,6 @@ export default function ProfilePage() {
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [skills, setSkills] = useState("");
 
-  function formatDateForInput(value?: string | null) {
-    return value ? value.slice(0, 10) : "";
-  }
-
-  function formatDate(value?: string | null) {
-    if (!value) return "-";
-    return new Date(value).toLocaleDateString("da-DK");
-  }
-
   function fillForm(user: User) {
     setEmail(user.email || "");
     setPassword("");
@@ -70,20 +43,6 @@ export default function ProfilePage() {
     setBirthDate(formatDateForInput(user.birthDate));
     setEmergencyPhone(user.emergencyPhone || "");
     setSkills(user.skills || "");
-  }
-
-  async function readError(response: Response) {
-    try {
-      const data = await response.json();
-
-      if (Array.isArray(data.message)) {
-        return data.message.join("\n");
-      }
-
-      return data.message || "Der opstod en fejl.";
-    } catch {
-      return "Der opstod en fejl.";
-    }
   }
 
   const fetchProfile = useCallback(async () => {
@@ -304,42 +263,25 @@ export default function ProfilePage() {
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-col gap-6 md:flex-row">
             <div className="flex-shrink-0">
-              {(() => {
-                const rawImageUrl = profileImage || profile.profileImage || "";
-
-                const imageSrc = rawImageUrl
-                  ? rawImageUrl.startsWith("http")
-                    ? rawImageUrl
-                    : `${API_URL}${rawImageUrl}`
-                  : "";
-
-                return imageSrc ? (
-                  <img
-                    src={imageSrc}
-                    alt="Profilbillede"
-                    className="h-32 w-32 rounded-2xl object-cover"
-                  />
-                ) : (
-                  <div className="flex h-32 w-32 items-center justify-center rounded-2xl bg-gray-200 text-3xl font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                    {profile.firstName.slice(0, 1)}
-                    {profile.lastName.slice(0, 1)}
-                  </div>
-                );
-              })()}
+              <ProfileAvatar
+                apiUrl={API_URL}
+                profile={profile}
+                profileImage={profileImage}
+              />
             </div>
 
             <div className="grid flex-1 gap-4 md:grid-cols-2">
-              <Info
+              <ProfileInfo
                 label="Navn"
                 value={`${profile.firstName} ${profile.lastName}`}
               />
-              <Info label="Email" value={profile.email} />
-              <Info label="Mobil" value={profile.phone || "-"} />
-              <Info label="Rolle" value={profile.role} />
-              <Info label="Adresse" value={profile.address || "-"} />
-              <Info label="Fødselsdato" value={formatDate(profile.birthDate)} />
-              <Info label="Nødtelefon" value={profile.emergencyPhone || "-"} />
-              <Info label="Kompetencer" value={profile.skills || "-"} />
+              <ProfileInfo label="Email" value={profile.email} />
+              <ProfileInfo label="Mobil" value={profile.phone || "-"} />
+              <ProfileInfo label="Rolle" value={profile.role} />
+              <ProfileInfo label="Adresse" value={profile.address || "-"} />
+              <ProfileInfo label="Fødselsdato" value={formatDate(profile.birthDate)} />
+              <ProfileInfo label="Nødtelefon" value={profile.emergencyPhone || "-"} />
+              <ProfileInfo label="Kompetencer" value={profile.skills || "-"} />
             </div>
           </div>
         </section>
@@ -350,13 +292,13 @@ export default function ProfilePage() {
 
             <form onSubmit={saveProfile} className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
-                <Input
+                <ProfileInput
                   label="Email"
                   type="email"
                   value={email}
                   onChange={setEmail}
                 />
-                <Input
+                <ProfileInput
                   label="Ny adgangskode"
                   type="password"
                   value={password}
@@ -364,7 +306,7 @@ export default function ProfilePage() {
                   placeholder="Lad feltet være tomt for at beholde adgangskoden"
                   helpText="Password skal være mindst 6 tegn."
                 />
-                <Input
+                <ProfileInput
                   label="Mobil"
                   value={phone}
                   onChange={(value) => {
@@ -374,13 +316,13 @@ export default function ProfilePage() {
                   placeholder="8 cifre"
                   helpText="Mobilnummer skal bestå af præcis 8 cifre."
                 />
-                <Input
+                <ProfileInput
                   label="Nødtelefon"
                   value={emergencyPhone}
                   onChange={setEmergencyPhone}
                 />
-                <Input label="Adresse" value={address} onChange={setAddress} />
-                <Input
+                <ProfileInput label="Adresse" value={address} onChange={setAddress} />
+                <ProfileInput
                   label="Fødselsdato"
                   type="date"
                   value={birthDate}
@@ -472,45 +414,3 @@ export default function ProfilePage() {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-sm text-gray-500 dark:text-gray-400">{label}</div>
-      <div className="mt-1 font-medium">{value}</div>
-    </div>
-  );
-}
-
-function Input({
-  label,
-  value,
-  onChange,
-  type = "text",
-  placeholder,
-  helpText,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  placeholder?: string;
-  helpText?: string;
-}) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium">{label}</span>
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950"
-      />
-      {helpText && (
-        <span className="text-sm text-gray-500 dark:text-gray-400">
-          {helpText}
-        </span>
-      )}
-    </label>
-  );
-}
