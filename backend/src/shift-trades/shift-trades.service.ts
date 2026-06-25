@@ -1,14 +1,14 @@
-﻿import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+﻿import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ShiftTradeStatus, ShiftTradeType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
+import {
+  getShiftTradeCinemaFilter,
+  resolveShiftTradeCinemaId,
+  shiftTradeInclude,
+} from './helpers/shift-trade-service-helpers';
 
 @Injectable()
 export class ShiftTradesService {
@@ -19,43 +19,10 @@ export class ShiftTradesService {
     private push: PushService,
   ) {}
 
-  private resolveCinemaId(user: any, selectedCinemaId?: number | null) {
-    if (user?.role === 'MASTER') {
-      if (!selectedCinemaId || !Number.isFinite(selectedCinemaId)) {
-        throw new BadRequestException('Vælg en aktiv biograf først.');
-      }
-
-      return selectedCinemaId;
-    }
-
-    if (!user?.cinemaId) {
-      throw new BadRequestException('Brugeren er ikke tilknyttet en biograf.');
-    }
-
-    return user.cinemaId;
-  }
-
-  private getCinemaFilter(user: any, selectedCinemaId?: number | null) {
-    return {
-      cinemaId: this.resolveCinemaId(user, selectedCinemaId),
-    };
-  }
-
   findAll(user: any, selectedCinemaId?: number | null) {
     return this.prisma.shiftTrade.findMany({
-      where: this.getCinemaFilter(user, selectedCinemaId),
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-        rejectedByUser: true,
-      },
+      where: getShiftTradeCinemaFilter(user, selectedCinemaId),
+      include: shiftTradeInclude,
       orderBy: {
         createdAt: 'desc',
       },
@@ -67,7 +34,7 @@ export class ShiftTradesService {
     userId: number,
     selectedCinemaId?: number | null,
   ) {
-    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+    const cinemaId = resolveShiftTradeCinemaId(user, selectedCinemaId);
     const count = await this.prisma.shiftTrade.count({
       where: {
         cinemaId,
@@ -92,7 +59,7 @@ export class ShiftTradesService {
     userId: number,
     selectedCinemaId?: number | null,
   ) {
-    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+    const cinemaId = resolveShiftTradeCinemaId(user, selectedCinemaId);
     const count = await this.prisma.shiftTrade.count({
       where: {
         cinemaId,
@@ -177,18 +144,7 @@ export class ShiftTradesService {
         targetUserId: data.targetUserId ?? null,
         message: data.message ?? null,
       },
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-        rejectedByUser: true,
-      },
+      include: shiftTradeInclude,
     });
 
     this.realtime.notifyCinema(trade.cinemaId, 'shiftTradesUpdated', trade);
@@ -311,18 +267,7 @@ export class ShiftTradesService {
 
     const updatedTrade = await this.prisma.shiftTrade.findUnique({
       where: { id },
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-        rejectedByUser: true,
-      },
+      include: shiftTradeInclude,
     });
 
     this.realtime.notifyAll('shiftTradesUpdated', updatedTrade);
@@ -410,18 +355,7 @@ export class ShiftTradesService {
 
     const trade = await this.prisma.shiftTrade.findUnique({
       where: { id },
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-        rejectedByUser: true,
-      },
+      include: shiftTradeInclude,
     });
 
     if (!trade) {
@@ -473,18 +407,7 @@ export class ShiftTradesService {
       data: {
         status: ShiftTradeStatus.CANCELLED,
       },
-      include: {
-        shift: {
-          include: {
-            user: true,
-            workType: true,
-          },
-        },
-        offeredByUser: true,
-        targetUser: true,
-        acceptedByUser: true,
-        rejectedByUser: true,
-      },
+      include: shiftTradeInclude,
     });
 
     this.realtime.notifyCinema(trade.cinemaId, 'shiftTradesUpdated', trade);
