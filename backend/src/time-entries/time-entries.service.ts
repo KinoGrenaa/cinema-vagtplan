@@ -27,6 +27,10 @@ import {
   getTimeEntryCinemaFilter,
 } from './helpers/time-entry-access';
 import { createTimeEntryRevision } from './helpers/time-entry-revisions';
+import {
+  createDetailedTimeEntryRevisionSnapshot,
+  createTimeEntryRevisionSnapshot,
+} from './helpers/time-entry-revision-snapshots';
 import { createOrUpdateTimeEntryPayrollAdjustment } from './helpers/time-entry-payroll-adjustments';
 import {
   getAdminTimeEntryUpdateChanges,
@@ -267,15 +271,7 @@ export class TimeEntriesService {
       changedByUserId: data.userId,
       action: 'CREATED',
       before: null,
-      after: {
-        status: entry.status,
-        clockIn: entry.clockIn,
-        clockOut: entry.clockOut,
-        note: entry.note,
-        clockInNote: entry.clockInNote,
-        clockOutNote: entry.clockOutNote,
-        adminNote: entry.adminNote,
-      },
+      after: createDetailedTimeEntryRevisionSnapshot(entry),
       reason: null,
     });
 
@@ -387,15 +383,7 @@ export class TimeEntriesService {
       changedByUserId: data.userId,
       action: 'CREATED',
       before: null,
-      after: {
-        status: entry.status,
-        clockIn: entry.clockIn,
-        clockOut: entry.clockOut,
-        note: entry.note,
-        clockInNote: entry.clockInNote,
-        clockOutNote: entry.clockOutNote,
-        adminNote: entry.adminNote,
-      },
+      after: createDetailedTimeEntryRevisionSnapshot(entry),
       reason: null,
     });
 
@@ -635,20 +623,8 @@ export class TimeEntriesService {
       timeEntryId: entry.id,
       changedByUserId: changedByUserId ?? null,
       action: 'APPROVED',
-      before: {
-        status: existingEntry.status,
-        clockIn: existingEntry.clockIn,
-        clockOut: existingEntry.clockOut,
-        note: existingEntry.note,
-        adminNote: existingEntry.adminNote,
-      },
-      after: {
-        status: entry.status,
-        clockIn: entry.clockIn,
-        clockOut: entry.clockOut,
-        note: entry.note,
-        adminNote: entry.adminNote,
-      },
+      before: createTimeEntryRevisionSnapshot(existingEntry),
+      after: createTimeEntryRevisionSnapshot(entry),
       reason: 'Tidsregistrering godkendt',
     });
 
@@ -708,20 +684,8 @@ export class TimeEntriesService {
       timeEntryId: entry.id,
       changedByUserId: changedByUserId ?? null,
       action: 'UNAPPROVED',
-      before: {
-        status: existingEntry.status,
-        clockIn: existingEntry.clockIn,
-        clockOut: existingEntry.clockOut,
-        note: existingEntry.note,
-        adminNote: existingEntry.adminNote,
-      },
-      after: {
-        status: entry.status,
-        clockIn: entry.clockIn,
-        clockOut: entry.clockOut,
-        note: entry.note,
-        adminNote: entry.adminNote,
-      },
+      before: createTimeEntryRevisionSnapshot(existingEntry),
+      after: createTimeEntryRevisionSnapshot(entry),
       reason: 'Godkendelse fjernet',
     });
 
@@ -783,20 +747,8 @@ export class TimeEntriesService {
       timeEntryId: entry.id,
       changedByUserId: changedByUserId ?? null,
       action: 'NEEDS_CHANGES',
-      before: {
-        status: existingEntry.status,
-        clockIn: existingEntry.clockIn,
-        clockOut: existingEntry.clockOut,
-        note: existingEntry.note,
-        adminNote: existingEntry.adminNote,
-      },
-      after: {
-        status: entry.status,
-        clockIn: entry.clockIn,
-        clockOut: entry.clockOut,
-        note: entry.note,
-        adminNote: entry.adminNote,
-      },
+      before: createTimeEntryRevisionSnapshot(existingEntry),
+      after: createTimeEntryRevisionSnapshot(entry),
       reason: adminNote.trim(),
     });
 
@@ -891,24 +843,8 @@ export class TimeEntriesService {
       timeEntryId: entry.id,
       changedByUserId: changedByUserId ?? null,
       action: 'VOIDED',
-      before: {
-        status: existingEntry.status,
-        clockIn: existingEntry.clockIn,
-        clockOut: existingEntry.clockOut,
-        note: existingEntry.note,
-        clockInNote: existingEntry.clockInNote,
-        clockOutNote: existingEntry.clockOutNote,
-        adminNote: existingEntry.adminNote,
-      },
-      after: {
-        status: entry.status,
-        clockIn: entry.clockIn,
-        clockOut: entry.clockOut,
-        note: entry.note,
-        clockInNote: entry.clockInNote,
-        clockOutNote: entry.clockOutNote,
-        adminNote: entry.adminNote,
-      },
+      before: createDetailedTimeEntryRevisionSnapshot(existingEntry),
+      after: createDetailedTimeEntryRevisionSnapshot(entry),
       reason: adminNote.trim(),
     });
 
@@ -1063,24 +999,8 @@ export class TimeEntriesService {
       timeEntryId: entry.id,
       changedByUserId: user.sub,
       action: 'UPDATED',
-      before: {
-        status: existingEntry.status,
-        clockIn: existingEntry.clockIn,
-        clockOut: existingEntry.clockOut,
-        note: existingEntry.note,
-        clockInNote: existingEntry.clockInNote,
-        clockOutNote: existingEntry.clockOutNote,
-        adminNote: existingEntry.adminNote,
-      },
-      after: {
-        status: entry.status,
-        clockIn: entry.clockIn,
-        clockOut: entry.clockOut,
-        note: entry.note,
-        clockInNote: entry.clockInNote,
-        clockOutNote: entry.clockOutNote,
-        adminNote: entry.adminNote,
-      },
+      before: createDetailedTimeEntryRevisionSnapshot(existingEntry),
+      after: createDetailedTimeEntryRevisionSnapshot(entry),
       reason: changes.join('\n'),
     });
 
@@ -1252,24 +1172,8 @@ export class TimeEntriesService {
       timeEntryId: entry.id,
       changedByUserId: user?.sub ?? null,
       action: 'UPDATED',
-      before: {
-        status: existingEntry.status,
-        clockIn: existingEntry.clockIn,
-        clockOut: existingEntry.clockOut,
-        note: existingEntry.note,
-        adminNote: existingEntry.adminNote,
-        clockInNote: existingEntry.clockInNote,
-        clockOutNote: existingEntry.clockOutNote,
-      },
-      after: {
-        status: entry.status,
-        clockIn: entry.clockIn,
-        clockOut: entry.clockOut,
-        note: entry.note,
-        adminNote: entry.adminNote,
-        clockInNote: entry.clockInNote,
-        clockOutNote: entry.clockOutNote,
-      },
+      before: createDetailedTimeEntryRevisionSnapshot(existingEntry),
+      after: createDetailedTimeEntryRevisionSnapshot(entry),
       reason: data.adminNote,
     });
 
