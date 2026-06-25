@@ -7,17 +7,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
-
-type UserRole = 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-type EmploymentType = 'HOURLY' | 'SALARIED';
-
-type AuthUser = {
-  sub?: number;
-  id?: number;
-  email: string;
-  role: UserRole;
-  cinemaId: number | null;
-};
+import {
+  AuthUser,
+  EmploymentType,
+  ensureCanModifyTargetUser,
+  ensureSameCinemaOrMaster,
+  getActorUserId,
+  UserRole,
+} from './helpers/user-service-helpers';
 
 @Injectable()
 export class UsersService {
@@ -25,38 +22,6 @@ export class UsersService {
     private prisma: PrismaService,
     private auditLogsService: AuditLogsService,
   ) {}
-
-  private getActorUserId(currentUser?: AuthUser) {
-    return currentUser?.sub ?? currentUser?.id;
-  }
-
-  private ensureSameCinemaOrMaster(
-    currentUser: AuthUser,
-    targetCinemaId: number | null,
-  ) {
-    if (currentUser.role === 'MASTER') {
-      return;
-    }
-
-    if (!currentUser.cinemaId || !targetCinemaId) {
-      throw new ForbiddenException('Du har ikke adgang til denne biograf');
-    }
-
-    if (currentUser.cinemaId !== targetCinemaId) {
-      throw new ForbiddenException('Du har ikke adgang til denne biograf');
-    }
-  }
-
-  private ensureCanModifyTargetUser(
-    currentUser: AuthUser,
-    targetUser: { role: UserRole; cinemaId: number | null },
-  ) {
-    this.ensureSameCinemaOrMaster(currentUser, targetUser.cinemaId);
-
-    if (currentUser.role !== 'MASTER' && targetUser.role === 'MASTER') {
-      throw new ForbiddenException('Kun master kan ændre master-brugere');
-    }
-  }
 
   private async ensureCinemaExists(cinemaId: number) {
     const cinema = await this.prisma.cinema.findUnique({
@@ -190,7 +155,7 @@ export class UsersService {
     const role = data.role || 'EMPLOYEE';
 
     if (currentUser) {
-      this.ensureSameCinemaOrMaster(currentUser, data.cinemaId ?? null);
+      ensureSameCinemaOrMaster(currentUser, data.cinemaId ?? null);
 
       if (currentUser.role !== 'MASTER' && role === 'MASTER') {
         throw new ForbiddenException(
@@ -247,7 +212,7 @@ export class UsersService {
       entityType: 'User',
       entityId: createdUser.id,
       description: `Oprettede bruger ${createdUser.firstName} ${createdUser.lastName}`,
-      userId: this.getActorUserId(currentUser),
+      userId: getActorUserId(currentUser),
       cinemaId: createdUser.cinemaId,
     });
 
@@ -289,7 +254,7 @@ export class UsersService {
     }
 
     if (currentUser) {
-      this.ensureCanModifyTargetUser(currentUser, user);
+      ensureCanModifyTargetUser(currentUser, user);
 
       if (currentUser.role !== 'MASTER' && data.role === 'MASTER') {
         throw new ForbiddenException(
@@ -396,7 +361,7 @@ export class UsersService {
       entityType: 'User',
       entityId: updatedUser.id,
       description: `Opdaterede bruger ${updatedUser.firstName} ${updatedUser.lastName}`,
-      userId: this.getActorUserId(currentUser),
+      userId: getActorUserId(currentUser),
       cinemaId: updatedUser.cinemaId,
     });
 
@@ -413,7 +378,7 @@ export class UsersService {
     }
 
     if (currentUser) {
-      this.ensureCanModifyTargetUser(currentUser, existingUser);
+      ensureCanModifyTargetUser(currentUser, existingUser);
     }
 
     const deactivatedUser = await this.prisma.user.update({
@@ -429,7 +394,7 @@ export class UsersService {
       entityType: 'User',
       entityId: deactivatedUser.id,
       description: `Deaktiverede bruger ${deactivatedUser.firstName} ${deactivatedUser.lastName}`,
-      userId: this.getActorUserId(currentUser),
+      userId: getActorUserId(currentUser),
       cinemaId: deactivatedUser.cinemaId,
     });
 
@@ -446,7 +411,7 @@ export class UsersService {
     }
 
     if (currentUser) {
-      this.ensureCanModifyTargetUser(currentUser, existingUser);
+      ensureCanModifyTargetUser(currentUser, existingUser);
     }
 
     const reactivatedUser = await this.prisma.user.update({
@@ -462,7 +427,7 @@ export class UsersService {
       entityType: 'User',
       entityId: reactivatedUser.id,
       description: `Genaktiverede bruger ${reactivatedUser.firstName} ${reactivatedUser.lastName}`,
-      userId: this.getActorUserId(currentUser),
+      userId: getActorUserId(currentUser),
       cinemaId: reactivatedUser.cinemaId,
     });
 
