@@ -1,33 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PayrollService } from '../payroll/payroll.service';
-import { formatSignedDuration, getEntryMinutes } from './helpers/time-entry-deviation';
-import { notifyTimeEntryUpdated } from './helpers/time-entry-response';
-import {
-  ensureTimeEntryEditable,
-  ensureUserCanAccessTimeEntry,
-} from './helpers/time-entry-access';
-import { createOrUpdateTimeEntryPayrollAdjustment } from './helpers/time-entry-payroll-adjustments';
-import { createVoidAfterExportPayrollAdjustmentIfNeeded } from './helpers/time-entry-exported-payroll-adjustments';
-import {
-  ensureTimeEntryCanBeApproved,
-  getApprovalPayrollContext,
-  getApprovalPayrollUpdateData,
-} from './helpers/time-entry-approval-helpers';
-import {
-  ensureTimeEntryCanBeUnapproved,
-  findEditableStatusActionEntry,
-  getChangedByUserId,
-  getRequiredStatusActionNote,
-  recordApproveTimeEntryStatusChange,
-  recordRejectTimeEntryStatusChange,
-  recordUnapproveTimeEntryStatusChange,
-  recordVoidTimeEntryStatusChange,
-} from './helpers/time-entry-status-action-helpers';
-import { getTimeEntryResponseInclude } from './helpers/time-entry-includes';
-import { findTimeEntryWithUserCinemaShiftOrThrow } from './helpers/time-entry-query-helpers';
 import {
   findAllVisibleTimeEntries,
   findOpenTimeEntry,
@@ -40,6 +15,10 @@ import {
   updateAdminTimeEntry,
   updateOwnTimeEntry,
 } from './helpers/time-entry-update-flow';
+import { approveTimeEntryFlow } from './helpers/time-entry-approve-flow';
+import { rejectTimeEntryFlow } from './helpers/time-entry-reject-flow';
+import { unapproveTimeEntryFlow } from './helpers/time-entry-unapprove-flow';
+import { voidTimeEntryFlow } from './helpers/time-entry-void-flow';
 
 @Injectable()
 export class TimeEntriesService {
@@ -125,197 +104,72 @@ export class TimeEntriesService {
     });
   }
 
-  async approveEntry(
+  approveEntry(
     id: number,
     user: any,
     selectedCinemaId?: number | null,
     confirmPayrollAdjustment = false,
   ) {
-    const changedByUserId = getChangedByUserId(user);
-    const existingEntry = await findTimeEntryWithUserCinemaShiftOrThrow(
-      this.prisma,
-      id,
-    );
-
-    ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
-
-    const approvalPayrollContext = await getApprovalPayrollContext({
+    return approveTimeEntryFlow({
+      prisma: this.prisma,
       payrollService: this.payrollService,
-      existingEntry,
+      realtimeGateway: this.realtimeGateway,
+      auditLogsService: this.auditLogsService,
+      id,
+      user,
+      selectedCinemaId,
       confirmPayrollAdjustment,
     });
-
-    ensureTimeEntryEditable(existingEntry, user);
-    ensureTimeEntryCanBeApproved(existingEntry);
-
-    const entry = await this.prisma.timeEntry.update({
-      where: { id },
-      data: getApprovalPayrollUpdateData({
-        ...approvalPayrollContext,
-        confirmPayrollAdjustment,
-      }),
-      include: getTimeEntryResponseInclude(),
-    });
-
-    if (
-      approvalPayrollContext.payrollPeriod?.status === 'EXPORTED' &&
-      confirmPayrollAdjustment
-    ) {
-      const adjustedMinutes = getEntryMinutes(entry);
-
-      await createOrUpdateTimeEntryPayrollAdjustment(this.prisma, {
-        timeEntry: entry,
-        originalPayrollPeriodId: approvalPayrollContext.payrollPeriod.id,
-        settlementPayrollPeriodId:
-          approvalPayrollContext.adjustmentPayrollPeriod?.id ?? null,
-        type: 'APPROVAL_AFTER_EXPORT',
-        exportedMinutes: 0,
-        adjustedMinutes,
-        reason: `Tidsregistrering godkendt efter eksport. Efterregulering: ${formatSignedDuration(
-          adjustedMinutes,
-        )}`,
-        changedByUserId: changedByUserId ?? null,
-      });
-    }
-
-    await recordApproveTimeEntryStatusChange({
-      prisma: this.prisma,
-      auditLogsService: this.auditLogsService,
-      existingEntry,
-      entry,
-      changedByUserId,
-    });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
-  async unapproveEntry(
+  unapproveEntry(
     id: number,
     user: any,
     selectedCinemaId?: number | null,
   ) {
-    const changedByUserId = getChangedByUserId(user);
-    const existingEntry = await findEditableStatusActionEntry({
+    return unapproveTimeEntryFlow({
       prisma: this.prisma,
+      realtimeGateway: this.realtimeGateway,
+      auditLogsService: this.auditLogsService,
       id,
       user,
       selectedCinemaId,
     });
-
-    ensureTimeEntryCanBeUnapproved(existingEntry);
-
-    const entry = await this.prisma.timeEntry.update({
-      where: { id },
-      data: {
-        status: 'PENDING',
-      },
-      include: getTimeEntryResponseInclude(),
-    });
-
-    await recordUnapproveTimeEntryStatusChange({
-      prisma: this.prisma,
-      auditLogsService: this.auditLogsService,
-      existingEntry,
-      entry,
-      changedByUserId,
-    });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
-  async rejectEntry(
+  rejectEntry(
     id: number,
     adminNote: string | undefined,
     user: any,
     selectedCinemaId?: number | null,
   ) {
-    const changedByUserId = getChangedByUserId(user);
-    const trimmedAdminNote = getRequiredStatusActionNote(
-      adminNote,
-      'Admin-begrundelse er påkrævet ved send retur til rettelse',
-    );
-
-    const existingEntry = await findEditableStatusActionEntry({
+    return rejectTimeEntryFlow({
       prisma: this.prisma,
+      realtimeGateway: this.realtimeGateway,
+      auditLogsService: this.auditLogsService,
       id,
+      adminNote,
       user,
       selectedCinemaId,
     });
-
-    const entry = await this.prisma.timeEntry.update({
-      where: { id },
-      data: {
-        status: 'NEEDS_CHANGES',
-        adminNote: trimmedAdminNote,
-      },
-      include: getTimeEntryResponseInclude(),
-    });
-
-    await recordRejectTimeEntryStatusChange({
-      prisma: this.prisma,
-      auditLogsService: this.auditLogsService,
-      existingEntry,
-      entry,
-      changedByUserId,
-      reason: trimmedAdminNote,
-    });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
-  async voidEntry(
+  voidEntry(
     id: number,
     adminNote: string | undefined,
     user: any,
     selectedCinemaId?: number | null,
   ) {
-    const changedByUserId = getChangedByUserId(user);
-    const trimmedAdminNote = getRequiredStatusActionNote(
-      adminNote,
-      'Admin-begrundelse er påkrævet ved annullering af tidsregistrering',
-    );
-
-    const existingEntry = await findEditableStatusActionEntry({
-      prisma: this.prisma,
-      id,
-      user,
-      selectedCinemaId,
-    });
-
-    if (existingEntry.status === 'VOIDED') {
-      throw new BadRequestException(
-        'Tidsregistreringen er allerede annulleret',
-      );
-    }
-
-    const entry = await this.prisma.timeEntry.update({
-      where: { id },
-      data: {
-        status: 'VOIDED',
-        adminNote: trimmedAdminNote,
-      },
-      include: getTimeEntryResponseInclude(),
-    });
-
-    await createVoidAfterExportPayrollAdjustmentIfNeeded({
+    return voidTimeEntryFlow({
       prisma: this.prisma,
       payrollService: this.payrollService,
-      existingEntry,
-      entry,
-      reason: trimmedAdminNote,
-      changedByUserId: changedByUserId ?? null,
-    });
-
-    await recordVoidTimeEntryStatusChange({
-      prisma: this.prisma,
+      realtimeGateway: this.realtimeGateway,
       auditLogsService: this.auditLogsService,
-      existingEntry,
-      entry,
-      changedByUserId,
-      reason: trimmedAdminNote,
+      id,
+      adminNote,
+      user,
+      selectedCinemaId,
     });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   updateOwnEntry(
