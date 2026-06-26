@@ -1,82 +1,26 @@
-export type TimeEntryDeviationType =
-  | 'NONE'
-  | 'OPEN_ENTRY'
-  | 'MANUAL_WITHOUT_SHIFT'
-  | 'EARLY_CLOCK_IN'
-  | 'LATE_CLOCK_IN'
-  | 'EARLY_CLOCK_OUT'
-  | 'LATE_CLOCK_OUT'
-  | 'TIME_DIFFERENCE';
+import { resolveTimeEntryDeviationSettings } from './time-entry-deviation-settings';
+import type {
+  TimeEntryDeviation,
+  TimeEntryDeviationSettings,
+  TimeEntryDeviationType,
+} from './time-entry-deviation-types';
+import { minutesBetween } from './time-entry-deviation-utils';
 
-export type TimeEntryDeviation = {
-  hasDeviation: boolean;
-  requiresNote: boolean;
-  types: TimeEntryDeviationType[];
-  plannedMinutes: number | null;
-  registeredMinutes: number | null;
-  differenceMinutes: number | null;
-  clockInDeviationMinutes: number | null;
-  clockOutDeviationMinutes: number | null;
-  messages: string[];
-};
+export type {
+  TimeEntryDeviation,
+  TimeEntryDeviationSettings,
+  TimeEntryDeviationType,
+} from './time-entry-deviation-types';
 
-export type TimeEntryDeviationSettings = {
-  clockInDeviationToleranceMinutes?: number | null;
-  clockOutDeviationToleranceMinutes?: number | null;
-  requireNoteForClockInDeviation?: boolean | null;
-  requireNoteForClockOutDeviation?: boolean | null;
-  requireNoteForManualEntry?: boolean | null;
-};
-
-const DEFAULT_DEVIATION_GRACE_MINUTES = 5;
-
-export function minutesBetween(start: Date, end: Date) {
-  return Math.round((end.getTime() - start.getTime()) / 60000);
-}
-
-export function formatSignedDuration(minutes: number) {
-  const sign = minutes < 0 ? '-' : '+';
-  const absoluteMinutes = Math.abs(minutes);
-  const hours = Math.floor(absoluteMinutes / 60);
-  const remainingMinutes = absoluteMinutes % 60;
-
-  return `${sign}${String(hours).padStart(2, '0')}:${String(
-    remainingMinutes,
-  ).padStart(2, '0')}`;
-}
-
-export function getEntryMinutes(entry: {
-  clockIn: Date;
-  clockOut?: Date | null;
-}) {
-  if (!entry.clockOut) {
-    return 0;
-  }
-
-  return minutesBetween(entry.clockIn, entry.clockOut);
-}
-
-export function hasText(value?: string | null) {
-  return Boolean(value && value.trim() !== '');
-}
-
-export function requiresClockInDeviationNote(deviation: TimeEntryDeviation) {
-  return deviation.types.some(
-    (type) => type === 'EARLY_CLOCK_IN' || type === 'LATE_CLOCK_IN',
-  );
-}
-
-export function requiresClockOutDeviationNote(deviation: TimeEntryDeviation) {
-  return deviation.types.some(
-    (type) => type === 'EARLY_CLOCK_OUT' || type === 'LATE_CLOCK_OUT',
-  );
-}
-
-export function requiresGeneralDeviationNote(deviation: TimeEntryDeviation) {
-  return deviation.types.some(
-    (type) => type === 'TIME_DIFFERENCE' || type === 'MANUAL_WITHOUT_SHIFT',
-  );
-}
+export {
+  formatSignedDuration,
+  getEntryMinutes,
+  hasText,
+  minutesBetween,
+  requiresClockInDeviationNote,
+  requiresClockOutDeviationNote,
+  requiresGeneralDeviationNote,
+} from './time-entry-deviation-utils';
 
 export function analyzeTimeEntryDeviation(
   entry: any,
@@ -87,30 +31,13 @@ export function analyzeTimeEntryDeviation(
 
   const shift = entry.shift;
 
-  const clockInTolerance =
-    settings?.clockInDeviationToleranceMinutes ??
-    entry.cinema?.clockInDeviationToleranceMinutes ??
-    DEFAULT_DEVIATION_GRACE_MINUTES;
-
-  const clockOutTolerance =
-    settings?.clockOutDeviationToleranceMinutes ??
-    entry.cinema?.clockOutDeviationToleranceMinutes ??
-    DEFAULT_DEVIATION_GRACE_MINUTES;
-
-  const requireNoteForClockInDeviation =
-    settings?.requireNoteForClockInDeviation ??
-    entry.cinema?.requireNoteForClockInDeviation ??
-    true;
-
-  const requireNoteForClockOutDeviation =
-    settings?.requireNoteForClockOutDeviation ??
-    entry.cinema?.requireNoteForClockOutDeviation ??
-    true;
-
-  const requireNoteForManualEntry =
-    settings?.requireNoteForManualEntry ??
-    entry.cinema?.requireNoteForManualEntry ??
-    true;
+  const {
+    clockInTolerance,
+    clockOutTolerance,
+    requireNoteForClockInDeviation,
+    requireNoteForClockOutDeviation,
+    requireNoteForManualEntry,
+  } = resolveTimeEntryDeviationSettings(entry, settings);
 
   if (!entry.clockOut) {
     return {
