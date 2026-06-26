@@ -109,7 +109,7 @@ export class EmployeeDocumentsService {
     return {
       filePath,
       fileName: document.fileName,
-      fileType: document.fileType,
+      fileType: document.fileType ?? 'application/octet-stream',
     };
   }
 
