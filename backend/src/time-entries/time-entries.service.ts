@@ -13,6 +13,7 @@ import {
   getEntryMinutes,
   withTimeEntryDeviation,
 } from './helpers/time-entry-deviation';
+import { notifyTimeEntryUpdated } from './helpers/time-entry-response';
 import { ensureManualEntryDeviationNotes } from './helpers/time-entry-deviation-notes';
 import {
   ensureTimeEntryEditable,
@@ -243,15 +244,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async clockIn(data: {
@@ -319,15 +312,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async clockOut(
@@ -380,15 +365,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async approveEntry(
@@ -466,15 +443,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async unapproveEntry(
@@ -527,15 +496,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async rejectEntry(
@@ -589,15 +550,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async voidEntry(
@@ -666,15 +619,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async updateOwnEntry(
@@ -749,15 +694,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async updateEntry(
@@ -851,15 +788,7 @@ export class TimeEntriesService {
       cinemaId: entry.cinemaId,
     });
 
-    const response = withTimeEntryDeviation(entry);
-
-    this.realtimeGateway.notifyCinema(
-      entry.cinemaId,
-      'timeEntriesUpdated',
-      response,
-    );
-
-    return response;
+    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async findRevisionsForEntry(
