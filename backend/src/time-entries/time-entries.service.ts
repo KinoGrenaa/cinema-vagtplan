@@ -3,40 +3,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PayrollService } from '../payroll/payroll.service';
-import {
-  analyzeTimeEntryDeviation,
-  formatSignedDuration,
-  getEntryMinutes,
-  withTimeEntryDeviation,
-} from './helpers/time-entry-deviation';
+import { formatSignedDuration, getEntryMinutes } from './helpers/time-entry-deviation';
 import { notifyTimeEntryUpdated } from './helpers/time-entry-response';
-import {
-  recordAdminTimeEntryUpdated,
-  recordClockInTimeEntryCreated,
-  recordClockOutTimeEntryAudit,
-  recordManualTimeEntrySubmitted,
-  recordOwnTimeEntryUpdated,
-} from './helpers/time-entry-mutation-records';
-import { ensureManualEntryDeviationNotes } from './helpers/time-entry-deviation-notes';
 import {
   ensureTimeEntryEditable,
   ensureUserCanAccessTimeEntry,
 } from './helpers/time-entry-access';
 import { createOrUpdateTimeEntryPayrollAdjustment } from './helpers/time-entry-payroll-adjustments';
-import {
-  createEditAfterExportPayrollAdjustmentIfNeeded,
-  createVoidAfterExportPayrollAdjustmentIfNeeded,
-} from './helpers/time-entry-exported-payroll-adjustments';
+import { createVoidAfterExportPayrollAdjustmentIfNeeded } from './helpers/time-entry-exported-payroll-adjustments';
 import {
   ensureTimeEntryCanBeApproved,
   getApprovalPayrollContext,
   getApprovalPayrollUpdateData,
 } from './helpers/time-entry-approval-helpers';
-import {
-  ensureOwnTimeEntryCanBeUpdated,
-  getAdminTimeEntryUpdateContext,
-  getOwnTimeEntryUpdateContext,
-} from './helpers/time-entry-update-helpers';
 import {
   ensureTimeEntryCanBeUnapproved,
   findEditableStatusActionEntry,
@@ -47,34 +26,20 @@ import {
   recordUnapproveTimeEntryStatusChange,
   recordVoidTimeEntryStatusChange,
 } from './helpers/time-entry-status-action-helpers';
-import {
-  getTimeEntryResponseInclude,
-  getTimeEntryWithUserCinemaInclude,
-} from './helpers/time-entry-includes';
-import {
-  findTimeEntryRevisionTargetOrThrow,
-  findTimeEntryWithCinemaShiftOrThrow,
-  findTimeEntryWithUserCinemaShiftOrThrow,
-} from './helpers/time-entry-query-helpers';
+import { getTimeEntryResponseInclude } from './helpers/time-entry-includes';
+import { findTimeEntryWithUserCinemaShiftOrThrow } from './helpers/time-entry-query-helpers';
 import {
   findAllVisibleTimeEntries,
   findOpenTimeEntry,
   findTimeEntriesForUser,
 } from './helpers/time-entry-read-helpers';
+import { clockInTimeEntry, clockOutTimeEntry } from './helpers/time-entry-clock-flow';
+import { submitManualTimeEntry } from './helpers/time-entry-manual-entry-flow';
+import { findRevisionsForTimeEntry } from './helpers/time-entry-revision-flow';
 import {
-  buildCombinedClockOutNote,
-  ensureClockOutAfterClockIn,
-  ensureNoExistingEntryForShift,
-  ensureNoOverlappingManualShift,
-  ensureNoOverlappingManualTimeEntry,
-  ensureShiftBelongsToUser,
-  findManualEntryShift,
-  getManualEntryNotes,
-  getTrimmedOptionalNote,
-  parseOptionalTimeEntryDate,
-  parseRequiredTimeEntryDate,
-  resolveClockInShift,
-} from './helpers/time-entry-service-helpers';
+  updateAdminTimeEntry,
+  updateOwnTimeEntry,
+} from './helpers/time-entry-update-flow';
 
 @Injectable()
 export class TimeEntriesService {
@@ -111,7 +76,7 @@ export class TimeEntriesService {
     });
   }
 
-  async submitManualEntry(data: {
+  submitManualEntry(data: {
     userId: number;
     cinemaId: number;
     shiftId?: number | null;
@@ -121,194 +86,43 @@ export class TimeEntriesService {
     clockInNote?: string;
     clockOutNote?: string;
   }) {
-    const clockIn = parseRequiredTimeEntryDate(
-      data.clockIn,
-      'Ugyldig mødetid eller fyraften',
-    );
-    const clockOut = parseRequiredTimeEntryDate(
-      data.clockOut,
-      'Ugyldig mødetid eller fyraften',
-    );
-
-    ensureClockOutAfterClockIn(clockIn, clockOut);
-
-    await ensureNoOverlappingManualTimeEntry(this.prisma, {
-      userId: data.userId,
-      cinemaId: data.cinemaId,
-      clockIn,
-      clockOut,
-    });
-
-    await ensureNoOverlappingManualShift(this.prisma, {
-      userId: data.userId,
-      cinemaId: data.cinemaId,
-      clockIn,
-      clockOut,
-    });
-
-    const shift = await findManualEntryShift(this.prisma, {
-      shiftId: data.shiftId,
-      cinemaId: data.cinemaId,
-    });
-
-    ensureShiftBelongsToUser(
-      shift,
-      data.userId,
-      'Du kan kun indsende timer for dine egne vagter',
-    );
-
-    const { clockInNote, clockOutNote } = getManualEntryNotes(data);
-
-    if (shift) {
-      const deviation = analyzeTimeEntryDeviation(
-        {
-          clockIn,
-          clockOut,
-          shift,
-        },
-        shift.cinema,
-      );
-
-      ensureManualEntryDeviationNotes({
-        deviation,
-        clockInNote,
-        clockOutNote,
-      });
-
-      await ensureNoExistingEntryForShift(this.prisma, {
-        shiftId: shift.id,
-        userId: data.userId,
-        cinemaId: data.cinemaId,
-        message: 'Der er allerede indsendt timer for denne vagt',
-      });
-    }
-
-    const entry = await this.prisma.timeEntry.create({
-      data: {
-        userId: data.userId,
-        cinemaId: data.cinemaId,
-        shiftId: shift?.id || null,
-        payrollTypeId: shift?.workType?.payrollTypeId || null,
-        clockIn,
-        clockOut,
-        note: data.note ?? null,
-        clockInNote,
-        clockOutNote,
-        status: 'PENDING',
-      },
-      include: getTimeEntryResponseInclude(),
-    });
-
-    await recordManualTimeEntrySubmitted({
+    return submitManualTimeEntry({
       prisma: this.prisma,
+      realtimeGateway: this.realtimeGateway,
       auditLogsService: this.auditLogsService,
-      entry,
-      shift,
-      changedByUserId: data.userId,
+      data,
     });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
-  async clockIn(data: {
+  clockIn(data: {
     userId: number;
     cinemaId: number;
     shiftId?: number | null;
     clockIn?: string;
     note?: string;
   }) {
-    const openEntry = await this.findOpenEntry(data.userId, data.cinemaId);
-
-    if (openEntry) {
-      return withTimeEntryDeviation(openEntry);
-    }
-
-    const clockIn = parseOptionalTimeEntryDate(data.clockIn, 'Ugyldig mødetid');
-
-    const shift = await resolveClockInShift(this.prisma, {
-      shiftId: data.shiftId,
-      userId: data.userId,
-      cinemaId: data.cinemaId,
-      clockIn,
-    });
-
-    await ensureNoExistingEntryForShift(this.prisma, {
-      shiftId: shift?.id,
-      userId: data.userId,
-      cinemaId: data.cinemaId,
-      message: 'Der findes allerede en tidsregistrering for denne vagt',
-    });
-
-    const note = getTrimmedOptionalNote(data.note);
-
-    const entry = await this.prisma.timeEntry.create({
-      data: {
-        userId: data.userId,
-        cinemaId: data.cinemaId,
-        shiftId: shift?.id || null,
-        payrollTypeId: shift?.workType?.payrollTypeId || null,
-        clockIn,
-        note,
-        clockInNote: note,
-        status: 'PENDING',
-      },
-      include: getTimeEntryResponseInclude(),
-    });
-
-    await recordClockInTimeEntryCreated({
+    return clockInTimeEntry({
       prisma: this.prisma,
+      realtimeGateway: this.realtimeGateway,
       auditLogsService: this.auditLogsService,
-      entry,
-      shift,
-      changedByUserId: data.userId,
+      data,
     });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
-  async clockOut(
+  clockOut(
     id: number,
     data?: {
       clockOut?: string;
       note?: string;
     },
   ) {
-    const existingEntry = await findTimeEntryWithCinemaShiftOrThrow(
-      this.prisma,
-      id,
-    );
-
-    ensureTimeEntryEditable(existingEntry);
-
-    const clockOut = parseOptionalTimeEntryDate(
-      data?.clockOut,
-      'Ugyldig fyraften',
-    );
-
-    ensureClockOutAfterClockIn(existingEntry.clockIn, clockOut);
-
-    const clockOutNote = getTrimmedOptionalNote(data?.note);
-    const combinedNote = buildCombinedClockOutNote(
-      existingEntry.note,
-      clockOutNote,
-    );
-
-    const entry = await this.prisma.timeEntry.update({
-      where: { id },
-      data: {
-        clockOut,
-        note: combinedNote || null,
-        clockOutNote: clockOutNote || null,
-      },
-      include: getTimeEntryResponseInclude(),
-    });
-
-    await recordClockOutTimeEntryAudit({
+    return clockOutTimeEntry({
+      prisma: this.prisma,
+      realtimeGateway: this.realtimeGateway,
       auditLogsService: this.auditLogsService,
-      entry,
+      id,
+      data,
     });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
   async approveEntry(
@@ -504,7 +318,7 @@ export class TimeEntriesService {
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
-  async updateOwnEntry(
+  updateOwnEntry(
     user: any,
     id: number,
     data: {
@@ -514,56 +328,18 @@ export class TimeEntriesService {
       clockOutNote?: string | null;
     },
   ) {
-    const existingEntry = await findTimeEntryWithUserCinemaShiftOrThrow(
-      this.prisma,
-      id,
-    );
-
-    ensureOwnTimeEntryCanBeUpdated(user, existingEntry);
-    ensureTimeEntryEditable(existingEntry, user);
-
-    const {
-      newClockIn,
-      newClockOut,
-      newClockInNote,
-      newClockOutNote,
-      changes,
-    } = getOwnTimeEntryUpdateContext(existingEntry, data);
-
-    const entry = await this.prisma.timeEntry.update({
-      where: { id },
-      data: {
-        clockIn: newClockIn,
-        clockOut: newClockOut,
-        clockInNote: newClockInNote,
-        clockOutNote: newClockOutNote,
-        status: 'PENDING',
-      },
-      include: getTimeEntryResponseInclude(),
-    });
-
-    await createEditAfterExportPayrollAdjustmentIfNeeded({
+    return updateOwnTimeEntry({
       prisma: this.prisma,
       payrollService: this.payrollService,
-      existingEntry,
-      entry,
-      reason: 'Tidsregistrering rettet af medarbejderen',
-      changedByUserId: user.sub,
-    });
-
-    await recordOwnTimeEntryUpdated({
-      prisma: this.prisma,
+      realtimeGateway: this.realtimeGateway,
       auditLogsService: this.auditLogsService,
-      existingEntry,
-      entry,
       user,
-      changes,
+      id,
+      data,
     });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
-  async updateEntry(
+  updateEntry(
     user: any,
     id: number,
     data: {
@@ -575,94 +351,28 @@ export class TimeEntriesService {
     },
     selectedCinemaId?: number | null,
   ) {
-    const existingEntry = await findTimeEntryWithUserCinemaShiftOrThrow(
-      this.prisma,
-      id,
-    );
-
-    ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
-    ensureTimeEntryEditable(existingEntry, user);
-
-    const {
-      nextClockIn,
-      nextClockOut,
-      nextClockInNote,
-      nextClockOutNote,
-      changes,
-    } = getAdminTimeEntryUpdateContext(existingEntry, data);
-
-    const entry = await this.prisma.timeEntry.update({
-      where: { id },
-      data: {
-        clockIn: nextClockIn,
-        clockOut: nextClockOut,
-        clockInNote: nextClockInNote,
-        clockOutNote: nextClockOutNote,
-        adminNote:
-          data.adminNote === undefined
-            ? existingEntry.adminNote
-            : data.adminNote,
-        status: existingEntry.status,
-      },
-      include: getTimeEntryResponseInclude(),
-    });
-
-    await createEditAfterExportPayrollAdjustmentIfNeeded({
+    return updateAdminTimeEntry({
       prisma: this.prisma,
       payrollService: this.payrollService,
-      existingEntry,
-      entry,
-      reason: data.adminNote ?? '',
-      changedByUserId: user?.sub ?? null,
-      useLinkedPayrollPeriod: true,
-    });
-
-    await recordAdminTimeEntryUpdated({
-      prisma: this.prisma,
+      realtimeGateway: this.realtimeGateway,
       auditLogsService: this.auditLogsService,
-      existingEntry,
-      entry,
       user,
-      changes,
-      adminNote: data.adminNote,
+      id,
+      data,
+      selectedCinemaId,
     });
-
-    return notifyTimeEntryUpdated(this.realtimeGateway, entry);
   }
 
-  async findRevisionsForEntry(
+  findRevisionsForEntry(
     user: any,
     id: number,
     selectedCinemaId?: number | null,
   ) {
-    const entry = await findTimeEntryRevisionTargetOrThrow(this.prisma, id);
-
-    if (user.role === 'EMPLOYEE' && entry.userId !== user.sub) {
-      throw new BadRequestException(
-        'Du kan kun se historik for dine egne tidsregistreringer',
-      );
-    }
-
-    ensureUserCanAccessTimeEntry(user, entry, selectedCinemaId);
-
-    return this.prisma.timeEntryRevision.findMany({
-      where: {
-        timeEntryId: id,
-      },
-      include: {
-        changedByUser: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+    return findRevisionsForTimeEntry({
+      prisma: this.prisma,
+      user,
+      id,
+      selectedCinemaId,
     });
   }
 }
