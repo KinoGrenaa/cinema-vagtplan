@@ -14,14 +14,19 @@ import {
   withTimeEntryDeviation,
 } from './helpers/time-entry-deviation';
 import { notifyTimeEntryUpdated } from './helpers/time-entry-response';
+import {
+  recordAdminTimeEntryUpdated,
+  recordClockInTimeEntryCreated,
+  recordClockOutTimeEntryAudit,
+  recordManualTimeEntrySubmitted,
+  recordOwnTimeEntryUpdated,
+} from './helpers/time-entry-mutation-records';
 import { ensureManualEntryDeviationNotes } from './helpers/time-entry-deviation-notes';
 import {
   ensureTimeEntryEditable,
   ensureUserCanAccessTimeEntry,
   getTimeEntryCinemaFilter,
 } from './helpers/time-entry-access';
-import { createTimeEntryRevision } from './helpers/time-entry-revisions';
-import { createDetailedTimeEntryRevisionSnapshot } from './helpers/time-entry-revision-snapshots';
 import { createOrUpdateTimeEntryPayrollAdjustment } from './helpers/time-entry-payroll-adjustments';
 import {
   createEditAfterExportPayrollAdjustmentIfNeeded,
@@ -230,24 +235,12 @@ export class TimeEntriesService {
       include: getTimeEntryResponseInclude(),
     });
 
-    await createTimeEntryRevision(this.prisma, {
-      timeEntryId: entry.id,
+    await recordManualTimeEntrySubmitted({
+      prisma: this.prisma,
+      auditLogsService: this.auditLogsService,
+      entry,
+      shift,
       changedByUserId: data.userId,
-      action: 'CREATED',
-      before: null,
-      after: createDetailedTimeEntryRevisionSnapshot(entry),
-      reason: null,
-    });
-
-    await this.auditLogsService.create({
-      action: 'SUBMIT_MANUAL_TIME_ENTRY',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: shift
-        ? 'Medarbejder indsendte manuel tidsregistrering på planlagt vagt'
-        : 'Medarbejder indsendte manuel tidsregistrering uden tilknyttet vagt',
-      userId: entry.userId,
-      cinemaId: entry.cinemaId,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
@@ -298,24 +291,12 @@ export class TimeEntriesService {
       include: getTimeEntryResponseInclude(),
     });
 
-    await createTimeEntryRevision(this.prisma, {
-      timeEntryId: entry.id,
+    await recordClockInTimeEntryCreated({
+      prisma: this.prisma,
+      auditLogsService: this.auditLogsService,
+      entry,
+      shift,
       changedByUserId: data.userId,
-      action: 'CREATED',
-      before: null,
-      after: createDetailedTimeEntryRevisionSnapshot(entry),
-      reason: null,
-    });
-
-    await this.auditLogsService.create({
-      action: 'CLOCK_IN',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: shift
-        ? 'Medarbejder registrerede mødetid på planlagt vagt'
-        : 'Medarbejder registrerede mødetid uden tilknyttet vagt',
-      userId: entry.userId,
-      cinemaId: entry.cinemaId,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
@@ -362,13 +343,9 @@ export class TimeEntriesService {
       include: getTimeEntryResponseInclude(),
     });
 
-    await this.auditLogsService.create({
-      action: 'CLOCK_OUT',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: 'Medarbejder registrerede fyraften',
-      userId: entry.userId,
-      cinemaId: entry.cinemaId,
+    await recordClockOutTimeEntryAudit({
+      auditLogsService: this.auditLogsService,
+      entry,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
@@ -622,25 +599,13 @@ export class TimeEntriesService {
       changedByUserId: user.sub,
     });
 
-    await createTimeEntryRevision(this.prisma, {
-      timeEntryId: entry.id,
-      changedByUserId: user.sub,
-      action: 'UPDATED',
-      before: createDetailedTimeEntryRevisionSnapshot(existingEntry),
-      after: createDetailedTimeEntryRevisionSnapshot(entry),
-      reason: changes.join('\n'),
-    });
-
-    await this.auditLogsService.create({
-      action: 'UPDATE_OWN_TIME_ENTRY',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: [
-        `Medarbejder rettede egen tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}.`,
-        ...changes,
-      ].join('\n'),
-      userId: user.sub,
-      cinemaId: entry.cinemaId,
+    await recordOwnTimeEntryUpdated({
+      prisma: this.prisma,
+      auditLogsService: this.auditLogsService,
+      existingEntry,
+      entry,
+      user,
+      changes,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
@@ -704,37 +669,14 @@ export class TimeEntriesService {
       useLinkedPayrollPeriod: true,
     });
 
-    await createTimeEntryRevision(this.prisma, {
-      timeEntryId: entry.id,
-      changedByUserId: user?.sub ?? null,
-      action: 'UPDATED',
-      before: createDetailedTimeEntryRevisionSnapshot(existingEntry),
-      after: createDetailedTimeEntryRevisionSnapshot(entry),
-      reason: data.adminNote,
-    });
-
-    for (const change of changes) {
-      await this.auditLogsService.create({
-        action: 'UPDATE_TIME_ENTRY_FIELD',
-        entityType: 'TimeEntry',
-        entityId: entry.id,
-        description: change,
-        userId: user?.sub ?? null,
-        cinemaId: entry.cinemaId,
-      });
-    }
-
-    await this.auditLogsService.create({
-      action: 'UPDATE_TIME_ENTRY',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: [
-        `Rettede tidsregistrering for ${existingEntry.user.firstName} ${existingEntry.user.lastName}.`,
-        ...changes,
-        `Begrundelse: ${data.adminNote}`,
-      ].join('\n'),
-      userId: user?.sub ?? null,
-      cinemaId: entry.cinemaId,
+    await recordAdminTimeEntryUpdated({
+      prisma: this.prisma,
+      auditLogsService: this.auditLogsService,
+      existingEntry,
+      entry,
+      user,
+      changes,
+      adminNote: data.adminNote,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
