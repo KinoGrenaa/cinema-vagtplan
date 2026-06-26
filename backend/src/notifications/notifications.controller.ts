@@ -23,8 +23,11 @@ export class NotificationsController {
 
   @UseGuards(JwtGuard)
   @Patch(':id/read')
-  markAsRead(@Param('id') id: string) {
-    return this.notificationsService.markAsRead(Number(id));
+  markAsRead(@Req() req: any, @Param('id') id: string) {
+    return this.notificationsService.markAsRead(
+      Number(id),
+      Number(req.user.sub),
+    );
   }
 
   @UseGuards(JwtGuard)

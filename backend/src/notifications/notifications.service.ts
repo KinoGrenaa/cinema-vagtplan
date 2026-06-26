@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
@@ -46,7 +46,23 @@ export class NotificationsService {
     });
   }
 
-  markAsRead(id: number) {
+  async markAsRead(id: number, userId: number) {
+    const notification = await this.prisma.notification.findUnique({
+      where: { id },
+    });
+
+    if (!notification) {
+      throw new NotFoundException('Notifikationen blev ikke fundet.');
+    }
+
+    if (notification.userId !== userId) {
+      throw new ForbiddenException('Du har ikke adgang til denne notifikation.');
+    }
+
+    if (notification.isRead) {
+      return notification;
+    }
+
     return this.prisma.notification.update({
       where: { id },
       data: { isRead: true },
