@@ -5,6 +5,19 @@ import * as express from 'express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 
+function getAllowedCorsOrigins(): string[] {
+  const configuredOrigins =
+    process.env.BACKEND_CORS_ORIGIN ??
+    process.env.CORS_ORIGIN ??
+    process.env.FRONTEND_ORIGIN ??
+    'http://localhost:3000';
+
+  return configuredOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
@@ -16,7 +29,10 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors();
+  app.enableCors({
+    origin: getAllowedCorsOrigins(),
+    credentials: true,
+  });
 
   app.use(
     '/uploads/cinema-logos',
