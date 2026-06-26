@@ -1,115 +1,20 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { UserRole } from './user-service-helpers';
+import {
+  OwnProfileUpdateInput,
+  UserPermissionInput,
+  UserUpdateInput,
+} from './user-service-data-types';
 
-import { PrismaService } from '../../prisma/prisma.service';
-import { EmploymentType, UserRole } from './user-service-helpers';
-
-type UserPermissionInput = {
-  canManageSchedule?: boolean;
-  canManageUsers?: boolean;
-  canManagePayroll?: boolean;
-  canManageLeaveRequests?: boolean;
-  canManageCinemaSettings?: boolean;
-  canSendBroadcastMessages?: boolean;
-};
-
-type UserUpdateInput = UserPermissionInput & {
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  role?: UserRole;
-  employmentType?: EmploymentType;
-  profileImage?: string;
-  address?: string;
-  birthDate?: string | null;
-  emergencyPhone?: string;
-  hireDate?: string | null;
-  skills?: string;
-  notes?: string;
-};
-
-type OwnProfileUpdateInput = {
-  email?: string;
-  phone?: string;
-  profileImage?: string;
-  address?: string;
-  birthDate?: string | null;
-  emergencyPhone?: string;
-  skills?: string;
-};
-
-export async function ensureCinemaExists(
-  prisma: PrismaService,
-  cinemaId: number,
-) {
-  const cinema = await prisma.cinema.findUnique({
-    where: { id: cinemaId },
-    select: { id: true },
-  });
-
-  if (!cinema) {
-    throw new BadRequestException('Den valgte biograf blev ikke fundet');
-  }
-}
-
-export async function validateRoleCinema(
-  prisma: PrismaService,
-  role: UserRole,
-  cinemaId?: number | null,
-) {
-  if (role === 'MASTER') {
-    return null;
-  }
-
-  if (!cinemaId) {
-    throw new BadRequestException(
-      'Admin og medarbejdere skal tilknyttes en biograf',
-    );
-  }
-
-  await ensureCinemaExists(prisma, cinemaId);
-
-  return cinemaId;
-}
-
-export async function ensureUniqueUserEmail(
-  prisma: PrismaService,
-  email: string,
-  errorMessage: string,
-  excludedUserId?: number,
-) {
-  const existingUser =
-    excludedUserId === undefined
-      ? await prisma.user.findUnique({
-          where: {
-            email,
-          },
-        })
-      : await prisma.user.findFirst({
-          where: {
-            email,
-            id: {
-              not: excludedUserId,
-            },
-          },
-        });
-
-  if (existingUser) {
-    throw new BadRequestException(errorMessage);
-  }
-}
-
-export async function findRequiredUser(prisma: PrismaService, id: number) {
-  const user = await prisma.user.findUnique({
-    where: { id },
-  });
-
-  if (!user) {
-    throw new NotFoundException('Bruger blev ikke fundet');
-  }
-
-  return user;
-}
+export { ensureCinemaExists, validateRoleCinema } from './user-cinema-validation';
+export {
+  ensureUniqueUserEmail,
+  findRequiredUser,
+} from './user-email-lookup';
+export type {
+  OwnProfileUpdateInput,
+  UserPermissionInput,
+  UserUpdateInput,
+} from './user-service-data-types';
 
 export function getCreatePermissionData(
   role: UserRole,
