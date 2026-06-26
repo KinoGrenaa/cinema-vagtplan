@@ -8,14 +8,18 @@ import { recordManualTimeEntrySubmitted } from './time-entry-mutation-records';
 import { notifyTimeEntryUpdated } from './time-entry-response';
 import {
   ensureClockOutAfterClockIn,
-  ensureNoExistingEntryForShift,
+  parseRequiredTimeEntryDate,
+} from './time-entry-date-helpers';
+import { getManualEntryNotes } from './time-entry-note-helpers';
+import {
   ensureNoOverlappingManualShift,
   ensureNoOverlappingManualTimeEntry,
+} from './time-entry-overlap-helpers';
+import {
+  ensureNoExistingEntryForShift,
   ensureShiftBelongsToUser,
   findManualEntryShift,
-  getManualEntryNotes,
-  parseRequiredTimeEntryDate,
-} from './time-entry-service-helpers';
+} from './time-entry-shift-resolution';
 
 type SubmitManualEntryData = {
   userId: number;

@@ -7,7 +7,7 @@ import {
   createTimeEntryRevisionSnapshot,
 } from './time-entry-revision-snapshots';
 import { createTimeEntryRevision } from './time-entry-revisions';
-import { getRequiredTrimmedNote } from './time-entry-service-helpers';
+import { getRequiredTrimmedNote } from './time-entry-note-helpers';
 
 export function getChangedByUserId(user: any) {
   return user?.sub ?? null;

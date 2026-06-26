@@ -11,10 +11,10 @@ import {
 } from './time-entry-update-changes';
 import {
   ensureClockOutAfterClockIn,
-  ensureRequiredText,
   parseNullableTimeEntryDate,
   parseRequiredTimeEntryDate,
-} from './time-entry-service-helpers';
+} from './time-entry-date-helpers';
+import { ensureRequiredText } from './time-entry-note-helpers';
 
 type OwnTimeEntryUpdateData = {
   clockIn: string;

@@ -12,13 +12,17 @@ import { findTimeEntryWithCinemaShiftOrThrow } from './time-entry-query-helpers'
 import { findOpenTimeEntry } from './time-entry-read-helpers';
 import { notifyTimeEntryUpdated } from './time-entry-response';
 import {
-  buildCombinedClockOutNote,
   ensureClockOutAfterClockIn,
-  ensureNoExistingEntryForShift,
-  getTrimmedOptionalNote,
   parseOptionalTimeEntryDate,
+} from './time-entry-date-helpers';
+import {
+  buildCombinedClockOutNote,
+  getTrimmedOptionalNote,
+} from './time-entry-note-helpers';
+import {
+  ensureNoExistingEntryForShift,
   resolveClockInShift,
-} from './time-entry-service-helpers';
+} from './time-entry-shift-resolution';
 
 type ClockInData = {
   userId: number;
