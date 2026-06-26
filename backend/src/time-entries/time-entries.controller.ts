@@ -52,35 +52,45 @@ export class TimeEntriesController {
 
   @UseGuards(JwtGuard)
   @Get('open')
-  getOpenEntry(@Query('userId') userId: string) {
-    return this.timeEntriesService.findOpenEntry(Number(userId));
+  getOpenEntry(
+    @Req() req,
+    @Query('userId') userId?: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.timeEntriesService.findOpenEntry(
+      req.user,
+      userId ? Number(userId) : undefined,
+      cinemaId ? Number(cinemaId) : undefined,
+    );
   }
 
   @UseGuards(JwtGuard)
   @Post('manual')
-  submitManualEntry(@Body() body: ManualTimeEntryDto) {
-    return this.timeEntriesService.submitManualEntry(body);
+  submitManualEntry(@Req() req, @Body() body: ManualTimeEntryDto) {
+    return this.timeEntriesService.submitManualEntry(req.user, body);
   }
 
   @UseGuards(JwtGuard)
   @Post('clock-in')
   clockIn(
+    @Req() req,
     @Body()
     body: {
-      userId: number;
-      cinemaId: number;
+      userId?: number;
+      cinemaId?: number;
       shiftId?: number | null;
       clockIn?: string;
       note?: string;
       clockInNote?: string;
     },
   ) {
-    return this.timeEntriesService.clockIn(body);
+    return this.timeEntriesService.clockIn(req.user, body);
   }
 
   @UseGuards(JwtGuard)
   @Patch(':id/clock-out')
   clockOut(
+    @Req() req,
     @Param('id') id: string,
     @Body()
     body: {
@@ -89,7 +99,7 @@ export class TimeEntriesController {
       clockOutNote?: string;
     },
   ) {
-    return this.timeEntriesService.clockOut(Number(id), body);
+    return this.timeEntriesService.clockOut(req.user, Number(id), body);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
