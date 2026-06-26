@@ -1,26 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PayrollRulesService } from './payroll-rules.service';
-import { getPeriodDates } from './helpers/payroll-periods';
-import {
-  ensurePayrollAccess,
-  ensurePayrollExportAccess,
-  getPayrollCinemaFilter,
-  type PayrollAuthUser,
-} from './helpers/payroll-access';
-import {
-  ensurePayrollEntriesApproved,
-  markPayrollPeriodAsExported,
-} from './helpers/payroll-period-export';
-import { buildPayrollCsvExport } from './helpers/payroll-csv-export';
-import { buildPayrollPdfExport } from './helpers/payroll-pdf-export';
+import { type PayrollAuthUser } from './helpers/payroll-access';
 import { buildPayrollReportData } from './helpers/payroll-report-data';
-import { buildPayrollUnicontaCsvExport } from './helpers/payroll-uniconta-export';
-import { buildPayrollXlsxExport } from './helpers/payroll-xlsx-export';
 import {
   findCurrentPayrollPeriodEntity,
   findPayrollPeriodEntityForDate,
-  getPayrollRulesEnabled,
   resolvePayrollPeriodForDate,
 } from './helpers/payroll-period-queries';
 import { lockPayrollPeriod } from './helpers/payroll-period-lock-flow';
@@ -28,6 +13,14 @@ import {
   unlockPayrollPeriod,
   unlockPayrollTimeEntry,
 } from './helpers/payroll-period-unlock-flow';
+import { getPayrollPeriodWithTimeEntries } from './helpers/payroll-period-read-flow';
+import {
+  exportPayrollCsvFlow,
+  exportPayrollPdfFlow,
+  exportPayrollUnicontaCsvFlow,
+  exportPayrollXlsxFlow,
+} from './helpers/payroll-export-flow';
+import { getPayrollAuditHistoryData } from './helpers/payroll-audit-history';
 
 @Injectable()
 export class PayrollService {
@@ -84,20 +77,13 @@ export class PayrollService {
     endDate: string,
     selectedCinemaId?: number | null,
   ) {
-    ensurePayrollAccess(user);
-
-    const { start, end } = getPeriodDates(startDate, endDate);
-
-    return this.prisma.payrollPeriod.findFirst({
-      where: {
-        ...getPayrollCinemaFilter(user, selectedCinemaId),
-        startDate: start,
-        endDate: end,
-      },
-      include: {
-        timeEntries: true,
-      },
-    });
+    return getPayrollPeriodWithTimeEntries(
+      this.prisma,
+      user,
+      startDate,
+      endDate,
+      selectedCinemaId,
+    );
   }
 
   async lockPeriod(
@@ -152,9 +138,7 @@ export class PayrollService {
     userId?: string,
     selectedCinemaId?: number | null,
   ) {
-    ensurePayrollExportAccess(user);
-
-    await ensurePayrollEntriesApproved(
+    return exportPayrollCsvFlow(
       this.prisma,
       user,
       startDate,
@@ -162,25 +146,6 @@ export class PayrollService {
       userId,
       selectedCinemaId,
     );
-
-    await markPayrollPeriodAsExported(
-      this.prisma,
-      user,
-      startDate,
-      endDate,
-      userId,
-      selectedCinemaId,
-    );
-
-    const report = await this.getPayrollReport(
-      user,
-      startDate,
-      endDate,
-      userId,
-      selectedCinemaId,
-    );
-
-    return buildPayrollCsvExport(report);
   }
 
   async exportUnicontaCsv(
@@ -190,41 +155,14 @@ export class PayrollService {
     userId?: string,
     selectedCinemaId?: number | null,
   ) {
-    ensurePayrollExportAccess(user);
-
-    await ensurePayrollEntriesApproved(
+    return exportPayrollUnicontaCsvFlow(
       this.prisma,
+      this.payrollRulesService,
       user,
       startDate,
       endDate,
       userId,
       selectedCinemaId,
-    );
-
-    await markPayrollPeriodAsExported(
-      this.prisma,
-      user,
-      startDate,
-      endDate,
-      userId,
-      selectedCinemaId,
-    );
-
-    const report = await this.getPayrollReport(
-      user,
-      startDate,
-      endDate,
-      userId,
-      selectedCinemaId,
-    );
-
-    const usePayrollRules = await getPayrollRulesEnabled(
-      this.prisma,
-      user,
-      selectedCinemaId,
-    );
-    return buildPayrollUnicontaCsvExport(report, usePayrollRules, (entry) =>
-      this.payrollRulesService.calculateSegments(entry),
     );
   }
 
@@ -235,9 +173,7 @@ export class PayrollService {
     userId?: string,
     selectedCinemaId?: number | null,
   ) {
-    ensurePayrollExportAccess(user);
-
-    await ensurePayrollEntriesApproved(
+    return exportPayrollXlsxFlow(
       this.prisma,
       user,
       startDate,
@@ -245,25 +181,6 @@ export class PayrollService {
       userId,
       selectedCinemaId,
     );
-
-    await markPayrollPeriodAsExported(
-      this.prisma,
-      user,
-      startDate,
-      endDate,
-      userId,
-      selectedCinemaId,
-    );
-
-    const report = await this.getPayrollReport(
-      user,
-      startDate,
-      endDate,
-      userId,
-      selectedCinemaId,
-    );
-
-    return buildPayrollXlsxExport(report);
   }
 
   async exportPayrollPdf(
@@ -273,9 +190,7 @@ export class PayrollService {
     userId?: string,
     selectedCinemaId?: number | null,
   ): Promise<Buffer> {
-    ensurePayrollExportAccess(user);
-
-    await ensurePayrollEntriesApproved(
+    return exportPayrollPdfFlow(
       this.prisma,
       user,
       startDate,
@@ -283,25 +198,6 @@ export class PayrollService {
       userId,
       selectedCinemaId,
     );
-
-    await markPayrollPeriodAsExported(
-      this.prisma,
-      user,
-      startDate,
-      endDate,
-      userId,
-      selectedCinemaId,
-    );
-
-    const report = await this.getPayrollReport(
-      user,
-      startDate,
-      endDate,
-      userId,
-      selectedCinemaId,
-    );
-
-    return buildPayrollPdfExport(report, startDate, endDate);
   }
 
   async getPayrollAuditHistory(
@@ -310,37 +206,12 @@ export class PayrollService {
     endDate: string,
     selectedCinemaId?: number | null,
   ) {
-    ensurePayrollAccess(user);
-
-    const { start, end } = getPeriodDates(startDate, endDate);
-
-    const periods = await this.prisma.payrollPeriod.findMany({
-      where: {
-        ...getPayrollCinemaFilter(user, selectedCinemaId),
-        startDate: {
-          gte: start,
-        },
-        endDate: {
-          lte: end,
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    return periods.map((period) => ({
-      id: period.id,
-      status: period.status,
-      startDate: period.startDate,
-      endDate: period.endDate,
-      lockedAt: period.lockedAt,
-      lockedByUserId: period.lockedByUserId,
-      exportedAt: period.exportedAt,
-      exportedByUserId: period.exportedByUserId,
-      unlockedAt: period.unlockedAt,
-      unlockedByUserId: period.unlockedByUserId,
-      unlockNote: period.unlockNote,
-    }));
+    return getPayrollAuditHistoryData(
+      this.prisma,
+      user,
+      startDate,
+      endDate,
+      selectedCinemaId,
+    );
   }
 }
