@@ -5,8 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import ExcelJS from 'exceljs';
-import PDFDocument from 'pdfkit';
 import { PayrollRulesService } from './payroll-rules.service';
 import {
   calculatePayrollPeriodForDate,
@@ -21,14 +19,14 @@ import {
   type PayrollAuthUser,
 } from './helpers/payroll-access';
 import {
-  formatPayrollCsvRows,
-  getSimplePayrollSegment,
-} from './helpers/payroll-export';
-import {
   ensurePayrollEntriesApproved,
   markPayrollPeriodAsExported,
 } from './helpers/payroll-period-export';
+import { buildPayrollCsvExport } from './helpers/payroll-csv-export';
+import { buildPayrollPdfExport } from './helpers/payroll-pdf-export';
 import { buildPayrollReportResult } from './helpers/payroll-report';
+import { buildPayrollUnicontaCsvExport } from './helpers/payroll-uniconta-export';
+import { buildPayrollXlsxExport } from './helpers/payroll-xlsx-export';
 
 @Injectable()
 export class PayrollService {
@@ -482,53 +480,7 @@ export class PayrollService {
       selectedCinemaId,
     );
 
-    const rows = [
-      [
-        'Medarbejder',
-        'Medarbejdernummer',
-        'Løn medarbejder ID',
-        'Email',
-        'Dato',
-        'Ind',
-        'Ud',
-        'Timer',
-        'Arbejdstype',
-        'Lønart',
-        'Eksportkode',
-        'Løntype',
-        'Status',
-        'Note',
-        'Admin note',
-        'Låst',
-        'Låst op af MASTER',
-      ],
-    ];
-
-    for (const employee of report.employees) {
-      for (const entry of employee.entries) {
-        rows.push([
-          employee.name,
-          employee.employeeNumber || '',
-          employee.payrollEmployeeId || '',
-          employee.email,
-          entry.date,
-          entry.clockIn,
-          entry.clockOut,
-          entry.hours.toString().replace('.', ','),
-          entry.workType,
-          entry.payrollCode,
-          entry.exportCode,
-          entry.payrollName,
-          entry.status,
-          entry.note || '',
-          entry.adminNote || '',
-          entry.payrollLocked ? 'Ja' : 'Nej',
-          entry.payrollUnlockedByMaster ? 'Ja' : 'Nej',
-        ]);
-      }
-    }
-
-    return formatPayrollCsvRows(rows);
+    return buildPayrollCsvExport(report);
   }
 
   async exportUnicontaCsv(
@@ -570,29 +522,9 @@ export class PayrollService {
       user,
       selectedCinemaId,
     );
-    const rows = [['Employee', 'PayrollCode', 'Date', 'Hours', 'Text']];
-
-    for (const employee of report.employees) {
-      for (const entry of employee.entries) {
-        const segments = usePayrollRules
-          ? this.payrollRulesService.calculateSegments(entry)
-          : getSimplePayrollSegment(entry);
-
-        for (const segment of segments) {
-          rows.push([
-            employee.payrollEmployeeId ||
-              employee.employeeNumber ||
-              employee.email,
-            segment.exportCode,
-            entry.date,
-            segment.hours.toFixed(2).replace('.', ','),
-            `${entry.workType} - ${segment.payrollName}`,
-          ]);
-        }
-      }
-    }
-
-    return formatPayrollCsvRows(rows);
+    return buildPayrollUnicontaCsvExport(report, usePayrollRules, (entry) =>
+      this.payrollRulesService.calculateSegments(entry),
+    );
   }
 
   async exportPayrollXlsx(
@@ -630,58 +562,7 @@ export class PayrollService {
       selectedCinemaId,
     );
 
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Payroll');
-
-    sheet.columns = [
-      { header: 'Medarbejder', key: 'employee', width: 30 },
-      { header: 'Medarbejdernummer', key: 'employeeNumber', width: 20 },
-      { header: 'Løn medarbejder ID', key: 'payrollEmployeeId', width: 20 },
-      { header: 'Email', key: 'email', width: 30 },
-      { header: 'Dato', key: 'date', width: 15 },
-      { header: 'Ind', key: 'clockIn', width: 25 },
-      { header: 'Ud', key: 'clockOut', width: 25 },
-      { header: 'Timer', key: 'hours', width: 12 },
-      { header: 'Arbejdstype', key: 'workType', width: 20 },
-      { header: 'Lønart', key: 'payrollCode', width: 16 },
-      { header: 'Eksportkode', key: 'exportCode', width: 16 },
-      { header: 'Løntype', key: 'payrollName', width: 20 },
-      { header: 'Status', key: 'status', width: 15 },
-      { header: 'Note', key: 'note', width: 30 },
-      { header: 'Admin note', key: 'adminNote', width: 30 },
-      { header: 'Låst', key: 'locked', width: 12 },
-      { header: 'Låst op af MASTER', key: 'unlockedByMaster', width: 20 },
-    ];
-
-    for (const employee of report.employees) {
-      for (const entry of employee.entries) {
-        sheet.addRow({
-          employee: employee.name,
-          employeeNumber: employee.employeeNumber || '',
-          payrollEmployeeId: employee.payrollEmployeeId || '',
-          email: employee.email,
-          date: entry.date,
-          clockIn: entry.clockIn,
-          clockOut: entry.clockOut,
-          hours: entry.hours,
-          workType: entry.workType,
-          payrollCode: entry.payrollCode,
-          exportCode: entry.exportCode,
-          payrollName: entry.payrollName,
-          status: entry.status,
-          note: entry.note || '',
-          adminNote: entry.adminNote || '',
-          locked: entry.payrollLocked ? 'Ja' : 'Nej',
-          unlockedByMaster: entry.payrollUnlockedByMaster ? 'Ja' : 'Nej',
-        });
-      }
-    }
-
-    sheet.getRow(1).font = {
-      bold: true,
-    };
-
-    return workbook.xlsx.writeBuffer();
+    return buildPayrollXlsxExport(report);
   }
 
   async exportPayrollPdf(
@@ -719,67 +600,7 @@ export class PayrollService {
       selectedCinemaId,
     );
 
-    const chunks: Buffer[] = [];
-
-    const doc = new PDFDocument({
-      size: 'A4',
-      margin: 40,
-    });
-
-    doc.on('data', (chunk) => chunks.push(chunk));
-
-    doc.fontSize(20).text('Lønrapport', {
-      align: 'center',
-    });
-
-    doc.moveDown();
-
-    doc.fontSize(11).text(`Periode: ${startDate} til ${endDate}`);
-    doc.text(`Eksporteret: ${new Date().toLocaleString('da-DK')}`);
-
-    doc.moveDown();
-
-    for (const employee of report.employees) {
-      doc.fontSize(14).text(employee.name, {
-        underline: true,
-      });
-
-      doc.fontSize(10).text(employee.email);
-
-      if (employee.employeeNumber) {
-        doc.text(`Medarbejdernummer: ${employee.employeeNumber}`);
-      }
-
-      if (employee.payrollEmployeeId) {
-        doc.text(`Løn medarbejder ID: ${employee.payrollEmployeeId}`);
-      }
-
-      doc.text(`Timer i alt: ${employee.totalHours.toFixed(2)}`);
-
-      doc.moveDown(0.5);
-
-      for (const entry of employee.entries) {
-        doc
-          .fontSize(9)
-          .text(
-            `${entry.date} | ${entry.hours.toFixed(2)} timer | ${entry.workType} | ${entry.payrollName} | ${entry.exportCode} | ${entry.status}`,
-          );
-
-        if (entry.note || entry.adminNote) {
-          doc.fontSize(8).text(`Note: ${entry.adminNote || entry.note}`);
-        }
-      }
-
-      doc.moveDown();
-    }
-
-    doc.end();
-
-    return new Promise((resolve) => {
-      doc.on('end', () => {
-        resolve(Buffer.concat(chunks));
-      });
-    });
+    return buildPayrollPdfExport(report, startDate, endDate);
   }
 
   async getPayrollAuditHistory(
