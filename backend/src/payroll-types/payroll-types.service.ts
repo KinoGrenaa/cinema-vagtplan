@@ -1,80 +1,20 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
-
-type AuthUser = {
-  sub: number;
-  email: string;
-  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number | null;
-};
-
-type CinemaContextValue = number | string | null | undefined;
+import {
+  AuthUser,
+  CinemaContextValue,
+} from './helpers/payroll-type-access';
+import { createPayrollType } from './helpers/payroll-type-create-flow';
+import { removePayrollType, updatePayrollType } from './helpers/payroll-type-mutation-flow';
+import { findPayrollTypes } from './helpers/payroll-type-read-flow';
 
 @Injectable()
 export class PayrollTypesService {
   constructor(private prisma: PrismaService) {}
 
-  private ensureAdmin(user: AuthUser) {
-    if (user.role === 'MASTER') return;
-    if (user.role === 'ADMIN') return;
-
-    throw new ForbiddenException('Ingen adgang');
-  }
-
-  private parseCinemaId(value: CinemaContextValue) {
-    const cinemaId = Number(value);
-
-    if (!Number.isFinite(cinemaId) || cinemaId <= 0) {
-      return null;
-    }
-
-    return cinemaId;
-  }
-
-  private getRequiredCinemaId(
-    user: AuthUser,
-    selectedCinemaId?: CinemaContextValue,
-  ) {
-    if (user.role === 'MASTER') {
-      const cinemaId = this.parseCinemaId(selectedCinemaId);
-
-      if (!cinemaId) {
-        throw new BadRequestException(
-          'Vælg en biograf, før du administrerer lønarter.',
-        );
-      }
-
-      return cinemaId;
-    }
-
-    const cinemaId = this.parseCinemaId(user.cinemaId);
-
-    if (!cinemaId) {
-      throw new BadRequestException('Brugeren mangler biograf.');
-    }
-
-    return cinemaId;
-  }
-
   async findAll(user: AuthUser, selectedCinemaId?: CinemaContextValue) {
-    this.ensureAdmin(user);
-
-    const cinemaId = this.getRequiredCinemaId(user, selectedCinemaId);
-
-    return this.prisma.payrollType.findMany({
-      where: {
-        cinemaId,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+    return findPayrollTypes(this.prisma, user, selectedCinemaId);
   }
 
   async create(
@@ -89,43 +29,7 @@ export class PayrollTypesService {
       cinemaId?: CinemaContextValue;
     },
   ) {
-    this.ensureAdmin(user);
-
-    const cinemaId = this.getRequiredCinemaId(user, data.cinemaId);
-
-    const existing = await this.prisma.payrollType.findFirst({
-      where: {
-        cinemaId,
-        payrollCode: data.payrollCode,
-      },
-    });
-
-    if (existing) {
-      throw new BadRequestException('Lønart med denne kode findes allerede');
-    }
-
-    if (data.isDefault) {
-      await this.prisma.payrollType.updateMany({
-        where: {
-          cinemaId,
-        },
-        data: {
-          isDefault: false,
-        },
-      });
-    }
-
-    return this.prisma.payrollType.create({
-      data: {
-        cinemaId,
-        name: data.name,
-        payrollCode: data.payrollCode,
-        exportCode: data.exportCode,
-        description: data.description,
-        color: data.color,
-        isDefault: data.isDefault || false,
-      },
-    });
+    return createPayrollType(this.prisma, user, data);
   }
 
   async update(
@@ -143,49 +47,13 @@ export class PayrollTypesService {
     },
     selectedCinemaId?: CinemaContextValue,
   ) {
-    this.ensureAdmin(user);
-
-    const cinemaId = this.getRequiredCinemaId(
+    return updatePayrollType(
+      this.prisma,
       user,
-      selectedCinemaId ?? data.cinemaId,
+      id,
+      data,
+      selectedCinemaId,
     );
-
-    const existing = await this.prisma.payrollType.findFirst({
-      where: {
-        id,
-        cinemaId,
-      },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Lønart blev ikke fundet');
-    }
-
-    if (data.isDefault) {
-      await this.prisma.payrollType.updateMany({
-        where: {
-          cinemaId: existing.cinemaId,
-        },
-        data: {
-          isDefault: false,
-        },
-      });
-    }
-
-    return this.prisma.payrollType.update({
-      where: {
-        id,
-      },
-      data: {
-        name: data.name,
-        payrollCode: data.payrollCode,
-        exportCode: data.exportCode,
-        description: data.description,
-        color: data.color,
-        isDefault: data.isDefault,
-        isActive: data.isActive,
-      },
-    });
   }
 
   async remove(
@@ -193,25 +61,6 @@ export class PayrollTypesService {
     id: number,
     selectedCinemaId?: CinemaContextValue,
   ) {
-    this.ensureAdmin(user);
-
-    const cinemaId = this.getRequiredCinemaId(user, selectedCinemaId);
-
-    const existing = await this.prisma.payrollType.findFirst({
-      where: {
-        id,
-        cinemaId,
-      },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Lønart blev ikke fundet');
-    }
-
-    return this.prisma.payrollType.delete({
-      where: {
-        id,
-      },
-    });
+    return removePayrollType(this.prisma, user, id, selectedCinemaId);
   }
 }
