@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -13,28 +8,16 @@ import {
   formatUserName,
 } from './helpers/leave-request-formatting';
 
-type AuthUser = {
-  sub?: number;
-  id?: number;
-  email?: string;
-  role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-  cinemaId: number | null;
-};
-
-type LeaveStatus = 'APPROVED' | 'REJECTED' | 'CANCELLED';
-
-type LeaveRequestWithUser = {
-  id: number;
-  userId: number;
-  cinemaId: number;
-  startDate: Date;
-  endDate: Date;
-  user: {
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-};
+import {
+  AuthUser,
+  LeaveRequestWithUser,
+  LeaveStatus,
+  ensureLeaveStatusChangeAllowed,
+  createOverlappingShiftException,
+  requireUserId,
+  resolveLeaveCinemaId,
+  validateLeaveRequestDates,
+} from './helpers/leave-request-service-helpers';
 
 @Injectable()
 export class LeaveRequestsService {
@@ -44,53 +27,6 @@ export class LeaveRequestsService {
     private realtimeGateway: RealtimeGateway,
     private notificationsService: NotificationsService,
   ) {}
-
-  private getUserId(user: AuthUser) {
-    return user.sub ?? user.id;
-  }
-
-  private getTomorrowStart() {
-    const tomorrow = new Date();
-
-    tomorrow.setHours(0, 0, 0, 0);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    return tomorrow;
-  }
-
-  private resolveCinemaId(user: AuthUser, selectedCinemaId?: number | null) {
-    if (user.role === 'MASTER') {
-      if (!selectedCinemaId) {
-        throw new BadRequestException('Vælg en biograf, før du henter fravær.');
-      }
-
-      return selectedCinemaId;
-    }
-
-    if (!user.cinemaId) {
-      throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
-    }
-
-    return user.cinemaId;
-  }
-
-  private validateDates(startDate: Date, endDate: Date) {
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      throw new BadRequestException('Ugyldig dato eller tid.');
-    }
-
-    if (startDate < this.getTomorrowStart()) {
-      throw new BadRequestException(
-        'Du kan ikke anmode om fri i dag eller tilbage i tiden.',
-      );
-    }
-
-    if (endDate <= startDate) {
-      throw new BadRequestException(
-        'Sluttidspunkt skal være efter starttidspunkt.',
-      );
-    }
-  }
 
   private async findOverlappingShift(
     userId: number,
@@ -125,29 +61,7 @@ export class LeaveRequestsService {
     );
 
     if (shift) {
-      const shiftDate = shift.startTime.toLocaleDateString('da-DK', {
-        timeZone: 'Europe/Copenhagen',
-      });
-
-      const shiftStart = shift.startTime.toLocaleTimeString('da-DK', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Europe/Copenhagen',
-      });
-
-      const shiftEnd = shift.endTime.toLocaleTimeString('da-DK', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Europe/Copenhagen',
-      });
-
-      const workTypeName = shift.workType?.name
-        ? `${shift.workType.name}-vagt`
-        : 'vagt';
-
-      throw new BadRequestException(
-        `Du har en ${workTypeName} den ${shiftDate} kl. ${shiftStart}-${shiftEnd}. Byt vagten først, eller kontakt din planlægger, før du søger fravær.`,
-      );
+      throw createOverlappingShiftException(shift);
     }
   }
 
@@ -346,13 +260,8 @@ export class LeaveRequestsService {
     selectedCinemaId?: number | null,
     includeAll = false,
   ) {
-    const userId = this.getUserId(user);
-
-    if (!userId) {
-      throw new ForbiddenException('Brugeren kunne ikke identificeres.');
-    }
-
-    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+    const userId = requireUserId(user);
+    const cinemaId = resolveLeaveCinemaId(user, selectedCinemaId);
     const canViewAll =
       includeAll && (user.role === 'ADMIN' || user.role === 'MASTER');
 
@@ -378,18 +287,13 @@ export class LeaveRequestsService {
       reason?: string;
     },
   ) {
-    const userId = this.getUserId(user);
-
-    if (!userId) {
-      throw new ForbiddenException('Brugeren kunne ikke identificeres.');
-    }
-
-    const cinemaId = this.resolveCinemaId(user);
+    const userId = requireUserId(user);
+    const cinemaId = resolveLeaveCinemaId(user);
 
     const startDate = new Date(data.startDate);
     const endDate = new Date(data.endDate);
 
-    this.validateDates(startDate, endDate);
+    validateLeaveRequestDates(startDate, endDate);
 
     await this.ensureNoOverlappingShift(userId, cinemaId, startDate, endDate);
 
@@ -424,13 +328,8 @@ export class LeaveRequestsService {
     status: LeaveStatus,
     selectedCinemaId?: number | null,
   ) {
-    const userId = this.getUserId(user);
-
-    if (!userId) {
-      throw new ForbiddenException('Brugeren kunne ikke identificeres.');
-    }
-
-    const cinemaId = this.resolveCinemaId(user, selectedCinemaId);
+    const userId = requireUserId(user);
+    const cinemaId = resolveLeaveCinemaId(user, selectedCinemaId);
 
     const existing = await this.prisma.leaveRequest.findFirst({
       where: {
@@ -443,31 +342,15 @@ export class LeaveRequestsService {
       throw new NotFoundException('Fraværsansøgningen blev ikke fundet.');
     }
 
-    const isAdmin = user.role === 'ADMIN' || user.role === 'MASTER';
-    const isOwner = existing.userId === userId;
-
-    if (status === 'CANCELLED') {
-      if (!isAdmin && !isOwner) {
-        throw new ForbiddenException(
-          'Du kan kun annullere dine egne fraværsansøgninger.',
-        );
-      }
-
-      if (existing.status === 'REJECTED' || existing.status === 'CANCELLED') {
-        throw new BadRequestException(
-          'Denne fraværsansøgning kan ikke annulleres.',
-        );
-      }
-    } else {
-      if (!isAdmin) {
-        throw new ForbiddenException(
-          'Kun administratorer kan godkende eller afvise fravær.',
-        );
-      }
-    }
+    ensureLeaveStatusChangeAllowed({
+      actorUserId: userId,
+      existing,
+      isAdmin: user.role === 'ADMIN' || user.role === 'MASTER',
+      status,
+    });
 
     if (status === 'APPROVED') {
-      this.validateDates(existing.startDate, existing.endDate);
+      validateLeaveRequestDates(existing.startDate, existing.endDate);
 
       await this.ensureNoOverlappingShift(
         existing.userId,
