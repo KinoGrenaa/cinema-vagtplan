@@ -21,7 +21,6 @@ import { ensureManualEntryDeviationNotes } from './helpers/time-entry-deviation-
 import {
   ensureTimeEntryEditable,
   ensureUserCanAccessTimeEntry,
-  getTimeEntryCinemaFilter,
 } from './helpers/time-entry-access';
 import { createOrUpdateTimeEntryPayrollAdjustment } from './helpers/time-entry-payroll-adjustments';
 import {
@@ -49,7 +48,6 @@ import {
   recordVoidTimeEntryStatusChange,
 } from './helpers/time-entry-status-action-helpers';
 import {
-  getOpenTimeEntryInclude,
   getTimeEntryResponseInclude,
   getTimeEntryWithUserCinemaInclude,
 } from './helpers/time-entry-includes';
@@ -58,6 +56,11 @@ import {
   findTimeEntryWithCinemaShiftOrThrow,
   findTimeEntryWithUserCinemaShiftOrThrow,
 } from './helpers/time-entry-query-helpers';
+import {
+  findAllVisibleTimeEntries,
+  findOpenTimeEntry,
+  findTimeEntriesForUser,
+} from './helpers/time-entry-read-helpers';
 import {
   buildCombinedClockOutNote,
   ensureClockOutAfterClockIn,
@@ -82,67 +85,29 @@ export class TimeEntriesService {
     private readonly payrollService: PayrollService,
   ) {}
 
-  async findForUser(
+  findForUser(
     userId: number,
     user: any,
     selectedCinemaId?: number | null,
   ) {
-    const entries = await this.prisma.timeEntry.findMany({
-      where: {
-        userId,
-        ...getTimeEntryCinemaFilter(user, selectedCinemaId),
-      },
-      include: getTimeEntryResponseInclude(),
-      orderBy: {
-        clockIn: 'desc',
-      },
+    return findTimeEntriesForUser(this.prisma, {
+      userId,
+      user,
+      selectedCinemaId,
     });
-
-    return entries.map((entry) => withTimeEntryDeviation(entry));
   }
 
-  async findAll(user: any, selectedCinemaId?: number | null) {
-    const cinemaFilter = getTimeEntryCinemaFilter(user, selectedCinemaId);
-
-    const entries = await this.prisma.timeEntry.findMany({
-      where:
-        user.role === 'EMPLOYEE'
-          ? {
-              userId: user.sub,
-              ...cinemaFilter,
-            }
-          : cinemaFilter,
-      include: {
-        ...getTimeEntryResponseInclude(),
-        payrollAdjustments: {
-          where: {
-            status: 'PENDING',
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-      },
-      orderBy: {
-        clockIn: 'desc',
-      },
+  findAll(user: any, selectedCinemaId?: number | null) {
+    return findAllVisibleTimeEntries(this.prisma, {
+      user,
+      selectedCinemaId,
     });
-
-    return entries.map((entry) => withTimeEntryDeviation(entry));
   }
 
   findOpenEntry(userId: number, cinemaId?: number) {
-    return this.prisma.timeEntry.findFirst({
-      where: {
-        userId,
-        ...(cinemaId ? { cinemaId } : {}),
-        clockOut: null,
-        status: 'PENDING',
-      },
-      include: getOpenTimeEntryInclude(),
-      orderBy: {
-        clockIn: 'desc',
-      },
+    return findOpenTimeEntry(this.prisma, {
+      userId,
+      cinemaId,
     });
   }
 
