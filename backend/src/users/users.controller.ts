@@ -209,7 +209,17 @@ export class UsersController {
 
   @UseGuards(JwtGuard)
   @Patch(':id/theme')
-  updateTheme(@Param('id') id: string, @Body() body: { theme: string }) {
+  updateTheme(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { theme: string },
+  ) {
+    const currentUserId = req.user?.sub ?? req.user?.id;
+
+    if (Number(currentUserId) !== Number(id)) {
+      throw new ForbiddenException('Du kan kun ændre tema for din egen bruger');
+    }
+
     return this.usersService.updateTheme(Number(id), body.theme);
   }
 }
