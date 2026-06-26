@@ -1,16 +1,22 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateMessageDto } from './dto/create-message.dto';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-
-type CreateMessageInput = CreateMessageDto & {
-  cinemaId: number;
-  senderId: number;
-};
+import {
+  createMessage,
+  CreateMessageInput,
+} from './helpers/message-create-flow';
+import {
+  findArchivedMessagesForUser,
+  findMessagesForUser,
+  findSentMessagesForUser,
+  getUnreadMessageCount,
+} from './helpers/message-read-flow';
+import {
+  archiveMessageForUser,
+  markMessageAsRead,
+  recallMessageForUser,
+  unarchiveMessageForUser,
+} from './helpers/message-status-flow';
 
 @Injectable()
 export class MessagesService {
@@ -20,232 +26,44 @@ export class MessagesService {
   ) {}
 
   async create(data: CreateMessageInput) {
-    const createdMessage = await this.prisma.message.create({
-      data: {
-        subject: data.subject,
-        body: data.body,
-        cinemaId: data.cinemaId,
-        senderId: data.senderId,
-        receiverId: data.receiverId || null,
-        isBroadcast: data.isBroadcast || false,
-      },
-      include: {
-        sender: true,
-        receiver: true,
-      },
-    });
-
-    this.realtime.notifyCinema(
-      createdMessage.cinemaId,
-      'messagesUpdated',
-      createdMessage,
-    );
-
-    return createdMessage;
+    return createMessage(this.prisma, this.realtime, data);
   }
 
   async findAllForUser(userId: number, cinemaId: number) {
-    return this.prisma.message.findMany({
-      where: {
-        cinemaId,
-        archivedAt: null,
-        recalledAt: null,
-        OR: [{ receiverId: userId }, { isBroadcast: true }],
-      },
-      include: {
-        sender: true,
-        receiver: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return findMessagesForUser(this.prisma, userId, cinemaId);
   }
 
   async findSentForUser(userId: number, cinemaId: number) {
-    return this.prisma.message.findMany({
-      where: {
-        cinemaId,
-        senderId: userId,
-        archivedAt: null,
-      },
-      include: {
-        sender: true,
-        receiver: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return findSentMessagesForUser(this.prisma, userId, cinemaId);
   }
 
   async findArchivedForUser(userId: number, cinemaId: number) {
-    return this.prisma.message.findMany({
-      where: {
-        cinemaId,
-        archivedAt: {
-          not: null,
-        },
-        recalledAt: null,
-        OR: [
-          { receiverId: userId },
-          { isBroadcast: true },
-          { senderId: userId },
-        ],
-      },
-      include: {
-        sender: true,
-        receiver: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return findArchivedMessagesForUser(this.prisma, userId, cinemaId);
   }
 
   async markAsRead(id: number) {
-    const updatedMessage = await this.prisma.message.update({
-      where: { id },
-      data: {
-        isRead: true,
-        readAt: new Date(),
-      },
-      include: {
-        sender: true,
-        receiver: true,
-      },
-    });
-
-    this.realtime.notifyCinema(
-      updatedMessage.cinemaId,
-      'messagesUpdated',
-      updatedMessage,
-    );
-
-    return updatedMessage;
+    return markMessageAsRead(this.prisma, this.realtime, id);
   }
 
   async getUnreadCount(userId: number, cinemaId?: number) {
-    return this.prisma.message.count({
-      where: {
-        isRead: false,
-        archivedAt: null,
-        recalledAt: null,
-        ...(cinemaId ? { cinemaId } : {}),
-        OR: [{ receiverId: userId }, { isBroadcast: true }],
-      },
-    });
+    return getUnreadMessageCount(this.prisma, userId, cinemaId);
   }
 
   async archiveMessage(id: number, userId: number) {
-    const message = await this.prisma.message.findUnique({
-      where: { id },
-    });
-
-    if (!message) {
-      throw new NotFoundException('Besked ikke fundet');
-    }
-
-    const allowed =
-      message.senderId === userId || message.receiverId === userId;
-
-    if (!allowed) {
-      throw new ForbiddenException('Du har ikke adgang til denne besked');
-    }
-
-    const updatedMessage = await this.prisma.message.update({
-      where: { id },
-      data: {
-        archivedAt: new Date(),
-      },
-      include: {
-        sender: true,
-        receiver: true,
-      },
-    });
-
-    this.realtime.notifyCinema(
-      updatedMessage.cinemaId,
-      'messagesUpdated',
-      updatedMessage,
-    );
-
-    return updatedMessage;
+    return archiveMessageForUser(this.prisma, this.realtime, id, userId);
   }
 
   async unarchiveMessage(id: number, userId: number, cinemaId: number) {
-    const message = await this.prisma.message.findUnique({
-      where: { id },
-    });
-
-    if (!message) {
-      throw new NotFoundException('Besked ikke fundet');
-    }
-
-    if (message.cinemaId !== cinemaId) {
-      throw new ForbiddenException('Du har ikke adgang til denne besked');
-    }
-
-    const allowed =
-      message.senderId === userId ||
-      message.receiverId === userId ||
-      message.isBroadcast;
-
-    if (!allowed) {
-      throw new ForbiddenException('Du har ikke adgang til denne besked');
-    }
-
-    const updatedMessage = await this.prisma.message.update({
-      where: { id },
-      data: {
-        archivedAt: null,
-      },
-      include: {
-        sender: true,
-        receiver: true,
-      },
-    });
-
-    this.realtime.notifyCinema(
-      updatedMessage.cinemaId,
-      'messagesUpdated',
-      updatedMessage,
+    return unarchiveMessageForUser(
+      this.prisma,
+      this.realtime,
+      id,
+      userId,
+      cinemaId,
     );
-
-    return updatedMessage;
   }
 
   async recallMessage(id: number, userId: number) {
-    const message = await this.prisma.message.findUnique({
-      where: { id },
-    });
-
-    if (!message) {
-      throw new NotFoundException('Besked ikke fundet');
-    }
-
-    if (message.senderId !== userId) {
-      throw new ForbiddenException('Kun afsender kan tilbagekalde beskeden');
-    }
-
-    const updatedMessage = await this.prisma.message.update({
-      where: { id },
-      data: {
-        recalledAt: new Date(),
-        recalledByUserId: userId,
-      },
-      include: {
-        sender: true,
-        receiver: true,
-      },
-    });
-
-    this.realtime.notifyCinema(
-      updatedMessage.cinemaId,
-      'messagesUpdated',
-      updatedMessage,
-    );
-
-    return updatedMessage;
+    return recallMessageForUser(this.prisma, this.realtime, id, userId);
   }
 }
