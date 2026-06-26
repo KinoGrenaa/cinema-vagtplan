@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -15,6 +14,15 @@ import {
   getActorUserId,
   UserRole,
 } from './helpers/user-service-helpers';
+import {
+  buildOwnProfileUpdateData,
+  buildUserUpdateData,
+  ensureCinemaExists,
+  ensureUniqueUserEmail,
+  findRequiredUser,
+  getCreatePermissionData,
+  validateRoleCinema,
+} from './helpers/user-service-data-helpers';
 
 @Injectable()
 export class UsersService {
@@ -23,37 +31,10 @@ export class UsersService {
     private auditLogsService: AuditLogsService,
   ) {}
 
-  private async ensureCinemaExists(cinemaId: number) {
-    const cinema = await this.prisma.cinema.findUnique({
-      where: { id: cinemaId },
-      select: { id: true },
-    });
-
-    if (!cinema) {
-      throw new BadRequestException('Den valgte biograf blev ikke fundet');
-    }
-  }
-
-  private async validateRoleCinema(role: UserRole, cinemaId?: number | null) {
-    if (role === 'MASTER') {
-      return null;
-    }
-
-    if (!cinemaId) {
-      throw new BadRequestException(
-        'Admin og medarbejdere skal tilknyttes en biograf',
-      );
-    }
-
-    await this.ensureCinemaExists(cinemaId);
-
-    return cinemaId;
-  }
-
   async findAll(currentUser: AuthUser, selectedCinemaId?: number) {
     if (currentUser.role === 'MASTER') {
       if (selectedCinemaId) {
-        await this.ensureCinemaExists(selectedCinemaId);
+        await ensureCinemaExists(this.prisma, selectedCinemaId);
       }
 
       return this.prisma.user.findMany({
@@ -164,19 +145,13 @@ export class UsersService {
       }
     }
 
-    const cinemaId = await this.validateRoleCinema(role, data.cinemaId);
+    const cinemaId = await validateRoleCinema(this.prisma, role, data.cinemaId);
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: {
-        email: data.email,
-      },
-    });
-
-    if (existingUser) {
-      throw new BadRequestException(
-        'Der findes allerede en bruger med denne email',
-      );
-    }
+    await ensureUniqueUserEmail(
+      this.prisma,
+      data.email,
+      'Der findes allerede en bruger med denne email',
+    );
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
@@ -190,18 +165,7 @@ export class UsersService {
         role,
         employmentType: data.employmentType || 'HOURLY',
         cinemaId,
-        canManageSchedule:
-          role === 'MASTER' ? true : (data.canManageSchedule ?? false),
-        canManageUsers:
-          role === 'MASTER' ? true : (data.canManageUsers ?? false),
-        canManagePayroll:
-          role === 'MASTER' ? true : (data.canManagePayroll ?? false),
-        canManageLeaveRequests:
-          role === 'MASTER' ? true : (data.canManageLeaveRequests ?? false),
-        canManageCinemaSettings:
-          role === 'MASTER' ? true : (data.canManageCinemaSettings ?? false),
-        canSendBroadcastMessages:
-          role === 'MASTER' ? true : (data.canSendBroadcastMessages ?? false),
+        ...getCreatePermissionData(role, data),
         isActive: true,
         deactivatedAt: null,
       },
@@ -245,13 +209,7 @@ export class UsersService {
     },
     currentUser?: AuthUser,
   ) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Bruger blev ikke fundet');
-    }
+    const user = await findRequiredUser(this.prisma, id);
 
     if (currentUser) {
       ensureCanModifyTargetUser(currentUser, user);
@@ -264,88 +222,22 @@ export class UsersService {
     }
 
     if (data.email) {
-      const existingUser = await this.prisma.user.findFirst({
-        where: {
-          email: data.email,
-          id: {
-            not: id,
-          },
-        },
-      });
-
-      if (existingUser) {
-        throw new BadRequestException(
-          'Der findes allerede en anden bruger med denne email',
-        );
-      }
+      await ensureUniqueUserEmail(
+        this.prisma,
+        data.email,
+        'Der findes allerede en anden bruger med denne email',
+        id,
+      );
     }
 
     const nextRole = data.role || user.role;
-    const nextCinemaId = await this.validateRoleCinema(
+    const nextCinemaId = await validateRoleCinema(
+      this.prisma,
       nextRole,
       nextRole === 'MASTER' ? null : user.cinemaId,
     );
 
-    const updateData: any = {};
-
-    if (data.email !== undefined) updateData.email = data.email;
-    if (data.firstName !== undefined) updateData.firstName = data.firstName;
-    if (data.lastName !== undefined) updateData.lastName = data.lastName;
-    if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.role !== undefined) updateData.role = data.role;
-    updateData.cinemaId = nextCinemaId;
-    if (data.employmentType !== undefined) {
-      updateData.employmentType = data.employmentType;
-    }
-    if (data.profileImage !== undefined) {
-      updateData.profileImage = data.profileImage;
-    }
-    if (data.address !== undefined) updateData.address = data.address;
-    if (data.birthDate !== undefined) {
-      updateData.birthDate = data.birthDate ? new Date(data.birthDate) : null;
-    }
-    if (data.emergencyPhone !== undefined) {
-      updateData.emergencyPhone = data.emergencyPhone;
-    }
-    if (data.hireDate !== undefined) {
-      updateData.hireDate = data.hireDate ? new Date(data.hireDate) : null;
-    }
-    if (data.skills !== undefined) updateData.skills = data.skills;
-    if (data.notes !== undefined) updateData.notes = data.notes;
-
-    if (data.canManageSchedule !== undefined) {
-      updateData.canManageSchedule =
-        nextRole === 'MASTER' ? true : data.canManageSchedule;
-    }
-    if (data.canManageUsers !== undefined) {
-      updateData.canManageUsers =
-        nextRole === 'MASTER' ? true : data.canManageUsers;
-    }
-    if (data.canManagePayroll !== undefined) {
-      updateData.canManagePayroll =
-        nextRole === 'MASTER' ? true : data.canManagePayroll;
-    }
-    if (data.canManageLeaveRequests !== undefined) {
-      updateData.canManageLeaveRequests =
-        nextRole === 'MASTER' ? true : data.canManageLeaveRequests;
-    }
-    if (data.canManageCinemaSettings !== undefined) {
-      updateData.canManageCinemaSettings =
-        nextRole === 'MASTER' ? true : data.canManageCinemaSettings;
-    }
-    if (data.canSendBroadcastMessages !== undefined) {
-      updateData.canSendBroadcastMessages =
-        nextRole === 'MASTER' ? true : data.canSendBroadcastMessages;
-    }
-
-    if (nextRole === 'MASTER') {
-      updateData.canManageSchedule = true;
-      updateData.canManageUsers = true;
-      updateData.canManagePayroll = true;
-      updateData.canManageLeaveRequests = true;
-      updateData.canManageCinemaSettings = true;
-      updateData.canSendBroadcastMessages = true;
-    }
+    const updateData = buildUserUpdateData(data, nextRole, nextCinemaId);
 
     if (data.password && data.password.trim() !== '') {
       updateData.password = await bcrypt.hash(data.password, 10);
@@ -369,13 +261,7 @@ export class UsersService {
   }
 
   async deleteUser(id: number, currentUser?: AuthUser) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!existingUser) {
-      throw new NotFoundException('Bruger blev ikke fundet');
-    }
+    const existingUser = await findRequiredUser(this.prisma, id);
 
     if (currentUser) {
       ensureCanModifyTargetUser(currentUser, existingUser);
@@ -402,13 +288,7 @@ export class UsersService {
   }
 
   async reactivateUser(id: number, currentUser?: AuthUser) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!existingUser) {
-      throw new NotFoundException('Bruger blev ikke fundet');
-    }
+    const existingUser = await findRequiredUser(this.prisma, id);
 
     if (currentUser) {
       ensureCanModifyTargetUser(currentUser, existingUser);
@@ -447,46 +327,18 @@ export class UsersService {
       skills?: string;
     },
   ) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Bruger blev ikke fundet');
-    }
+    await findRequiredUser(this.prisma, id);
 
     if (data.email) {
-      const existingUser = await this.prisma.user.findFirst({
-        where: {
-          email: data.email,
-          id: {
-            not: id,
-          },
-        },
-      });
-
-      if (existingUser) {
-        throw new BadRequestException(
-          'Der findes allerede en anden bruger med denne email',
-        );
-      }
+      await ensureUniqueUserEmail(
+        this.prisma,
+        data.email,
+        'Der findes allerede en anden bruger med denne email',
+        id,
+      );
     }
 
-    const updateData: any = {};
-
-    if (data.email !== undefined) updateData.email = data.email;
-    if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.profileImage !== undefined) {
-      updateData.profileImage = data.profileImage;
-    }
-    if (data.address !== undefined) updateData.address = data.address;
-    if (data.birthDate !== undefined) {
-      updateData.birthDate = data.birthDate ? new Date(data.birthDate) : null;
-    }
-    if (data.emergencyPhone !== undefined) {
-      updateData.emergencyPhone = data.emergencyPhone;
-    }
-    if (data.skills !== undefined) updateData.skills = data.skills;
+    const updateData = buildOwnProfileUpdateData(data);
 
     if (data.password && data.password.trim() !== '') {
       updateData.password = await bcrypt.hash(data.password, 10);
