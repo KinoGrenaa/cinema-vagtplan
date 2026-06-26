@@ -9,13 +9,7 @@ import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { PayrollRulesService } from './payroll-rules.service';
 import {
-  analyzePayrollTimeEntryDeviation,
-  type TimeEntryDeviation,
-} from './helpers/payroll-deviation';
-import {
   calculatePayrollPeriodForDate,
-  dateToCopenhagenDateString,
-  getPayrollReferenceDate,
   getPayrollReferenceDateFilters,
   getPeriodDates,
 } from './helpers/payroll-periods';
@@ -29,12 +23,12 @@ import {
 import {
   formatPayrollCsvRows,
   getSimplePayrollSegment,
-  resolvePayrollData,
 } from './helpers/payroll-export';
 import {
   ensurePayrollEntriesApproved,
   markPayrollPeriodAsExported,
 } from './helpers/payroll-period-export';
+import { buildPayrollReportResult } from './helpers/payroll-report';
 
 @Injectable()
 export class PayrollService {
@@ -226,209 +220,12 @@ export class PayrollService {
       },
     });
 
-    const legacyAdjustmentCount = entries.filter(
-      (entry) => entry.isPayrollAdjustment,
-    ).length;
-
-    const grouped = new Map<
-      number,
-      {
-        userId: number;
-        name: string;
-        email: string;
-        employeeNumber: string | null;
-        payrollEmployeeId: string | null;
-        totalHours: number;
-        adjustmentHours: number;
-        deviationCount: number;
-        adjustmentCount: number;
-        entries: {
-          id: number;
-          date: string;
-          clockIn: string;
-          clockOut: string;
-          hours: number;
-          workType: string;
-          payrollCode: string;
-          exportCode: string;
-          payrollName: string;
-          status: string;
-          note: string | null;
-          adminNote: string | null;
-          payrollLocked: boolean;
-          payrollUnlockedByMaster: boolean;
-          payrollPeriodId: number | null;
-          deviation: TimeEntryDeviation;
-          isPayrollAdjustment: boolean;
-          originalPayrollPeriodId: number | null;
-          adjustmentPayrollPeriodId: number | null;
-          payrollAdjustmentReason: string | null;
-        }[];
-        payrollAdjustments: {
-          id: number;
-          timeEntryId: number;
-          type: string;
-          status: string;
-          exportCategory: string;
-          hours: number;
-          exportedHours: number;
-          adjustedHours: number;
-          previousHours: number | null;
-          newHours: number | null;
-          reason: string;
-          originalPayrollPeriodId: number;
-          originalPayrollPeriodStartDate: string;
-          originalPayrollPeriodEndDate: string;
-          settlementPayrollPeriodId: number | null;
-          payrollCode: string;
-          exportCode: string;
-          payrollName: string;
-          workType: string;
-          createdAt: string;
-        }[];
-      }
-    >();
-
-    for (const entry of entries) {
-      if (!entry.clockOut) continue;
-
-      const hours =
-        (entry.clockOut.getTime() - entry.clockIn.getTime()) / 1000 / 60 / 60;
-
-      if (!grouped.has(entry.userId)) {
-        grouped.set(entry.userId, {
-          userId: entry.userId,
-          name: `${entry.user.firstName} ${entry.user.lastName}`,
-          email: entry.user.email,
-          employeeNumber: entry.user.employeeNumber,
-          payrollEmployeeId: entry.user.payrollEmployeeId,
-          totalHours: 0,
-          adjustmentHours: 0,
-          deviationCount: 0,
-          adjustmentCount: 0,
-          entries: [],
-          payrollAdjustments: [],
-        });
-      }
-
-      const userGroup = grouped.get(entry.userId);
-      if (!userGroup) continue;
-
-      const payrollData = resolvePayrollData(entry);
-      const deviation = analyzePayrollTimeEntryDeviation(entry);
-
-      userGroup.totalHours += hours;
-
-      if (deviation.hasDeviation) {
-        userGroup.deviationCount += 1;
-      }
-
-      if (entry.isPayrollAdjustment) {
-        userGroup.adjustmentCount += 1;
-        userGroup.adjustmentHours += hours;
-      }
-
-      userGroup.entries.push({
-        id: entry.id,
-        date: dateToCopenhagenDateString(getPayrollReferenceDate(entry)),
-        clockIn: entry.clockIn.toISOString(),
-        clockOut: entry.clockOut.toISOString(),
-        hours: Number(hours.toFixed(2)),
-        workType: entry.shift?.workType?.name || '-',
-        payrollCode: payrollData.payrollCode,
-        exportCode: payrollData.exportCode,
-        payrollName: payrollData.payrollName,
-        status: entry.status,
-        note: entry.note,
-        adminNote: entry.adminNote,
-        payrollLocked: entry.payrollLocked,
-        payrollUnlockedByMaster: entry.payrollUnlockedByMaster,
-        payrollPeriodId: entry.payrollPeriodId,
-        deviation,
-        isPayrollAdjustment: entry.isPayrollAdjustment,
-        originalPayrollPeriodId: entry.originalPayrollPeriodId,
-        adjustmentPayrollPeriodId: entry.adjustmentPayrollPeriodId,
-        payrollAdjustmentReason: entry.payrollAdjustmentReason,
-      });
-    }
-
-    for (const adjustment of payrollAdjustments) {
-      if (!grouped.has(adjustment.userId)) {
-        grouped.set(adjustment.userId, {
-          userId: adjustment.userId,
-          name: `${adjustment.user.firstName} ${adjustment.user.lastName}`,
-          email: adjustment.user.email,
-          employeeNumber: adjustment.user.employeeNumber,
-          payrollEmployeeId: adjustment.user.payrollEmployeeId,
-          totalHours: 0,
-          adjustmentHours: 0,
-          deviationCount: 0,
-          adjustmentCount: 0,
-          entries: [],
-          payrollAdjustments: [],
-        });
-      }
-
-      const userGroup = grouped.get(adjustment.userId);
-      if (!userGroup) continue;
-
-      const payrollData =
-        adjustment.payrollType ||
-        adjustment.timeEntry.shift?.workType?.payrollType ||
-        null;
-
-      const adjustmentHours = adjustment.minutesDelta / 60;
-
-      userGroup.adjustmentCount += 1;
-      userGroup.adjustmentHours += adjustmentHours;
-
-      userGroup.payrollAdjustments.push({
-        id: adjustment.id,
-        timeEntryId: adjustment.timeEntryId,
-        type: adjustment.type,
-        status: adjustment.status,
-        exportCategory: adjustment.exportCategory,
-        hours: Number(adjustmentHours.toFixed(2)),
-        exportedHours: Number((adjustment.exportedMinutes / 60).toFixed(2)),
-        adjustedHours: Number((adjustment.adjustedMinutes / 60).toFixed(2)),
-        previousHours:
-          adjustment.previousMinutes === null
-            ? null
-            : Number((adjustment.previousMinutes / 60).toFixed(2)),
-        newHours:
-          adjustment.newMinutes === null
-            ? null
-            : Number((adjustment.newMinutes / 60).toFixed(2)),
-        reason: adjustment.reason,
-        originalPayrollPeriodId: adjustment.originalPayrollPeriodId,
-        originalPayrollPeriodStartDate:
-          adjustment.originalPayrollPeriod.startDate.toISOString().slice(0, 10),
-        originalPayrollPeriodEndDate: adjustment.originalPayrollPeriod.endDate
-          .toISOString()
-          .slice(0, 10),
-        settlementPayrollPeriodId: adjustment.settlementPayrollPeriodId,
-        payrollCode: payrollData?.payrollCode || 'NORMAL',
-        exportCode:
-          payrollData?.exportCode || payrollData?.payrollCode || 'NORMAL',
-        payrollName: payrollData?.name || 'Normale timer',
-        workType: adjustment.timeEntry.shift?.workType?.name || '-',
-        createdAt: adjustment.createdAt.toISOString(),
-      });
-    }
-
-    return {
-      employees: Array.from(grouped.values()).map((employee) => ({
-        ...employee,
-        totalHours: Number(employee.totalHours.toFixed(2)),
-        adjustmentHours: Number(employee.adjustmentHours.toFixed(2)),
-        deviationCount: employee.deviationCount,
-        adjustmentCount: employee.adjustmentCount,
-      })),
+    return buildPayrollReportResult(
+      entries,
+      payrollAdjustments,
       pendingCount,
       voidedCount,
-      adjustmentCount: legacyAdjustmentCount + payrollAdjustments.length,
-      payrollAdjustmentCount: payrollAdjustments.length,
-    };
+    );
   }
 
   async getPeriod(
