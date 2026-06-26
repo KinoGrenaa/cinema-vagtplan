@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,7 +15,6 @@ import {
 } from './helpers/time-entry-deviation';
 import {
   ensureAdminTimeEntryDeviationNotes,
-  ensureApprovalDeviationNotes,
   ensureManualEntryDeviationNotes,
   ensureOwnTimeEntryDeviationNotes,
 } from './helpers/time-entry-deviation-notes';
@@ -35,6 +33,11 @@ import {
   createEditAfterExportPayrollAdjustmentIfNeeded,
   createVoidAfterExportPayrollAdjustmentIfNeeded,
 } from './helpers/time-entry-exported-payroll-adjustments';
+import {
+  ensureTimeEntryCanBeApproved,
+  getApprovalPayrollContext,
+  getApprovalPayrollUpdateData,
+} from './helpers/time-entry-approval-helpers';
 import {
   getAdminTimeEntryUpdateChanges,
   getOwnTimeEntryUpdateChanges,
@@ -411,121 +414,35 @@ export class TimeEntriesService {
 
     ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
 
-    const payrollPeriod =
-      await this.payrollService.getPayrollPeriodEntityForDate(
-        existingEntry.cinemaId,
-        existingEntry.clockIn,
-      );
-
-    if (payrollPeriod?.status === 'LOCKED') {
-      throw new ConflictException({
-        code: 'PAYROLL_PERIOD_LOCKED',
-        title: 'Lønperioden er låst',
-        message: 'Lås lønperioden op før tidsregistreringen kan godkendes.',
-      });
-    }
-
-    if (payrollPeriod?.status === 'EXPORTED' && !confirmPayrollAdjustment) {
-      const adjustmentPayrollPeriod =
-        await this.payrollService.getCurrentPayrollPeriodEntity(
-          existingEntry.cinemaId,
-        );
-
-      throw new ConflictException({
-        code: 'PAYROLL_PERIOD_EXPORTED',
-        title: 'Lønperioden er allerede eksporteret',
-        message:
-          'Denne tidsregistrering tilhører en lønperiode, der allerede er eksporteret.',
-
-        originalPayrollPeriod: {
-          id: payrollPeriod.id,
-          startDate: payrollPeriod.startDate,
-          endDate: payrollPeriod.endDate,
-        },
-
-        adjustmentPayrollPeriod: adjustmentPayrollPeriod
-          ? {
-              id: adjustmentPayrollPeriod.id,
-              startDate: adjustmentPayrollPeriod.startDate,
-              endDate: adjustmentPayrollPeriod.endDate,
-            }
-          : null,
-      });
-    }
-
-    ensureTimeEntryEditable(existingEntry, user);
-
-    if (existingEntry.status === 'VOIDED') {
-      throw new BadRequestException(
-        'En annulleret tidsregistrering kan ikke godkendes',
-      );
-    }
-
-    const deviation = analyzeTimeEntryDeviation(
+    const approvalPayrollContext = await getApprovalPayrollContext({
+      payrollService: this.payrollService,
       existingEntry,
-      existingEntry.cinema,
-    );
-
-    if (deviation.types.includes('OPEN_ENTRY')) {
-      throw new BadRequestException(
-        'En åben tidsregistrering kan ikke godkendes',
-      );
-    }
-
-    ensureApprovalDeviationNotes({
-      deviation,
-      clockInNote: existingEntry.clockInNote,
-      clockOutNote: existingEntry.clockOutNote,
-      note: existingEntry.note,
+      confirmPayrollAdjustment,
     });
 
-    let adjustmentPayrollPeriodId: number | null = null;
-    let adjustmentPayrollPeriod: any = null;
-
-    if (payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment) {
-      adjustmentPayrollPeriod =
-        await this.payrollService.getCurrentPayrollPeriodEntity(
-          existingEntry.cinemaId,
-        );
-
-      adjustmentPayrollPeriodId = adjustmentPayrollPeriod?.id ?? null;
-    }
+    ensureTimeEntryEditable(existingEntry, user);
+    ensureTimeEntryCanBeApproved(existingEntry);
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
-      data: {
-        status: 'APPROVED',
-
-        payrollPeriodId:
-          payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment
-            ? null
-            : payrollPeriod?.id,
-
-        isPayrollAdjustment:
-          payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment,
-
-        originalPayrollPeriodId:
-          payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment
-            ? payrollPeriod.id
-            : null,
-
-        adjustmentPayrollPeriodId,
-
-        payrollAdjustmentReason:
-          payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment
-            ? 'Godkendt som efterregulering, fordi lønperioden allerede var eksporteret.'
-            : null,
-      },
+      data: getApprovalPayrollUpdateData({
+        ...approvalPayrollContext,
+        confirmPayrollAdjustment,
+      }),
       include: getTimeEntryResponseInclude(),
     });
 
-    if (payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment) {
+    if (
+      approvalPayrollContext.payrollPeriod?.status === 'EXPORTED' &&
+      confirmPayrollAdjustment
+    ) {
       const adjustedMinutes = getEntryMinutes(entry);
 
       await createOrUpdateTimeEntryPayrollAdjustment(this.prisma, {
         timeEntry: entry,
-        originalPayrollPeriodId: payrollPeriod.id,
-        settlementPayrollPeriodId: adjustmentPayrollPeriod?.id ?? null,
+        originalPayrollPeriodId: approvalPayrollContext.payrollPeriod.id,
+        settlementPayrollPeriodId:
+          approvalPayrollContext.adjustmentPayrollPeriod?.id ?? null,
         type: 'APPROVAL_AFTER_EXPORT',
         exportedMinutes: 0,
         adjustedMinutes,
