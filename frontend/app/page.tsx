@@ -51,8 +51,8 @@ async function readLoginError(response: Response) {
 }
 
 export default function HomePage() {
-  const [email, setEmail] = useState("admin@test.dk");
-  const [password, setPassword] = useState("test123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const infoDialog = useInfoModal();
