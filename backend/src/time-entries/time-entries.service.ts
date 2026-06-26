@@ -13,11 +13,7 @@ import {
   getEntryMinutes,
   withTimeEntryDeviation,
 } from './helpers/time-entry-deviation';
-import {
-  ensureAdminTimeEntryDeviationNotes,
-  ensureManualEntryDeviationNotes,
-  ensureOwnTimeEntryDeviationNotes,
-} from './helpers/time-entry-deviation-notes';
+import { ensureManualEntryDeviationNotes } from './helpers/time-entry-deviation-notes';
 import {
   ensureTimeEntryEditable,
   ensureUserCanAccessTimeEntry,
@@ -39,9 +35,10 @@ import {
   getApprovalPayrollUpdateData,
 } from './helpers/time-entry-approval-helpers';
 import {
-  getAdminTimeEntryUpdateChanges,
-  getOwnTimeEntryUpdateChanges,
-} from './helpers/time-entry-update-changes';
+  ensureOwnTimeEntryCanBeUpdated,
+  getAdminTimeEntryUpdateContext,
+  getOwnTimeEntryUpdateContext,
+} from './helpers/time-entry-update-helpers';
 import {
   getOpenTimeEntryInclude,
   getTimeEntryResponseInclude,
@@ -55,13 +52,11 @@ import {
   ensureNoExistingEntryForShift,
   ensureNoOverlappingManualShift,
   ensureNoOverlappingManualTimeEntry,
-  ensureRequiredText,
   ensureShiftBelongsToUser,
   findManualEntryShift,
   getManualEntryNotes,
   getRequiredTrimmedNote,
   getTrimmedOptionalNote,
-  parseNullableTimeEntryDate,
   parseOptionalTimeEntryDate,
   parseRequiredTimeEntryDate,
   resolveClockInShift,
@@ -701,65 +696,16 @@ export class TimeEntriesService {
       throw new NotFoundException('Tidsregistrering blev ikke fundet');
     }
 
-    if (existingEntry.userId !== user.sub) {
-      throw new BadRequestException(
-        'Du kan kun rette dine egne tidsregistreringer',
-      );
-    }
-
-    if (existingEntry.status === 'APPROVED') {
-      throw new BadRequestException(
-        'Denne tidsregistrering er allerede godkendt og kan ikke ændres',
-      );
-    }
-
-    if (existingEntry.status === 'VOIDED') {
-      throw new BadRequestException(
-        'En annulleret tidsregistrering kan ikke ændres',
-      );
-    }
-
+    ensureOwnTimeEntryCanBeUpdated(user, existingEntry);
     ensureTimeEntryEditable(existingEntry, user);
 
-    const newClockIn = parseRequiredTimeEntryDate(
-      data.clockIn,
-      'Ugyldig mødetid',
-    );
-    const newClockOut = parseNullableTimeEntryDate(
-      data.clockOut,
-      'Ugyldig fyraften',
-    );
-    const newClockInNote = data.clockInNote ?? null;
-    const newClockOutNote = data.clockOutNote ?? null;
-
-    ensureClockOutAfterClockIn(newClockIn, newClockOut);
-
-    const deviation = analyzeTimeEntryDeviation(
-      {
-        ...existingEntry,
-        clockIn: newClockIn,
-        clockOut: newClockOut,
-      },
-      existingEntry.cinema,
-    );
-
-    ensureOwnTimeEntryDeviationNotes({
-      deviation,
-      clockInNote: newClockInNote,
-      clockOutNote: newClockOutNote,
-    });
-
-    const changes = getOwnTimeEntryUpdateChanges({
-      existingEntry,
+    const {
       newClockIn,
       newClockOut,
       newClockInNote,
       newClockOutNote,
-    });
-
-    if (changes.length === 0) {
-      throw new BadRequestException('Ingen ændringer registreret');
-    }
+      changes,
+    } = getOwnTimeEntryUpdateContext(existingEntry, data);
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
@@ -838,57 +784,13 @@ export class TimeEntriesService {
     ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
     ensureTimeEntryEditable(existingEntry, user);
 
-    ensureRequiredText(
-      data.adminNote,
-      'Admin-note er påkrævet ved rettelse af timer',
-    );
-
-    const nextClockIn = data.clockIn
-      ? parseRequiredTimeEntryDate(data.clockIn, 'Ugyldig mødetid')
-      : existingEntry.clockIn;
-
-    const nextClockOut =
-      data.clockOut === undefined
-        ? existingEntry.clockOut
-        : parseNullableTimeEntryDate(data.clockOut, 'Ugyldig fyraften');
-
-    ensureClockOutAfterClockIn(nextClockIn, nextClockOut);
-
-    const nextClockInNote =
-      data.clockInNote === undefined
-        ? existingEntry.clockInNote
-        : data.clockInNote;
-    const nextClockOutNote =
-      data.clockOutNote === undefined
-        ? existingEntry.clockOutNote
-        : data.clockOutNote;
-
-    const deviation = analyzeTimeEntryDeviation(
-      {
-        ...existingEntry,
-        clockIn: nextClockIn,
-        clockOut: nextClockOut,
-      },
-      existingEntry.cinema,
-    );
-
-    ensureAdminTimeEntryDeviationNotes({
-      deviation,
-      clockInNote: nextClockInNote,
-      clockOutNote: nextClockOutNote,
-      adminNote: data.adminNote,
-    });
-
-    const changes = getAdminTimeEntryUpdateChanges({
-      existingEntry,
+    const {
       nextClockIn,
       nextClockOut,
-      data,
-    });
-
-    if (changes.length === 0) {
-      throw new BadRequestException('Ingen ændringer registreret');
-    }
+      nextClockInNote,
+      nextClockOutNote,
+      changes,
+    } = getAdminTimeEntryUpdateContext(existingEntry, data);
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
