@@ -12,7 +12,6 @@ import {
   analyzeTimeEntryDeviation,
   formatSignedDuration,
   getEntryMinutes,
-  hasText,
   withTimeEntryDeviation,
 } from './helpers/time-entry-deviation';
 import {
@@ -40,15 +39,30 @@ import {
   getAdminTimeEntryUpdateChanges,
   getOwnTimeEntryUpdateChanges,
 } from './helpers/time-entry-update-changes';
-import { findMatchingShiftForClockIn } from './helpers/time-entry-shifts';
 import {
   getOpenTimeEntryInclude,
-  getShiftWithWorkTypeAndCinemaInclude,
   getTimeEntryResponseInclude,
   getTimeEntryWithCinemaShiftInclude,
   getTimeEntryWithUserCinemaInclude,
   getTimeEntryWithUserCinemaShiftInclude,
 } from './helpers/time-entry-includes';
+import {
+  buildCombinedClockOutNote,
+  ensureClockOutAfterClockIn,
+  ensureNoExistingEntryForShift,
+  ensureNoOverlappingManualShift,
+  ensureNoOverlappingManualTimeEntry,
+  ensureRequiredText,
+  ensureShiftBelongsToUser,
+  findManualEntryShift,
+  getManualEntryNotes,
+  getRequiredTrimmedNote,
+  getTrimmedOptionalNote,
+  parseNullableTimeEntryDate,
+  parseOptionalTimeEntryDate,
+  parseRequiredTimeEntryDate,
+  resolveClockInShift,
+} from './helpers/time-entry-service-helpers';
 
 @Injectable()
 export class TimeEntriesService {
@@ -133,95 +147,43 @@ export class TimeEntriesService {
     clockInNote?: string;
     clockOutNote?: string;
   }) {
-    const clockIn = new Date(data.clockIn);
-    const clockOut = new Date(data.clockOut);
+    const clockIn = parseRequiredTimeEntryDate(
+      data.clockIn,
+      'Ugyldig mødetid eller fyraften',
+    );
+    const clockOut = parseRequiredTimeEntryDate(
+      data.clockOut,
+      'Ugyldig mødetid eller fyraften',
+    );
 
-    if (Number.isNaN(clockIn.getTime()) || Number.isNaN(clockOut.getTime())) {
-      throw new BadRequestException('Ugyldig mødetid eller fyraften');
-    }
+    ensureClockOutAfterClockIn(clockIn, clockOut);
 
-    if (clockOut <= clockIn) {
-      throw new BadRequestException('Fyraften skal være efter mødetid');
-    }
-
-    const overlappingTimeEntry = await this.prisma.timeEntry.findFirst({
-      where: {
-        userId: data.userId,
-        cinemaId: data.cinemaId,
-        status: {
-          not: 'VOIDED',
-        },
-        clockOut: {
-          not: null,
-        },
-        AND: [
-          {
-            clockIn: {
-              lt: clockOut,
-            },
-          },
-          {
-            clockOut: {
-              gt: clockIn,
-            },
-          },
-        ],
-      },
+    await ensureNoOverlappingManualTimeEntry(this.prisma, {
+      userId: data.userId,
+      cinemaId: data.cinemaId,
+      clockIn,
+      clockOut,
     });
 
-    if (overlappingTimeEntry) {
-      throw new BadRequestException(
-        'Der findes allerede en tidsregistrering i dette tidsrum',
-      );
-    }
-
-    const overlappingShift = await this.prisma.shift.findFirst({
-      where: {
-        userId: data.userId,
-        cinemaId: data.cinemaId,
-        AND: [
-          {
-            startTime: {
-              lt: clockOut,
-            },
-          },
-          {
-            endTime: {
-              gt: clockIn,
-            },
-          },
-        ],
-      },
+    await ensureNoOverlappingManualShift(this.prisma, {
+      userId: data.userId,
+      cinemaId: data.cinemaId,
+      clockIn,
+      clockOut,
     });
 
-    if (overlappingShift) {
-      throw new BadRequestException(
-        'Du har allerede en planlagt vagt i dette tidsrum. Registrer tid på vagten i stedet.',
-      );
-    }
+    const shift = await findManualEntryShift(this.prisma, {
+      shiftId: data.shiftId,
+      cinemaId: data.cinemaId,
+    });
 
-    const shift = data.shiftId
-      ? await this.prisma.shift.findFirst({
-          where: {
-            id: data.shiftId,
-            cinemaId: data.cinemaId,
-          },
-          include: getShiftWithWorkTypeAndCinemaInclude(),
-        })
-      : null;
+    ensureShiftBelongsToUser(
+      shift,
+      data.userId,
+      'Du kan kun indsende timer for dine egne vagter',
+    );
 
-    if (data.shiftId && !shift) {
-      throw new BadRequestException('Vagten blev ikke fundet');
-    }
-
-    if (shift && shift.userId !== data.userId) {
-      throw new BadRequestException(
-        'Du kan kun indsende timer for dine egne vagter',
-      );
-    }
-
-    const clockInNote = data.clockInNote ?? data.note ?? null;
-    const clockOutNote = data.clockOutNote ?? data.note ?? null;
+    const { clockInNote, clockOutNote } = getManualEntryNotes(data);
 
     if (shift) {
       const deviation = analyzeTimeEntryDeviation(
@@ -239,19 +201,12 @@ export class TimeEntriesService {
         clockOutNote,
       });
 
-      const existingEntry = await this.prisma.timeEntry.findFirst({
-        where: {
-          userId: data.userId,
-          shiftId: shift.id,
-          cinemaId: data.cinemaId,
-        },
+      await ensureNoExistingEntryForShift(this.prisma, {
+        shiftId: shift.id,
+        userId: data.userId,
+        cinemaId: data.cinemaId,
+        message: 'Der er allerede indsendt timer for denne vagt',
       });
-
-      if (existingEntry) {
-        throw new BadRequestException(
-          'Der er allerede indsendt timer for denne vagt',
-        );
-      }
     }
 
     const entry = await this.prisma.timeEntry.create({
@@ -314,59 +269,23 @@ export class TimeEntriesService {
       return withTimeEntryDeviation(openEntry);
     }
 
-    const clockIn = data.clockIn ? new Date(data.clockIn) : new Date();
+    const clockIn = parseOptionalTimeEntryDate(data.clockIn, 'Ugyldig mødetid');
 
-    if (Number.isNaN(clockIn.getTime())) {
-      throw new BadRequestException('Ugyldig mødetid');
-    }
+    const shift = await resolveClockInShift(this.prisma, {
+      shiftId: data.shiftId,
+      userId: data.userId,
+      cinemaId: data.cinemaId,
+      clockIn,
+    });
 
-    let shift: any = null;
+    await ensureNoExistingEntryForShift(this.prisma, {
+      shiftId: shift?.id,
+      userId: data.userId,
+      cinemaId: data.cinemaId,
+      message: 'Der findes allerede en tidsregistrering for denne vagt',
+    });
 
-    if (data.shiftId) {
-      shift = await this.prisma.shift.findFirst({
-        where: {
-          id: data.shiftId,
-          cinemaId: data.cinemaId,
-        },
-        include: {
-          workType: true,
-        },
-      });
-
-      if (!shift) {
-        throw new BadRequestException('Vagten blev ikke fundet');
-      }
-
-      if (shift.userId !== data.userId) {
-        throw new BadRequestException(
-          'Du kan kun registrere mødetid på dine egne vagter',
-        );
-      }
-    } else {
-      shift = await findMatchingShiftForClockIn(this.prisma, {
-        userId: data.userId,
-        cinemaId: data.cinemaId,
-        clockIn,
-      });
-    }
-
-    if (shift?.id) {
-      const existingShiftEntry = await this.prisma.timeEntry.findFirst({
-        where: {
-          shiftId: shift.id,
-          userId: data.userId,
-          cinemaId: data.cinemaId,
-        },
-      });
-
-      if (existingShiftEntry) {
-        throw new BadRequestException(
-          'Der findes allerede en tidsregistrering for denne vagt',
-        );
-      }
-    }
-
-    const note = data.note?.trim() || null;
+    const note = getTrimmedOptionalNote(data.note);
 
     const entry = await this.prisma.timeEntry.create({
       data: {
@@ -431,24 +350,18 @@ export class TimeEntriesService {
 
     ensureTimeEntryEditable(existingEntry);
 
-    const clockOut = data?.clockOut ? new Date(data.clockOut) : new Date();
+    const clockOut = parseOptionalTimeEntryDate(
+      data?.clockOut,
+      'Ugyldig fyraften',
+    );
 
-    if (Number.isNaN(clockOut.getTime())) {
-      throw new BadRequestException('Ugyldig fyraften');
-    }
+    ensureClockOutAfterClockIn(existingEntry.clockIn, clockOut);
 
-    if (clockOut <= existingEntry.clockIn) {
-      throw new BadRequestException('Fyraften skal være efter mødetid');
-    }
-
-    const clockOutNote = data?.note?.trim();
-
-    const combinedNote = [
+    const clockOutNote = getTrimmedOptionalNote(data?.note);
+    const combinedNote = buildCombinedClockOutNote(
       existingEntry.note,
-      clockOutNote ? `Fyraften: ${clockOutNote}` : null,
-    ]
-      .filter((note): note is string => Boolean(note))
-      .join('\n\n');
+      clockOutNote,
+    );
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
@@ -720,11 +633,10 @@ export class TimeEntriesService {
     selectedCinemaId?: number | null,
   ) {
     const changedByUserId = user?.sub ?? null;
-    if (!adminNote?.trim()) {
-      throw new BadRequestException(
-        'Admin-begrundelse er påkrævet ved send retur til rettelse',
-      );
-    }
+    const trimmedAdminNote = getRequiredTrimmedNote(
+      adminNote,
+      'Admin-begrundelse er påkrævet ved send retur til rettelse',
+    );
 
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
@@ -742,7 +654,7 @@ export class TimeEntriesService {
       where: { id },
       data: {
         status: 'NEEDS_CHANGES',
-        adminNote: adminNote.trim(),
+        adminNote: trimmedAdminNote,
       },
       include: getTimeEntryResponseInclude(),
     });
@@ -753,7 +665,7 @@ export class TimeEntriesService {
       action: 'NEEDS_CHANGES',
       before: createTimeEntryRevisionSnapshot(existingEntry),
       after: createTimeEntryRevisionSnapshot(entry),
-      reason: adminNote.trim(),
+      reason: trimmedAdminNote,
     });
 
     await this.auditLogsService.create({
@@ -783,11 +695,10 @@ export class TimeEntriesService {
     selectedCinemaId?: number | null,
   ) {
     const changedByUserId = user?.sub ?? null;
-    if (!adminNote?.trim()) {
-      throw new BadRequestException(
-        'Admin-begrundelse er påkrævet ved annullering af tidsregistrering',
-      );
-    }
+    const trimmedAdminNote = getRequiredTrimmedNote(
+      adminNote,
+      'Admin-begrundelse er påkrævet ved annullering af tidsregistrering',
+    );
 
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
@@ -811,7 +722,7 @@ export class TimeEntriesService {
       where: { id },
       data: {
         status: 'VOIDED',
-        adminNote: adminNote.trim(),
+        adminNote: trimmedAdminNote,
       },
       include: getTimeEntryResponseInclude(),
     });
@@ -821,7 +732,7 @@ export class TimeEntriesService {
       payrollService: this.payrollService,
       existingEntry,
       entry,
-      reason: adminNote.trim(),
+      reason: trimmedAdminNote,
       changedByUserId: changedByUserId ?? null,
     });
 
@@ -831,7 +742,7 @@ export class TimeEntriesService {
       action: 'VOIDED',
       before: createDetailedTimeEntryRevisionSnapshot(existingEntry),
       after: createDetailedTimeEntryRevisionSnapshot(entry),
-      reason: adminNote.trim(),
+      reason: trimmedAdminNote,
     });
 
     await this.auditLogsService.create({
@@ -893,22 +804,18 @@ export class TimeEntriesService {
 
     ensureTimeEntryEditable(existingEntry, user);
 
-    const newClockIn = new Date(data.clockIn);
-    const newClockOut = data.clockOut ? new Date(data.clockOut) : null;
+    const newClockIn = parseRequiredTimeEntryDate(
+      data.clockIn,
+      'Ugyldig mødetid',
+    );
+    const newClockOut = parseNullableTimeEntryDate(
+      data.clockOut,
+      'Ugyldig fyraften',
+    );
     const newClockInNote = data.clockInNote ?? null;
     const newClockOutNote = data.clockOutNote ?? null;
 
-    if (Number.isNaN(newClockIn.getTime())) {
-      throw new BadRequestException('Ugyldig mødetid');
-    }
-
-    if (newClockOut && Number.isNaN(newClockOut.getTime())) {
-      throw new BadRequestException('Ugyldig fyraften');
-    }
-
-    if (newClockOut && newClockOut <= newClockIn) {
-      throw new BadRequestException('Fyraften skal være efter mødetid');
-    }
+    ensureClockOutAfterClockIn(newClockIn, newClockOut);
 
     const deviation = analyzeTimeEntryDeviation(
       {
@@ -1014,34 +921,21 @@ export class TimeEntriesService {
     ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
     ensureTimeEntryEditable(existingEntry, user);
 
-    if (!hasText(data.adminNote)) {
-      throw new BadRequestException(
-        'Admin-note er påkrævet ved rettelse af timer',
-      );
-    }
+    ensureRequiredText(
+      data.adminNote,
+      'Admin-note er påkrævet ved rettelse af timer',
+    );
 
     const nextClockIn = data.clockIn
-      ? new Date(data.clockIn)
+      ? parseRequiredTimeEntryDate(data.clockIn, 'Ugyldig mødetid')
       : existingEntry.clockIn;
 
     const nextClockOut =
       data.clockOut === undefined
         ? existingEntry.clockOut
-        : data.clockOut
-          ? new Date(data.clockOut)
-          : null;
+        : parseNullableTimeEntryDate(data.clockOut, 'Ugyldig fyraften');
 
-    if (Number.isNaN(nextClockIn.getTime())) {
-      throw new BadRequestException('Ugyldig mødetid');
-    }
-
-    if (nextClockOut && Number.isNaN(nextClockOut.getTime())) {
-      throw new BadRequestException('Ugyldig fyraften');
-    }
-
-    if (nextClockOut && nextClockOut <= nextClockIn) {
-      throw new BadRequestException('Fyraften skal være efter mødetid');
-    }
+    ensureClockOutAfterClockIn(nextClockIn, nextClockOut);
 
     const nextClockInNote =
       data.clockInNote === undefined
