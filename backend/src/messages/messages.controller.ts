@@ -76,8 +76,12 @@ export class MessagesController {
 
   @UseGuards(JwtGuard)
   @Patch(':id/read')
-  markAsRead(@Param('id') id: string) {
-    return this.messagesService.markAsRead(Number(id));
+  markAsRead(@Req() req: any, @Param('id') id: string) {
+    return this.messagesService.markAsRead(
+      Number(id),
+      Number(req.user.sub),
+      getRequiredCinemaId(req),
+    );
   }
 
   @UseGuards(JwtGuard)

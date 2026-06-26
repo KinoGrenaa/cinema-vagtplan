@@ -7,7 +7,30 @@ export async function markMessageAsRead(
   prisma: PrismaService,
   realtime: RealtimeGateway,
   id: number,
+  userId: number,
+  cinemaId: number,
 ) {
+  const message = await prisma.message.findUnique({
+    where: { id },
+  });
+
+  if (!message) {
+    throw new NotFoundException('Besked ikke fundet');
+  }
+
+  if (message.cinemaId !== cinemaId) {
+    throw new ForbiddenException('Du har ikke adgang til denne besked');
+  }
+
+  const allowed =
+    message.senderId === userId ||
+    message.receiverId === userId ||
+    message.isBroadcast;
+
+  if (!allowed) {
+    throw new ForbiddenException('Du har ikke adgang til denne besked');
+  }
+
   const updatedMessage = await prisma.message.update({
     where: { id },
     data: {

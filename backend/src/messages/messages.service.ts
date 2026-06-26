@@ -41,8 +41,14 @@ export class MessagesService {
     return findArchivedMessagesForUser(this.prisma, userId, cinemaId);
   }
 
-  async markAsRead(id: number) {
-    return markMessageAsRead(this.prisma, this.realtime, id);
+  async markAsRead(id: number, userId: number, cinemaId: number) {
+    return markMessageAsRead(
+      this.prisma,
+      this.realtime,
+      id,
+      userId,
+      cinemaId,
+    );
   }
 
   async getUnreadCount(userId: number, cinemaId?: number) {
