@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -13,7 +14,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { PushModule } from './push/push.module';
 import { EmployeeDocumentsModule } from './employee-documents/employee-documents.module';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { CinemasModule } from './cinemas/cinemas.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PushSubscriptionsModule } from './push-subscriptions/push-subscriptions.module';
@@ -56,6 +57,12 @@ import { StaffingMonitorModule } from './staffing-ai/staffing-monitor.module';
       },
     ]),
     PayrollTypesModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}
