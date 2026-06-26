@@ -18,7 +18,10 @@ async function bootstrap() {
 
   app.enableCors();
 
-  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+  app.use(
+    '/uploads/cinema-logos',
+    express.static(join(process.cwd(), 'uploads', 'cinema-logos')),
+  );
 
   await app.listen(3001);
 }

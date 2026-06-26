@@ -8,13 +8,17 @@ import {
   Post,
   Query,
   Req,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { createReadStream } from 'fs';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import type { Response } from 'express';
 
 import { EmployeeDocumentsService } from './employee-documents.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
@@ -127,6 +131,33 @@ export class EmployeeDocumentsController {
       fileName: file.originalname,
       fileType: file.mimetype,
     });
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER', 'EMPLOYEE')
+  @Get(':id/download')
+  async downloadDocument(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const document = await this.employeeDocumentsService.getDownload(
+      req.user,
+      Number(id),
+      this.parseCinemaId(cinemaId),
+    );
+
+    const safeFileName = document.fileName.replace(/[\r\n"]/g, '_');
+
+    response.set({
+      'Content-Type': document.fileType || 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${safeFileName}"; filename*=UTF-8''${encodeURIComponent(
+        document.fileName,
+      )}`,
+    });
+
+    return new StreamableFile(createReadStream(document.filePath));
   }
 
   @UseGuards(JwtGuard, RolesGuard)
