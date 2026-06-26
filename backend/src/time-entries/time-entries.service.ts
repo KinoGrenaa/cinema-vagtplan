@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -55,10 +51,13 @@ import {
 import {
   getOpenTimeEntryInclude,
   getTimeEntryResponseInclude,
-  getTimeEntryWithCinemaShiftInclude,
   getTimeEntryWithUserCinemaInclude,
-  getTimeEntryWithUserCinemaShiftInclude,
 } from './helpers/time-entry-includes';
+import {
+  findTimeEntryRevisionTargetOrThrow,
+  findTimeEntryWithCinemaShiftOrThrow,
+  findTimeEntryWithUserCinemaShiftOrThrow,
+} from './helpers/time-entry-query-helpers';
 import {
   buildCombinedClockOutNote,
   ensureClockOutAfterClockIn,
@@ -309,14 +308,10 @@ export class TimeEntriesService {
       note?: string;
     },
   ) {
-    const existingEntry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      include: getTimeEntryWithCinemaShiftInclude(),
-    });
-
-    if (!existingEntry) {
-      throw new NotFoundException('Tidsregistrering blev ikke fundet');
-    }
+    const existingEntry = await findTimeEntryWithCinemaShiftOrThrow(
+      this.prisma,
+      id,
+    );
 
     ensureTimeEntryEditable(existingEntry);
 
@@ -358,14 +353,10 @@ export class TimeEntriesService {
     confirmPayrollAdjustment = false,
   ) {
     const changedByUserId = getChangedByUserId(user);
-    const existingEntry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      include: getTimeEntryWithUserCinemaShiftInclude(),
-    });
-
-    if (!existingEntry) {
-      throw new NotFoundException('Tidsregistrering blev ikke fundet');
-    }
+    const existingEntry = await findTimeEntryWithUserCinemaShiftOrThrow(
+      this.prisma,
+      id,
+    );
 
     ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
 
@@ -558,14 +549,10 @@ export class TimeEntriesService {
       clockOutNote?: string | null;
     },
   ) {
-    const existingEntry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      include: getTimeEntryWithUserCinemaShiftInclude(),
-    });
-
-    if (!existingEntry) {
-      throw new NotFoundException('Tidsregistrering blev ikke fundet');
-    }
+    const existingEntry = await findTimeEntryWithUserCinemaShiftOrThrow(
+      this.prisma,
+      id,
+    );
 
     ensureOwnTimeEntryCanBeUpdated(user, existingEntry);
     ensureTimeEntryEditable(existingEntry, user);
@@ -623,14 +610,10 @@ export class TimeEntriesService {
     },
     selectedCinemaId?: number | null,
   ) {
-    const existingEntry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      include: getTimeEntryWithUserCinemaShiftInclude(),
-    });
-
-    if (!existingEntry) {
-      throw new NotFoundException('Tidsregistrering blev ikke fundet');
-    }
+    const existingEntry = await findTimeEntryWithUserCinemaShiftOrThrow(
+      this.prisma,
+      id,
+    );
 
     ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
     ensureTimeEntryEditable(existingEntry, user);
@@ -687,18 +670,7 @@ export class TimeEntriesService {
     id: number,
     selectedCinemaId?: number | null,
   ) {
-    const entry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        userId: true,
-        cinemaId: true,
-      },
-    });
-
-    if (!entry) {
-      throw new NotFoundException('Tidsregistrering blev ikke fundet');
-    }
+    const entry = await findTimeEntryRevisionTargetOrThrow(this.prisma, id);
 
     if (user.role === 'EMPLOYEE' && entry.userId !== user.sub) {
       throw new BadRequestException(
