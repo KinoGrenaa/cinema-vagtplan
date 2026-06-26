@@ -21,10 +21,7 @@ import {
   getTimeEntryCinemaFilter,
 } from './helpers/time-entry-access';
 import { createTimeEntryRevision } from './helpers/time-entry-revisions';
-import {
-  createDetailedTimeEntryRevisionSnapshot,
-  createTimeEntryRevisionSnapshot,
-} from './helpers/time-entry-revision-snapshots';
+import { createDetailedTimeEntryRevisionSnapshot } from './helpers/time-entry-revision-snapshots';
 import { createOrUpdateTimeEntryPayrollAdjustment } from './helpers/time-entry-payroll-adjustments';
 import {
   createEditAfterExportPayrollAdjustmentIfNeeded,
@@ -41,6 +38,16 @@ import {
   getOwnTimeEntryUpdateContext,
 } from './helpers/time-entry-update-helpers';
 import {
+  ensureTimeEntryCanBeUnapproved,
+  findEditableStatusActionEntry,
+  getChangedByUserId,
+  getRequiredStatusActionNote,
+  recordApproveTimeEntryStatusChange,
+  recordRejectTimeEntryStatusChange,
+  recordUnapproveTimeEntryStatusChange,
+  recordVoidTimeEntryStatusChange,
+} from './helpers/time-entry-status-action-helpers';
+import {
   getOpenTimeEntryInclude,
   getTimeEntryResponseInclude,
   getTimeEntryWithCinemaShiftInclude,
@@ -56,7 +63,6 @@ import {
   ensureShiftBelongsToUser,
   findManualEntryShift,
   getManualEntryNotes,
-  getRequiredTrimmedNote,
   getTrimmedOptionalNote,
   parseOptionalTimeEntryDate,
   parseRequiredTimeEntryDate,
@@ -374,7 +380,7 @@ export class TimeEntriesService {
     selectedCinemaId?: number | null,
     confirmPayrollAdjustment = false,
   ) {
-    const changedByUserId = user?.sub ?? null;
+    const changedByUserId = getChangedByUserId(user);
     const existingEntry = await this.prisma.timeEntry.findUnique({
       where: { id },
       include: getTimeEntryWithUserCinemaShiftInclude(),
@@ -425,22 +431,12 @@ export class TimeEntriesService {
       });
     }
 
-    await createTimeEntryRevision(this.prisma, {
-      timeEntryId: entry.id,
-      changedByUserId: changedByUserId ?? null,
-      action: 'APPROVED',
-      before: createTimeEntryRevisionSnapshot(existingEntry),
-      after: createTimeEntryRevisionSnapshot(entry),
-      reason: 'Tidsregistrering godkendt',
-    });
-
-    await this.auditLogsService.create({
-      action: 'APPROVE_TIME_ENTRY',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: `Status ændret fra ${existingEntry.status} til APPROVED for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
-      userId: changedByUserId ?? undefined,
-      cinemaId: entry.cinemaId,
+    await recordApproveTimeEntryStatusChange({
+      prisma: this.prisma,
+      auditLogsService: this.auditLogsService,
+      existingEntry,
+      entry,
+      changedByUserId,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
@@ -451,24 +447,15 @@ export class TimeEntriesService {
     user: any,
     selectedCinemaId?: number | null,
   ) {
-    const changedByUserId = user?.sub ?? null;
-    const existingEntry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      include: getTimeEntryWithUserCinemaInclude(),
+    const changedByUserId = getChangedByUserId(user);
+    const existingEntry = await findEditableStatusActionEntry({
+      prisma: this.prisma,
+      id,
+      user,
+      selectedCinemaId,
     });
 
-    if (!existingEntry) {
-      throw new NotFoundException('Tidsregistrering blev ikke fundet');
-    }
-
-    ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
-    ensureTimeEntryEditable(existingEntry, user);
-
-    if (existingEntry.status === 'VOIDED') {
-      throw new BadRequestException(
-        'En annulleret tidsregistrering kan ikke genåbnes',
-      );
-    }
+    ensureTimeEntryCanBeUnapproved(existingEntry);
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
@@ -478,22 +465,12 @@ export class TimeEntriesService {
       include: getTimeEntryResponseInclude(),
     });
 
-    await createTimeEntryRevision(this.prisma, {
-      timeEntryId: entry.id,
-      changedByUserId: changedByUserId ?? null,
-      action: 'UNAPPROVED',
-      before: createTimeEntryRevisionSnapshot(existingEntry),
-      after: createTimeEntryRevisionSnapshot(entry),
-      reason: 'Godkendelse fjernet',
-    });
-
-    await this.auditLogsService.create({
-      action: 'UNAPPROVE_TIME_ENTRY',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: `Status ændret fra ${existingEntry.status} til PENDING for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
-      userId: changedByUserId ?? undefined,
-      cinemaId: entry.cinemaId,
+    await recordUnapproveTimeEntryStatusChange({
+      prisma: this.prisma,
+      auditLogsService: this.auditLogsService,
+      existingEntry,
+      entry,
+      changedByUserId,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
@@ -505,23 +482,18 @@ export class TimeEntriesService {
     user: any,
     selectedCinemaId?: number | null,
   ) {
-    const changedByUserId = user?.sub ?? null;
-    const trimmedAdminNote = getRequiredTrimmedNote(
+    const changedByUserId = getChangedByUserId(user);
+    const trimmedAdminNote = getRequiredStatusActionNote(
       adminNote,
       'Admin-begrundelse er påkrævet ved send retur til rettelse',
     );
 
-    const existingEntry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      include: getTimeEntryWithUserCinemaInclude(),
+    const existingEntry = await findEditableStatusActionEntry({
+      prisma: this.prisma,
+      id,
+      user,
+      selectedCinemaId,
     });
-
-    if (!existingEntry) {
-      throw new NotFoundException('Tidsregistrering blev ikke fundet');
-    }
-
-    ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
-    ensureTimeEntryEditable(existingEntry, user);
 
     const entry = await this.prisma.timeEntry.update({
       where: { id },
@@ -532,22 +504,13 @@ export class TimeEntriesService {
       include: getTimeEntryResponseInclude(),
     });
 
-    await createTimeEntryRevision(this.prisma, {
-      timeEntryId: entry.id,
-      changedByUserId: changedByUserId ?? null,
-      action: 'NEEDS_CHANGES',
-      before: createTimeEntryRevisionSnapshot(existingEntry),
-      after: createTimeEntryRevisionSnapshot(entry),
+    await recordRejectTimeEntryStatusChange({
+      prisma: this.prisma,
+      auditLogsService: this.auditLogsService,
+      existingEntry,
+      entry,
+      changedByUserId,
       reason: trimmedAdminNote,
-    });
-
-    await this.auditLogsService.create({
-      action: 'SEND_BACK_TIME_ENTRY',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: `Sendt retur til rettelse for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
-      userId: changedByUserId ?? undefined,
-      cinemaId: entry.cinemaId,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
@@ -559,23 +522,18 @@ export class TimeEntriesService {
     user: any,
     selectedCinemaId?: number | null,
   ) {
-    const changedByUserId = user?.sub ?? null;
-    const trimmedAdminNote = getRequiredTrimmedNote(
+    const changedByUserId = getChangedByUserId(user);
+    const trimmedAdminNote = getRequiredStatusActionNote(
       adminNote,
       'Admin-begrundelse er påkrævet ved annullering af tidsregistrering',
     );
 
-    const existingEntry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      include: getTimeEntryWithUserCinemaInclude(),
+    const existingEntry = await findEditableStatusActionEntry({
+      prisma: this.prisma,
+      id,
+      user,
+      selectedCinemaId,
     });
-
-    if (!existingEntry) {
-      throw new NotFoundException('Tidsregistrering blev ikke fundet');
-    }
-
-    ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
-    ensureTimeEntryEditable(existingEntry, user);
 
     if (existingEntry.status === 'VOIDED') {
       throw new BadRequestException(
@@ -601,22 +559,13 @@ export class TimeEntriesService {
       changedByUserId: changedByUserId ?? null,
     });
 
-    await createTimeEntryRevision(this.prisma, {
-      timeEntryId: entry.id,
-      changedByUserId: changedByUserId ?? null,
-      action: 'VOIDED',
-      before: createDetailedTimeEntryRevisionSnapshot(existingEntry),
-      after: createDetailedTimeEntryRevisionSnapshot(entry),
+    await recordVoidTimeEntryStatusChange({
+      prisma: this.prisma,
+      auditLogsService: this.auditLogsService,
+      existingEntry,
+      entry,
+      changedByUserId,
       reason: trimmedAdminNote,
-    });
-
-    await this.auditLogsService.create({
-      action: 'VOID_TIME_ENTRY',
-      entityType: 'TimeEntry',
-      entityId: entry.id,
-      description: `Tidsregistrering annulleret for ${existingEntry.user.firstName} ${existingEntry.user.lastName}`,
-      userId: changedByUserId ?? undefined,
-      cinemaId: entry.cinemaId,
     });
 
     return notifyTimeEntryUpdated(this.realtimeGateway, entry);
