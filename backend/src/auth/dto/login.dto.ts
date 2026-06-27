@@ -5,6 +5,6 @@ export class LoginDto {
   email: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8, { message: 'Adgangskode skal være mindst 8 tegn.' })
   password: string;
 }

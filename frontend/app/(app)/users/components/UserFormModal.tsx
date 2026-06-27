@@ -59,10 +59,11 @@ export function UserModal({
                 label="Password"
                 type="password"
                 value={user.password || ""}
+                minLength={8}
                 onChange={(value) => setUser({ ...user, password: value })}
               />
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Password skal være mindst 6 tegn.
+                Password skal være mindst 8 tegn.
               </p>
             </div>
           )}
@@ -170,11 +171,13 @@ function Input({
   value,
   onChange,
   type = "text",
+  minLength,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  minLength?: number;
 }) {
   return (
     <label className="space-y-1">
@@ -182,6 +185,7 @@ function Input({
       <input
         type={type}
         value={value}
+        minLength={minLength}
         onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
       />

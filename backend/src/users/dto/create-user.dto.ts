@@ -13,7 +13,7 @@ export class CreateUserDto {
   email: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(8, { message: 'Adgangskode skal være mindst 8 tegn.' })
   password: string;
 
   @IsString()
