@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type MasterHeaderProps = {
   onRefresh: () => void;
 };
@@ -17,13 +19,22 @@ export default function MasterHeader({ onRefresh }: MasterHeaderProps) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-        >
-          Opdater liste
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/system-error-logs"
+            className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-800 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-200 dark:hover:bg-purple-950"
+          >
+            Systemfejllog
+          </Link>
+
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+          >
+            Opdater liste
+          </button>
+        </div>
       </div>
     </div>
   );
