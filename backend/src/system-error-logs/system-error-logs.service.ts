@@ -340,6 +340,10 @@ export class SystemErrorLogsService {
     const resolvedStatuses: SystemErrorStatus[] = ['RESOLVED', 'IGNORED'];
     const isResolvedStatus = resolvedStatuses.includes(params.status);
 
+    if (isResolvedStatus && !note) {
+      throw new BadRequestException('Intern note er påkrævet');
+    }
+
     const rows = await this.prisma.$queryRaw<SystemErrorLogRow[]>(Prisma.sql`
       UPDATE "SystemErrorLog"
       SET

@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import InfoModal from "@/app/components/modals/InfoModal";
+import InputModal from "@/app/components/modals/InputModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
+import { useInputModal } from "@/app/hooks/useInputModal";
 import { apiFetch } from "@/app/lib/api";
 import { useAuth } from "@/app/providers/AuthProvider";
 
@@ -229,6 +231,7 @@ function getSeverityBadgeClass(severity: SystemErrorSeverity) {
 export default function SystemErrorLogsPage() {
   const { loading: authLoading, isMaster } = useAuth();
   const infoDialog = useInfoModal();
+  const noteDialog = useInputModal();
   const showErrorRef = useRef(infoDialog.showError);
 
   const [logs, setLogs] = useState<SystemErrorLog[]>([]);
@@ -317,7 +320,7 @@ export default function SystemErrorLogsPage() {
     [logs],
   );
 
-  async function updateStatus(logId: number, action: LogAction) {
+  async function updateStatus(logId: number, action: LogAction, note?: string) {
     setUpdatingLogId(logId);
 
     try {
@@ -326,7 +329,7 @@ export default function SystemErrorLogsPage() {
       };
 
       if (action !== "seen") {
-        options.body = JSON.stringify({});
+        options.body = JSON.stringify({ note: note?.trim() ?? "" });
       }
 
       const response = await apiFetch(
@@ -360,6 +363,30 @@ export default function SystemErrorLogsPage() {
     } finally {
       setUpdatingLogId(null);
     }
+  }
+
+  function requestResolutionNote(
+    log: SystemErrorLog,
+    action: Extract<LogAction, "resolve" | "ignore">,
+  ) {
+    const isResolve = action === "resolve";
+
+    noteDialog.prompt({
+      title: isResolve ? "Markér systemfejl som løst" : "Ignorer systemfejl",
+      description: isResolve
+        ? "Skriv en kort intern note om, hvorfor fejlen er løst."
+        : "Skriv en kort intern note om, hvorfor fejlen ignoreres.",
+      label: "Intern note",
+      placeholder: isResolve
+        ? "Fx rettet i seneste deploy eller skyldes kendt validering."
+        : "Fx dublet, forventet brugerfejl eller ikke relevant.",
+      confirmText: isResolve ? "Markér løst" : "Ignorer",
+      cancelText: "Annuller",
+      required: true,
+      onConfirm: async (note) => {
+        await updateStatus(log.id, action, note);
+      },
+    });
   }
 
   function resetFilters() {
@@ -633,7 +660,7 @@ export default function SystemErrorLogsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => void updateStatus(log.id, "resolve")}
+                      onClick={() => requestResolutionNote(log, "resolve")}
                       disabled={
                         updatingLogId === log.id || log.status === "RESOLVED"
                       }
@@ -643,7 +670,7 @@ export default function SystemErrorLogsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => void updateStatus(log.id, "ignore")}
+                      onClick={() => requestResolutionNote(log, "ignore")}
                       disabled={
                         updatingLogId === log.id || log.status === "IGNORED"
                       }
@@ -666,6 +693,22 @@ export default function SystemErrorLogsPage() {
         buttonText={infoDialog.buttonText}
         variant={infoDialog.variant}
         onClose={infoDialog.close}
+      />
+
+      <InputModal
+        open={noteDialog.open}
+        title={noteDialog.title}
+        description={noteDialog.description}
+        label={noteDialog.label}
+        placeholder={noteDialog.placeholder}
+        value={noteDialog.value}
+        confirmText={noteDialog.confirmText}
+        cancelText={noteDialog.cancelText}
+        loading={noteDialog.loading}
+        required={noteDialog.required}
+        onChange={noteDialog.setValue}
+        onConfirm={noteDialog.handleConfirm}
+        onCancel={noteDialog.handleCancel}
       />
     </main>
   );
