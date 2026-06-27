@@ -27,6 +27,29 @@ function parsePositiveInteger(value: number | string | null | undefined) {
   return numericValue;
 }
 
+function parseMovieShowingDate(date?: string) {
+  if (!date) {
+    return undefined;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new BadRequestException('Dato skal være en gyldig dato');
+  }
+
+  const [year, month, day] = date.split('-').map(Number);
+  const parsedDate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsedDate.getUTCFullYear() !== year ||
+    parsedDate.getUTCMonth() !== month - 1 ||
+    parsedDate.getUTCDate() !== day
+  ) {
+    throw new BadRequestException('Dato skal være en gyldig dato');
+  }
+
+  return date;
+}
+
 function resolveMovieShowingsCinemaId({
   user,
   selectedCinemaId,
@@ -64,13 +87,13 @@ export class MovieShowingsService {
 
   findAll(options: FindMovieShowingsOptions) {
     const cinemaId = resolveMovieShowingsCinemaId(options);
+    const movieDate = parseMovieShowingDate(options.date);
     const where: any = {
       cinemaId,
     };
 
-    if (options.date) {
-      const { start, end } = getCopenhagenDayRange(options.date);
-
+    if (movieDate) {
+      const { start, end } = getCopenhagenDayRange(movieDate);
       where.AND = [
         {
           startTime: {
