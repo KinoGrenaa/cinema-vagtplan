@@ -43,6 +43,18 @@ export class StaffingRequestsController {
     return cinemaId;
   }
 
+  private parseRequestId(value: string) {
+    const requestId = Number(value);
+
+    if (!Number.isInteger(requestId) || requestId <= 0) {
+      throw new BadRequestException(
+        'Bemandingsforespørgsel skal være et gyldigt ID',
+      );
+    }
+
+    return requestId;
+  }
+
   @Get()
   findAll(@Req() req: AuthRequest, @Query('cinemaId') cinemaId?: string) {
     return this.staffingRequestsService.findAll(
@@ -75,7 +87,7 @@ export class StaffingRequestsController {
   ) {
     return this.staffingRequestsService.accept(
       req.user,
-      Number(id),
+      this.parseRequestId(id),
       this.parseCinemaId(cinemaId),
     );
   }
@@ -88,7 +100,7 @@ export class StaffingRequestsController {
   ) {
     return this.staffingRequestsService.reject(
       req.user,
-      Number(id),
+      this.parseRequestId(id),
       this.parseCinemaId(cinemaId),
     );
   }
@@ -101,7 +113,7 @@ export class StaffingRequestsController {
   ) {
     return this.staffingRequestsService.cancel(
       req.user,
-      Number(id),
+      this.parseRequestId(id),
       this.parseCinemaId(cinemaId),
     );
   }
