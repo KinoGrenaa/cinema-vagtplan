@@ -39,6 +39,7 @@ export class LeaveRequestsService {
       },
       include: {
         user: true,
+        createdByUser: true,
       },
       orderBy: {
         startDate: 'asc',

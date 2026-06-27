@@ -124,9 +124,11 @@ export async function createLeaveRequestFlow(params: {
       reason: params.data.reason,
       cinemaId: target.cinemaId,
       userId: target.userId,
+      createdByUserId: target.actorUserId,
     },
     include: {
       user: true,
+      createdByUser: true,
     },
   });
 

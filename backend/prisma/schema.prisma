@@ -177,6 +177,7 @@ model User {
 
   shifts                     Shift[]
   leaveRequests              LeaveRequest[]
+  createdLeaveRequests       LeaveRequest[]              @relation("LeaveRequestCreatedBy")
   offeredTrades              ShiftTrade[]                @relation("OfferedTrades")
   acceptedTrades             ShiftTrade[]                @relation("AcceptedTrades")
   rejectedTrades             ShiftTrade[]                @relation("RejectedTrades")
@@ -261,8 +262,10 @@ model LeaveRequest {
   cinemaId Int
   cinema   Cinema @relation(fields: [cinemaId], references: [id])
 
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
+  userId          Int
+  user            User @relation(fields: [userId], references: [id])
+  createdByUserId Int
+  createdByUser   User @relation("LeaveRequestCreatedBy", fields: [createdByUserId], references: [id])
 }
 
 model ShiftTrade {
@@ -753,4 +756,39 @@ model TimeEntryRevision {
   @@index([timeEntryId])
   @@index([changedByUserId])
   @@index([createdAt])
+}
+
+model SystemErrorLog {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  severity String @default("ERROR")
+  status   String @default("NEW")
+  source   String @default("backend")
+
+  method           String?
+  path             String?
+  action           String?
+  message          String
+  technicalMessage String?
+  stack            String?
+  correlationId    String?
+  statusCode       Int?
+
+  userId   Int?
+  userRole String?
+  cinemaId Int?
+  metadata Json?
+
+  resolvedAt       DateTime?
+  resolvedByUserId Int?
+  resolutionNote   String?
+
+  @@index([createdAt])
+  @@index([severity])
+  @@index([status])
+  @@index([cinemaId])
+  @@index([userId])
+  @@index([correlationId])
 }

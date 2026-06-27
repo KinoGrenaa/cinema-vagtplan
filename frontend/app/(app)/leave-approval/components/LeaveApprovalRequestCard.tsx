@@ -4,21 +4,7 @@ import {
   formatUtcDateDK,
 } from "@/app/utils/dateTime";
 
-type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
-
-type LeaveRequest = {
-  id: number;
-  startDate: string;
-  endDate: string;
-  reason?: string | null;
-  status: LeaveStatus;
-  createdAt?: string;
-  user: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
-};
+import type { LeaveRequest, LeaveRequestUser, LeaveStatus } from "../helpers/leaveApprovalTypes";
 
 type LeaveDisplayDateRange = {
   startDate: string;
@@ -137,7 +123,6 @@ function getStatusDescription(status: LeaveStatus) {
 function getNoActionLabel(status: LeaveStatus) {
   if (status === "REJECTED") return "Afvist · ingen yderligere handlinger";
   if (status === "CANCELLED") return "Annulleret · ingen yderligere handlinger";
-
   return "Ingen handlinger";
 }
 
@@ -158,6 +143,30 @@ function formatRequestCreatedAt(createdAt?: string) {
   return `${formatDateDK(createdAt)} kl. ${formatTimeDK(createdAt)}`;
 }
 
+function formatUserName(user?: LeaveRequestUser | null) {
+  if (!user) {
+    return "Ukendt";
+  }
+
+  const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+
+  return name || `Bruger #${user.id}`;
+}
+
+function formatCreatedBy(request: LeaveRequest) {
+  if (!request.createdByUser) {
+    return "Ukendt";
+  }
+
+  const creatorName = formatUserName(request.createdByUser);
+
+  if (request.createdByUser.id === request.user.id) {
+    return `${creatorName} (egen ansøgning)`;
+  }
+
+  return creatorName;
+}
+
 export default function LeaveApprovalRequestCard({
   request,
   onUpdateStatus,
@@ -174,9 +183,9 @@ export default function LeaveApprovalRequestCard({
             >
               {getDetailedStatusLabel(request.status)}
             </span>
-
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Ansøgt {formatRequestCreatedAt(request.createdAt)}
+              Oprettet {formatRequestCreatedAt(request.createdAt)} · af{" "}
+              {formatCreatedBy(request)}
             </span>
           </div>
 
@@ -199,7 +208,6 @@ export default function LeaveApprovalRequestCard({
               >
                 Godkend
               </button>
-
               <button
                 type="button"
                 onClick={() => onUpdateStatus(request.id, "REJECTED")}
@@ -228,7 +236,7 @@ export default function LeaveApprovalRequestCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+      <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950/50">
           <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
             Fraværsperiode
@@ -254,6 +262,16 @@ export default function LeaveApprovalRequestCard({
           <div className="mt-1 font-medium">{getStatusLabel(request.status)}</div>
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Oprettet {formatRequestCreatedAt(request.createdAt)}
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950/50">
+          <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+            Oprettet af
+          </div>
+          <div className="mt-1 font-medium">{formatCreatedBy(request)}</div>
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Fravær for {formatUserName(request.user)}
           </div>
         </div>
       </div>

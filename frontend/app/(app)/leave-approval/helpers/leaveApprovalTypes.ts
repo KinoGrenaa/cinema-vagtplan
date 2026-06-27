@@ -1,5 +1,11 @@
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 
+export type LeaveRequestUser = {
+  id: number;
+  firstName: string;
+  lastName: string;
+};
+
 export type LeaveRequest = {
   id: number;
   startDate: string;
@@ -7,11 +13,8 @@ export type LeaveRequest = {
   reason?: string | null;
   status: LeaveStatus;
   createdAt?: string;
-  user: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
+  user: LeaveRequestUser;
+  createdByUser?: LeaveRequestUser | null;
 };
 
 export type LeaveDisplayDateRange = {
@@ -25,7 +28,6 @@ export type LeaveDateGroup = {
   sortTime: number;
   requests: LeaveRequest[];
 };
-
 export type GroupedLeaveRequests = {
   userId: number;
   userName: string;
