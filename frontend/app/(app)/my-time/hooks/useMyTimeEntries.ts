@@ -5,7 +5,15 @@ import type { TimeEntry } from "../helpers/myTimeTypes";
 
 type ShowError = (title: string, description: string) => void;
 
-export function useMyTimeEntries(showError: ShowError) {
+type UseMyTimeEntriesOptions = {
+  disabled?: boolean;
+};
+
+export function useMyTimeEntries(
+  showError: ShowError,
+  options: UseMyTimeEntriesOptions = {},
+) {
+  const disabled = options.disabled ?? false;
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const showErrorRef = useRef(showError);
@@ -15,19 +23,22 @@ export function useMyTimeEntries(showError: ShowError) {
   }, [showError]);
 
   const fetchEntries = useCallback(async () => {
+    if (disabled) {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-
       const response = await apiFetch("/time-entries/me");
 
       if (!response.ok) {
         setEntries([]);
-
         showErrorRef.current(
           "Kunne ikke hente dine timer",
           "Der opstod en fejl, da dine timer skulle hentes. Prøv igen.",
         );
-
         return;
       }
 
@@ -35,7 +46,6 @@ export function useMyTimeEntries(showError: ShowError) {
       setEntries(Array.isArray(data) ? data : []);
     } catch {
       setEntries([]);
-
       showErrorRef.current(
         "Kunne ikke hente dine timer",
         "Der opstod en fejl, da dine timer skulle hentes. Prøv igen.",
@@ -43,7 +53,7 @@ export function useMyTimeEntries(showError: ShowError) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [disabled]);
 
   useEffect(() => {
     fetchEntries();
