@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import InfoModal from "./components/modals/InfoModal";
 import { useInfoModal } from "./hooks/useInfoModal";
 import { useAuth } from "./providers/AuthProvider";
@@ -53,13 +53,26 @@ async function readLoginError(response: Response) {
 export default function HomePage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [loginLoading, setLoginLoading] = useState(false);
+  const { login, loading: authLoading, token, user } = useAuth();
   const infoDialog = useInfoModal();
+  const isAuthenticated = Boolean(token && user);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
+
+    window.location.href = "/dashboard";
+  }, [authLoading, isAuthenticated]);
+
+  if (authLoading || isAuthenticated) {
+    return null;
+  }
 
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault();
-    setLoading(true);
+    setLoginLoading(true);
 
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -97,7 +110,7 @@ export default function HomePage() {
         "Der kunne ikke oprettes forbindelse til systemet. Tjek forbindelsen og prøv igen.",
       );
     } finally {
-      setLoading(false);
+      setLoginLoading(false);
     }
   }
 
@@ -132,10 +145,10 @@ export default function HomePage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loginLoading}
               className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 disabled:bg-gray-400"
             >
-              {loading ? "Logger ind..." : "Log ind"}
+              {loginLoading ? "Logger ind..." : "Log ind"}
             </button>
           </form>
         </div>
