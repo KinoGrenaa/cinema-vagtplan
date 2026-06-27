@@ -16,9 +16,10 @@ export function getRoleLabel(role: User["role"]) {
 
 function translateApiError(message: string) {
   if (
-    message.includes("password must be longer than or equal to 6 characters")
+    message.includes("password must be longer than or equal to 6 characters") ||
+    message.includes("password must be longer than or equal to 8 characters")
   ) {
-    return "Password skal være mindst 6 tegn.";
+    return "Adgangskode skal være mindst 8 tegn.";
   }
 
   if (message.includes("email must be an email")) {
