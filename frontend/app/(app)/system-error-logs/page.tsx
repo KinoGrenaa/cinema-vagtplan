@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import InputModal from "@/app/components/modals/InputModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
@@ -68,6 +69,13 @@ type SystemErrorLogRetentionSummary = {
     oldestCreatedAt: string | null;
     newestCreatedAt: string | null;
   };
+};
+
+type SystemErrorLogRetentionCleanupResult = {
+  deletedCount: number;
+  before: SystemErrorLogRetentionSummary["summary"];
+  after: SystemErrorLogRetentionSummary["summary"];
+  policy: SystemErrorLogRetentionSummary["policy"];
 };
 
 const statusOptions: { value: StatusFilter; label: string }[] = [
@@ -278,6 +286,8 @@ export default function SystemErrorLogsPage() {
     useState<SystemErrorLogRetentionSummary | null>(null);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [loadingRetentionSummary, setLoadingRetentionSummary] = useState(false);
+  const [cleaningRetention, setCleaningRetention] = useState(false);
+  const [cleanupConfirmOpen, setCleanupConfirmOpen] = useState(false);
   const [updatingLogId, setUpdatingLogId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ACTIVE");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("");
@@ -344,7 +354,7 @@ export default function SystemErrorLogsPage() {
           "Opbevaringsoversigt kunne ikke hentes.",
         );
 
-        showErrorRef.current("Kunne ikke hente retention", message);
+        showErrorRef.current("Kunne ikke hente opbevaring", message);
         return;
       }
 
@@ -433,6 +443,7 @@ export default function SystemErrorLogsPage() {
       }
 
       await fetchLogs();
+      await fetchRetentionSummary();
 
       infoDialog.show({
         title: "Status opdateret",
@@ -472,6 +483,62 @@ export default function SystemErrorLogsPage() {
         await updateStatus(log.id, action, note);
       },
     });
+  }
+
+  function requestRetentionCleanup() {
+    const cleanupCount = retentionSummary?.summary.eligibleForCleanupCount ?? 0;
+
+    if (cleanupCount <= 0) {
+      infoDialog.show({
+        title: "Ingen gamle logposter",
+        description: "Der er ingen systemfejl, som opbevaringspolitikken markerer til oprydning lige nu.",
+        variant: "info",
+        buttonText: "OK",
+      });
+      return;
+    }
+
+    setCleanupConfirmOpen(true);
+  }
+
+  async function cleanupRetention() {
+    setCleaningRetention(true);
+
+    try {
+      const response = await apiFetch("/system-error-logs/retention-cleanup", {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const message = await readErrorMessage(
+          response,
+          "Gamle logposter kunne ikke ryddes.",
+        );
+
+        infoDialog.showError("Kunne ikke rydde gamle logposter", message);
+        return;
+      }
+
+      const data = (await response.json()) as SystemErrorLogRetentionCleanupResult;
+
+      setCleanupConfirmOpen(false);
+      await fetchLogs();
+      await fetchRetentionSummary();
+
+      infoDialog.show({
+        title: "Gamle logposter er ryddet",
+        description: `${data.deletedCount} logposter blev slettet efter opbevaringspolitikken.`,
+        variant: "success",
+        buttonText: "OK",
+      });
+    } catch (error) {
+      infoDialog.showError(
+        "Kunne ikke rydde gamle logposter",
+        error instanceof Error ? error.message : "Ukendt fejl",
+      );
+    } finally {
+      setCleaningRetention(false);
+    }
   }
 
   function showActiveErrors() {
@@ -585,14 +652,30 @@ export default function SystemErrorLogsPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => void fetchRetentionSummary()}
-              disabled={loadingRetentionSummary}
-              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-            >
-              {loadingRetentionSummary ? "Opdaterer..." : "Opdater opbevaring"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void fetchRetentionSummary()}
+                disabled={loadingRetentionSummary || cleaningRetention}
+                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+              >
+                {loadingRetentionSummary ? "Opdaterer..." : "Opdater opbevaring"}
+              </button>
+
+              <button
+                type="button"
+                onClick={requestRetentionCleanup}
+                disabled={
+                  loadingRetentionSummary ||
+                  cleaningRetention ||
+                  !retentionSummary ||
+                  retentionSummary.summary.eligibleForCleanupCount <= 0
+                }
+                className="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-600 dark:hover:bg-red-500"
+              >
+                {cleaningRetention ? "Rydder..." : "Ryd gamle logposter"}
+              </button>
+            </div>
           </div>
 
           {loadingRetentionSummary && !retentionSummary ? (
@@ -682,6 +765,13 @@ export default function SystemErrorLogsPage() {
                   {retentionSummary.summary.criticalEligibleCount}
                 </div>
               </div>
+
+              {retentionSummary.summary.eligibleForCleanupCount > 0 && (
+                <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                  Oprydning sletter kun de logposter, der er ældre end den viste
+                  opbevaringspolitik. Handlingen kan ikke fortrydes.
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -953,6 +1043,24 @@ export default function SystemErrorLogsPage() {
         buttonText={infoDialog.buttonText}
         variant={infoDialog.variant}
         onClose={infoDialog.close}
+      />
+
+      <ConfirmModal
+        open={cleanupConfirmOpen}
+        title="Ryd gamle systemfejl"
+        description={`Du er ved at slette ${
+          retentionSummary?.summary.eligibleForCleanupCount ?? 0
+        } gamle logposter efter opbevaringspolitikken. Handlingen kan ikke fortrydes.`}
+        confirmText="Ryd gamle logposter"
+        cancelText="Annuller"
+        confirmVariant="danger"
+        loading={cleaningRetention}
+        onConfirm={() => void cleanupRetention()}
+        onCancel={() => {
+          if (!cleaningRetention) {
+            setCleanupConfirmOpen(false);
+          }
+        }}
       />
 
       <InputModal

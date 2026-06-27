@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -42,6 +43,11 @@ export class SystemErrorLogsController {
   @Get('retention-summary')
   getRetentionSummary() {
     return this.systemErrorLogsService.getRetentionSummary();
+  }
+
+  @Delete('retention-cleanup')
+  cleanupRetention() {
+    return this.systemErrorLogsService.cleanupRetention();
   }
 
   @Get()

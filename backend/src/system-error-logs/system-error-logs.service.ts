@@ -223,6 +223,40 @@ function normalizeRetentionSummaryRow(row?: SystemErrorRetentionSummaryRow) {
   };
 }
 
+function getRetentionEligibilitySql(
+  cutoffs: ReturnType<typeof getSystemErrorLogRetentionCutoffs>,
+) {
+  const activeEligibleSql = Prisma.sql`
+    logs."severity" <> 'CRITICAL'
+    AND logs."status" IN ('NEW', 'SEEN')
+    AND logs."createdAt" < ${cutoffs.activeStatusesBefore}
+  `;
+
+  const resolvedEligibleSql = Prisma.sql`
+    logs."severity" <> 'CRITICAL'
+    AND logs."status" IN ('RESOLVED', 'IGNORED')
+    AND COALESCE(logs."resolvedAt", logs."updatedAt") < ${cutoffs.resolvedStatusesBefore}
+  `;
+
+  const criticalEligibleSql = Prisma.sql`
+    logs."severity" = 'CRITICAL'
+    AND logs."createdAt" < ${cutoffs.criticalSeverityBefore}
+  `;
+
+  const cleanupEligibleSql = Prisma.sql`
+    (${activeEligibleSql})
+    OR (${resolvedEligibleSql})
+    OR (${criticalEligibleSql})
+  `;
+
+  return {
+    activeEligibleSql,
+    resolvedEligibleSql,
+    criticalEligibleSql,
+    cleanupEligibleSql,
+  };
+}
+
 @Injectable()
 export class SystemErrorLogsService {
   constructor(private prisma: PrismaService) {}
@@ -354,29 +388,12 @@ export class SystemErrorLogsService {
   async getRetentionSummary() {
     const evaluatedAt = new Date();
     const cutoffs = getSystemErrorLogRetentionCutoffs(evaluatedAt);
-
-    const activeEligibleSql = Prisma.sql`
-      logs."severity" <> 'CRITICAL'
-      AND logs."status" IN ('NEW', 'SEEN')
-      AND logs."createdAt" < ${cutoffs.activeStatusesBefore}
-    `;
-
-    const resolvedEligibleSql = Prisma.sql`
-      logs."severity" <> 'CRITICAL'
-      AND logs."status" IN ('RESOLVED', 'IGNORED')
-      AND COALESCE(logs."resolvedAt", logs."updatedAt") < ${cutoffs.resolvedStatusesBefore}
-    `;
-
-    const criticalEligibleSql = Prisma.sql`
-      logs."severity" = 'CRITICAL'
-      AND logs."createdAt" < ${cutoffs.criticalSeverityBefore}
-    `;
-
-    const cleanupEligibleSql = Prisma.sql`
-      (${activeEligibleSql})
-      OR (${resolvedEligibleSql})
-      OR (${criticalEligibleSql})
-    `;
+    const {
+      activeEligibleSql,
+      resolvedEligibleSql,
+      criticalEligibleSql,
+      cleanupEligibleSql,
+    } = getRetentionEligibilitySql(cutoffs);
 
     const rows = await this.prisma.$queryRaw<SystemErrorRetentionSummaryRow[]>(
       Prisma.sql`
@@ -404,6 +421,33 @@ export class SystemErrorLogsService {
         cutoffs,
       },
       summary: normalizeRetentionSummaryRow(rows[0]),
+    };
+  }
+
+  async cleanupRetention() {
+    const summaryBefore = await this.getRetentionSummary();
+    const cutoffs = getSystemErrorLogRetentionCutoffs(new Date());
+    const { cleanupEligibleSql } = getRetentionEligibilitySql(cutoffs);
+
+    const rows = await this.prisma.$queryRaw<{ deletedCount: number }[]>(
+      Prisma.sql`
+        WITH deleted AS (
+          DELETE FROM "SystemErrorLog" logs
+          WHERE ${cleanupEligibleSql}
+          RETURNING logs."id"
+        )
+        SELECT COUNT(*)::integer AS "deletedCount"
+        FROM deleted
+      `,
+    );
+
+    const summaryAfter = await this.getRetentionSummary();
+
+    return {
+      deletedCount: Number(rows[0]?.deletedCount ?? 0),
+      before: summaryBefore.summary,
+      after: summaryAfter.summary,
+      policy: summaryAfter.policy,
     };
   }
 
