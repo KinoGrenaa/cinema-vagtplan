@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type {
   EmploymentType,
   User,
@@ -22,6 +23,8 @@ export function UserModal({
   onSave: () => void;
   showPassword?: boolean;
 }) {
+  const preventCreateAutofill = Boolean(showPassword);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
@@ -30,26 +33,38 @@ export function UserModal({
         <div className="grid gap-4 md:grid-cols-2">
           <Input
             label="Fornavn"
+            name={preventCreateAutofill ? "create-user-first-name" : undefined}
             value={user.firstName}
+            autoComplete={preventCreateAutofill ? "off" : undefined}
+            preventBrowserAutofill={preventCreateAutofill}
             onChange={(value) => setUser({ ...user, firstName: value })}
           />
 
           <Input
             label="Efternavn"
+            name={preventCreateAutofill ? "create-user-last-name" : undefined}
             value={user.lastName}
+            autoComplete={preventCreateAutofill ? "off" : undefined}
+            preventBrowserAutofill={preventCreateAutofill}
             onChange={(value) => setUser({ ...user, lastName: value })}
           />
 
           <Input
             label="Email"
             type="email"
+            name={preventCreateAutofill ? "create-user-email" : undefined}
             value={user.email}
+            autoComplete={preventCreateAutofill ? "off" : undefined}
+            preventBrowserAutofill={preventCreateAutofill}
             onChange={(value) => setUser({ ...user, email: value })}
           />
 
           <Input
             label="Telefon"
+            name={preventCreateAutofill ? "create-user-phone" : undefined}
             value={user.phone || ""}
+            autoComplete={preventCreateAutofill ? "off" : undefined}
+            preventBrowserAutofill={preventCreateAutofill}
             onChange={(value) => setUser({ ...user, phone: value })}
           />
 
@@ -58,8 +73,11 @@ export function UserModal({
               <Input
                 label="Password"
                 type="password"
+                name="create-user-password"
                 value={user.password || ""}
                 minLength={8}
+                autoComplete="new-password"
+                preventBrowserAutofill={preventCreateAutofill}
                 onChange={(value) => setUser({ ...user, password: value })}
               />
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -172,20 +190,46 @@ function Input({
   onChange,
   type = "text",
   minLength,
+  name,
+  autoComplete,
+  preventBrowserAutofill = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   minLength?: number;
+  name?: string;
+  autoComplete?: string;
+  preventBrowserAutofill?: boolean;
 }) {
+  const [autofillBlocked, setAutofillBlocked] = useState(
+    preventBrowserAutofill,
+  );
+
+  useEffect(() => {
+    setAutofillBlocked(preventBrowserAutofill);
+  }, [preventBrowserAutofill]);
+
+  function allowManualInput() {
+    if (autofillBlocked) {
+      setAutofillBlocked(false);
+    }
+  }
+
   return (
     <label className="space-y-1">
       <span className="text-sm font-medium">{label}</span>
       <input
         type={type}
+        name={name}
         value={value}
         minLength={minLength}
+        autoComplete={autoComplete}
+        readOnly={autofillBlocked}
+        onFocus={allowManualInput}
+        onPointerDown={allowManualInput}
+        onKeyDown={allowManualInput}
         onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
       />

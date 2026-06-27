@@ -32,7 +32,7 @@ export default function UsersPage() {
 
   const {
     showCreate,
-    setShowCreate,
+    closeCreateUserModal,
     editingUser,
     setEditingUser,
     newUser,
@@ -90,9 +90,7 @@ export default function UsersPage() {
             title="Opret bruger"
             user={newUser}
             setUser={setNewUser}
-            onClose={() => {
-              setShowCreate(false);
-            }}
+            onClose={closeCreateUserModal}
             onSave={createUser}
             showPassword
           />

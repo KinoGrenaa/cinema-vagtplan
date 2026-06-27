@@ -106,7 +106,7 @@ export function useUserFormActions({
       setUsers((prev) => [...prev, normalizeUser(createdUser)]);
 
       setShowCreate(false);
-      setNewUser(emptyUser);
+      resetNewUser();
     } catch (error) {
       showError(
         "Bruger kunne ikke oprettes",
@@ -159,6 +159,15 @@ export function useUserFormActions({
     }
   }
 
+  function resetNewUser() {
+    setNewUser({ ...emptyUser });
+  }
+
+  function closeCreateUserModal() {
+    setShowCreate(false);
+    resetNewUser();
+  }
+
   function openCreateUserModal() {
     if (needsMasterCinemaSelection) {
       showError(
@@ -168,6 +177,8 @@ export function useUserFormActions({
       return;
     }
 
+    setEditingUser(null);
+    resetNewUser();
     setShowCreate(true);
   }
 
@@ -178,6 +189,7 @@ export function useUserFormActions({
   return {
     showCreate,
     setShowCreate,
+    closeCreateUserModal,
     editingUser,
     setEditingUser,
     newUser,
