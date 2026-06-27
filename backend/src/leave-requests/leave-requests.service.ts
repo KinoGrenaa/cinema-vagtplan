@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
-
 import {
   AuthUser,
   LeaveStatus,
@@ -52,6 +52,8 @@ export class LeaveRequestsService {
       startDate: string;
       endDate: string;
       reason?: string;
+      cinemaId?: number;
+      userId?: number;
     },
   ) {
     return createLeaveRequestFlow({

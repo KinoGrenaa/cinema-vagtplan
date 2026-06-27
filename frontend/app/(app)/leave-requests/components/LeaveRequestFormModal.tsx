@@ -1,6 +1,8 @@
 import { FormEvent, useRef } from "react";
+
 import { Calendar } from "lucide-react";
 import BaseModal from "@/app/components/modals/BaseModal";
+import type { LeaveRequestEmployeeOption } from "../hooks/useLeaveRequestEmployeeOptions";
 
 const inputClass =
   "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
@@ -10,11 +12,15 @@ const labelClass =
 
 type LeaveRequestFormModalProps = {
   allDay: boolean;
+  canCreateForEmployees: boolean;
+  employeeOptions: LeaveRequestEmployeeOption[];
   endDate: string;
   endTime: string;
+  loadingEmployeeOptions: boolean;
   minDate: string;
   open: boolean;
   reason: string;
+  selectedUserId: string;
   startDate: string;
   startTime: string;
   onClose: () => void;
@@ -22,6 +28,7 @@ type LeaveRequestFormModalProps = {
   onSetEndDate: (value: string) => void;
   onSetEndTime: (value: string) => void;
   onSetReason: (value: string) => void;
+  onSetSelectedUserId: (value: string) => void;
   onSetStartDate: (value: string) => void;
   onSetStartTime: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -39,11 +46,15 @@ function openDatePicker(input: HTMLInputElement | null) {
 
 export default function LeaveRequestFormModal({
   allDay,
+  canCreateForEmployees,
+  employeeOptions,
   endDate,
   endTime,
+  loadingEmployeeOptions,
   minDate,
   open,
   reason,
+  selectedUserId,
   startDate,
   startTime,
   onClose,
@@ -51,6 +62,7 @@ export default function LeaveRequestFormModal({
   onSetEndDate,
   onSetEndTime,
   onSetReason,
+  onSetSelectedUserId,
   onSetStartDate,
   onSetStartTime,
   onSubmit,
@@ -59,8 +71,41 @@ export default function LeaveRequestFormModal({
   const endDateInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
-    <BaseModal open={open} onClose={onClose} title="Ansøg om fravær">
+    <BaseModal
+      open={open}
+      onClose={onClose}
+      title={canCreateForEmployees ? "Opret fravær" : "Ansøg om fravær"}
+    >
       <form onSubmit={onSubmit} className="space-y-4">
+        {canCreateForEmployees && (
+          <div>
+            <label className={labelClass}>Medarbejder</label>
+            <select
+              className={inputClass}
+              value={selectedUserId}
+              onChange={(event) => onSetSelectedUserId(event.target.value)}
+              disabled={loadingEmployeeOptions || employeeOptions.length === 0}
+              required
+            >
+              {loadingEmployeeOptions ? (
+                <option value="">Henter medarbejdere...</option>
+              ) : employeeOptions.length === 0 ? (
+                <option value="">Ingen aktive medarbejdere fundet</option>
+              ) : (
+                employeeOptions.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.label}
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Hvis fraværet oprettes for en anden medarbejder, kan det ses og
+              behandles under Fraværsgodkendelse.
+            </p>
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className={labelClass}>Fra dato</label>
@@ -73,7 +118,6 @@ export default function LeaveRequestFormModal({
                 value={startDate}
                 onChange={(event) => onSetStartDate(event.target.value)}
               />
-
               <button
                 type="button"
                 aria-label="Åbn kalender for fra dato"
@@ -96,7 +140,6 @@ export default function LeaveRequestFormModal({
                 value={endDate}
                 onChange={(event) => onSetEndDate(event.target.value)}
               />
-
               <button
                 type="button"
                 aria-label="Åbn kalender for til dato"
@@ -160,12 +203,11 @@ export default function LeaveRequestFormModal({
           >
             Annullér
           </button>
-
           <button
             type="submit"
             className="rounded-xl bg-black px-4 py-2 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
           >
-            Send ansøgning
+            {canCreateForEmployees ? "Opret fravær" : "Send ansøgning"}
           </button>
         </div>
       </form>

@@ -1,6 +1,7 @@
 "use client";
 
 import InfoModal from "@/app/components/modals/InfoModal";
+
 import LeaveRequestsCancelModal from "./components/LeaveRequestsCancelModal";
 import LeaveRequestsFilterModal from "./components/LeaveRequestsFilterModal";
 import LeaveRequestFormModal from "./components/LeaveRequestFormModal";
@@ -15,6 +16,7 @@ export default function LeaveRequestsPage() {
   const {
     cancel,
     currentUserId,
+    employeeSelection,
     filters,
     form,
     infoDialog,
@@ -55,11 +57,15 @@ export default function LeaveRequestsPage() {
 
       <LeaveRequestFormModal
         allDay={form.allDay}
+        canCreateForEmployees={employeeSelection.canCreateForEmployees}
+        employeeOptions={employeeSelection.employeeOptions}
         endDate={form.endDate}
         endTime={form.endTime}
+        loadingEmployeeOptions={employeeSelection.loadingEmployeeOptions}
         minDate={form.minDate}
         open={form.showRequestModal}
         reason={form.reason}
+        selectedUserId={form.selectedUserId}
         startDate={form.startDate}
         startTime={form.startTime}
         onClose={() => form.setShowRequestModal(false)}
@@ -67,6 +73,7 @@ export default function LeaveRequestsPage() {
         onSetEndDate={form.setEndDate}
         onSetEndTime={form.setEndTime}
         onSetReason={form.setReason}
+        onSetSelectedUserId={form.setSelectedUserId}
         onSetStartDate={form.setStartDate}
         onSetStartTime={form.setStartTime}
         onSubmit={form.createLeaveRequest}
