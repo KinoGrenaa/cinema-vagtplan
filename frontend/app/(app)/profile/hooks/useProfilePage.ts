@@ -129,10 +129,10 @@ export function useProfilePage() {
 
     if (!currentUser) return;
 
-    if (password && password.length < 6) {
+    if (password && password.length < 8) {
       infoDialog.showError(
         "Profilen kunne ikke gemmes",
-        "Adgangskoden skal være mindst 6 tegn.",
+        "Adgangskode skal være mindst 8 tegn.",
       );
       return;
     }

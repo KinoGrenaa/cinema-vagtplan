@@ -64,7 +64,7 @@ export default function ProfileEditForm({
             value={password}
             onChange={onPasswordChange}
             placeholder="Lad feltet være tomt for at beholde adgangskoden"
-            helpText="Password skal være mindst 6 tegn."
+            helpText="Adgangskode skal være mindst 8 tegn."
           />
           <ProfileInput
             label="Mobil"
