@@ -15,6 +15,22 @@ type DashboardOverview = {
   movies: MovieShowing[];
 };
 
+function getCinemaQueryParam(cinemaId?: number) {
+  if (!Number.isInteger(cinemaId) || !cinemaId || cinemaId <= 0) {
+    return "";
+  }
+
+  return `cinemaId=${encodeURIComponent(String(cinemaId))}`;
+}
+
+function appendQuery(endpoint: string, queryParam: string) {
+  if (!queryParam) {
+    return endpoint;
+  }
+
+  return `${endpoint}${endpoint.includes("?") ? "&" : "?"}${queryParam}`;
+}
+
 async function readErrorMessage(response: Response, fallback: string) {
   try {
     const data = await response.clone().json();
@@ -48,7 +64,6 @@ async function ensureOk(response: Response, fallback: string) {
 async function safeJsonArray<T>(response: Response): Promise<T[]> {
   try {
     const data = await response.json();
-
     return Array.isArray(data) ? (data as T[]) : [];
   } catch {
     return [];
@@ -58,7 +73,10 @@ async function safeJsonArray<T>(response: Response): Promise<T[]> {
 export async function fetchDashboardOverview(input: {
   userId: number;
   date: string;
+  cinemaId?: number;
 }): Promise<DashboardOverview> {
+  const cinemaQueryParam = getCinemaQueryParam(input.cinemaId);
+
   const [
     shiftsResponse,
     timeEntriesResponse,
@@ -66,11 +84,13 @@ export async function fetchDashboardOverview(input: {
     shiftTradesResponse,
     moviesResponse,
   ] = await Promise.all([
-    apiFetch(`/shifts?date=${input.date}`),
-    apiFetch(`/time-entries?userId=${input.userId}`),
-    apiFetch("/leave-requests"),
-    apiFetch("/shift-trades"),
-    apiFetch(`/movie-showings?date=${input.date}`),
+    apiFetch(appendQuery(`/shifts?date=${input.date}`, cinemaQueryParam)),
+    apiFetch(
+      appendQuery(`/time-entries?userId=${input.userId}`, cinemaQueryParam),
+    ),
+    apiFetch(appendQuery("/leave-requests", cinemaQueryParam)),
+    apiFetch(appendQuery("/shift-trades", cinemaQueryParam)),
+    apiFetch(appendQuery(`/movie-showings?date=${input.date}`, cinemaQueryParam)),
   ]);
 
   await Promise.all([

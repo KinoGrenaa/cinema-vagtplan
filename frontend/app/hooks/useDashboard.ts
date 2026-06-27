@@ -38,23 +38,45 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function getSelectedMasterCinemaId() {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const value = localStorage.getItem("masterSelectedCinemaId");
+  const selectedCinemaId = Number(value);
+
+  if (!Number.isInteger(selectedCinemaId) || selectedCinemaId <= 0) {
+    return undefined;
+  }
+
+  return selectedCinemaId;
+}
+
 export function useDashboard(input: UseDashboardInput = {}) {
   const { onError } = input;
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
   const [movies, setMovies] = useState<MovieShowing[]>([]);
-
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
+  const [needsMasterCinemaSelection, setNeedsMasterCinemaSelection] =
+    useState(false);
   const today = useMemo(() => getTodayLocalDate(), []);
 
+  const clearDashboardData = useCallback(() => {
+    setShifts([]);
+    setTimeEntries([]);
+    setLeaveRequests([]);
+    setShiftTrades([]);
+    setMovies([]);
+  }, []);
+
   const loadDashboard = useCallback(
-    async (user: CurrentUser) => {
+    async (user: CurrentUser, selectedCinemaId?: number) => {
       try {
         setLoading(true);
         setErrorMessage(null);
@@ -62,73 +84,84 @@ export function useDashboard(input: UseDashboardInput = {}) {
         const dashboardData = await fetchDashboardOverview({
           userId: user.id,
           date: today,
+          cinemaId: selectedCinemaId,
         });
 
-        setShifts(
-          Array.isArray(dashboardData.shifts) ? dashboardData.shifts : [],
-        );
-
+        setShifts(Array.isArray(dashboardData.shifts) ? dashboardData.shifts : []);
         setTimeEntries(
           Array.isArray(dashboardData.timeEntries)
             ? dashboardData.timeEntries
             : [],
         );
-
         setLeaveRequests(
           Array.isArray(dashboardData.leaveRequests)
             ? dashboardData.leaveRequests
             : [],
         );
-
         setShiftTrades(
           Array.isArray(dashboardData.shiftTrades)
             ? dashboardData.shiftTrades
             : [],
         );
-
-        setMovies(
-          Array.isArray(dashboardData.movies) ? dashboardData.movies : [],
-        );
+        setMovies(Array.isArray(dashboardData.movies) ? dashboardData.movies : []);
       } catch (error) {
         const message = getErrorMessage(
           error,
           "Der opstod en fejl under hentning af dashboard.",
         );
-
         setErrorMessage(message);
         onError?.(message);
-
-        setShifts([]);
-        setTimeEntries([]);
-        setLeaveRequests([]);
-        setShiftTrades([]);
-        setMovies([]);
+        clearDashboardData();
       } finally {
         setLoading(false);
       }
     },
-    [onError, today],
+    [clearDashboardData, onError, today],
   );
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
+    function loadFromStorage() {
+      const savedUser = localStorage.getItem("user");
 
-    if (!savedUser) {
-      window.location.href = "/";
-      return;
+      if (!savedUser) {
+        window.location.href = "/";
+        return;
+      }
+
+      try {
+        const parsedUser: CurrentUser = JSON.parse(savedUser);
+        const selectedCinemaId =
+          parsedUser.role === "MASTER" ? getSelectedMasterCinemaId() : undefined;
+        const requiresMasterCinemaSelection =
+          parsedUser.role === "MASTER" && !selectedCinemaId;
+
+        setCurrentUser(parsedUser);
+        setNeedsMasterCinemaSelection(requiresMasterCinemaSelection);
+
+        if (requiresMasterCinemaSelection) {
+          setErrorMessage(null);
+          clearDashboardData();
+          setLoading(false);
+          return;
+        }
+
+        loadDashboard(parsedUser, selectedCinemaId);
+      } catch {
+        localStorage.removeItem("user");
+        window.location.href = "/";
+      }
     }
 
-    try {
-      const parsedUser: CurrentUser = JSON.parse(savedUser);
+    loadFromStorage();
 
-      setCurrentUser(parsedUser);
+    window.addEventListener("masterSelectedCinemaChanged", loadFromStorage);
+    window.addEventListener("storage", loadFromStorage);
 
-      loadDashboard(parsedUser);
-    } catch {
-      localStorage.removeItem("user");
-      window.location.href = "/";
-    }
-  }, [loadDashboard]);
+    return () => {
+      window.removeEventListener("masterSelectedCinemaChanged", loadFromStorage);
+      window.removeEventListener("storage", loadFromStorage);
+    };
+  }, [clearDashboardData, loadDashboard]);
 
   const todayPlannedHours = useMemo(() => {
     return calculatePlannedHours(shifts);
@@ -165,11 +198,8 @@ export function useDashboard(input: UseDashboardInput = {}) {
   const operationalRecommendations = useMemo(() => {
     return calculateOperationalRecommendations({
       staffingHealth: operationsHealth.staffingHealth,
-
       highFatigueEmployees: operationsHealth.highFatigueEmployees,
-
       moviePressure: operationsHealth.moviePressure,
-
       activeShiftCount: operationsHealth.activeShiftCount,
     });
   }, [operationsHealth]);
@@ -181,9 +211,7 @@ export function useDashboard(input: UseDashboardInput = {}) {
   const liveOperationsStatus = useMemo(() => {
     return calculateLiveOperationsStatus({
       staffingHealth: operationsHealth.staffingHealth,
-
       highFatigueEmployees: operationsHealth.highFatigueEmployees,
-
       moviePressure: operationsHealth.moviePressure,
     });
   }, [operationsHealth]);
@@ -212,30 +240,26 @@ export function useDashboard(input: UseDashboardInput = {}) {
     loading,
     errorMessage,
     currentUser,
+    needsMasterCinemaSelection,
     shifts,
     timeEntries,
     leaveRequests,
     shiftTrades,
     movies,
-
     todayPlannedHours,
     myRegisteredHours,
     pendingLeaveRequests,
     openShiftTrades,
     soldSeatsToday,
     seatLoadPercent,
-
     staffingWarnings,
     operationsHealth,
     operationalRecommendations,
-
     staffingHeatmap,
     liveOperationsStatus,
     predictiveStaffing,
-
     aiLearningAnalytics,
     aiPatternInsights,
-
     reloadDashboard: loadDashboard,
   };
 }
