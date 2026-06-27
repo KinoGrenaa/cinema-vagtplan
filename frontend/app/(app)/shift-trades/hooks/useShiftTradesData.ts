@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { useApi } from "@/app/hooks/useApi";
-import { useAuth } from "@/app/providers/AuthProvider";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
+import { useAuth } from "@/app/providers/AuthProvider";
 import type { ShiftTrade } from "../helpers/shiftTradeTypes";
 
 type InfoDialog = {
@@ -25,6 +26,8 @@ export function useShiftTradesData({ infoDialog }: UseShiftTradesDataArgs) {
   const [shifts, setShifts] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [needsMasterCinemaSelection, setNeedsMasterCinemaSelection] =
+    useState(false);
 
   const getMasterCinemaQuery = useCallback(() => {
     if (typeof window === "undefined") return "";
@@ -43,6 +46,7 @@ export function useShiftTradesData({ infoDialog }: UseShiftTradesDataArgs) {
     if (!user) {
       setTrades([]);
       setShifts([]);
+      setNeedsMasterCinemaSelection(false);
       setLoading(false);
       return;
     }
@@ -51,8 +55,12 @@ export function useShiftTradesData({ infoDialog }: UseShiftTradesDataArgs) {
       setLoading(true);
 
       const masterCinemaQuery = getMasterCinemaQuery();
+      const shouldSelectMasterCinema =
+        user.role === "MASTER" && !user.cinemaId && !masterCinemaQuery;
 
-      if (user.role === "MASTER" && !user.cinemaId && !masterCinemaQuery) {
+      setNeedsMasterCinemaSelection(shouldSelectMasterCinema);
+
+      if (shouldSelectMasterCinema) {
         setTrades([]);
         setShifts([]);
         return;
@@ -62,17 +70,16 @@ export function useShiftTradesData({ infoDialog }: UseShiftTradesDataArgs) {
 
       if (!response.ok) {
         setTrades([]);
-
         showErrorRef.current(
           "Kunne ikke hente vagtbytter",
           "Der opstod en fejl, da vagtbytter skulle hentes. Prøv igen.",
         );
-
         return;
       }
 
       const data = await response.json();
       setTrades(Array.isArray(data) ? data : []);
+
       const shiftsResponse = await apiFetch(`/shifts${masterCinemaQuery}`);
 
       if (shiftsResponse.ok) {
@@ -83,7 +90,6 @@ export function useShiftTradesData({ infoDialog }: UseShiftTradesDataArgs) {
       }
     } catch {
       setTrades([]);
-
       showErrorRef.current(
         "Kunne ikke hente vagtbytter",
         "Der opstod en fejl, da vagtbytter skulle hentes. Prøv igen.",
@@ -173,5 +179,6 @@ export function useShiftTradesData({ infoDialog }: UseShiftTradesDataArgs) {
     poolTrades,
     historyTrades,
     hasShiftConflict,
+    needsMasterCinemaSelection,
   };
 }
