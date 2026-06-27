@@ -42,8 +42,8 @@ export function useUserFormActions({
     if (!newUser.email.trim()) return "Email mangler.";
     if (!newUser.email.includes("@")) return "Indtast en gyldig emailadresse.";
 
-    if (!newUser.password || newUser.password.length < 6) {
-      return "Password skal være mindst 6 tegn.";
+    if (!newUser.password || newUser.password.length < 8) {
+      return "Adgangskode skal være mindst 8 tegn.";
     }
 
     return "";
