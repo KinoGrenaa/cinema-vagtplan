@@ -1,10 +1,12 @@
 "use client";
 
 import InfoModal from "@/app/components/modals/InfoModal";
+
 import MasterCinemasListSection from "./components/MasterCinemasListSection";
 import MasterCreateCinemaSection from "./components/MasterCreateCinemaSection";
 import MasterHeader from "./components/MasterHeader";
 import MasterSummaryCards from "./components/MasterSummaryCards";
+import MasterSystemErrorSummaryCard from "./components/MasterSystemErrorSummaryCard";
 import { useMasterPanel } from "./hooks/useMasterPanel";
 
 export default function MasterPage() {
@@ -59,6 +61,8 @@ export default function MasterPage() {
         <MasterHeader onRefresh={fetchCinemas} />
 
         <MasterSummaryCards cinemas={cinemas} selectedCinema={selectedCinema} />
+
+        <MasterSystemErrorSummaryCard />
 
         <MasterCreateCinemaSection
           newCinemaName={newCinemaName}
