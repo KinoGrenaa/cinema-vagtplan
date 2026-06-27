@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -23,6 +24,27 @@ import { RolesGuard } from '../auth/roles.guard';
 @Roles('ADMIN', 'MASTER')
 export class PayrollController {
   constructor(private payrollService: PayrollService) {}
+  private parseOptionalId(
+    value: string | number | null | undefined,
+    message: string,
+  ) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    return this.parseRequiredId(value, message);
+  }
+
+  private parseRequiredId(value: string | number, message: string) {
+    const parsedId = Number(value);
+
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      throw new BadRequestException(message);
+    }
+
+    return parsedId;
+  }
+
 
   @Get()
   getPayrollReport(
@@ -32,13 +54,21 @@ export class PayrollController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
+    const selectedUserId = this.parseOptionalId(
+      userId,
+      'Bruger skal være et gyldigt ID',
+    )?.toString();
+
 
     return this.payrollService.getPayrollReport(
       req.user,
       startDate,
       endDate,
-      userId,
+      selectedUserId,
       selectedCinemaId,
     );
   }
@@ -50,7 +80,10 @@ export class PayrollController {
     @Query('endDate') endDate: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.payrollService.getPeriod(
       req.user,
@@ -67,7 +100,10 @@ export class PayrollController {
     @Query('date') date: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.payrollService.getPayrollPeriodForDate(
       req.user,
@@ -83,7 +119,10 @@ export class PayrollController {
     @Query('endDate') endDate: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.payrollService.getPayrollAuditHistory(
       req.user,
@@ -100,7 +139,10 @@ export class PayrollController {
     @Body('endDate') endDate: string,
     @Body('cinemaId') cinemaId?: number | string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.payrollService.lockPeriod(
       req.user,
@@ -117,11 +159,14 @@ export class PayrollController {
     @Body('note') note?: string,
     @Body('cinemaId') cinemaId?: number | string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.payrollService.unlockPeriod(
       req.user,
-      Number(id),
+      this.parseRequiredId(id, 'Lønperiode skal være et gyldigt ID'),
       note,
       selectedCinemaId,
     );
@@ -134,11 +179,14 @@ export class PayrollController {
     @Body('note') note?: string,
     @Body('cinemaId') cinemaId?: number | string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.payrollService.unlockTimeEntry(
       req.user,
-      Number(id),
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       note,
       selectedCinemaId,
     );
@@ -154,13 +202,21 @@ export class PayrollController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
+    const selectedUserId = this.parseOptionalId(
+      userId,
+      'Bruger skal være et gyldigt ID',
+    )?.toString();
+
 
     const csv = await this.payrollService.exportPayrollCsv(
       req.user,
       startDate,
       endDate,
-      userId,
+      selectedUserId,
       selectedCinemaId,
     );
 
@@ -185,13 +241,21 @@ export class PayrollController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
+    const selectedUserId = this.parseOptionalId(
+      userId,
+      'Bruger skal være et gyldigt ID',
+    )?.toString();
+
 
     const buffer = await this.payrollService.exportPayrollXlsx(
       req.user,
       startDate,
       endDate,
-      userId,
+      selectedUserId,
       selectedCinemaId,
     );
 
@@ -213,13 +277,21 @@ export class PayrollController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
+    const selectedUserId = this.parseOptionalId(
+      userId,
+      'Bruger skal være et gyldigt ID',
+    )?.toString();
+
 
     const buffer = await this.payrollService.exportPayrollPdf(
       req.user,
       startDate,
       endDate,
-      userId,
+      selectedUserId,
       selectedCinemaId,
     );
 
@@ -239,13 +311,21 @@ export class PayrollController {
     @Query('cinemaId') cinemaId?: string,
     @Res() res?,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
+    const selectedUserId = this.parseOptionalId(
+      userId,
+      'Bruger skal være et gyldigt ID',
+    )?.toString();
+
 
     const csv = await this.payrollService.exportUnicontaCsv(
       req.user,
       startDate,
       endDate,
-      userId,
+      selectedUserId,
       selectedCinemaId,
     );
 
