@@ -81,7 +81,7 @@ export function UserModal({
                 onChange={(value) => setUser({ ...user, password: value })}
               />
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Password skal være mindst 8 tegn.
+                Adgangskode skal være mindst 8 tegn.
               </p>
             </div>
           )}
