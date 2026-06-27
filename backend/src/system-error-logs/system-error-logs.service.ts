@@ -5,7 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  getSystemErrorLogRetentionCutoffs,
+  SYSTEM_ERROR_LOG_RETENTION_POLICY,
+} from './system-error-log-retention';
 
 type SystemErrorSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
 type SystemErrorStatus = 'NEW' | 'SEEN' | 'RESOLVED' | 'IGNORED';
@@ -44,6 +49,16 @@ type SystemErrorLogListRow = SystemErrorLogRow & {
   resolvedByEmail: string | null;
 };
 
+type SystemErrorRetentionSummaryRow = {
+  totalCount: number;
+  eligibleForCleanupCount: number;
+  activeEligibleCount: number;
+  resolvedEligibleCount: number;
+  criticalEligibleCount: number;
+  oldestCreatedAt: Date | null;
+  newestCreatedAt: Date | null;
+};
+
 type CreateSystemErrorLogData = {
   severity?: SystemErrorSeverity;
   status?: SystemErrorStatus;
@@ -69,19 +84,8 @@ type FindSystemErrorLogsFilters = {
   take?: number;
 };
 
-const VALID_SEVERITIES = new Set<SystemErrorSeverity>([
-  'INFO',
-  'WARNING',
-  'ERROR',
-  'CRITICAL',
-]);
-
-const VALID_STATUSES = new Set<SystemErrorStatus>([
-  'NEW',
-  'SEEN',
-  'RESOLVED',
-  'IGNORED',
-]);
+const VALID_SEVERITIES = new Set(['INFO', 'WARNING', 'ERROR', 'CRITICAL']);
+const VALID_STATUSES = new Set(['NEW', 'SEEN', 'RESOLVED', 'IGNORED']);
 
 function getRequiredPositiveId(value: unknown, message: string) {
   const id = Number(value);
@@ -133,7 +137,9 @@ function getSafeTake(value?: number) {
   return Math.min(value, 500);
 }
 
-function getSeverityForStatusCode(statusCode?: number | null): SystemErrorSeverity {
+function getSeverityForStatusCode(
+  statusCode?: number | null,
+): SystemErrorSeverity {
   if (!statusCode || statusCode >= 500) {
     return 'ERROR';
   }
@@ -180,7 +186,6 @@ function getTechnicalMessage(error: unknown) {
 
   if (error instanceof HttpException) {
     const response = error.getResponse();
-
     return typeof response === 'string' ? response : JSON.stringify(response);
   }
 
@@ -200,6 +205,22 @@ function getRequestCorrelationId(request: any) {
   }
 
   return null;
+}
+
+function normalizeRetentionSummaryRow(row?: SystemErrorRetentionSummaryRow) {
+  const totalCount = Number(row?.totalCount ?? 0);
+  const eligibleForCleanupCount = Number(row?.eligibleForCleanupCount ?? 0);
+
+  return {
+    totalCount,
+    eligibleForCleanupCount,
+    keepCount: Math.max(totalCount - eligibleForCleanupCount, 0),
+    activeEligibleCount: Number(row?.activeEligibleCount ?? 0),
+    resolvedEligibleCount: Number(row?.resolvedEligibleCount ?? 0),
+    criticalEligibleCount: Number(row?.criticalEligibleCount ?? 0),
+    oldestCreatedAt: row?.oldestCreatedAt ?? null,
+    newestCreatedAt: row?.newestCreatedAt ?? null,
+  };
 }
 
 @Injectable()
@@ -230,7 +251,8 @@ export class SystemErrorLogsService {
         "userRole",
         "cinemaId",
         "metadata"
-      ) VALUES (
+      )
+      VALUES (
         ${severity},
         ${status},
         ${source},
@@ -261,7 +283,10 @@ export class SystemErrorLogsService {
     const user = params.request?.user;
     const method = params.request?.method ?? null;
     const path =
-      params.request?.originalUrl ?? params.request?.url ?? params.request?.path ?? null;
+      params.request?.originalUrl ??
+      params.request?.url ??
+      params.request?.path ??
+      null;
 
     return this.create({
       severity: getSeverityForStatusCode(params.statusCode),
@@ -326,13 +351,72 @@ export class SystemErrorLogsService {
     `);
   }
 
+  async getRetentionSummary() {
+    const evaluatedAt = new Date();
+    const cutoffs = getSystemErrorLogRetentionCutoffs(evaluatedAt);
+
+    const activeEligibleSql = Prisma.sql`
+      logs."severity" <> 'CRITICAL'
+      AND logs."status" IN ('NEW', 'SEEN')
+      AND logs."createdAt" < ${cutoffs.activeStatusesBefore}
+    `;
+
+    const resolvedEligibleSql = Prisma.sql`
+      logs."severity" <> 'CRITICAL'
+      AND logs."status" IN ('RESOLVED', 'IGNORED')
+      AND COALESCE(logs."resolvedAt", logs."updatedAt") < ${cutoffs.resolvedStatusesBefore}
+    `;
+
+    const criticalEligibleSql = Prisma.sql`
+      logs."severity" = 'CRITICAL'
+      AND logs."createdAt" < ${cutoffs.criticalSeverityBefore}
+    `;
+
+    const cleanupEligibleSql = Prisma.sql`
+      (${activeEligibleSql})
+      OR (${resolvedEligibleSql})
+      OR (${criticalEligibleSql})
+    `;
+
+    const rows = await this.prisma.$queryRaw<SystemErrorRetentionSummaryRow[]>(
+      Prisma.sql`
+        SELECT
+          COUNT(*)::integer AS "totalCount",
+          COUNT(*) FILTER (WHERE ${cleanupEligibleSql})::integer AS "eligibleForCleanupCount",
+          COUNT(*) FILTER (WHERE ${activeEligibleSql})::integer AS "activeEligibleCount",
+          COUNT(*) FILTER (WHERE ${resolvedEligibleSql})::integer AS "resolvedEligibleCount",
+          COUNT(*) FILTER (WHERE ${criticalEligibleSql})::integer AS "criticalEligibleCount",
+          MIN(logs."createdAt") AS "oldestCreatedAt",
+          MAX(logs."createdAt") AS "newestCreatedAt"
+        FROM "SystemErrorLog" logs
+      `,
+    );
+
+    return {
+      policy: {
+        ...SYSTEM_ERROR_LOG_RETENTION_POLICY,
+        description: [
+          'Aktive fejl med status NEW/SEEN beholdes i 180 dage.',
+          'Løste eller ignorerede fejl beholdes i 90 dage efter afslutning.',
+          'Kritiske fejl beholdes i 365 dage.',
+        ],
+        evaluatedAt,
+        cutoffs,
+      },
+      summary: normalizeRetentionSummaryRow(rows[0]),
+    };
+  }
+
   async updateStatus(params: {
     id: number;
     status: SystemErrorStatus;
     changedByUserId?: number | null;
     note?: string | null;
   }) {
-    const id = getRequiredPositiveId(params.id, 'Fejl-log skal være et gyldigt ID');
+    const id = getRequiredPositiveId(
+      params.id,
+      'Fejl-log skal være et gyldigt ID',
+    );
     const note =
       typeof params.note === 'string' && params.note.trim() !== ''
         ? params.note.trim()
@@ -350,7 +434,9 @@ export class SystemErrorLogsService {
         "status" = ${params.status},
         "updatedAt" = CURRENT_TIMESTAMP,
         "resolvedAt" = ${isResolvedStatus ? new Date() : null},
-        "resolvedByUserId" = ${isResolvedStatus ? params.changedByUserId ?? null : null},
+        "resolvedByUserId" = ${
+          isResolvedStatus ? params.changedByUserId ?? null : null
+        },
         "resolutionNote" = ${isResolvedStatus ? note : null}
       WHERE "id" = ${id}
       RETURNING *

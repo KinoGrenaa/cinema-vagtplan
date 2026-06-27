@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -37,6 +38,11 @@ function parseRequiredPositiveId(value: string | number, message: string) {
 @Controller('system-error-logs')
 export class SystemErrorLogsController {
   constructor(private systemErrorLogsService: SystemErrorLogsService) {}
+
+  @Get('retention-summary')
+  getRetentionSummary() {
+    return this.systemErrorLogsService.getRetentionSummary();
+  }
 
   @Get()
   findAll(
