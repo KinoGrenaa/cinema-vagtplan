@@ -12,7 +12,7 @@ import { useAuth } from "@/app/providers/AuthProvider";
 
 type SystemErrorSeverity = "INFO" | "WARNING" | "ERROR" | "CRITICAL";
 type SystemErrorStatus = "NEW" | "SEEN" | "RESOLVED" | "IGNORED";
-type StatusFilter = SystemErrorStatus | "";
+type StatusFilter = SystemErrorStatus | "ACTIVE" | "";
 type SeverityFilter = SystemErrorSeverity | "";
 type LogAction = "seen" | "resolve" | "ignore";
 
@@ -46,6 +46,7 @@ type SystemErrorLog = {
 };
 
 const statusOptions: { value: StatusFilter; label: string }[] = [
+  { value: "ACTIVE", label: "Aktive (ny + set)" },
   { value: "", label: "Alle statusser" },
   { value: "NEW", label: "Ny" },
   { value: "SEEN", label: "Set" },
@@ -80,6 +81,19 @@ const actionLabels: Record<LogAction, string> = {
   resolve: "markeret som løst",
   ignore: "ignoreret",
 };
+
+const activeStatuses: SystemErrorStatus[] = ["NEW", "SEEN"];
+
+function getQuickFilterButtonClass(active: boolean) {
+  const baseClass =
+    "rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60";
+
+  if (active) {
+    return `${baseClass} border-purple-700 bg-purple-700 text-white hover:bg-purple-800 dark:border-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400`;
+  }
+
+  return `${baseClass} border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800`;
+}
 
 async function readErrorMessage(response: Response, fallback: string) {
   try {
@@ -237,7 +251,7 @@ export default function SystemErrorLogsPage() {
   const [logs, setLogs] = useState<SystemErrorLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [updatingLogId, setUpdatingLogId] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ACTIVE");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("");
   const [cinemaIdFilter, setCinemaIdFilter] = useState("");
 
@@ -252,7 +266,7 @@ export default function SystemErrorLogsPage() {
       const params = new URLSearchParams();
       params.set("take", "300");
 
-      if (statusFilter) {
+      if (statusFilter && statusFilter !== "ACTIVE") {
         params.set("status", statusFilter);
       }
 
@@ -298,26 +312,34 @@ export default function SystemErrorLogsPage() {
     void fetchLogs();
   }, [authLoading, fetchLogs, isMaster]);
 
+  const visibleLogs = useMemo(() => {
+    if (statusFilter !== "ACTIVE") {
+      return logs;
+    }
+
+    return logs.filter((log) => activeStatuses.includes(log.status));
+  }, [logs, statusFilter]);
+
   const summaryCards = useMemo(
     () => [
       {
         label: "Nye",
-        value: logs.filter((log) => log.status === "NEW").length,
+        value: visibleLogs.filter((log) => log.status === "NEW").length,
       },
       {
         label: "Set",
-        value: logs.filter((log) => log.status === "SEEN").length,
+        value: visibleLogs.filter((log) => log.status === "SEEN").length,
       },
       {
         label: "Løst",
-        value: logs.filter((log) => log.status === "RESOLVED").length,
+        value: visibleLogs.filter((log) => log.status === "RESOLVED").length,
       },
       {
         label: "Ignoreret",
-        value: logs.filter((log) => log.status === "IGNORED").length,
+        value: visibleLogs.filter((log) => log.status === "IGNORED").length,
       },
     ],
-    [logs],
+    [visibleLogs],
   );
 
   async function updateStatus(logId: number, action: LogAction, note?: string) {
@@ -389,8 +411,28 @@ export default function SystemErrorLogsPage() {
     });
   }
 
-  function resetFilters() {
+  function showActiveErrors() {
+    setStatusFilter("ACTIVE");
+    setSeverityFilter("");
+  }
+
+  function showNewErrors() {
+    setStatusFilter("NEW");
+    setSeverityFilter("");
+  }
+
+  function showCriticalErrors() {
+    setStatusFilter("ACTIVE");
+    setSeverityFilter("CRITICAL");
+  }
+
+  function showAllErrors() {
     setStatusFilter("");
+    setSeverityFilter("");
+  }
+
+  function resetFilters() {
+    setStatusFilter("ACTIVE");
     setSeverityFilter("");
     setCinemaIdFilter("");
   }
@@ -466,6 +508,45 @@ export default function SystemErrorLogsPage() {
         </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={showActiveErrors}
+              className={getQuickFilterButtonClass(
+                statusFilter === "ACTIVE" && severityFilter === "",
+              )}
+            >
+              Aktive
+            </button>
+            <button
+              type="button"
+              onClick={showNewErrors}
+              className={getQuickFilterButtonClass(
+                statusFilter === "NEW" && severityFilter === "",
+              )}
+            >
+              Nye
+            </button>
+            <button
+              type="button"
+              onClick={showCriticalErrors}
+              className={getQuickFilterButtonClass(
+                statusFilter === "ACTIVE" && severityFilter === "CRITICAL",
+              )}
+            >
+              Kritiske
+            </button>
+            <button
+              type="button"
+              onClick={showAllErrors}
+              className={getQuickFilterButtonClass(
+                statusFilter === "" && severityFilter === "",
+              )}
+            >
+              Alle
+            </button>
+          </div>
+
           <div className="grid gap-3 md:grid-cols-[220px_220px_1fr_auto]">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -537,12 +618,12 @@ export default function SystemErrorLogsPage() {
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
               Indlæser systemfejl...
             </div>
-          ) : logs.length === 0 ? (
+          ) : visibleLogs.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
               Ingen systemfejl matcher de valgte filtre.
             </div>
           ) : (
-            logs.map((log) => (
+            visibleLogs.map((log) => (
               <article
                 key={log.id}
                 className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
