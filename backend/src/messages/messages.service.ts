@@ -55,8 +55,14 @@ export class MessagesService {
     return getUnreadMessageCount(this.prisma, userId, cinemaId);
   }
 
-  async archiveMessage(id: number, userId: number) {
-    return archiveMessageForUser(this.prisma, this.realtime, id, userId);
+  async archiveMessage(id: number, userId: number, cinemaId: number) {
+    return archiveMessageForUser(
+      this.prisma,
+      this.realtime,
+      id,
+      userId,
+      cinemaId,
+    );
   }
 
   async unarchiveMessage(id: number, userId: number, cinemaId: number) {
@@ -69,7 +75,13 @@ export class MessagesService {
     );
   }
 
-  async recallMessage(id: number, userId: number) {
-    return recallMessageForUser(this.prisma, this.realtime, id, userId);
+  async recallMessage(id: number, userId: number, cinemaId: number) {
+    return recallMessageForUser(
+      this.prisma,
+      this.realtime,
+      id,
+      userId,
+      cinemaId,
+    );
   }
 }

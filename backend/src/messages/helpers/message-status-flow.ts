@@ -3,6 +3,15 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { messageInclude, notifyMessagesUpdated } from './message-shared';
 
+function ensureMessageCinemaAccess(
+  message: { cinemaId: number },
+  cinemaId: number,
+) {
+  if (message.cinemaId !== cinemaId) {
+    throw new ForbiddenException('Du har ikke adgang til denne besked');
+  }
+}
+
 export async function markMessageAsRead(
   prisma: PrismaService,
   realtime: RealtimeGateway,
@@ -18,9 +27,7 @@ export async function markMessageAsRead(
     throw new NotFoundException('Besked ikke fundet');
   }
 
-  if (message.cinemaId !== cinemaId) {
-    throw new ForbiddenException('Du har ikke adgang til denne besked');
-  }
+  ensureMessageCinemaAccess(message, cinemaId);
 
   const allowed =
     message.senderId === userId ||
@@ -50,6 +57,7 @@ export async function archiveMessageForUser(
   realtime: RealtimeGateway,
   id: number,
   userId: number,
+  cinemaId: number,
 ) {
   const message = await prisma.message.findUnique({
     where: { id },
@@ -58,6 +66,8 @@ export async function archiveMessageForUser(
   if (!message) {
     throw new NotFoundException('Besked ikke fundet');
   }
+
+  ensureMessageCinemaAccess(message, cinemaId);
 
   const allowed = message.senderId === userId || message.receiverId === userId;
 
@@ -93,9 +103,7 @@ export async function unarchiveMessageForUser(
     throw new NotFoundException('Besked ikke fundet');
   }
 
-  if (message.cinemaId !== cinemaId) {
-    throw new ForbiddenException('Du har ikke adgang til denne besked');
-  }
+  ensureMessageCinemaAccess(message, cinemaId);
 
   const allowed =
     message.senderId === userId ||
@@ -124,6 +132,7 @@ export async function recallMessageForUser(
   realtime: RealtimeGateway,
   id: number,
   userId: number,
+  cinemaId: number,
 ) {
   const message = await prisma.message.findUnique({
     where: { id },
@@ -132,6 +141,8 @@ export async function recallMessageForUser(
   if (!message) {
     throw new NotFoundException('Besked ikke fundet');
   }
+
+  ensureMessageCinemaAccess(message, cinemaId);
 
   if (message.senderId !== userId) {
     throw new ForbiddenException('Kun afsender kan tilbagekalde beskeden');

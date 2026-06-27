@@ -14,14 +14,25 @@ import { MessagesService } from './messages.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { CreateMessageDto } from './dto/create-message.dto';
 
-function getRequiredCinemaId(req: any) {
-  const cinemaId = Number(req.user?.cinemaId);
+function parseRequiredId(value: string | number, message: string) {
+  const parsedId = Number(value);
 
-  if (!Number.isFinite(cinemaId) || cinemaId <= 0) {
-    throw new BadRequestException('Vælg en biograf, før du bruger beskeder.');
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    throw new BadRequestException(message);
   }
 
-  return cinemaId;
+  return parsedId;
+}
+
+function getRequiredUserId(req: any) {
+  return parseRequiredId(req.user?.sub, 'Bruger skal være et gyldigt ID');
+}
+
+function getRequiredCinemaId(req: any) {
+  return parseRequiredId(
+    req.user?.cinemaId,
+    'Vælg en biograf, før du bruger beskeder.',
+  );
 }
 
 @Controller('messages')
@@ -32,7 +43,7 @@ export class MessagesController {
   @Get('unread-count')
   getUnreadCount(@Req() req: any) {
     return this.messagesService.getUnreadCount(
-      Number(req.user.sub),
+      getRequiredUserId(req),
       getRequiredCinemaId(req),
     );
   }
@@ -41,7 +52,7 @@ export class MessagesController {
   @Get('archive')
   getArchivedMessages(@Req() req: any) {
     return this.messagesService.findArchivedForUser(
-      Number(req.user.sub),
+      getRequiredUserId(req),
       getRequiredCinemaId(req),
     );
   }
@@ -50,7 +61,7 @@ export class MessagesController {
   @Get('sent')
   getSentMessages(@Req() req: any) {
     return this.messagesService.findSentForUser(
-      Number(req.user.sub),
+      getRequiredUserId(req),
       getRequiredCinemaId(req),
     );
   }
@@ -59,7 +70,7 @@ export class MessagesController {
   @Get()
   getMessages(@Req() req: any) {
     return this.messagesService.findAllForUser(
-      Number(req.user.sub),
+      getRequiredUserId(req),
       getRequiredCinemaId(req),
     );
   }
@@ -69,7 +80,7 @@ export class MessagesController {
   createMessage(@Req() req: any, @Body() body: CreateMessageDto) {
     return this.messagesService.create({
       ...body,
-      senderId: Number(req.user.sub),
+      senderId: getRequiredUserId(req),
       cinemaId: getRequiredCinemaId(req),
     });
   }
@@ -78,8 +89,8 @@ export class MessagesController {
   @Patch(':id/read')
   markAsRead(@Req() req: any, @Param('id') id: string) {
     return this.messagesService.markAsRead(
-      Number(id),
-      Number(req.user.sub),
+      parseRequiredId(id, 'Besked skal være et gyldigt ID'),
+      getRequiredUserId(req),
       getRequiredCinemaId(req),
     );
   }
@@ -88,8 +99,9 @@ export class MessagesController {
   @Patch(':id/archive')
   archiveMessage(@Req() req: any, @Param('id') id: string) {
     return this.messagesService.archiveMessage(
-      Number(id),
-      Number(req.user.sub),
+      parseRequiredId(id, 'Besked skal være et gyldigt ID'),
+      getRequiredUserId(req),
+      getRequiredCinemaId(req),
     );
   }
 
@@ -97,8 +109,8 @@ export class MessagesController {
   @Patch(':id/unarchive')
   unarchiveMessage(@Req() req: any, @Param('id') id: string) {
     return this.messagesService.unarchiveMessage(
-      Number(id),
-      Number(req.user.sub),
+      parseRequiredId(id, 'Besked skal være et gyldigt ID'),
+      getRequiredUserId(req),
       getRequiredCinemaId(req),
     );
   }
@@ -106,6 +118,10 @@ export class MessagesController {
   @UseGuards(JwtGuard)
   @Patch(':id/recall')
   recallMessage(@Req() req: any, @Param('id') id: string) {
-    return this.messagesService.recallMessage(Number(id), Number(req.user.sub));
+    return this.messagesService.recallMessage(
+      parseRequiredId(id, 'Besked skal være et gyldigt ID'),
+      getRequiredUserId(req),
+      getRequiredCinemaId(req),
+    );
   }
 }
