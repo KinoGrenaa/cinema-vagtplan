@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
+
 import type { TimeEntry } from "../types";
 import { readErrorMessage } from "../utils";
 import { getSelectedCinemaQuery } from "../helpers/timeApprovalRequests";
@@ -14,13 +15,28 @@ type InfoDialog = {
 
 type UseTimeApprovalDataOptions = {
   infoDialog: InfoDialog;
+  enabled?: boolean;
 };
 
-export function useTimeApprovalData({ infoDialog }: UseTimeApprovalDataOptions) {
+export function useTimeApprovalData({
+  infoDialog,
+  enabled = true,
+}: UseTimeApprovalDataOptions) {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const showErrorRef = useRef(infoDialog.showError);
+
+  useEffect(() => {
+    showErrorRef.current = infoDialog.showError;
+  }, [infoDialog.showError]);
 
   const fetchEntries = useCallback(async () => {
+    if (!enabled) {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -35,7 +51,7 @@ export function useTimeApprovalData({ infoDialog }: UseTimeApprovalDataOptions) 
             "Kunne ikke hente tidsregistreringer",
           );
 
-          infoDialog.showError("Kunne ikke hente tidsregistreringer", message);
+          showErrorRef.current("Kunne ikke hente tidsregistreringer", message);
         }
 
         setEntries([]);
@@ -44,20 +60,20 @@ export function useTimeApprovalData({ infoDialog }: UseTimeApprovalDataOptions) 
 
       const data = await response.json();
       const nextEntries = Array.isArray(data) ? data : [];
+
       setEntries(nextEntries);
     } catch (error) {
-      infoDialog.showError(
+      showErrorRef.current(
         "Kunne ikke hente tidsregistreringer",
         error instanceof Error && error.message
           ? error.message
           : "Der opstod en fejl, da tidsregistreringerne skulle hentes. Prøv igen.",
       );
-
       setEntries([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useRealtimeCore({
     onTimeEntry: fetchEntries,
