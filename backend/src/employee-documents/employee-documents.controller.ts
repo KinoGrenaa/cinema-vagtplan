@@ -43,6 +43,17 @@ export class EmployeeDocumentsController {
     return cinemaId;
   }
 
+
+  private parseRequiredId(value: string | number, message: string) {
+    const parsedId = Number(value);
+
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      throw new BadRequestException(message);
+    }
+
+    return parsedId;
+  }
+
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER', 'EMPLOYEE')
   @Get('user/:userId')
@@ -53,7 +64,7 @@ export class EmployeeDocumentsController {
   ) {
     return this.employeeDocumentsService.findForUser(
       req.user,
-      Number(userId),
+      this.parseRequiredId(userId, 'Bruger skal være et gyldigt ID'),
       this.parseCinemaId(cinemaId),
     );
   }
@@ -124,7 +135,10 @@ export class EmployeeDocumentsController {
     }
 
     return this.employeeDocumentsService.create(req.user, {
-      userId: Number(body.userId),
+      userId: this.parseRequiredId(
+        body.userId,
+        'Bruger skal være et gyldigt ID',
+      ),
       title: body.title,
       cinemaId: this.parseCinemaId(body.cinemaId),
       fileUrl: `/uploads/employee-documents/${file.filename}`,
@@ -144,7 +158,7 @@ export class EmployeeDocumentsController {
   ) {
     const document = await this.employeeDocumentsService.getDownload(
       req.user,
-      Number(id),
+      this.parseRequiredId(id, 'Dokument skal være et gyldigt ID'),
       this.parseCinemaId(cinemaId),
     );
 
@@ -170,7 +184,7 @@ export class EmployeeDocumentsController {
   ) {
     return this.employeeDocumentsService.delete(
       req.user,
-      Number(id),
+      this.parseRequiredId(id, 'Dokument skal være et gyldigt ID'),
       this.parseCinemaId(cinemaId),
     );
   }
