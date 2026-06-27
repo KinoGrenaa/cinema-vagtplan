@@ -23,6 +23,16 @@ import { Roles } from '../auth/roles/roles.decorator';
 export class ShiftsController {
   constructor(private shiftsService: ShiftsService) {}
 
+  private parseRequiredId(value: string | number, message: string) {
+    const parsedId = Number(value);
+
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      throw new BadRequestException(message);
+    }
+
+    return parsedId;
+  }
+
   private parseCinemaId(value?: string | number | null) {
     if (value === undefined || value === null || value === '') {
       return undefined;
@@ -66,7 +76,11 @@ export class ShiftsController {
     @Param('id') id: string,
     @Body() body: UpdateShiftDto,
   ) {
-    return this.shiftsService.updateShift(req.user as any, Number(id), body);
+    return this.shiftsService.updateShift(
+      req.user as any,
+      this.parseRequiredId(id, 'Vagt skal være et gyldigt ID'),
+      body,
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -79,7 +93,7 @@ export class ShiftsController {
   ) {
     return this.shiftsService.deleteShift(
       req.user as any,
-      Number(id),
+      this.parseRequiredId(id, 'Vagt skal være et gyldigt ID'),
       this.parseCinemaId(cinemaId),
     );
   }
