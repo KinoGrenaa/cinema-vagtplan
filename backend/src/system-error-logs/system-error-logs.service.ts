@@ -1,0 +1,335 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+
+type SystemErrorSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
+type SystemErrorStatus = 'NEW' | 'SEEN' | 'RESOLVED' | 'IGNORED';
+
+type SystemErrorLogRow = {
+  id: number;
+  createdAt: Date;
+  updatedAt: Date;
+  severity: SystemErrorSeverity;
+  status: SystemErrorStatus;
+  source: string;
+  method: string | null;
+  path: string | null;
+  action: string | null;
+  message: string;
+  technicalMessage: string | null;
+  stack: string | null;
+  correlationId: string | null;
+  statusCode: number | null;
+  userId: number | null;
+  userRole: string | null;
+  cinemaId: number | null;
+  metadata: unknown;
+  resolvedAt: Date | null;
+  resolvedByUserId: number | null;
+  resolutionNote: string | null;
+};
+
+type CreateSystemErrorLogData = {
+  severity?: SystemErrorSeverity;
+  status?: SystemErrorStatus;
+  source?: string;
+  method?: string | null;
+  path?: string | null;
+  action?: string | null;
+  message: string;
+  technicalMessage?: string | null;
+  stack?: string | null;
+  correlationId?: string | null;
+  statusCode?: number | null;
+  userId?: number | null;
+  userRole?: string | null;
+  cinemaId?: number | null;
+  metadata?: unknown;
+};
+
+type FindSystemErrorLogsFilters = {
+  severity?: string;
+  status?: string;
+  cinemaId?: number;
+  take?: number;
+};
+
+const VALID_SEVERITIES = new Set<SystemErrorSeverity>([
+  'INFO',
+  'WARNING',
+  'ERROR',
+  'CRITICAL',
+]);
+
+const VALID_STATUSES = new Set<SystemErrorStatus>([
+  'NEW',
+  'SEEN',
+  'RESOLVED',
+  'IGNORED',
+]);
+
+function getRequiredPositiveId(value: unknown, message: string) {
+  const id = Number(value);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new BadRequestException(message);
+  }
+
+  return id;
+}
+
+function normalizeSeverity(value?: string): SystemErrorSeverity | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.toUpperCase() as SystemErrorSeverity;
+
+  if (!VALID_SEVERITIES.has(normalized)) {
+    throw new BadRequestException('Severity skal være gyldig');
+  }
+
+  return normalized;
+}
+
+function normalizeStatus(value?: string): SystemErrorStatus | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.toUpperCase() as SystemErrorStatus;
+
+  if (!VALID_STATUSES.has(normalized)) {
+    throw new BadRequestException('Status skal være gyldig');
+  }
+
+  return normalized;
+}
+
+function getSafeTake(value?: number) {
+  if (value === undefined) {
+    return 200;
+  }
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new BadRequestException('Antal skal være et positivt heltal');
+  }
+
+  return Math.min(value, 500);
+}
+
+function getSeverityForStatusCode(statusCode?: number | null): SystemErrorSeverity {
+  if (!statusCode || statusCode >= 500) {
+    return 'ERROR';
+  }
+
+  if (statusCode === 403) {
+    return 'WARNING';
+  }
+
+  return 'INFO';
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof HttpException) {
+    const response = error.getResponse();
+
+    if (typeof response === 'string') {
+      return response;
+    }
+
+    if (response && typeof response === 'object' && 'message' in response) {
+      const message = (response as { message?: unknown }).message;
+
+      if (Array.isArray(message)) {
+        return message.join(', ');
+      }
+
+      if (typeof message === 'string') {
+        return message;
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Ukendt serverfejl';
+}
+
+function getTechnicalMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (error instanceof HttpException) {
+    const response = error.getResponse();
+    return typeof response === 'string' ? response : JSON.stringify(response);
+  }
+
+  return String(error);
+}
+
+function getRequestCorrelationId(request: any) {
+  const headerValue =
+    request?.headers?.['x-correlation-id'] ?? request?.headers?.['x-request-id'];
+
+  if (Array.isArray(headerValue)) {
+    return headerValue[0] ?? null;
+  }
+
+  if (typeof headerValue === 'string' && headerValue.trim() !== '') {
+    return headerValue;
+  }
+
+  return null;
+}
+
+@Injectable()
+export class SystemErrorLogsService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(data: CreateSystemErrorLogData) {
+    const severity = data.severity ?? 'ERROR';
+    const status = data.status ?? 'NEW';
+    const source = data.source ?? 'backend';
+    const metadataJson =
+      data.metadata === undefined ? null : JSON.stringify(data.metadata);
+
+    const rows = await this.prisma.$queryRaw<SystemErrorLogRow[]>(Prisma.sql`
+      INSERT INTO "SystemErrorLog" (
+        "severity",
+        "status",
+        "source",
+        "method",
+        "path",
+        "action",
+        "message",
+        "technicalMessage",
+        "stack",
+        "correlationId",
+        "statusCode",
+        "userId",
+        "userRole",
+        "cinemaId",
+        "metadata"
+      ) VALUES (
+        ${severity},
+        ${status},
+        ${source},
+        ${data.method ?? null},
+        ${data.path ?? null},
+        ${data.action ?? null},
+        ${data.message},
+        ${data.technicalMessage ?? null},
+        ${data.stack ?? null},
+        ${data.correlationId ?? null},
+        ${data.statusCode ?? null},
+        ${data.userId ?? null},
+        ${data.userRole ?? null},
+        ${data.cinemaId ?? null},
+        ${metadataJson}::jsonb
+      )
+      RETURNING *
+    `);
+
+    return rows[0];
+  }
+
+  async createFromRequestError(params: {
+    error: unknown;
+    request: any;
+    statusCode: number;
+  }) {
+    const user = params.request?.user;
+    const method = params.request?.method ?? null;
+    const path =
+      params.request?.originalUrl ?? params.request?.url ?? params.request?.path ?? null;
+
+    return this.create({
+      severity: getSeverityForStatusCode(params.statusCode),
+      source: 'backend',
+      method,
+      path,
+      action: method && path ? `${method} ${path}` : null,
+      message: getErrorMessage(params.error),
+      technicalMessage: getTechnicalMessage(params.error),
+      stack: params.error instanceof Error ? params.error.stack ?? null : null,
+      correlationId: getRequestCorrelationId(params.request),
+      statusCode: params.statusCode,
+      userId: user?.sub ? Number(user.sub) : null,
+      userRole: user?.role ?? null,
+      cinemaId: user?.cinemaId ? Number(user.cinemaId) : null,
+      metadata: {
+        query: params.request?.query ?? null,
+        params: params.request?.params ?? null,
+      },
+    });
+  }
+
+  async findAll(filters: FindSystemErrorLogsFilters) {
+    const severity = normalizeSeverity(filters.severity);
+    const status = normalizeStatus(filters.status);
+    const take = getSafeTake(filters.take);
+    const where: Prisma.Sql[] = [];
+
+    if (severity) {
+      where.push(Prisma.sql`"severity" = ${severity}`);
+    }
+
+    if (status) {
+      where.push(Prisma.sql`"status" = ${status}`);
+    }
+
+    if (filters.cinemaId) {
+      where.push(Prisma.sql`"cinemaId" = ${filters.cinemaId}`);
+    }
+
+    const whereSql = where.length
+      ? Prisma.sql`WHERE ${Prisma.join(where, ' AND ')}`
+      : Prisma.empty;
+
+    return this.prisma.$queryRaw<SystemErrorLogRow[]>(Prisma.sql`
+      SELECT *
+      FROM "SystemErrorLog"
+      ${whereSql}
+      ORDER BY "createdAt" DESC
+      LIMIT ${take}
+    `);
+  }
+
+  async updateStatus(params: {
+    id: number;
+    status: SystemErrorStatus;
+    changedByUserId?: number | null;
+    note?: string | null;
+  }) {
+    const id = getRequiredPositiveId(params.id, 'Fejl-log skal være et gyldigt ID');
+    const note =
+      typeof params.note === 'string' && params.note.trim() !== ''
+        ? params.note.trim()
+        : null;
+    const resolvedStatuses: SystemErrorStatus[] = ['RESOLVED', 'IGNORED'];
+    const isResolvedStatus = resolvedStatuses.includes(params.status);
+
+    const rows = await this.prisma.$queryRaw<SystemErrorLogRow[]>(Prisma.sql`
+      UPDATE "SystemErrorLog"
+      SET
+        "status" = ${params.status},
+        "updatedAt" = CURRENT_TIMESTAMP,
+        "resolvedAt" = ${isResolvedStatus ? new Date() : null},
+        "resolvedByUserId" = ${isResolvedStatus ? params.changedByUserId ?? null : null},
+        "resolutionNote" = ${isResolvedStatus ? note : null}
+      WHERE "id" = ${id}
+      RETURNING *
+    `);
+
+    if (!rows[0]) {
+      throw new NotFoundException('Fejl-log blev ikke fundet');
+    }
+
+    return rows[0];
+  }
+}
