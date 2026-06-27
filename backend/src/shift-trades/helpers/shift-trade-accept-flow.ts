@@ -61,15 +61,17 @@ export async function acceptShiftTrade(
     include: shiftTradeInclude,
   });
 
-  realtime.notifyAll('shiftTradesUpdated', updatedTrade);
   if (updatedTrade) {
-    if (updatedTrade) {
-      realtime.notifyCinema(
-        updatedTrade.cinemaId,
-        'shiftAccepted',
-        updatedTrade,
-      );
-    }
+    realtime.notifyCinema(
+      updatedTrade.cinemaId,
+      'shiftTradesUpdated',
+      updatedTrade,
+    );
+    realtime.notifyCinema(
+      updatedTrade.cinemaId,
+      'shiftAccepted',
+      updatedTrade,
+    );
   }
 
   await notifications.create({
