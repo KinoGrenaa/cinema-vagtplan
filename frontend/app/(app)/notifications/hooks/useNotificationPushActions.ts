@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import {
   disablePushNotifications,
   enablePushNotifications,
   isPushNotificationsEnabled,
 } from "@/app/hooks/usePushNotifications";
-
+import { useAuth } from "@/app/providers/AuthProvider";
 import { getErrorMessage } from "../helpers/notificationHelpers";
 
 type UseNotificationPushActionsParams = {
@@ -17,9 +16,12 @@ type UseNotificationPushActionsParams = {
 export function useNotificationPushActions({
   showError,
 }: UseNotificationPushActionsParams) {
+  const { user } = useAuth();
   const [pushMessage, setPushMessage] = useState("");
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+
+  const isMasterWithoutOwnCinema = user?.role === "MASTER" && !user?.cinemaId;
 
   useEffect(() => {
     async function loadPushStatus() {
@@ -41,10 +43,19 @@ export function useNotificationPushActions({
   }, [showError]);
 
   async function handleEnablePush() {
+    if (isMasterWithoutOwnCinema) {
+      setPushMessage("");
+      showError(
+        "Push kræver biograftilknytning",
+        "Push-notifikationer kan kun aktiveres for brugere, der er knyttet til en biograf.",
+      );
+      return;
+    }
+
     try {
       setPushLoading(true);
-
       const success = await enablePushNotifications();
+
       setPushEnabled(success);
 
       if (!success) {

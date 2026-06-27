@@ -1,24 +1,74 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import { useApi } from "@/app/hooks/useApi";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { useAuth } from "@/app/providers/AuthProvider";
-
-import { getErrorMessage, readErrorMessage } from "../helpers/notificationHelpers";
+import {
+  getErrorMessage,
+  readErrorMessage,
+} from "../helpers/notificationHelpers";
 import type { Message, ShiftTrade } from "../helpers/notificationTypes";
 
 type UseNotificationsExtraDataParams = {
   showError: (title: string, description: string) => void;
 };
 
+function getSelectedMasterCinemaId() {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const selectedCinemaId = window.localStorage.getItem("masterSelectedCinemaId");
+
+  if (!selectedCinemaId) {
+    return undefined;
+  }
+
+  return selectedCinemaId;
+}
+
+function getMasterCinemaQuery(user: any) {
+  const isGlobalMaster = user?.role === "MASTER" && !user?.cinemaId;
+
+  if (!isGlobalMaster) {
+    return "";
+  }
+
+  const selectedCinemaId = getSelectedMasterCinemaId();
+
+  if (!selectedCinemaId) {
+    return undefined;
+  }
+
+  return `?cinemaId=${encodeURIComponent(selectedCinemaId)}`;
+}
+
+function getMessagesEndpoint(user: any) {
+  const cinemaQuery = getMasterCinemaQuery(user);
+
+  if (cinemaQuery === undefined) {
+    return undefined;
+  }
+
+  return `/messages${cinemaQuery}`;
+}
+
+function getShiftTradesEndpoint(user: any) {
+  const cinemaQuery = getMasterCinemaQuery(user);
+
+  if (cinemaQuery === undefined) {
+    return undefined;
+  }
+
+  return `/shift-trades${cinemaQuery}`;
+}
+
 export function useNotificationsExtraData({
   showError,
 }: UseNotificationsExtraDataParams) {
   const { apiFetch } = useApi();
   const { user, loading: authLoading } = useAuth();
-
   const [messages, setMessages] = useState<Message[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
   const [extraLoading, setExtraLoading] = useState(true);
@@ -30,12 +80,17 @@ export function useNotificationsExtraData({
       try {
         setExtraLoading(true);
 
+        const messagesEndpoint = getMessagesEndpoint(user);
+        const shiftTradesEndpoint = getShiftTradesEndpoint(user);
+
         const [messagesResponse, tradesResponse] = await Promise.all([
-          apiFetch("/messages"),
-          apiFetch("/shift-trades"),
+          messagesEndpoint ? apiFetch(messagesEndpoint) : Promise.resolve(undefined),
+          shiftTradesEndpoint
+            ? apiFetch(shiftTradesEndpoint)
+            : Promise.resolve(undefined),
         ]);
 
-        if (!messagesResponse.ok) {
+        if (messagesResponse && !messagesResponse.ok) {
           throw new Error(
             await readErrorMessage(
               messagesResponse,
@@ -44,7 +99,7 @@ export function useNotificationsExtraData({
           );
         }
 
-        if (!tradesResponse.ok) {
+        if (tradesResponse && !tradesResponse.ok) {
           throw new Error(
             await readErrorMessage(
               tradesResponse,
@@ -54,8 +109,8 @@ export function useNotificationsExtraData({
         }
 
         const [messagesData, tradesData] = await Promise.all([
-          messagesResponse.json(),
-          tradesResponse.json(),
+          messagesResponse ? messagesResponse.json() : Promise.resolve([]),
+          tradesResponse ? tradesResponse.json() : Promise.resolve([]),
         ]);
 
         setMessages(Array.isArray(messagesData) ? messagesData : []);
@@ -107,9 +162,7 @@ export function useNotificationsExtraData({
     return messages.filter((message) => {
       const isUnread = !message.readAt;
       const isForMe =
-        message.isBroadcast ||
-        message.receiver?.id === user.id ||
-        !message.receiver;
+        message.isBroadcast || message.receiver?.id === user.id || !message.receiver;
 
       return isUnread && isForMe;
     });
