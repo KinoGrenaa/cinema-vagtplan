@@ -396,7 +396,7 @@ export class SystemErrorLogsService {
       policy: {
         ...SYSTEM_ERROR_LOG_RETENTION_POLICY,
         description: [
-          'Aktive fejl med status NEW/SEEN beholdes i 180 dage.',
+          'Nye eller sete aktive fejl beholdes i 180 dage.',
           'Løste eller ignorerede fejl beholdes i 90 dage efter afslutning.',
           'Kritiske fejl beholdes i 365 dage.',
         ],
