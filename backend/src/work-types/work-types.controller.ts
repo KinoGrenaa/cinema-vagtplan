@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -17,6 +18,16 @@ import { JwtGuard } from '../auth/jwt/jwt.guard';
 @Controller('work-types')
 export class WorkTypesController {
   constructor(private workTypesService: WorkTypesService) {}
+
+  private parseRequiredId(value: string | number, message: string) {
+    const parsedId = Number(value);
+
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      throw new BadRequestException(message);
+    }
+
+    return parsedId;
+  }
 
   @UseGuards(JwtGuard)
   @Get()
@@ -46,13 +57,22 @@ export class WorkTypesController {
     @Body() body,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    return this.workTypesService.update(req.user, Number(id), body, cinemaId);
+    return this.workTypesService.update(
+      req.user,
+      this.parseRequiredId(id, 'Vagttype skal være et gyldigt ID'),
+      body,
+      cinemaId,
+    );
   }
 
   @UseGuards(JwtGuard)
   @Delete(':id')
   remove(@Req() req, @Param('id') id: string, @Query('cinemaId') cinemaId?: string) {
-    return this.workTypesService.remove(req.user, Number(id), cinemaId);
+    return this.workTypesService.remove(
+      req.user,
+      this.parseRequiredId(id, 'Vagttype skal være et gyldigt ID'),
+      cinemaId,
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -62,6 +82,10 @@ export class WorkTypesController {
     @Param('id') id: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    return this.workTypesService.reactivate(req.user, Number(id), cinemaId);
+    return this.workTypesService.reactivate(
+      req.user,
+      this.parseRequiredId(id, 'Vagttype skal være et gyldigt ID'),
+      cinemaId,
+    );
   }
 }

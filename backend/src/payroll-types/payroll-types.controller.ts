@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -21,6 +22,16 @@ import { PayrollTypesService } from './payroll-types.service';
 @Roles('ADMIN', 'MASTER')
 export class PayrollTypesController {
   constructor(private payrollTypesService: PayrollTypesService) {}
+
+  private parseRequiredId(value: string | number, message: string) {
+    const parsedId = Number(value);
+
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      throw new BadRequestException(message);
+    }
+
+    return parsedId;
+  }
 
   @Get()
   findAll(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
@@ -61,11 +72,20 @@ export class PayrollTypesController {
     },
     @Query('cinemaId') cinemaId?: string,
   ) {
-    return this.payrollTypesService.update(req.user, Number(id), body, cinemaId);
+    return this.payrollTypesService.update(
+      req.user,
+      this.parseRequiredId(id, 'Lønart skal være et gyldigt ID'),
+      body,
+      cinemaId,
+    );
   }
 
   @Delete(':id')
   remove(@Req() req: any, @Param('id') id: string, @Query('cinemaId') cinemaId?: string) {
-    return this.payrollTypesService.remove(req.user, Number(id), cinemaId);
+    return this.payrollTypesService.remove(
+      req.user,
+      this.parseRequiredId(id, 'Lønart skal være et gyldigt ID'),
+      cinemaId,
+    );
   }
 }
