@@ -1,5 +1,9 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { StaffingRequestStatus } from '@prisma/client';
-
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { StaffingAiService } from '../../staffing-ai/staffing-ai.service';
@@ -19,17 +23,163 @@ type CreateAiEmergencyStaffingRequestsParams = {
   };
 };
 
+function getRequiredPositiveId(value: unknown, message: string) {
+  const id = Number(value);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new BadRequestException(message);
+  }
+
+  return id;
+}
+
+function getOptionalPositiveId(value: unknown, message: string) {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  return getRequiredPositiveId(value, message);
+}
+
+function getRequiredDate(value: unknown, message: string) {
+  const date = value instanceof Date ? value : new Date(value as string);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException(message);
+  }
+
+  return date;
+}
+
+function getValidatedDateRange(startTime: unknown, endTime: unknown) {
+  const start = getRequiredDate(startTime, 'Starttid skal være en gyldig dato');
+  const end = getRequiredDate(endTime, 'Sluttid skal være en gyldig dato');
+
+  if (end.getTime() <= start.getTime()) {
+    throw new BadRequestException('Sluttid skal være efter starttid');
+  }
+
+  return { start, end };
+}
+
+function getSafeLimit(value: unknown) {
+  if (value === undefined || value === null || value === '') {
+    return 5;
+  }
+
+  const limit = Number(value);
+
+  if (!Number.isInteger(limit) || limit <= 0) {
+    throw new BadRequestException('Antal kandidater skal være et positivt heltal');
+  }
+
+  return Math.min(limit, 20);
+}
+
+async function ensureRequestedByUserCanCreateAiRequest(params: {
+  prisma: PrismaService;
+  requestedByUserId: number;
+  cinemaId: number;
+}) {
+  const user = await params.prisma.user.findUnique({
+    where: {
+      id: params.requestedByUserId,
+    },
+    select: {
+      id: true,
+      role: true,
+      cinemaId: true,
+      isActive: true,
+    },
+  });
+
+  if (!user || !user.isActive) {
+    throw new NotFoundException('Bruger blev ikke fundet');
+  }
+
+  if (user.role === 'MASTER') {
+    return;
+  }
+
+  if (user.role !== 'ADMIN' || user.cinemaId !== params.cinemaId) {
+    throw new ForbiddenException(
+      'Brugeren må ikke oprette AI-bemandingsforespørgsler for denne biograf',
+    );
+  }
+}
+
+async function ensureShiftBelongsToCinema(params: {
+  prisma: PrismaService;
+  shiftId?: number;
+  cinemaId: number;
+}) {
+  if (!params.shiftId) {
+    return undefined;
+  }
+
+  const shift = await params.prisma.shift.findUnique({
+    where: {
+      id: params.shiftId,
+    },
+    select: {
+      id: true,
+      cinemaId: true,
+    },
+  });
+
+  if (!shift) {
+    throw new NotFoundException('Vagten blev ikke fundet');
+  }
+
+  if (shift.cinemaId !== params.cinemaId) {
+    throw new ForbiddenException('Vagten tilhører ikke den valgte biograf');
+  }
+
+  return shift.id;
+}
+
 export async function createAiEmergencyStaffingRequests({
   prisma,
   realtimeGateway,
   staffingAiService,
   params,
 }: CreateAiEmergencyStaffingRequestsParams) {
-  const candidates = await staffingAiService.getTopEmergencyCandidates(
+  const cinemaId = getRequiredPositiveId(
     params.cinemaId,
-    params.startTime,
-    params.endTime,
-    params.limit ?? 5,
+    'Biograf skal være et gyldigt ID',
+  );
+  const requestedByUserId = getRequiredPositiveId(
+    params.requestedByUserId,
+    'Bruger skal være et gyldigt ID',
+  );
+  const shiftId = getOptionalPositiveId(
+    params.shiftId,
+    'Vagt skal være et gyldigt ID',
+  );
+  const { start, end } = getValidatedDateRange(params.startTime, params.endTime);
+  const limit = getSafeLimit(params.limit);
+  const message =
+    typeof params.message === 'string' && params.message.trim() !== ''
+      ? params.message
+      : 'Der er akut behov for ekstra bemanding.';
+
+  await ensureRequestedByUserCanCreateAiRequest({
+    prisma,
+    requestedByUserId,
+    cinemaId,
+  });
+
+  const validatedShiftId = await ensureShiftBelongsToCinema({
+    prisma,
+    shiftId,
+    cinemaId,
+  });
+
+  const candidates = await staffingAiService.getTopEmergencyCandidates(
+    cinemaId,
+    start,
+    end,
+    limit,
   );
 
   const createdRequests: any[] = [];
@@ -37,15 +187,15 @@ export async function createAiEmergencyStaffingRequests({
   for (const candidate of candidates) {
     const request = await prisma.staffingRequest.create({
       data: {
-        cinemaId: params.cinemaId,
-        requestedByUserId: params.requestedByUserId,
+        cinemaId,
+        requestedByUserId,
         targetUserId: candidate.userId,
-        shiftId: params.shiftId,
+        shiftId: validatedShiftId,
         type: 'EMERGENCY',
         status: StaffingRequestStatus.PENDING,
         priority: Math.max(1, Math.round(candidate.totalScore)),
         aiGenerated: true,
-        message: params.message || 'Der er akut behov for ekstra bemanding.',
+        message,
       },
       include: {
         targetUser: true,
@@ -61,17 +211,17 @@ export async function createAiEmergencyStaffingRequests({
 
     await prisma.notification.create({
       data: {
-        cinemaId: params.cinemaId,
+        cinemaId,
         userId: candidate.userId,
         title: 'Akut bemandingsforespørgsel',
-        message: params.message || 'Der er akut behov for ekstra bemanding.',
+        message,
         type: 'STAFFING_REQUEST',
         linkUrl: '/staffing-requests',
       },
     });
   }
 
-  realtimeGateway.notifyStaffingRequestsUpdated(params.cinemaId);
+  realtimeGateway.notifyStaffingRequestsUpdated(cinemaId);
 
   return createdRequests;
 }
