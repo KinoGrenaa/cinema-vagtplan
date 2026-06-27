@@ -8,22 +8,21 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
 import type { CurrentUser } from "../../../shared/types";
 import BaseModal from "../components/modals/BaseModal";
 import { SESSION_EXPIRED_EVENT } from "../lib/api";
+
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
+const MASTER_SELECTED_CINEMA_LOGO_URL_KEY = "masterSelectedCinemaLogoUrl";
 
 type AuthContextValue = {
   user: CurrentUser | null;
   token: string | null;
   loading: boolean;
-
   isMaster: boolean;
   isAdmin: boolean;
   isEmployee: boolean;
-
   login: (token: string, user: CurrentUser) => void;
   logout: () => void;
   refreshUser: () => void;
@@ -37,13 +36,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
 
+  function clearMasterSelectedCinema() {
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
+    window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
+  }
+
   function clearAuthState() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
-    localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
-    window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
-
+    clearMasterSelectedCinema();
     setToken(null);
     setUser(null);
   }
@@ -95,9 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("user", JSON.stringify(newUser));
 
     if (newUser.role === "MASTER") {
-      localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
-      localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
-      window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
+      clearMasterSelectedCinema();
     }
 
     setToken(newToken);
@@ -107,7 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout() {
     clearAuthState();
-
     window.location.href = "/";
   }
 
@@ -121,11 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       token,
       loading,
-
       isMaster: user?.role === "MASTER",
       isAdmin: user?.role === "ADMIN" || user?.role === "MASTER",
       isEmployee: user?.role === "EMPLOYEE",
-
       login,
       logout,
       refreshUser,
@@ -136,7 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-
       <BaseModal
         open={sessionExpiredOpen}
         title="Din session er udløbet"
@@ -147,7 +144,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           <p className="text-gray-700 dark:text-gray-300">
             Du skal logge ind igen for at fortsætte.
           </p>
-
           <div className="flex justify-end">
             <button
               type="button"
