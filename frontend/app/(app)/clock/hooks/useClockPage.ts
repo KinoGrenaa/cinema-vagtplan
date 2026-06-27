@@ -1,29 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+
 import type { CurrentUser, Shift, TimeEntry } from "../../../../../shared/types";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import { getTodayLocalDate } from "@/app/utils/dateTime";
 import { toast } from "sonner";
+
 import { calculateTotalHours, readErrorMessage } from "../helpers/clockHelpers";
+
+function isGlobalMasterUser(user: CurrentUser | null) {
+  return user?.role === "MASTER" && !user.cinemaId;
+}
 
 export function useClockPage() {
   const infoDialog = useInfoModal();
-
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-
   const [entries, setEntries] = useState<TimeEntry[]>([]);
-
   const [todayShifts, setTodayShifts] = useState<Shift[]>([]);
-
   const [selectedShiftId, setSelectedShiftId] = useState<number | null>(null);
-
   const [clockIn, setClockIn] = useState("");
-
   const [clockOut, setClockOut] = useState("");
-
   const [note, setNote] = useState("");
-
   const [loading, setLoading] = useState(false);
 
   const fetchEntries = useCallback(
@@ -48,7 +46,6 @@ export function useClockPage() {
         }
 
         const data = await response.json();
-
         setEntries(Array.isArray(data) ? data : []);
       } catch (error) {
         setEntries([]);
@@ -70,7 +67,6 @@ export function useClockPage() {
     async (userId: number, showError = true) => {
       try {
         const today = getTodayLocalDate();
-
         const response = await apiFetch(`/shifts?date=${today}`);
 
         if (!response.ok) {
@@ -90,7 +86,6 @@ export function useClockPage() {
         }
 
         const data = await response.json();
-
         const myShifts = Array.isArray(data)
           ? data.filter((shift) => shift.user?.id === userId)
           : [];
@@ -122,11 +117,15 @@ export function useClockPage() {
 
     try {
       const parsedUser: CurrentUser = JSON.parse(savedUser);
-
       setCurrentUser(parsedUser);
 
-      fetchEntries(parsedUser.id);
+      if (isGlobalMasterUser(parsedUser)) {
+        setEntries([]);
+        setTodayShifts([]);
+        return;
+      }
 
+      fetchEntries(parsedUser.id);
       fetchTodayShifts(parsedUser.id, false);
     } catch {
       localStorage.removeItem("user");
@@ -136,8 +135,15 @@ export function useClockPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     if (!currentUser) return;
+
+    if (isGlobalMasterUser(currentUser)) {
+      infoDialog.showError(
+        "Tidsregistrering kræver biografbruger",
+        "MASTER er en global systemrolle og kan ikke registrere egen mødetid/fyraften uden at være tilknyttet en biograf.",
+      );
+      return;
+    }
 
     try {
       setLoading(true);
@@ -163,15 +169,10 @@ export function useClockPage() {
       }
 
       setSelectedShiftId(null);
-
       setClockIn("");
-
       setClockOut("");
-
       setNote("");
-
       await fetchEntries(currentUser.id);
-
       toast.success("Tid registreret.");
     } catch (error) {
       infoDialog.showError(
@@ -186,6 +187,7 @@ export function useClockPage() {
   }
 
   const totalHours = useMemo(() => calculateTotalHours(entries), [entries]);
+  const isGlobalMaster = isGlobalMasterUser(currentUser);
 
   return {
     infoDialog,
@@ -197,6 +199,7 @@ export function useClockPage() {
     note,
     loading,
     totalHours,
+    isGlobalMaster,
     setSelectedShiftId,
     setClockIn,
     setClockOut,
