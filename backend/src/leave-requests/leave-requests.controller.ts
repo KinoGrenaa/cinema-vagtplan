@@ -20,18 +20,26 @@ import { UpdateLeaveStatusDto } from './dto/update-leave-status.dto';
 export class LeaveRequestsController {
   constructor(private leaveRequestsService: LeaveRequestsService) {}
 
+  private parsePositiveId(value: string | number, fieldName: string) {
+    const id = Number(value);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new BadRequestException(`${fieldName} skal være et gyldigt ID`);
+    }
+
+    return id;
+  }
+
   private parseCinemaId(value?: string | number | null) {
     if (value === undefined || value === null || value === '') {
       return undefined;
     }
 
-    const cinemaId = Number(value);
+    return this.parsePositiveId(value, 'Biograf');
+  }
 
-    if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
-      throw new BadRequestException('Biograf skal være et gyldigt ID');
-    }
-
-    return cinemaId;
+  private parseLeaveRequestId(value: string) {
+    return this.parsePositiveId(value, 'Fraværsansøgning');
   }
 
   @UseGuards(JwtGuard)
@@ -64,7 +72,7 @@ export class LeaveRequestsController {
   ) {
     return this.leaveRequestsService.updateStatus(
       req.user,
-      Number(id),
+      this.parseLeaveRequestId(id),
       body.status,
       this.parseCinemaId(cinemaId),
     );
