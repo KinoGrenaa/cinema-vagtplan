@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -23,6 +24,24 @@ import { RejectTimeEntryDto } from './dto/reject-time-entry.dto';
 export class TimeEntriesController {
   constructor(private timeEntriesService: TimeEntriesService) {}
 
+  private parseOptionalId(value: string | undefined, message: string) {
+    if (!value) {
+      return undefined;
+    }
+
+    return this.parseRequiredId(value, message);
+  }
+
+  private parseRequiredId(value: string, message: string) {
+    const parsedId = Number(value);
+
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      throw new BadRequestException(message);
+    }
+
+    return parsedId;
+  }
+
   @UseGuards(JwtGuard)
   @Get('me')
   getMyEntries(@Req() req) {
@@ -37,11 +56,14 @@ export class TimeEntriesController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     if (userId) {
       return this.timeEntriesService.findForUser(
-        Number(userId),
+        this.parseRequiredId(userId, 'Bruger skal være et gyldigt ID'),
         req.user,
         selectedCinemaId,
       );
@@ -59,8 +81,8 @@ export class TimeEntriesController {
   ) {
     return this.timeEntriesService.findOpenEntry(
       req.user,
-      userId ? Number(userId) : undefined,
-      cinemaId ? Number(cinemaId) : undefined,
+      this.parseOptionalId(userId, 'Bruger skal være et gyldigt ID'),
+      this.parseOptionalId(cinemaId, 'Biograf skal være et gyldigt ID'),
     );
   }
 
@@ -99,7 +121,11 @@ export class TimeEntriesController {
       clockOutNote?: string;
     },
   ) {
-    return this.timeEntriesService.clockOut(req.user, Number(id), body);
+    return this.timeEntriesService.clockOut(
+      req.user,
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
+      body,
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -114,10 +140,13 @@ export class TimeEntriesController {
       confirmPayrollAdjustment?: boolean;
     },
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.timeEntriesService.approveEntry(
-      Number(id),
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       req.user,
       selectedCinemaId,
       body?.confirmPayrollAdjustment ?? false,
@@ -132,10 +161,13 @@ export class TimeEntriesController {
     @Param('id') id: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.timeEntriesService.unapproveEntry(
-      Number(id),
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       req.user,
       selectedCinemaId,
     );
@@ -150,10 +182,13 @@ export class TimeEntriesController {
     @Body() body: RejectTimeEntryDto,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.timeEntriesService.rejectEntry(
-      Number(id),
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       body.adminNote,
       req.user,
       selectedCinemaId,
@@ -169,10 +204,13 @@ export class TimeEntriesController {
     @Body() body: RejectTimeEntryDto,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.timeEntriesService.voidEntry(
-      Number(id),
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       body.adminNote,
       req.user,
       selectedCinemaId,
@@ -191,7 +229,11 @@ export class TimeEntriesController {
       note?: string | null;
     },
   ) {
-    return this.timeEntriesService.updateOwnEntry(req.user, Number(id), body);
+    return this.timeEntriesService.updateOwnEntry(
+      req.user,
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
+      body,
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -201,14 +243,18 @@ export class TimeEntriesController {
     @Param('id') id: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.timeEntriesService.findRevisionsForEntry(
       req.user,
-      Number(id),
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       selectedCinemaId,
     );
   }
+
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id')
@@ -218,11 +264,14 @@ export class TimeEntriesController {
     @Body() body: UpdateTimeEntryDto,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = cinemaId ? Number(cinemaId) : undefined;
+    const selectedCinemaId = this.parseOptionalId(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     return this.timeEntriesService.updateEntry(
       req.user,
-      Number(id),
+      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       body,
       selectedCinemaId,
     );
