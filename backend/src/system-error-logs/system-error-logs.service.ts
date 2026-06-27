@@ -1,5 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { HttpException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -28,6 +32,16 @@ type SystemErrorLogRow = {
   resolvedAt: Date | null;
   resolvedByUserId: number | null;
   resolutionNote: string | null;
+};
+
+type SystemErrorLogListRow = SystemErrorLogRow & {
+  userFirstName: string | null;
+  userLastName: string | null;
+  userEmail: string | null;
+  cinemaName: string | null;
+  resolvedByFirstName: string | null;
+  resolvedByLastName: string | null;
+  resolvedByEmail: string | null;
 };
 
 type CreateSystemErrorLogData = {
@@ -166,6 +180,7 @@ function getTechnicalMessage(error: unknown) {
 
   if (error instanceof HttpException) {
     const response = error.getResponse();
+
     return typeof response === 'string' ? response : JSON.stringify(response);
   }
 
@@ -276,26 +291,37 @@ export class SystemErrorLogsService {
     const where: Prisma.Sql[] = [];
 
     if (severity) {
-      where.push(Prisma.sql`"severity" = ${severity}`);
+      where.push(Prisma.sql`logs."severity" = ${severity}`);
     }
 
     if (status) {
-      where.push(Prisma.sql`"status" = ${status}`);
+      where.push(Prisma.sql`logs."status" = ${status}`);
     }
 
     if (filters.cinemaId) {
-      where.push(Prisma.sql`"cinemaId" = ${filters.cinemaId}`);
+      where.push(Prisma.sql`logs."cinemaId" = ${filters.cinemaId}`);
     }
 
     const whereSql = where.length
       ? Prisma.sql`WHERE ${Prisma.join(where, ' AND ')}`
       : Prisma.empty;
 
-    return this.prisma.$queryRaw<SystemErrorLogRow[]>(Prisma.sql`
-      SELECT *
-      FROM "SystemErrorLog"
+    return this.prisma.$queryRaw<SystemErrorLogListRow[]>(Prisma.sql`
+      SELECT
+        logs.*,
+        users."firstName" AS "userFirstName",
+        users."lastName" AS "userLastName",
+        users."email" AS "userEmail",
+        cinemas."name" AS "cinemaName",
+        resolved_users."firstName" AS "resolvedByFirstName",
+        resolved_users."lastName" AS "resolvedByLastName",
+        resolved_users."email" AS "resolvedByEmail"
+      FROM "SystemErrorLog" logs
+      LEFT JOIN "User" users ON users."id" = logs."userId"
+      LEFT JOIN "Cinema" cinemas ON cinemas."id" = logs."cinemaId"
+      LEFT JOIN "User" resolved_users ON resolved_users."id" = logs."resolvedByUserId"
       ${whereSql}
-      ORDER BY "createdAt" DESC
+      ORDER BY logs."createdAt" DESC
       LIMIT ${take}
     `);
   }

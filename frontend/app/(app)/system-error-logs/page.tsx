@@ -30,9 +30,16 @@ type SystemErrorLog = {
   statusCode: number | null;
   userId: number | null;
   userRole: string | null;
+  userFirstName: string | null;
+  userLastName: string | null;
+  userEmail: string | null;
   cinemaId: number | null;
+  cinemaName: string | null;
   resolvedAt: string | null;
   resolvedByUserId: number | null;
+  resolvedByFirstName: string | null;
+  resolvedByLastName: string | null;
+  resolvedByEmail: string | null;
   resolutionNote: string | null;
 };
 
@@ -131,18 +138,66 @@ function formatDateTime(value: string | null) {
   } · kl. ${values.hour ?? "--"}:${values.minute ?? "--"}`;
 }
 
+function formatPersonName(
+  firstName: string | null,
+  lastName: string | null,
+  email: string | null,
+) {
+  const name = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+  if (name) {
+    return name;
+  }
+
+  return email?.trim() || "";
+}
+
 function formatUser(log: SystemErrorLog) {
-  if (!log.userId && !log.userRole) {
+  const personName = formatPersonName(
+    log.userFirstName,
+    log.userLastName,
+    log.userEmail,
+  );
+
+  if (!log.userId && !log.userRole && !personName) {
     return "Ukendt bruger";
   }
 
-  return [log.userRole, log.userId ? `#${log.userId}` : null]
+  return [
+    log.userRole,
+    personName || null,
+    log.userId ? `#${log.userId}` : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 }
 
 function formatCinema(log: SystemErrorLog) {
+  if (log.cinemaName && log.cinemaId) {
+    return `${log.cinemaName} · #${log.cinemaId}`;
+  }
+
+  if (log.cinemaName) {
+    return log.cinemaName;
+  }
+
   return log.cinemaId ? `Biograf #${log.cinemaId}` : "Global/ukendt";
+}
+
+function formatResolvedBy(log: SystemErrorLog) {
+  const personName = formatPersonName(
+    log.resolvedByFirstName,
+    log.resolvedByLastName,
+    log.resolvedByEmail,
+  );
+
+  if (!log.resolvedByUserId && !personName) {
+    return "";
+  }
+
+  return [personName || null, log.resolvedByUserId ? `#${log.resolvedByUserId}` : null]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function getStatusBadgeClass(status: SystemErrorStatus) {
@@ -526,6 +581,22 @@ export default function SystemErrorLogsPage() {
                         </span>{" "}
                         {formatCinema(log)}
                       </p>
+                      {log.resolvedAt && (
+                        <p>
+                          <span className="font-medium text-gray-800 dark:text-gray-200">
+                            Afsluttet:
+                          </span>{" "}
+                          {formatDateTime(log.resolvedAt)}
+                        </p>
+                      )}
+                      {formatResolvedBy(log) && (
+                        <p>
+                          <span className="font-medium text-gray-800 dark:text-gray-200">
+                            Afsluttet af:
+                          </span>{" "}
+                          {formatResolvedBy(log)}
+                        </p>
+                      )}
                       {log.correlationId && (
                         <p className="break-words">
                           <span className="font-medium text-gray-800 dark:text-gray-200">
