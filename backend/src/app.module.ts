@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { ShiftsModule } from './shifts/shifts.module';
 import { WorkTypesModule } from './work-types/work-types.module';
 import { DayPeriodsModule } from './day-periods/day-periods.module';
+import { JobFunctionsModule } from './job-functions/job-functions.module';
 import { MovieShowingsModule } from './movie-showings/movie-showings.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { ShiftTradesModule } from './shift-trades/shift-trades.module';
@@ -36,6 +37,7 @@ import { SystemErrorLogsModule } from './system-error-logs/system-error-logs.mod
     ShiftsModule,
     WorkTypesModule,
     DayPeriodsModule,
+    JobFunctionsModule,
     MovieShowingsModule,
     LeaveRequestsModule,
     ShiftTradesModule,

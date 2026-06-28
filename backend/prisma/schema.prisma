@@ -118,6 +118,8 @@ model Cinema {
   users                               User[]
   workTypes                           WorkType[]
   dayPeriods                          DayPeriod[]
+  jobFunctions                        JobFunction[]
+  userJobFunctions                    UserJobFunction[]
   shifts                              Shift[]
   messages                            Message[]
   timeEntries                         TimeEntry[]
@@ -166,6 +168,8 @@ model User {
   shifts                      Shift[]
   leaveRequests               LeaveRequest[]
   createdLeaveRequests        LeaveRequest[]              @relation("LeaveRequestCreatedBy")
+  userJobFunctions            UserJobFunction[]            @relation("UserJobFunctionUser")
+  assignedUserJobFunctions    UserJobFunction[]            @relation("UserJobFunctionAssignedBy")
   offeredTrades               ShiftTrade[]                @relation("OfferedTrades")
   acceptedTrades              ShiftTrade[]                @relation("AcceptedTrades")
   rejectedTrades              ShiftTrade[]                @relation("RejectedTrades")
@@ -212,10 +216,51 @@ model DayPeriod {
   archivedAt  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @default(now()) @updatedAt
+  jobFunctions JobFunction[]
 
   @@index([cinemaId])
   @@index([isActive])
   @@index([startMinute, endMinute])
+}
+
+model JobFunction {
+  id          Int       @id @default(autoincrement())
+  cinemaId    Int
+  cinema      Cinema    @relation(fields: [cinemaId], references: [id])
+  name        String
+  description String?
+  color       String    @default("#2563eb")
+  sortOrder   Int       @default(0)
+  dayPeriodId Int?
+  dayPeriod   DayPeriod? @relation(fields: [dayPeriodId], references: [id])
+  isActive    Boolean   @default(true)
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  userJobFunctions UserJobFunction[]
+
+  @@index([cinemaId])
+  @@index([dayPeriodId])
+  @@index([isActive])
+}
+
+model UserJobFunction {
+  id               Int         @id @default(autoincrement())
+  cinemaId         Int
+  cinema           Cinema      @relation(fields: [cinemaId], references: [id])
+  userId           Int
+  user             User        @relation("UserJobFunctionUser", fields: [userId], references: [id])
+  jobFunctionId    Int
+  jobFunction      JobFunction @relation(fields: [jobFunctionId], references: [id])
+  assignedByUserId Int?
+  assignedByUser   User?       @relation("UserJobFunctionAssignedBy", fields: [assignedByUserId], references: [id])
+  createdAt        DateTime    @default(now())
+
+  @@unique([userId, jobFunctionId])
+  @@index([cinemaId])
+  @@index([userId])
+  @@index([jobFunctionId])
 }
 
 model Shift {
