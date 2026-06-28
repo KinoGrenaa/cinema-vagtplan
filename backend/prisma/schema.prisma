@@ -88,150 +88,148 @@ enum PayrollAdjustmentRevisionAction {
 }
 
 model Cinema {
-  id                    Int      @id @default(autoincrement())
-  name                  String
-  logoUrl               String?
-  createdAt             DateTime @default(now())
-  allowShiftTradePool   Boolean  @default(false)
-  allowShiftTradeDirect Boolean  @default(false)
-
-  payrollRulesEnabled Boolean @default(false)
-
-  clockInDeviationToleranceMinutes  Int     @default(0)
-  clockOutDeviationToleranceMinutes Int     @default(0)
-  requireNoteForClockInDeviation    Boolean @default(true)
-  requireNoteForClockOutDeviation   Boolean @default(true)
-  requireNoteForManualEntry         Boolean @default(true)
-
-  payrollOvertimeEnabled Boolean @default(false)
-  plannedOvertimeEnabled Boolean @default(true)
-  dailyOvertimeEnabled   Boolean @default(false)
-  weeklyOvertimeEnabled  Boolean @default(false)
-
-  dailyOvertimeThreshold  Float @default(8)
-  weeklyOvertimeThreshold Float @default(37)
-
-  payrollPeriodModel      PayrollPeriodModel @default(CALENDAR_MONTH)
-  payrollPeriodStartDay   Int                @default(1)
-  payrollPeriodEndDay     Int                @default(31)
-  payrollPeriodAnchorDate DateTime?
-  payrollPayoutRule       PayrollPayoutRule  @default(LAST_WEEKDAY_OF_MONTH)
-  payrollPayoutDay        Int                @default(0)
-
-  movieShowings      MovieShowing[]
-  leaveRequests      LeaveRequest[]
-  shiftTrades        ShiftTrade[]
-  users              User[]
-  workTypes          WorkType[]
-  shifts             Shift[]
-  messages           Message[]
-  timeEntries        TimeEntry[]
-  notifications      Notification[]
-  pushSubscriptions  PushSubscription[]
-  auditLogs          AuditLog[]
-  payrollPeriods     PayrollPeriod[]
-  payrollTypes       PayrollType[]
-  aiLearningEvents   AiLearningEvent[]
-  staffingRequests   StaffingRequest[]
-  payrollAdjustments PayrollAdjustment[]
-  aiEnabled          Boolean             @default(false)
+  id                                  Int                 @id @default(autoincrement())
+  name                                String
+  logoUrl                             String?
+  createdAt                           DateTime            @default(now())
+  allowShiftTradePool                 Boolean             @default(false)
+  allowShiftTradeDirect               Boolean             @default(false)
+  payrollRulesEnabled                 Boolean             @default(false)
+  clockInDeviationToleranceMinutes    Int                 @default(0)
+  clockOutDeviationToleranceMinutes   Int                 @default(0)
+  requireNoteForClockInDeviation      Boolean             @default(true)
+  requireNoteForClockOutDeviation     Boolean             @default(true)
+  requireNoteForManualEntry           Boolean             @default(true)
+  payrollOvertimeEnabled              Boolean             @default(false)
+  plannedOvertimeEnabled              Boolean             @default(true)
+  dailyOvertimeEnabled                Boolean             @default(false)
+  weeklyOvertimeEnabled               Boolean             @default(false)
+  dailyOvertimeThreshold              Float               @default(8)
+  weeklyOvertimeThreshold             Float               @default(37)
+  payrollPeriodModel                  PayrollPeriodModel  @default(CALENDAR_MONTH)
+  payrollPeriodStartDay               Int                 @default(1)
+  payrollPeriodEndDay                 Int                 @default(31)
+  payrollPeriodAnchorDate             DateTime?
+  payrollPayoutRule                   PayrollPayoutRule   @default(LAST_WEEKDAY_OF_MONTH)
+  payrollPayoutDay                    Int                 @default(0)
+  movieShowings                       MovieShowing[]
+  leaveRequests                       LeaveRequest[]
+  shiftTrades                         ShiftTrade[]
+  users                               User[]
+  workTypes                           WorkType[]
+  dayPeriods                          DayPeriod[]
+  shifts                              Shift[]
+  messages                            Message[]
+  timeEntries                         TimeEntry[]
+  notifications                       Notification[]
+  pushSubscriptions                   PushSubscription[]
+  auditLogs                           AuditLog[]
+  payrollPeriods                      PayrollPeriod[]
+  payrollTypes                        PayrollType[]
+  aiLearningEvents                    AiLearningEvent[]
+  staffingRequests                    StaffingRequest[]
+  payrollAdjustments                  PayrollAdjustment[]
+  aiEnabled                           Boolean             @default(false)
 }
 
 model User {
-  // eksisterende felter...
-
-  timeEntryRevisions TimeEntryRevision[]
-
-  id             Int       @id @default(autoincrement())
-  email          String    @unique
-  password       String
-  firstName      String
-  lastName       String
-  phone          String?
-  profileImage   String?
-  address        String?
-  birthDate      DateTime?
-  emergencyPhone String?
-  hireDate       DateTime?
-  skills         String?
-  notes          String?
-  theme          String    @default("light")
-  role           Role      @default(EMPLOYEE)
-  createdAt      DateTime  @default(now())
-  isActive       Boolean   @default(true)
-  deactivatedAt  DateTime?
-
-  employeeNumber    String?
-  payrollEmployeeId String?
-  employmentType    EmploymentType @default(HOURLY)
-
-  canManageSchedule        Boolean @default(false)
-  canManageUsers           Boolean @default(false)
-  canManagePayroll         Boolean @default(false)
-  canManageLeaveRequests   Boolean @default(false)
-  canManageCinemaSettings  Boolean @default(false)
-  canSendBroadcastMessages Boolean @default(false)
-
-  cinemaId Int?
-  cinema   Cinema? @relation(fields: [cinemaId], references: [id])
-
-  shifts                     Shift[]
-  leaveRequests              LeaveRequest[]
-  createdLeaveRequests       LeaveRequest[]              @relation("LeaveRequestCreatedBy")
-  offeredTrades              ShiftTrade[]                @relation("OfferedTrades")
-  acceptedTrades             ShiftTrade[]                @relation("AcceptedTrades")
-  rejectedTrades             ShiftTrade[]                @relation("RejectedTrades")
-  targetedTrades             ShiftTrade[]                @relation("TargetedTrades")
-  sentMessages               Message[]                   @relation("SentMessages")
-  receivedMessages           Message[]                   @relation("ReceivedMessages")
-  timeEntries                TimeEntry[]
-  pushSubscriptions          PushSubscription[]
-  documents                  EmployeeDocument[]
-  notifications              Notification[]
-  auditLogs                  AuditLog[]
-  requestedStaffingRequests  StaffingRequest[]           @relation("RequestedStaffingRequests")
-  targetedStaffingRequests   StaffingRequest[]           @relation("TargetedStaffingRequests")
-  payrollAdjustments         PayrollAdjustment[]         @relation("PayrollAdjustmentUser")
-  createdPayrollAdjustments  PayrollAdjustment[]         @relation("PayrollAdjustmentCreatedBy")
-  payrollAdjustmentRevisions PayrollAdjustmentRevision[]
-  staffingAiProfile          StaffingAiProfile?
+  timeEntryRevisions          TimeEntryRevision[]
+  id                          Int                         @id @default(autoincrement())
+  email                       String                      @unique
+  password                    String
+  firstName                   String
+  lastName                    String
+  phone                       String?
+  profileImage                String?
+  address                     String?
+  birthDate                   DateTime?
+  emergencyPhone              String?
+  hireDate                    DateTime?
+  skills                      String?
+  notes                       String?
+  theme                       String                      @default("light")
+  role                        Role                        @default(EMPLOYEE)
+  createdAt                   DateTime                    @default(now())
+  isActive                    Boolean                     @default(true)
+  deactivatedAt               DateTime?
+  employeeNumber              String?
+  payrollEmployeeId           String?
+  employmentType              EmploymentType              @default(HOURLY)
+  canManageSchedule           Boolean                     @default(false)
+  canManageUsers              Boolean                     @default(false)
+  canManagePayroll            Boolean                     @default(false)
+  canManageLeaveRequests      Boolean                     @default(false)
+  canManageCinemaSettings     Boolean                     @default(false)
+  canSendBroadcastMessages    Boolean                     @default(false)
+  cinemaId                    Int?
+  cinema                      Cinema?                     @relation(fields: [cinemaId], references: [id])
+  shifts                      Shift[]
+  leaveRequests               LeaveRequest[]
+  createdLeaveRequests        LeaveRequest[]              @relation("LeaveRequestCreatedBy")
+  offeredTrades               ShiftTrade[]                @relation("OfferedTrades")
+  acceptedTrades              ShiftTrade[]                @relation("AcceptedTrades")
+  rejectedTrades              ShiftTrade[]                @relation("RejectedTrades")
+  targetedTrades              ShiftTrade[]                @relation("TargetedTrades")
+  sentMessages                Message[]                   @relation("SentMessages")
+  receivedMessages            Message[]                   @relation("ReceivedMessages")
+  timeEntries                 TimeEntry[]
+  pushSubscriptions           PushSubscription[]
+  documents                   EmployeeDocument[]
+  notifications               Notification[]
+  auditLogs                   AuditLog[]
+  requestedStaffingRequests   StaffingRequest[]           @relation("RequestedStaffingRequests")
+  targetedStaffingRequests    StaffingRequest[]           @relation("TargetedStaffingRequests")
+  payrollAdjustments          PayrollAdjustment[]         @relation("PayrollAdjustmentUser")
+  createdPayrollAdjustments   PayrollAdjustment[]         @relation("PayrollAdjustmentCreatedBy")
+  payrollAdjustmentRevisions  PayrollAdjustmentRevision[]
+  staffingAiProfile           StaffingAiProfile?
 }
 
 model WorkType {
-  id        Int      @id @default(autoincrement())
-  name      String
-  color     String   @default("#2563eb")
-  createdAt DateTime @default(now())
-
-  isActive   Boolean   @default(true)
-  archivedAt DateTime?
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  payrollTypeId Int?
-  payrollType   PayrollType? @relation(fields: [payrollTypeId], references: [id])
-
+  id               Int               @id @default(autoincrement())
+  name             String
+  color            String            @default("#2563eb")
+  createdAt        DateTime          @default(now())
+  isActive         Boolean           @default(true)
+  archivedAt       DateTime?
+  cinemaId         Int
+  cinema           Cinema            @relation(fields: [cinemaId], references: [id])
+  payrollTypeId    Int?
+  payrollType      PayrollType?      @relation(fields: [payrollTypeId], references: [id])
   shifts           Shift[]
   staffingRequests StaffingRequest[]
 }
 
+model DayPeriod {
+  id          Int       @id @default(autoincrement())
+  cinemaId    Int
+  cinema      Cinema    @relation(fields: [cinemaId], references: [id])
+  name        String
+  startMinute Int
+  endMinute   Int
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  @@index([cinemaId])
+  @@index([isActive])
+  @@index([startMinute, endMinute])
+}
+
 model Shift {
-  id        Int      @id @default(autoincrement())
-  startTime DateTime
-  endTime   DateTime
-  note      String?
-  createdAt DateTime @default(now())
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  userId Int?
-  user   User? @relation(fields: [userId], references: [id])
-
-  workTypeId Int
-  workType   WorkType @relation(fields: [workTypeId], references: [id])
-
+  id               Int               @id @default(autoincrement())
+  startTime        DateTime
+  endTime          DateTime
+  note             String?
+  createdAt        DateTime          @default(now())
+  cinemaId         Int
+  cinema           Cinema            @relation(fields: [cinemaId], references: [id])
+  userId           Int?
+  user             User?             @relation(fields: [userId], references: [id])
+  workTypeId       Int
+  workType         WorkType          @relation(fields: [workTypeId], references: [id])
   trades           ShiftTrade[]
   timeEntries      TimeEntry[]
   staffingRequests StaffingRequest[]
@@ -246,133 +244,98 @@ model MovieShowing {
   soldSeats Int      @default(0)
   freeSeats Int      @default(0)
   createdAt DateTime @default(now())
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+  cinemaId  Int
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id])
 }
 
 model LeaveRequest {
-  id        Int         @id @default(autoincrement())
-  startDate DateTime
-  endDate   DateTime
-  reason    String?
-  status    LeaveStatus @default(PENDING)
-  createdAt DateTime    @default(now())
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
+  id              Int         @id @default(autoincrement())
+  startDate       DateTime
+  endDate         DateTime
+  reason          String?
+  status          LeaveStatus @default(PENDING)
+  createdAt       DateTime    @default(now())
+  cinemaId        Int
+  cinema          Cinema      @relation(fields: [cinemaId], references: [id])
   userId          Int
-  user            User @relation(fields: [userId], references: [id])
+  user            User        @relation(fields: [userId], references: [id])
   createdByUserId Int
-  createdByUser   User @relation("LeaveRequestCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUser   User        @relation("LeaveRequestCreatedBy", fields: [createdByUserId], references: [id])
 }
 
 model ShiftTrade {
-  id        Int              @id @default(autoincrement())
-  status    ShiftTradeStatus @default(OPEN)
-  message   String?
-  createdAt DateTime         @default(now())
-
-  shiftId Int
-  shift   Shift @relation(fields: [shiftId], references: [id])
-
-  offeredByUserId Int
-  offeredByUser   User @relation("OfferedTrades", fields: [offeredByUserId], references: [id])
-
+  id               Int              @id @default(autoincrement())
+  status           ShiftTradeStatus @default(OPEN)
+  message          String?
+  createdAt        DateTime         @default(now())
+  shiftId          Int
+  shift            Shift            @relation(fields: [shiftId], references: [id])
+  offeredByUserId  Int
+  offeredByUser    User             @relation("OfferedTrades", fields: [offeredByUserId], references: [id])
   acceptedByUserId Int?
-  acceptedByUser   User? @relation("AcceptedTrades", fields: [acceptedByUserId], references: [id])
-
+  acceptedByUser   User?            @relation("AcceptedTrades", fields: [acceptedByUserId], references: [id])
   rejectedByUserId Int?
-  rejectedByUser   User? @relation("RejectedTrades", fields: [rejectedByUserId], references: [id])
-
-  targetUserId Int?
-  targetUser   User? @relation("TargetedTrades", fields: [targetUserId], references: [id])
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  type ShiftTradeType @default(POOL)
+  rejectedByUser   User?            @relation("RejectedTrades", fields: [rejectedByUserId], references: [id])
+  targetUserId     Int?
+  targetUser       User?            @relation("TargetedTrades", fields: [targetUserId], references: [id])
+  cinemaId         Int
+  cinema           Cinema           @relation(fields: [cinemaId], references: [id])
+  type             ShiftTradeType   @default(POOL)
 }
 
 model Message {
-  id        Int       @id @default(autoincrement())
-  subject   String
-  body      String
-  createdAt DateTime  @default(now())
-  readAt    DateTime?
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  senderId Int
-  sender   User @relation("SentMessages", fields: [senderId], references: [id])
-
-  receiverId Int?
-  receiver   User? @relation("ReceivedMessages", fields: [receiverId], references: [id])
-
-  isBroadcast Boolean @default(false)
-  isRead      Boolean @default(false)
-
-  archivedAt DateTime?
-
-  recalledAt       DateTime?
-  recalledByUserId Int?
-
+  id                  Int       @id @default(autoincrement())
+  subject             String
+  body                String
+  createdAt           DateTime  @default(now())
+  readAt              DateTime?
+  cinemaId            Int
+  cinema              Cinema    @relation(fields: [cinemaId], references: [id])
+  senderId            Int
+  sender              User      @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId          Int?
+  receiver            User?     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  isBroadcast         Boolean   @default(false)
+  isRead              Boolean   @default(false)
+  archivedAt          DateTime?
+  recalledAt          DateTime?
+  recalledByUserId    Int?
   systemType          String?
   relatedShiftTradeId Int?
 }
 
 model TimeEntry {
-  // eksisterende felter...
-
-  revisions TimeEntryRevision[]
-
-  id        Int       @id @default(autoincrement())
-  clockIn   DateTime
-  clockOut  DateTime?
-  createdAt DateTime  @default(now())
-
-  status TimeEntryStatus @default(PENDING)
-
-  // Midlertidigt legacy-felt til bagudkompatibilitet
-  note String?
-
-  // Nye note-felter
-  clockInNote  String?
-  clockOutNote String?
-  adminNote    String?
-
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
-
-  shiftId Int?
-  shift   Shift? @relation(fields: [shiftId], references: [id])
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  payrollPeriodId Int?
-  payrollPeriod   PayrollPeriod? @relation(fields: [payrollPeriodId], references: [id])
-
-  payrollLocked           Boolean   @default(false)
-  payrollUnlockedByMaster Boolean   @default(false)
-  payrollUnlockedAt       DateTime?
-  payrollLockNote         String?
-
-  isPayrollAdjustment Boolean @default(false)
-
-  originalPayrollPeriodId Int?
-  originalPayrollPeriod   PayrollPeriod? @relation("OriginalPayrollPeriod", fields: [originalPayrollPeriodId], references: [id])
-
+  revisions                 TimeEntryRevision[]
+  id                        Int                 @id @default(autoincrement())
+  clockIn                   DateTime
+  clockOut                  DateTime?
+  createdAt                 DateTime            @default(now())
+  status                    TimeEntryStatus     @default(PENDING)
+  note                      String?
+  clockInNote               String?
+  clockOutNote              String?
+  adminNote                 String?
+  userId                    Int
+  user                      User                @relation(fields: [userId], references: [id])
+  shiftId                   Int?
+  shift                     Shift?              @relation(fields: [shiftId], references: [id])
+  cinemaId                  Int
+  cinema                    Cinema              @relation(fields: [cinemaId], references: [id])
+  payrollPeriodId           Int?
+  payrollPeriod             PayrollPeriod?      @relation(fields: [payrollPeriodId], references: [id])
+  payrollLocked             Boolean             @default(false)
+  payrollUnlockedByMaster   Boolean             @default(false)
+  payrollUnlockedAt         DateTime?
+  payrollLockNote           String?
+  isPayrollAdjustment       Boolean             @default(false)
+  originalPayrollPeriodId   Int?
+  originalPayrollPeriod     PayrollPeriod?      @relation("OriginalPayrollPeriod", fields: [originalPayrollPeriodId], references: [id])
   adjustmentPayrollPeriodId Int?
-  adjustmentPayrollPeriod   PayrollPeriod? @relation("AdjustmentPayrollPeriod", fields: [adjustmentPayrollPeriodId], references: [id])
-
-  payrollAdjustmentReason String?
-
-  payrollTypeId      Int?
-  payrollType        PayrollType?        @relation(fields: [payrollTypeId], references: [id])
-  payrollAdjustments PayrollAdjustment[]
+  adjustmentPayrollPeriod   PayrollPeriod?      @relation("AdjustmentPayrollPeriod", fields: [adjustmentPayrollPeriodId], references: [id])
+  payrollAdjustmentReason   String?
+  payrollTypeId             Int?
+  payrollType               PayrollType?        @relation(fields: [payrollTypeId], references: [id])
+  payrollAdjustments        PayrollAdjustment[]
 }
 
 model PushSubscription {
@@ -381,12 +344,10 @@ model PushSubscription {
   p256dh    String
   auth      String
   createdAt DateTime @default(now())
-
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  cinemaId  Int
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id])
 }
 
 model EmployeeDocument {
@@ -396,9 +357,8 @@ model EmployeeDocument {
   fileName  String
   fileType  String?
   createdAt DateTime @default(now())
-
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Notification {
@@ -409,60 +369,46 @@ model Notification {
   isRead    Boolean  @default(false)
   linkUrl   String?
   createdAt DateTime @default(now())
-
-  userId Int
-  user   User @relation(fields: [userId], references: [id])
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  cinemaId  Int
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id])
 }
 
 model AuditLog {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   action      String
   entityType  String
   entityId    Int?
   description String?
-
-  createdAt DateTime @default(now())
-
-  userId Int?
-  user   User? @relation(fields: [userId], references: [id])
-
-  cinemaId Int?
-  cinema   Cinema? @relation(fields: [cinemaId], references: [id])
+  createdAt   DateTime @default(now())
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id])
+  cinemaId    Int?
+  cinema      Cinema?  @relation(fields: [cinemaId], references: [id])
 }
 
 model PayrollPeriod {
-  id Int @id @default(autoincrement())
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  startDate DateTime
-  endDate   DateTime
-
-  status PayrollPeriodStatus @default(OPEN)
-
-  lockedAt       DateTime?
-  lockedByUserId Int?
-
-  exportedAt       DateTime?
-  exportedByUserId Int?
-
-  originalAdjustmentEntries    TimeEntry[]         @relation("OriginalPayrollPeriod")
-  adjustmentEntries            TimeEntry[]         @relation("AdjustmentPayrollPeriod")
-  originalPayrollAdjustments   PayrollAdjustment[] @relation("OriginalPayrollAdjustments")
+  id                         Int                 @id @default(autoincrement())
+  cinemaId                   Int
+  cinema                     Cinema              @relation(fields: [cinemaId], references: [id])
+  startDate                  DateTime
+  endDate                    DateTime
+  status                     PayrollPeriodStatus @default(OPEN)
+  lockedAt                   DateTime?
+  lockedByUserId             Int?
+  exportedAt                 DateTime?
+  exportedByUserId           Int?
+  originalAdjustmentEntries  TimeEntry[]         @relation("OriginalPayrollPeriod")
+  adjustmentEntries          TimeEntry[]         @relation("AdjustmentPayrollPeriod")
+  originalPayrollAdjustments PayrollAdjustment[] @relation("OriginalPayrollAdjustments")
   settlementPayrollAdjustments PayrollAdjustment[] @relation("SettlementPayrollAdjustments")
-
-  unlockedAt       DateTime?
-  unlockedByUserId Int?
-  unlockNote       String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  timeEntries TimeEntry[]
+  unlockedAt                 DateTime?
+  unlockedByUserId           Int?
+  unlockNote                 String?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  timeEntries                TimeEntry[]
 
   @@unique([cinemaId, startDate, endDate])
   @@index([cinemaId])
@@ -471,26 +417,18 @@ model PayrollPeriod {
 }
 
 model PayrollType {
-  id Int @id @default(autoincrement())
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  name String
-
-  payrollCode String
-  exportCode  String?
-
-  description String?
-
-  isDefault Boolean @default(false)
-  isActive  Boolean @default(true)
-
-  color String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                 Int                 @id @default(autoincrement())
+  cinemaId           Int
+  cinema             Cinema              @relation(fields: [cinemaId], references: [id])
+  name               String
+  payrollCode        String
+  exportCode         String?
+  description        String?
+  isDefault          Boolean             @default(false)
+  isActive           Boolean             @default(true)
+  color              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   workTypes          WorkType[]
   timeEntries        TimeEntry[]
   payrollAdjustments PayrollAdjustment[]
@@ -500,56 +438,40 @@ model PayrollType {
 }
 
 model PayrollAdjustment {
-  id Int @id @default(autoincrement())
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  userId Int
-  user   User @relation("PayrollAdjustmentUser", fields: [userId], references: [id])
-
-  timeEntryId Int
-  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
-
+  id                      Int                              @id @default(autoincrement())
+  cinemaId                Int
+  cinema                  Cinema                           @relation(fields: [cinemaId], references: [id])
+  userId                  Int
+  user                    User                             @relation("PayrollAdjustmentUser", fields: [userId], references: [id])
+  timeEntryId             Int
+  timeEntry               TimeEntry                        @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
   originalPayrollPeriodId Int
-  originalPayrollPeriod   PayrollPeriod @relation("OriginalPayrollAdjustments", fields: [originalPayrollPeriodId], references: [id])
-
+  originalPayrollPeriod   PayrollPeriod                    @relation("OriginalPayrollAdjustments", fields: [originalPayrollPeriodId], references: [id])
   settlementPayrollPeriodId Int?
-  settlementPayrollPeriod   PayrollPeriod? @relation("SettlementPayrollAdjustments", fields: [settlementPayrollPeriodId], references: [id])
-
-  payrollTypeId Int?
-  payrollType   PayrollType? @relation(fields: [payrollTypeId], references: [id])
-
-  type           PayrollAdjustmentType
-  status         PayrollAdjustmentStatus         @default(PENDING)
-  exportCategory PayrollAdjustmentExportCategory @default(HOURLY)
-
-  minutesDelta Int
-
-  exportedMinutes Int
-  adjustedMinutes Int
-
-  previousMinutes Int?
-  newMinutes      Int?
-
-  previousClockIn  DateTime?
-  previousClockOut DateTime?
-  newClockIn       DateTime?
-  newClockOut      DateTime?
-
-  reason String
-
-  createdByUserId Int?
-  createdByUser   User?                       @relation("PayrollAdjustmentCreatedBy", fields: [createdByUserId], references: [id])
-  revisions       PayrollAdjustmentRevision[]
-
-  includedAt DateTime?
-  voidedAt   DateTime?
-
-  metadata Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  settlementPayrollPeriod PayrollPeriod?                   @relation("SettlementPayrollAdjustments", fields: [settlementPayrollPeriodId], references: [id])
+  payrollTypeId           Int?
+  payrollType             PayrollType?                     @relation(fields: [payrollTypeId], references: [id])
+  type                    PayrollAdjustmentType
+  status                  PayrollAdjustmentStatus          @default(PENDING)
+  exportCategory          PayrollAdjustmentExportCategory  @default(HOURLY)
+  minutesDelta            Int
+  exportedMinutes         Int
+  adjustedMinutes         Int
+  previousMinutes         Int?
+  newMinutes              Int?
+  previousClockIn         DateTime?
+  previousClockOut        DateTime?
+  newClockIn              DateTime?
+  newClockOut             DateTime?
+  reason                  String
+  createdByUserId         Int?
+  createdByUser           User?                            @relation("PayrollAdjustmentCreatedBy", fields: [createdByUserId], references: [id])
+  revisions               PayrollAdjustmentRevision[]
+  includedAt              DateTime?
+  voidedAt                DateTime?
+  metadata                Json?
+  createdAt               DateTime                         @default(now())
+  updatedAt               DateTime                         @updatedAt
 
   @@index([cinemaId])
   @@index([userId])
@@ -563,37 +485,26 @@ model PayrollAdjustment {
 }
 
 model PayrollAdjustmentRevision {
-  id Int @id @default(autoincrement())
-
-  payrollAdjustmentId Int
-  payrollAdjustment   PayrollAdjustment @relation(fields: [payrollAdjustmentId], references: [id], onDelete: Cascade)
-
-  changedByUserId Int?
-  changedByUser   User? @relation(fields: [changedByUserId], references: [id])
-
-  action PayrollAdjustmentRevisionAction
-
-  previousStatus PayrollAdjustmentStatus?
-  newStatus      PayrollAdjustmentStatus?
-
-  previousExportedMinutes Int?
-  newExportedMinutes      Int?
-
-  previousAdjustedMinutes Int?
-  newAdjustedMinutes      Int?
-
-  previousMinutesDelta Int?
-  newMinutesDelta      Int?
-
+  id                          Int                             @id @default(autoincrement())
+  payrollAdjustmentId         Int
+  payrollAdjustment           PayrollAdjustment               @relation(fields: [payrollAdjustmentId], references: [id], onDelete: Cascade)
+  changedByUserId             Int?
+  changedByUser               User?                           @relation(fields: [changedByUserId], references: [id])
+  action                      PayrollAdjustmentRevisionAction
+  previousStatus              PayrollAdjustmentStatus?
+  newStatus                   PayrollAdjustmentStatus?
+  previousExportedMinutes     Int?
+  newExportedMinutes          Int?
+  previousAdjustedMinutes     Int?
+  newAdjustedMinutes          Int?
+  previousMinutesDelta        Int?
+  newMinutesDelta             Int?
   previousOriginalPayrollPeriodId Int?
-  newOriginalPayrollPeriodId      Int?
-
+  newOriginalPayrollPeriodId  Int?
   previousSettlementPayrollPeriodId Int?
-  newSettlementPayrollPeriodId      Int?
-
-  reason String?
-
-  createdAt DateTime @default(now())
+  newSettlementPayrollPeriodId Int?
+  reason                      String?
+  createdAt                   DateTime                        @default(now())
 
   @@index([payrollAdjustmentId])
   @@index([changedByUserId])
@@ -601,17 +512,12 @@ model PayrollAdjustmentRevision {
 }
 
 model AiLearningEvent {
-  id Int @id @default(autoincrement())
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  type String
-
-  severity String?
-
-  metadata Json?
-
+  id        Int      @id @default(autoincrement())
+  cinemaId  Int
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id])
+  type      String
+  severity  String?
+  metadata  Json?
   createdAt DateTime @default(now())
 
   @@index([cinemaId])
@@ -635,42 +541,29 @@ enum StaffingRequestStatus {
 }
 
 model StaffingRequest {
-  id Int @id @default(autoincrement())
-
-  cinemaId Int
-  cinema   Cinema @relation(fields: [cinemaId], references: [id])
-
-  shiftId Int?
-  shift   Shift? @relation(fields: [shiftId], references: [id])
-
-  requestStartTime DateTime?
-  requestEndTime   DateTime?
-
-  workTypeId Int?
-  workType   WorkType? @relation(fields: [workTypeId], references: [id])
-
+  id                Int                   @id @default(autoincrement())
+  cinemaId          Int
+  cinema            Cinema                @relation(fields: [cinemaId], references: [id])
+  shiftId           Int?
+  shift             Shift?                @relation(fields: [shiftId], references: [id])
+  requestStartTime  DateTime?
+  requestEndTime    DateTime?
+  workTypeId        Int?
+  workType          WorkType?             @relation(fields: [workTypeId], references: [id])
   requestedByUserId Int
-  requestedByUser   User @relation("RequestedStaffingRequests", fields: [requestedByUserId], references: [id])
-
-  targetUserId Int?
-  targetUser   User? @relation("TargetedStaffingRequests", fields: [targetUserId], references: [id])
-
-  type   StaffingRequestType
-  status StaffingRequestStatus @default(PENDING)
-
-  priority Int @default(1)
-
-  message String?
-
-  aiGenerated Boolean @default(false)
-
-  expiresAt DateTime?
-
-  acceptedAt DateTime?
-  rejectedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  requestedByUser   User                  @relation("RequestedStaffingRequests", fields: [requestedByUserId], references: [id])
+  targetUserId      Int?
+  targetUser        User?                 @relation("TargetedStaffingRequests", fields: [targetUserId], references: [id])
+  type              StaffingRequestType
+  status            StaffingRequestStatus @default(PENDING)
+  priority          Int                   @default(1)
+  message           String?
+  aiGenerated       Boolean               @default(false)
+  expiresAt         DateTime?
+  acceptedAt        DateTime?
+  rejectedAt        DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 
   @@index([cinemaId])
   @@index([shiftId])
@@ -684,33 +577,24 @@ model StaffingRequest {
 }
 
 model StaffingAiProfile {
-  id Int @id @default(autoincrement())
-
-  userId Int  @unique
-  user   User @relation(fields: [userId], references: [id])
-
-  acceptanceRate Float @default(0)
-  rejectionRate  Float @default(0)
-
-  emergencyAcceptanceRate Float @default(0)
-
-  fatigueScore  Float @default(0)
-  overtimeScore Float @default(0)
-
-  aiPriorityScore Float @default(0)
-
-  preferredHours     String?
-  preferredWorkTypes String?
-
-  totalRequests    Int @default(0)
-  acceptedRequests Int @default(0)
-  rejectedRequests Int @default(0)
-
-  lastAcceptedAt DateTime?
-  lastRejectedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      Int      @id @default(autoincrement())
+  userId                  Int      @unique
+  user                    User     @relation(fields: [userId], references: [id])
+  acceptanceRate          Float    @default(0)
+  rejectionRate           Float    @default(0)
+  emergencyAcceptanceRate Float    @default(0)
+  fatigueScore            Float    @default(0)
+  overtimeScore           Float    @default(0)
+  aiPriorityScore         Float    @default(0)
+  preferredHours          String?
+  preferredWorkTypes      String?
+  totalRequests           Int      @default(0)
+  acceptedRequests        Int      @default(0)
+  rejectedRequests        Int      @default(0)
+  lastAcceptedAt          DateTime?
+  lastRejectedAt          DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   @@index([aiPriorityScore])
   @@index([fatigueScore])
@@ -718,40 +602,28 @@ model StaffingAiProfile {
 }
 
 model TimeEntryRevision {
-  id Int @id @default(autoincrement())
-
-  timeEntryId Int
-  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
-
-  changedByUserId Int?
-  changedByUser   User? @relation(fields: [changedByUserId], references: [id])
-
-  action String
-
-  previousStatus TimeEntryStatus?
-  newStatus      TimeEntryStatus?
-
-  previousClockIn DateTime?
-  newClockIn      DateTime?
-
-  previousClockOut DateTime?
-  newClockOut      DateTime?
-
-  previousNote String?
-  newNote      String?
-
-  previousClockInNote String?
-  newClockInNote      String?
-
+  id                   Int              @id @default(autoincrement())
+  timeEntryId          Int
+  timeEntry            TimeEntry        @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  changedByUserId      Int?
+  changedByUser        User?            @relation(fields: [changedByUserId], references: [id])
+  action               String
+  previousStatus       TimeEntryStatus?
+  newStatus            TimeEntryStatus?
+  previousClockIn      DateTime?
+  newClockIn           DateTime?
+  previousClockOut     DateTime?
+  newClockOut          DateTime?
+  previousNote         String?
+  newNote              String?
+  previousClockInNote  String?
+  newClockInNote       String?
   previousClockOutNote String?
   newClockOutNote      String?
-
-  previousAdminNote String?
-  newAdminNote      String?
-
-  reason String?
-
-  createdAt DateTime @default(now())
+  previousAdminNote    String?
+  newAdminNote         String?
+  reason               String?
+  createdAt            DateTime         @default(now())
 
   @@index([timeEntryId])
   @@index([changedByUserId])
@@ -759,31 +631,27 @@ model TimeEntryRevision {
 }
 
 model SystemErrorLog {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-
-  severity String @default("ERROR")
-  status   String @default("NEW")
-  source   String @default("backend")
-
-  method           String?
-  path             String?
-  action           String?
-  message          String
-  technicalMessage String?
-  stack            String?
-  correlationId    String?
-  statusCode       Int?
-
-  userId   Int?
-  userRole String?
-  cinemaId Int?
-  metadata Json?
-
-  resolvedAt       DateTime?
-  resolvedByUserId Int?
-  resolutionNote   String?
+  id                Int      @id @default(autoincrement())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now())
+  severity          String   @default("ERROR")
+  status            String   @default("NEW")
+  source            String   @default("backend")
+  method            String?
+  path              String?
+  action            String?
+  message           String
+  technicalMessage  String?
+  stack             String?
+  correlationId     String?
+  statusCode        Int?
+  userId            Int?
+  userRole          String?
+  cinemaId          Int?
+  metadata          Json?
+  resolvedAt        DateTime?
+  resolvedByUserId  Int?
+  resolutionNote    String?
 
   @@index([createdAt])
   @@index([severity])
