@@ -4,7 +4,11 @@ import {
   formatUtcDateDK,
 } from "@/app/utils/dateTime";
 
-import type { LeaveRequest, LeaveRequestUser, LeaveStatus } from "../helpers/leaveApprovalTypes";
+import type {
+  LeaveRequest,
+  LeaveRequestUser,
+  LeaveStatus,
+} from "../helpers/leaveApprovalTypes";
 
 type LeaveDisplayDateRange = {
   startDate: string;
@@ -94,6 +98,7 @@ function getStatusLabel(status: LeaveStatus) {
   if (status === "APPROVED") return "Godkendt";
   if (status === "REJECTED") return "Afvist";
   if (status === "CANCELLED") return "Annulleret";
+
   return "Afventer";
 }
 
@@ -101,6 +106,7 @@ function getDetailedStatusLabel(status: LeaveStatus) {
   if (status === "APPROVED") return "Godkendt fravær";
   if (status === "REJECTED") return "Afvist ansøgning";
   if (status === "CANCELLED") return "Annulleret ansøgning";
+
   return "Afventer behandling";
 }
 
@@ -123,11 +129,13 @@ function getStatusDescription(status: LeaveStatus) {
 function getNoActionLabel(status: LeaveStatus) {
   if (status === "REJECTED") return "Afvist · ingen yderligere handlinger";
   if (status === "CANCELLED") return "Annulleret · ingen yderligere handlinger";
+
   return "Ingen handlinger";
 }
 
 function getCancelActionLabel(status: LeaveStatus) {
   if (status === "APPROVED") return "Annullér fravær";
+
   return "Annullér ansøgning";
 }
 
@@ -153,6 +161,12 @@ function formatUserName(user?: LeaveRequestUser | null) {
   return name || `Bruger #${user.id}`;
 }
 
+function isCreatedByAnotherUser(request: LeaveRequest) {
+  return Boolean(
+    request.createdByUser && request.createdByUser.id !== request.user.id,
+  );
+}
+
 function formatCreatedBy(request: LeaveRequest) {
   if (!request.createdByUser) {
     return "Ukendt";
@@ -160,17 +174,36 @@ function formatCreatedBy(request: LeaveRequest) {
 
   const creatorName = formatUserName(request.createdByUser);
 
-  if (request.createdByUser.id === request.user.id) {
+  if (!isCreatedByAnotherUser(request)) {
     return `${creatorName} (egen ansøgning)`;
   }
 
   return creatorName;
 }
 
+function getCreatorBadgeLabel(request: LeaveRequest) {
+  if (isCreatedByAnotherUser(request)) {
+    return "Oprettet af leder";
+  }
+
+  return "Egen ansøgning";
+}
+
+function getCreatorBadgeClass(request: LeaveRequest) {
+  if (isCreatedByAnotherUser(request)) {
+    return "bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-200";
+  }
+
+  return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200";
+}
+
 export default function LeaveApprovalRequestCard({
   request,
   onUpdateStatus,
 }: LeaveApprovalRequestCardProps) {
+  const employeeName = formatUserName(request.user);
+  const createdByText = formatCreatedBy(request);
+
   return (
     <div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -183,17 +216,30 @@ export default function LeaveApprovalRequestCard({
             >
               {getDetailedStatusLabel(request.status)}
             </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Oprettet {formatRequestCreatedAt(request.createdAt)} · af{" "}
-              {formatCreatedBy(request)}
+
+            <span
+              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getCreatorBadgeClass(
+                request,
+              )}`}
+            >
+              {getCreatorBadgeLabel(request)}
             </span>
           </div>
 
           <div className="mt-2 text-lg font-semibold">
+            Fravær for {employeeName}
+          </div>
+
+          <div className="mt-1 text-sm font-medium text-gray-700 dark:text-gray-200">
             {formatLeavePeriod(request.startDate, request.endDate)}
           </div>
 
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Oprettet {formatRequestCreatedAt(request.createdAt)} af{" "}
+            {createdByText}
+          </p>
+
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {getStatusDescription(request.status)}
           </p>
         </div>
@@ -236,7 +282,16 @@ export default function LeaveApprovalRequestCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-5">
+        <div className="rounded-xl bg-purple-50 p-3 dark:bg-purple-950/30">
+          <div className="text-xs font-semibold uppercase text-purple-700 dark:text-purple-300">
+            Fravær for
+          </div>
+          <div className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
+            {employeeName}
+          </div>
+        </div>
+
         <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950/50">
           <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
             Fraværsperiode
@@ -265,13 +320,15 @@ export default function LeaveApprovalRequestCard({
           </div>
         </div>
 
-        <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950/50">
-          <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+        <div className="rounded-xl bg-blue-50 p-3 dark:bg-blue-950/30">
+          <div className="text-xs font-semibold uppercase text-blue-700 dark:text-blue-300">
             Oprettet af
           </div>
-          <div className="mt-1 font-medium">{formatCreatedBy(request)}</div>
+          <div className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
+            {createdByText}
+          </div>
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Fravær for {formatUserName(request.user)}
+            {getCreatorBadgeLabel(request)}
           </div>
         </div>
       </div>
