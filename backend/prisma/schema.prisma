@@ -87,6 +87,15 @@ enum PayrollAdjustmentRevisionAction {
   VOIDED
 }
 
+
+enum JobFunctionTimingAnchor {
+  DAY_PERIOD_START
+  DAY_PERIOD_END
+  FIRST_MOVIE_START
+  LAST_MOVIE_END
+  FIXED_TIME
+}
+
 model Cinema {
   id                                  Int                 @id @default(autoincrement())
   name                                String
@@ -119,6 +128,7 @@ model Cinema {
   workTypes                           WorkType[]
   dayPeriods                          DayPeriod[]
   jobFunctions                        JobFunction[]
+  jobFunctionTimingRules              JobFunctionTimingRule[]
   userJobFunctions                    UserJobFunction[]
   shifts                              Shift[]
   messages                            Message[]
@@ -239,9 +249,40 @@ model JobFunction {
   updatedAt   DateTime  @default(now()) @updatedAt
 
   userJobFunctions UserJobFunction[]
+  timingRule JobFunctionTimingRule?
 
   @@index([cinemaId])
   @@index([dayPeriodId])
+  @@index([isActive])
+}
+
+
+
+model JobFunctionTimingRule {
+  id Int @id @default(autoincrement())
+  cinemaId Int
+  cinema Cinema @relation(fields: [cinemaId], references: [id])
+  jobFunctionId Int @unique
+  jobFunction JobFunction @relation(fields: [jobFunctionId], references: [id], onDelete: Cascade)
+
+  startAnchor JobFunctionTimingAnchor @default(DAY_PERIOD_START)
+  startOffsetMinutes Int @default(0)
+  startFixedMinute Int?
+
+  endAnchor JobFunctionTimingAnchor @default(DAY_PERIOD_END)
+  endOffsetMinutes Int @default(0)
+  endFixedMinute Int?
+
+  fallbackStartMinute Int?
+  fallbackEndMinute Int?
+  clampToDayPeriod Boolean @default(true)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([cinemaId])
+  @@index([jobFunctionId])
   @@index([isActive])
 }
 

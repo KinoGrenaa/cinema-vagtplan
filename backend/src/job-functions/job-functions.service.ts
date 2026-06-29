@@ -4,6 +4,7 @@ import type {
   AuthUser,
   CinemaContextValue,
   JobFunctionCreateData,
+  JobFunctionTimingRuleData,
   JobFunctionUpdateData,
   UserJobFunctionAssignData,
 } from './helpers/job-function-service-helpers';
@@ -13,6 +14,11 @@ import {
   archiveJobFunction,
   reactivateJobFunction,
 } from './helpers/job-function-status-flow';
+import {
+  archiveJobFunctionTimingRule,
+  findJobFunctionTimingRule,
+  upsertJobFunctionTimingRule,
+} from './helpers/job-function-timing-rule-flow';
 import { updateJobFunction } from './helpers/job-function-update-flow';
 import {
   assignUserJobFunction,
@@ -70,6 +76,49 @@ export class JobFunctionsService {
     selectedCinemaId?: CinemaContextValue,
   ) {
     return reactivateJobFunction(this.prisma, user, id, selectedCinemaId);
+  }
+
+  async getTimingRule(
+    user: AuthUser,
+    id: number,
+    selectedCinemaId?: CinemaContextValue,
+    includeInactive = false,
+  ) {
+    return findJobFunctionTimingRule(
+      this.prisma,
+      user,
+      id,
+      selectedCinemaId,
+      includeInactive,
+    );
+  }
+
+  async upsertTimingRule(
+    user: AuthUser,
+    id: number,
+    data: JobFunctionTimingRuleData,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    return upsertJobFunctionTimingRule(
+      this.prisma,
+      user,
+      id,
+      data,
+      selectedCinemaId,
+    );
+  }
+
+  async removeTimingRule(
+    user: AuthUser,
+    id: number,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    return archiveJobFunctionTimingRule(
+      this.prisma,
+      user,
+      id,
+      selectedCinemaId,
+    );
   }
 
   async getUsers(

@@ -15,6 +15,14 @@ export type AuthUser = {
 
 export type CinemaContextValue = number | string | null | undefined;
 export type NumberContextValue = number | string | null | undefined;
+export type BooleanContextValue = boolean | string | null | undefined;
+
+export type JobFunctionTimingAnchorValue =
+  | 'DAY_PERIOD_START'
+  | 'DAY_PERIOD_END'
+  | 'FIRST_MOVIE_START'
+  | 'LAST_MOVIE_END'
+  | 'FIXED_TIME';
 
 export type JobFunctionCreateData = {
   name: string;
@@ -39,11 +47,38 @@ export type UserJobFunctionAssignData = {
   cinemaId?: CinemaContextValue;
 };
 
+export type JobFunctionTimingRuleData = {
+  cinemaId?: CinemaContextValue;
+  startAnchor?: JobFunctionTimingAnchorValue | string | null;
+  startOffsetMinutes?: NumberContextValue;
+  startFixedMinute?: NumberContextValue;
+  endAnchor?: JobFunctionTimingAnchorValue | string | null;
+  endOffsetMinutes?: NumberContextValue;
+  endFixedMinute?: NumberContextValue;
+  fallbackStartMinute?: NumberContextValue;
+  fallbackEndMinute?: NumberContextValue;
+  clampToDayPeriod?: BooleanContextValue;
+};
+
 export const jobFunctionInclude = {
   dayPeriod: true,
+  timingRule: true,
   _count: {
     select: {
       userJobFunctions: true,
+    },
+  },
+} as const;
+
+export const jobFunctionTimingRuleInclude = {
+  jobFunction: {
+    select: {
+      id: true,
+      name: true,
+      color: true,
+      isActive: true,
+      cinemaId: true,
+      dayPeriod: true,
     },
   },
 } as const;
@@ -159,7 +194,6 @@ export function normalizeOptionalText(value: unknown) {
   }
 
   const normalizedValue = value.trim();
-
   return normalizedValue || null;
 }
 
@@ -181,7 +215,10 @@ export function normalizeJobFunctionColor(value: unknown) {
   return normalizedColor;
 }
 
-export function parseRequiredPositiveId(value: NumberContextValue, message: string) {
+export function parseRequiredPositiveId(
+  value: NumberContextValue,
+  message: string,
+) {
   if (value === null || value === undefined || value === '') {
     throw new BadRequestException(message);
   }
@@ -195,7 +232,10 @@ export function parseRequiredPositiveId(value: NumberContextValue, message: stri
   return id;
 }
 
-export function parseOptionalPositiveId(value: NumberContextValue, message: string) {
+export function parseOptionalPositiveId(
+  value: NumberContextValue,
+  message: string,
+) {
   if (value === undefined) {
     return undefined;
   }
