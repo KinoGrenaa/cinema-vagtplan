@@ -76,6 +76,29 @@ function parseForm(form: FormState) {
   };
 }
 
+function getDurationText(form: FormState) {
+  const startMinute = timeToMinute(form.startTime);
+  const endMinute = timeToMinute(form.endTime);
+
+  if (startMinute === null || endMinute === null || endMinute <= startMinute) {
+    return "Varighed kan beregnes, når start og slut er gyldige.";
+  }
+
+  const durationMinutes = endMinute - startMinute;
+  const hours = Math.floor(durationMinutes / 60);
+  const minutes = durationMinutes % 60;
+
+  if (hours <= 0) {
+    return `${minutes} min.`;
+  }
+
+  if (minutes === 0) {
+    return `${hours} t.`;
+  }
+
+  return `${hours} t. ${minutes} min.`;
+}
+
 export default function DayPeriodsPage() {
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
@@ -95,6 +118,7 @@ export default function DayPeriodsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [formModalOpen, setFormModalOpen] = useState(false);
 
   const activeCinemaId = useMemo(() => {
     if (currentUser?.role === "MASTER" && !currentUser.cinemaId) {
@@ -108,6 +132,8 @@ export default function DayPeriodsPage() {
     currentUser?.role === "MASTER" && !currentUser.cinemaId && !activeCinemaId;
 
   const isEditing = editingId !== null;
+  const activeCount = dayPeriods.filter((dayPeriod) => dayPeriod.isActive).length;
+  const archivedCount = dayPeriods.length - activeCount;
 
   useEffect(() => {
     setCurrentUser(getCurrentUserFromToken());
@@ -179,6 +205,26 @@ export default function DayPeriodsPage() {
     setEditingId(null);
   };
 
+  const closeFormModal = () => {
+    if (saving) {
+      return;
+    }
+
+    resetForm();
+    setFormModalOpen(false);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setFormModalOpen(true);
+  };
+
+  const openEditModal = (dayPeriod: DayPeriod) => {
+    setEditingId(dayPeriod.id);
+    setForm(toFormState(dayPeriod));
+    setFormModalOpen(true);
+  };
+
   const submitForm = async () => {
     if (needsMasterCinemaSelection) {
       infoDialog.showError(
@@ -216,7 +262,7 @@ export default function DayPeriodsPage() {
         );
       }
 
-      resetForm();
+      closeFormModal();
       await fetchDayPeriods();
       infoDialog.show({
         title: editingId ? "Dagsperiode opdateret" : "Dagsperiode oprettet",
@@ -240,18 +286,12 @@ export default function DayPeriodsPage() {
     }
   };
 
-  const startEdit = (dayPeriod: DayPeriod) => {
-    setEditingId(dayPeriod.id);
-    setForm(toFormState(dayPeriod));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const deleteDayPeriod = (dayPeriod: DayPeriod) => {
+  const archiveDayPeriod = (dayPeriod: DayPeriod) => {
     confirmDialog.confirm({
       title: "Arkivér dagsperiode",
       description:
         `Vil du arkivere dagsperioden "${dayPeriod.name}"?\n\n` +
-        "Dagsperioden arkiveres, så historik bevares. Den forsvinder fra den normale liste og kan genaktiveres under 'Vis arkiverede'.",
+        "Historik bevares, og dagsperioden kan genaktiveres senere.",
       confirmText: "Arkivér",
       cancelText: "Annuller",
       confirmVariant: "danger",
@@ -269,17 +309,10 @@ export default function DayPeriodsPage() {
           }
 
           if (editingId === dayPeriod.id) {
-            resetForm();
+            closeFormModal();
           }
 
           await fetchDayPeriods();
-          infoDialog.show({
-            title: "Dagsperiode arkiveret",
-            description:
-              "Dagsperioden er arkiveret og kan genaktiveres ved at slå 'Vis arkiverede' til.",
-            variant: "success",
-            buttonText: "OK",
-          });
         } catch (error) {
           infoDialog.showError(
             "Kunne ikke arkivere dagsperiode",
@@ -336,12 +369,12 @@ export default function DayPeriodsPage() {
   return (
     <AdminGuard>
       <main className="min-h-screen space-y-6 bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-        <header className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <header className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <p className="text-sm font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Vagtplanlægning
           </p>
           <h1 className="mt-1 text-3xl font-bold">Dagsperioder</h1>
-          <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
+          <p className="mx-auto mt-2 max-w-4xl text-sm text-gray-600 dark:text-gray-300">
             Dagsperioder er hårde beregningsrammer for kommende jobfunktioner.
             De er ikke lønarter og ændrer ikke vagtplanen endnu.
           </p>
@@ -351,123 +384,7 @@ export default function DayPeriodsPage() {
 
         {!needsMasterCinemaSelection && (
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  Stamdata
-                </p>
-                <h2 className="mt-1 text-2xl font-bold">
-                  {isEditing ? "Redigér dagsperiode" : "Opret dagsperiode"}
-                </h2>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Brug tider som kl. 08:00-17:30 eller kl. 16:00-23:59.
-                </p>
-              </div>
-              {isEditing && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Annuller redigering
-                </button>
-              )}
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_150px_150px_120px]">
-              <label className="space-y-1 text-sm font-medium text-gray-700 dark:text-gray-200">
-                <span>Navn</span>
-                <input
-                  type="text"
-                  placeholder="Fx A Vagt Weekend"
-                  value={form.name}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      name: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  disabled={saving}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium text-gray-700 dark:text-gray-200">
-                <span>Start</span>
-                <input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      startTime: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  disabled={saving}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium text-gray-700 dark:text-gray-200">
-                <span>Slut</span>
-                <input
-                  type="time"
-                  value={form.endTime}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      endTime: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  disabled={saving}
-                />
-              </label>
-              <label className="space-y-1 text-sm font-medium text-gray-700 dark:text-gray-200">
-                <span>Sortering</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.sortOrder}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      sortOrder: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  disabled={saving}
-                />
-              </label>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={submitForm}
-                disabled={saving}
-                className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-              >
-                {saving
-                  ? "Gemmer..."
-                  : isEditing
-                    ? "Gem ændringer"
-                    : "Opret dagsperiode"}
-              </button>
-              {isEditing && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Opret ny i stedet
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-
-        {!needsMasterCinemaSelection && (
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Overblik
@@ -476,11 +393,21 @@ export default function DayPeriodsPage() {
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                   {loading
                     ? "Henter dagsperioder..."
-                    : `${dayPeriods.length} dagsperioder vist`}
+                    : `${dayPeriods.length} dagsperioder vist · ${activeCount} aktive${
+                        showArchived ? ` · ${archivedCount} arkiverede` : ""
+                      }`}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-2 rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium dark:border-gray-700">
+
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
+                  Opret dagsperiode
+                </button>
+                <label className="inline-flex items-center gap-2 rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-200">
                   <input
                     type="checkbox"
                     checked={showArchived}
@@ -500,29 +427,35 @@ export default function DayPeriodsPage() {
               </div>
             </div>
 
+            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-950 dark:bg-blue-950/30 dark:text-blue-100">
+              Brug dagsperioder som faste tidsrammer, fx A-vagt weekend eller
+              hverdagsaften. De bliver senere brugt som clamp/fallback i
+              jobfunktionernes beregning.
+            </div>
+
             {loading && (
-              <div className="rounded-xl border border-dashed border-gray-300 p-6 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+              <div className="mt-5 rounded-xl border border-dashed p-6 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
                 Indlæser dagsperioder...
               </div>
             )}
 
             {!loading && dayPeriods.length === 0 && (
-              <div className="rounded-xl border border-dashed border-gray-300 p-6 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+              <div className="mt-5 rounded-xl border border-dashed p-6 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
                 Ingen dagsperioder fundet.
               </div>
             )}
 
             {!loading && dayPeriods.length > 0 && (
-              <div className="space-y-3">
+              <div className="mt-5 space-y-3">
                 {dayPeriods.map((dayPeriod) => (
                   <article
                     key={dayPeriod.id}
-                    className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60"
+                    className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50"
                   >
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_170px_120px_230px] lg:items-center">
-                      <div className="min-w-0">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="truncate text-lg font-semibold">
+                          <h3 className="text-lg font-semibold">
                             {dayPeriod.name}
                           </h3>
                           <span
@@ -535,35 +468,49 @@ export default function DayPeriodsPage() {
                             {dayPeriod.isActive ? "Aktiv" : "Arkiveret"}
                           </span>
                         </div>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                           Beregningsramme for jobfunktioner
                         </p>
                       </div>
 
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                          Tid
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          {formatMinute(dayPeriod.startMinute)} -{" "}
-                          {formatMinute(dayPeriod.endMinute)}
-                        </p>
-                      </div>
+                      <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:min-w-[520px]">
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Tid
+                          </dt>
+                          <dd className="mt-1 font-semibold">
+                            {formatMinute(dayPeriod.startMinute)} -{" "}
+                            {formatMinute(dayPeriod.endMinute)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Varighed
+                          </dt>
+                          <dd className="mt-1 font-semibold">
+                            {getDurationText({
+                              name: dayPeriod.name,
+                              startTime: minuteToTime(dayPeriod.startMinute),
+                              endTime: minuteToTime(dayPeriod.endMinute),
+                              sortOrder: String(dayPeriod.sortOrder),
+                            })}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Sortering
+                          </dt>
+                          <dd className="mt-1 font-semibold">
+                            {dayPeriod.sortOrder}
+                          </dd>
+                        </div>
+                      </dl>
 
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                          Sortering
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          {dayPeriod.sortOrder}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+                      <div className="flex flex-wrap gap-2 xl:justify-end">
                         {dayPeriod.isActive && (
                           <button
                             type="button"
-                            onClick={() => startEdit(dayPeriod)}
+                            onClick={() => openEditModal(dayPeriod)}
                             className="rounded-xl border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-white dark:border-gray-700 dark:hover:bg-gray-800"
                           >
                             Redigér
@@ -572,7 +519,7 @@ export default function DayPeriodsPage() {
                         {dayPeriod.isActive ? (
                           <button
                             type="button"
-                            onClick={() => deleteDayPeriod(dayPeriod)}
+                            onClick={() => archiveDayPeriod(dayPeriod)}
                             className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
                           >
                             Arkivér
@@ -595,6 +542,131 @@ export default function DayPeriodsPage() {
           </section>
         )}
       </main>
+
+      {formModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-2xl dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Stamdata
+                </p>
+                <h2 className="mt-1 text-2xl font-bold">
+                  {isEditing ? "Redigér dagsperiode" : "Opret dagsperiode"}
+                </h2>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Brug tider som kl. 08:00-17:30 eller kl. 16:00-23:59.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeFormModal}
+                className="rounded-xl border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+                disabled={saving}
+              >
+                Luk
+              </button>
+            </div>
+
+            <form
+              className="mt-5 space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitForm();
+              }}
+            >
+              <label className="block space-y-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                <span>Navn</span>
+                <input
+                  type="text"
+                  placeholder="Fx A Vagt Weekend"
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  disabled={saving}
+                  autoFocus
+                />
+              </label>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="space-y-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                  <span>Start</span>
+                  <input
+                    type="time"
+                    value={form.startTime}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        startTime: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:[color-scheme:dark]"
+                    disabled={saving}
+                  />
+                </label>
+                <label className="space-y-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                  <span>Slut</span>
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        endTime: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:[color-scheme:dark]"
+                    disabled={saving}
+                  />
+                </label>
+                <label className="space-y-1 text-sm font-medium text-gray-700 dark:text-gray-200">
+                  <span>Sortering</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.sortOrder}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        sortOrder: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    disabled={saving}
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={closeFormModal}
+                  className="rounded-xl border border-gray-300 px-5 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+                  disabled={saving}
+                >
+                  Annuller
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
+                  {saving
+                    ? "Gemmer..."
+                    : isEditing
+                      ? "Gem ændringer"
+                      : "Opret dagsperiode"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={confirmDialog.open}
