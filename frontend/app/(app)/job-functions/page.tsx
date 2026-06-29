@@ -12,18 +12,26 @@ import JobFunctionsMasterCinemaRequired from "./components/JobFunctionsMasterCin
 import {
   appendCinemaId,
   formatDayPeriod,
+  formatMinute,
+  formatTimingAnchor,
+  formatTimingOffset,
+  formatTimingRuleSummary,
   formatUserName,
   getCurrentUserFromToken,
   getJobFunctionEmployeeCount,
   getSelectedMasterCinemaId,
   isAssignableUser,
   normalizeColorValue,
+  optionalTimeToMinute,
   readErrorMessage,
+  timeToMinute,
 } from "./helpers/jobFunctionHelpers";
 import type {
   CurrentUser,
   DayPeriod,
   JobFunction,
+  JobFunctionTimingAnchor,
+  JobFunctionTimingRule,
   User,
   UserJobFunction,
 } from "./helpers/jobFunctionTypes";
@@ -36,12 +44,47 @@ type FormState = {
   dayPeriodId: string;
 };
 
+type TimingRuleFormState = {
+  startAnchor: JobFunctionTimingAnchor;
+  startOffsetMinutes: string;
+  startFixedMinute: string;
+  endAnchor: JobFunctionTimingAnchor;
+  endOffsetMinutes: string;
+  endFixedMinute: string;
+  fallbackStartMinute: string;
+  fallbackEndMinute: string;
+  clampToDayPeriod: boolean;
+};
+
+const timingAnchorOptions: Array<{
+  value: JobFunctionTimingAnchor;
+  label: string;
+}> = [
+  { value: "DAY_PERIOD_START", label: "Dagsperiode start" },
+  { value: "DAY_PERIOD_END", label: "Dagsperiode slut" },
+  { value: "FIRST_MOVIE_START", label: "Første filmstart" },
+  { value: "LAST_MOVIE_END", label: "Sidste filmslut" },
+  { value: "FIXED_TIME", label: "Fast tidspunkt" },
+];
+
 const emptyForm: FormState = {
   name: "",
   description: "",
   color: "#2563eb",
   sortOrder: "0",
   dayPeriodId: "",
+};
+
+const emptyTimingRuleForm: TimingRuleFormState = {
+  startAnchor: "DAY_PERIOD_START",
+  startOffsetMinutes: "0",
+  startFixedMinute: "",
+  endAnchor: "DAY_PERIOD_END",
+  endOffsetMinutes: "0",
+  endFixedMinute: "",
+  fallbackStartMinute: "",
+  fallbackEndMinute: "",
+  clampToDayPeriod: true,
 };
 
 function toFormState(jobFunction: JobFunction): FormState {
@@ -89,6 +132,106 @@ function parseForm(form: FormState) {
   };
 }
 
+function toTimingRuleForm(
+  rule: JobFunctionTimingRule | null | undefined,
+): TimingRuleFormState {
+  if (!rule) {
+    return emptyTimingRuleForm;
+  }
+
+  return {
+    startAnchor: rule.startAnchor,
+    startOffsetMinutes: String(rule.startOffsetMinutes ?? 0),
+    startFixedMinute:
+      rule.startFixedMinute !== null
+        ? formatMinute(rule.startFixedMinute).replace("kl. ", "")
+        : "",
+    endAnchor: rule.endAnchor,
+    endOffsetMinutes: String(rule.endOffsetMinutes ?? 0),
+    endFixedMinute:
+      rule.endFixedMinute !== null
+        ? formatMinute(rule.endFixedMinute).replace("kl. ", "")
+        : "",
+    fallbackStartMinute:
+      rule.fallbackStartMinute !== null
+        ? formatMinute(rule.fallbackStartMinute).replace("kl. ", "")
+        : "",
+    fallbackEndMinute:
+      rule.fallbackEndMinute !== null
+        ? formatMinute(rule.fallbackEndMinute).replace("kl. ", "")
+        : "",
+    clampToDayPeriod: rule.clampToDayPeriod,
+  };
+}
+
+function parseOffsetInput(value: string, fieldName: string) {
+  const normalized = value.trim();
+  const parsedValue = normalized ? Number(normalized) : 0;
+
+  if (!Number.isInteger(parsedValue)) {
+    throw new Error(`${fieldName} skal være et helt antal minutter.`);
+  }
+
+  if (parsedValue < -720 || parsedValue > 720) {
+    throw new Error(`${fieldName} skal være mellem -720 og 720 minutter.`);
+  }
+
+  return parsedValue;
+}
+
+function parseTimingRuleForm(form: TimingRuleFormState) {
+  const startFixedMinute =
+    form.startAnchor === "FIXED_TIME"
+      ? timeToMinute(form.startFixedMinute, "Fast starttidspunkt")
+      : null;
+  const endFixedMinute =
+    form.endAnchor === "FIXED_TIME"
+      ? timeToMinute(form.endFixedMinute, "Fast sluttidspunkt")
+      : null;
+  const fallbackStartMinute = optionalTimeToMinute(
+    form.fallbackStartMinute,
+    "Tidspunkt hvor vagten starter uden filmprogram",
+  );
+  const fallbackEndMinute = optionalTimeToMinute(
+    form.fallbackEndMinute,
+    "Tidspunkt hvor vagten slutter uden filmprogram",
+  );
+  const hasFallbackStart = fallbackStartMinute !== null;
+  const hasFallbackEnd = fallbackEndMinute !== null;
+
+  if (hasFallbackStart !== hasFallbackEnd) {
+    throw new Error("Udfyld både start og slut, når der angives tider uden filmprogram.");
+  }
+
+  if (
+    fallbackStartMinute !== null &&
+    fallbackEndMinute !== null &&
+    fallbackEndMinute <= fallbackStartMinute
+  ) {
+    throw new Error(
+      "Starttidspunkt uden filmprogram skal være før sluttidspunkt uden filmprogram.",
+    );
+  }
+
+  return {
+    startAnchor: form.startAnchor,
+    startOffsetMinutes: parseOffsetInput(
+      form.startOffsetMinutes,
+      "Start-forskydning",
+    ),
+    startFixedMinute,
+    endAnchor: form.endAnchor,
+    endOffsetMinutes: parseOffsetInput(
+      form.endOffsetMinutes,
+      "Slut-forskydning",
+    ),
+    endFixedMinute,
+    fallbackStartMinute,
+    fallbackEndMinute,
+    clampToDayPeriod: form.clampToDayPeriod,
+  };
+}
+
 export default function JobFunctionsPage() {
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
@@ -117,6 +260,15 @@ export default function JobFunctionsPage() {
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [timingModalJobFunction, setTimingModalJobFunction] =
+    useState<JobFunction | null>(null);
+  const [timingRule, setTimingRule] = useState<JobFunctionTimingRule | null>(
+    null,
+  );
+  const [timingRuleForm, setTimingRuleForm] =
+    useState<TimingRuleFormState>(emptyTimingRuleForm);
+  const [timingRuleLoading, setTimingRuleLoading] = useState(false);
+  const [timingRuleSaving, setTimingRuleSaving] = useState(false);
 
   const activeCinemaId = useMemo(() => {
     if (currentUser?.role === "MASTER" && !currentUser.cinemaId) {
@@ -130,8 +282,9 @@ export default function JobFunctionsPage() {
     currentUser?.role === "MASTER" && !currentUser.cinemaId && !activeCinemaId;
 
   const isEditing = editingId !== null;
-  const activeCount = jobFunctions.filter((jobFunction) => jobFunction.isActive)
-    .length;
+  const activeCount = jobFunctions.filter(
+    (jobFunction) => jobFunction.isActive,
+  ).length;
   const archivedCount = jobFunctions.length - activeCount;
 
   useEffect(() => {
@@ -142,7 +295,10 @@ export default function JobFunctionsPage() {
     };
 
     updateSelectedCinema();
-    window.addEventListener("masterSelectedCinemaChanged", updateSelectedCinema);
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      updateSelectedCinema,
+    );
     window.addEventListener("storage", updateSelectedCinema);
 
     return () => {
@@ -166,7 +322,12 @@ export default function JobFunctionsPage() {
               activeCinemaId,
             ),
           ),
-          apiFetch(appendCinemaId("/day-periods?includeArchived=false", activeCinemaId)),
+          apiFetch(
+            appendCinemaId(
+              "/day-periods?includeArchived=false",
+              activeCinemaId,
+            ),
+          ),
           apiFetch(appendCinemaId("/users", activeCinemaId)),
         ]);
 
@@ -190,7 +351,10 @@ export default function JobFunctionsPage() {
 
       if (!usersResponse.ok) {
         throw new Error(
-          await readErrorMessage(usersResponse, "Kunne ikke hente medarbejdere"),
+          await readErrorMessage(
+            usersResponse,
+            "Kunne ikke hente medarbejdere",
+          ),
         );
       }
 
@@ -202,7 +366,9 @@ export default function JobFunctionsPage() {
 
       setJobFunctions(Array.isArray(jobFunctionsData) ? jobFunctionsData : []);
       setDayPeriods(Array.isArray(dayPeriodsData) ? dayPeriodsData : []);
-      setUsers(Array.isArray(usersData) ? usersData.filter(isAssignableUser) : []);
+      setUsers(
+        Array.isArray(usersData) ? usersData.filter(isAssignableUser) : [],
+      );
     } catch (error) {
       setJobFunctions([]);
       setDayPeriods([]);
@@ -239,7 +405,10 @@ export default function JobFunctionsPage() {
       try {
         setAssignmentLoading(true);
         const response = await apiFetch(
-          appendCinemaId(`/job-functions/${jobFunction.id}/users`, activeCinemaId),
+          appendCinemaId(
+            `/job-functions/${jobFunction.id}/users`,
+            activeCinemaId,
+          ),
         );
 
         if (!response.ok) {
@@ -263,6 +432,42 @@ export default function JobFunctionsPage() {
         );
       } finally {
         setAssignmentLoading(false);
+      }
+    },
+    [activeCinemaId],
+  );
+
+  const fetchTimingRule = useCallback(
+    async (jobFunction: JobFunction) => {
+      try {
+        setTimingRuleLoading(true);
+        const response = await apiFetch(
+          appendCinemaId(
+            `/job-functions/${jobFunction.id}/timing-rule?includeInactive=true`,
+            activeCinemaId,
+          ),
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(response, "Kunne ikke hente møde- og fyraftensregel"),
+          );
+        }
+
+        const data = (await response.json()) as JobFunctionTimingRule | null;
+        setTimingRule(data);
+        setTimingRuleForm(toTimingRuleForm(data));
+      } catch (error) {
+        setTimingRule(null);
+        setTimingRuleForm(emptyTimingRuleForm);
+        infoDialogRef.current.showError(
+          "Kunne ikke hente møde- og fyraftensregel",
+          error instanceof Error
+            ? error.message
+            : "Der opstod en fejl, da timingreglen skulle hentes.",
+        );
+      } finally {
+        setTimingRuleLoading(false);
       }
     },
     [activeCinemaId],
@@ -308,6 +513,23 @@ export default function JobFunctionsPage() {
     setEmployeeModalJobFunction(null);
     setAssignments([]);
     setSelectedUserId("");
+  };
+
+  const openTimingRuleModal = async (jobFunction: JobFunction) => {
+    setTimingModalJobFunction(jobFunction);
+    setTimingRule(jobFunction.timingRule ?? null);
+    setTimingRuleForm(toTimingRuleForm(jobFunction.timingRule));
+    await fetchTimingRule(jobFunction);
+  };
+
+  const closeTimingRuleModal = () => {
+    if (timingRuleSaving) {
+      return;
+    }
+
+    setTimingModalJobFunction(null);
+    setTimingRule(null);
+    setTimingRuleForm(emptyTimingRuleForm);
   };
 
   const submitForm = async () => {
@@ -388,7 +610,10 @@ export default function JobFunctionsPage() {
 
           if (!response.ok) {
             throw new Error(
-              await readErrorMessage(response, "Kunne ikke arkivere jobfunktion"),
+              await readErrorMessage(
+                response,
+                "Kunne ikke arkivere jobfunktion",
+              ),
             );
           }
 
@@ -549,6 +774,99 @@ export default function JobFunctionsPage() {
     });
   };
 
+  const saveTimingRule = async () => {
+    if (!timingModalJobFunction) {
+      return;
+    }
+
+    try {
+      setTimingRuleSaving(true);
+      const payload = {
+        ...parseTimingRuleForm(timingRuleForm),
+        cinemaId: activeCinemaId,
+      };
+      const response = await apiFetch(
+        appendCinemaId(
+          `/job-functions/${timingModalJobFunction.id}/timing-rule`,
+          activeCinemaId,
+        ),
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke gemme møde- og fyraftensregel"),
+        );
+      }
+
+      await response.json();
+      await fetchData();
+      setTimingModalJobFunction(null);
+      setTimingRule(null);
+      setTimingRuleForm(emptyTimingRuleForm);
+    } catch (error) {
+      infoDialog.showError(
+        "Kunne ikke gemme møde- og fyraftensregel",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da reglen skulle gemmes.",
+      );
+    } finally {
+      setTimingRuleSaving(false);
+    }
+  };
+
+  const archiveTimingRule = () => {
+    if (!timingModalJobFunction) {
+      return;
+    }
+
+    confirmDialog.confirm({
+      title: "Arkivér møde- og fyraftensregel",
+      description:
+        `Vil du arkivere reglen for "${timingModalJobFunction.name}"?\n\n` +
+        "Reglen kan oprettes igen ved at gemme en ny regel.",
+      confirmText: "Arkivér",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          const response = await apiFetch(
+            appendCinemaId(
+              `/job-functions/${timingModalJobFunction.id}/timing-rule`,
+              activeCinemaId,
+            ),
+            { method: "DELETE" },
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              await readErrorMessage(
+                response,
+                "Kunne ikke arkivere møde- og fyraftensregel",
+              ),
+            );
+          }
+
+          const data = (await response.json()) as JobFunctionTimingRule;
+          setTimingRule(data);
+          setTimingRuleForm(toTimingRuleForm(data));
+          await fetchData();
+        } catch (error) {
+          infoDialog.showError(
+            "Kunne ikke arkivere møde- og fyraftensregel",
+            error instanceof Error
+              ? error.message
+              : "Der opstod en fejl, da timingreglen skulle arkiveres.",
+          );
+        }
+      },
+    });
+  };
+
   return (
     <AdminGuard>
       <main className="min-h-screen bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100 sm:px-6 lg:px-8">
@@ -561,8 +879,8 @@ export default function JobFunctionsPage() {
               Jobfunktioner
             </h1>
             <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              Jobfunktioner beskriver bemandingsroller og kompetencer. De er ikke
-              lønarter og ændrer ikke vagtplanen endnu.
+              Jobfunktioner beskriver bemandingsroller og kompetencer. De er
+              ikke lønarter og ændrer ikke vagtplanen endnu.
             </p>
           </header>
 
@@ -599,7 +917,9 @@ export default function JobFunctionsPage() {
                     <input
                       type="checkbox"
                       checked={showArchived}
-                      onChange={(event) => setShowArchived(event.target.checked)}
+                      onChange={(event) =>
+                        setShowArchived(event.target.checked)
+                      }
                       className="h-4 w-4 rounded border-gray-300"
                     />
                     Vis arkiverede
@@ -642,7 +962,8 @@ export default function JobFunctionsPage() {
                 {!loading && jobFunctions.length > 0 && (
                   <div className="space-y-3">
                     {jobFunctions.map((jobFunction) => {
-                      const employeeCount = getJobFunctionEmployeeCount(jobFunction);
+                      const employeeCount =
+                        getJobFunctionEmployeeCount(jobFunction);
                       return (
                         <article
                           key={jobFunction.id}
@@ -675,13 +996,23 @@ export default function JobFunctionsPage() {
                                 </p>
                               )}
 
-                              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
                                 <div>
                                   <dt className="font-medium text-gray-500 dark:text-gray-400">
                                     Dagsperiode
                                   </dt>
                                   <dd className="mt-1 text-gray-900 dark:text-gray-100">
                                     {formatDayPeriod(jobFunction.dayPeriod)}
+                                  </dd>
+                                </div>
+                                <div className="sm:col-span-2 lg:col-span-1">
+                                  <dt className="font-medium text-gray-500 dark:text-gray-400">
+                                    Tidsregel
+                                  </dt>
+                                  <dd className="mt-1 text-gray-900 dark:text-gray-100">
+                                    {formatTimingRuleSummary(
+                                      jobFunction.timingRule,
+                                    )}
                                   </dd>
                                 </div>
                                 <div>
@@ -714,6 +1045,13 @@ export default function JobFunctionsPage() {
                             <div className="flex flex-wrap gap-2 lg:justify-end">
                               <button
                                 type="button"
+                                onClick={() => openTimingRuleModal(jobFunction)}
+                                className="rounded-xl border border-purple-200 px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50 dark:border-purple-900 dark:text-purple-200 dark:hover:bg-purple-950"
+                              >
+                                Tidsregel
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => openEmployeeModal(jobFunction)}
                                 className="rounded-xl border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-200 dark:hover:bg-blue-950"
                               >
@@ -731,7 +1069,9 @@ export default function JobFunctionsPage() {
                               {jobFunction.isActive ? (
                                 <button
                                   type="button"
-                                  onClick={() => archiveJobFunction(jobFunction)}
+                                  onClick={() =>
+                                    archiveJobFunction(jobFunction)
+                                  }
                                   className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
                                 >
                                   Arkivér
@@ -739,7 +1079,9 @@ export default function JobFunctionsPage() {
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={() => reactivateJobFunction(jobFunction)}
+                                  onClick={() =>
+                                    reactivateJobFunction(jobFunction)
+                                  }
                                   className="rounded-xl bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
                                 >
                                   Genaktivér
@@ -770,8 +1112,8 @@ export default function JobFunctionsPage() {
                   {isEditing ? "Redigér jobfunktion" : "Opret jobfunktion"}
                 </h2>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Angiv navn, farve og eventuel dagsperiode. Timingregler og
-                  vagtgenerering kommer senere.
+                  Angiv navn, farve og eventuel dagsperiode. Møde- og fyraftensregler
+                  redigeres separat fra listen.
                 </p>
               </div>
               <button
@@ -798,7 +1140,10 @@ export default function JobFunctionsPage() {
                 <input
                   value={form.name}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, name: event.target.value }))
+                    setForm((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
                   }
                   className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   disabled={saving}
@@ -925,6 +1270,316 @@ export default function JobFunctionsPage() {
         </div>
       )}
 
+      {timingModalJobFunction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <div className="mb-5">
+              <p className="text-sm font-semibold uppercase tracking-wide text-purple-600 dark:text-purple-400">
+                Møde- og fyraftensregel
+              </p>
+              <h2 className="mt-1 text-2xl font-bold text-gray-950 dark:text-white">
+                {timingModalJobFunction.name}
+              </h2>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                Reglen beskriver, hvordan mødetid og fyraften senere skal
+                beregnes ud fra dagsperiode, filmprogram og tider uden
+                filmprogram. Den ændrer ikke vagtplanen endnu.
+              </p>
+            </div>
+
+            {timingRuleLoading && (
+              <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                Henter møde- og fyraftensregel...
+              </div>
+            )}
+
+            {!timingRuleLoading && (
+              <form
+                onSubmit={(event: FormEvent<HTMLFormElement>) => {
+                  event.preventDefault();
+                  saveTimingRule();
+                }}
+                className="space-y-5"
+              >
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Start / mødetid
+                    </h3>
+                    <div className="mt-4 space-y-4">
+                      <label className="block">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                          Startregel
+                        </span>
+                        <select
+                          value={timingRuleForm.startAnchor}
+                          onChange={(event) =>
+                            setTimingRuleForm((current) => ({
+                              ...current,
+                              startAnchor: event.target
+                                .value as JobFunctionTimingAnchor,
+                            }))
+                          }
+                          className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                          disabled={timingRuleSaving}
+                        >
+                          {timingAnchorOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {timingRuleForm.startAnchor === "FIXED_TIME" ? (
+                        <label className="block">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Fast starttidspunkt
+                          </span>
+                          <input
+                            type="time"
+                            value={timingRuleForm.startFixedMinute}
+                            onChange={(event) =>
+                              setTimingRuleForm((current) => ({
+                                ...current,
+                                startFixedMinute: event.target.value,
+                              }))
+                            }
+                            className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:[color-scheme:dark] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                            disabled={timingRuleSaving}
+                          />
+                        </label>
+                      ) : (
+                        <label className="block">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Forskydning i minutter
+                          </span>
+                          <input
+                            type="number"
+                            min="-720"
+                            max="720"
+                            value={timingRuleForm.startOffsetMinutes}
+                            onChange={(event) =>
+                              setTimingRuleForm((current) => ({
+                                ...current,
+                                startOffsetMinutes: event.target.value,
+                              }))
+                            }
+                            className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                            disabled={timingRuleSaving}
+                          />
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Negativt tal betyder før ankeret. Eksempel: -60 = 60
+                            min før.
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      Slut / fyraften
+                    </h3>
+                    <div className="mt-4 space-y-4">
+                      <label className="block">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                          Slutregel
+                        </span>
+                        <select
+                          value={timingRuleForm.endAnchor}
+                          onChange={(event) =>
+                            setTimingRuleForm((current) => ({
+                              ...current,
+                              endAnchor: event.target
+                                .value as JobFunctionTimingAnchor,
+                            }))
+                          }
+                          className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                          disabled={timingRuleSaving}
+                        >
+                          {timingAnchorOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {timingRuleForm.endAnchor === "FIXED_TIME" ? (
+                        <label className="block">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Fast sluttidspunkt
+                          </span>
+                          <input
+                            type="time"
+                            value={timingRuleForm.endFixedMinute}
+                            onChange={(event) =>
+                              setTimingRuleForm((current) => ({
+                                ...current,
+                                endFixedMinute: event.target.value,
+                              }))
+                            }
+                            className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:[color-scheme:dark] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                            disabled={timingRuleSaving}
+                          />
+                        </label>
+                      ) : (
+                        <label className="block">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Forskydning i minutter
+                          </span>
+                          <input
+                            type="number"
+                            min="-720"
+                            max="720"
+                            value={timingRuleForm.endOffsetMinutes}
+                            onChange={(event) =>
+                              setTimingRuleForm((current) => ({
+                                ...current,
+                                endOffsetMinutes: event.target.value,
+                              }))
+                            }
+                            className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                            disabled={timingRuleSaving}
+                          />
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Positivt tal betyder efter ankeret. Eksempel: 15 =
+                            15 min efter.
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Tider uden filmprogram
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    Hvis der ikke er noget filmprogram i den valgte dagsperiode, bruges disse tider.
+                  </p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Hvis der ikke er noget filmprogram i den valgte dagsperiode, starter vagten
+                      </span>
+                      <input
+                        type="time"
+                        value={timingRuleForm.fallbackStartMinute}
+                        onChange={(event) =>
+                          setTimingRuleForm((current) => ({
+                            ...current,
+                            fallbackStartMinute: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:[color-scheme:dark] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                        disabled={timingRuleSaving}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Hvis der ikke er noget filmprogram i den valgte dagsperiode, slutter vagten
+                      </span>
+                      <input
+                        type="time"
+                        value={timingRuleForm.fallbackEndMinute}
+                        onChange={(event) =>
+                          setTimingRuleForm((current) => ({
+                            ...current,
+                            fallbackEndMinute: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:[color-scheme:dark] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                        disabled={timingRuleSaving}
+                      />
+                    </label>
+                  </div>
+                  <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={timingRuleForm.clampToDayPeriod}
+                      onChange={(event) =>
+                        setTimingRuleForm((current) => ({
+                          ...current,
+                          clampToDayPeriod: event.target.checked,
+                        }))
+                      }
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      disabled={timingRuleSaving}
+                    />
+                    <span>
+                      Clamp til dagsperioden. Systemet må ikke beregne
+                      start/slut udenfor jobfunktionens dagsperiode, når reglen
+                      senere bruges til vagtplanlægning.
+                    </span>
+                  </label>
+                </div>
+
+                <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4 text-sm text-purple-900 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-100">
+                  <p className="font-semibold">Aktuel opsummering</p>
+                  <p className="mt-1">
+                    Start: {formatTimingAnchor(timingRuleForm.startAnchor)}
+                    {timingRuleForm.startAnchor === "FIXED_TIME"
+                      ? timingRuleForm.startFixedMinute
+                        ? ` · kl. ${timingRuleForm.startFixedMinute}`
+                        : " · mangler tidspunkt"
+                      : ` · ${formatTimingOffset(Number(timingRuleForm.startOffsetMinutes || 0))}`}
+                  </p>
+                  <p className="mt-1">
+                    Slut: {formatTimingAnchor(timingRuleForm.endAnchor)}
+                    {timingRuleForm.endAnchor === "FIXED_TIME"
+                      ? timingRuleForm.endFixedMinute
+                        ? ` · kl. ${timingRuleForm.endFixedMinute}`
+                        : " · mangler tidspunkt"
+                      : ` · ${formatTimingOffset(Number(timingRuleForm.endOffsetMinutes || 0))}`}
+                  </p>
+                  {timingRule?.isActive === false && (
+                    <p className="mt-2 font-semibold text-amber-800 dark:text-amber-100">
+                      Reglen er arkiveret. Gem formularen for at aktivere
+                      den igen.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-gray-200 pt-5 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    {timingRule?.isActive && (
+                      <button
+                        type="button"
+                        onClick={archiveTimingRule}
+                        className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900 dark:text-red-200 dark:hover:bg-red-950"
+                        disabled={timingRuleSaving}
+                      >
+                        Arkivér regel
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={closeTimingRuleModal}
+                      className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+                      disabled={timingRuleSaving}
+                    >
+                      Annuller
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={timingRuleSaving}
+                    >
+                      {timingRuleSaving ? "Gemmer..." : "Gem regel"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {employeeModalJobFunction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
@@ -937,8 +1592,8 @@ export default function JobFunctionsPage() {
                   {employeeModalJobFunction.name}
                 </h2>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Vælg hvilke medarbejdere der kan tage denne jobfunktion.
-                  Dette er kompetence/eligibility og ikke løn.
+                  Vælg hvilke medarbejdere der kan tage denne jobfunktion. Dette
+                  er kompetence/eligibility og ikke løn.
                 </p>
               </div>
               <button
@@ -979,7 +1634,9 @@ export default function JobFunctionsPage() {
                     onClick={assignSelectedUser}
                     className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={
-                      assignmentSaving || !selectedUserId || availableUsers.length === 0
+                      assignmentSaving ||
+                      !selectedUserId ||
+                      availableUsers.length === 0
                     }
                   >
                     {assignmentSaving ? "Tilføjer..." : "Tilføj"}
@@ -1033,7 +1690,8 @@ export default function JobFunctionsPage() {
                         </p>
                         {assignment.assignedByUser && (
                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Tildelt af {formatUserName(assignment.assignedByUser)}
+                            Tildelt af{" "}
+                            {formatUserName(assignment.assignedByUser)}
                           </p>
                         )}
                       </div>

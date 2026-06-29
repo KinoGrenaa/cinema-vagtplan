@@ -1,4 +1,11 @@
-import type { CurrentUser, DayPeriod, JobFunction, User } from "./jobFunctionTypes";
+import type {
+  CurrentUser,
+  DayPeriod,
+  JobFunction,
+  JobFunctionTimingAnchor,
+  JobFunctionTimingRule,
+  User,
+} from "./jobFunctionTypes";
 
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 
@@ -92,11 +99,106 @@ export function normalizeColorValue(value: string) {
   return normalized;
 }
 
-export function formatUserName(user: Pick<User, "firstName" | "lastName" | "email">) {
+export function formatUserName(
+  user: Pick<User, "firstName" | "lastName" | "email">,
+) {
   const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
   return fullName || user.email;
 }
 
 export function isAssignableUser(user: User) {
   return user.role !== "MASTER" && user.isActive !== false;
+}
+
+export function timeToMinute(value: string, fieldName: string) {
+  const normalized = value.trim();
+
+  if (!/^\d{2}:\d{2}$/.test(normalized)) {
+    throw new Error(`${fieldName} skal angives som TT:MM.`);
+  }
+
+  const [hoursText, minutesText] = normalized.split(":");
+  const hours = Number(hoursText);
+  const minutes = Number(minutesText);
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    throw new Error(`${fieldName} skal være mellem 00:00 og 23:59.`);
+  }
+
+  return hours * 60 + minutes;
+}
+
+export function optionalTimeToMinute(value: string, fieldName: string) {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return timeToMinute(normalized, fieldName);
+}
+
+export function formatTimingAnchor(anchor: JobFunctionTimingAnchor) {
+  switch (anchor) {
+    case "DAY_PERIOD_START":
+      return "Dagsperiode start";
+    case "DAY_PERIOD_END":
+      return "Dagsperiode slut";
+    case "FIRST_MOVIE_START":
+      return "Første filmstart";
+    case "LAST_MOVIE_END":
+      return "Sidste filmslut";
+    case "FIXED_TIME":
+      return "Fast tidspunkt";
+    default:
+      return "Ukendt regel";
+  }
+}
+
+export function formatTimingOffset(value: number) {
+  if (!Number.isFinite(value) || value === 0) {
+    return "ingen forskydning";
+  }
+
+  const absoluteValue = Math.abs(value);
+  return value < 0 ? `${absoluteValue} min før` : `${absoluteValue} min efter`;
+}
+
+export function formatTimingRuleSummary(
+  rule: JobFunctionTimingRule | null | undefined,
+) {
+  if (!rule) {
+    return "Ingen tidsregel";
+  }
+
+  if (!rule.isActive) {
+    return "Tidsregel arkiveret";
+  }
+
+  const start =
+    rule.startAnchor === "FIXED_TIME" && rule.startFixedMinute !== null
+      ? formatMinute(rule.startFixedMinute)
+      : `${formatTimingAnchor(rule.startAnchor)} · ${formatTimingOffset(
+          rule.startOffsetMinutes,
+        )}`;
+  const end =
+    rule.endAnchor === "FIXED_TIME" && rule.endFixedMinute !== null
+      ? formatMinute(rule.endFixedMinute)
+      : `${formatTimingAnchor(rule.endAnchor)} · ${formatTimingOffset(
+          rule.endOffsetMinutes,
+        )}`;
+  const fallback =
+    rule.fallbackStartMinute !== null && rule.fallbackEndMinute !== null
+      ? `Uden filmprogram ${formatMinute(rule.fallbackStartMinute)} - ${formatMinute(
+          rule.fallbackEndMinute,
+        )}`
+      : "Ingen tider uden filmprogram";
+
+  return `Start: ${start} · Slut: ${end} · ${fallback}`;
 }
