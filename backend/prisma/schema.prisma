@@ -96,6 +96,12 @@ enum JobFunctionTimingAnchor {
   FIXED_TIME
 }
 
+enum ScheduleTemplateWeekParity {
+  ANY
+  EVEN
+  ODD
+}
+
 model Cinema {
   id                                  Int                 @id @default(autoincrement())
   name                                String
@@ -129,6 +135,10 @@ model Cinema {
   dayPeriods                          DayPeriod[]
   jobFunctions                        JobFunction[]
   jobFunctionTimingRules              JobFunctionTimingRule[]
+  scheduleTemplates                   ScheduleTemplate[]
+  scheduleTemplateDays                ScheduleTemplateDay[]
+  scheduleTemplateJobFunctions        ScheduleTemplateJobFunction[]
+  scheduleTemplateAssignments         ScheduleTemplateAssignment[]
   userJobFunctions                    UserJobFunction[]
   shifts                              Shift[]
   messages                            Message[]
@@ -180,6 +190,7 @@ model User {
   createdLeaveRequests        LeaveRequest[]              @relation("LeaveRequestCreatedBy")
   userJobFunctions            UserJobFunction[]            @relation("UserJobFunctionUser")
   assignedUserJobFunctions    UserJobFunction[]            @relation("UserJobFunctionAssignedBy")
+  scheduleTemplateAssignments ScheduleTemplateAssignment[]
   offeredTrades               ShiftTrade[]                @relation("OfferedTrades")
   acceptedTrades              ShiftTrade[]                @relation("AcceptedTrades")
   rejectedTrades              ShiftTrade[]                @relation("RejectedTrades")
@@ -248,8 +259,9 @@ model JobFunction {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @default(now()) @updatedAt
 
-  userJobFunctions UserJobFunction[]
-  timingRule JobFunctionTimingRule?
+  userJobFunctions              UserJobFunction[]
+  timingRule                    JobFunctionTimingRule?
+  scheduleTemplateJobFunctions  ScheduleTemplateJobFunction[]
 
   @@index([cinemaId])
   @@index([dayPeriodId])
@@ -302,6 +314,88 @@ model UserJobFunction {
   @@index([cinemaId])
   @@index([userId])
   @@index([jobFunctionId])
+}
+
+
+model ScheduleTemplate {
+  id          Int                        @id @default(autoincrement())
+  cinemaId    Int
+  cinema      Cinema                     @relation(fields: [cinemaId], references: [id])
+  name        String
+  description String?
+  weekParity  ScheduleTemplateWeekParity @default(ANY)
+  startsOn    DateTime?
+  sortOrder   Int                        @default(0)
+  isActive    Boolean                    @default(true)
+  archivedAt  DateTime?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @default(now()) @updatedAt
+
+  days ScheduleTemplateDay[]
+
+  @@index([cinemaId])
+  @@index([isActive])
+  @@index([weekParity])
+}
+
+model ScheduleTemplateDay {
+  id          Int              @id @default(autoincrement())
+  cinemaId    Int
+  cinema      Cinema           @relation(fields: [cinemaId], references: [id])
+  templateId  Int
+  template    ScheduleTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  weekday     Int
+  isActive    Boolean          @default(true)
+  note        String?
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
+
+  jobFunctions ScheduleTemplateJobFunction[]
+
+  @@unique([templateId, weekday])
+  @@index([cinemaId])
+  @@index([templateId])
+  @@index([weekday])
+  @@index([isActive])
+}
+
+model ScheduleTemplateJobFunction {
+  id            Int                 @id @default(autoincrement())
+  cinemaId      Int
+  cinema        Cinema              @relation(fields: [cinemaId], references: [id])
+  templateDayId Int
+  templateDay   ScheduleTemplateDay @relation(fields: [templateDayId], references: [id], onDelete: Cascade)
+  jobFunctionId Int
+  jobFunction   JobFunction         @relation(fields: [jobFunctionId], references: [id])
+  requiredCount Int                 @default(1)
+  sortOrder     Int                 @default(0)
+  note          String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @default(now()) @updatedAt
+
+  assignments ScheduleTemplateAssignment[]
+
+  @@index([cinemaId])
+  @@index([templateDayId])
+  @@index([jobFunctionId])
+}
+
+model ScheduleTemplateAssignment {
+  id                    Int                         @id @default(autoincrement())
+  cinemaId              Int
+  cinema                Cinema                      @relation(fields: [cinemaId], references: [id])
+  templateJobFunctionId Int
+  templateJobFunction   ScheduleTemplateJobFunction @relation(fields: [templateJobFunctionId], references: [id], onDelete: Cascade)
+  userId                Int
+  user                  User                        @relation(fields: [userId], references: [id])
+  sortOrder             Int                         @default(0)
+  createdAt             DateTime                    @default(now())
+
+  @@unique([templateJobFunctionId, userId])
+  @@index([cinemaId])
+  @@index([templateJobFunctionId])
+  @@index([userId])
 }
 
 model Shift {
