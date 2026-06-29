@@ -1,10 +1,9 @@
-import type { CurrentUser, DayPeriod, JobFunction } from "./jobFunctionTypes";
+import type { CurrentUser, DayPeriod, JobFunction, User } from "./jobFunctionTypes";
 
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 
 export function getCurrentUserFromToken(): CurrentUser | null {
   const token = localStorage.getItem("token");
-
   if (!token) {
     return null;
   }
@@ -86,10 +85,18 @@ export function getJobFunctionEmployeeCount(jobFunction: JobFunction) {
 
 export function normalizeColorValue(value: string) {
   const normalized = value.trim();
-
   if (!normalized) {
     return "#2563eb";
   }
 
   return normalized;
+}
+
+export function formatUserName(user: Pick<User, "firstName" | "lastName" | "email">) {
+  const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+  return fullName || user.email;
+}
+
+export function isAssignableUser(user: User) {
+  return user.role !== "MASTER" && user.isActive !== false;
 }

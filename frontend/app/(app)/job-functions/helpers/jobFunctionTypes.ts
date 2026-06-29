@@ -35,3 +35,25 @@ export type JobFunction = {
     userJobFunctions?: number;
   };
 };
+
+export type User = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: "MASTER" | "ADMIN" | "EMPLOYEE";
+  isActive?: boolean;
+  cinemaId?: number | null;
+};
+
+export type UserJobFunction = {
+  id: number;
+  cinemaId: number;
+  userId: number;
+  jobFunctionId: number;
+  assignedByUserId: number | null;
+  createdAt: string;
+  user: User;
+  assignedByUser?: Pick<User, "id" | "firstName" | "lastName" | "email"> | null;
+  jobFunction?: Pick<JobFunction, "id" | "name" | "color" | "isActive" | "cinemaId">;
+};

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
@@ -11,13 +12,21 @@ import JobFunctionsMasterCinemaRequired from "./components/JobFunctionsMasterCin
 import {
   appendCinemaId,
   formatDayPeriod,
+  formatUserName,
   getCurrentUserFromToken,
   getJobFunctionEmployeeCount,
   getSelectedMasterCinemaId,
+  isAssignableUser,
   normalizeColorValue,
   readErrorMessage,
 } from "./helpers/jobFunctionHelpers";
-import type { CurrentUser, DayPeriod, JobFunction } from "./helpers/jobFunctionTypes";
+import type {
+  CurrentUser,
+  DayPeriod,
+  JobFunction,
+  User,
+  UserJobFunction,
+} from "./helpers/jobFunctionTypes";
 
 type FormState = {
   name: string;
@@ -95,12 +104,19 @@ export default function JobFunctionsPage() {
   >(null);
   const [jobFunctions, setJobFunctions] = useState<JobFunction[]>([]);
   const [dayPeriods, setDayPeriods] = useState<DayPeriod[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formModalOpen, setFormModalOpen] = useState(false);
+  const [employeeModalJobFunction, setEmployeeModalJobFunction] =
+    useState<JobFunction | null>(null);
+  const [assignments, setAssignments] = useState<UserJobFunction[]>([]);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState("");
 
   const activeCinemaId = useMemo(() => {
     if (currentUser?.role === "MASTER" && !currentUser.cinemaId) {
@@ -142,15 +158,17 @@ export default function JobFunctionsPage() {
     try {
       setLoading(true);
 
-      const [jobFunctionsResponse, dayPeriodsResponse] = await Promise.all([
-        apiFetch(
-          appendCinemaId(
-            `/job-functions?includeArchived=${showArchived}`,
-            activeCinemaId,
+      const [jobFunctionsResponse, dayPeriodsResponse, usersResponse] =
+        await Promise.all([
+          apiFetch(
+            appendCinemaId(
+              `/job-functions?includeArchived=${showArchived}`,
+              activeCinemaId,
+            ),
           ),
-        ),
-        apiFetch(appendCinemaId("/day-periods?includeArchived=false", activeCinemaId)),
-      ]);
+          apiFetch(appendCinemaId("/day-periods?includeArchived=false", activeCinemaId)),
+          apiFetch(appendCinemaId("/users", activeCinemaId)),
+        ]);
 
       if (!jobFunctionsResponse.ok) {
         throw new Error(
@@ -170,16 +188,25 @@ export default function JobFunctionsPage() {
         );
       }
 
-      const [jobFunctionsData, dayPeriodsData] = await Promise.all([
+      if (!usersResponse.ok) {
+        throw new Error(
+          await readErrorMessage(usersResponse, "Kunne ikke hente medarbejdere"),
+        );
+      }
+
+      const [jobFunctionsData, dayPeriodsData, usersData] = await Promise.all([
         jobFunctionsResponse.json(),
         dayPeriodsResponse.json(),
+        usersResponse.json(),
       ]);
 
       setJobFunctions(Array.isArray(jobFunctionsData) ? jobFunctionsData : []);
       setDayPeriods(Array.isArray(dayPeriodsData) ? dayPeriodsData : []);
+      setUsers(Array.isArray(usersData) ? usersData.filter(isAssignableUser) : []);
     } catch (error) {
       setJobFunctions([]);
       setDayPeriods([]);
+      setUsers([]);
       infoDialogRef.current.showError(
         "Kunne ikke hente jobfunktioner",
         error instanceof Error
@@ -199,12 +226,47 @@ export default function JobFunctionsPage() {
     if (needsMasterCinemaSelection) {
       setJobFunctions([]);
       setDayPeriods([]);
+      setUsers([]);
       setLoading(false);
       return;
     }
 
     fetchData();
   }, [currentUser, fetchData, needsMasterCinemaSelection]);
+
+  const fetchAssignments = useCallback(
+    async (jobFunction: JobFunction) => {
+      try {
+        setAssignmentLoading(true);
+        const response = await apiFetch(
+          appendCinemaId(`/job-functions/${jobFunction.id}/users`, activeCinemaId),
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(
+              response,
+              "Kunne ikke hente medarbejdere for jobfunktion",
+            ),
+          );
+        }
+
+        const data = await response.json();
+        setAssignments(Array.isArray(data) ? data : []);
+      } catch (error) {
+        setAssignments([]);
+        infoDialogRef.current.showError(
+          "Kunne ikke hente medarbejdere",
+          error instanceof Error
+            ? error.message
+            : "Der opstod en fejl, da medarbejderlisten skulle hentes.",
+        );
+      } finally {
+        setAssignmentLoading(false);
+      }
+    },
+    [activeCinemaId],
+  );
 
   const resetForm = () => {
     setForm(emptyForm);
@@ -231,6 +293,23 @@ export default function JobFunctionsPage() {
     setFormModalOpen(true);
   };
 
+  const openEmployeeModal = async (jobFunction: JobFunction) => {
+    setEmployeeModalJobFunction(jobFunction);
+    setSelectedUserId("");
+    setAssignments([]);
+    await fetchAssignments(jobFunction);
+  };
+
+  const closeEmployeeModal = () => {
+    if (assignmentSaving) {
+      return;
+    }
+
+    setEmployeeModalJobFunction(null);
+    setAssignments([]);
+    setSelectedUserId("");
+  };
+
   const submitForm = async () => {
     if (needsMasterCinemaSelection) {
       infoDialog.showError(
@@ -246,7 +325,6 @@ export default function JobFunctionsPage() {
         ...parseForm(form),
         cinemaId: activeCinemaId,
       };
-
       const response = await apiFetch(
         editingId
           ? appendCinemaId(`/job-functions/${editingId}`, activeCinemaId)
@@ -270,7 +348,6 @@ export default function JobFunctionsPage() {
 
       closeFormModal();
       await fetchData();
-
       infoDialog.show({
         title: editingId ? "Jobfunktion opdateret" : "Jobfunktion oprettet",
         description: editingId
@@ -373,20 +450,119 @@ export default function JobFunctionsPage() {
     });
   };
 
+  const assignedUserIds = useMemo(() => {
+    return new Set(assignments.map((assignment) => assignment.user.id));
+  }, [assignments]);
+
+  const availableUsers = useMemo(() => {
+    return users.filter((user) => !assignedUserIds.has(user.id));
+  }, [assignedUserIds, users]);
+
+  const assignSelectedUser = async () => {
+    if (!employeeModalJobFunction) {
+      return;
+    }
+
+    const userId = Number(selectedUserId);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      infoDialog.showError(
+        "Vælg medarbejder",
+        "Vælg en medarbejder, før du tilføjer jobfunktionen.",
+      );
+      return;
+    }
+
+    try {
+      setAssignmentSaving(true);
+      const response = await apiFetch(
+        appendCinemaId(
+          `/job-functions/${employeeModalJobFunction.id}/users`,
+          activeCinemaId,
+        ),
+        {
+          method: "POST",
+          body: JSON.stringify({ userId, cinemaId: activeCinemaId }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke tilføje medarbejder"),
+        );
+      }
+
+      setSelectedUserId("");
+      await fetchAssignments(employeeModalJobFunction);
+      await fetchData();
+    } catch (error) {
+      infoDialog.showError(
+        "Kunne ikke tilføje medarbejder",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da medarbejderen skulle tilføjes.",
+      );
+    } finally {
+      setAssignmentSaving(false);
+    }
+  };
+
+  const removeAssignedUser = (assignment: UserJobFunction) => {
+    if (!employeeModalJobFunction) {
+      return;
+    }
+
+    confirmDialog.confirm({
+      title: "Fjern jobfunktion fra medarbejder",
+      description: `Vil du fjerne "${employeeModalJobFunction.name}" fra ${formatUserName(
+        assignment.user,
+      )}?`,
+      confirmText: "Fjern",
+      cancelText: "Annuller",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          const response = await apiFetch(
+            appendCinemaId(
+              `/job-functions/${employeeModalJobFunction.id}/users/${assignment.user.id}`,
+              activeCinemaId,
+            ),
+            { method: "DELETE" },
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              await readErrorMessage(response, "Kunne ikke fjerne medarbejder"),
+            );
+          }
+
+          await fetchAssignments(employeeModalJobFunction);
+          await fetchData();
+        } catch (error) {
+          infoDialog.showError(
+            "Kunne ikke fjerne medarbejder",
+            error instanceof Error
+              ? error.message
+              : "Der opstod en fejl, da medarbejderen skulle fjernes.",
+          );
+        }
+      },
+    });
+  };
+
   return (
     <AdminGuard>
-      <main className="min-h-screen bg-gray-50 px-4 py-8 text-gray-950 dark:bg-gray-950 dark:text-white sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <header className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
+      <main className="min-h-screen bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <header className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
               Vagtplanlægning
             </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
               Jobfunktioner
             </h1>
-            <p className="mx-auto mt-3 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
-              Jobfunktioner beskriver bemandingsroller og kompetencer. De er
-              ikke lønarter og ændrer ikke vagtplanen endnu.
+            <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+              Jobfunktioner beskriver bemandingsroller og kompetencer. De er ikke
+              lønarter og ændrer ikke vagtplanen endnu.
             </p>
           </header>
 
@@ -394,12 +570,14 @@ export default function JobFunctionsPage() {
 
           {!needsMasterCinemaSelection && (
             <section className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="border-b border-gray-200 p-5 dark:border-gray-800 sm:flex sm:items-start sm:justify-between sm:gap-4">
+              <div className="flex flex-col gap-4 border-b border-gray-200 p-5 dark:border-gray-800 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Overblik
                   </p>
-                  <h2 className="mt-1 text-xl font-bold">Jobfunktioner</h2>
+                  <h2 className="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
+                    Jobfunktioner
+                  </h2>
                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                     {loading
                       ? "Henter jobfunktioner..."
@@ -409,42 +587,39 @@ export default function JobFunctionsPage() {
                   </p>
                 </div>
 
-                <div className="mt-4 flex flex-col gap-3 sm:mt-0 sm:items-end">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <button
                     type="button"
                     onClick={openCreateModal}
-                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={loading}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
                   >
                     Opret jobfunktion
                   </button>
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={showArchived}
-                        onChange={(event) => setShowArchived(event.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                      Vis arkiverede
-                    </label>
-                    <button
-                      type="button"
-                      onClick={fetchData}
-                      className="rounded-xl border border-gray-300 px-3 py-2 font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                    >
-                      Opdater
-                    </button>
-                  </div>
+                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={showArchived}
+                      onChange={(event) => setShowArchived(event.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    Vis arkiverede
+                  </label>
+                  <button
+                    type="button"
+                    onClick={fetchData}
+                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+                  >
+                    Opdater
+                  </button>
                 </div>
               </div>
 
               <div className="p-5">
-                <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
+                <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-100">
                   Brug jobfunktioner til at styre hvilke roller en vagt kræver,
-                  og hvilke medarbejdere der senere kan ønskes eller foreslås.
-                  Medarbejderkobling og vagtgenerering kommer i senere trin.
-                </p>
+                  og hvilke medarbejdere der kan ønskes, tildeles eller foreslås
+                  til vagten. Vagtgenerering kommer i senere trin.
+                </div>
 
                 {loading && (
                   <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
@@ -454,7 +629,9 @@ export default function JobFunctionsPage() {
 
                 {!loading && jobFunctions.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
-                    <h3 className="text-lg font-semibold">Ingen jobfunktioner fundet.</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Ingen jobfunktioner fundet.
+                    </h3>
                     <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                       Opret den første jobfunktion, fx A Vagt, B Vagt eller
                       Personalemøde.
@@ -466,28 +643,27 @@ export default function JobFunctionsPage() {
                   <div className="space-y-3">
                     {jobFunctions.map((jobFunction) => {
                       const employeeCount = getJobFunctionEmployeeCount(jobFunction);
-
                       return (
                         <article
                           key={jobFunction.id}
                           className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60"
                         >
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-3">
                                 <span
-                                  className="h-4 w-4 rounded-full border border-white shadow-sm ring-1 ring-gray-300 dark:border-gray-900 dark:ring-gray-700"
+                                  className="h-4 w-4 rounded-full border border-white shadow-sm ring-1 ring-gray-300 dark:ring-gray-700"
                                   style={{ backgroundColor: jobFunction.color }}
                                 />
-                                <h3 className="text-lg font-semibold">
+                                <h3 className="text-lg font-semibold text-gray-950 dark:text-white">
                                   {jobFunction.name}
                                 </h3>
                                 <span
-                                  className={
+                                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                                     jobFunction.isActive
-                                      ? "rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300"
-                                      : "rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                                  }
+                                      ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200"
+                                      : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                                  }`}
                                 >
                                   {jobFunction.isActive ? "Aktiv" : "Arkiveret"}
                                 </span>
@@ -501,34 +677,34 @@ export default function JobFunctionsPage() {
 
                               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                                 <div>
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                  <dt className="font-medium text-gray-500 dark:text-gray-400">
                                     Dagsperiode
                                   </dt>
-                                  <dd className="mt-1 text-gray-900 dark:text-white">
+                                  <dd className="mt-1 text-gray-900 dark:text-gray-100">
                                     {formatDayPeriod(jobFunction.dayPeriod)}
                                   </dd>
                                 </div>
                                 <div>
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                  <dt className="font-medium text-gray-500 dark:text-gray-400">
                                     Sortering
                                   </dt>
-                                  <dd className="mt-1 text-gray-900 dark:text-white">
+                                  <dd className="mt-1 text-gray-900 dark:text-gray-100">
                                     {jobFunction.sortOrder}
                                   </dd>
                                 </div>
                                 <div>
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                  <dt className="font-medium text-gray-500 dark:text-gray-400">
                                     Farve
                                   </dt>
-                                  <dd className="mt-1 font-mono text-gray-900 dark:text-white">
+                                  <dd className="mt-1 font-mono text-gray-900 dark:text-gray-100">
                                     {jobFunction.color}
                                   </dd>
                                 </div>
                                 <div>
-                                  <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                  <dt className="font-medium text-gray-500 dark:text-gray-400">
                                     Medarbejdere
                                   </dt>
-                                  <dd className="mt-1 text-gray-900 dark:text-white">
+                                  <dd className="mt-1 text-gray-900 dark:text-gray-100">
                                     {employeeCount}
                                   </dd>
                                 </div>
@@ -536,6 +712,13 @@ export default function JobFunctionsPage() {
                             </div>
 
                             <div className="flex flex-wrap gap-2 lg:justify-end">
+                              <button
+                                type="button"
+                                onClick={() => openEmployeeModal(jobFunction)}
+                                className="rounded-xl border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-200 dark:hover:bg-blue-950"
+                              >
+                                Medarbejdere
+                              </button>
                               {jobFunction.isActive && (
                                 <button
                                   type="button"
@@ -576,17 +759,17 @@ export default function JobFunctionsPage() {
       </main>
 
       {formModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900">
-            <div className="flex items-start justify-between gap-4 border-b border-gray-200 p-5 dark:border-gray-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                <p className="text-sm font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
                   Stamdata
                 </p>
                 <h2 className="mt-1 text-2xl font-bold text-gray-950 dark:text-white">
                   {isEditing ? "Redigér jobfunktion" : "Opret jobfunktion"}
                 </h2>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                   Angiv navn, farve og eventuel dagsperiode. Timingregler og
                   vagtgenerering kommer senere.
                 </p>
@@ -602,73 +785,70 @@ export default function JobFunctionsPage() {
             </div>
 
             <form
-              className="space-y-5 p-5"
-              onSubmit={(event) => {
+              onSubmit={(event: FormEvent<HTMLFormElement>) => {
                 event.preventDefault();
                 submitForm();
               }}
+              className="space-y-5"
             >
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="md:col-span-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Navn
-                  </span>
-                  <input
-                    value={form.name}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    disabled={saving}
-                    autoFocus
-                  />
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Navn
+                </span>
+                <input
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  disabled={saving}
+                  autoFocus
+                />
+              </label>
 
-                <label className="md:col-span-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Beskrivelse
-                  </span>
-                  <textarea
-                    value={form.description}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        description: event.target.value,
-                      }))
-                    }
-                    className="mt-1 min-h-24 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    disabled={saving}
-                  />
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Beskrivelse
+                </span>
+                <textarea
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
+                  }
+                  className="mt-1 min-h-24 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  disabled={saving}
+                />
+              </label>
 
-                <label>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Dagsperiode
-                  </span>
-                  <select
-                    value={form.dayPeriodId}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        dayPeriodId: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    disabled={saving}
-                  >
-                    <option value="">Ingen dagsperiode</option>
-                    {dayPeriods.map((dayPeriod) => (
-                      <option key={dayPeriod.id} value={dayPeriod.id}>
-                        {formatDayPeriod(dayPeriod)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Dagsperiode
+                </span>
+                <select
+                  value={form.dayPeriodId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      dayPeriodId: event.target.value,
+                    }))
+                  }
+                  className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  disabled={saving}
+                >
+                  <option value="">Ingen dagsperiode</option>
+                  {dayPeriods.map((dayPeriod) => (
+                    <option key={dayPeriod.id} value={dayPeriod.id}>
+                      {formatDayPeriod(dayPeriod)}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                <label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                     Sortering
                   </span>
@@ -687,7 +867,7 @@ export default function JobFunctionsPage() {
                   />
                 </label>
 
-                <label>
+                <label className="block">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                     Farve
                   </span>
@@ -741,6 +921,135 @@ export default function JobFunctionsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {employeeModalJobFunction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                  Medarbejdere
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-gray-950 dark:text-white">
+                  {employeeModalJobFunction.name}
+                </h2>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                  Vælg hvilke medarbejdere der kan tage denne jobfunktion.
+                  Dette er kompetence/eligibility og ikke løn.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeEmployeeModal}
+                className="rounded-xl border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+                disabled={assignmentSaving}
+              >
+                Luk
+              </button>
+            </div>
+
+            {employeeModalJobFunction.isActive && (
+              <div className="mb-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Tilføj medarbejder
+                </label>
+                <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                  <select
+                    value={selectedUserId}
+                    onChange={(event) => setSelectedUserId(event.target.value)}
+                    className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    disabled={assignmentSaving || availableUsers.length === 0}
+                  >
+                    <option value="">
+                      {availableUsers.length === 0
+                        ? "Alle aktive medarbejdere er tilføjet"
+                        : "Vælg medarbejder"}
+                    </option>
+                    {availableUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {formatUserName(user)} · {user.email}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={assignSelectedUser}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={
+                      assignmentSaving || !selectedUserId || availableUsers.length === 0
+                    }
+                  >
+                    {assignmentSaving ? "Tilføjer..." : "Tilføj"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!employeeModalJobFunction.isActive && (
+              <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                Jobfunktionen er arkiveret. Du kan se og fjerne medarbejdere,
+                men nye medarbejdere kan først tilføjes efter genaktivering.
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Tildelte medarbejdere
+                </h3>
+                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  {assignments.length}
+                </span>
+              </div>
+
+              {assignmentLoading && (
+                <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  Henter medarbejdere...
+                </div>
+              )}
+
+              {!assignmentLoading && assignments.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  Ingen medarbejdere har denne jobfunktion endnu.
+                </div>
+              )}
+
+              {!assignmentLoading && assignments.length > 0 && (
+                <div className="divide-y divide-gray-200 overflow-hidden rounded-2xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+                  {assignments.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="flex flex-col gap-3 bg-white p-4 dark:bg-gray-950/50 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-semibold text-gray-950 dark:text-white">
+                          {formatUserName(assignment.user)}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {assignment.user.email}
+                        </p>
+                        {assignment.assignedByUser && (
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Tildelt af {formatUserName(assignment.assignedByUser)}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAssignedUser(assignment)}
+                        className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-200 dark:hover:bg-red-950"
+                        disabled={assignmentSaving}
+                      >
+                        Fjern
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
