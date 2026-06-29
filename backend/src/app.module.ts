@@ -10,6 +10,7 @@ import { WorkTypesModule } from './work-types/work-types.module';
 import { DayPeriodsModule } from './day-periods/day-periods.module';
 import { JobFunctionsModule } from './job-functions/job-functions.module';
 import { ScheduleTemplatesModule } from './schedule-templates/schedule-templates.module';
+import { MonthPlansModule } from './month-plans/month-plans.module';
 import { MovieShowingsModule } from './movie-showings/movie-showings.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { ShiftTradesModule } from './shift-trades/shift-trades.module';
@@ -40,6 +41,7 @@ import { SystemErrorLogsModule } from './system-error-logs/system-error-logs.mod
     DayPeriodsModule,
     JobFunctionsModule,
     ScheduleTemplatesModule,
+    MonthPlansModule,
     MovieShowingsModule,
     LeaveRequestsModule,
     ShiftTradesModule,

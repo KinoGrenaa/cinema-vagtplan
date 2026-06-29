@@ -136,6 +136,7 @@ model Cinema {
   jobFunctions                        JobFunction[]
   jobFunctionTimingRules              JobFunctionTimingRule[]
   scheduleTemplates                   ScheduleTemplate[]
+  monthPlanDays                       MonthPlanDay[]
   scheduleTemplateDays                ScheduleTemplateDay[]
   scheduleTemplateJobFunctions        ScheduleTemplateJobFunction[]
   scheduleTemplateAssignments         ScheduleTemplateAssignment[]
@@ -331,11 +332,36 @@ model ScheduleTemplate {
   createdAt   DateTime                   @default(now())
   updatedAt   DateTime                   @default(now()) @updatedAt
 
-  days ScheduleTemplateDay[]
+  days          ScheduleTemplateDay[]
+  monthPlanDays MonthPlanDay[]
 
   @@index([cinemaId])
   @@index([isActive])
   @@index([weekParity])
+}
+
+model MonthPlanDay {
+  id                     Int               @id @default(autoincrement())
+  cinemaId               Int
+  cinema                 Cinema            @relation(fields: [cinemaId], references: [id])
+  date                   DateTime
+  isActive               Boolean           @default(true)
+  scheduleTemplateId     Int?
+  scheduleTemplate       ScheduleTemplate? @relation(fields: [scheduleTemplateId], references: [id], onDelete: SetNull)
+  note                   String?
+  movieProgramFirstStart DateTime?
+  movieProgramLastEnd    DateTime?
+  movieShowingCount      Int               @default(0)
+  plannedShiftCount      Int               @default(0)
+  unassignedShiftCount   Int               @default(0)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @default(now()) @updatedAt
+
+  @@unique([cinemaId, date])
+  @@index([cinemaId])
+  @@index([date])
+  @@index([scheduleTemplateId])
+  @@index([isActive])
 }
 
 model ScheduleTemplateDay {
