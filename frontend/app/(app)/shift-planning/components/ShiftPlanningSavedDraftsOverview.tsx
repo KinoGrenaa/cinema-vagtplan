@@ -172,6 +172,19 @@ type ShiftPlanningSavedDraftsOverviewProps = {
   year: number;
 };
 
+type DraftStatusFilter = "ALL" | "DRAFT" | "PUBLISHED" | "SUPERSEDED" | "OTHER";
+
+const DRAFT_STATUS_FILTERS: Array<{
+  value: DraftStatusFilter;
+  label: string;
+}> = [
+  { value: "ALL", label: "Alle" },
+  { value: "DRAFT", label: "Kladder" },
+  { value: "PUBLISHED", label: "Publicerede" },
+  { value: "SUPERSEDED", label: "Erstattede" },
+  { value: "OTHER", label: "Andre" },
+];
+
 const MAX_VISIBLE_DRAFTS = 5;
 const MAX_VISIBLE_DATE_GROUPS = 10;
 const MAX_VISIBLE_ITEMS_PER_DAY = 6;
@@ -196,6 +209,52 @@ function formatDraftStatus(status?: string | null) {
       return "Annulleret";
     default:
       return status || "Ukendt status";
+  }
+}
+
+function getDraftStatusFilterValue(status?: string | null): DraftStatusFilter {
+  if (status === "DRAFT" || status === "PUBLISHED" || status === "SUPERSEDED") {
+    return status;
+  }
+
+  return "OTHER";
+}
+
+function draftMatchesStatusFilter(
+  draft: SavedDraftSummary,
+  filter: DraftStatusFilter,
+) {
+  if (filter === "ALL") {
+    return true;
+  }
+
+  return getDraftStatusFilterValue(draft.status) === filter;
+}
+
+function getDraftStatusCount(
+  drafts: SavedDraftSummary[],
+  filter: DraftStatusFilter,
+) {
+  if (filter === "ALL") {
+    return drafts.length;
+  }
+
+  return drafts.filter((draft) => draftMatchesStatusFilter(draft, filter))
+    .length;
+}
+
+function formatSelectedFilterText(filter: DraftStatusFilter) {
+  switch (filter) {
+    case "DRAFT":
+      return "åbne kladder";
+    case "PUBLISHED":
+      return "publicerede kladder";
+    case "SUPERSEDED":
+      return "erstattede kladder";
+    case "OTHER":
+      return "andre kladder";
+    default:
+      return "kladder";
   }
 }
 
@@ -538,12 +597,33 @@ export default function ShiftPlanningSavedDraftsOverview({
   );
   const [publishError, setPublishError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [draftStatusFilter, setDraftStatusFilter] =
+    useState<DraftStatusFilter>("ALL");
 
-  const visibleDrafts = useMemo(
-    () => drafts.slice(0, MAX_VISIBLE_DRAFTS),
-    [drafts],
+  const draftStatusCounts = useMemo(() => {
+    return DRAFT_STATUS_FILTERS.reduce(
+      (counts, filter) => ({
+        ...counts,
+        [filter.value]: getDraftStatusCount(drafts, filter.value),
+      }),
+      {} as Record<DraftStatusFilter, number>,
+    );
+  }, [drafts]);
+  const filteredDrafts = useMemo(
+    () =>
+      drafts.filter((draft) =>
+        draftMatchesStatusFilter(draft, draftStatusFilter),
+      ),
+    [draftStatusFilter, drafts],
   );
-  const hiddenDraftCount = Math.max(0, drafts.length - visibleDrafts.length);
+  const visibleDrafts = useMemo(
+    () => filteredDrafts.slice(0, MAX_VISIBLE_DRAFTS),
+    [filteredDrafts],
+  );
+  const hiddenDraftCount = Math.max(
+    0,
+    filteredDrafts.length - visibleDrafts.length,
+  );
   const selectedItems = selectedDraft?.items ?? [];
   const controlSummary = useMemo(
     () => getDraftControlSummary(selectedItems),
@@ -1016,6 +1096,43 @@ export default function ShiftPlanningSavedDraftsOverview({
         </div>
       </div>
 
+      {drafts.length > 0 && (
+        <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="text-center lg:text-left">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                Filtrér kladder
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Vælg om du vil fokusere på åbne, publicerede eller erstattede
+                kladder.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 lg:justify-end">
+              {DRAFT_STATUS_FILTERS.map((filter) => {
+                const isActive = draftStatusFilter === filter.value;
+                const count = draftStatusCounts[filter.value] ?? 0;
+
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setDraftStatusFilter(filter.value)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${
+                      isActive
+                        ? "bg-blue-600 text-white ring-blue-600 dark:bg-blue-500 dark:ring-blue-500"
+                        : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-800 dark:hover:bg-gray-800"
+                    }`}
+                  >
+                    {filter.label} · {count}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {errorMessage && (
         <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
           {errorMessage}
@@ -1033,6 +1150,16 @@ export default function ShiftPlanningSavedDraftsOverview({
           Der er endnu ingen gemte kladder for måneden.
         </div>
       )}
+
+      {!loading &&
+        drafts.length > 0 &&
+        filteredDrafts.length === 0 &&
+        !errorMessage && (
+          <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
+            Der er ingen {formatSelectedFilterText(draftStatusFilter)} i denne
+            måned.
+          </div>
+        )}
 
       {!loading && visibleDrafts.length > 0 && (
         <div className="mt-5 grid gap-3">
@@ -1101,7 +1228,8 @@ export default function ShiftPlanningSavedDraftsOverview({
 
       {hiddenDraftCount > 0 && (
         <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
-          {hiddenDraftCount} ældre kladder er skjult i denne kompakte visning.
+          {hiddenDraftCount} ældre {formatSelectedFilterText(draftStatusFilter)}
+          er skjult i denne kompakte visning.
         </p>
       )}
 
