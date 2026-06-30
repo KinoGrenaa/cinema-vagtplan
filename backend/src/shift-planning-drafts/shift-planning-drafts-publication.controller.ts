@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Param,
+  Post,
   Query,
   Req,
   UseGuards,
@@ -37,6 +39,22 @@ export class ShiftPlanningDraftPublicationController {
       req.user,
       this.parseRequiredId(id, 'Planlægningskladde skal være et gyldigt ID.'),
       cinemaId,
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Post(':id/publish')
+  publishDraft(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return this.shiftPlanningDraftPublicationService.publishDraft(
+      req.user,
+      this.parseRequiredId(id, 'Planlægningskladde skal være et gyldigt ID.'),
+      cinemaId,
+      body,
     );
   }
 }

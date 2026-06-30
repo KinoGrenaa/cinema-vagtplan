@@ -39,6 +39,27 @@ type PublicationPreviewItemRow = {
   userEmail: string | null;
 };
 
+type PublicationPublishBody = {
+  confirmationText?: unknown;
+  confirmText?: unknown;
+  confirm?: unknown;
+  workTypeId?: unknown;
+  note?: unknown;
+};
+
+type WorkTypeRow = {
+  id: number | bigint;
+  name: string;
+  isActive: boolean;
+  archivedAt: Date | string | null;
+};
+
+type InsertedShiftRow = {
+  id: number | bigint;
+};
+
+const PUBLISH_CONFIRMATION_TEXT = 'PUBLICER_KLADDE';
+
 function ensureAdminAccess(user: AuthUser) {
   if (user.role === 'MASTER' || user.role === 'ADMIN') {
     return;
@@ -194,6 +215,67 @@ function normalizePreviewItem(row: PublicationPreviewItemRow) {
   };
 }
 
+function toBodyObject(body: unknown): PublicationPublishBody {
+  if (!body || typeof body !== 'object') {
+    return {};
+  }
+
+  return body as PublicationPublishBody;
+}
+
+function getConfirmationText(body: PublicationPublishBody) {
+  return String(
+    body.confirmationText ?? body.confirmText ?? body.confirm ?? '',
+  ).trim();
+}
+
+function parsePublishBody(body: unknown) {
+  const bodyObject = toBodyObject(body);
+  const confirmationText = getConfirmationText(bodyObject);
+
+  if (confirmationText !== PUBLISH_CONFIRMATION_TEXT) {
+    throw new BadRequestException(
+      `Skriv ${PUBLISH_CONFIRMATION_TEXT} for at bekræfte publicering af kladden.`,
+    );
+  }
+
+  const workTypeId = Number(bodyObject.workTypeId);
+
+  if (!Number.isInteger(workTypeId) || workTypeId <= 0) {
+    throw new BadRequestException(
+      'Vælg en aktiv arbejdstype, før kladden publiceres.',
+    );
+  }
+
+  const note =
+    typeof bodyObject.note === 'string' && bodyObject.note.trim().length > 0
+      ? bodyObject.note.trim()
+      : null;
+
+  return { workTypeId, note };
+}
+
+function getActorUserId(user: AuthUser) {
+  const userId = Number(user.sub ?? user.id);
+  return Number.isInteger(userId) && userId > 0 ? userId : null;
+}
+
+function buildShiftNote(
+  draftId: number,
+  dateKey: string,
+  jobFunctionName: string | null,
+  extraNote: string | null,
+) {
+  const parts = [
+    `Oprettet fra planlægningskladde #${draftId}`,
+    dateKey,
+    jobFunctionName ? `Jobfunktion: ${jobFunctionName}` : null,
+    extraNote,
+  ].filter(Boolean);
+
+  return parts.join(' · ');
+}
+
 @Injectable()
 export class ShiftPlanningDraftPublicationService {
   constructor(
@@ -318,6 +400,178 @@ export class ShiftPlanningDraftPublicationService {
       validationSummary: validation.summary,
       validationIssues: validation.issues,
       previewItems,
+    };
+  }
+
+  async publishDraft(
+    user: AuthUser,
+    draftId: number,
+    cinemaIdValue?: string,
+    body?: unknown,
+  ) {
+    const selectedCinemaId = user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
+    const cinemaId = resolveCinemaId(user, selectedCinemaId);
+    const { workTypeId, note } = parsePublishBody(body);
+    const actorUserId = getActorUserId(user);
+
+    const workTypeRows = await this.prisma.$queryRaw<WorkTypeRow[]>(Prisma.sql`
+      SELECT wt.id, wt.name, wt."isActive", wt."archivedAt"
+      FROM "WorkType" wt
+      WHERE wt.id = ${workTypeId}
+        AND wt."cinemaId" = ${cinemaId}
+      LIMIT 1
+    `);
+
+    if (workTypeRows.length === 0) {
+      throw new BadRequestException('Den valgte arbejdstype findes ikke i biografen.');
+    }
+
+    const workType = workTypeRows[0];
+
+    if (!workType.isActive || workType.archivedAt) {
+      throw new BadRequestException('Den valgte arbejdstype er ikke aktiv.');
+    }
+
+    const preview = await this.getPublicationPreview(
+      user,
+      draftId,
+      String(cinemaId),
+    );
+
+    if (!preview.summary.canPublishLater) {
+      throw new BadRequestException({
+        message: 'Planlægningskladden er ikke klar til publicering.',
+        blockingReasons: preview.blockingReasons,
+        validationSummary: preview.validationSummary,
+        validationIssues: preview.validationIssues,
+      });
+    }
+
+    const publishableItems = preview.previewItems.filter(
+      (item) => item.canBecomeShift,
+    );
+
+    if (publishableItems.length === 0) {
+      throw new BadRequestException('Kladden indeholder ingen poster, der kan publiceres.');
+    }
+
+    const createdShiftIds = await this.prisma.$transaction(async (tx) => {
+      const lockedDraftRows = await tx.$queryRaw<any[]>(Prisma.sql`
+        SELECT d.id, d.status
+        FROM "ShiftPlanningDraft" d
+        WHERE d.id = ${draftId}
+          AND d."cinemaId" = ${cinemaId}
+        FOR UPDATE
+      `);
+
+      if (lockedDraftRows.length === 0) {
+        throw new NotFoundException('Planlægningskladden findes ikke.');
+      }
+
+      if (lockedDraftRows[0].status !== 'DRAFT') {
+        throw new BadRequestException('Planlægningskladden er allerede behandlet.');
+      }
+
+      const insertedShiftIds: number[] = [];
+
+      for (const item of publishableItems) {
+        if (!item.startTime || !item.endTime) {
+          throw new BadRequestException('En kladdepost mangler mødetid eller fyraften.');
+        }
+
+        const shiftNote = buildShiftNote(
+          draftId,
+          item.dateKey,
+          item.jobFunctionName,
+          note,
+        );
+
+        const insertedRows = await tx.$queryRaw<InsertedShiftRow[]>(Prisma.sql`
+          INSERT INTO "Shift" (
+            "startTime",
+            "endTime",
+            "note",
+            "createdAt",
+            "cinemaId",
+            "userId",
+            "workTypeId"
+          )
+          VALUES (
+            ${item.startTime},
+            ${item.endTime},
+            ${shiftNote},
+            CURRENT_TIMESTAMP,
+            ${cinemaId},
+            ${item.userId},
+            ${workTypeId}
+          )
+          RETURNING id
+        `);
+
+        insertedShiftIds.push(toRequiredNumber(insertedRows[0]?.id));
+      }
+
+      const draftItemIds = Prisma.join(
+        publishableItems.map((item) => item.draftItemId),
+      );
+
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "ShiftPlanningDraftItem"
+        SET status = 'PUBLISHED',
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id IN (${draftItemIds})
+          AND "draftId" = ${draftId}
+          AND "cinemaId" = ${cinemaId}
+      `);
+
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "ShiftPlanningDraft"
+        SET status = 'PUBLISHED',
+            "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = ${draftId}
+          AND "cinemaId" = ${cinemaId}
+      `);
+
+      if (actorUserId) {
+        await tx.$executeRaw(Prisma.sql`
+          INSERT INTO "AuditLog" (
+            action,
+            "entityType",
+            "entityId",
+            description,
+            "createdAt",
+            "userId",
+            "cinemaId"
+          )
+          VALUES (
+            'SHIFT_PLANNING_DRAFT_PUBLISHED',
+            'ShiftPlanningDraft',
+            ${draftId},
+            ${`Publicerede planlægningskladde #${draftId} til ${insertedShiftIds.length} vagt(er).`},
+            CURRENT_TIMESTAMP,
+            ${actorUserId},
+            ${cinemaId}
+          )
+        `);
+      }
+
+      return insertedShiftIds;
+    });
+
+    return {
+      draftId,
+      cinemaId,
+      year: preview.year,
+      month: preview.month,
+      status: 'PUBLISHED',
+      mode: 'PUBLISHED',
+      createsShifts: true,
+      createdShiftCount: createdShiftIds.length,
+      createdShiftIds,
+      workTypeId,
+      workTypeName: workType.name,
+      publishedAt: new Date(),
+      message: 'Planlægningskladden er publiceret som rigtige vagter.',
     };
   }
 }
