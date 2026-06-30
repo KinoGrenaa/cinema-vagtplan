@@ -277,6 +277,68 @@ function buildShiftNote(
   return parts.join(' · ');
 }
 
+function getUniqueDateKeysFromPublicationItems(
+  items: ReturnType<typeof normalizePreviewItem>[],
+) {
+  return Array.from(
+    new Set(
+      items
+        .map((item) => item.dateKey)
+        .filter((dateKey): dateKey is string => /^\d{4}-\d{2}-\d{2}$/.test(dateKey)),
+    ),
+  );
+}
+
+function getDateRangeForDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map((part) => Number(part));
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    throw new BadRequestException('Kladdeposten har en ugyldig dato.');
+  }
+
+  const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
+
+  return { start, end };
+}
+
+async function refreshMonthPlanCountsForDateKeys(
+  tx: Prisma.TransactionClient,
+  cinemaId: number,
+  dateKeys: string[],
+) {
+  for (const dateKey of dateKeys) {
+    const { start, end } = getDateRangeForDateKey(dateKey);
+
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE "MonthPlanDay"
+      SET "plannedShiftCount" = (
+            SELECT CAST(COUNT(*) AS INTEGER)
+            FROM "Shift" s
+            WHERE s."cinemaId" = ${cinemaId}
+              AND s."startTime" >= ${start}
+              AND s."startTime" < ${end}
+          ),
+          "unassignedShiftCount" = (
+            SELECT CAST(COUNT(*) AS INTEGER)
+            FROM "Shift" s
+            WHERE s."cinemaId" = ${cinemaId}
+              AND s."startTime" >= ${start}
+              AND s."startTime" < ${end}
+              AND s."userId" IS NULL
+          ),
+          "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "cinemaId" = ${cinemaId}
+        AND "date" >= ${start}
+        AND "date" < ${end}
+    `);
+  }
+}
+
 @Injectable()
 export class ShiftPlanningDraftPublicationService {
   constructor(
@@ -457,6 +519,8 @@ export class ShiftPlanningDraftPublicationService {
       throw new BadRequestException('Kladden indeholder ingen poster, der kan publiceres.');
     }
 
+    const affectedDateKeys = getUniqueDateKeysFromPublicationItems(publishableItems);
+
     const createdShiftIds = await this.prisma.$transaction(async (tx) => {
       const lockedDraftRows = await tx.$queryRaw<any[]>(Prisma.sql`
         SELECT d.id, d.status
@@ -517,6 +581,8 @@ export class ShiftPlanningDraftPublicationService {
         publishableItems.map((item) => item.draftItemId),
       );
 
+      await refreshMonthPlanCountsForDateKeys(tx, cinemaId, affectedDateKeys);
+
       await tx.$executeRaw(Prisma.sql`
         UPDATE "ShiftPlanningDraftItem"
         SET status = 'PUBLISHED',
@@ -568,6 +634,7 @@ export class ShiftPlanningDraftPublicationService {
       draftId,
       createdShiftCount: createdShiftIds.length,
       createdShiftIds,
+      affectedDateKeys,
     });
 
     this.realtimeGateway.notifyCinema(cinemaId, 'shiftPlanningDraftPublished', {
@@ -577,6 +644,7 @@ export class ShiftPlanningDraftPublicationService {
       month: preview.month,
       createdShiftCount: createdShiftIds.length,
       createdShiftIds,
+      affectedDateKeys,
       publishedAt,
     });
 
@@ -590,6 +658,7 @@ export class ShiftPlanningDraftPublicationService {
       createsShifts: true,
       createdShiftCount: createdShiftIds.length,
       createdShiftIds,
+      affectedDateKeys,
       workTypeId,
       workTypeName: workType.name,
       publishedAt,
