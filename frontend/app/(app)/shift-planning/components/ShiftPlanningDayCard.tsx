@@ -56,23 +56,21 @@ export default function ShiftPlanningDayCard({
         day,
       )}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">
-            {getWeekdayName(dateKey)}
-          </p>
-          <p className="text-2xl font-bold leading-none">{dayNumberLabel}</p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+      <div className="space-y-1 text-center">
+        <div className="flex min-h-5 items-center justify-center gap-1">
+          <span className="max-w-full truncate rounded-full bg-white/70 px-2 py-0.5 text-center text-[10px] font-semibold dark:bg-black/20">
+            {getDayStatusLabel(day)}
+          </span>
           {isToday(dateKey) && (
-            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+            <span className="shrink-0 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">
               I dag
             </span>
           )}
-          <span className="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold dark:bg-black/20">
-            {getDayStatusLabel(day)}
-          </span>
         </div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70">
+          {getWeekdayName(dateKey)}
+        </p>
+        <p className="text-2xl font-bold leading-none">{dayNumberLabel}</p>
       </div>
 
       <div className="mt-2 space-y-1.5">

@@ -28,6 +28,7 @@ type ShiftPlanningDraftPreviewProps = {
   templatesById: Map<number, ScheduleTemplateSummary>;
   year: number;
   onOpenDay: (day: MonthPlanDay) => void;
+  onDraftPrepared?: (draft: PreparedDraftSummary) => void;
 };
 
 type DraftPreviewRow = {
@@ -89,6 +90,7 @@ export default function ShiftPlanningDraftPreview({
   templatesById,
   year,
   onOpenDay,
+  onDraftPrepared,
 }: ShiftPlanningDraftPreviewProps) {
   const infoDialog = useInfoModal();
   const [savingDraft, setSavingDraft] = useState(false);
@@ -142,6 +144,7 @@ export default function ShiftPlanningDraftPreview({
 
       const draft = (await response.json()) as PreparedDraftSummary;
       setLatestDraft(draft);
+      onDraftPrepared?.(draft);
       infoDialog.show({
         title: "Planlægningskladde gemt",
         description: `Kladde #${draft.id} er gemt med ${toNumber(

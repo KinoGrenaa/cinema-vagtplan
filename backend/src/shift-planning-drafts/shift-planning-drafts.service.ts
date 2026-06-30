@@ -183,40 +183,70 @@ function resolvePlannedEndMinute(jobFunction: any) {
   return null;
 }
 
+function toNullableNumber(value: unknown) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function normalizeDraftRow(row: any) {
+  const items = Array.isArray(row.items) ? row.items : [];
+  const itemCount = items.length;
+  const unassignedItemCount = items.filter((item) => item.userId === null).length;
+  const warningItemCount = items.filter((item) => item.warningCode).length;
+  const { items: _items, ...draft } = row;
+
+  return {
+    ...draft,
+    id: Number(draft.id),
+    cinemaId: Number(draft.cinemaId),
+    year: Number(draft.year),
+    month: Number(draft.month),
+    createdByUserId: toNullableNumber(draft.createdByUserId),
+    itemCount,
+    unassignedItemCount,
+    warningItemCount,
+  };
+}
+
 function normalizeDraftRows(rows: any[]) {
-  return rows.map((row) => ({
-    ...row,
-    id: Number(row.id),
-    cinemaId: Number(row.cinemaId),
-    year: Number(row.year),
-    month: Number(row.month),
-    itemCount: Number(row.itemCount ?? 0),
-    unassignedItemCount: Number(row.unassignedItemCount ?? 0),
-    warningItemCount: Number(row.warningItemCount ?? 0),
-  }));
+  return rows.map((row) => normalizeDraftRow(row));
 }
 
 function normalizeDraftItemRows(rows: any[]) {
-  return rows.map((row) => ({
-    ...row,
-    id: Number(row.id),
-    cinemaId: Number(row.cinemaId),
-    draftId: Number(row.draftId),
-    monthPlanDayId: row.monthPlanDayId === null ? null : Number(row.monthPlanDayId),
-    scheduleTemplateId:
-      row.scheduleTemplateId === null ? null : Number(row.scheduleTemplateId),
-    scheduleTemplateDayId:
-      row.scheduleTemplateDayId === null ? null : Number(row.scheduleTemplateDayId),
-    templateJobFunctionId:
-      row.templateJobFunctionId === null ? null : Number(row.templateJobFunctionId),
-    jobFunctionId: row.jobFunctionId === null ? null : Number(row.jobFunctionId),
-    userId: row.userId === null ? null : Number(row.userId),
-    requiredIndex: Number(row.requiredIndex),
-    plannedStartMinute:
-      row.plannedStartMinute === null ? null : Number(row.plannedStartMinute),
-    plannedEndMinute:
-      row.plannedEndMinute === null ? null : Number(row.plannedEndMinute),
-  }));
+  return rows.map((row) => {
+    const item = {
+      ...row,
+      id: Number(row.id),
+      cinemaId: Number(row.cinemaId),
+      draftId: Number(row.draftId),
+      monthPlanDayId: toNullableNumber(row.monthPlanDayId),
+      scheduleTemplateId: toNullableNumber(row.scheduleTemplateId),
+      scheduleTemplateDayId: toNullableNumber(row.scheduleTemplateDayId),
+      templateJobFunctionId: toNullableNumber(row.templateJobFunctionId),
+      jobFunctionId: toNullableNumber(row.jobFunctionId),
+      userId: toNullableNumber(row.userId),
+      requiredIndex: Number(row.requiredIndex),
+      plannedStartMinute: toNullableNumber(row.plannedStartMinute),
+      plannedEndMinute: toNullableNumber(row.plannedEndMinute),
+      jobFunctionName: row.jobFunction?.name ?? row.jobFunctionName ?? null,
+      jobFunctionColor: row.jobFunction?.color ?? row.jobFunctionColor ?? null,
+      scheduleTemplateName:
+        row.scheduleTemplate?.name ?? row.scheduleTemplateName ?? null,
+      userFirstName: row.user?.firstName ?? row.userFirstName ?? null,
+      userLastName: row.user?.lastName ?? row.userLastName ?? null,
+      userEmail: row.user?.email ?? row.userEmail ?? null,
+    };
+
+    delete item.jobFunction;
+    delete item.scheduleTemplate;
+    delete item.user;
+
+    return item;
+  });
 }
 
 @Injectable()
@@ -236,15 +266,22 @@ export class ShiftPlanningDraftsService {
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       SELECT
         d.*,
-        COUNT(i.id)::int AS "itemCount",
-        COUNT(i.id) FILTER (WHERE i."userId" IS NULL)::int AS "unassignedItemCount",
-        COUNT(i.id) FILTER (WHERE i."warningCode" IS NOT NULL)::int AS "warningItemCount"
+        COALESCE(c."itemCount", 0)::int AS "itemCount",
+        COALESCE(c."unassignedItemCount", 0)::int AS "unassignedItemCount",
+        COALESCE(c."warningItemCount", 0)::int AS "warningItemCount"
       FROM "ShiftPlanningDraft" d
-      LEFT JOIN "ShiftPlanningDraftItem" i ON i."draftId" = d.id
+      LEFT JOIN (
+        SELECT
+          i."draftId",
+          COUNT(i.id)::int AS "itemCount",
+          COUNT(i.id) FILTER (WHERE i."userId" IS NULL)::int AS "unassignedItemCount",
+          COUNT(i.id) FILTER (WHERE i."warningCode" IS NOT NULL)::int AS "warningItemCount"
+        FROM "ShiftPlanningDraftItem" i
+        GROUP BY i."draftId"
+      ) c ON c."draftId" = d.id
       WHERE d."cinemaId" = ${cinemaId}
         AND d."year" = ${year}
         AND d."month" = ${month}
-      GROUP BY d.id
       ORDER BY d."createdAt" DESC, d.id DESC
     `);
 
@@ -263,14 +300,21 @@ export class ShiftPlanningDraftsService {
     const draftRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       SELECT
         d.*,
-        COUNT(i.id)::int AS "itemCount",
-        COUNT(i.id) FILTER (WHERE i."userId" IS NULL)::int AS "unassignedItemCount",
-        COUNT(i.id) FILTER (WHERE i."warningCode" IS NOT NULL)::int AS "warningItemCount"
+        COALESCE(c."itemCount", 0)::int AS "itemCount",
+        COALESCE(c."unassignedItemCount", 0)::int AS "unassignedItemCount",
+        COALESCE(c."warningItemCount", 0)::int AS "warningItemCount"
       FROM "ShiftPlanningDraft" d
-      LEFT JOIN "ShiftPlanningDraftItem" i ON i."draftId" = d.id
+      LEFT JOIN (
+        SELECT
+          i."draftId",
+          COUNT(i.id)::int AS "itemCount",
+          COUNT(i.id) FILTER (WHERE i."userId" IS NULL)::int AS "unassignedItemCount",
+          COUNT(i.id) FILTER (WHERE i."warningCode" IS NOT NULL)::int AS "warningItemCount"
+        FROM "ShiftPlanningDraftItem" i
+        GROUP BY i."draftId"
+      ) c ON c."draftId" = d.id
       WHERE d.id = ${id}
         AND d."cinemaId" = ${cinemaId}
-      GROUP BY d.id
       LIMIT 1
     `);
 

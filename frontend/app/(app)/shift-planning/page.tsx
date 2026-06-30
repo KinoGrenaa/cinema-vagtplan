@@ -11,6 +11,7 @@ import ShiftPlanningTemplatePreview from "./components/ShiftPlanningTemplatePrev
 import ShiftPlanningWeekIndicator from "./components/ShiftPlanningWeekIndicator";
 import ShiftPlanningMissingTemplateOverview from "./components/ShiftPlanningMissingTemplateOverview";
 import ShiftPlanningDraftPreview from "./components/ShiftPlanningDraftPreview";
+import ShiftPlanningSavedDraftsOverview from "./components/ShiftPlanningSavedDraftsOverview";
 import ShiftPlanningMasterCinemaRequired from "./components/ShiftPlanningMasterCinemaRequired";
 import {
   addMonths,
@@ -149,6 +150,7 @@ export default function ShiftPlanningPage() {
   const [templates, setTemplates] = useState<ScheduleTemplateSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [draftRefreshKey, setDraftRefreshKey] = useState(0);
   const [selectedDay, setSelectedDay] = useState<MonthPlanDay | null>(null);
   const [dayForm, setDayForm] = useState<DayFormState | null>(null);
 
@@ -393,22 +395,18 @@ export default function ShiftPlanningPage() {
   return (
     <AdminGuard>
       <main className="min-h-screen space-y-6 bg-gray-50 p-4 text-gray-950 dark:bg-gray-950 dark:text-gray-100 sm:p-6">
-        <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <section className="rounded-3xl border border-gray-200 bg-white p-5 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">
             Vagtplanlægning
           </p>
-          <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-950 dark:text-white">
-                Månedsplan
-              </h1>
-              <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
-                Læg vagtsskabeloner på konkrete datoer. Der oprettes stadig
-                ingen aktive vagter herfra — denne side forbereder månedens
-                planlægningsgrundlag.
-              </p>
-            </div>
-          </div>
+          <h1 className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">
+            Månedsplan
+          </h1>
+          <p className="mx-auto mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
+            Læg vagtsskabeloner på konkrete datoer. Der oprettes stadig
+            ingen aktive vagter herfra — denne side forbereder månedens
+            planlægningsgrundlag.
+          </p>
         </section>
 
         {needsMasterCinemaSelection && <ShiftPlanningMasterCinemaRequired />}
@@ -416,20 +414,21 @@ export default function ShiftPlanningPage() {
         {!needsMasterCinemaSelection && (
           <>
             <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
+              <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+                <div className="hidden lg:block" aria-hidden="true" />
+                <div className="text-center">
                   <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Måned
                   </p>
                   <h2 className="text-2xl font-bold text-gray-950 dark:text-white">
                     {getMonthName(year, month)}
                   </h2>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  <p className="mx-auto mt-1 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
                     Klik på en dato for at vælge skabelon, markere lukket dag
                     eller tilføje en intern note.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap justify-center gap-2 lg:justify-end">
                   <button
                     type="button"
                     onClick={() => changeMonth(-1)}
@@ -520,6 +519,16 @@ export default function ShiftPlanningPage() {
               templatesById={templatesById}
               year={year}
               onOpenDay={openDayModal}
+              onDraftPrepared={() =>
+                setDraftRefreshKey((currentRefreshKey) => currentRefreshKey + 1)
+              }
+            />
+
+            <ShiftPlanningSavedDraftsOverview
+              activeCinemaId={activeCinemaId}
+              month={month}
+              refreshKey={draftRefreshKey}
+              year={year}
             />
 
             <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
