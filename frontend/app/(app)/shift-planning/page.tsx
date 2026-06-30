@@ -528,7 +528,7 @@ export default function ShiftPlanningPage() {
               )}
 
               {!loading && days.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {calendarWeeks.map((week) => (
                     <div
                       key={week.weekKey}
@@ -547,7 +547,7 @@ export default function ShiftPlanningPage() {
                           return (
                             <div
                               key={`${week.weekKey}-blank-${dayIndex}`}
-                              className="hidden min-h-44 rounded-2xl border border-dashed border-gray-200 bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950/40 lg:block"
+                              className="hidden min-h-32 rounded-2xl border border-dashed border-gray-200 bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950/40 lg:block"
                             />
                           );
                         }
