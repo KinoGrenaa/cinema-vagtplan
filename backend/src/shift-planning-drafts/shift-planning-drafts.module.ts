@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ShiftPlanningDraftsController } from './shift-planning-drafts.controller';
+import { ShiftPlanningDraftPublicationController } from './shift-planning-drafts-publication.controller';
 import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
+import { ShiftPlanningDraftPublicationService } from './shift-planning-drafts-publication.service';
 
 @Module({
   imports: [
@@ -12,7 +14,10 @@ import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [ShiftPlanningDraftsController],
-  providers: [ShiftPlanningDraftsService],
+  controllers: [
+    ShiftPlanningDraftsController,
+    ShiftPlanningDraftPublicationController,
+  ],
+  providers: [ShiftPlanningDraftsService, ShiftPlanningDraftPublicationService],
 })
 export class ShiftPlanningDraftsModule {}
