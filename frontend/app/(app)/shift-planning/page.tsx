@@ -9,6 +9,7 @@ import { apiFetch } from "@/app/lib/api";
 import ShiftPlanningDayCard from "./components/ShiftPlanningDayCard";
 import ShiftPlanningTemplatePreview from "./components/ShiftPlanningTemplatePreview";
 import ShiftPlanningWeekIndicator from "./components/ShiftPlanningWeekIndicator";
+import ShiftPlanningMissingTemplateOverview from "./components/ShiftPlanningMissingTemplateOverview";
 import ShiftPlanningMasterCinemaRequired from "./components/ShiftPlanningMasterCinemaRequired";
 import {
   addMonths,
@@ -167,6 +168,10 @@ export default function ShiftPlanningPage() {
   const calendarWeeks = useMemo(
     () => getMonthCalendarWeeks(days, leadingBlankCount),
     [days, leadingBlankCount],
+  );
+  const missingTemplateDays = useMemo(
+    () => days.filter((day) => day.isActive && !day.scheduleTemplateId),
+    [days],
   );
 
   const templatesById = useMemo(() => {
@@ -495,6 +500,12 @@ export default function ShiftPlanningPage() {
                 </p>
               </div>
             </section>
+
+            <ShiftPlanningMissingTemplateOverview
+              days={missingTemplateDays}
+              loading={loading}
+              onOpenDay={openDayModal}
+            />
 
             <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="mb-3 hidden grid-cols-[minmax(7rem,8rem)_repeat(7,minmax(0,1fr))] gap-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 lg:grid">
