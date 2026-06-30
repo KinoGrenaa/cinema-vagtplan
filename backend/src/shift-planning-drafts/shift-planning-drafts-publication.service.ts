@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
 
 type AuthUser = {
@@ -280,6 +281,7 @@ function buildShiftNote(
 export class ShiftPlanningDraftPublicationService {
   constructor(
     private prisma: PrismaService,
+    private realtimeGateway: RealtimeGateway,
     private shiftPlanningDraftsService: ShiftPlanningDraftsService,
   ) {}
 
@@ -558,6 +560,26 @@ export class ShiftPlanningDraftPublicationService {
       return insertedShiftIds;
     });
 
+    const publishedAt = new Date();
+
+    this.realtimeGateway.notifyCinema(cinemaId, 'shiftsUpdated', {
+      cinemaId,
+      source: 'SHIFT_PLANNING_DRAFT_PUBLISH',
+      draftId,
+      createdShiftCount: createdShiftIds.length,
+      createdShiftIds,
+    });
+
+    this.realtimeGateway.notifyCinema(cinemaId, 'shiftPlanningDraftPublished', {
+      cinemaId,
+      draftId,
+      year: preview.year,
+      month: preview.month,
+      createdShiftCount: createdShiftIds.length,
+      createdShiftIds,
+      publishedAt,
+    });
+
     return {
       draftId,
       cinemaId,
@@ -570,7 +592,7 @@ export class ShiftPlanningDraftPublicationService {
       createdShiftIds,
       workTypeId,
       workTypeName: workType.name,
-      publishedAt: new Date(),
+      publishedAt,
       message: 'Planlægningskladden er publiceret som rigtige vagter.',
     };
   }
