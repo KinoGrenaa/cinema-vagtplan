@@ -7,6 +7,7 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import ShiftPlanningDayCard from "./components/ShiftPlanningDayCard";
+import ShiftPlanningTemplatePreview from "./components/ShiftPlanningTemplatePreview";
 import ShiftPlanningMasterCinemaRequired from "./components/ShiftPlanningMasterCinemaRequired";
 import {
   addMonths,
@@ -169,6 +170,18 @@ export default function ShiftPlanningPage() {
 
     return map;
   }, [templates]);
+
+  const selectedDayDateKey = selectedDay ? getMonthPlanDayDateKey(selectedDay) : "";
+  const selectedTemplateId = dayForm?.scheduleTemplateId
+    ? Number(dayForm.scheduleTemplateId)
+    : null;
+  const selectedTemplate =
+    selectedTemplateId && Number.isInteger(selectedTemplateId)
+      ? templatesById.get(selectedTemplateId) ??
+        (selectedDay?.scheduleTemplate?.id === selectedTemplateId
+          ? selectedDay.scheduleTemplate
+          : null)
+      : null;
 
   useEffect(() => {
     setCurrentUser(getCurrentUserFromToken());
@@ -599,6 +612,12 @@ export default function ShiftPlanningPage() {
                     </p>
                   )}
                 </div>
+
+                <ShiftPlanningTemplatePreview
+                  dateKey={selectedDayDateKey}
+                  isActive={dayForm.isActive}
+                  template={selectedTemplate}
+                />
 
                 <div>
                   <label className="text-sm font-semibold" htmlFor="note">
