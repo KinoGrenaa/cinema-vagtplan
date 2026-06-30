@@ -48,6 +48,25 @@ type MonthDraftResponse = {
   drafts?: SavedDraftSummary[];
 };
 
+type DraftDateGroup = {
+  dateKey: string;
+  label: string;
+  items: SavedDraftItem[];
+  unassignedCount: number;
+  warningCount: number;
+  missingTimeCount: number;
+};
+
+type DraftControlSummary = {
+  totalItems: number;
+  dateCount: number;
+  unassignedCount: number;
+  warningCount: number;
+  missingTimeCount: number;
+  missingJobFunctionCount: number;
+  missingTemplateCount: number;
+};
+
 type ShiftPlanningSavedDraftsOverviewProps = {
   activeCinemaId: number | null;
   month: number;
@@ -56,7 +75,8 @@ type ShiftPlanningSavedDraftsOverviewProps = {
 };
 
 const MAX_VISIBLE_DRAFTS = 5;
-const MAX_VISIBLE_ITEMS = 12;
+const MAX_VISIBLE_DATE_GROUPS = 10;
+const MAX_VISIBLE_ITEMS_PER_DAY = 6;
 
 function toNumber(value: unknown) {
   const numberValue = Number(value);
@@ -162,6 +182,18 @@ function getItemTemplateName(item: SavedDraftItem) {
   );
 }
 
+function itemHasTime(item: SavedDraftItem) {
+  return Boolean(formatMinute(item.plannedStartMinute) && formatMinute(item.plannedEndMinute));
+}
+
+function itemHasJobFunction(item: SavedDraftItem) {
+  return getItemJobFunctionName(item) !== "Jobfunktion mangler";
+}
+
+function itemHasTemplate(item: SavedDraftItem) {
+  return getItemTemplateName(item) !== "Skabelon mangler";
+}
+
 function getStatusClasses(status?: string | null) {
   if (status === "DRAFT") {
     return "bg-green-100 text-green-900 ring-green-200 dark:bg-green-950/60 dark:text-green-200 dark:ring-green-900";
@@ -172,6 +204,101 @@ function getStatusClasses(status?: string | null) {
   }
 
   return "bg-blue-100 text-blue-900 ring-blue-200 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-900";
+}
+
+function getDraftControlSummary(items: SavedDraftItem[]): DraftControlSummary {
+  const dateKeys = new Set<string>();
+
+  items.forEach((item) => {
+    const dateKey = getDateKey(item.date);
+    if (dateKey) {
+      dateKeys.add(dateKey);
+    }
+  });
+
+  return {
+    totalItems: items.length,
+    dateCount: dateKeys.size,
+    unassignedCount: items.filter((item) => !item.userFirstName && !item.userLastName && !item.userEmail).length,
+    warningCount: items.filter((item) => Boolean(item.warningCode || item.warningMessage)).length,
+    missingTimeCount: items.filter((item) => !itemHasTime(item)).length,
+    missingJobFunctionCount: items.filter((item) => !itemHasJobFunction(item)).length,
+    missingTemplateCount: items.filter((item) => !itemHasTemplate(item)).length,
+  };
+}
+
+function hasControlWarnings(summary: DraftControlSummary) {
+  return (
+    summary.unassignedCount > 0 ||
+    summary.warningCount > 0 ||
+    summary.missingTimeCount > 0 ||
+    summary.missingJobFunctionCount > 0 ||
+    summary.missingTemplateCount > 0
+  );
+}
+
+function getDateGroups(items: SavedDraftItem[]): DraftDateGroup[] {
+  const groups = new Map<string, DraftDateGroup>();
+
+  items.forEach((item) => {
+    const dateKey = getDateKey(item.date);
+    const groupKey = dateKey || "uden-dato";
+    const existingGroup = groups.get(groupKey);
+    const group =
+      existingGroup ??
+      {
+        dateKey,
+        label: dateKey ? formatDateKey(dateKey) : "Dato mangler",
+        items: [],
+        unassignedCount: 0,
+        warningCount: 0,
+        missingTimeCount: 0,
+      };
+
+    group.items.push(item);
+
+    if (!item.userFirstName && !item.userLastName && !item.userEmail) {
+      group.unassignedCount += 1;
+    }
+
+    if (item.warningCode || item.warningMessage) {
+      group.warningCount += 1;
+    }
+
+    if (!itemHasTime(item)) {
+      group.missingTimeCount += 1;
+    }
+
+    groups.set(groupKey, group);
+  });
+
+  return Array.from(groups.values());
+}
+
+function ControlMetricCard({
+  label,
+  value,
+  variant = "neutral",
+}: {
+  label: string;
+  value: number;
+  variant?: "neutral" | "warning" | "success";
+}) {
+  const classes =
+    variant === "warning" && value > 0
+      ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
+      : variant === "success"
+        ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
+        : "border-blue-200 bg-white text-blue-950 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100";
+
+  return (
+    <div className={`rounded-2xl border p-3 ${classes}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-75">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-bold">{value}</p>
+    </div>
+  );
 }
 
 export default function ShiftPlanningSavedDraftsOverview({
@@ -196,8 +323,14 @@ export default function ShiftPlanningSavedDraftsOverview({
   );
   const hiddenDraftCount = Math.max(0, drafts.length - visibleDrafts.length);
   const selectedItems = selectedDraft?.items ?? [];
-  const visibleItems = selectedItems.slice(0, MAX_VISIBLE_ITEMS);
-  const hiddenItemCount = Math.max(0, selectedItems.length - visibleItems.length);
+  const controlSummary = useMemo(
+    () => getDraftControlSummary(selectedItems),
+    [selectedItems],
+  );
+  const dateGroups = useMemo(() => getDateGroups(selectedItems), [selectedItems]);
+  const visibleDateGroups = dateGroups.slice(0, MAX_VISIBLE_DATE_GROUPS);
+  const hiddenDateGroupCount = Math.max(0, dateGroups.length - visibleDateGroups.length);
+  const draftNeedsControl = hasControlWarnings(controlSummary);
 
   const fetchDrafts = useCallback(async () => {
     if (!activeCinemaId) {
@@ -410,14 +543,14 @@ export default function ShiftPlanningSavedDraftsOverview({
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-                Åbnet kladde
+                Kladdekontrol
               </p>
               <h3 className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-100">
-                Kladde #{selectedDraft.id} · {toNumber(selectedDraft.itemCount)} poster
+                Kladde #{selectedDraft.id} · {controlSummary.totalItems} poster
               </h3>
-              <p className="mt-1 text-sm text-blue-900 dark:text-blue-200">
-                Viser de første {Math.min(selectedItems.length, MAX_VISIBLE_ITEMS)}
-                {" "}kladdeposter. Publicering bygges senere som et separat trin.
+              <p className="mt-1 max-w-3xl text-sm text-blue-900 dark:text-blue-200">
+                Gennemgå poster, medarbejdere, tider og advarsler før et senere
+                publiceringstrin. Denne kontrolvisning publicerer ikke vagter.
               </p>
             </div>
             <button
@@ -425,8 +558,56 @@ export default function ShiftPlanningSavedDraftsOverview({
               onClick={() => setSelectedDraft(null)}
               className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-900/40"
             >
-              Luk detaljer
+              Luk kontrol
             </button>
+          </div>
+
+          <div
+            className={`mt-4 rounded-2xl border p-4 ${
+              draftNeedsControl
+                ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
+                : "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
+            }`}
+          >
+            <p className="text-sm font-bold">
+              {draftNeedsControl
+                ? "Kræver kontrol før senere publicering"
+                : "Ingen synlige kontroladvarsler i kladden"}
+            </p>
+            <p className="mt-1 text-sm opacity-90">
+              {draftNeedsControl
+                ? "Ret eller godkend afvigelserne bevidst, før vi senere bygger publicering til den rigtige vagtplan."
+                : "Kladden ser umiddelbart klar ud til et senere publiceringstrin, når det bliver bygget."}
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <ControlMetricCard
+              label="Poster"
+              value={controlSummary.totalItems}
+              variant="success"
+            />
+            <ControlMetricCard label="Datoer" value={controlSummary.dateCount} />
+            <ControlMetricCard
+              label="Ikke tildelt"
+              value={controlSummary.unassignedCount}
+              variant="warning"
+            />
+            <ControlMetricCard
+              label="Advarsler"
+              value={controlSummary.warningCount}
+              variant="warning"
+            />
+            <ControlMetricCard
+              label="Tid mangler"
+              value={controlSummary.missingTimeCount}
+              variant="warning"
+            />
+            <ControlMetricCard
+              label="Data mangler"
+              value={controlSummary.missingJobFunctionCount + controlSummary.missingTemplateCount}
+              variant="warning"
+            />
           </div>
 
           {selectedItems.length === 0 && (
@@ -435,46 +616,102 @@ export default function ShiftPlanningSavedDraftsOverview({
             </div>
           )}
 
-          {visibleItems.length > 0 && (
-            <div className="mt-4 grid gap-2 lg:grid-cols-2">
-              {visibleItems.map((item) => {
-                const dateKey = getDateKey(item.date);
+          {visibleDateGroups.length > 0 && (
+            <div className="mt-4 space-y-3">
+              {visibleDateGroups.map((group) => {
+                const visibleItemsForDay = group.items.slice(
+                  0,
+                  MAX_VISIBLE_ITEMS_PER_DAY,
+                );
+                const hiddenItemsForDay = Math.max(
+                  0,
+                  group.items.length - visibleItemsForDay.length,
+                );
+
                 return (
                   <div
-                    key={item.id}
-                    className="rounded-2xl border border-blue-200 bg-white p-3 text-sm shadow-sm dark:border-blue-900/70 dark:bg-gray-950/70"
+                    key={group.dateKey || group.label}
+                    className="rounded-2xl border border-blue-200 bg-white p-3 shadow-sm dark:border-blue-900/70 dark:bg-gray-950/70"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <p className="font-bold text-gray-950 dark:text-white">
-                          {dateKey ? formatDateKey(dateKey) : "Dato mangler"}
+                        <p className="text-sm font-bold text-gray-950 dark:text-white">
+                          {group.label}
                         </p>
                         <p className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                          {getItemJobFunctionName(item)}
+                          {group.items.length} poster på datoen
                         </p>
                       </div>
-                      <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-900 dark:bg-blue-900/70 dark:text-blue-100">
-                        {formatTimeRange(item)}
-                      </span>
+                      <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                        {group.unassignedCount > 0 && (
+                          <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900">
+                            {group.unassignedCount} ikke tildelt
+                          </span>
+                        )}
+                        {group.warningCount > 0 && (
+                          <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900">
+                            {group.warningCount} advarsler
+                          </span>
+                        )}
+                        {group.missingTimeCount > 0 && (
+                          <span className="rounded-full bg-red-100 px-3 py-1 text-red-900 ring-1 ring-red-200 dark:bg-red-950/60 dark:text-red-200 dark:ring-red-900">
+                            {group.missingTimeCount} uden tid
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
-                      <p>{getItemTemplateName(item)}</p>
-                      <p>Medarbejder: {formatUserName(item)}</p>
-                      {item.warningMessage && (
-                        <p className="font-semibold text-amber-700 dark:text-amber-300">
-                          Advarsel: {item.warningMessage}
-                        </p>
-                      )}
+
+                    <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+                      {visibleItemsForDay.map((item) => (
+                        <div
+                          key={item.id}
+                          className="grid gap-2 border-b border-gray-200 p-3 text-sm last:border-b-0 dark:border-gray-800 lg:grid-cols-[8rem_1fr_1fr] lg:items-center"
+                        >
+                          <div className="font-semibold text-gray-950 dark:text-white">
+                            {formatTimeRange(item)}
+                          </div>
+                          <div>
+                            <p className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">
+                              {item.jobFunctionColor && (
+                                <span
+                                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                  style={{ backgroundColor: item.jobFunctionColor }}
+                                />
+                              )}
+                              {getItemJobFunctionName(item)}
+                            </p>
+                            <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
+                              {getItemTemplateName(item)}
+                            </p>
+                          </div>
+                          <div className="space-y-1 text-xs text-gray-600 dark:text-gray-300 lg:text-right">
+                            <p>
+                              Medarbejder: <span className="font-semibold">{formatUserName(item)}</span>
+                            </p>
+                            {item.warningMessage && (
+                              <p className="font-semibold text-amber-700 dark:text-amber-300">
+                                Advarsel: {item.warningMessage}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
+
+                    {hiddenItemsForDay > 0 && (
+                      <p className="mt-2 text-xs font-semibold text-blue-900 dark:text-blue-100">
+                        {hiddenItemsForDay} flere poster på datoen er skjult.
+                      </p>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
 
-          {hiddenItemCount > 0 && (
+          {hiddenDateGroupCount > 0 && (
             <p className="mt-3 text-xs font-semibold text-blue-900 dark:text-blue-100">
-              {hiddenItemCount} flere kladdeposter er skjult i denne kompakte visning.
+              {hiddenDateGroupCount} flere datoer er skjult i denne kompakte kontrolvisning.
             </p>
           )}
         </div>
