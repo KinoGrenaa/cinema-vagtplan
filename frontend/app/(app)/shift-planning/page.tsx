@@ -513,9 +513,12 @@ export default function ShiftPlanningPage() {
             />
 
             <ShiftPlanningDraftPreview
+              activeCinemaId={activeCinemaId}
               days={plannedTemplateDays}
               loading={loading}
+              month={month}
               templatesById={templatesById}
+              year={year}
               onOpenDay={openDayModal}
             />
 
