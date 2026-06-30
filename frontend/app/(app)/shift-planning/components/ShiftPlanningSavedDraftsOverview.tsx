@@ -297,7 +297,10 @@ function getItemTemplateName(item: SavedDraftItem) {
 }
 
 function itemHasTime(item: SavedDraftItem) {
-  return Boolean(formatMinute(item.plannedStartMinute) && formatMinute(item.plannedEndMinute));
+  return Boolean(
+    formatMinute(item.plannedStartMinute) &&
+    formatMinute(item.plannedEndMinute),
+  );
 }
 
 function itemHasJobFunction(item: SavedDraftItem) {
@@ -361,10 +364,12 @@ function getDraftControlSummary(items: SavedDraftItem[]): DraftControlSummary {
     unassignedCount: items.filter(
       (item) => !item.userFirstName && !item.userLastName && !item.userEmail,
     ).length,
-    warningCount: items.filter((item) => Boolean(item.warningCode || item.warningMessage))
-      .length,
+    warningCount: items.filter((item) =>
+      Boolean(item.warningCode || item.warningMessage),
+    ).length,
     missingTimeCount: items.filter((item) => !itemHasTime(item)).length,
-    missingJobFunctionCount: items.filter((item) => !itemHasJobFunction(item)).length,
+    missingJobFunctionCount: items.filter((item) => !itemHasJobFunction(item))
+      .length,
     missingTemplateCount: items.filter((item) => !itemHasTemplate(item)).length,
   };
 }
@@ -433,7 +438,9 @@ function ControlMetricCard({
 
   return (
     <div className={`rounded-2xl border p-4 ${classes}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
+        {label}
+      </p>
       <p className="mt-2 text-2xl font-bold">{value}</p>
     </div>
   );
@@ -449,7 +456,8 @@ function ValidationMetricCard({
   variant?: "neutral" | "warning" | "error" | "success";
 }) {
   const numericValue = Number(value);
-  const shouldHighlightProblem = !Number.isFinite(numericValue) || numericValue > 0;
+  const shouldHighlightProblem =
+    !Number.isFinite(numericValue) || numericValue > 0;
 
   const classes =
     variant === "error" && shouldHighlightProblem
@@ -462,15 +470,31 @@ function ValidationMetricCard({
 
   return (
     <div className={`rounded-2xl border p-4 ${classes}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
+        {label}
+      </p>
       <p className="mt-2 text-2xl font-bold">{value}</p>
     </div>
   );
 }
 
-function getSelectedWorkTypeName(workTypes: WorkTypeOption[], workTypeId: string) {
+function getSelectedWorkTypeName(
+  workTypes: WorkTypeOption[],
+  workTypeId: string,
+) {
   const workType = workTypes.find((item) => String(item.id) === workTypeId);
   return workType?.name || "Valgt arbejdstype";
+}
+
+function formatCreatedShiftIds(ids?: Array<number | string>) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return null;
+  }
+
+  const visibleIds = ids.slice(0, 10).join(", ");
+  const hiddenCount = Math.max(0, ids.length - 10);
+
+  return hiddenCount > 0 ? `${visibleIds} + ${hiddenCount} flere` : visibleIds;
 }
 
 export default function ShiftPlanningSavedDraftsOverview({
@@ -481,39 +505,66 @@ export default function ShiftPlanningSavedDraftsOverview({
 }: ShiftPlanningSavedDraftsOverviewProps) {
   const [drafts, setDrafts] = useState<SavedDraftSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [openingDraftId, setOpeningDraftId] = useState<number | string | null>(null);
-  const [selectedDraft, setSelectedDraft] = useState<SavedDraftDetails | null>(null);
-  const [validatingDraftId, setValidatingDraftId] = useState<number | string | null>(null);
-  const [validationResult, setValidationResult] = useState<DraftValidationResult | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [loadingPublicationPreviewId, setLoadingPublicationPreviewId] = useState<
+  const [openingDraftId, setOpeningDraftId] = useState<number | string | null>(
+    null,
+  );
+  const [selectedDraft, setSelectedDraft] = useState<SavedDraftDetails | null>(
+    null,
+  );
+  const [validatingDraftId, setValidatingDraftId] = useState<
     number | string | null
   >(null);
+  const [validationResult, setValidationResult] =
+    useState<DraftValidationResult | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [loadingPublicationPreviewId, setLoadingPublicationPreviewId] =
+    useState<number | string | null>(null);
   const [publicationPreviewResult, setPublicationPreviewResult] =
     useState<DraftPublicationPreviewResult | null>(null);
-  const [publicationPreviewError, setPublicationPreviewError] = useState<string | null>(null);
+  const [publicationPreviewError, setPublicationPreviewError] = useState<
+    string | null
+  >(null);
   const [workTypes, setWorkTypes] = useState<WorkTypeOption[]>([]);
   const [loadingWorkTypes, setLoadingWorkTypes] = useState(false);
   const [workTypesError, setWorkTypesError] = useState<string | null>(null);
   const [publishWorkTypeId, setPublishWorkTypeId] = useState("");
   const [publishConfirmationText, setPublishConfirmationText] = useState("");
   const [publishNote, setPublishNote] = useState("");
-  const [publishingDraftId, setPublishingDraftId] = useState<number | string | null>(null);
-  const [publishResult, setPublishResult] = useState<DraftPublishResult | null>(null);
+  const [publishingDraftId, setPublishingDraftId] = useState<
+    number | string | null
+  >(null);
+  const [publishResult, setPublishResult] = useState<DraftPublishResult | null>(
+    null,
+  );
   const [publishError, setPublishError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const visibleDrafts = useMemo(() => drafts.slice(0, MAX_VISIBLE_DRAFTS), [drafts]);
+  const visibleDrafts = useMemo(
+    () => drafts.slice(0, MAX_VISIBLE_DRAFTS),
+    [drafts],
+  );
   const hiddenDraftCount = Math.max(0, drafts.length - visibleDrafts.length);
   const selectedItems = selectedDraft?.items ?? [];
-  const controlSummary = useMemo(() => getDraftControlSummary(selectedItems), [selectedItems]);
-  const dateGroups = useMemo(() => getDateGroups(selectedItems), [selectedItems]);
+  const controlSummary = useMemo(
+    () => getDraftControlSummary(selectedItems),
+    [selectedItems],
+  );
+  const dateGroups = useMemo(
+    () => getDateGroups(selectedItems),
+    [selectedItems],
+  );
   const visibleDateGroups = dateGroups.slice(0, MAX_VISIBLE_DATE_GROUPS);
-  const hiddenDateGroupCount = Math.max(0, dateGroups.length - visibleDateGroups.length);
+  const hiddenDateGroupCount = Math.max(
+    0,
+    dateGroups.length - visibleDateGroups.length,
+  );
   const draftNeedsControl = hasControlWarnings(controlSummary);
   const validationSummary = validationResult?.summary;
   const validationIssues = validationResult?.issues ?? [];
-  const visibleValidationIssues = validationIssues.slice(0, MAX_VISIBLE_VALIDATION_ISSUES);
+  const visibleValidationIssues = validationIssues.slice(
+    0,
+    MAX_VISIBLE_VALIDATION_ISSUES,
+  );
   const hiddenValidationIssueCount = Math.max(
     0,
     validationIssues.length - visibleValidationIssues.length,
@@ -531,9 +582,17 @@ export default function ShiftPlanningSavedDraftsOverview({
   const publicationPreviewCanPublishLater =
     publicationPreviewResult?.createsShifts === false &&
     publicationPreviewSummary?.canPublishLater === true;
+  const selectedDraftIsPublished = selectedDraft?.status === "PUBLISHED";
   const selectedDraftCanBePublished = selectedDraft?.status === "DRAFT";
-  const publishConfirmationMatches = publishConfirmationText.trim() === PUBLISH_CONFIRMATION_TEXT;
-  const selectedWorkTypeName = getSelectedWorkTypeName(workTypes, publishWorkTypeId);
+  const publishConfirmationMatches =
+    publishConfirmationText.trim() === PUBLISH_CONFIRMATION_TEXT;
+  const selectedWorkTypeName = getSelectedWorkTypeName(
+    workTypes,
+    publishWorkTypeId,
+  );
+  const publishedShiftIdsText = formatCreatedShiftIds(
+    publishResult?.createdShiftIds,
+  );
   const canSubmitPublish =
     Boolean(selectedDraft) &&
     selectedDraftCanBePublished &&
@@ -543,12 +602,13 @@ export default function ShiftPlanningSavedDraftsOverview({
     publishingDraftId !== selectedDraft?.id;
   const backendValidationIsGreen = Boolean(
     validationResult &&
-      validationSummary?.isValid === true &&
-      toNumber(validationSummary.errorCount) === 0 &&
-      toNumber(validationSummary.warningCount) === 0 &&
-      toNumber(validationSummary.issueCount) === 0,
+    validationSummary?.isValid === true &&
+    toNumber(validationSummary.errorCount) === 0 &&
+    toNumber(validationSummary.warningCount) === 0 &&
+    toNumber(validationSummary.issueCount) === 0,
   );
-  const isReadyForFuturePublication = backendValidationIsGreen && !draftNeedsControl;
+  const isReadyForFuturePublication =
+    backendValidationIsGreen && !draftNeedsControl;
 
   const fetchDrafts = useCallback(async () => {
     if (!activeCinemaId) {
@@ -569,12 +629,18 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(null);
 
       const response = await apiFetch(
-        appendCinemaId(`/shift-planning-drafts?year=${year}&month=${month}`, activeCinemaId),
+        appendCinemaId(
+          `/shift-planning-drafts?year=${year}&month=${month}`,
+          activeCinemaId,
+        ),
       );
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke hente planlægningskladder"),
+          await readErrorMessage(
+            response,
+            "Kunne ikke hente planlægningskladder",
+          ),
         );
       }
 
@@ -587,7 +653,9 @@ export default function ShiftPlanningSavedDraftsOverview({
           return null;
         }
 
-        return nextDrafts.some((draft) => String(draft.id) === String(current.id))
+        return nextDrafts.some(
+          (draft) => String(draft.id) === String(current.id),
+        )
           ? current
           : null;
       });
@@ -631,17 +699,24 @@ export default function ShiftPlanningSavedDraftsOverview({
       );
 
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Kunne ikke hente arbejdstyper"));
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke hente arbejdstyper"),
+        );
       }
 
       const data = await response.json();
       const activeWorkTypes = Array.isArray(data)
-        ? data.filter((workType: WorkTypeOption) => workType.isActive !== false && !workType.archivedAt)
+        ? data.filter(
+            (workType: WorkTypeOption) =>
+              workType.isActive !== false && !workType.archivedAt,
+          )
         : [];
 
       setWorkTypes(activeWorkTypes);
       setPublishWorkTypeId((current) =>
-        activeWorkTypes.some((workType: WorkTypeOption) => String(workType.id) === current)
+        activeWorkTypes.some(
+          (workType: WorkTypeOption) => String(workType.id) === current,
+        )
           ? current
           : "",
       );
@@ -686,7 +761,10 @@ export default function ShiftPlanningSavedDraftsOverview({
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke åbne planlægningskladde"),
+          await readErrorMessage(
+            response,
+            "Kunne ikke åbne planlægningskladde",
+          ),
         );
       }
 
@@ -725,12 +803,18 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(null);
 
       const response = await apiFetch(
-        appendCinemaId(`/shift-planning-drafts/${selectedDraft.id}/validate`, activeCinemaId),
+        appendCinemaId(
+          `/shift-planning-drafts/${selectedDraft.id}/validate`,
+          activeCinemaId,
+        ),
       );
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke validere planlægningskladden"),
+          await readErrorMessage(
+            response,
+            "Kunne ikke validere planlægningskladden",
+          ),
         );
       }
 
@@ -749,12 +833,16 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const loadPublicationPreview = async () => {
     if (!selectedDraft) {
-      setPublicationPreviewError("Åbn en kladde, før du henter publiceringspreview.");
+      setPublicationPreviewError(
+        "Åbn en kladde, før du henter publiceringspreview.",
+      );
       return;
     }
 
     if (!activeCinemaId) {
-      setPublicationPreviewError("Vælg en aktiv biograf, før du henter publiceringspreview.");
+      setPublicationPreviewError(
+        "Vælg en aktiv biograf, før du henter publiceringspreview.",
+      );
       return;
     }
 
@@ -773,11 +861,16 @@ export default function ShiftPlanningSavedDraftsOverview({
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke hente publiceringspreview"),
+          await readErrorMessage(
+            response,
+            "Kunne ikke hente publiceringspreview",
+          ),
         );
       }
 
-      setPublicationPreviewResult((await response.json()) as DraftPublicationPreviewResult);
+      setPublicationPreviewResult(
+        (await response.json()) as DraftPublicationPreviewResult,
+      );
     } catch (error) {
       setPublicationPreviewResult(null);
       setPublicationPreviewError(
@@ -807,7 +900,9 @@ export default function ShiftPlanningSavedDraftsOverview({
     }
 
     if (!publicationPreviewCanPublishLater) {
-      setPublishError("Hent et grønt publiceringspreview, før kladden publiceres.");
+      setPublishError(
+        "Hent et grønt publiceringspreview, før kladden publiceres.",
+      );
       return;
     }
 
@@ -817,7 +912,9 @@ export default function ShiftPlanningSavedDraftsOverview({
     }
 
     if (!publishConfirmationMatches) {
-      setPublishError(`Skriv ${PUBLISH_CONFIRMATION_TEXT} for at bekræfte publicering.`);
+      setPublishError(
+        `Skriv ${PUBLISH_CONFIRMATION_TEXT} for at bekræfte publicering.`,
+      );
       return;
     }
 
@@ -827,7 +924,10 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublishResult(null);
 
       const response = await apiFetch(
-        appendCinemaId(`/shift-planning-drafts/${selectedDraft.id}/publish`, activeCinemaId),
+        appendCinemaId(
+          `/shift-planning-drafts/${selectedDraft.id}/publish`,
+          activeCinemaId,
+        ),
         {
           method: "POST",
           body: JSON.stringify({
@@ -839,14 +939,24 @@ export default function ShiftPlanningSavedDraftsOverview({
       );
 
       if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Kunne ikke publicere kladden"));
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke publicere kladden"),
+        );
       }
 
       const result = (await response.json()) as DraftPublishResult;
       setPublishResult(result);
       setSelectedDraft((current) =>
         current && String(current.id) === String(selectedDraft.id)
-          ? { ...current, status: "PUBLISHED" }
+          ? {
+              ...current,
+              status: "PUBLISHED",
+              updatedAt: result.publishedAt ?? current.updatedAt,
+              items: current.items?.map((item) => ({
+                ...item,
+                status: "PUBLISHED",
+              })),
+            }
           : current,
       );
       setPublicationPreviewResult(null);
@@ -889,8 +999,8 @@ export default function ShiftPlanningSavedDraftsOverview({
             Seneste kladder for {getMonthName(year, month)}
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            Kladderne ligger i backend og kan åbnes til kontrol. De publiceres stadig ikke til
-            den rigtige vagtplan herfra.
+            Kladderne ligger i backend og kan åbnes til kontrol. Publicering er
+            låst bag validering, preview, arbejdstype og præcis bekræftelse.
           </p>
         </div>
 
@@ -927,7 +1037,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       {!loading && visibleDrafts.length > 0 && (
         <div className="mt-5 grid gap-3">
           {visibleDrafts.map((draft) => {
-            const isSelected = selectedDraft && String(selectedDraft.id) === String(draft.id);
+            const isSelected =
+              selectedDraft && String(selectedDraft.id) === String(draft.id);
 
             return (
               <article
@@ -967,7 +1078,9 @@ export default function ShiftPlanningSavedDraftsOverview({
                       </span>
                     </div>
                     {draft.note && (
-                      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{draft.note}</p>
+                      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                        {draft.note}
+                      </p>
                     )}
                   </div>
 
@@ -999,12 +1112,23 @@ export default function ShiftPlanningSavedDraftsOverview({
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">
                 Kladdekontrol
               </p>
-              <h3 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
-                Kladde #{selectedDraft.id} · {controlSummary.totalItems} poster
-              </h3>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <h3 className="text-xl font-bold text-gray-950 dark:text-white">
+                  Kladde #{selectedDraft.id} · {controlSummary.totalItems}{" "}
+                  poster
+                </h3>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClasses(
+                    selectedDraft.status,
+                  )}`}
+                >
+                  {formatDraftStatus(selectedDraft.status)}
+                </span>
+              </div>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Gennemgå poster, medarbejdere, tider og backend-validering før et senere
-                publiceringstrin. Denne kontrolvisning publicerer ikke vagter.
+                Gennemgå poster, medarbejdere, tider, backend-validering og
+                publiceringspreview. Publicering kræver stadig arbejdstype og
+                præcis bekræftelse.
               </p>
             </div>
 
@@ -1040,8 +1164,14 @@ export default function ShiftPlanningSavedDraftsOverview({
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <ControlMetricCard label="Poster" value={controlSummary.totalItems} />
-            <ControlMetricCard label="Datoer" value={controlSummary.dateCount} />
+            <ControlMetricCard
+              label="Poster"
+              value={controlSummary.totalItems}
+            />
+            <ControlMetricCard
+              label="Datoer"
+              value={controlSummary.dateCount}
+            />
             <ControlMetricCard
               label="Ikke tildelt"
               value={controlSummary.unassignedCount}
@@ -1059,7 +1189,10 @@ export default function ShiftPlanningSavedDraftsOverview({
             />
             <ControlMetricCard
               label="Data mangler"
-              value={controlSummary.missingJobFunctionCount + controlSummary.missingTemplateCount}
+              value={
+                controlSummary.missingJobFunctionCount +
+                controlSummary.missingTemplateCount
+              }
               variant="warning"
             />
           </div>
@@ -1145,13 +1278,15 @@ export default function ShiftPlanningSavedDraftsOverview({
                   Publiceringspreview
                 </p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Viser hvad kladden senere kan blive til, uden at oprette eller publicere vagter.
-                  Backend svarer eksplicit med <span className="font-semibold">createsShifts: false</span>.
+                  Viser hvad kladden senere kan blive til, uden at oprette eller
+                  publicere vagter. Backend svarer eksplicit med{" "}
+                  <span className="font-semibold">createsShifts: false</span>.
                 </p>
               </div>
               {publicationPreviewResult?.checkedAt && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Senest hentet {formatCreatedAt(publicationPreviewResult.checkedAt)}
+                  Senest hentet{" "}
+                  {formatCreatedAt(publicationPreviewResult.checkedAt)}
                 </p>
               )}
             </div>
@@ -1183,7 +1318,9 @@ export default function ShiftPlanningSavedDraftsOverview({
                       : "Preview viser blokeringer før senere publicering"}
                   </p>
                   <p className="mt-1 opacity-85">
-                    Mode: {publicationPreviewResult.mode || "Ukendt"} · Opretter vagter nu: {publicationPreviewResult.createsShifts ? "Ja" : "Nej"}
+                    Mode: {publicationPreviewResult.mode || "Ukendt"} · Opretter
+                    vagter nu:{" "}
+                    {publicationPreviewResult.createsShifts ? "Ja" : "Nej"}
                   </p>
                 </div>
 
@@ -1191,7 +1328,9 @@ export default function ShiftPlanningSavedDraftsOverview({
                   <ValidationMetricCard
                     label="Kan senere publiceres"
                     value={publicationPreviewCanPublishLater ? "Ja" : "Nej"}
-                    variant={publicationPreviewCanPublishLater ? "success" : "warning"}
+                    variant={
+                      publicationPreviewCanPublishLater ? "success" : "warning"
+                    }
                   />
                   <ValidationMetricCard
                     label="Preview-poster"
@@ -1199,23 +1338,30 @@ export default function ShiftPlanningSavedDraftsOverview({
                   />
                   <ValidationMetricCard
                     label="Kan blive vagter"
-                    value={toNumber(publicationPreviewSummary?.publishableItemCount)}
+                    value={toNumber(
+                      publicationPreviewSummary?.publishableItemCount,
+                    )}
                     variant="success"
                   />
                   <ValidationMetricCard
                     label="Blokeret"
-                    value={toNumber(publicationPreviewSummary?.blockedItemCount)}
+                    value={toNumber(
+                      publicationPreviewSummary?.blockedItemCount,
+                    )}
                     variant="warning"
                   />
                 </div>
 
-                {(publicationPreviewResult.blockingReasons ?? []).length > 0 && (
+                {(publicationPreviewResult.blockingReasons ?? []).length >
+                  0 && (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
                     <p className="font-semibold">Blokerende årsager</p>
                     <ul className="mt-2 list-disc space-y-1 pl-5">
-                      {(publicationPreviewResult.blockingReasons ?? []).map((reason) => (
-                        <li key={reason}>{reason}</li>
-                      ))}
+                      {(publicationPreviewResult.blockingReasons ?? []).map(
+                        (reason) => (
+                          <li key={reason}>{reason}</li>
+                        ),
+                      )}
                     </ul>
                   </div>
                 )}
@@ -1223,7 +1369,9 @@ export default function ShiftPlanningSavedDraftsOverview({
                 {visiblePublicationPreviewItems.length > 0 && (
                   <div className="grid gap-3">
                     {visiblePublicationPreviewItems.map((item, index) => {
-                      const itemDate = item.dateKey ? formatDateKey(item.dateKey) : "Dato mangler";
+                      const itemDate = item.dateKey
+                        ? formatDateKey(item.dateKey)
+                        : "Dato mangler";
                       const blockReasons = item.blockReasons ?? [];
 
                       return (
@@ -1239,14 +1387,17 @@ export default function ShiftPlanningSavedDraftsOverview({
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold dark:bg-gray-950/60">
-                                  {item.canBecomeShift ? "Kan blive vagt" : "Blokeret"}
+                                  {item.canBecomeShift
+                                    ? "Kan blive vagt"
+                                    : "Blokeret"}
                                 </span>
                                 <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
                                   {itemDate}
                                 </span>
                               </div>
                               <p className="mt-3 font-semibold">
-                                {formatMinute(item.plannedStartMinute) && formatMinute(item.plannedEndMinute)
+                                {formatMinute(item.plannedStartMinute) &&
+                                formatMinute(item.plannedEndMinute)
                                   ? `kl. ${formatMinute(item.plannedStartMinute)} - ${formatMinute(item.plannedEndMinute)}`
                                   : "Tid mangler"}
                               </p>
@@ -1254,7 +1405,9 @@ export default function ShiftPlanningSavedDraftsOverview({
                                 {item.jobFunctionColor && (
                                   <span
                                     className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
-                                    style={{ backgroundColor: item.jobFunctionColor }}
+                                    style={{
+                                      backgroundColor: item.jobFunctionColor,
+                                    }}
                                   />
                                 )}
                                 {item.jobFunctionName || "Jobfunktion mangler"}
@@ -1291,14 +1444,15 @@ export default function ShiftPlanningSavedDraftsOverview({
 
                 {publicationPreviewItems.length === 0 && (
                   <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-                    Previewet har ingen poster. Kladden kan ikke senere publiceres, før den har poster.
+                    Previewet har ingen poster. Kladden kan ikke senere
+                    publiceres, før den har poster.
                   </div>
                 )}
 
                 {hiddenPublicationPreviewItemCount > 0 && (
                   <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                    {hiddenPublicationPreviewItemCount} flere preview-poster er skjult i denne
-                    kompakte visning.
+                    {hiddenPublicationPreviewItemCount} flere preview-poster er
+                    skjult i denne kompakte visning.
                   </p>
                 )}
               </div>
@@ -1312,31 +1466,74 @@ export default function ShiftPlanningSavedDraftsOverview({
                   Publicer kladde
                 </p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Dette er det første trin, der kan oprette rigtige vagter i vagtplanen. Knappen
-                  kræver grønt publiceringspreview, aktiv arbejdstype og præcis tekstbekræftelse.
+                  Dette er det første trin, der kan oprette rigtige vagter i
+                  vagtplanen. Knappen kræver grønt publiceringspreview, aktiv
+                  arbejdstype og præcis tekstbekræftelse.
                 </p>
               </div>
               <span
                 className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold ${
-                  selectedDraftCanBePublished && publicationPreviewCanPublishLater
-                    ? "bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100"
-                    : "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                  selectedDraftIsPublished
+                    ? "bg-green-100 text-green-950 dark:bg-green-900/60 dark:text-green-100"
+                    : selectedDraftCanBePublished &&
+                        publicationPreviewCanPublishLater
+                      ? "bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100"
+                      : "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
                 }`}
               >
-                {selectedDraftCanBePublished && publicationPreviewCanPublishLater
-                  ? "Kan bekræftes"
-                  : "Blokeret"}
+                {selectedDraftIsPublished
+                  ? "Publiceret"
+                  : selectedDraftCanBePublished &&
+                      publicationPreviewCanPublishLater
+                    ? "Kan bekræftes"
+                    : "Blokeret"}
               </span>
             </div>
 
             {publishResult && (
               <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="font-semibold">
+                      {publishResult.message ||
+                        "Planlægningskladden er publiceret."}
+                    </p>
+                    <p className="mt-1 opacity-85">
+                      Oprettede vagter:{" "}
+                      {toNumber(publishResult.createdShiftCount)} · Arbejdstype:{" "}
+                      {publishResult.workTypeName || selectedWorkTypeName}
+                    </p>
+                    {publishedShiftIdsText && (
+                      <p className="mt-1 text-xs opacity-75">
+                        Shift-id'er: {publishedShiftIdsText}
+                      </p>
+                    )}
+                  </div>
+                  <a
+                    href="/schedule"
+                    className="inline-flex w-fit rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 dark:bg-green-200 dark:text-green-950 dark:hover:bg-green-100"
+                  >
+                    Åbn vagtplan
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {selectedDraftIsPublished && !publishResult && (
+              <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
                 <p className="font-semibold">
-                  {publishResult.message || "Planlægningskladden er publiceret."}
+                  Denne kladde er allerede publiceret.
                 </p>
                 <p className="mt-1 opacity-85">
-                  Oprettede vagter: {toNumber(publishResult.createdShiftCount)} · Arbejdstype: {publishResult.workTypeName || selectedWorkTypeName}
+                  Den kan ikke publiceres igen. Åbn vagtplanen for at gennemgå
+                  de oprettede vagter.
                 </p>
+                <a
+                  href="/schedule"
+                  className="mt-3 inline-flex rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 dark:bg-green-200 dark:text-green-950 dark:hover:bg-green-100"
+                >
+                  Åbn vagtplan
+                </a>
               </div>
             )}
 
@@ -1353,7 +1550,11 @@ export default function ShiftPlanningSavedDraftsOverview({
                   value={publishWorkTypeId}
                   onChange={(event) => setPublishWorkTypeId(event.target.value)}
                   className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                  disabled={loadingWorkTypes || publishingDraftId === selectedDraft.id}
+                  disabled={
+                    loadingWorkTypes ||
+                    publishingDraftId === selectedDraft.id ||
+                    !selectedDraftCanBePublished
+                  }
                 >
                   <option value="">Vælg arbejdstype</option>
                   {workTypes.map((workType) => (
@@ -1378,10 +1579,15 @@ export default function ShiftPlanningSavedDraftsOverview({
                 Bekræft publicering
                 <input
                   value={publishConfirmationText}
-                  onChange={(event) => setPublishConfirmationText(event.target.value)}
+                  onChange={(event) =>
+                    setPublishConfirmationText(event.target.value)
+                  }
                   placeholder={PUBLISH_CONFIRMATION_TEXT}
                   className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                  disabled={publishingDraftId === selectedDraft.id}
+                  disabled={
+                    publishingDraftId === selectedDraft.id ||
+                    !selectedDraftCanBePublished
+                  }
                 />
                 <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
                   Skriv {PUBLISH_CONFIRMATION_TEXT} for at låse knappen op.
@@ -1397,16 +1603,21 @@ export default function ShiftPlanningSavedDraftsOverview({
                 rows={2}
                 placeholder="Valgfri note, fx publiceret fra månedsplan"
                 className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-                disabled={publishingDraftId === selectedDraft.id}
+                disabled={
+                  publishingDraftId === selectedDraft.id ||
+                  !selectedDraftCanBePublished
+                }
               />
             </label>
 
             <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="font-semibold">Publicering opretter rigtige vagter.</p>
+                <p className="font-semibold">
+                  Publicering opretter rigtige vagter.
+                </p>
                 <p className="mt-1 opacity-85">
-                  Kør kun dette, når kladden er gennemgået, publiceringspreviewet er grønt, og
-                  arbejdstypen er korrekt.
+                  Kør kun dette, når kladden er gennemgået,
+                  publiceringspreviewet er grønt, og arbejdstypen er korrekt.
                 </p>
               </div>
               <button
@@ -1415,7 +1626,11 @@ export default function ShiftPlanningSavedDraftsOverview({
                 disabled={!canSubmitPublish}
                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {publishingDraftId === selectedDraft.id ? "Publicerer..." : "Publicer kladde"}
+                {publishingDraftId === selectedDraft.id
+                  ? "Publicerer..."
+                  : selectedDraftIsPublished
+                    ? "Kladde er publiceret"
+                    : "Publicer kladde"}
               </button>
             </div>
           </div>
@@ -1427,13 +1642,14 @@ export default function ShiftPlanningSavedDraftsOverview({
                   Backend-validering
                 </p>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Kalder backendens sikre valideringsendpoint og kontrollerer kladden uden at
-                  oprette eller publicere vagter.
+                  Kalder backendens sikre valideringsendpoint og kontrollerer
+                  kladden uden at oprette eller publicere vagter.
                 </p>
               </div>
               {validationResult?.checkedAt && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Senest kontrolleret {formatCreatedAt(validationResult.checkedAt)}
+                  Senest kontrolleret{" "}
+                  {formatCreatedAt(validationResult.checkedAt)}
                 </p>
               )}
             </div>
@@ -1471,13 +1687,18 @@ export default function ShiftPlanningSavedDraftsOverview({
                   <ValidationMetricCard
                     label="Problemer"
                     value={toNumber(validationSummary?.issueCount)}
-                    variant={toNumber(validationSummary?.issueCount) > 0 ? "warning" : "success"}
+                    variant={
+                      toNumber(validationSummary?.issueCount) > 0
+                        ? "warning"
+                        : "success"
+                    }
                   />
                 </div>
 
                 {validationIssues.length === 0 && (
                   <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
-                    Backend-valideringen fandt ingen fejl eller advarsler i kladden.
+                    Backend-valideringen fandt ingen fejl eller advarsler i
+                    kladden.
                   </div>
                 )}
 
@@ -1515,13 +1736,17 @@ export default function ShiftPlanningSavedDraftsOverview({
                             )}
                           </div>
                           <p className="mt-3 font-semibold">
-                            {issue.message || issue.code || "Ukendt valideringsproblem"}
+                            {issue.message ||
+                              issue.code ||
+                              "Ukendt valideringsproblem"}
                           </p>
                           {(actor || issue.jobFunctionName) && (
                             <p className="mt-2 opacity-85">
                               {actor ? `Medarbejder: ${actor}` : null}
                               {actor && issue.jobFunctionName ? " · " : null}
-                              {issue.jobFunctionName ? `Jobfunktion: ${issue.jobFunctionName}` : null}
+                              {issue.jobFunctionName
+                                ? `Jobfunktion: ${issue.jobFunctionName}`
+                                : null}
                             </p>
                           )}
                         </article>
@@ -1532,8 +1757,8 @@ export default function ShiftPlanningSavedDraftsOverview({
 
                 {hiddenValidationIssueCount > 0 && (
                   <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                    {hiddenValidationIssueCount} flere valideringsproblemer er skjult i denne
-                    kompakte visning.
+                    {hiddenValidationIssueCount} flere valideringsproblemer er
+                    skjult i denne kompakte visning.
                   </p>
                 )}
               </div>
@@ -1549,7 +1774,10 @@ export default function ShiftPlanningSavedDraftsOverview({
           {visibleDateGroups.length > 0 && (
             <div className="mt-5 grid gap-4">
               {visibleDateGroups.map((group) => {
-                const visibleItemsForDay = group.items.slice(0, MAX_VISIBLE_ITEMS_PER_DAY);
+                const visibleItemsForDay = group.items.slice(
+                  0,
+                  MAX_VISIBLE_ITEMS_PER_DAY,
+                );
                 const hiddenItemsForDay = Math.max(
                   0,
                   group.items.length - visibleItemsForDay.length,
@@ -1603,7 +1831,9 @@ export default function ShiftPlanningSavedDraftsOverview({
                                 {item.jobFunctionColor && (
                                   <span
                                     className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
-                                    style={{ backgroundColor: item.jobFunctionColor }}
+                                    style={{
+                                      backgroundColor: item.jobFunctionColor,
+                                    }}
                                   />
                                 )}
                                 {getItemJobFunctionName(item)}
@@ -1639,7 +1869,8 @@ export default function ShiftPlanningSavedDraftsOverview({
 
           {hiddenDateGroupCount > 0 && (
             <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
-              {hiddenDateGroupCount} flere datoer er skjult i denne kompakte kontrolvisning.
+              {hiddenDateGroupCount} flere datoer er skjult i denne kompakte
+              kontrolvisning.
             </p>
           )}
         </div>
