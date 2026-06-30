@@ -8,6 +8,7 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import ShiftPlanningDayCard from "./components/ShiftPlanningDayCard";
 import ShiftPlanningTemplatePreview from "./components/ShiftPlanningTemplatePreview";
+import ShiftPlanningWeekIndicator from "./components/ShiftPlanningWeekIndicator";
 import ShiftPlanningMasterCinemaRequired from "./components/ShiftPlanningMasterCinemaRequired";
 import {
   addMonths,
@@ -18,6 +19,7 @@ import {
   getDateWeekParityLabel,
   getCurrentUserFromToken,
   getMonthName,
+  getMonthCalendarWeeks,
   getMonthPlanDayDateKey,
   getMonthSummary,
   getSelectedMasterCinemaId,
@@ -162,6 +164,10 @@ export default function ShiftPlanningPage() {
   const days = monthPlan?.days ?? [];
   const leadingBlankCount = getCalendarLeadingBlankCount(year, month);
   const monthSummary = getMonthSummary(days);
+  const calendarWeeks = useMemo(
+    () => getMonthCalendarWeeks(days, leadingBlankCount),
+    [days, leadingBlankCount],
+  );
 
   const templatesById = useMemo(() => {
     const map = new Map<number, ScheduleTemplateSummary>();
@@ -491,7 +497,8 @@ export default function ShiftPlanningPage() {
             </section>
 
             <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="mb-3 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <div className="mb-3 hidden grid-cols-[minmax(7rem,8rem)_repeat(7,minmax(0,1fr))] gap-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 lg:grid">
+                <div className="text-left">Uge</div>
                 {weekdayHeaders.map((weekday) => (
                   <div key={weekday}>{weekday}</div>
                 ))}
@@ -510,25 +517,46 @@ export default function ShiftPlanningPage() {
               )}
 
               {!loading && days.length > 0 && (
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7">
-                  {Array.from({ length: leadingBlankCount }).map((_, index) => (
-                    <div key={`blank-${index}`} className="hidden lg:block" />
-                  ))}
-                  {days.map((day) => {
-                    const template = day.scheduleTemplateId
-                      ? templatesById.get(day.scheduleTemplateId) ??
-                        day.scheduleTemplate
-                      : null;
-
-                    return (
-                      <ShiftPlanningDayCard
-                        key={getMonthPlanDayDateKey(day) || day.date}
-                        day={day}
-                        template={template}
-                        onOpen={() => openDayModal(day)}
+                <div className="space-y-3">
+                  {calendarWeeks.map((week) => (
+                    <div
+                      key={week.weekKey}
+                      className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(7rem,8rem)_repeat(7,minmax(0,1fr))]"
+                    >
+                      <ShiftPlanningWeekIndicator
+                        weekNumber={week.weekNumber}
+                        weekParityLabel={week.weekParityLabel}
+                        activeDays={week.activeDays}
+                        daysWithTemplate={week.daysWithTemplate}
+                        missingTemplateDays={week.missingTemplateDays}
                       />
-                    );
-                  })}
+
+                      {week.days.map((day, dayIndex) => {
+                        if (!day) {
+                          return (
+                            <div
+                              key={`${week.weekKey}-blank-${dayIndex}`}
+                              className="hidden min-h-44 rounded-2xl border border-dashed border-gray-200 bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950/40 lg:block"
+                            />
+                          );
+                        }
+
+                        const template = day.scheduleTemplateId
+                          ? templatesById.get(day.scheduleTemplateId) ??
+                            day.scheduleTemplate
+                          : null;
+
+                        return (
+                          <ShiftPlanningDayCard
+                            key={getMonthPlanDayDateKey(day) || day.date}
+                            day={day}
+                            template={template}
+                            onOpen={() => openDayModal(day)}
+                          />
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               )}
             </section>

@@ -208,6 +208,68 @@ export function getCalendarLeadingBlankCount(year: number, month: number) {
   return jsDay === 0 ? 6 : jsDay - 1;
 }
 
+
+export type MonthCalendarWeek = {
+  weekKey: string;
+  weekNumber: number | null;
+  weekParityLabel: string;
+  days: Array<MonthPlanDay | null>;
+  activeDays: number;
+  daysWithTemplate: number;
+  missingTemplateDays: number;
+};
+
+export function getMonthCalendarWeeks(
+  days: MonthPlanDay[],
+  leadingBlankCount: number,
+): MonthCalendarWeek[] {
+  const normalizedLeadingBlankCount = Math.max(0, Math.min(6, leadingBlankCount));
+  const cells: Array<MonthPlanDay | null> = [
+    ...Array.from({ length: normalizedLeadingBlankCount }, () => null),
+    ...days,
+  ];
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  const weeks: MonthCalendarWeek[] = [];
+
+  for (let index = 0; index < cells.length; index += 7) {
+    const weekDays = cells.slice(index, index + 7);
+    const firstVisibleDay = weekDays.find((day): day is MonthPlanDay => Boolean(day));
+    const firstVisibleDateKey = firstVisibleDay
+      ? getMonthPlanDayDateKey(firstVisibleDay)
+      : "";
+    const weekNumber = getIsoWeekNumber(firstVisibleDateKey);
+    const weekParity = getDateWeekParity(firstVisibleDateKey);
+    const activeDays = weekDays.filter((day) => day?.isActive).length;
+    const daysWithTemplate = weekDays.filter(
+      (day) => day?.isActive && Boolean(day.scheduleTemplateId),
+    ).length;
+    const missingTemplateDays = weekDays.filter(
+      (day) => day?.isActive && !day.scheduleTemplateId,
+    ).length;
+
+    weeks.push({
+      weekKey: `week-${index / 7}-${firstVisibleDateKey || "unknown"}`,
+      weekNumber,
+      weekParityLabel:
+        weekParity === "EVEN"
+          ? "Lige uge"
+          : weekParity === "ODD"
+            ? "Ulige uge"
+            : "Ukendt uge",
+      days: weekDays,
+      activeDays,
+      daysWithTemplate,
+      missingTemplateDays,
+    });
+  }
+
+  return weeks;
+}
+
 export function addMonths(year: number, month: number, delta: number) {
   const date = new Date(Date.UTC(year, month - 1 + delta, 1));
   return {
