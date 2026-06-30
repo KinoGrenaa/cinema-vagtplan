@@ -101,6 +101,46 @@ type DraftValidationResult = {
   issues?: DraftValidationIssue[];
 };
 
+type DraftPublicationPreviewSummary = {
+  canPublishLater?: boolean;
+  itemCount?: number | string | null;
+  publishableItemCount?: number | string | null;
+  blockedItemCount?: number | string | null;
+  validationErrorCount?: number | string | null;
+  validationWarningCount?: number | string | null;
+  validationIssueCount?: number | string | null;
+};
+
+type DraftPublicationPreviewItem = {
+  draftItemId?: number | string | null;
+  dateKey?: string | null;
+  status?: string | null;
+  jobFunctionName?: string | null;
+  jobFunctionColor?: string | null;
+  userName?: string | null;
+  plannedStartMinute?: number | string | null;
+  plannedEndMinute?: number | string | null;
+  canBecomeShift?: boolean | null;
+  blockReasons?: string[] | null;
+  warningMessage?: string | null;
+};
+
+type DraftPublicationPreviewResult = {
+  draftId?: number | string;
+  cinemaId?: number | null;
+  year?: number | null;
+  month?: number | null;
+  status?: string | null;
+  checkedAt?: string | null;
+  mode?: string | null;
+  createsShifts?: boolean | null;
+  summary?: DraftPublicationPreviewSummary | null;
+  blockingReasons?: string[];
+  validationSummary?: DraftValidationSummary | null;
+  validationIssues?: DraftValidationIssue[];
+  previewItems?: DraftPublicationPreviewItem[];
+};
+
 type ShiftPlanningSavedDraftsOverviewProps = {
   activeCinemaId: number | null;
   month: number;
@@ -112,6 +152,7 @@ const MAX_VISIBLE_DRAFTS = 5;
 const MAX_VISIBLE_DATE_GROUPS = 10;
 const MAX_VISIBLE_ITEMS_PER_DAY = 6;
 const MAX_VISIBLE_VALIDATION_ISSUES = 20;
+const MAX_VISIBLE_PUBLICATION_PREVIEW_ITEMS = 12;
 
 function toNumber(value: unknown) {
   const numberValue = Number(value);
@@ -382,10 +423,13 @@ function ValidationMetricCard({
   value: number | string;
   variant?: "neutral" | "warning" | "error" | "success";
 }) {
+  const numericValue = Number(value);
+  const shouldHighlightProblem = !Number.isFinite(numericValue) || numericValue > 0;
+
   const classes =
-    variant === "error" && Number(value) > 0
+    variant === "error" && shouldHighlightProblem
       ? "border-red-200 bg-red-50 text-red-950 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100"
-      : variant === "warning" && Number(value) > 0
+      : variant === "warning" && shouldHighlightProblem
         ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
         : variant === "success"
           ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
@@ -412,6 +456,12 @@ export default function ShiftPlanningSavedDraftsOverview({
   const [validatingDraftId, setValidatingDraftId] = useState<number | string | null>(null);
   const [validationResult, setValidationResult] = useState<DraftValidationResult | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [loadingPublicationPreviewId, setLoadingPublicationPreviewId] = useState<
+    number | string | null
+  >(null);
+  const [publicationPreviewResult, setPublicationPreviewResult] =
+    useState<DraftPublicationPreviewResult | null>(null);
+  const [publicationPreviewError, setPublicationPreviewError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const visibleDrafts = useMemo(() => drafts.slice(0, MAX_VISIBLE_DRAFTS), [drafts]);
@@ -429,6 +479,19 @@ export default function ShiftPlanningSavedDraftsOverview({
     0,
     validationIssues.length - visibleValidationIssues.length,
   );
+  const publicationPreviewSummary = publicationPreviewResult?.summary;
+  const publicationPreviewItems = publicationPreviewResult?.previewItems ?? [];
+  const visiblePublicationPreviewItems = publicationPreviewItems.slice(
+    0,
+    MAX_VISIBLE_PUBLICATION_PREVIEW_ITEMS,
+  );
+  const hiddenPublicationPreviewItemCount = Math.max(
+    0,
+    publicationPreviewItems.length - visiblePublicationPreviewItems.length,
+  );
+  const publicationPreviewCanPublishLater =
+    publicationPreviewResult?.createsShifts === false &&
+    publicationPreviewSummary?.canPublishLater === true;
   const backendValidationIsGreen = Boolean(
     validationResult &&
       validationSummary?.isValid === true &&
@@ -444,6 +507,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       setSelectedDraft(null);
       setValidationResult(null);
       setValidationError(null);
+      setPublicationPreviewResult(null);
+      setPublicationPreviewError(null);
       setErrorMessage(null);
       return;
     }
@@ -480,6 +545,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       setSelectedDraft(null);
       setValidationResult(null);
       setValidationError(null);
+      setPublicationPreviewResult(null);
+      setPublicationPreviewError(null);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -505,6 +572,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(null);
       setValidationResult(null);
       setValidationError(null);
+      setPublicationPreviewResult(null);
+      setPublicationPreviewError(null);
 
       const response = await apiFetch(
         appendCinemaId(`/shift-planning-drafts/${draftId}`, activeCinemaId),
@@ -521,6 +590,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       setSelectedDraft(null);
       setValidationResult(null);
       setValidationError(null);
+      setPublicationPreviewResult(null);
+      setPublicationPreviewError(null);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -569,10 +640,53 @@ export default function ShiftPlanningSavedDraftsOverview({
     }
   };
 
+  const loadPublicationPreview = async () => {
+    if (!selectedDraft) {
+      setPublicationPreviewError("Åbn en kladde, før du henter publiceringspreview.");
+      return;
+    }
+
+    if (!activeCinemaId) {
+      setPublicationPreviewError("Vælg en aktiv biograf, før du henter publiceringspreview.");
+      return;
+    }
+
+    try {
+      setLoadingPublicationPreviewId(selectedDraft.id);
+      setPublicationPreviewError(null);
+
+      const response = await apiFetch(
+        appendCinemaId(
+          `/shift-planning-drafts/${selectedDraft.id}/publication-preview`,
+          activeCinemaId,
+        ),
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke hente publiceringspreview"),
+        );
+      }
+
+      setPublicationPreviewResult((await response.json()) as DraftPublicationPreviewResult);
+    } catch (error) {
+      setPublicationPreviewResult(null);
+      setPublicationPreviewError(
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da publiceringspreview skulle hentes.",
+      );
+    } finally {
+      setLoadingPublicationPreviewId(null);
+    }
+  };
+
   const closeControl = () => {
     setSelectedDraft(null);
     setValidationResult(null);
     setValidationError(null);
+    setPublicationPreviewResult(null);
+    setPublicationPreviewError(null);
   };
 
   return (
@@ -718,6 +832,16 @@ export default function ShiftPlanningSavedDraftsOverview({
               </button>
               <button
                 type="button"
+                onClick={loadPublicationPreview}
+                className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-white"
+                disabled={loadingPublicationPreviewId === selectedDraft.id}
+              >
+                {loadingPublicationPreviewId === selectedDraft.id
+                  ? "Henter preview..."
+                  : "Hent publiceringspreview"}
+              </button>
+              <button
+                type="button"
                 onClick={closeControl}
                 className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-900/40"
               >
@@ -823,6 +947,173 @@ export default function ShiftPlanningSavedDraftsOverview({
                     : "Blokeret"}
               </span>
             </div>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-purple-200 bg-white p-4 dark:border-purple-900/70 dark:bg-gray-950/70">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm font-bold text-gray-950 dark:text-white">
+                  Publiceringspreview
+                </p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Viser hvad kladden senere kan blive til, uden at oprette eller publicere vagter.
+                  Backend svarer eksplicit med <span className="font-semibold">createsShifts: false</span>.
+                </p>
+              </div>
+              {publicationPreviewResult?.checkedAt && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Senest hentet {formatCreatedAt(publicationPreviewResult.checkedAt)}
+                </p>
+              )}
+            </div>
+
+            {publicationPreviewError && (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
+                {publicationPreviewError}
+              </div>
+            )}
+
+            {!publicationPreviewResult && !publicationPreviewError && (
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+                Publiceringspreview er ikke hentet for den åbne kladde endnu.
+              </div>
+            )}
+
+            {publicationPreviewResult && (
+              <div className="mt-4 space-y-4">
+                <div
+                  className={`rounded-2xl border p-4 text-sm ${
+                    publicationPreviewCanPublishLater
+                      ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
+                      : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
+                  }`}
+                >
+                  <p className="font-semibold">
+                    {publicationPreviewCanPublishLater
+                      ? "Preview er klar til et senere publiceringstrin"
+                      : "Preview viser blokeringer før senere publicering"}
+                  </p>
+                  <p className="mt-1 opacity-85">
+                    Mode: {publicationPreviewResult.mode || "Ukendt"} · Opretter vagter nu: {publicationPreviewResult.createsShifts ? "Ja" : "Nej"}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <ValidationMetricCard
+                    label="Kan senere publiceres"
+                    value={publicationPreviewCanPublishLater ? "Ja" : "Nej"}
+                    variant={publicationPreviewCanPublishLater ? "success" : "warning"}
+                  />
+                  <ValidationMetricCard
+                    label="Preview-poster"
+                    value={toNumber(publicationPreviewSummary?.itemCount)}
+                  />
+                  <ValidationMetricCard
+                    label="Kan blive vagter"
+                    value={toNumber(publicationPreviewSummary?.publishableItemCount)}
+                    variant="success"
+                  />
+                  <ValidationMetricCard
+                    label="Blokeret"
+                    value={toNumber(publicationPreviewSummary?.blockedItemCount)}
+                    variant="warning"
+                  />
+                </div>
+
+                {(publicationPreviewResult.blockingReasons ?? []).length > 0 && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
+                    <p className="font-semibold">Blokerende årsager</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                      {(publicationPreviewResult.blockingReasons ?? []).map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {visiblePublicationPreviewItems.length > 0 && (
+                  <div className="grid gap-3">
+                    {visiblePublicationPreviewItems.map((item, index) => {
+                      const itemDate = item.dateKey ? formatDateKey(item.dateKey) : "Dato mangler";
+                      const blockReasons = item.blockReasons ?? [];
+
+                      return (
+                        <article
+                          key={`${item.draftItemId ?? "preview"}-${index}`}
+                          className={`rounded-2xl border p-4 text-sm ${
+                            item.canBecomeShift
+                              ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
+                              : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
+                          }`}
+                        >
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold dark:bg-gray-950/60">
+                                  {item.canBecomeShift ? "Kan blive vagt" : "Blokeret"}
+                                </span>
+                                <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
+                                  {itemDate}
+                                </span>
+                              </div>
+                              <p className="mt-3 font-semibold">
+                                {formatMinute(item.plannedStartMinute) && formatMinute(item.plannedEndMinute)
+                                  ? `kl. ${formatMinute(item.plannedStartMinute)} - ${formatMinute(item.plannedEndMinute)}`
+                                  : "Tid mangler"}
+                              </p>
+                              <p className="mt-1 opacity-85">
+                                {item.jobFunctionColor && (
+                                  <span
+                                    className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
+                                    style={{ backgroundColor: item.jobFunctionColor }}
+                                  />
+                                )}
+                                {item.jobFunctionName || "Jobfunktion mangler"}
+                              </p>
+                            </div>
+                            <div className="lg:text-right">
+                              <p className="font-semibold">
+                                {item.userName || "Ikke tildelt"}
+                              </p>
+                              <p className="mt-1 text-xs opacity-75">
+                                Kladdepost #{item.draftItemId ?? "?"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {blockReasons.length > 0 && (
+                            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs opacity-90">
+                              {blockReasons.map((reason) => (
+                                <li key={reason}>{reason}</li>
+                              ))}
+                            </ul>
+                          )}
+
+                          {item.warningMessage && (
+                            <p className="mt-3 text-xs font-semibold">
+                              Advarsel: {item.warningMessage}
+                            </p>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {publicationPreviewItems.length === 0 && (
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+                    Previewet har ingen poster. Kladden kan ikke senere publiceres, før den har poster.
+                  </div>
+                )}
+
+                {hiddenPublicationPreviewItemCount > 0 && (
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                    {hiddenPublicationPreviewItemCount} flere preview-poster er skjult i denne
+                    kompakte visning.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mt-5 rounded-2xl border border-blue-200 bg-white p-4 dark:border-blue-900/70 dark:bg-gray-950/70">
