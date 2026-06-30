@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { apiFetch } from "@/app/lib/api";
+
 import {
   appendCinemaId,
   formatDateKey,
@@ -67,6 +69,38 @@ type DraftControlSummary = {
   missingTemplateCount: number;
 };
 
+type DraftValidationIssue = {
+  id?: number | string | null;
+  itemId?: number | string | null;
+  date?: string | null;
+  dateKey?: string | null;
+  severity?: string | null;
+  code?: string | null;
+  message?: string | null;
+  employeeName?: string | null;
+  userName?: string | null;
+  jobFunctionName?: string | null;
+  details?: unknown;
+};
+
+type DraftValidationSummary = {
+  isValid?: boolean;
+  errorCount?: number | string | null;
+  warningCount?: number | string | null;
+  issueCount?: number | string | null;
+};
+
+type DraftValidationResult = {
+  draftId?: number | string;
+  cinemaId?: number | null;
+  year?: number | null;
+  month?: number | null;
+  status?: string | null;
+  checkedAt?: string | null;
+  summary?: DraftValidationSummary | null;
+  issues?: DraftValidationIssue[];
+};
+
 type ShiftPlanningSavedDraftsOverviewProps = {
   activeCinemaId: number | null;
   month: number;
@@ -77,6 +111,7 @@ type ShiftPlanningSavedDraftsOverviewProps = {
 const MAX_VISIBLE_DRAFTS = 5;
 const MAX_VISIBLE_DATE_GROUPS = 10;
 const MAX_VISIBLE_ITEMS_PER_DAY = 6;
+const MAX_VISIBLE_VALIDATION_ISSUES = 20;
 
 function toNumber(value: unknown) {
   const numberValue = Number(value);
@@ -104,6 +139,7 @@ function formatCreatedAt(value?: string | null) {
   }
 
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) {
     return "Ukendt tidspunkt";
   }
@@ -124,6 +160,7 @@ function getDateKey(value?: string | null) {
   }
 
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) {
     return "";
   }
@@ -131,14 +168,21 @@ function getDateKey(value?: string | null) {
   return date.toISOString().slice(0, 10);
 }
 
+function formatIssueDate(issue: DraftValidationIssue) {
+  const dateKey = getDateKey(issue.dateKey || issue.date || null);
+  return dateKey ? formatDateKey(dateKey) : null;
+}
+
 function formatMinute(value: unknown) {
   const minute = Number(value);
+
   if (!Number.isInteger(minute) || minute < 0) {
     return null;
   }
 
   const hours = Math.floor(minute / 60);
   const minutes = minute % 60;
+
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
@@ -156,6 +200,10 @@ function formatTimeRange(item: SavedDraftItem) {
 function formatUserName(item: SavedDraftItem) {
   const name = `${item.userFirstName ?? ""} ${item.userLastName ?? ""}`.trim();
   return name || item.userEmail || "Ikke tildelt";
+}
+
+function formatValidationActor(issue: DraftValidationIssue) {
+  return issue.employeeName || issue.userName || null;
 }
 
 function getMetadataString(
@@ -206,11 +254,36 @@ function getStatusClasses(status?: string | null) {
   return "bg-blue-100 text-blue-900 ring-blue-200 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-900";
 }
 
+function getValidationSeverityLabel(severity?: string | null) {
+  switch ((severity || "").toUpperCase()) {
+    case "ERROR":
+      return "Fejl";
+    case "WARNING":
+      return "Advarsel";
+    case "INFO":
+      return "Info";
+    default:
+      return severity || "Kontrol";
+  }
+}
+
+function getValidationSeverityClasses(severity?: string | null) {
+  switch ((severity || "").toUpperCase()) {
+    case "ERROR":
+      return "border-red-200 bg-red-50 text-red-950 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100";
+    case "WARNING":
+      return "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100";
+    default:
+      return "border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-100";
+  }
+}
+
 function getDraftControlSummary(items: SavedDraftItem[]): DraftControlSummary {
   const dateKeys = new Set<string>();
 
   items.forEach((item) => {
     const dateKey = getDateKey(item.date);
+
     if (dateKey) {
       dateKeys.add(dateKey);
     }
@@ -219,8 +292,11 @@ function getDraftControlSummary(items: SavedDraftItem[]): DraftControlSummary {
   return {
     totalItems: items.length,
     dateCount: dateKeys.size,
-    unassignedCount: items.filter((item) => !item.userFirstName && !item.userLastName && !item.userEmail).length,
-    warningCount: items.filter((item) => Boolean(item.warningCode || item.warningMessage)).length,
+    unassignedCount: items.filter(
+      (item) => !item.userFirstName && !item.userLastName && !item.userEmail,
+    ).length,
+    warningCount: items.filter((item) => Boolean(item.warningCode || item.warningMessage))
+      .length,
     missingTimeCount: items.filter((item) => !itemHasTime(item)).length,
     missingJobFunctionCount: items.filter((item) => !itemHasJobFunction(item)).length,
     missingTemplateCount: items.filter((item) => !itemHasTemplate(item)).length,
@@ -244,16 +320,14 @@ function getDateGroups(items: SavedDraftItem[]): DraftDateGroup[] {
     const dateKey = getDateKey(item.date);
     const groupKey = dateKey || "uden-dato";
     const existingGroup = groups.get(groupKey);
-    const group =
-      existingGroup ??
-      {
-        dateKey,
-        label: dateKey ? formatDateKey(dateKey) : "Dato mangler",
-        items: [],
-        unassignedCount: 0,
-        warningCount: 0,
-        missingTimeCount: 0,
-      };
+    const group = existingGroup ?? {
+      dateKey,
+      label: dateKey ? formatDateKey(dateKey) : "Dato mangler",
+      items: [],
+      unassignedCount: 0,
+      warningCount: 0,
+      missingTimeCount: 0,
+    };
 
     group.items.push(item);
 
@@ -292,11 +366,35 @@ function ControlMetricCard({
         : "border-blue-200 bg-white text-blue-950 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100";
 
   return (
-    <div className={`rounded-2xl border p-3 ${classes}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-75">
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+    <div className={`rounded-2xl border p-4 ${classes}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function ValidationMetricCard({
+  label,
+  value,
+  variant = "neutral",
+}: {
+  label: string;
+  value: number | string;
+  variant?: "neutral" | "warning" | "error" | "success";
+}) {
+  const classes =
+    variant === "error" && Number(value) > 0
+      ? "border-red-200 bg-red-50 text-red-950 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100"
+      : variant === "warning" && Number(value) > 0
+        ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
+        : variant === "success"
+          ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
+          : "border-blue-200 bg-white text-blue-950 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${classes}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
     </div>
   );
 }
@@ -309,33 +407,35 @@ export default function ShiftPlanningSavedDraftsOverview({
 }: ShiftPlanningSavedDraftsOverviewProps) {
   const [drafts, setDrafts] = useState<SavedDraftSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [openingDraftId, setOpeningDraftId] = useState<number | string | null>(
-    null,
-  );
-  const [selectedDraft, setSelectedDraft] = useState<SavedDraftDetails | null>(
-    null,
-  );
+  const [openingDraftId, setOpeningDraftId] = useState<number | string | null>(null);
+  const [selectedDraft, setSelectedDraft] = useState<SavedDraftDetails | null>(null);
+  const [validatingDraftId, setValidatingDraftId] = useState<number | string | null>(null);
+  const [validationResult, setValidationResult] = useState<DraftValidationResult | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const visibleDrafts = useMemo(
-    () => drafts.slice(0, MAX_VISIBLE_DRAFTS),
-    [drafts],
-  );
+  const visibleDrafts = useMemo(() => drafts.slice(0, MAX_VISIBLE_DRAFTS), [drafts]);
   const hiddenDraftCount = Math.max(0, drafts.length - visibleDrafts.length);
   const selectedItems = selectedDraft?.items ?? [];
-  const controlSummary = useMemo(
-    () => getDraftControlSummary(selectedItems),
-    [selectedItems],
-  );
+  const controlSummary = useMemo(() => getDraftControlSummary(selectedItems), [selectedItems]);
   const dateGroups = useMemo(() => getDateGroups(selectedItems), [selectedItems]);
   const visibleDateGroups = dateGroups.slice(0, MAX_VISIBLE_DATE_GROUPS);
   const hiddenDateGroupCount = Math.max(0, dateGroups.length - visibleDateGroups.length);
   const draftNeedsControl = hasControlWarnings(controlSummary);
+  const validationSummary = validationResult?.summary;
+  const validationIssues = validationResult?.issues ?? [];
+  const visibleValidationIssues = validationIssues.slice(0, MAX_VISIBLE_VALIDATION_ISSUES);
+  const hiddenValidationIssueCount = Math.max(
+    0,
+    validationIssues.length - visibleValidationIssues.length,
+  );
 
   const fetchDrafts = useCallback(async () => {
     if (!activeCinemaId) {
       setDrafts([]);
       setSelectedDraft(null);
+      setValidationResult(null);
+      setValidationError(null);
       setErrorMessage(null);
       return;
     }
@@ -343,24 +443,20 @@ export default function ShiftPlanningSavedDraftsOverview({
     try {
       setLoading(true);
       setErrorMessage(null);
+
       const response = await apiFetch(
-        appendCinemaId(
-          `/shift-planning-drafts?year=${year}&month=${month}`,
-          activeCinemaId,
-        ),
+        appendCinemaId(`/shift-planning-drafts?year=${year}&month=${month}`, activeCinemaId),
       );
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(
-            response,
-            "Kunne ikke hente planlægningskladder",
-          ),
+          await readErrorMessage(response, "Kunne ikke hente planlægningskladder"),
         );
       }
 
       const data = (await response.json()) as MonthDraftResponse;
       const nextDrafts = Array.isArray(data.drafts) ? data.drafts : [];
+
       setDrafts(nextDrafts);
       setSelectedDraft((current) => {
         if (!current) {
@@ -374,6 +470,8 @@ export default function ShiftPlanningSavedDraftsOverview({
     } catch (error) {
       setDrafts([]);
       setSelectedDraft(null);
+      setValidationResult(null);
+      setValidationError(null);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -397,22 +495,24 @@ export default function ShiftPlanningSavedDraftsOverview({
     try {
       setOpeningDraftId(draftId);
       setErrorMessage(null);
+      setValidationResult(null);
+      setValidationError(null);
+
       const response = await apiFetch(
         appendCinemaId(`/shift-planning-drafts/${draftId}`, activeCinemaId),
       );
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(
-            response,
-            "Kunne ikke åbne planlægningskladde",
-          ),
+          await readErrorMessage(response, "Kunne ikke åbne planlægningskladde"),
         );
       }
 
       setSelectedDraft((await response.json()) as SavedDraftDetails);
     } catch (error) {
       setSelectedDraft(null);
+      setValidationResult(null);
+      setValidationError(null);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -423,100 +523,143 @@ export default function ShiftPlanningSavedDraftsOverview({
     }
   };
 
+  const validateSelectedDraft = async () => {
+    if (!selectedDraft) {
+      setValidationError("Åbn en kladde, før du kører backend-validering.");
+      return;
+    }
+
+    if (!activeCinemaId) {
+      setValidationError("Vælg en aktiv biograf, før du validerer kladden.");
+      return;
+    }
+
+    try {
+      setValidatingDraftId(selectedDraft.id);
+      setValidationError(null);
+
+      const response = await apiFetch(
+        appendCinemaId(`/shift-planning-drafts/${selectedDraft.id}/validate`, activeCinemaId),
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke validere planlægningskladden"),
+        );
+      }
+
+      setValidationResult((await response.json()) as DraftValidationResult);
+    } catch (error) {
+      setValidationResult(null);
+      setValidationError(
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da kladden skulle valideres.",
+      );
+    } finally {
+      setValidatingDraftId(null);
+    }
+  };
+
+  const closeControl = () => {
+    setSelectedDraft(null);
+    setValidationResult(null);
+    setValidationError(null);
+  };
+
   return (
     <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <div className="relative flex flex-col items-center gap-3 text-center lg:block">
-        <div className="mx-auto max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl text-center lg:mx-auto">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
             Gemte kladder
           </p>
-          <h2 className="mt-1 text-lg font-bold text-gray-950 dark:text-white">
+          <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
             Seneste kladder for {getMonthName(year, month)}
           </h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            Kladderne ligger i backend og kan åbnes til kontrol. De publiceres
-            stadig ikke til den rigtige vagtplan herfra.
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            Kladderne ligger i backend og kan åbnes til kontrol. De publiceres stadig ikke til
+            den rigtige vagtplan herfra.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={fetchDrafts}
-          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800 lg:absolute lg:right-0 lg:top-0"
-          disabled={loading || !activeCinemaId}
-        >
-          {loading ? "Opdaterer..." : "Opdater kladder"}
-        </button>
+
+        <div className="flex shrink-0 justify-center lg:absolute lg:right-5">
+          <button
+            type="button"
+            onClick={fetchDrafts}
+            className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-950/50"
+            disabled={loading}
+          >
+            {loading ? "Opdaterer..." : "Opdater kladder"}
+          </button>
+        </div>
       </div>
 
       {errorMessage && (
-        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
+        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
           {errorMessage}
         </div>
       )}
 
       {loading && (
-        <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+        <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
           Henter gemte kladder...
         </div>
       )}
 
       {!loading && drafts.length === 0 && !errorMessage && (
-        <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
+        <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
           Der er endnu ingen gemte kladder for måneden.
         </div>
       )}
 
       {!loading && visibleDrafts.length > 0 && (
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="mt-5 grid gap-3">
           {visibleDrafts.map((draft) => {
-            const isSelected =
-              selectedDraft && String(selectedDraft.id) === String(draft.id);
+            const isSelected = selectedDraft && String(selectedDraft.id) === String(draft.id);
+
             return (
-              <div
+              <article
                 key={draft.id}
-                className={`rounded-2xl border p-4 shadow-sm ${
+                className={`rounded-2xl border p-4 ${
                   isSelected
                     ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30"
-                    : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950/40"
+                    : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="text-sm font-bold text-gray-950 dark:text-white">
-                      Kladde #{draft.id}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-950 dark:text-white">
+                        Kladde #{draft.id}
+                      </h3>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClasses(
+                          draft.status,
+                        )}`}
+                      >
+                        {formatDraftStatus(draft.status)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                       Gemt {formatCreatedAt(draft.createdAt)}
                     </p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
+                      <span className="rounded-full bg-white px-2.5 py-1 dark:bg-gray-900">
+                        {toNumber(draft.itemCount)} poster
+                      </span>
+                      <span className="rounded-full bg-white px-2.5 py-1 dark:bg-gray-900">
+                        {toNumber(draft.unassignedItemCount)} uden standard
+                      </span>
+                      <span className="rounded-full bg-white px-2.5 py-1 dark:bg-gray-900">
+                        {toNumber(draft.warningItemCount)} advarsler
+                      </span>
+                    </div>
+                    {draft.note && (
+                      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{draft.note}</p>
+                    )}
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ring-1 ${getStatusClasses(
-                      draft.status,
-                    )}`}
-                  >
-                    {formatDraftStatus(draft.status)}
-                  </span>
-                </div>
 
-                <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  <span className="rounded-full bg-white px-3 py-1 ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
-                    {toNumber(draft.itemCount)} poster
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-1 ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
-                    {toNumber(draft.unassignedItemCount)} uden standard
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-1 ring-1 ring-gray-200 dark:bg-gray-900 dark:ring-gray-800">
-                    {toNumber(draft.warningItemCount)} advarsler
-                  </span>
-                </div>
-
-                {draft.note && (
-                  <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                    {draft.note}
-                  </p>
-                )}
-
-                <div className="mt-4 flex justify-end">
                   <button
                     type="button"
                     onClick={() => openDraft(draft.id)}
@@ -526,67 +669,57 @@ export default function ShiftPlanningSavedDraftsOverview({
                     {openingDraftId === draft.id ? "Åbner..." : "Åbn kladde"}
                   </button>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
       )}
 
       {hiddenDraftCount > 0 && (
-        <p className="mt-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
+        <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
           {hiddenDraftCount} ældre kladder er skjult i denne kompakte visning.
         </p>
       )}
 
       {selectedDraft && (
-        <div className="mt-5 rounded-3xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/70 dark:bg-blue-950/25">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="mt-6 rounded-3xl border border-blue-200 bg-blue-50/70 p-5 dark:border-blue-900/70 dark:bg-blue-950/25">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">
                 Kladdekontrol
               </p>
-              <h3 className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-100">
+              <h3 className="mt-2 text-xl font-bold text-gray-950 dark:text-white">
                 Kladde #{selectedDraft.id} · {controlSummary.totalItems} poster
               </h3>
-              <p className="mt-1 max-w-3xl text-sm text-blue-900 dark:text-blue-200">
-                Gennemgå poster, medarbejdere, tider og advarsler før et senere
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                Gennemgå poster, medarbejdere, tider og backend-validering før et senere
                 publiceringstrin. Denne kontrolvisning publicerer ikke vagter.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setSelectedDraft(null)}
-              className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-900/40"
-            >
-              Luk kontrol
-            </button>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={validateSelectedDraft}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                disabled={validatingDraftId === selectedDraft.id}
+              >
+                {validatingDraftId === selectedDraft.id
+                  ? "Validerer..."
+                  : "Kør backend-validering"}
+              </button>
+              <button
+                type="button"
+                onClick={closeControl}
+                className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-900/40"
+              >
+                Luk kontrol
+              </button>
+            </div>
           </div>
 
-          <div
-            className={`mt-4 rounded-2xl border p-4 ${
-              draftNeedsControl
-                ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
-                : "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
-            }`}
-          >
-            <p className="text-sm font-bold">
-              {draftNeedsControl
-                ? "Kræver kontrol før senere publicering"
-                : "Ingen synlige kontroladvarsler i kladden"}
-            </p>
-            <p className="mt-1 text-sm opacity-90">
-              {draftNeedsControl
-                ? "Ret eller godkend afvigelserne bevidst, før vi senere bygger publicering til den rigtige vagtplan."
-                : "Kladden ser umiddelbart klar ud til et senere publiceringstrin, når det bliver bygget."}
-            </p>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <ControlMetricCard
-              label="Poster"
-              value={controlSummary.totalItems}
-              variant="success"
-            />
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <ControlMetricCard label="Poster" value={controlSummary.totalItems} />
             <ControlMetricCard label="Datoer" value={controlSummary.dateCount} />
             <ControlMetricCard
               label="Ikke tildelt"
@@ -610,107 +743,244 @@ export default function ShiftPlanningSavedDraftsOverview({
             />
           </div>
 
+          <div
+            className={`mt-4 rounded-2xl border p-4 text-sm ${
+              draftNeedsControl
+                ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
+                : "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
+            }`}
+          >
+            <p className="font-semibold">
+              {draftNeedsControl
+                ? "Kræver kontrol før senere publicering"
+                : "Ingen synlige kontroladvarsler i kladden"}
+            </p>
+            <p className="mt-1 opacity-85">
+              {draftNeedsControl
+                ? "Ret eller godkend afvigelserne bevidst, før vi senere bygger publicering til den rigtige vagtplan."
+                : "Kladden ser umiddelbart klar ud til et senere publiceringstrin, når det bliver bygget."}
+            </p>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-blue-200 bg-white p-4 dark:border-blue-900/70 dark:bg-gray-950/70">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm font-bold text-gray-950 dark:text-white">
+                  Backend-validering
+                </p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Kalder backendens sikre valideringsendpoint og kontrollerer kladden uden at
+                  oprette eller publicere vagter.
+                </p>
+              </div>
+              {validationResult?.checkedAt && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Senest kontrolleret {formatCreatedAt(validationResult.checkedAt)}
+                </p>
+              )}
+            </div>
+
+            {validationError && (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
+                {validationError}
+              </div>
+            )}
+
+            {!validationResult && !validationError && (
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+                Backend-validering er ikke kørt for den åbne kladde endnu.
+              </div>
+            )}
+
+            {validationResult && (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <ValidationMetricCard
+                    label="Status"
+                    value={validationSummary?.isValid ? "OK" : "Stop"}
+                    variant={validationSummary?.isValid ? "success" : "error"}
+                  />
+                  <ValidationMetricCard
+                    label="Fejl"
+                    value={toNumber(validationSummary?.errorCount)}
+                    variant="error"
+                  />
+                  <ValidationMetricCard
+                    label="Advarsler"
+                    value={toNumber(validationSummary?.warningCount)}
+                    variant="warning"
+                  />
+                  <ValidationMetricCard
+                    label="Problemer"
+                    value={toNumber(validationSummary?.issueCount)}
+                    variant={toNumber(validationSummary?.issueCount) > 0 ? "warning" : "success"}
+                  />
+                </div>
+
+                {validationIssues.length === 0 && (
+                  <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
+                    Backend-valideringen fandt ingen fejl eller advarsler i kladden.
+                  </div>
+                )}
+
+                {visibleValidationIssues.length > 0 && (
+                  <div className="grid gap-3">
+                    {visibleValidationIssues.map((issue, index) => {
+                      const issueDate = formatIssueDate(issue);
+                      const actor = formatValidationActor(issue);
+
+                      return (
+                        <article
+                          key={`${issue.code ?? "issue"}-${issue.itemId ?? issue.id ?? index}`}
+                          className={`rounded-2xl border p-4 text-sm ${getValidationSeverityClasses(
+                            issue.severity,
+                          )}`}
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold dark:bg-gray-950/60">
+                              {getValidationSeverityLabel(issue.severity)}
+                            </span>
+                            {issue.code && (
+                              <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
+                                {issue.code}
+                              </span>
+                            )}
+                            {issueDate && (
+                              <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
+                                {issueDate}
+                              </span>
+                            )}
+                            {issue.itemId && (
+                              <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
+                                Post #{issue.itemId}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-3 font-semibold">
+                            {issue.message || issue.code || "Ukendt valideringsproblem"}
+                          </p>
+                          {(actor || issue.jobFunctionName) && (
+                            <p className="mt-2 opacity-85">
+                              {actor ? `Medarbejder: ${actor}` : null}
+                              {actor && issue.jobFunctionName ? " · " : null}
+                              {issue.jobFunctionName ? `Jobfunktion: ${issue.jobFunctionName}` : null}
+                            </p>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {hiddenValidationIssueCount > 0 && (
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                    {hiddenValidationIssueCount} flere valideringsproblemer er skjult i denne
+                    kompakte visning.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           {selectedItems.length === 0 && (
-            <div className="mt-4 rounded-2xl border border-dashed border-blue-200 bg-white/70 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+            <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
               Kladden har ingen poster.
             </div>
           )}
 
           {visibleDateGroups.length > 0 && (
-            <div className="mt-4 space-y-3">
+            <div className="mt-5 grid gap-4">
               {visibleDateGroups.map((group) => {
-                const visibleItemsForDay = group.items.slice(
-                  0,
-                  MAX_VISIBLE_ITEMS_PER_DAY,
-                );
+                const visibleItemsForDay = group.items.slice(0, MAX_VISIBLE_ITEMS_PER_DAY);
                 const hiddenItemsForDay = Math.max(
                   0,
                   group.items.length - visibleItemsForDay.length,
                 );
 
                 return (
-                  <div
+                  <section
                     key={group.dateKey || group.label}
-                    className="rounded-2xl border border-blue-200 bg-white p-3 shadow-sm dark:border-blue-900/70 dark:bg-gray-950/70"
+                    className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-950"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <p className="text-sm font-bold text-gray-950 dark:text-white">
+                        <h4 className="text-base font-bold text-gray-950 dark:text-white">
                           {group.label}
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                        </h4>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                           {group.items.length} poster på datoen
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs font-semibold">
                         {group.unassignedCount > 0 && (
-                          <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900">
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">
                             {group.unassignedCount} ikke tildelt
                           </span>
                         )}
                         {group.warningCount > 0 && (
-                          <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900">
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">
                             {group.warningCount} advarsler
                           </span>
                         )}
                         {group.missingTimeCount > 0 && (
-                          <span className="rounded-full bg-red-100 px-3 py-1 text-red-900 ring-1 ring-red-200 dark:bg-red-950/60 dark:text-red-200 dark:ring-red-900">
+                          <span className="rounded-full bg-red-100 px-2.5 py-1 text-red-950 dark:bg-red-950/60 dark:text-red-100">
                             {group.missingTimeCount} uden tid
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="mt-3 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+                    <div className="mt-4 grid gap-3">
                       {visibleItemsForDay.map((item) => (
-                        <div
+                        <article
                           key={item.id}
-                          className="grid gap-2 border-b border-gray-200 p-3 text-sm last:border-b-0 dark:border-gray-800 lg:grid-cols-[8rem_1fr_1fr] lg:items-center"
+                          className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900"
                         >
-                          <div className="font-semibold text-gray-950 dark:text-white">
-                            {formatTimeRange(item)}
-                          </div>
-                          <div>
-                            <p className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">
-                              {item.jobFunctionColor && (
-                                <span
-                                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                  style={{ backgroundColor: item.jobFunctionColor }}
-                                />
-                              )}
-                              {getItemJobFunctionName(item)}
-                            </p>
-                            <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
-                              {getItemTemplateName(item)}
-                            </p>
-                          </div>
-                          <div className="space-y-1 text-xs text-gray-600 dark:text-gray-300 lg:text-right">
-                            <p>
-                              Medarbejder: <span className="font-semibold">{formatUserName(item)}</span>
-                            </p>
-                            {item.warningMessage && (
-                              <p className="font-semibold text-amber-700 dark:text-amber-300">
-                                Advarsel: {item.warningMessage}
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                              <p className="text-sm font-bold text-gray-950 dark:text-white">
+                                {formatTimeRange(item)}
                               </p>
-                            )}
+                              <p className="mt-1 text-sm text-gray-700 dark:text-gray-200">
+                                {item.jobFunctionColor && (
+                                  <span
+                                    className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
+                                    style={{ backgroundColor: item.jobFunctionColor }}
+                                  />
+                                )}
+                                {getItemJobFunctionName(item)}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {getItemTemplateName(item)}
+                              </p>
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-300 lg:text-right">
+                              Medarbejder: {formatUserName(item)}
+                            </div>
                           </div>
-                        </div>
+
+                          {item.warningMessage && (
+                            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
+                              Advarsel: {item.warningMessage}
+                            </div>
+                          )}
+                        </article>
                       ))}
                     </div>
 
                     {hiddenItemsForDay > 0 && (
-                      <p className="mt-2 text-xs font-semibold text-blue-900 dark:text-blue-100">
+                      <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
                         {hiddenItemsForDay} flere poster på datoen er skjult.
                       </p>
                     )}
-                  </div>
+                  </section>
                 );
               })}
             </div>
           )}
 
           {hiddenDateGroupCount > 0 && (
-            <p className="mt-3 text-xs font-semibold text-blue-900 dark:text-blue-100">
+            <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
               {hiddenDateGroupCount} flere datoer er skjult i denne kompakte kontrolvisning.
             </p>
           )}
