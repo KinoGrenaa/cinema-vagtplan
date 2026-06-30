@@ -599,6 +599,7 @@ export default function ShiftPlanningSavedDraftsOverview({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [draftStatusFilter, setDraftStatusFilter] =
     useState<DraftStatusFilter>("ALL");
+  const [showAllDrafts, setShowAllDrafts] = useState(false);
 
   const draftStatusCounts = useMemo(() => {
     return DRAFT_STATUS_FILTERS.reduce(
@@ -617,13 +618,17 @@ export default function ShiftPlanningSavedDraftsOverview({
     [draftStatusFilter, drafts],
   );
   const visibleDrafts = useMemo(
-    () => filteredDrafts.slice(0, MAX_VISIBLE_DRAFTS),
-    [filteredDrafts],
+    () =>
+      showAllDrafts
+        ? filteredDrafts
+        : filteredDrafts.slice(0, MAX_VISIBLE_DRAFTS),
+    [filteredDrafts, showAllDrafts],
   );
   const hiddenDraftCount = Math.max(
     0,
     filteredDrafts.length - visibleDrafts.length,
   );
+  const canToggleDraftList = filteredDrafts.length > MAX_VISIBLE_DRAFTS;
   const selectedItems = selectedDraft?.items ?? [];
   const controlSummary = useMemo(
     () => getDraftControlSummary(selectedItems),
@@ -1117,7 +1122,10 @@ export default function ShiftPlanningSavedDraftsOverview({
                   <button
                     key={filter.value}
                     type="button"
-                    onClick={() => setDraftStatusFilter(filter.value)}
+                    onClick={() => {
+                      setDraftStatusFilter(filter.value);
+                      setShowAllDrafts(false);
+                    }}
                     className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${
                       isActive
                         ? "bg-blue-600 text-white ring-blue-600 dark:bg-blue-500 dark:ring-blue-500"
@@ -1226,11 +1234,25 @@ export default function ShiftPlanningSavedDraftsOverview({
         </div>
       )}
 
-      {hiddenDraftCount > 0 && (
-        <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
-          {hiddenDraftCount} ældre {formatSelectedFilterText(draftStatusFilter)}
-          er skjult i denne kompakte visning.
-        </p>
+      {canToggleDraftList && (
+        <div className="mt-3 flex flex-col items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-center text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300 sm:flex-row">
+          <span>
+            {showAllDrafts
+              ? `Alle ${filteredDrafts.length} ${formatSelectedFilterText(
+                  draftStatusFilter,
+                )} vises.`
+              : `${hiddenDraftCount} ældre ${formatSelectedFilterText(
+                  draftStatusFilter,
+                )} er skjult i den kompakte visning.`}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowAllDrafts((current) => !current)}
+            className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-white dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-900"
+          >
+            {showAllDrafts ? "Vis færre" : `Vis alle ${filteredDrafts.length}`}
+          </button>
+        </div>
       )}
 
       {selectedDraft && (
