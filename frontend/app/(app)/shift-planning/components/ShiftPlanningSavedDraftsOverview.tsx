@@ -159,6 +159,7 @@ type DraftPublishResult = {
   createsShifts?: boolean | null;
   createdShiftCount?: number | string | null;
   createdShiftIds?: Array<number | string>;
+  affectedDateKeys?: string[];
   workTypeId?: number | string | null;
   workTypeName?: string | null;
   publishedAt?: string | null;
@@ -557,6 +558,17 @@ function formatCreatedShiftIds(ids?: Array<number | string>) {
   return hiddenCount > 0 ? `${visibleIds} + ${hiddenCount} flere` : visibleIds;
 }
 
+function formatAffectedDateLabels(dateKeys?: string[]) {
+  if (!Array.isArray(dateKeys) || dateKeys.length === 0) {
+    return [];
+  }
+
+  return Array.from(new Set(dateKeys))
+    .filter((dateKey) => /^\d{4}-\d{2}-\d{2}$/.test(dateKey))
+    .sort()
+    .map((dateKey) => ({ dateKey, label: formatDateKey(dateKey) }));
+}
+
 export default function ShiftPlanningSavedDraftsOverview({
   activeCinemaId,
   month,
@@ -679,6 +691,9 @@ export default function ShiftPlanningSavedDraftsOverview({
   );
   const publishedShiftIdsText = formatCreatedShiftIds(
     publishResult?.createdShiftIds,
+  );
+  const publishedAffectedDateLabels = formatAffectedDateLabels(
+    publishResult?.affectedDateKeys,
   );
   const canSubmitPublish =
     Boolean(selectedDraft) &&
@@ -1662,6 +1677,23 @@ export default function ShiftPlanningSavedDraftsOverview({
                       <p className="mt-1 text-xs opacity-75">
                         Shift-id'er: {publishedShiftIdsText}
                       </p>
+                    )}
+                    {publishedAffectedDateLabels.length > 0 && (
+                      <div className="mt-3 rounded-2xl border border-green-200 bg-white/65 p-3 dark:border-green-900/70 dark:bg-green-950/30">
+                        <p className="text-xs font-semibold uppercase tracking-wide opacity-75">
+                          Opdaterede datoer i månedsplanen
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {publishedAffectedDateLabels.map((date) => (
+                            <span
+                              key={date.dateKey}
+                              className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-950 dark:bg-green-900/70 dark:text-green-100"
+                            >
+                              {date.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     )}
                     <p className="mt-2 text-xs font-semibold opacity-80">
                       Listen er skiftet til Publicerede kladder, så den
