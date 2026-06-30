@@ -170,6 +170,7 @@ type ShiftPlanningSavedDraftsOverviewProps = {
   month: number;
   refreshKey: number;
   year: number;
+  onDraftPublished?: () => Promise<void> | void;
 };
 
 type DraftStatusFilter = "ALL" | "DRAFT" | "PUBLISHED" | "SUPERSEDED" | "OTHER";
@@ -561,6 +562,7 @@ export default function ShiftPlanningSavedDraftsOverview({
   month,
   refreshKey,
   year,
+  onDraftPublished,
 }: ShiftPlanningSavedDraftsOverviewProps) {
   const [drafts, setDrafts] = useState<SavedDraftSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1051,6 +1053,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublishConfirmationText("");
       setPublishNote("");
       await fetchDrafts();
+      await onDraftPublished?.();
     } catch (error) {
       setPublishResult(null);
       setPublishError(

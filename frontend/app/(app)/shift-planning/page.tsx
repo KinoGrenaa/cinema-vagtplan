@@ -297,6 +297,10 @@ export default function ShiftPlanningPage() {
     fetchData();
   }, [currentUser, fetchData, needsMasterCinemaSelection]);
 
+  const refreshMonthPlanAfterDraftPublish = useCallback(() => {
+    void fetchData();
+  }, [fetchData]);
+
   const changeMonth = (delta: number) => {
     const nextMonth = addMonths(year, month, delta);
     setYear(nextMonth.year);
@@ -529,6 +533,7 @@ export default function ShiftPlanningPage() {
               month={month}
               refreshKey={draftRefreshKey}
               year={year}
+              onDraftPublished={refreshMonthPlanAfterDraftPublish}
             />
 
             <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
