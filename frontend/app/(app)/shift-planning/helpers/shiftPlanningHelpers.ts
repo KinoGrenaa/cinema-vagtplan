@@ -159,6 +159,49 @@ export function getIsoWeekday(dateKey: string | null | undefined) {
   return jsDay === 0 ? 7 : jsDay;
 }
 
+export function getIsoWeekNumber(dateKey: string | null | undefined) {
+  const date = getUtcDateFromDateKey(dateKey);
+
+  if (!date) {
+    return null;
+  }
+
+  const thursdayDate = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+  const isoWeekday = thursdayDate.getUTCDay() || 7;
+  thursdayDate.setUTCDate(thursdayDate.getUTCDate() + 4 - isoWeekday);
+
+  const yearStart = new Date(Date.UTC(thursdayDate.getUTCFullYear(), 0, 1));
+  const daysSinceYearStart =
+    (thursdayDate.getTime() - yearStart.getTime()) / 86400000 + 1;
+
+  return Math.ceil(daysSinceYearStart / 7);
+}
+
+export function getDateWeekParity(
+  dateKey: string | null | undefined,
+): Exclude<ScheduleTemplateWeekParity, "ANY"> | null {
+  const weekNumber = getIsoWeekNumber(dateKey);
+
+  if (!weekNumber) {
+    return null;
+  }
+
+  return weekNumber % 2 === 0 ? "EVEN" : "ODD";
+}
+
+export function getDateWeekParityLabel(dateKey: string | null | undefined) {
+  const weekNumber = getIsoWeekNumber(dateKey);
+  const weekParity = getDateWeekParity(dateKey);
+
+  if (!weekNumber || !weekParity) {
+    return "Ukendt uge";
+  }
+
+  return `Uge ${weekNumber} · ${weekParity === "EVEN" ? "lige uge" : "ulige uge"}`;
+}
+
 export function getCalendarLeadingBlankCount(year: number, month: number) {
   const firstDay = new Date(Date.UTC(year, month - 1, 1));
   const jsDay = firstDay.getUTCDay();
@@ -185,6 +228,38 @@ export function formatTemplateLabel(template: ScheduleTemplateSummary | null) {
   }
 
   return `${template.name} · ${formatWeekParity(template.weekParity)}`;
+}
+
+export function isTemplateWeekParityCompatible(
+  template: ScheduleTemplateSummary | null,
+  dateKey: string | null | undefined,
+) {
+  if (!template || template.weekParity === "ANY") {
+    return true;
+  }
+
+  const dateWeekParity = getDateWeekParity(dateKey);
+
+  if (!dateWeekParity) {
+    return true;
+  }
+
+  return template.weekParity === dateWeekParity;
+}
+
+export function getTemplateWeekParityWarning(
+  template: ScheduleTemplateSummary | null,
+  dateKey: string | null | undefined,
+) {
+  if (!template || isTemplateWeekParityCompatible(template, dateKey)) {
+    return null;
+  }
+
+  return `${template.name} er markeret til ${formatWeekParity(
+    template.weekParity,
+  ).toLowerCase()}, men datoen ligger i ${getDateWeekParityLabel(
+    dateKey,
+  ).toLowerCase()}. Brug kun valget som bevidst afvigelse.`;
 }
 
 export function getDayStatusLabel(day: MonthPlanDay) {

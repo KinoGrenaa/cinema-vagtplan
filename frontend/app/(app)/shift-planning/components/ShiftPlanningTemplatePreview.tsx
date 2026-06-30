@@ -3,6 +3,7 @@ import {
   getTemplateDayAssignedCount,
   getTemplateDayForDate,
   getTemplateDayRequiredCount,
+  getTemplateWeekParityWarning,
   getUserDisplayName,
   getWeekdayName,
 } from "../helpers/shiftPlanningHelpers";
@@ -57,6 +58,7 @@ export default function ShiftPlanningTemplatePreview({
   const requiredCount = getTemplateDayRequiredCount(templateDay);
   const assignedCount = getTemplateDayAssignedCount(templateDay);
   const weekdayName = getWeekdayName(dateKey, "long");
+  const weekParityWarning = getTemplateWeekParityWarning(template, dateKey);
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40">
@@ -94,6 +96,12 @@ export default function ShiftPlanningTemplatePreview({
           </span>
         </div>
       </div>
+
+      {weekParityWarning && (
+        <p className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+          Ugeadvarsel: {weekParityWarning}
+        </p>
+      )}
 
       {!templateDay && (
         <p className="mt-4 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">

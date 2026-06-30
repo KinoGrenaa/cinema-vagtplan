@@ -15,12 +15,14 @@ import {
   formatDateKey,
   formatWeekParity,
   getCalendarLeadingBlankCount,
+  getDateWeekParityLabel,
   getCurrentUserFromToken,
   getMonthName,
   getMonthPlanDayDateKey,
   getMonthSummary,
   getSelectedMasterCinemaId,
   getWeekdayName,
+  isTemplateWeekParityCompatible,
   readErrorMessage,
 } from "./helpers/shiftPlanningHelpers";
 import type {
@@ -182,6 +184,9 @@ export default function ShiftPlanningPage() {
           ? selectedDay.scheduleTemplate
           : null)
       : null;
+  const selectedDayWeekLabel = selectedDayDateKey
+    ? getDateWeekParityLabel(selectedDayDateKey)
+    : "Ukendt uge";
 
   useEffect(() => {
     setCurrentUser(getCurrentUserFromToken());
@@ -598,12 +603,25 @@ export default function ShiftPlanningPage() {
                     disabled={saving || !dayForm.isActive}
                   >
                     <option value="">Ingen skabelon</option>
-                    {templates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name} · {formatWeekParity(template.weekParity)}
-                      </option>
-                    ))}
+                    {templates.map((template) => {
+                      const weekParityMatches = isTemplateWeekParityCompatible(
+                        template,
+                        selectedDayDateKey,
+                      );
+
+                      return (
+                        <option key={template.id} value={template.id}>
+                          {template.name} · {formatWeekParity(template.weekParity)}
+                          {!weekParityMatches ? " · passer ikke til denne uge" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
+                  <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
+                    Datoen ligger i {selectedDayWeekLabel}. Skabeloner, der ikke
+                    passer til ugen, kan vælges som bevidst afvigelse, men bør
+                    normalt undgås.
+                  </p>
                   {templates.length === 0 && (
                     <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                       Der findes ingen aktive vagtsskabeloner endnu. Opret en

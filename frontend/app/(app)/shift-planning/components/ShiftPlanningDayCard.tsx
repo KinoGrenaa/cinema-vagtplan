@@ -6,6 +6,7 @@ import {
   getTemplateDayAssignedCount,
   getTemplateDayForDate,
   getTemplateDayRequiredCount,
+  getTemplateWeekParityWarning,
   getUserDisplayName,
   getWeekdayName,
   isToday,
@@ -60,6 +61,9 @@ export default function ShiftPlanningDayCard({
   const templateJobFunctions = templateDay?.jobFunctions ?? [];
   const requiredCount = getTemplateDayRequiredCount(templateDay);
   const assignedCount = getTemplateDayAssignedCount(templateDay);
+  const weekParityWarning = day.isActive
+    ? getTemplateWeekParityWarning(displayTemplate, dateKey)
+    : null;
   const hiddenJobFunctionCount = Math.max(
     0,
     templateJobFunctions.length - MAX_VISIBLE_JOB_FUNCTIONS,
@@ -97,6 +101,12 @@ export default function ShiftPlanningDayCard({
             ? formatTemplateLabel(displayTemplate)
             : "Lukket / ingen plan"}
         </p>
+
+        {weekParityWarning && (
+          <p className="rounded-lg border border-amber-300 bg-amber-50/80 p-2 text-xs font-semibold text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200">
+            Ugeadvarsel: {weekParityWarning}
+          </p>
+        )}
 
         {day.isActive && displayTemplate && (
           <div className="space-y-2">
