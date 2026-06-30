@@ -429,6 +429,14 @@ export default function ShiftPlanningSavedDraftsOverview({
     0,
     validationIssues.length - visibleValidationIssues.length,
   );
+  const backendValidationIsGreen = Boolean(
+    validationResult &&
+      validationSummary?.isValid === true &&
+      toNumber(validationSummary.errorCount) === 0 &&
+      toNumber(validationSummary.warningCount) === 0 &&
+      toNumber(validationSummary.issueCount) === 0,
+  );
+  const isReadyForFuturePublication = backendValidationIsGreen && !draftNeedsControl;
 
   const fetchDrafts = useCallback(async () => {
     if (!activeCinemaId) {
@@ -758,8 +766,63 @@ export default function ShiftPlanningSavedDraftsOverview({
             <p className="mt-1 opacity-85">
               {draftNeedsControl
                 ? "Ret eller godkend afvigelserne bevidst, før vi senere bygger publicering til den rigtige vagtplan."
-                : "Kladden ser umiddelbart klar ud til et senere publiceringstrin, når det bliver bygget."}
+                : "Kladden ser umiddelbart klar ud til et senere publiceringstrin, når backend-valideringen også er grøn."}
             </p>
+          </div>
+
+          <div
+            className={`mt-4 rounded-2xl border p-4 text-sm ${
+              isReadyForFuturePublication
+                ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
+                : backendValidationIsGreen
+                  ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
+                  : "border-gray-200 bg-white text-gray-800 dark:border-gray-800 dark:bg-gray-950/70 dark:text-gray-200"
+            }`}
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-70">
+                  Publiceringsklarhed
+                </p>
+                <p className="mt-2 text-base font-bold">
+                  {isReadyForFuturePublication
+                    ? "Klar til senere publicering"
+                    : backendValidationIsGreen
+                      ? "Backend-validering er grøn — gennemgå lokale kontroladvarsler"
+                      : validationResult
+                        ? "Ikke klar til publicering"
+                        : validationError
+                          ? "Ikke klar — backend-validering fejlede"
+                          : "Ikke klar — kør backend-validering først"}
+                </p>
+                <p className="mt-1 opacity-85">
+                  {isReadyForFuturePublication
+                    ? "Kladden har grøn backend-validering og ingen synlige lokale kontroladvarsler. Selve publiceringen er stadig ikke bygget."
+                    : backendValidationIsGreen
+                      ? "Backend fandt ingen fejl eller advarsler, men kladden har lokale kontrolpunkter, som bør gennemgås før publicering bygges."
+                      : validationResult
+                        ? "Backend-valideringen skal være grøn, før kladden må vises som klar til publicering."
+                        : validationError
+                          ? "Ret fejlen eller prøv valideringen igen. Kladden kan ikke markeres klar uden en grøn backend-validering."
+                          : "Klik på “Kør backend-validering”. En kladde kan først vises som klar, når backend-valideringen er kørt og er grøn."}
+                </p>
+              </div>
+              <span
+                className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold ${
+                  isReadyForFuturePublication
+                    ? "bg-green-100 text-green-950 dark:bg-green-900/60 dark:text-green-100"
+                    : backendValidationIsGreen
+                      ? "bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100"
+                      : "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                }`}
+              >
+                {isReadyForFuturePublication
+                  ? "Klar"
+                  : backendValidationIsGreen
+                    ? "Kontrol"
+                    : "Blokeret"}
+              </span>
+            </div>
           </div>
 
           <div className="mt-5 rounded-2xl border border-blue-200 bg-white p-4 dark:border-blue-900/70 dark:bg-gray-950/70">
