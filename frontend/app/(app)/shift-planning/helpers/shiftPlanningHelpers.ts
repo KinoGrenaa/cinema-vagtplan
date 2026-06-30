@@ -1,10 +1,16 @@
-import type { CurrentUser, MonthPlanDay, ScheduleTemplateSummary, ScheduleTemplateWeekParity } from "./shiftPlanningTypes";
+import type {
+  CurrentUser,
+  MonthPlanDay,
+  ScheduleTemplateDaySummary,
+  ScheduleTemplateSummary,
+  ScheduleTemplateUserSummary,
+  ScheduleTemplateWeekParity,
+} from "./shiftPlanningTypes";
 
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 
 export function getCurrentUserFromToken(): CurrentUser | null {
   const token = localStorage.getItem("token");
-
   if (!token) return null;
 
   try {
@@ -51,8 +57,74 @@ export async function readErrorMessage(response: Response, fallback: string) {
   return fallback;
 }
 
-export function formatDateKey(dateKey: string) {
-  const [year, month, day] = dateKey.split("-");
+function isValidDateParts(year: number, month: number, day: number) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+export function normalizeDateKey(value: string | null | undefined) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+  const dateKeyMatch = trimmedValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (dateKeyMatch) {
+    const [, yearText, monthText, dayText] = dateKeyMatch;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+
+    if (isValidDateParts(year, month, day)) {
+      return `${yearText}-${monthText}-${dayText}`;
+    }
+  }
+
+  const parsedDate = new Date(trimmedValue);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  const year = parsedDate.getUTCFullYear();
+  const month = String(parsedDate.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(parsedDate.getUTCDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+export function getMonthPlanDayDateKey(day: {
+  date?: string | null;
+  dateKey?: string | null;
+}) {
+  return normalizeDateKey(day.dateKey) ?? normalizeDateKey(day.date) ?? "";
+}
+
+function getUtcDateFromDateKey(value: string | null | undefined) {
+  const dateKey = normalizeDateKey(value);
+
+  if (!dateKey) {
+    return null;
+  }
+
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+export function formatDateKey(dateKey: string | null | undefined) {
+  const normalizedDateKey = normalizeDateKey(dateKey);
+
+  if (!normalizedDateKey) {
+    return "Ukendt dato";
+  }
+
+  const [year, month, day] = normalizedDateKey.split("-");
   return `${day}.${month}.${year}`;
 }
 
@@ -63,10 +135,28 @@ export function getMonthName(year: number, month: number) {
   }).format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
-export function getWeekdayName(dateKey: string, length: "short" | "long" = "short") {
-  return new Intl.DateTimeFormat("da-DK", { weekday: length }).format(
-    new Date(`${dateKey}T00:00:00.000Z`),
-  );
+export function getWeekdayName(
+  dateKey: string | null | undefined,
+  length: "short" | "long" = "short",
+) {
+  const date = getUtcDateFromDateKey(dateKey);
+
+  if (!date) {
+    return length === "long" ? "Ukendt dag" : "Ukendt";
+  }
+
+  return new Intl.DateTimeFormat("da-DK", { weekday: length }).format(date);
+}
+
+export function getIsoWeekday(dateKey: string | null | undefined) {
+  const date = getUtcDateFromDateKey(dateKey);
+
+  if (!date) {
+    return null;
+  }
+
+  const jsDay = date.getUTCDay();
+  return jsDay === 0 ? 7 : jsDay;
 }
 
 export function getCalendarLeadingBlankCount(year: number, month: number) {
@@ -138,8 +228,54 @@ export function getMonthSummary(days: MonthPlanDay[]) {
   };
 }
 
-export function isToday(dateKey: string) {
+export function getTemplateDayForDate(
+  template: ScheduleTemplateSummary | null,
+  dateKey: string | null | undefined,
+) {
+  if (!template?.days?.length) {
+    return null;
+  }
+
+  const weekday = getIsoWeekday(dateKey);
+
+  if (!weekday) {
+    return null;
+  }
+
+  return template.days.find((day) => day.weekday === weekday && day.isActive) ?? null;
+}
+
+export function getTemplateDayRequiredCount(
+  templateDay: ScheduleTemplateDaySummary | null,
+) {
+  return (templateDay?.jobFunctions ?? []).reduce(
+    (sum, item) => sum + (item.requiredCount ?? 0),
+    0,
+  );
+}
+
+export function getTemplateDayAssignedCount(
+  templateDay: ScheduleTemplateDaySummary | null,
+) {
+  return (templateDay?.jobFunctions ?? []).reduce(
+    (sum, item) => sum + (item.assignments?.length ?? 0),
+    0,
+  );
+}
+
+export function getUserDisplayName(user: ScheduleTemplateUserSummary) {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  return fullName || user.email;
+}
+
+export function isToday(dateKey: string | null | undefined) {
+  const normalizedDateKey = normalizeDateKey(dateKey);
+
+  if (!normalizedDateKey) {
+    return false;
+  }
+
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  return dateKey === todayKey;
+  return normalizedDateKey === todayKey;
 }
