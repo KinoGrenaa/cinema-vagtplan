@@ -141,6 +141,30 @@ type DraftPublicationPreviewResult = {
   previewItems?: DraftPublicationPreviewItem[];
 };
 
+type WorkTypeOption = {
+  id: number | string;
+  name: string;
+  color?: string | null;
+  isActive?: boolean | null;
+  archivedAt?: string | null;
+};
+
+type DraftPublishResult = {
+  draftId?: number | string;
+  cinemaId?: number | null;
+  year?: number | null;
+  month?: number | null;
+  status?: string | null;
+  mode?: string | null;
+  createsShifts?: boolean | null;
+  createdShiftCount?: number | string | null;
+  createdShiftIds?: Array<number | string>;
+  workTypeId?: number | string | null;
+  workTypeName?: string | null;
+  publishedAt?: string | null;
+  message?: string | null;
+};
+
 type ShiftPlanningSavedDraftsOverviewProps = {
   activeCinemaId: number | null;
   month: number;
@@ -153,6 +177,7 @@ const MAX_VISIBLE_DATE_GROUPS = 10;
 const MAX_VISIBLE_ITEMS_PER_DAY = 6;
 const MAX_VISIBLE_VALIDATION_ISSUES = 20;
 const MAX_VISIBLE_PUBLICATION_PREVIEW_ITEMS = 12;
+const PUBLISH_CONFIRMATION_TEXT = "PUBLICER_KLADDE";
 
 function toNumber(value: unknown) {
   const numberValue = Number(value);
@@ -443,6 +468,11 @@ function ValidationMetricCard({
   );
 }
 
+function getSelectedWorkTypeName(workTypes: WorkTypeOption[], workTypeId: string) {
+  const workType = workTypes.find((item) => String(item.id) === workTypeId);
+  return workType?.name || "Valgt arbejdstype";
+}
+
 export default function ShiftPlanningSavedDraftsOverview({
   activeCinemaId,
   month,
@@ -462,6 +492,15 @@ export default function ShiftPlanningSavedDraftsOverview({
   const [publicationPreviewResult, setPublicationPreviewResult] =
     useState<DraftPublicationPreviewResult | null>(null);
   const [publicationPreviewError, setPublicationPreviewError] = useState<string | null>(null);
+  const [workTypes, setWorkTypes] = useState<WorkTypeOption[]>([]);
+  const [loadingWorkTypes, setLoadingWorkTypes] = useState(false);
+  const [workTypesError, setWorkTypesError] = useState<string | null>(null);
+  const [publishWorkTypeId, setPublishWorkTypeId] = useState("");
+  const [publishConfirmationText, setPublishConfirmationText] = useState("");
+  const [publishNote, setPublishNote] = useState("");
+  const [publishingDraftId, setPublishingDraftId] = useState<number | string | null>(null);
+  const [publishResult, setPublishResult] = useState<DraftPublishResult | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const visibleDrafts = useMemo(() => drafts.slice(0, MAX_VISIBLE_DRAFTS), [drafts]);
@@ -492,6 +531,16 @@ export default function ShiftPlanningSavedDraftsOverview({
   const publicationPreviewCanPublishLater =
     publicationPreviewResult?.createsShifts === false &&
     publicationPreviewSummary?.canPublishLater === true;
+  const selectedDraftCanBePublished = selectedDraft?.status === "DRAFT";
+  const publishConfirmationMatches = publishConfirmationText.trim() === PUBLISH_CONFIRMATION_TEXT;
+  const selectedWorkTypeName = getSelectedWorkTypeName(workTypes, publishWorkTypeId);
+  const canSubmitPublish =
+    Boolean(selectedDraft) &&
+    selectedDraftCanBePublished &&
+    publicationPreviewCanPublishLater &&
+    Boolean(publishWorkTypeId) &&
+    publishConfirmationMatches &&
+    publishingDraftId !== selectedDraft?.id;
   const backendValidationIsGreen = Boolean(
     validationResult &&
       validationSummary?.isValid === true &&
@@ -509,6 +558,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(null);
       setPublicationPreviewResult(null);
       setPublicationPreviewError(null);
+      setPublishResult(null);
+      setPublishError(null);
       setErrorMessage(null);
       return;
     }
@@ -547,6 +598,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(null);
       setPublicationPreviewResult(null);
       setPublicationPreviewError(null);
+      setPublishResult(null);
+      setPublishError(null);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -561,6 +614,54 @@ export default function ShiftPlanningSavedDraftsOverview({
     fetchDrafts();
   }, [fetchDrafts, refreshKey]);
 
+  const fetchWorkTypes = useCallback(async () => {
+    if (!activeCinemaId) {
+      setWorkTypes([]);
+      setPublishWorkTypeId("");
+      setWorkTypesError(null);
+      return;
+    }
+
+    try {
+      setLoadingWorkTypes(true);
+      setWorkTypesError(null);
+
+      const response = await apiFetch(
+        appendCinemaId("/work-types?includeArchived=false", activeCinemaId),
+      );
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, "Kunne ikke hente arbejdstyper"));
+      }
+
+      const data = await response.json();
+      const activeWorkTypes = Array.isArray(data)
+        ? data.filter((workType: WorkTypeOption) => workType.isActive !== false && !workType.archivedAt)
+        : [];
+
+      setWorkTypes(activeWorkTypes);
+      setPublishWorkTypeId((current) =>
+        activeWorkTypes.some((workType: WorkTypeOption) => String(workType.id) === current)
+          ? current
+          : "",
+      );
+    } catch (error) {
+      setWorkTypes([]);
+      setPublishWorkTypeId("");
+      setWorkTypesError(
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da arbejdstyperne skulle hentes.",
+      );
+    } finally {
+      setLoadingWorkTypes(false);
+    }
+  }, [activeCinemaId]);
+
+  useEffect(() => {
+    fetchWorkTypes();
+  }, [fetchWorkTypes]);
+
   const openDraft = async (draftId: number | string) => {
     if (!activeCinemaId) {
       setErrorMessage("Vælg en aktiv biograf, før du åbner kladder.");
@@ -574,6 +675,10 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(null);
       setPublicationPreviewResult(null);
       setPublicationPreviewError(null);
+      setPublishResult(null);
+      setPublishError(null);
+      setPublishConfirmationText("");
+      setPublishNote("");
 
       const response = await apiFetch(
         appendCinemaId(`/shift-planning-drafts/${draftId}`, activeCinemaId),
@@ -592,6 +697,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(null);
       setPublicationPreviewResult(null);
       setPublicationPreviewError(null);
+      setPublishResult(null);
+      setPublishError(null);
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -654,6 +761,8 @@ export default function ShiftPlanningSavedDraftsOverview({
     try {
       setLoadingPublicationPreviewId(selectedDraft.id);
       setPublicationPreviewError(null);
+      setPublishResult(null);
+      setPublishError(null);
 
       const response = await apiFetch(
         appendCinemaId(
@@ -681,12 +790,92 @@ export default function ShiftPlanningSavedDraftsOverview({
     }
   };
 
+  const publishSelectedDraft = async () => {
+    if (!selectedDraft) {
+      setPublishError("Åbn en kladde, før du publicerer.");
+      return;
+    }
+
+    if (!activeCinemaId) {
+      setPublishError("Vælg en aktiv biograf, før du publicerer kladden.");
+      return;
+    }
+
+    if (!selectedDraftCanBePublished) {
+      setPublishError("Kun kladder med status Kladde kan publiceres.");
+      return;
+    }
+
+    if (!publicationPreviewCanPublishLater) {
+      setPublishError("Hent et grønt publiceringspreview, før kladden publiceres.");
+      return;
+    }
+
+    if (!publishWorkTypeId) {
+      setPublishError("Vælg en arbejdstype til de vagter, der oprettes.");
+      return;
+    }
+
+    if (!publishConfirmationMatches) {
+      setPublishError(`Skriv ${PUBLISH_CONFIRMATION_TEXT} for at bekræfte publicering.`);
+      return;
+    }
+
+    try {
+      setPublishingDraftId(selectedDraft.id);
+      setPublishError(null);
+      setPublishResult(null);
+
+      const response = await apiFetch(
+        appendCinemaId(`/shift-planning-drafts/${selectedDraft.id}/publish`, activeCinemaId),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            workTypeId: Number(publishWorkTypeId),
+            confirm: PUBLISH_CONFIRMATION_TEXT,
+            note: publishNote.trim() || undefined,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, "Kunne ikke publicere kladden"));
+      }
+
+      const result = (await response.json()) as DraftPublishResult;
+      setPublishResult(result);
+      setSelectedDraft((current) =>
+        current && String(current.id) === String(selectedDraft.id)
+          ? { ...current, status: "PUBLISHED" }
+          : current,
+      );
+      setPublicationPreviewResult(null);
+      setValidationResult(null);
+      setPublishConfirmationText("");
+      setPublishNote("");
+      await fetchDrafts();
+    } catch (error) {
+      setPublishResult(null);
+      setPublishError(
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da kladden skulle publiceres.",
+      );
+    } finally {
+      setPublishingDraftId(null);
+    }
+  };
+
   const closeControl = () => {
     setSelectedDraft(null);
     setValidationResult(null);
     setValidationError(null);
     setPublicationPreviewResult(null);
     setPublicationPreviewError(null);
+    setPublishResult(null);
+    setPublishError(null);
+    setPublishConfirmationText("");
+    setPublishNote("");
   };
 
   return (
@@ -1114,6 +1303,121 @@ export default function ShiftPlanningSavedDraftsOverview({
                 )}
               </div>
             )}
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-red-200 bg-white p-4 dark:border-red-900/70 dark:bg-gray-950/70">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm font-bold text-gray-950 dark:text-white">
+                  Publicer kladde
+                </p>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                  Dette er det første trin, der kan oprette rigtige vagter i vagtplanen. Knappen
+                  kræver grønt publiceringspreview, aktiv arbejdstype og præcis tekstbekræftelse.
+                </p>
+              </div>
+              <span
+                className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold ${
+                  selectedDraftCanBePublished && publicationPreviewCanPublishLater
+                    ? "bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100"
+                    : "bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                }`}
+              >
+                {selectedDraftCanBePublished && publicationPreviewCanPublishLater
+                  ? "Kan bekræftes"
+                  : "Blokeret"}
+              </span>
+            </div>
+
+            {publishResult && (
+              <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
+                <p className="font-semibold">
+                  {publishResult.message || "Planlægningskladden er publiceret."}
+                </p>
+                <p className="mt-1 opacity-85">
+                  Oprettede vagter: {toNumber(publishResult.createdShiftCount)} · Arbejdstype: {publishResult.workTypeName || selectedWorkTypeName}
+                </p>
+              </div>
+            )}
+
+            {publishError && (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
+                {publishError}
+              </div>
+            )}
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <label className="grid gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                Arbejdstype til oprettede vagter
+                <select
+                  value={publishWorkTypeId}
+                  onChange={(event) => setPublishWorkTypeId(event.target.value)}
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  disabled={loadingWorkTypes || publishingDraftId === selectedDraft.id}
+                >
+                  <option value="">Vælg arbejdstype</option>
+                  {workTypes.map((workType) => (
+                    <option key={workType.id} value={String(workType.id)}>
+                      {workType.name}
+                    </option>
+                  ))}
+                </select>
+                {loadingWorkTypes && (
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                    Henter arbejdstyper...
+                  </span>
+                )}
+                {workTypesError && (
+                  <span className="text-xs font-normal text-red-600 dark:text-red-300">
+                    {workTypesError}
+                  </span>
+                )}
+              </label>
+
+              <label className="grid gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                Bekræft publicering
+                <input
+                  value={publishConfirmationText}
+                  onChange={(event) => setPublishConfirmationText(event.target.value)}
+                  placeholder={PUBLISH_CONFIRMATION_TEXT}
+                  className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  disabled={publishingDraftId === selectedDraft.id}
+                />
+                <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                  Skriv {PUBLISH_CONFIRMATION_TEXT} for at låse knappen op.
+                </span>
+              </label>
+            </div>
+
+            <label className="mt-4 grid gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Intern note til vagterne
+              <textarea
+                value={publishNote}
+                onChange={(event) => setPublishNote(event.target.value)}
+                rows={2}
+                placeholder="Valgfri note, fx publiceret fra månedsplan"
+                className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                disabled={publishingDraftId === selectedDraft.id}
+              />
+            </label>
+
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="font-semibold">Publicering opretter rigtige vagter.</p>
+                <p className="mt-1 opacity-85">
+                  Kør kun dette, når kladden er gennemgået, publiceringspreviewet er grønt, og
+                  arbejdstypen er korrekt.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={publishSelectedDraft}
+                disabled={!canSubmitPublish}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {publishingDraftId === selectedDraft.id ? "Publicerer..." : "Publicer kladde"}
+              </button>
+            </div>
           </div>
 
           <div className="mt-5 rounded-2xl border border-blue-200 bg-white p-4 dark:border-blue-900/70 dark:bg-gray-950/70">
