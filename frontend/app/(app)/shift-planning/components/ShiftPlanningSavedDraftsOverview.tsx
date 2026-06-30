@@ -1046,6 +1046,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       );
       setPublicationPreviewResult(null);
       setValidationResult(null);
+      setDraftStatusFilter("PUBLISHED");
+      setShowAllDrafts(false);
       setPublishConfirmationText("");
       setPublishNote("");
       await fetchDrafts();
@@ -1658,6 +1660,10 @@ export default function ShiftPlanningSavedDraftsOverview({
                         Shift-id'er: {publishedShiftIdsText}
                       </p>
                     )}
+                    <p className="mt-2 text-xs font-semibold opacity-80">
+                      Listen er skiftet til Publicerede kladder, så den
+                      publicerede kladde kan kontrolleres med det samme.
+                    </p>
                   </div>
                   <a
                     href="/schedule"
