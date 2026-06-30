@@ -18,9 +18,11 @@ export class ShiftPlanningDraftsController {
 
   private parseRequiredId(value: string | number, message: string) {
     const parsedId = Number(value);
+
     if (!Number.isInteger(parsedId) || parsedId <= 0) {
       throw new BadRequestException(message);
     }
+
     return parsedId;
   }
 
@@ -55,6 +57,20 @@ export class ShiftPlanningDraftsController {
       month: body?.month ?? month,
       cinemaId: body?.cinemaId ?? cinemaId,
     });
+  }
+
+  @UseGuards(JwtGuard)
+  @Get(':id/validate')
+  validateDraft(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.shiftPlanningDraftsService.validateDraft(
+      req.user,
+      this.parseRequiredId(id, 'Planlægningskladde skal være et gyldigt ID.'),
+      cinemaId,
+    );
   }
 
   @UseGuards(JwtGuard)
