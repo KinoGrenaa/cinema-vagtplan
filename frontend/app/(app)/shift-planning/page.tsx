@@ -10,6 +10,7 @@ import ShiftPlanningDayCard from "./components/ShiftPlanningDayCard";
 import ShiftPlanningTemplatePreview from "./components/ShiftPlanningTemplatePreview";
 import ShiftPlanningWeekIndicator from "./components/ShiftPlanningWeekIndicator";
 import ShiftPlanningMissingTemplateOverview from "./components/ShiftPlanningMissingTemplateOverview";
+import ShiftPlanningDraftPreview from "./components/ShiftPlanningDraftPreview";
 import ShiftPlanningMasterCinemaRequired from "./components/ShiftPlanningMasterCinemaRequired";
 import {
   addMonths,
@@ -171,6 +172,10 @@ export default function ShiftPlanningPage() {
   );
   const missingTemplateDays = useMemo(
     () => days.filter((day) => day.isActive && !day.scheduleTemplateId),
+    [days],
+  );
+  const plannedTemplateDays = useMemo(
+    () => days.filter((day) => day.isActive && Boolean(day.scheduleTemplateId)),
     [days],
   );
 
@@ -504,6 +509,13 @@ export default function ShiftPlanningPage() {
             <ShiftPlanningMissingTemplateOverview
               days={missingTemplateDays}
               loading={loading}
+              onOpenDay={openDayModal}
+            />
+
+            <ShiftPlanningDraftPreview
+              days={plannedTemplateDays}
+              loading={loading}
+              templatesById={templatesById}
               onOpenDay={openDayModal}
             />
 
