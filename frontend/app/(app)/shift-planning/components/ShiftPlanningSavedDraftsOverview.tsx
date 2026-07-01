@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
+import { ShiftPlanningPublicationPreviewPanel } from "./ShiftPlanningPublicationPreviewPanel";
 import { ShiftPlanningPublishChecklist } from "./ShiftPlanningPublishChecklist";
 
 import {
@@ -193,7 +194,6 @@ const MAX_VISIBLE_DRAFTS = 5;
 const MAX_VISIBLE_DATE_GROUPS = 10;
 const MAX_VISIBLE_ITEMS_PER_DAY = 6;
 const MAX_VISIBLE_VALIDATION_ISSUES = 20;
-const MAX_VISIBLE_PUBLICATION_PREVIEW_ITEMS = 12;
 const PUBLISH_CONFIRMATION_TEXT = "PUBLICER_KLADDE";
 
 function toNumber(value: unknown) {
@@ -671,15 +671,6 @@ export default function ShiftPlanningSavedDraftsOverview({
     validationIssues.length - visibleValidationIssues.length,
   );
   const publicationPreviewSummary = publicationPreviewResult?.summary;
-  const publicationPreviewItems = publicationPreviewResult?.previewItems ?? [];
-  const visiblePublicationPreviewItems = publicationPreviewItems.slice(
-    0,
-    MAX_VISIBLE_PUBLICATION_PREVIEW_ITEMS,
-  );
-  const hiddenPublicationPreviewItemCount = Math.max(
-    0,
-    publicationPreviewItems.length - visiblePublicationPreviewItems.length,
-  );
   const publicationPreviewCanPublishLater =
     publicationPreviewResult?.createsShifts === false &&
     publicationPreviewSummary?.canPublishLater === true;
@@ -1443,193 +1434,11 @@ export default function ShiftPlanningSavedDraftsOverview({
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-purple-200 bg-white p-4 dark:border-purple-900/70 dark:bg-gray-950/70">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className="text-sm font-bold text-gray-950 dark:text-white">
-                  Publiceringspreview
-                </p>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Viser hvad kladden senere kan blive til, uden at oprette eller
-                  publicere vagter. Backend svarer eksplicit med{" "}
-                  <span className="font-semibold">createsShifts: false</span>.
-                </p>
-              </div>
-              {publicationPreviewResult?.checkedAt && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Senest hentet{" "}
-                  {formatCreatedAt(publicationPreviewResult.checkedAt)}
-                </p>
-              )}
-            </div>
-
-            {publicationPreviewError && (
-              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
-                {publicationPreviewError}
-              </div>
-            )}
-
-            {!publicationPreviewResult && !publicationPreviewError && (
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-                Publiceringspreview er ikke hentet for den åbne kladde endnu.
-              </div>
-            )}
-
-            {publicationPreviewResult && (
-              <div className="mt-4 space-y-4">
-                <div
-                  className={`rounded-2xl border p-4 text-sm ${
-                    publicationPreviewCanPublishLater
-                      ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
-                      : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
-                  }`}
-                >
-                  <p className="font-semibold">
-                    {publicationPreviewCanPublishLater
-                      ? "Preview er klar til et senere publiceringstrin"
-                      : "Preview viser blokeringer før senere publicering"}
-                  </p>
-                  <p className="mt-1 opacity-85">
-                    Mode: {publicationPreviewResult.mode || "Ukendt"} · Opretter
-                    vagter nu:{" "}
-                    {publicationPreviewResult.createsShifts ? "Ja" : "Nej"}
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <ValidationMetricCard
-                    label="Kan senere publiceres"
-                    value={publicationPreviewCanPublishLater ? "Ja" : "Nej"}
-                    variant={
-                      publicationPreviewCanPublishLater ? "success" : "warning"
-                    }
-                  />
-                  <ValidationMetricCard
-                    label="Preview-poster"
-                    value={toNumber(publicationPreviewSummary?.itemCount)}
-                  />
-                  <ValidationMetricCard
-                    label="Kan blive vagter"
-                    value={toNumber(
-                      publicationPreviewSummary?.publishableItemCount,
-                    )}
-                    variant="success"
-                  />
-                  <ValidationMetricCard
-                    label="Blokeret"
-                    value={toNumber(
-                      publicationPreviewSummary?.blockedItemCount,
-                    )}
-                    variant="warning"
-                  />
-                </div>
-
-                {(publicationPreviewResult.blockingReasons ?? []).length >
-                  0 && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
-                    <p className="font-semibold">Blokerende årsager</p>
-                    <ul className="mt-2 list-disc space-y-1 pl-5">
-                      {(publicationPreviewResult.blockingReasons ?? []).map(
-                        (reason) => (
-                          <li key={reason}>{reason}</li>
-                        ),
-                      )}
-                    </ul>
-                  </div>
-                )}
-
-                {visiblePublicationPreviewItems.length > 0 && (
-                  <div className="grid gap-3">
-                    {visiblePublicationPreviewItems.map((item, index) => {
-                      const itemDate = item.dateKey
-                        ? formatDateKey(item.dateKey)
-                        : "Dato mangler";
-                      const blockReasons = item.blockReasons ?? [];
-
-                      return (
-                        <article
-                          key={`${item.draftItemId ?? "preview"}-${index}`}
-                          className={`rounded-2xl border p-4 text-sm ${
-                            item.canBecomeShift
-                              ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
-                              : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
-                          }`}
-                        >
-                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold dark:bg-gray-950/60">
-                                  {item.canBecomeShift
-                                    ? "Kan blive vagt"
-                                    : "Blokeret"}
-                                </span>
-                                <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
-                                  {itemDate}
-                                </span>
-                              </div>
-                              <p className="mt-3 font-semibold">
-                                {formatMinute(item.plannedStartMinute) &&
-                                formatMinute(item.plannedEndMinute)
-                                  ? `kl. ${formatMinute(item.plannedStartMinute)} - ${formatMinute(item.plannedEndMinute)}`
-                                  : "Tid mangler"}
-                              </p>
-                              <p className="mt-1 opacity-85">
-                                {item.jobFunctionColor && (
-                                  <span
-                                    className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
-                                    style={{
-                                      backgroundColor: item.jobFunctionColor,
-                                    }}
-                                  />
-                                )}
-                                {item.jobFunctionName || "Jobfunktion mangler"}
-                              </p>
-                            </div>
-                            <div className="lg:text-right">
-                              <p className="font-semibold">
-                                {item.userName || "Ikke tildelt"}
-                              </p>
-                              <p className="mt-1 text-xs opacity-75">
-                                Kladdepost #{item.draftItemId ?? "?"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {blockReasons.length > 0 && (
-                            <ul className="mt-3 list-disc space-y-1 pl-5 text-xs opacity-90">
-                              {blockReasons.map((reason) => (
-                                <li key={reason}>{reason}</li>
-                              ))}
-                            </ul>
-                          )}
-
-                          {item.warningMessage && (
-                            <p className="mt-3 text-xs font-semibold">
-                              Advarsel: {item.warningMessage}
-                            </p>
-                          )}
-                        </article>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {publicationPreviewItems.length === 0 && (
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-                    Previewet har ingen poster. Kladden kan ikke senere
-                    publiceres, før den har poster.
-                  </div>
-                )}
-
-                {hiddenPublicationPreviewItemCount > 0 && (
-                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                    {hiddenPublicationPreviewItemCount} flere preview-poster er
-                    skjult i denne kompakte visning.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+          <ShiftPlanningPublicationPreviewPanel
+            canPublishLater={publicationPreviewCanPublishLater}
+            errorMessage={publicationPreviewError}
+            result={publicationPreviewResult}
+          />
 
           <div className="mt-5 rounded-2xl border border-red-200 bg-white p-4 dark:border-red-900/70 dark:bg-gray-950/70">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
