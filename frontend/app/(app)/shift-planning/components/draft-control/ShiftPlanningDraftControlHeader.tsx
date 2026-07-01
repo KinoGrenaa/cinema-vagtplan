@@ -12,7 +12,7 @@ type ShiftPlanningDraftControlHeaderProps = {
 function formatDraftStatus(status?: string | null) {
   switch (status) {
     case "DRAFT":
-      return "Kladde";
+      return "Åben kladde";
     case "SUPERSEDED":
       return "Erstattet";
     case "PUBLISHED":
@@ -58,7 +58,7 @@ export function ShiftPlanningDraftControlHeader({
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h3 className="text-xl font-bold text-gray-950 dark:text-white">
-            Kladde #{draftId} · {totalItems} poster
+            Planlægningskladde #{draftId} · {totalItems} kladdeposter
           </h3>
           <span
             className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClasses(
@@ -82,7 +82,7 @@ export function ShiftPlanningDraftControlHeader({
           className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
           disabled={isValidating}
         >
-          {isValidating ? "Validerer..." : "Kør backend-validering"}
+          {isValidating ? "Kontrollerer..." : "Kør backend-kontrol"}
         </button>
         <button
           type="button"
@@ -99,7 +99,7 @@ export function ShiftPlanningDraftControlHeader({
           onClick={onClose}
           className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-900/40"
         >
-          Luk kontrol
+          Luk kladdekontrol
         </button>
       </div>
     </div>
