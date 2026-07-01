@@ -59,6 +59,10 @@ type InsertedShiftRow = {
   id: number | bigint;
 };
 
+type ExistingPublishedDraftShiftRow = {
+  id: number | bigint;
+};
+
 const PUBLISH_CONFIRMATION_TEXT = 'PUBLICER_KLADDE';
 
 function ensureAdminAccess(user: AuthUser) {
@@ -261,6 +265,10 @@ function getActorUserId(user: AuthUser) {
   return Number.isInteger(userId) && userId > 0 ? userId : null;
 }
 
+function buildDraftSourceMarker(draftId: number) {
+  return `Oprettet fra planlægningskladde #${draftId}`;
+}
+
 function buildShiftNote(
   draftId: number,
   dateKey: string,
@@ -268,13 +276,33 @@ function buildShiftNote(
   extraNote: string | null,
 ) {
   const parts = [
-    `Oprettet fra planlægningskladde #${draftId}`,
+    buildDraftSourceMarker(draftId),
     dateKey,
     jobFunctionName ? `Jobfunktion: ${jobFunctionName}` : null,
     extraNote,
   ].filter(Boolean);
 
   return parts.join(' · ');
+}
+
+function buildPublishAuditDescription(
+  draftId: number,
+  insertedShiftIds: number[],
+  affectedDateKeys: string[],
+  workTypeName: string,
+) {
+  const parts = [
+    `Publicerede planlægningskladde #${draftId} til ${insertedShiftIds.length} vagt(er).`,
+    affectedDateKeys.length > 0
+      ? `Datoer: ${affectedDateKeys.join(', ')}`
+      : null,
+    `Arbejdstype: ${workTypeName}`,
+    insertedShiftIds.length > 0
+      ? `Shift-id'er: ${insertedShiftIds.join(', ')}`
+      : null,
+  ].filter(Boolean);
+
+  return parts.join(' ');
 }
 
 function getUniqueDateKeysFromPublicationItems(
@@ -304,6 +332,32 @@ function getDateRangeForDateKey(dateKey: string) {
   const end = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
 
   return { start, end };
+}
+
+async function assertNoExistingPublishedDraftShifts(
+  tx: Prisma.TransactionClient,
+  cinemaId: number,
+  draftId: number,
+) {
+  const sourceMarker = buildDraftSourceMarker(draftId);
+  const existingRows = await tx.$queryRaw<ExistingPublishedDraftShiftRow[]>(Prisma.sql`
+    SELECT s.id
+    FROM "Shift" s
+    WHERE s."cinemaId" = ${cinemaId}
+      AND s."note" IS NOT NULL
+      AND s."note" LIKE ${`${sourceMarker}%`}
+    ORDER BY s.id ASC
+    LIMIT 25
+  `);
+
+  if (existingRows.length === 0) {
+    return;
+  }
+
+  const existingShiftIds = existingRows.map((row) => toRequiredNumber(row.id));
+  throw new BadRequestException(
+    `Planlægningskladden ser allerede ud til at være publiceret. Fundne vagter: ${existingShiftIds.join(', ')}.`,
+  );
 }
 
 async function refreshMonthPlanCountsForDateKeys(
@@ -538,6 +592,8 @@ export class ShiftPlanningDraftPublicationService {
         throw new BadRequestException('Planlægningskladden er allerede behandlet.');
       }
 
+      await assertNoExistingPublishedDraftShifts(tx, cinemaId, draftId);
+
       const insertedShiftIds: number[] = [];
 
       for (const item of publishableItems) {
@@ -615,7 +671,12 @@ export class ShiftPlanningDraftPublicationService {
             'SHIFT_PLANNING_DRAFT_PUBLISHED',
             'ShiftPlanningDraft',
             ${draftId},
-            ${`Publicerede planlægningskladde #${draftId} til ${insertedShiftIds.length} vagt(er).`},
+            ${buildPublishAuditDescription(
+              draftId,
+              insertedShiftIds,
+              affectedDateKeys,
+              workType.name,
+            )},
             CURRENT_TIMESTAMP,
             ${actorUserId},
             ${cinemaId}
