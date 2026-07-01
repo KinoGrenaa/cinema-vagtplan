@@ -17,7 +17,7 @@ export function ShiftPlanningSavedDraftsHeader({
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="max-w-3xl text-center lg:mx-auto">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-          Gemte kladder
+          Gemte planlægningskladder
         </p>
         <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
           Planlægningskladder for {getMonthName(year, month)}
@@ -35,7 +35,7 @@ export function ShiftPlanningSavedDraftsHeader({
           className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-950/50"
           disabled={loading}
         >
-          {loading ? "Opdaterer kladder..." : "Opdater kladder"}
+          {loading ? "Opdaterer planlægningskladder..." : "Opdater planlægningskladder"}
         </button>
       </div>
     </div>

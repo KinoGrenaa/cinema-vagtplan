@@ -23,19 +23,19 @@ export function ShiftPlanningSavedDraftsListMessages({
 
       {loading && (
         <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-300">
-          Henter gemte kladder...
+          Henter gemte planlægningskladder...
         </div>
       )}
 
       {!loading && !hasAnyDrafts && !errorMessage && (
         <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-300">
-          Der er endnu ingen gemte kladder for måneden.
+          Der er endnu ingen gemte planlægningskladder for måneden. Gem først en planlægningskladde fra kladdepreviewet.
         </div>
       )}
 
       {!loading && hasAnyDrafts && !hasMatchingDrafts && !errorMessage && (
         <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-300">
-          Der er ingen {selectedFilterText} i denne måned.
+          Der er ingen {selectedFilterText} i denne måned. Skift filter eller gem en ny planlægningskladde.
         </div>
       )}
     </>
