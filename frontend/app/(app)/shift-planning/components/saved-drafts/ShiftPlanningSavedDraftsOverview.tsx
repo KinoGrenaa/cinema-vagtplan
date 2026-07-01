@@ -310,12 +310,12 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const validateSelectedDraft = async () => {
     if (!selectedDraft) {
-      setValidationError("Åbn en planlægningskladde, før du kører backend-validering.");
+      setValidationError("Åbn en planlægningskladde, før du kører backend-kontrol.");
       return;
     }
 
     if (!activeCinemaId) {
-      setValidationError("Vælg en aktiv biograf, før du validerer planlægningskladden.");
+      setValidationError("Vælg en aktiv biograf, før du kører backend-kontrol på planlægningskladden.");
       return;
     }
 
@@ -334,7 +334,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke validere planlægningskladden",
+            "Kunne ikke køre backend-kontrol på planlægningskladden",
           ),
         );
       }
@@ -345,7 +345,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlægningskladden skulle valideres.",
+          : "Der opstod en fejl, da planlægningskladden skulle backend-kontrolleres.",
       );
     } finally {
       setValidatingDraftId(null);
@@ -362,7 +362,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
     if (!activeCinemaId) {
       setPublicationPreviewError(
-        "Vælg en aktiv biograf, før du henter publiceringspreview for kladden.",
+        "Vælg en aktiv biograf, før du henter publiceringspreview for planlægningskladden.",
       );
       return;
     }
@@ -416,7 +416,7 @@ export default function ShiftPlanningSavedDraftsOverview({
     }
 
     if (!selectedDraftCanBePublished) {
-      setPublishError("Kun åbne kladder kan publiceres. Publicerede eller erstattede kladder er låst mod ny publicering.");
+      setPublishError("Kun åbne planlægningskladder kan publiceres. Publicerede eller erstattede planlægningskladder er låst mod ny publicering.");
       return;
     }
 
