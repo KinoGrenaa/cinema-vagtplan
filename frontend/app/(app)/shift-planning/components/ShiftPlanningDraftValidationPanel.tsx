@@ -1,36 +1,14 @@
 import { formatDateKey } from "../helpers/shiftPlanningHelpers";
 
-type DraftValidationIssue = {
-  id?: number | string | null;
-  itemId?: number | string | null;
-  date?: string | null;
-  dateKey?: string | null;
-  severity?: string | null;
-  code?: string | null;
-  message?: string | null;
-  employeeName?: string | null;
-  userName?: string | null;
-  jobFunctionName?: string | null;
-  details?: unknown;
-};
-
-type DraftValidationSummary = {
-  isValid?: boolean;
-  errorCount?: number | string | null;
-  warningCount?: number | string | null;
-  issueCount?: number | string | null;
-};
-
-type DraftValidationResult = {
-  draftId?: number | string;
-  cinemaId?: number | null;
-  year?: number | null;
-  month?: number | null;
-  status?: string | null;
-  checkedAt?: string | null;
-  summary?: DraftValidationSummary | null;
-  issues?: DraftValidationIssue[];
-};
+import {
+  formatCreatedAt,
+  getDateKey,
+  toNumber,
+} from "../helpers/shiftPlanningDraftHelpers";
+import type {
+  DraftValidationIssue,
+  DraftValidationResult,
+} from "../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftValidationPanelProps = {
   errorMessage: string | null;
@@ -38,46 +16,6 @@ type ShiftPlanningDraftValidationPanelProps = {
 };
 
 const MAX_VISIBLE_VALIDATION_ISSUES = 20;
-
-function toNumber(value: unknown) {
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function formatCreatedAt(value?: string | null) {
-  if (!value) {
-    return "Ukendt tidspunkt";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Ukendt tidspunkt";
-  }
-
-  return new Intl.DateTimeFormat("da-DK", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function getDateKey(value?: string | null) {
-  if (!value) {
-    return "";
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value;
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toISOString().slice(0, 10);
-}
 
 function formatIssueDate(issue: DraftValidationIssue) {
   const dateKey = getDateKey(issue.dateKey || issue.date || null);
