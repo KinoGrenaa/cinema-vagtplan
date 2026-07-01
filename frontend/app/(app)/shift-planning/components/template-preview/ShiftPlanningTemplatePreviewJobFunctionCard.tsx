@@ -1,5 +1,5 @@
-import { getUserDisplayName } from "../helpers/shiftPlanningHelpers";
-import type { ScheduleTemplateJobFunctionSummary } from "../helpers/shiftPlanningTypes";
+import { getUserDisplayName } from "../../helpers/shiftPlanningHelpers";
+import type { ScheduleTemplateJobFunctionSummary } from "../../helpers/shiftPlanningTypes";
 
 type ShiftPlanningTemplatePreviewJobFunctionCardProps = {
   templateJobFunction: ScheduleTemplateJobFunctionSummary;
