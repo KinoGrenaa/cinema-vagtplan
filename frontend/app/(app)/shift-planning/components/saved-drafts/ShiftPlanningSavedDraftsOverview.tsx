@@ -260,7 +260,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const openDraft = async (draftId: number | string) => {
     if (!activeCinemaId) {
-      setErrorMessage("Vælg en aktiv biograf, før du åbner kladder.");
+      setErrorMessage("Vælg en aktiv biograf, før du åbner planlægningskladder.");
       return;
     }
 
@@ -301,7 +301,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da kladden skulle åbnes.",
+          : "Der opstod en fejl, da planlægningskladden skulle åbnes.",
       );
     } finally {
       setOpeningDraftId(null);
@@ -310,12 +310,12 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const validateSelectedDraft = async () => {
     if (!selectedDraft) {
-      setValidationError("Åbn en kladde, før du kører backend-validering.");
+      setValidationError("Åbn en planlægningskladde, før du kører backend-validering.");
       return;
     }
 
     if (!activeCinemaId) {
-      setValidationError("Vælg en aktiv biograf, før du validerer kladden.");
+      setValidationError("Vælg en aktiv biograf, før du validerer planlægningskladden.");
       return;
     }
 
@@ -345,7 +345,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da kladden skulle valideres.",
+          : "Der opstod en fejl, da planlægningskladden skulle valideres.",
       );
     } finally {
       setValidatingDraftId(null);
@@ -355,14 +355,14 @@ export default function ShiftPlanningSavedDraftsOverview({
   const loadPublicationPreview = async () => {
     if (!selectedDraft) {
       setPublicationPreviewError(
-        "Åbn en kladde, før du henter publiceringspreview.",
+        "Åbn en planlægningskladde, før du henter publiceringspreview.",
       );
       return;
     }
 
     if (!activeCinemaId) {
       setPublicationPreviewError(
-        "Vælg en aktiv biograf, før du henter publiceringspreview.",
+        "Vælg en aktiv biograf, før du henter publiceringspreview for kladden.",
       );
       return;
     }
@@ -406,29 +406,29 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const publishSelectedDraft = async () => {
     if (!selectedDraft) {
-      setPublishError("Åbn en kladde, før du publicerer.");
+      setPublishError("Åbn en planlægningskladde, før du publicerer.");
       return;
     }
 
     if (!activeCinemaId) {
-      setPublishError("Vælg en aktiv biograf, før du publicerer kladden.");
+      setPublishError("Vælg en aktiv biograf, før du publicerer planlægningskladden.");
       return;
     }
 
     if (!selectedDraftCanBePublished) {
-      setPublishError("Kun kladder med status Kladde kan publiceres.");
+      setPublishError("Kun åbne kladder kan publiceres. Publicerede eller erstattede kladder er låst mod ny publicering.");
       return;
     }
 
     if (!publicationPreviewCanPublishLater) {
       setPublishError(
-        "Hent et grønt publiceringspreview, før kladden publiceres.",
+        "Hent et publiceringspreview uden blokerende fejl, før kladden publiceres.",
       );
       return;
     }
 
     if (!publishWorkTypeId) {
-      setPublishError("Vælg en arbejdstype til de vagter, der oprettes.");
+      setPublishError("Vælg den arbejdstype, som skal sættes på alle vagter ved publicering.");
       return;
     }
 
@@ -493,7 +493,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublishError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da kladden skulle publiceres.",
+          : "Der opstod en fejl, da planlægningskladden skulle publiceres.",
       );
     } finally {
       setPublishingDraftId(null);

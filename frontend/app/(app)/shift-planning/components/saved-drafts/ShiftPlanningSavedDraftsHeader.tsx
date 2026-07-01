@@ -20,7 +20,7 @@ export function ShiftPlanningSavedDraftsHeader({
           Gemte kladder
         </p>
         <h2 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
-          Seneste kladder for {getMonthName(year, month)}
+          Planlægningskladder for {getMonthName(year, month)}
         </h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
           Kladderne ligger i backend og kan åbnes til kontrol. Publicering er
@@ -35,7 +35,7 @@ export function ShiftPlanningSavedDraftsHeader({
           className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-950/50"
           disabled={loading}
         >
-          {loading ? "Opdaterer..." : "Opdater kladder"}
+          {loading ? "Opdaterer kladder..." : "Opdater kladder"}
         </button>
       </div>
     </div>
