@@ -60,6 +60,24 @@ export function formatMinute(value: unknown) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+
+export function formatDraftItemTimeRange(item: SavedDraftItem) {
+  const start = formatMinute(item.plannedStartMinute);
+  const end = formatMinute(item.plannedEndMinute);
+
+  if (!start || !end) {
+    return "Tid mangler";
+  }
+
+  return `kl. ${start} - ${end}`;
+}
+
+export function formatDraftItemUserName(item: SavedDraftItem) {
+  const name = `${item.userFirstName ?? ""} ${item.userLastName ?? ""}`.trim();
+
+  return name || item.userEmail || "Ikke tildelt";
+}
+
 export function getMetadataString(
   metadata: Record<string, unknown> | null | undefined,
   key: string,

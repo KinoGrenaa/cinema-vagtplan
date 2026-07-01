@@ -1,26 +1,10 @@
-type SavedDraftItem = {
-  id: number | string;
-  status?: string | null;
-  jobFunctionName?: string | null;
-  jobFunctionColor?: string | null;
-  scheduleTemplateName?: string | null;
-  userFirstName?: string | null;
-  userLastName?: string | null;
-  userEmail?: string | null;
-  plannedStartMinute?: number | string | null;
-  plannedEndMinute?: number | string | null;
-  warningMessage?: string | null;
-  metadata?: Record<string, unknown> | null;
-};
-
-type DraftDateGroup = {
-  dateKey: string;
-  label: string;
-  items: SavedDraftItem[];
-  unassignedCount: number;
-  warningCount: number;
-  missingTimeCount: number;
-};
+import {
+  formatDraftItemTimeRange,
+  formatDraftItemUserName,
+  getItemJobFunctionName,
+  getItemTemplateName,
+} from "../helpers/shiftPlanningDraftHelpers";
+import type { DraftDateGroup } from "../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftItemsByDateProps = {
   dateGroups: DraftDateGroup[];
@@ -28,61 +12,6 @@ type ShiftPlanningDraftItemsByDateProps = {
 
 const MAX_VISIBLE_DATE_GROUPS = 10;
 const MAX_VISIBLE_ITEMS_PER_DAY = 6;
-
-function formatMinute(value: unknown) {
-  const minute = Number(value);
-
-  if (!Number.isInteger(minute) || minute < 0) {
-    return null;
-  }
-
-  const hours = Math.floor(minute / 60);
-  const minutes = minute % 60;
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
-function formatTimeRange(item: SavedDraftItem) {
-  const start = formatMinute(item.plannedStartMinute);
-  const end = formatMinute(item.plannedEndMinute);
-
-  if (!start || !end) {
-    return "Tid mangler";
-  }
-
-  return `kl. ${start} - ${end}`;
-}
-
-function formatUserName(item: SavedDraftItem) {
-  const name = `${item.userFirstName ?? ""} ${item.userLastName ?? ""}`.trim();
-
-  return name || item.userEmail || "Ikke tildelt";
-}
-
-function getMetadataString(
-  metadata: Record<string, unknown> | null | undefined,
-  key: string,
-) {
-  const value = metadata?.[key];
-
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function getItemJobFunctionName(item: SavedDraftItem) {
-  return (
-    item.jobFunctionName ||
-    getMetadataString(item.metadata, "jobFunctionName") ||
-    "Jobfunktion mangler"
-  );
-}
-
-function getItemTemplateName(item: SavedDraftItem) {
-  return (
-    item.scheduleTemplateName ||
-    getMetadataString(item.metadata, "scheduleTemplateName") ||
-    "Skabelon mangler"
-  );
-}
 
 export function ShiftPlanningDraftItemsByDate({
   dateGroups,
@@ -156,7 +85,7 @@ export function ShiftPlanningDraftItemsByDate({
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <div>
                         <p className="text-sm font-bold text-gray-950 dark:text-white">
-                          {formatTimeRange(item)}
+                          {formatDraftItemTimeRange(item)}
                         </p>
                         <p className="mt-1 text-sm text-gray-700 dark:text-gray-200">
                           {item.jobFunctionColor && (
@@ -174,7 +103,7 @@ export function ShiftPlanningDraftItemsByDate({
                         </p>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300 lg:text-right">
-                        Medarbejder: {formatUserName(item)}
+                        Medarbejder: {formatDraftItemUserName(item)}
                       </div>
                     </div>
 
