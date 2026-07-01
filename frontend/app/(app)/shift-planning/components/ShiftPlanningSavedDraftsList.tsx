@@ -4,14 +4,16 @@ import { ShiftPlanningSavedDraftCard } from "./ShiftPlanningSavedDraftCard";
 import { ShiftPlanningSavedDraftsFilterPanel } from "./ShiftPlanningSavedDraftsFilterPanel";
 import { ShiftPlanningSavedDraftsListMessages } from "./ShiftPlanningSavedDraftsListMessages";
 import { ShiftPlanningSavedDraftsTogglePanel } from "./ShiftPlanningSavedDraftsTogglePanel";
+import {
+  draftMatchesStatusFilter,
+  formatSelectedDraftFilterText,
+  getDraftStatusFilterOptions,
+  getHiddenSavedDraftCount,
+  getVisibleSavedDrafts,
+  MAX_VISIBLE_SAVED_DRAFTS,
+  type DraftStatusFilter,
+} from "../helpers/shiftPlanningSavedDraftFilters";
 import type { SavedDraftSummary } from "../helpers/shiftPlanningDraftTypes";
-
-export type DraftStatusFilter =
-  | "ALL"
-  | "DRAFT"
-  | "PUBLISHED"
-  | "SUPERSEDED"
-  | "OTHER";
 
 type ShiftPlanningSavedDraftsListProps = {
   drafts: SavedDraftSummary[];
@@ -26,64 +28,7 @@ type ShiftPlanningSavedDraftsListProps = {
   onOpenDraft: (draftId: number | string) => void;
 };
 
-const DRAFT_STATUS_FILTERS: Array<{
-  value: DraftStatusFilter;
-  label: string;
-}> = [
-  { value: "ALL", label: "Alle" },
-  { value: "DRAFT", label: "Kladder" },
-  { value: "PUBLISHED", label: "Publicerede" },
-  { value: "SUPERSEDED", label: "Erstattede" },
-  { value: "OTHER", label: "Andre" },
-];
-
-const MAX_VISIBLE_DRAFTS = 5;
-
-function getDraftStatusFilterValue(status?: string | null): DraftStatusFilter {
-  if (status === "DRAFT" || status === "PUBLISHED" || status === "SUPERSEDED") {
-    return status;
-  }
-
-  return "OTHER";
-}
-
-function draftMatchesStatusFilter(
-  draft: SavedDraftSummary,
-  filter: DraftStatusFilter,
-) {
-  if (filter === "ALL") {
-    return true;
-  }
-
-  return getDraftStatusFilterValue(draft.status) === filter;
-}
-
-function getDraftStatusCount(
-  drafts: SavedDraftSummary[],
-  filter: DraftStatusFilter,
-) {
-  if (filter === "ALL") {
-    return drafts.length;
-  }
-
-  return drafts.filter((draft) => draftMatchesStatusFilter(draft, filter))
-    .length;
-}
-
-function formatSelectedFilterText(filter: DraftStatusFilter) {
-  switch (filter) {
-    case "DRAFT":
-      return "åbne kladder";
-    case "PUBLISHED":
-      return "publicerede kladder";
-    case "SUPERSEDED":
-      return "erstattede kladder";
-    case "OTHER":
-      return "andre kladder";
-    default:
-      return "kladder";
-  }
-}
+export type { DraftStatusFilter };
 
 export function ShiftPlanningSavedDraftsList({
   drafts,
@@ -97,34 +42,20 @@ export function ShiftPlanningSavedDraftsList({
   setShowAllDrafts,
   onOpenDraft,
 }: ShiftPlanningSavedDraftsListProps) {
-  const draftStatusCounts = DRAFT_STATUS_FILTERS.reduce(
-    (counts, filter) => ({
-      ...counts,
-      [filter.value]: getDraftStatusCount(drafts, filter.value),
-    }),
-    {} as Record<DraftStatusFilter, number>,
-  );
-
-  const filterOptions = DRAFT_STATUS_FILTERS.map((filter) => ({
-    ...filter,
-    count: draftStatusCounts[filter.value] ?? 0,
-  }));
+  const filterOptions = getDraftStatusFilterOptions(drafts);
 
   const filteredDrafts = drafts.filter((draft) =>
     draftMatchesStatusFilter(draft, draftStatusFilter),
   );
 
-  const visibleDrafts = showAllDrafts
-    ? filteredDrafts
-    : filteredDrafts.slice(0, MAX_VISIBLE_DRAFTS);
-
-  const hiddenDraftCount = Math.max(
-    0,
-    filteredDrafts.length - visibleDrafts.length,
+  const visibleDrafts = getVisibleSavedDrafts(filteredDrafts, showAllDrafts);
+  const hiddenDraftCount = getHiddenSavedDraftCount(
+    filteredDrafts,
+    visibleDrafts,
   );
 
-  const canToggleDraftList = filteredDrafts.length > MAX_VISIBLE_DRAFTS;
-  const selectedFilterText = formatSelectedFilterText(draftStatusFilter);
+  const canToggleDraftList = filteredDrafts.length > MAX_VISIBLE_SAVED_DRAFTS;
+  const selectedFilterText = formatSelectedDraftFilterText(draftStatusFilter);
 
   const selectDraftStatusFilter = (filter: DraftStatusFilter) => {
     setDraftStatusFilter(filter);

@@ -1,10 +1,7 @@
-import type { DraftStatusFilter } from "./ShiftPlanningSavedDraftsList";
-
-type DraftStatusFilterOption = {
-  value: DraftStatusFilter;
-  label: string;
-  count: number;
-};
+import type {
+  DraftStatusFilter,
+  DraftStatusFilterOption,
+} from "../helpers/shiftPlanningSavedDraftFilters";
 
 type ShiftPlanningSavedDraftsFilterPanelProps = {
   activeFilter: DraftStatusFilter;
