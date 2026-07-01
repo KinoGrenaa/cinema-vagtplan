@@ -485,7 +485,7 @@ export default function ShiftPlanningPage() {
               </div>
               <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  Mangler skabelon
+                  Mangler planlægning
                 </p>
                 <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">
                   {monthSummary.missingTemplateDays}
@@ -546,13 +546,13 @@ export default function ShiftPlanningPage() {
 
               {loading && (
                 <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                  Henter månedsplan...
+                  Henter månedens planlægningsgrundlag...
                 </div>
               )}
 
               {!loading && days.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                  Ingen dage fundet for måneden.
+                  Ingen planlægningsdage fundet for måneden.
                 </div>
               )}
 
