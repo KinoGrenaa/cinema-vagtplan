@@ -19,8 +19,8 @@ export function ShiftPlanningPublishErrorPanel({
       <p className="mt-1">{message}</p>
       <p className="mt-2 text-xs text-red-800">
         {looksLikeDuplicateOrPublished
-          ? "Kladden kan være publiceret i en anden fane eller tidligere handling. Genindlæs kladderne, og kontrollér vagtplanen før du prøver igen."
-          : "Tjek backend-validering, publiceringspreview, arbejdstype og tekstbekræftelse, før du prøver igen."}
+          ? "Planlægningskladden kan være publiceret i en anden fane eller tidligere handling. Genindlæs de gemte planlægningskladder, og kontrollér vagtplanen før du prøver igen."
+          : "Tjek backend-kontrol, publiceringspreview, arbejdstype og tekstbekræftelse, før du prøver igen."}
       </p>
     </div>
   );

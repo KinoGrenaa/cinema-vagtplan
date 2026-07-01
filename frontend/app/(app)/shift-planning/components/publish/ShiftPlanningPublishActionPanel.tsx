@@ -15,11 +15,11 @@ export function ShiftPlanningPublishActionPanel({
     ? "Publicerer..."
     : selectedDraftIsPublished
       ? "Allerede publiceret"
-      : "Publicer kladde";
+      : "Publicer planlægningskladde";
 
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-      <p className="font-semibold">Publicering opretter rigtige vagter</p>
+      <p className="font-semibold">Publicering opretter vagter i vagtplanen</p>
       <p className="mt-1">
         Kør kun publicering, når kladden er gennemgået, publiceringspreviewet er
         grønt, og arbejdstypen er korrekt. Backend blokerer også

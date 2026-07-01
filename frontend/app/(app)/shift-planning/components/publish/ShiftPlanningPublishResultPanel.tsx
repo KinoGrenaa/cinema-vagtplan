@@ -31,7 +31,7 @@ export function ShiftPlanningPublishResultPanel({
       <p className="mt-1">
         Der er oprettet {createdShiftCount} rigtige vagter med arbejdstypen{" "}
         <span className="font-semibold">{workTypeName}</span>. Kladden er nu
-        låst mod ny publicering, så samme kladde ikke kan oprette dubletter.
+        låst mod ny publicering, så samme planlægningskladde ikke kan oprette dubletter.
       </p>
 
       {publishedShiftIdsText && (
@@ -59,7 +59,7 @@ export function ShiftPlanningPublishResultPanel({
       )}
 
       <p className="mt-3 text-xs text-emerald-800">
-        Listen er skiftet til Publicerede kladder, så den publicerede kladde kan
+        Listen er skiftet til Publicerede planlægningskladder, så den publicerede kladde kan
         kontrolleres med det samme. Brug vagtplanen til at gennemgå de oprettede
         vagter på de berørte datoer.
       </p>
