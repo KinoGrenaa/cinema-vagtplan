@@ -2,17 +2,17 @@ import { useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+import { ShiftPlanningDraftPreviewMetricsPanel } from "./ShiftPlanningDraftPreviewMetricsPanel";
+import { ShiftPlanningDraftPreviewRowCard } from "./ShiftPlanningDraftPreviewRowCard";
+import { ShiftPlanningDraftPreviewStatusPanel } from "./ShiftPlanningDraftPreviewStatusPanel";
 import {
   appendCinemaId,
-  formatDateKey,
-  formatWeekParity,
   getMonthName,
   getMonthPlanDayDateKey,
   getTemplateDayAssignedCount,
   getTemplateDayForDate,
   getTemplateDayRequiredCount,
   getTemplateWeekParityWarning,
-  getWeekdayName,
   readErrorMessage,
 } from "../helpers/shiftPlanningHelpers";
 import type {
@@ -31,7 +31,7 @@ type ShiftPlanningDraftPreviewProps = {
   onDraftPrepared?: (draft: PreparedDraftSummary) => void;
 };
 
-type DraftPreviewRow = {
+export type DraftPreviewRow = {
   day: MonthPlanDay;
   dateKey: string;
   template: ScheduleTemplateSummary | null;
@@ -42,7 +42,7 @@ type DraftPreviewRow = {
   hasTemplateDay: boolean;
 };
 
-type PreparedDraftSummary = {
+export type PreparedDraftSummary = {
   id: number | string;
   itemCount?: number | null;
   unassignedItemCount?: number | null;
@@ -94,9 +94,9 @@ export default function ShiftPlanningDraftPreview({
 }: ShiftPlanningDraftPreviewProps) {
   const infoDialog = useInfoModal();
   const [savingDraft, setSavingDraft] = useState(false);
-  const [latestDraft, setLatestDraft] = useState<PreparedDraftSummary | null>(
-    null,
-  );
+  const [latestDraft, setLatestDraft] =
+    useState<PreparedDraftSummary | null>(null);
+
   const rows = getPreviewRows(days, templatesById);
   const totalDraftShifts = rows.reduce(
     (sum, row) => sum + row.requiredCount,
@@ -107,7 +107,8 @@ export default function ShiftPlanningDraftPreview({
     0,
   );
   const warningCount = rows.filter((row) => row.warning).length;
-  const missingTemplateDayCount = rows.filter((row) => !row.hasTemplateDay).length;
+  const missingTemplateDayCount = rows.filter((row) => !row.hasTemplateDay)
+    .length;
   const visibleRows = rows.slice(0, MAX_VISIBLE_DAYS);
   const hiddenCount = Math.max(0, rows.length - visibleRows.length);
   const canPrepareDraft = !loading && rows.length > 0 && Boolean(activeCinemaId);
@@ -149,7 +150,7 @@ export default function ShiftPlanningDraftPreview({
         title: "Planlægningskladde gemt",
         description: `Kladde #${draft.id} er gemt med ${toNumber(
           draft.itemCount,
-        )} kladdeposter. Der er stadig ikke oprettet aktive vagter.`,
+        )} kladdeposter.\nDer er stadig ikke oprettet aktive vagter.`,
         variant: "success",
         buttonText: "OK",
       });
@@ -166,138 +167,7 @@ export default function ShiftPlanningDraftPreview({
   };
 
   return (
-    <section className="rounded-3xl border border-blue-200 bg-blue-50 p-4 shadow-sm dark:border-blue-900/70 dark:bg-blue-950/25">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-            Kladdepreview
-          </p>
-          <h2 className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-100">
-            Forbered vagter
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-blue-900 dark:text-blue-200">
-            Viser hvad månedens valgte skabeloner foreløbigt vil kunne blive til.
-            Knappen gemmer en planlægningskladde i backend, men opretter stadig
-            ingen aktive vagter i vagtplanen.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 lg:items-end">
-          <div className="flex flex-wrap gap-2 text-xs font-semibold text-blue-900 dark:text-blue-100">
-            <span className="rounded-full bg-white px-3 py-1 ring-1 ring-blue-200 dark:bg-blue-950 dark:ring-blue-800">
-              {rows.length} dage med skabelon
-            </span>
-            <span className="rounded-full bg-white px-3 py-1 ring-1 ring-blue-200 dark:bg-blue-950 dark:ring-blue-800">
-              {totalDraftShifts} mulige vagter
-            </span>
-            <span className="rounded-full bg-white px-3 py-1 ring-1 ring-blue-200 dark:bg-blue-950 dark:ring-blue-800">
-              {totalStandardAssignments} standardmedarbejdere
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={prepareDraft}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={!canPrepareDraft || savingDraft}
-          >
-            {savingDraft ? "Gemmer kladde..." : "Gem kladde"}
-          </button>
-          <p className="max-w-xs text-right text-xs text-blue-800 dark:text-blue-200">
-            En ny kladde for samme måned erstatter tidligere åben kladde.
-          </p>
-        </div>
-      </div>
-
-      {latestDraft && (
-        <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
-          <span className="font-semibold">Seneste kladde #{latestDraft.id}</span>
-          {" · "}
-          {toNumber(latestDraft.itemCount)} poster
-          {" · "}
-          {toNumber(latestDraft.unassignedItemCount)} uden standardmedarbejder
-          {" · "}
-          {toNumber(latestDraft.warningItemCount)} med advarsel
-        </div>
-      )}
-
-      {loading && (
-        <div className="mt-4 rounded-2xl border border-dashed border-blue-200 bg-white/70 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
-          Henter kladdepreview...
-        </div>
-      )}
-
-      {!loading && rows.length === 0 && (
-        <div className="mt-4 rounded-2xl border border-dashed border-blue-200 bg-white/70 p-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
-          Ingen aktive dage har vagtsskabelon endnu. Læg først skabeloner på
-          datoer, før måneden kan forberedes til kladder.
-        </div>
-      )}
-
-      {!loading && rows.length > 0 && (
-        <>
-          <div className="mt-4 grid gap-2 lg:grid-cols-2">
-            {visibleRows.map((row) => (
-              <button
-                key={row.dateKey || row.day.date}
-                type="button"
-                onClick={() => onOpenDay(row.day)}
-                className="rounded-2xl border border-blue-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-blue-900/70 dark:bg-gray-950/70 dark:hover:border-blue-700"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-gray-950 dark:text-white">
-                      {getWeekdayName(row.dateKey, "long")} {formatDateKey(row.dateKey)}
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                      {row.template
-                        ? `${row.template.name} · ${formatWeekParity(row.template.weekParity)}`
-                        : "Skabelon mangler data"}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-blue-100 px-2 py-1 text-xs font-bold text-blue-900 dark:bg-blue-900/70 dark:text-blue-100">
-                    {row.requiredCount} vagter
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-700 dark:text-gray-300">
-                  <span>{row.jobFunctionCount} funktioner</span>
-                  <span>·</span>
-                  <span>{row.assignedCount} standard</span>
-                  {!row.hasTemplateDay && (
-                    <span className="font-semibold text-amber-700 dark:text-amber-300">
-                      · ingen opsætning på ugedagen
-                    </span>
-                  )}
-                  {row.warning && (
-                    <span className="font-semibold text-amber-700 dark:text-amber-300">
-                      · ugeadvarsel
-                    </span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {(hiddenCount > 0 || warningCount > 0 || missingTemplateDayCount > 0) && (
-            <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-blue-900 dark:text-blue-100">
-              {hiddenCount > 0 && (
-                <span className="rounded-full bg-white px-3 py-1 ring-1 ring-blue-200 dark:bg-blue-950 dark:ring-blue-800">
-                  {hiddenCount} flere dage ses i kalenderen
-                </span>
-              )}
-              {warningCount > 0 && (
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900">
-                  {warningCount} med ugeadvarsel
-                </span>
-              )}
-              {missingTemplateDayCount > 0 && (
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900">
-                  {missingTemplateDayCount} uden ugedagsopsætning
-                </span>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
+    <>
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
@@ -306,6 +176,84 @@ export default function ShiftPlanningDraftPreview({
         variant={infoDialog.variant}
         onClose={infoDialog.close}
       />
-    </section>
+
+      <section className="rounded-3xl border border-blue-200 bg-blue-50/70 p-4 shadow-sm dark:border-blue-900/70 dark:bg-blue-950/20 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+              Kladdepreview
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
+              Forbered vagter
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
+              Viser hvad månedens valgte skabeloner foreløbigt vil kunne blive
+              til. Knappen gemmer en planlægningskladde i backend, men opretter
+              stadig ingen aktive vagter i vagtplanen.
+            </p>
+
+            <ShiftPlanningDraftPreviewMetricsPanel
+              rowCount={rows.length}
+              totalDraftShifts={totalDraftShifts}
+              totalStandardAssignments={totalStandardAssignments}
+            />
+          </div>
+
+          <div className="flex flex-col items-start gap-2 lg:items-end">
+            <button
+              type="button"
+              onClick={prepareDraft}
+              disabled={!canPrepareDraft || savingDraft}
+              className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+            >
+              {savingDraft ? "Gemmer kladde..." : "Gem kladde"}
+            </button>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              En ny kladde for samme måned erstatter tidligere åben kladde.
+            </p>
+          </div>
+        </div>
+
+        <ShiftPlanningDraftPreviewStatusPanel
+          latestDraft={latestDraft}
+          loading={loading}
+          rowCount={rows.length}
+        />
+
+        {!loading && rows.length > 0 && (
+          <>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {visibleRows.map((row) => (
+                <ShiftPlanningDraftPreviewRowCard
+                  key={row.dateKey || String(row.day.id ?? row.day.date)}
+                  row={row}
+                  onOpen={() => onOpenDay(row.day)}
+                />
+              ))}
+            </div>
+
+            {(hiddenCount > 0 || warningCount > 0 || missingTemplateDayCount > 0) && (
+              <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                {hiddenCount > 0 && (
+                  <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-900">
+                    {hiddenCount} flere dage ses i kalenderen
+                  </span>
+                )}
+                {warningCount > 0 && (
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                    {warningCount} med ugeadvarsel
+                  </span>
+                )}
+                {missingTemplateDayCount > 0 && (
+                  <span className="rounded-full bg-red-100 px-3 py-1 text-red-900 dark:bg-red-950/40 dark:text-red-100">
+                    {missingTemplateDayCount} uden ugedagsopsætning
+                  </span>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </>
   );
 }
