@@ -379,7 +379,7 @@ export default function ShiftPlanningPage() {
       setDayForm(toDayForm(updatedDay));
       infoDialog.show({
         title: "Planlægningsdag gemt",
-        description: `Planen for ${formatDateKey(updatedDay.dateKey)} er gemt.`,
+        description: `Planlægningsdagen for ${formatDateKey(updatedDay.dateKey)} er gemt. Gem en planlægningskladde, når månedens datoer er klar.`,
         variant: "success",
         buttonText: "OK",
       });
