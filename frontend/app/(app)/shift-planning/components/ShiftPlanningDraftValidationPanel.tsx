@@ -1,6 +1,6 @@
-import { ShiftPlanningDraftValidationHeader } from "./ShiftPlanningDraftValidationHeader";
-import { ShiftPlanningDraftValidationResultSection } from "./ShiftPlanningDraftValidationResultSection";
-import { ShiftPlanningDraftValidationStateMessage } from "./ShiftPlanningDraftValidationStateMessage";
+import { ShiftPlanningDraftValidationHeader } from "./draft-validation/ShiftPlanningDraftValidationHeader";
+import { ShiftPlanningDraftValidationResultSection } from "./draft-validation/ShiftPlanningDraftValidationResultSection";
+import { ShiftPlanningDraftValidationStateMessage } from "./draft-validation/ShiftPlanningDraftValidationStateMessage";
 import type { DraftValidationResult } from "../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftValidationPanelProps = {
