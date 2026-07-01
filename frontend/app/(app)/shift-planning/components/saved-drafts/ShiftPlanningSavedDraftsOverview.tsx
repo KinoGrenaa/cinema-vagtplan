@@ -192,7 +192,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da kladderne skulle hentes.",
+          : "Der opstod en fejl, da planlægningskladderne skulle hentes.",
       );
     } finally {
       setLoading(false);
@@ -397,7 +397,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublicationPreviewError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da publiceringspreview skulle hentes.",
+          : "Der opstod en fejl, da publiceringspreviewet skulle hentes.",
       );
     } finally {
       setLoadingPublicationPreviewId(null);
@@ -422,7 +422,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
     if (!publicationPreviewCanPublishLater) {
       setPublishError(
-        "Hent et publiceringspreview uden blokerende fejl, før kladden publiceres.",
+        "Hent et publiceringspreview uden blokerende fejl, før planlægningskladden publiceres.",
       );
       return;
     }
@@ -461,7 +461,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke publicere kladden"),
+          await readErrorMessage(response, "Kunne ikke publicere planlægningskladden"),
         );
       }
 
