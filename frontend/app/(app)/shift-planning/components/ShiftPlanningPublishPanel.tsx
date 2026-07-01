@@ -1,11 +1,9 @@
+import { ShiftPlanningAlreadyPublishedPanel } from "./ShiftPlanningAlreadyPublishedPanel";
+import { ShiftPlanningPublishActionPanel } from "./ShiftPlanningPublishActionPanel";
 import { ShiftPlanningPublishChecklist } from "./ShiftPlanningPublishChecklist";
+import { ShiftPlanningPublishResultPanel } from "./ShiftPlanningPublishResultPanel";
 
-import {
-  formatAffectedDateLabels,
-  formatCreatedShiftIds,
-  getSelectedWorkTypeName,
-  toNumber,
-} from "../helpers/shiftPlanningDraftHelpers";
+import { getSelectedWorkTypeName } from "../helpers/shiftPlanningDraftHelpers";
 import type {
   DraftPublishResult,
   WorkTypeOption,
@@ -58,12 +56,6 @@ export function ShiftPlanningPublishPanel({
     workTypes,
     publishWorkTypeId,
   );
-  const publishedShiftIdsText = formatCreatedShiftIds(
-    publishResult?.createdShiftIds,
-  );
-  const publishedAffectedDateLabels = formatAffectedDateLabels(
-    publishResult?.affectedDateKeys,
-  );
 
   return (
     <div className="mt-5 rounded-2xl border border-red-200 bg-white p-4 dark:border-red-900/70 dark:bg-gray-950/70">
@@ -78,6 +70,7 @@ export function ShiftPlanningPublishPanel({
             arbejdstype og præcis tekstbekræftelse.
           </p>
         </div>
+
         <span
           className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-bold ${
             selectedDraftIsPublished
@@ -96,68 +89,14 @@ export function ShiftPlanningPublishPanel({
       </div>
 
       {publishResult && (
-        <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="font-semibold">
-                {publishResult.message || "Planlægningskladden er publiceret."}
-              </p>
-              <p className="mt-1 opacity-85">
-                Oprettede vagter: {toNumber(publishResult.createdShiftCount)} ·
-                Arbejdstype:{" "}
-                {publishResult.workTypeName || selectedWorkTypeName}
-              </p>
-              {publishedShiftIdsText && (
-                <p className="mt-1 text-xs opacity-75">
-                  Shift-id'er: {publishedShiftIdsText}
-                </p>
-              )}
-              {publishedAffectedDateLabels.length > 0 && (
-                <div className="mt-3 rounded-2xl border border-green-200 bg-white/65 p-3 dark:border-green-900/70 dark:bg-green-950/30">
-                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">
-                    Opdaterede datoer i månedsplanen
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {publishedAffectedDateLabels.map((date) => (
-                      <span
-                        key={date.dateKey}
-                        className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-950 dark:bg-green-900/70 dark:text-green-100"
-                      >
-                        {date.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <p className="mt-2 text-xs font-semibold opacity-80">
-                Listen er skiftet til Publicerede kladder, så den publicerede
-                kladde kan kontrolleres med det samme.
-              </p>
-            </div>
-            <a
-              href="/schedule"
-              className="inline-flex w-fit rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 dark:bg-green-200 dark:text-green-950 dark:hover:bg-green-100"
-            >
-              Åbn vagtplan
-            </a>
-          </div>
-        </div>
+        <ShiftPlanningPublishResultPanel
+          publishResult={publishResult}
+          selectedWorkTypeName={selectedWorkTypeName}
+        />
       )}
 
       {selectedDraftIsPublished && !publishResult && (
-        <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
-          <p className="font-semibold">Denne kladde er allerede publiceret.</p>
-          <p className="mt-1 opacity-85">
-            Den kan ikke publiceres igen. Åbn vagtplanen for at gennemgå de
-            oprettede vagter.
-          </p>
-          <a
-            href="/schedule"
-            className="mt-3 inline-flex rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 dark:bg-green-200 dark:text-green-950 dark:hover:bg-green-100"
-          >
-            Åbn vagtplan
-          </a>
-        </div>
+        <ShiftPlanningAlreadyPublishedPanel />
       )}
 
       {publishError && (
@@ -234,27 +173,12 @@ export function ShiftPlanningPublishPanel({
         />
       </label>
 
-      <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="font-semibold">Publicering opretter rigtige vagter.</p>
-          <p className="mt-1 opacity-85">
-            Kør kun dette, når kladden er gennemgået, publiceringspreviewet er
-            grønt, og arbejdstypen er korrekt.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onPublish}
-          disabled={!canSubmitPublish}
-          className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {publishing
-            ? "Publicerer..."
-            : selectedDraftIsPublished
-              ? "Kladde er publiceret"
-              : "Publicer kladde"}
-        </button>
-      </div>
+      <ShiftPlanningPublishActionPanel
+        canSubmitPublish={canSubmitPublish}
+        onPublish={onPublish}
+        publishing={publishing}
+        selectedDraftIsPublished={selectedDraftIsPublished}
+      />
     </div>
   );
 }
