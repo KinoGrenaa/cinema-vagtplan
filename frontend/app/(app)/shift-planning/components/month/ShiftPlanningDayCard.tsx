@@ -83,7 +83,7 @@ export default function ShiftPlanningDayCard({
             className="inline-flex rounded-md border border-amber-300 bg-amber-50/80 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200"
             title={weekParityWarning}
           >
-            Ugeadvarsel
+            Tjek ugeparitet
           </p>
         )}
 
@@ -103,7 +103,7 @@ export default function ShiftPlanningDayCard({
 
             {templateJobFunctions.length === 0 ? (
               <p className="truncate rounded-md border border-dashed border-current/30 px-2 py-1 text-[11px] opacity-75">
-                Ingen jobfunktioner på denne ugedag.
+                Skabelonen har ingen jobfunktioner for denne ugedag.
               </p>
             ) : (
               <div className="flex flex-wrap gap-1">

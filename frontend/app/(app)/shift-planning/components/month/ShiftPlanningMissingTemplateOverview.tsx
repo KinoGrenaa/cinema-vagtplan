@@ -50,7 +50,7 @@ export default function ShiftPlanningMissingTemplateOverview({
           </span>
         </div>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          Der oprettes stadig ingen aktive vagter herfra.
+          Næste trin er at forberede og kontrollere en kladde, før der oprettes vagter.
         </p>
       </section>
     );
@@ -72,7 +72,7 @@ export default function ShiftPlanningMissingTemplateOverview({
             </span>
           </div>
           <h2 className="mt-1 text-lg font-bold text-gray-950 dark:text-white">
-            Aktive dage uden vagtsskabelon
+            Aktive dage der mangler vagtsskabelon
           </h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Klik på en dato for hurtigt at vælge skabelon. Kalenderen nedenfor
