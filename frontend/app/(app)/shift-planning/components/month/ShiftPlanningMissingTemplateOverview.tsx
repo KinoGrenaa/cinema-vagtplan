@@ -1,9 +1,9 @@
-import type { MonthPlanDay } from "../helpers/shiftPlanningTypes";
+import type { MonthPlanDay } from "../../helpers/shiftPlanningTypes";
 import {
   getDateWeekParityLabel,
   getMonthPlanDayDateKey,
   getWeekdayName,
-} from "../helpers/shiftPlanningHelpers";
+} from "../../helpers/shiftPlanningHelpers";
 
 type ShiftPlanningMissingTemplateOverviewProps = {
   days: MonthPlanDay[];

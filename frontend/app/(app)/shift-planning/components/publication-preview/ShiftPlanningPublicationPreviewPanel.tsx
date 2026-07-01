@@ -1,7 +1,7 @@
-import { formatCreatedAt } from "../helpers/shiftPlanningDraftHelpers";
-import type { DraftPublicationPreviewResult } from "../helpers/shiftPlanningDraftTypes";
+import { formatCreatedAt } from "../../helpers/shiftPlanningDraftHelpers";
+import type { DraftPublicationPreviewResult } from "../../helpers/shiftPlanningDraftTypes";
 
-import { ShiftPlanningPublicationPreviewResultSection } from "./publication-preview/ShiftPlanningPublicationPreviewResultSection";
+import { ShiftPlanningPublicationPreviewResultSection } from "./ShiftPlanningPublicationPreviewResultSection";
 
 type ShiftPlanningPublicationPreviewPanelProps = {
   canPublishLater: boolean;

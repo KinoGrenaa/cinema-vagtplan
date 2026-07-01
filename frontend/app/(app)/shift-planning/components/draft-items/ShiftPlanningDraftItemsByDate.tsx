@@ -1,5 +1,5 @@
 import { ShiftPlanningDraftDateGroup } from "./ShiftPlanningDraftDateGroup";
-import type { DraftDateGroup } from "../helpers/shiftPlanningDraftTypes";
+import type { DraftDateGroup } from "../../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftItemsByDateProps = {
   dateGroups: DraftDateGroup[];

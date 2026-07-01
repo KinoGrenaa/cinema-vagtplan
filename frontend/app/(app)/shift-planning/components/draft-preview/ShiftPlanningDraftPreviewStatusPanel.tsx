@@ -1,4 +1,4 @@
-import type { PreparedDraftSummary } from "../ShiftPlanningDraftPreview";
+import type { PreparedDraftSummary } from "./ShiftPlanningDraftPreview";
 
 type ShiftPlanningDraftPreviewStatusPanelProps = {
   latestDraft: PreparedDraftSummary | null;

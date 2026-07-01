@@ -1,15 +1,15 @@
-import { ShiftPlanningAlreadyPublishedPanel } from "./publish/ShiftPlanningAlreadyPublishedPanel";
-import { ShiftPlanningPublishActionPanel } from "./publish/ShiftPlanningPublishActionPanel";
-import { ShiftPlanningPublishChecklist } from "./publish/ShiftPlanningPublishChecklist";
-import { ShiftPlanningPublishErrorPanel } from "./publish/ShiftPlanningPublishErrorPanel";
-import { ShiftPlanningPublishFormFields } from "./publish/ShiftPlanningPublishFormFields";
-import { ShiftPlanningPublishResultPanel } from "./publish/ShiftPlanningPublishResultPanel";
-import { ShiftPlanningPublishStatusBadge } from "./publish/ShiftPlanningPublishStatusBadge";
-import { getSelectedWorkTypeName } from "../helpers/shiftPlanningDraftHelpers";
+import { ShiftPlanningAlreadyPublishedPanel } from "./ShiftPlanningAlreadyPublishedPanel";
+import { ShiftPlanningPublishActionPanel } from "./ShiftPlanningPublishActionPanel";
+import { ShiftPlanningPublishChecklist } from "./ShiftPlanningPublishChecklist";
+import { ShiftPlanningPublishErrorPanel } from "./ShiftPlanningPublishErrorPanel";
+import { ShiftPlanningPublishFormFields } from "./ShiftPlanningPublishFormFields";
+import { ShiftPlanningPublishResultPanel } from "./ShiftPlanningPublishResultPanel";
+import { ShiftPlanningPublishStatusBadge } from "./ShiftPlanningPublishStatusBadge";
+import { getSelectedWorkTypeName } from "../../helpers/shiftPlanningDraftHelpers";
 import type {
   DraftPublishResult,
   WorkTypeOption,
-} from "../helpers/shiftPlanningDraftTypes";
+} from "../../helpers/shiftPlanningDraftTypes";
 
 export const PUBLISH_CONFIRMATION_TEXT = "PUBLICER_KLADDE";
 

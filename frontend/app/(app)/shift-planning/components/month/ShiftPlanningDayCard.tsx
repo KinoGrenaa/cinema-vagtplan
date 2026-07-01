@@ -9,11 +9,11 @@ import {
   getTemplateWeekParityWarning,
   getWeekdayName,
   isToday,
-} from "../helpers/shiftPlanningHelpers";
+} from "../../helpers/shiftPlanningHelpers";
 import type {
   MonthPlanDay,
   ScheduleTemplateSummary,
-} from "../helpers/shiftPlanningTypes";
+} from "../../helpers/shiftPlanningTypes";
 
 type ShiftPlanningDayCardProps = {
   day: MonthPlanDay;

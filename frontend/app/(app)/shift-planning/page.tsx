@@ -6,13 +6,13 @@ import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-import ShiftPlanningDayCard from "./components/ShiftPlanningDayCard";
-import ShiftPlanningTemplatePreview from "./components/ShiftPlanningTemplatePreview";
-import ShiftPlanningWeekIndicator from "./components/ShiftPlanningWeekIndicator";
-import ShiftPlanningMissingTemplateOverview from "./components/ShiftPlanningMissingTemplateOverview";
-import ShiftPlanningDraftPreview from "./components/ShiftPlanningDraftPreview";
-import ShiftPlanningSavedDraftsOverview from "./components/ShiftPlanningSavedDraftsOverview";
-import ShiftPlanningMasterCinemaRequired from "./components/ShiftPlanningMasterCinemaRequired";
+import ShiftPlanningDayCard from "./components/month/ShiftPlanningDayCard";
+import ShiftPlanningTemplatePreview from "./components/template-preview/ShiftPlanningTemplatePreview";
+import ShiftPlanningWeekIndicator from "./components/month/ShiftPlanningWeekIndicator";
+import ShiftPlanningMissingTemplateOverview from "./components/month/ShiftPlanningMissingTemplateOverview";
+import ShiftPlanningDraftPreview from "./components/draft-preview/ShiftPlanningDraftPreview";
+import ShiftPlanningSavedDraftsOverview from "./components/saved-drafts/ShiftPlanningSavedDraftsOverview";
+import ShiftPlanningMasterCinemaRequired from "./components/shared/ShiftPlanningMasterCinemaRequired";
 import {
   addMonths,
   appendCinemaId,

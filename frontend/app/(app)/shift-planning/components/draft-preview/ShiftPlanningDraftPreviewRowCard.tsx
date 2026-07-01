@@ -3,7 +3,7 @@ import {
   formatWeekParity,
   getWeekdayName,
 } from "../../helpers/shiftPlanningHelpers";
-import type { DraftPreviewRow } from "../ShiftPlanningDraftPreview";
+import type { DraftPreviewRow } from "./ShiftPlanningDraftPreview";
 
 type ShiftPlanningDraftPreviewRowCardProps = {
   row: DraftPreviewRow;

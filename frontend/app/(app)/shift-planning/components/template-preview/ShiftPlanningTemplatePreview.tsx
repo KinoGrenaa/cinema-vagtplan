@@ -5,11 +5,11 @@ import {
   getTemplateDayRequiredCount,
   getTemplateWeekParityWarning,
   getWeekdayName,
-} from "../helpers/shiftPlanningHelpers";
-import type { ScheduleTemplateSummary } from "../helpers/shiftPlanningTypes";
-import { ShiftPlanningTemplatePreviewJobFunctionCard } from "./template-preview/ShiftPlanningTemplatePreviewJobFunctionCard";
-import { ShiftPlanningTemplatePreviewMetricCard } from "./template-preview/ShiftPlanningTemplatePreviewMetricCard";
-import { ShiftPlanningTemplatePreviewStateMessage } from "./template-preview/ShiftPlanningTemplatePreviewStateMessage";
+} from "../../helpers/shiftPlanningHelpers";
+import type { ScheduleTemplateSummary } from "../../helpers/shiftPlanningTypes";
+import { ShiftPlanningTemplatePreviewJobFunctionCard } from "./ShiftPlanningTemplatePreviewJobFunctionCard";
+import { ShiftPlanningTemplatePreviewMetricCard } from "./ShiftPlanningTemplatePreviewMetricCard";
+import { ShiftPlanningTemplatePreviewStateMessage } from "./ShiftPlanningTemplatePreviewStateMessage";
 
 type ShiftPlanningTemplatePreviewProps = {
   dateKey: string;

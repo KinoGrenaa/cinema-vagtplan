@@ -1,4 +1,4 @@
-import { getMonthName } from "../helpers/shiftPlanningHelpers";
+import { getMonthName } from "../../helpers/shiftPlanningHelpers";
 
 type ShiftPlanningSavedDraftsHeaderProps = {
   loading: boolean;

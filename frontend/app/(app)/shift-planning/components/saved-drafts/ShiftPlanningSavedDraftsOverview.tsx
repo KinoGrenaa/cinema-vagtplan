@@ -2,16 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
-import { ShiftPlanningDraftControlSummary } from "./ShiftPlanningDraftControlSummary";
-import { ShiftPlanningDraftControlHeader } from "./ShiftPlanningDraftControlHeader";
-import { ShiftPlanningDraftItemsByDate } from "./ShiftPlanningDraftItemsByDate";
-import { ShiftPlanningDraftValidationPanel } from "./ShiftPlanningDraftValidationPanel";
+import { ShiftPlanningDraftControlSummary } from "../draft-control/ShiftPlanningDraftControlSummary";
+import { ShiftPlanningDraftControlHeader } from "../draft-control/ShiftPlanningDraftControlHeader";
+import { ShiftPlanningDraftItemsByDate } from "../draft-items/ShiftPlanningDraftItemsByDate";
+import { ShiftPlanningDraftValidationPanel } from "../draft-validation/ShiftPlanningDraftValidationPanel";
 import { ShiftPlanningSavedDraftsHeader } from "./ShiftPlanningSavedDraftsHeader";
-import { ShiftPlanningPublicationPreviewPanel } from "./ShiftPlanningPublicationPreviewPanel";
+import { ShiftPlanningPublicationPreviewPanel } from "../publication-preview/ShiftPlanningPublicationPreviewPanel";
 import {
   PUBLISH_CONFIRMATION_TEXT,
   ShiftPlanningPublishPanel,
-} from "./ShiftPlanningPublishPanel";
+} from "../publish/ShiftPlanningPublishPanel";
 import {
   ShiftPlanningSavedDraftsList,
   type DraftStatusFilter,
@@ -20,14 +20,14 @@ import {
 import {
   appendCinemaId,
   readErrorMessage,
-} from "../helpers/shiftPlanningHelpers";
+} from "../../helpers/shiftPlanningHelpers";
 import {
   formatCreatedAt,
   getDateGroups,
   getDraftControlSummary,
   hasControlWarnings,
   toNumber,
-} from "../helpers/shiftPlanningDraftHelpers";
+} from "../../helpers/shiftPlanningDraftHelpers";
 import type {
   DraftPublicationPreviewResult,
   DraftPublishResult,
@@ -36,7 +36,7 @@ import type {
   SavedDraftDetails,
   SavedDraftSummary,
   WorkTypeOption,
-} from "../helpers/shiftPlanningDraftTypes";
+} from "../../helpers/shiftPlanningDraftTypes";
 
 
 type ShiftPlanningSavedDraftsOverviewProps = {
