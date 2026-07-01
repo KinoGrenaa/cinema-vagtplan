@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
+import { ShiftPlanningPublishChecklist } from "./ShiftPlanningPublishChecklist";
+
 import {
   appendCinemaId,
   formatDateKey,
@@ -535,42 +537,6 @@ function ValidationMetricCard({
         {label}
       </p>
       <p className="mt-2 text-2xl font-bold">{value}</p>
-    </div>
-  );
-}
-
-function PublishChecklistItem({
-  complete,
-  description,
-  label,
-}: {
-  complete: boolean;
-  description: string;
-  label: string;
-}) {
-  return (
-    <div
-      className={`rounded-2xl border p-3 text-sm ${
-        complete
-          ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
-          : "border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-gray-950/70 dark:text-gray-300"
-      }`}
-    >
-      <div className="flex items-start gap-3">
-        <span
-          className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-            complete
-              ? "bg-green-600 text-white dark:bg-green-300 dark:text-green-950"
-              : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-          }`}
-        >
-          {complete ? "✓" : "–"}
-        </span>
-        <div>
-          <p className="font-bold">{label}</p>
-          <p className="mt-1 text-xs opacity-80">{description}</p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1771,50 +1737,14 @@ export default function ShiftPlanningSavedDraftsOverview({
             )}
 
             {!selectedDraftIsPublished && (
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/70">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-gray-950 dark:text-white">
-                      Krav før publicering
-                    </p>
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-                      Alle krav skal være grønne, før knappen kan oprette rigtige
-                      vagter.
-                    </p>
-                  </div>
-                  <span
-                    className={`w-fit rounded-full px-2.5 py-1 text-xs font-bold ${
-                      canSubmitPublish
-                        ? "bg-green-100 text-green-950 dark:bg-green-900/70 dark:text-green-100"
-                        : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                    }`}
-                  >
-                    {canSubmitPublish ? "Alle krav opfyldt" : "Mangler krav"}
-                  </span>
-                </div>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  <PublishChecklistItem
-                    complete={selectedDraftCanBePublished}
-                    label="Status er Kladde"
-                    description="Kun åbne kladder kan publiceres. Publicerede og erstattede kladder er låst."
-                  />
-                  <PublishChecklistItem
-                    complete={publicationPreviewCanPublishLater}
-                    label="Grønt publiceringspreview"
-                    description="Backend skal have kontrolleret, at previewet kan blive til vagter."
-                  />
-                  <PublishChecklistItem
-                    complete={Boolean(publishWorkTypeId)}
-                    label="Arbejdstype valgt"
-                    description="Alle oprettede vagter får den valgte arbejdstype."
-                  />
-                  <PublishChecklistItem
-                    complete={publishConfirmationMatches}
-                    label="Bekræftelse skrevet"
-                    description={`Skriv ${PUBLISH_CONFIRMATION_TEXT} præcist for at låse publicering op.`}
-                  />
-                </div>
-              </div>
+              <ShiftPlanningPublishChecklist
+                allRequirementsMet={canSubmitPublish}
+                confirmationMatches={publishConfirmationMatches}
+                confirmationText={PUBLISH_CONFIRMATION_TEXT}
+                publicationPreviewIsGreen={publicationPreviewCanPublishLater}
+                statusIsDraft={selectedDraftCanBePublished}
+                workTypeSelected={Boolean(publishWorkTypeId)}
+              />
             )}
 
             <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
