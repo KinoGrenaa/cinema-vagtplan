@@ -1,4 +1,4 @@
-import type { WorkTypeOption } from "../helpers/shiftPlanningDraftTypes";
+import type { WorkTypeOption } from "../../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningPublishFormFieldsProps = {
   confirmationText: string;

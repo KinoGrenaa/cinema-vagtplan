@@ -2,8 +2,8 @@ import {
   formatAffectedDateLabels,
   formatCreatedShiftIds,
   toNumber,
-} from "../helpers/shiftPlanningDraftHelpers";
-import type { DraftPublishResult } from "../helpers/shiftPlanningDraftTypes";
+} from "../../helpers/shiftPlanningDraftHelpers";
+import type { DraftPublishResult } from "../../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningPublishResultPanelProps = {
   publishResult: DraftPublishResult;

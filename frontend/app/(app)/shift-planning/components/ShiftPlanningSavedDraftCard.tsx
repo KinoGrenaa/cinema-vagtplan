@@ -1,7 +1,7 @@
 import { formatCreatedAt } from "../helpers/shiftPlanningDraftHelpers";
 import type { SavedDraftSummary } from "../helpers/shiftPlanningDraftTypes";
-import { ShiftPlanningSavedDraftStatsRow } from "./ShiftPlanningSavedDraftStatsRow";
-import { ShiftPlanningSavedDraftStatusBadge } from "./ShiftPlanningSavedDraftStatusBadge";
+import { ShiftPlanningSavedDraftStatsRow } from "./saved-drafts/ShiftPlanningSavedDraftStatsRow";
+import { ShiftPlanningSavedDraftStatusBadge } from "./saved-drafts/ShiftPlanningSavedDraftStatusBadge";
 
 type ShiftPlanningSavedDraftCardProps = {
   draft: SavedDraftSummary;
