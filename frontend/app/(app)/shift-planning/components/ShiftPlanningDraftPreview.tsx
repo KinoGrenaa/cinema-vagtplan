@@ -2,9 +2,9 @@ import { useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-import { ShiftPlanningDraftPreviewMetricsPanel } from "./ShiftPlanningDraftPreviewMetricsPanel";
-import { ShiftPlanningDraftPreviewRowCard } from "./ShiftPlanningDraftPreviewRowCard";
-import { ShiftPlanningDraftPreviewStatusPanel } from "./ShiftPlanningDraftPreviewStatusPanel";
+import { ShiftPlanningDraftPreviewMetricsPanel } from "./draft-preview/ShiftPlanningDraftPreviewMetricsPanel";
+import { ShiftPlanningDraftPreviewRowCard } from "./draft-preview/ShiftPlanningDraftPreviewRowCard";
+import { ShiftPlanningDraftPreviewStatusPanel } from "./draft-preview/ShiftPlanningDraftPreviewStatusPanel";
 import {
   appendCinemaId,
   getMonthName,
