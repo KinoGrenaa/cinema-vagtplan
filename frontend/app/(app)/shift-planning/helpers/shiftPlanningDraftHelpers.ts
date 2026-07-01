@@ -4,6 +4,7 @@ import type {
   DraftControlSummary,
   DraftDateGroup,
   SavedDraftItem,
+  WorkTypeOption,
 } from "./shiftPlanningDraftTypes";
 
 export function toNumber(value: unknown) {
@@ -169,4 +170,36 @@ export function getDateGroups(items: SavedDraftItem[]): DraftDateGroup[] {
   });
 
   return Array.from(groups.values());
+}
+
+
+export function getSelectedWorkTypeName(
+  workTypes: WorkTypeOption[],
+  workTypeId: string,
+) {
+  const workType = workTypes.find((item) => String(item.id) === workTypeId);
+
+  return workType?.name || "Valgt arbejdstype";
+}
+
+export function formatCreatedShiftIds(ids?: Array<number | string>) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return null;
+  }
+
+  const visibleIds = ids.slice(0, 10).join(", ");
+  const hiddenCount = Math.max(0, ids.length - 10);
+
+  return hiddenCount > 0 ? `${visibleIds} + ${hiddenCount} flere` : visibleIds;
+}
+
+export function formatAffectedDateLabels(dateKeys?: string[]) {
+  if (!Array.isArray(dateKeys) || dateKeys.length === 0) {
+    return [];
+  }
+
+  return Array.from(new Set(dateKeys))
+    .filter((dateKey) => /^\d{4}-\d{2}-\d{2}$/.test(dateKey))
+    .sort()
+    .map((dateKey) => ({ dateKey, label: formatDateKey(dateKey) }));
 }

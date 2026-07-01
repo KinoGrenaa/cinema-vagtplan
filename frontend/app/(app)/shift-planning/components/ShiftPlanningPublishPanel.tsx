@@ -1,33 +1,17 @@
 import { ShiftPlanningPublishChecklist } from "./ShiftPlanningPublishChecklist";
 
-import { formatDateKey } from "../helpers/shiftPlanningHelpers";
+import {
+  formatAffectedDateLabels,
+  formatCreatedShiftIds,
+  getSelectedWorkTypeName,
+  toNumber,
+} from "../helpers/shiftPlanningDraftHelpers";
+import type {
+  DraftPublishResult,
+  WorkTypeOption,
+} from "../helpers/shiftPlanningDraftTypes";
 
 export const PUBLISH_CONFIRMATION_TEXT = "PUBLICER_KLADDE";
-
-type WorkTypeOption = {
-  id: number | string;
-  name: string;
-  color?: string | null;
-  isActive?: boolean | null;
-  archivedAt?: string | null;
-};
-
-type DraftPublishResult = {
-  draftId?: number | string;
-  cinemaId?: number | null;
-  year?: number | null;
-  month?: number | null;
-  status?: string | null;
-  mode?: string | null;
-  createsShifts?: boolean | null;
-  createdShiftCount?: number | string | null;
-  createdShiftIds?: Array<number | string>;
-  affectedDateKeys?: string[];
-  workTypeId?: number | string | null;
-  workTypeName?: string | null;
-  publishedAt?: string | null;
-  message?: string | null;
-};
 
 type ShiftPlanningPublishPanelProps = {
   canSubmitPublish: boolean;
@@ -49,41 +33,6 @@ type ShiftPlanningPublishPanelProps = {
   workTypes: WorkTypeOption[];
   workTypesError: string | null;
 };
-
-function toNumber(value: unknown) {
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function getSelectedWorkTypeName(
-  workTypes: WorkTypeOption[],
-  workTypeId: string,
-) {
-  const workType = workTypes.find((item) => String(item.id) === workTypeId);
-  return workType?.name || "Valgt arbejdstype";
-}
-
-function formatCreatedShiftIds(ids?: Array<number | string>) {
-  if (!Array.isArray(ids) || ids.length === 0) {
-    return null;
-  }
-
-  const visibleIds = ids.slice(0, 10).join(", ");
-  const hiddenCount = Math.max(0, ids.length - 10);
-
-  return hiddenCount > 0 ? `${visibleIds} + ${hiddenCount} flere` : visibleIds;
-}
-
-function formatAffectedDateLabels(dateKeys?: string[]) {
-  if (!Array.isArray(dateKeys) || dateKeys.length === 0) {
-    return [];
-  }
-
-  return Array.from(new Set(dateKeys))
-    .filter((dateKey) => /^\d{4}-\d{2}-\d{2}$/.test(dateKey))
-    .sort()
-    .map((dateKey) => ({ dateKey, label: formatDateKey(dateKey) }));
-}
 
 export function ShiftPlanningPublishPanel({
   canSubmitPublish,
