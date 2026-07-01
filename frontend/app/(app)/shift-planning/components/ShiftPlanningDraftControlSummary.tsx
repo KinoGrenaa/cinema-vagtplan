@@ -1,6 +1,6 @@
-import { ShiftPlanningDraftControlMetricCard } from "./ShiftPlanningDraftControlMetricCard";
-import { ShiftPlanningDraftControlWarningPanel } from "./ShiftPlanningDraftControlWarningPanel";
-import { ShiftPlanningDraftPublicationReadinessPanel } from "./ShiftPlanningDraftPublicationReadinessPanel";
+import { ShiftPlanningDraftControlMetricCard } from "./draft-control/ShiftPlanningDraftControlMetricCard";
+import { ShiftPlanningDraftControlWarningPanel } from "./draft-control/ShiftPlanningDraftControlWarningPanel";
+import { ShiftPlanningDraftPublicationReadinessPanel } from "./draft-control/ShiftPlanningDraftPublicationReadinessPanel";
 import type { DraftControlSummary } from "../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftControlSummaryProps = {
