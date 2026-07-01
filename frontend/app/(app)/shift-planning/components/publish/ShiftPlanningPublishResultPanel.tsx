@@ -22,6 +22,11 @@ export function ShiftPlanningPublishResultPanel({
   );
   const createdShiftCount = toNumber(publishResult.createdShiftCount);
   const workTypeName = publishResult.workTypeName || selectedWorkTypeName;
+  const firstAffectedDateKey =
+    publishedAffectedDateLabels[0]?.dateKey ?? "";
+  const scheduleHref = firstAffectedDateKey
+    ? `/schedule?date=${firstAffectedDateKey}`
+    : "/schedule";
 
   return (
     <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
@@ -64,7 +69,7 @@ export function ShiftPlanningPublishResultPanel({
         vagter på de berørte datoer.
       </p>
       <a
-        href="/schedule"
+        href={scheduleHref}
         className="mt-3 inline-flex rounded-xl border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
       >
         Åbn vagtplan
