@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/app/lib/api";
 
 import { ShiftPlanningDraftControlSummary } from "./ShiftPlanningDraftControlSummary";
+import { ShiftPlanningDraftControlHeader } from "./ShiftPlanningDraftControlHeader";
 import { ShiftPlanningDraftItemsByDate } from "./ShiftPlanningDraftItemsByDate";
 import { ShiftPlanningDraftValidationPanel } from "./ShiftPlanningDraftValidationPanel";
 import { ShiftPlanningPublicationPreviewPanel } from "./ShiftPlanningPublicationPreviewPanel";
@@ -190,21 +191,6 @@ type ShiftPlanningSavedDraftsOverviewProps = {
 function toNumber(value: unknown) {
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function formatDraftStatus(status?: string | null) {
-  switch (status) {
-    case "DRAFT":
-      return "Kladde";
-    case "SUPERSEDED":
-      return "Erstattet";
-    case "PUBLISHED":
-      return "Publiceret";
-    case "CANCELLED":
-      return "Annulleret";
-    default:
-      return status || "Ukendt status";
-  }
 }
 
 function formatCreatedAt(value?: string | null) {
@@ -875,61 +861,18 @@ export default function ShiftPlanningSavedDraftsOverview({
 
       {selectedDraft && (
         <div className="mt-6 rounded-3xl border border-blue-200 bg-blue-50/70 p-5 dark:border-blue-900/70 dark:bg-blue-950/25">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">
-                Kladdekontrol
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <h3 className="text-xl font-bold text-gray-950 dark:text-white">
-                  Kladde #{selectedDraft.id} · {controlSummary.totalItems}{" "}
-                  poster
-                </h3>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClasses(
-                    selectedDraft.status,
-                  )}`}
-                >
-                  {formatDraftStatus(selectedDraft.status)}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Gennemgå poster, medarbejdere, tider, backend-validering og
-                publiceringspreview. Publicering kræver stadig arbejdstype og
-                præcis bekræftelse.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={validateSelectedDraft}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                disabled={validatingDraftId === selectedDraft.id}
-              >
-                {validatingDraftId === selectedDraft.id
-                  ? "Validerer..."
-                  : "Kør backend-validering"}
-              </button>
-              <button
-                type="button"
-                onClick={loadPublicationPreview}
-                className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-white"
-                disabled={loadingPublicationPreviewId === selectedDraft.id}
-              >
-                {loadingPublicationPreviewId === selectedDraft.id
-                  ? "Henter preview..."
-                  : "Hent publiceringspreview"}
-              </button>
-              <button
-                type="button"
-                onClick={closeControl}
-                className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-900/40"
-              >
-                Luk kontrol
-              </button>
-            </div>
-          </div>
+          <ShiftPlanningDraftControlHeader
+            draftId={selectedDraft.id}
+            draftStatus={selectedDraft.status}
+            isLoadingPublicationPreview={
+              loadingPublicationPreviewId === selectedDraft.id
+            }
+            isValidating={validatingDraftId === selectedDraft.id}
+            onClose={closeControl}
+            onLoadPublicationPreview={loadPublicationPreview}
+            onValidate={validateSelectedDraft}
+            totalItems={controlSummary.totalItems}
+          />
 
           <ShiftPlanningDraftControlSummary
             backendValidationIsGreen={backendValidationIsGreen}
