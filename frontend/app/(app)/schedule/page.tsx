@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import StaffingRequestModal from "./components/StaffingRequestModal";
 import {
   ManualTimeRegistrationModal,
@@ -35,7 +35,7 @@ export default function SchedulePage() {
   const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === "true";
   const todayDefault = getTodayLocalDate();
 
-  const [selectedDate, setSelectedDate] = useState(todayDefault);
+  const [selectedDate, setSelectedDate] = useState(todayDefault); const scheduleDateQueryApplied = useRef(false);
 
   const {
     user: currentUser,
@@ -110,6 +110,17 @@ export default function SchedulePage() {
     confirmDialog,
     infoDialog,
   });
+
+  useEffect(() => {
+    if (scheduleDateQueryApplied.current) return;
+    scheduleDateQueryApplied.current = true;
+
+    const queryDate = new URLSearchParams(window.location.search).get("date");
+    if (!queryDate || !/^\d{4}-\d{2}-\d{2}$/.test(queryDate)) return;
+
+    setSelectedDate(queryDate);
+    resetShiftFormForDate(queryDate);
+  }, [resetShiftFormForDate]);
 
   const {
     handleMoveShift,
