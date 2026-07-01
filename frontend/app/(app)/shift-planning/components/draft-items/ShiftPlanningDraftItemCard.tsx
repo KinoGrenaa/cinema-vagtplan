@@ -36,13 +36,13 @@ export function ShiftPlanningDraftItemCard({
           </p>
         </div>
         <div className="text-sm text-gray-600 dark:text-gray-300 lg:text-right">
-          Medarbejder: {formatDraftItemUserName(item)}
+          Medarbejder i kladden: {formatDraftItemUserName(item)}
         </div>
       </div>
 
       {item.warningMessage && (
         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
-          Advarsel: {item.warningMessage}
+          Kontroladvarsel: {item.warningMessage}
         </div>
       )}
     </article>

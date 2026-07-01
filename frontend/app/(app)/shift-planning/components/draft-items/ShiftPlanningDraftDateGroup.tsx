@@ -24,23 +24,23 @@ export function ShiftPlanningDraftDateGroup({
             {group.label}
           </h4>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            {group.items.length} poster på datoen
+            {group.items.length} kladdeposter på datoen
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs font-semibold">
           {group.unassignedCount > 0 && (
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">
-              {group.unassignedCount} ikke tildelt
+              {group.unassignedCount} uden medarbejder
             </span>
           )}
           {group.warningCount > 0 && (
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">
-              {group.warningCount} advarsler
+              {group.warningCount} kontroladvarsler
             </span>
           )}
           {group.missingTimeCount > 0 && (
             <span className="rounded-full bg-red-100 px-2.5 py-1 text-red-950 dark:bg-red-950/60 dark:text-red-100">
-              {group.missingTimeCount} uden tid
+              {group.missingTimeCount} mangler tid
             </span>
           )}
         </div>
@@ -54,7 +54,7 @@ export function ShiftPlanningDraftDateGroup({
 
       {hiddenItemsForDay > 0 && (
         <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
-          {hiddenItemsForDay} flere poster på datoen er skjult.
+          {hiddenItemsForDay} flere kladdeposter på datoen er skjult i denne kompakte visning.
         </p>
       )}
     </section>
