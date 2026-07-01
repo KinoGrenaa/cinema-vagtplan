@@ -55,22 +55,22 @@ function getReadinessDescription({
   isReadyForPublication,
 }: ShiftPlanningDraftPublicationReadinessPanelProps) {
   if (isReadyForPublication) {
-    return "Kladden har grøn backend-validering og ingen synlige lokale kontroladvarsler. Publicering er stadig låst bag preview, arbejdstype og præcis bekræftelse.";
+    return "Kladden har grøn backend-validering og ingen synlige lokale kontroladvarsler. Publicering er stadig låst bag publiceringspreview, arbejdstype og præcis bekræftelse.";
   }
 
   if (backendValidationIsGreen) {
-    return "Backend fandt ingen fejl eller advarsler, men kladden har lokale kontrolpunkter, som bør gennemgås før publicering.";
+    return "Backend fandt ingen fejl eller advarsler, men kladden har lokale kontrolpunkter. Gennemgå dem før du henter publiceringspreview og publicerer.";
   }
 
   if (hasValidationResult) {
-    return "Backend-valideringen skal være grøn, før kladden må vises som klar til publicering.";
+    return "Backend-valideringen skal være grøn, før kladden kan vises som klar til publiceringspreview og publicering.";
   }
 
   if (hasValidationError) {
-    return "Ret fejlen eller prøv valideringen igen. Kladden kan ikke markeres klar uden en grøn backend-validering.";
+    return "Ret fejlen eller prøv valideringen igen. Kladden kan ikke markeres klar til publiceringspreview eller publicering uden en grøn backend-validering.";
   }
 
-  return "Klik på “Kør backend-validering”. En kladde kan først vises som klar, når backend-valideringen er kørt og er grøn.";
+  return "Klik på “Kør backend-validering”. En kladde kan først vises som klar til publiceringspreview og publicering, når backend-valideringen er kørt og er grøn.";
 }
 
 function getReadinessBadgeClasses({
