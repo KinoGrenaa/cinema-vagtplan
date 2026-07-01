@@ -1,6 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import { ShiftPlanningSavedDraftCard } from "./ShiftPlanningSavedDraftCard";
+import { ShiftPlanningSavedDraftsFilterPanel } from "./ShiftPlanningSavedDraftsFilterPanel";
+import { ShiftPlanningSavedDraftsListMessages } from "./ShiftPlanningSavedDraftsListMessages";
+import { ShiftPlanningSavedDraftsTogglePanel } from "./ShiftPlanningSavedDraftsTogglePanel";
 import type { SavedDraftSummary } from "../helpers/shiftPlanningDraftTypes";
 
 export type DraftStatusFilter =
@@ -102,80 +105,49 @@ export function ShiftPlanningSavedDraftsList({
     {} as Record<DraftStatusFilter, number>,
   );
 
+  const filterOptions = DRAFT_STATUS_FILTERS.map((filter) => ({
+    ...filter,
+    count: draftStatusCounts[filter.value] ?? 0,
+  }));
+
   const filteredDrafts = drafts.filter((draft) =>
     draftMatchesStatusFilter(draft, draftStatusFilter),
   );
+
   const visibleDrafts = showAllDrafts
     ? filteredDrafts
     : filteredDrafts.slice(0, MAX_VISIBLE_DRAFTS);
+
   const hiddenDraftCount = Math.max(
     0,
     filteredDrafts.length - visibleDrafts.length,
   );
+
   const canToggleDraftList = filteredDrafts.length > MAX_VISIBLE_DRAFTS;
+  const selectedFilterText = formatSelectedFilterText(draftStatusFilter);
+
+  const selectDraftStatusFilter = (filter: DraftStatusFilter) => {
+    setDraftStatusFilter(filter);
+    setShowAllDrafts(false);
+  };
 
   return (
     <>
       {drafts.length > 0 && (
-        <section className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40">
-          <div className="mb-3 space-y-1">
-            <h3 className="text-sm font-semibold text-gray-950 dark:text-gray-50">
-              Filtrér kladder
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Vælg om du vil fokusere på åbne, publicerede eller erstattede kladder.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {DRAFT_STATUS_FILTERS.map((filter) => {
-              const isActive = draftStatusFilter === filter.value;
-              const count = draftStatusCounts[filter.value] ?? 0;
-
-              return (
-                <button
-                  key={filter.value}
-                  type="button"
-                  onClick={() => {
-                    setDraftStatusFilter(filter.value);
-                    setShowAllDrafts(false);
-                  }}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${
-                    isActive
-                      ? "bg-blue-600 text-white ring-blue-600 dark:bg-blue-500 dark:ring-blue-500"
-                      : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-800 dark:hover:bg-gray-800"
-                  }`}
-                >
-                  {filter.label} · {count}
-                </button>
-              );
-            })}
-          </div>
-        </section>
+        <ShiftPlanningSavedDraftsFilterPanel
+          activeFilter={draftStatusFilter}
+          filters={filterOptions}
+          onSelectFilter={selectDraftStatusFilter}
+        />
       )}
 
-      {errorMessage && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
-          {errorMessage}
-        </div>
-      )}
-
-      {loading && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-300">
-          Henter gemte kladder...
-        </div>
-      )}
-
-      {!loading && drafts.length === 0 && !errorMessage && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-300">
-          Der er endnu ingen gemte kladder for måneden.
-        </div>
-      )}
-
-      {!loading && drafts.length > 0 && filteredDrafts.length === 0 && !errorMessage && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-300">
-          Der er ingen {formatSelectedFilterText(draftStatusFilter)} i denne måned.
-        </div>
-      )}
+      <ShiftPlanningSavedDraftsListMessages
+        errorMessage={errorMessage}
+        hasAnyDrafts={drafts.length > 0}
+        hasMatchingDrafts={filteredDrafts.length > 0}
+        loading={loading}
+        selectedFilterText={selectedFilterText}
+      />
 
       {!loading && visibleDrafts.length > 0 && (
         <div className="space-y-3">
@@ -194,24 +166,13 @@ export function ShiftPlanningSavedDraftsList({
       )}
 
       {canToggleDraftList && (
-        <div className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-300 sm:flex-row sm:items-center sm:justify-between">
-          <span>
-            {showAllDrafts
-              ? `Alle ${filteredDrafts.length} ${formatSelectedFilterText(
-                  draftStatusFilter,
-                )} vises.`
-              : `${hiddenDraftCount} ældre ${formatSelectedFilterText(
-                  draftStatusFilter,
-                )} er skjult i den kompakte visning.`}
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowAllDrafts((current) => !current)}
-            className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-white dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-900"
-          >
-            {showAllDrafts ? "Vis færre" : `Vis alle ${filteredDrafts.length}`}
-          </button>
-        </div>
+        <ShiftPlanningSavedDraftsTogglePanel
+          filteredDraftCount={filteredDrafts.length}
+          hiddenDraftCount={hiddenDraftCount}
+          selectedFilterText={selectedFilterText}
+          showAllDrafts={showAllDrafts}
+          onToggle={() => setShowAllDrafts((current) => !current)}
+        />
       )}
     </>
   );
