@@ -1,9 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
-
-import { ShiftPlanningSavedDraftCard } from "./ShiftPlanningSavedDraftCard";
-import { ShiftPlanningSavedDraftsFilterPanel } from "./ShiftPlanningSavedDraftsFilterPanel";
-import { ShiftPlanningSavedDraftsListMessages } from "./ShiftPlanningSavedDraftsListMessages";
-import { ShiftPlanningSavedDraftsTogglePanel } from "./ShiftPlanningSavedDraftsTogglePanel";
+import { ShiftPlanningSavedDraftCard } from "./saved-drafts/ShiftPlanningSavedDraftCard";
+import { ShiftPlanningSavedDraftsFilterPanel } from "./saved-drafts/ShiftPlanningSavedDraftsFilterPanel";
+import { ShiftPlanningSavedDraftsListMessages } from "./saved-drafts/ShiftPlanningSavedDraftsListMessages";
+import { ShiftPlanningSavedDraftsTogglePanel } from "./saved-drafts/ShiftPlanningSavedDraftsTogglePanel";
 import {
   draftMatchesStatusFilter,
   formatSelectedDraftFilterText,
@@ -43,17 +42,14 @@ export function ShiftPlanningSavedDraftsList({
   onOpenDraft,
 }: ShiftPlanningSavedDraftsListProps) {
   const filterOptions = getDraftStatusFilterOptions(drafts);
-
   const filteredDrafts = drafts.filter((draft) =>
     draftMatchesStatusFilter(draft, draftStatusFilter),
   );
-
   const visibleDrafts = getVisibleSavedDrafts(filteredDrafts, showAllDrafts);
   const hiddenDraftCount = getHiddenSavedDraftCount(
     filteredDrafts,
     visibleDrafts,
   );
-
   const canToggleDraftList = filteredDrafts.length > MAX_VISIBLE_SAVED_DRAFTS;
   const selectedFilterText = formatSelectedDraftFilterText(draftStatusFilter);
 
@@ -86,9 +82,7 @@ export function ShiftPlanningSavedDraftsList({
             <ShiftPlanningSavedDraftCard
               key={draft.id}
               draft={draft}
-              isSelected={
-                selectedDraftId !== null && String(selectedDraftId) === String(draft.id)
-              }
+              isSelected={String(selectedDraftId ?? "") === String(draft.id)}
               openingDraftId={openingDraftId}
               onOpenDraft={onOpenDraft}
             />

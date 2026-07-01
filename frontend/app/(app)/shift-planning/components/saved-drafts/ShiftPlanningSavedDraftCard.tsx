@@ -1,7 +1,8 @@
-import { formatCreatedAt } from "../helpers/shiftPlanningDraftHelpers";
-import type { SavedDraftSummary } from "../helpers/shiftPlanningDraftTypes";
-import { ShiftPlanningSavedDraftStatsRow } from "./saved-drafts/ShiftPlanningSavedDraftStatsRow";
-import { ShiftPlanningSavedDraftStatusBadge } from "./saved-drafts/ShiftPlanningSavedDraftStatusBadge";
+import { formatCreatedAt } from "../../helpers/shiftPlanningDraftHelpers";
+import type { SavedDraftSummary } from "../../helpers/shiftPlanningDraftTypes";
+
+import { ShiftPlanningSavedDraftStatsRow } from "./ShiftPlanningSavedDraftStatsRow";
+import { ShiftPlanningSavedDraftStatusBadge } from "./ShiftPlanningSavedDraftStatusBadge";
 
 type ShiftPlanningSavedDraftCardProps = {
   draft: SavedDraftSummary;
@@ -22,30 +23,21 @@ export function ShiftPlanningSavedDraftCard({
     <article
       className={`rounded-2xl border p-4 transition ${
         isSelected
-          ? "border-blue-400 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30"
-          : "border-gray-200 bg-white hover:border-gray-300 dark:border-gray-800 dark:bg-gray-950/40 dark:hover:border-gray-700"
+          ? "border-blue-300 bg-blue-50/70 dark:border-blue-700 dark:bg-blue-950/30"
+          : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
       }`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-2">
+        <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold text-gray-950 dark:text-gray-50">
               Kladde #{draft.id}
             </h3>
             <ShiftPlanningSavedDraftStatusBadge status={draft.status} />
           </div>
-
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Gemt {formatCreatedAt(draft.createdAt)}
           </p>
-
-          <ShiftPlanningSavedDraftStatsRow draft={draft} />
-
-          {draft.note && (
-            <p className="rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:bg-gray-900 dark:text-gray-300">
-              {draft.note}
-            </p>
-          )}
         </div>
 
         <button
@@ -57,6 +49,14 @@ export function ShiftPlanningSavedDraftCard({
           {isOpening ? "Åbner..." : "Åbn kladde"}
         </button>
       </div>
+
+      {draft.note && (
+        <p className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-300">
+          {draft.note}
+        </p>
+      )}
+
+      <ShiftPlanningSavedDraftStatsRow draft={draft} />
     </article>
   );
 }
