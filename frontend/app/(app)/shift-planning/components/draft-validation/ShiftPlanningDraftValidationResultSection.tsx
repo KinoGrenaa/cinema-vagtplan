@@ -49,7 +49,7 @@ export function ShiftPlanningDraftValidationResultSection({
 
       {issues.length === 0 && (
         <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
-          Backend-kontrollen er grøn og fandt ingen fejl eller advarsler i planlægningskladden.
+          Backend-kontrollen er grøn og fandt ingen fejl eller advarsler i planlægningsplanlægningskladden.
         </div>
       )}
 
@@ -66,7 +66,7 @@ export function ShiftPlanningDraftValidationResultSection({
 
       {hiddenIssueCount > 0 && (
         <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          {hiddenIssueCount} flere valideringsproblemer er skjult i denne
+          {hiddenIssueCount} flere kontrolpunkter er skjult i denne
           kompakte visning.
         </p>
       )}

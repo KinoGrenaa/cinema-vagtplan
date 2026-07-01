@@ -55,19 +55,19 @@ function getReadinessDescription({
   isReadyForPublication,
 }: ShiftPlanningDraftPublicationReadinessPanelProps) {
   if (isReadyForPublication) {
-    return "Planlægningskladden har grøn backend-kontrol og ingen synlige lokale kontroladvarsler. Publicering er stadig låst bag publiceringspreview, arbejdstype og præcis bekræftelse.";
+    return "Planlægningsplanlægningskladden har grøn backend-kontrol og ingen synlige lokale kontroladvarsler. Publicering er stadig låst bag publiceringspreview, arbejdstype og præcis bekræftelse.";
   }
 
   if (backendValidationIsGreen) {
-    return "Backend-kontrollen fandt ingen fejl eller advarsler, men planlægningskladden har lokale kontrolpunkter. Gennemgå dem før du henter publiceringspreview og publicerer.";
+    return "Backend-kontrollen fandt ingen fejl eller advarsler, men planlægningsplanlægningskladden har lokale kontrolpunkter. Gennemgå dem før du henter publiceringspreview og publicerer.";
   }
 
   if (hasValidationResult) {
-    return "Backend-kontrollen skal være grøn, før planlægningskladden kan vises som klar til publiceringspreview og publicering.";
+    return "Backend-kontrollen skal være grøn, før planlægningsplanlægningskladden kan vises som klar til publiceringspreview og publicering.";
   }
 
   if (hasValidationError) {
-    return "Ret fejlen eller prøv valideringen igen. Kladden kan ikke markeres klar til publiceringspreview eller publicering uden en grøn backend-kontrol.";
+    return "Ret fejlen eller prøv valideringen igen. Planlægningskladden kan ikke markeres klar til publiceringspreview eller publicering uden en grøn backend-kontrol.";
   }
 
   return "Klik på “Kør backend-kontrol”. En kladde kan først vises som klar til publiceringspreview og publicering, når backend-kontrollen er kørt og er grøn.";

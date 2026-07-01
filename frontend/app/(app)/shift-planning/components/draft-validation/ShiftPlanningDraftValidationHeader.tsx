@@ -14,7 +14,7 @@ export function ShiftPlanningDraftValidationHeader({
           Backend-kontrol
         </p>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-          Kalder backendens sikre valideringsendpoint og kontrollerer kladden
+          Kalder backendens sikre valideringsendpoint og kontrollerer planlægningskladden
           uden at oprette eller publicere vagter.
         </p>
       </div>
