@@ -11,7 +11,7 @@ export function ShiftPlanningDraftValidationHeader({
     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div>
         <p className="text-sm font-bold text-gray-950 dark:text-white">
-          Backend-validering
+          Backend-kontrol
         </p>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
           Kalder backendens sikre valideringsendpoint og kontrollerer kladden

@@ -34,7 +34,7 @@ function getReadinessTitle({
   }
 
   if (backendValidationIsGreen) {
-    return "Backend-validering er grøn — gennemgå lokale kontroladvarsler";
+    return "Backend-kontrol er grøn — gennemgå lokale kontroladvarsler";
   }
 
   if (hasValidationResult) {
@@ -42,10 +42,10 @@ function getReadinessTitle({
   }
 
   if (hasValidationError) {
-    return "Ikke klar — backend-validering fejlede";
+    return "Ikke klar — backend-kontrol fejlede";
   }
 
-  return "Ikke klar — kør backend-validering først";
+  return "Ikke klar — kør backend-kontrol først";
 }
 
 function getReadinessDescription({
@@ -55,22 +55,22 @@ function getReadinessDescription({
   isReadyForPublication,
 }: ShiftPlanningDraftPublicationReadinessPanelProps) {
   if (isReadyForPublication) {
-    return "Kladden har grøn backend-validering og ingen synlige lokale kontroladvarsler. Publicering er stadig låst bag publiceringspreview, arbejdstype og præcis bekræftelse.";
+    return "Planlægningskladden har grøn backend-kontrol og ingen synlige lokale kontroladvarsler. Publicering er stadig låst bag publiceringspreview, arbejdstype og præcis bekræftelse.";
   }
 
   if (backendValidationIsGreen) {
-    return "Backend fandt ingen fejl eller advarsler, men kladden har lokale kontrolpunkter. Gennemgå dem før du henter publiceringspreview og publicerer.";
+    return "Backend-kontrollen fandt ingen fejl eller advarsler, men planlægningskladden har lokale kontrolpunkter. Gennemgå dem før du henter publiceringspreview og publicerer.";
   }
 
   if (hasValidationResult) {
-    return "Backend-valideringen skal være grøn, før kladden kan vises som klar til publiceringspreview og publicering.";
+    return "Backend-kontrollen skal være grøn, før planlægningskladden kan vises som klar til publiceringspreview og publicering.";
   }
 
   if (hasValidationError) {
-    return "Ret fejlen eller prøv valideringen igen. Kladden kan ikke markeres klar til publiceringspreview eller publicering uden en grøn backend-validering.";
+    return "Ret fejlen eller prøv valideringen igen. Kladden kan ikke markeres klar til publiceringspreview eller publicering uden en grøn backend-kontrol.";
   }
 
-  return "Klik på “Kør backend-validering”. En kladde kan først vises som klar til publiceringspreview og publicering, når backend-valideringen er kørt og er grøn.";
+  return "Klik på “Kør backend-kontrol”. En kladde kan først vises som klar til publiceringspreview og publicering, når backend-kontrollen er kørt og er grøn.";
 }
 
 function getReadinessBadgeClasses({

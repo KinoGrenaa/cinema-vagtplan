@@ -49,7 +49,7 @@ export function ShiftPlanningDraftValidationResultSection({
 
       {issues.length === 0 && (
         <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
-          Backend-valideringen er grøn og fandt ingen fejl eller advarsler i kladden.
+          Backend-kontrollen er grøn og fandt ingen fejl eller advarsler i planlægningskladden.
         </div>
       )}
 
