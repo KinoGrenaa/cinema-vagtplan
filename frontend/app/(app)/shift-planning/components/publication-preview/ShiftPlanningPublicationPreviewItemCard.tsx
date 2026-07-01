@@ -1,6 +1,6 @@
-import { formatDateKey } from "../helpers/shiftPlanningHelpers";
-import { formatMinute } from "../helpers/shiftPlanningDraftHelpers";
-import type { DraftPublicationPreviewItem } from "../helpers/shiftPlanningDraftTypes";
+import { formatMinute } from "../../helpers/shiftPlanningDraftHelpers";
+import type { DraftPublicationPreviewItem } from "../../helpers/shiftPlanningDraftTypes";
+import { formatDateKey } from "../../helpers/shiftPlanningHelpers";
 
 type ShiftPlanningPublicationPreviewItemCardProps = {
   item: DraftPublicationPreviewItem;
@@ -34,6 +34,7 @@ export function ShiftPlanningPublicationPreviewItemCard({
           </span>
           <span className="font-semibold">{itemDate}</span>
         </div>
+
         <span className="text-xs text-blue-700 dark:text-blue-200/70">
           {startTime && endTime ? `kl. ${startTime} - ${endTime}` : "Tid mangler"}
         </span>
