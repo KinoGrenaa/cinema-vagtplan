@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
+import { ShiftPlanningDraftValidationPanel } from "./ShiftPlanningDraftValidationPanel";
 import { ShiftPlanningPublicationPreviewPanel } from "./ShiftPlanningPublicationPreviewPanel";
 import {
   PUBLISH_CONFIRMATION_TEXT,
@@ -186,7 +187,6 @@ type ShiftPlanningSavedDraftsOverviewProps = {
 
 const MAX_VISIBLE_DATE_GROUPS = 10;
 const MAX_VISIBLE_ITEMS_PER_DAY = 6;
-const MAX_VISIBLE_VALIDATION_ISSUES = 20;
 
 function toNumber(value: unknown) {
   const numberValue = Number(value);
@@ -241,119 +241,6 @@ function getDateKey(value?: string | null) {
   }
 
   return date.toISOString().slice(0, 10);
-}
-
-function formatIssueDate(issue: DraftValidationIssue) {
-  const dateKey = getDateKey(issue.dateKey || issue.date || null);
-  return dateKey ? formatDateKey(dateKey) : null;
-}
-
-function formatMinute(value: unknown) {
-  const minute = Number(value);
-
-  if (!Number.isInteger(minute) || minute < 0) {
-    return null;
-  }
-
-  const hours = Math.floor(minute / 60);
-  const minutes = minute % 60;
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
-function formatTimeRange(item: SavedDraftItem) {
-  const start = formatMinute(item.plannedStartMinute);
-  const end = formatMinute(item.plannedEndMinute);
-
-  if (!start || !end) {
-    return "Tid mangler";
-  }
-
-  return `kl. ${start} - ${end}`;
-}
-
-function formatUserName(item: SavedDraftItem) {
-  const name = `${item.userFirstName ?? ""} ${item.userLastName ?? ""}`.trim();
-  return name || item.userEmail || "Ikke tildelt";
-}
-
-function formatValidationActor(issue: DraftValidationIssue) {
-  return issue.employeeName || issue.userName || null;
-}
-
-function getMetadataString(
-  metadata: Record<string, unknown> | null | undefined,
-  key: string,
-) {
-  const value = metadata?.[key];
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function getItemJobFunctionName(item: SavedDraftItem) {
-  return (
-    item.jobFunctionName ||
-    getMetadataString(item.metadata, "jobFunctionName") ||
-    "Jobfunktion mangler"
-  );
-}
-
-function getItemTemplateName(item: SavedDraftItem) {
-  return (
-    item.scheduleTemplateName ||
-    getMetadataString(item.metadata, "scheduleTemplateName") ||
-    "Skabelon mangler"
-  );
-}
-
-function itemHasTime(item: SavedDraftItem) {
-  return Boolean(
-    formatMinute(item.plannedStartMinute) &&
-    formatMinute(item.plannedEndMinute),
-  );
-}
-
-function itemHasJobFunction(item: SavedDraftItem) {
-  return getItemJobFunctionName(item) !== "Jobfunktion mangler";
-}
-
-function itemHasTemplate(item: SavedDraftItem) {
-  return getItemTemplateName(item) !== "Skabelon mangler";
-}
-
-function getStatusClasses(status?: string | null) {
-  if (status === "DRAFT") {
-    return "bg-green-100 text-green-900 ring-green-200 dark:bg-green-950/60 dark:text-green-200 dark:ring-green-900";
-  }
-
-  if (status === "SUPERSEDED") {
-    return "bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800";
-  }
-
-  return "bg-blue-100 text-blue-900 ring-blue-200 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-900";
-}
-
-function getValidationSeverityLabel(severity?: string | null) {
-  switch ((severity || "").toUpperCase()) {
-    case "ERROR":
-      return "Fejl";
-    case "WARNING":
-      return "Advarsel";
-    case "INFO":
-      return "Info";
-    default:
-      return severity || "Kontrol";
-  }
-}
-
-function getValidationSeverityClasses(severity?: string | null) {
-  switch ((severity || "").toUpperCase()) {
-    case "ERROR":
-      return "border-red-200 bg-red-50 text-red-950 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100";
-    case "WARNING":
-      return "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100";
-    default:
-      return "border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-100";
-  }
 }
 
 function getDraftControlSummary(items: SavedDraftItem[]): DraftControlSummary {
@@ -455,38 +342,6 @@ function ControlMetricCard({
   );
 }
 
-function ValidationMetricCard({
-  label,
-  value,
-  variant = "neutral",
-}: {
-  label: string;
-  value: number | string;
-  variant?: "neutral" | "warning" | "error" | "success";
-}) {
-  const numericValue = Number(value);
-  const shouldHighlightProblem =
-    !Number.isFinite(numericValue) || numericValue > 0;
-
-  const classes =
-    variant === "error" && shouldHighlightProblem
-      ? "border-red-200 bg-red-50 text-red-950 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100"
-      : variant === "warning" && shouldHighlightProblem
-        ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
-        : variant === "success"
-          ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100"
-          : "border-blue-200 bg-white text-blue-950 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100";
-
-  return (
-    <div className={`rounded-2xl border p-4 ${classes}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
-    </div>
-  );
-}
-
 export default function ShiftPlanningSavedDraftsOverview({
   activeCinemaId,
   month,
@@ -549,15 +404,6 @@ export default function ShiftPlanningSavedDraftsOverview({
   );
   const draftNeedsControl = hasControlWarnings(controlSummary);
   const validationSummary = validationResult?.summary;
-  const validationIssues = validationResult?.issues ?? [];
-  const visibleValidationIssues = validationIssues.slice(
-    0,
-    MAX_VISIBLE_VALIDATION_ISSUES,
-  );
-  const hiddenValidationIssueCount = Math.max(
-    0,
-    validationIssues.length - visibleValidationIssues.length,
-  );
   const publicationPreviewSummary = publicationPreviewResult?.summary;
   const publicationPreviewCanPublishLater =
     publicationPreviewResult?.createsShifts === false &&
@@ -1201,135 +1047,10 @@ export default function ShiftPlanningSavedDraftsOverview({
             workTypesError={workTypesError}
           />
 
-          <div className="mt-5 rounded-2xl border border-blue-200 bg-white p-4 dark:border-blue-900/70 dark:bg-gray-950/70">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className="text-sm font-bold text-gray-950 dark:text-white">
-                  Backend-validering
-                </p>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                  Kalder backendens sikre valideringsendpoint og kontrollerer
-                  kladden uden at oprette eller publicere vagter.
-                </p>
-              </div>
-              {validationResult?.checkedAt && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Senest kontrolleret{" "}
-                  {formatCreatedAt(validationResult.checkedAt)}
-                </p>
-              )}
-            </div>
-
-            {validationError && (
-              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
-                {validationError}
-              </div>
-            )}
-
-            {!validationResult && !validationError && (
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-                Backend-validering er ikke kørt for den åbne kladde endnu.
-              </div>
-            )}
-
-            {validationResult && (
-              <div className="mt-4 space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <ValidationMetricCard
-                    label="Status"
-                    value={validationSummary?.isValid ? "OK" : "Stop"}
-                    variant={validationSummary?.isValid ? "success" : "error"}
-                  />
-                  <ValidationMetricCard
-                    label="Fejl"
-                    value={toNumber(validationSummary?.errorCount)}
-                    variant="error"
-                  />
-                  <ValidationMetricCard
-                    label="Advarsler"
-                    value={toNumber(validationSummary?.warningCount)}
-                    variant="warning"
-                  />
-                  <ValidationMetricCard
-                    label="Problemer"
-                    value={toNumber(validationSummary?.issueCount)}
-                    variant={
-                      toNumber(validationSummary?.issueCount) > 0
-                        ? "warning"
-                        : "success"
-                    }
-                  />
-                </div>
-
-                {validationIssues.length === 0 && (
-                  <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100">
-                    Backend-valideringen fandt ingen fejl eller advarsler i
-                    kladden.
-                  </div>
-                )}
-
-                {visibleValidationIssues.length > 0 && (
-                  <div className="grid gap-3">
-                    {visibleValidationIssues.map((issue, index) => {
-                      const issueDate = formatIssueDate(issue);
-                      const actor = formatValidationActor(issue);
-
-                      return (
-                        <article
-                          key={`${issue.code ?? "issue"}-${issue.itemId ?? issue.id ?? index}`}
-                          className={`rounded-2xl border p-4 text-sm ${getValidationSeverityClasses(
-                            issue.severity,
-                          )}`}
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold dark:bg-gray-950/60">
-                              {getValidationSeverityLabel(issue.severity)}
-                            </span>
-                            {issue.code && (
-                              <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
-                                {issue.code}
-                              </span>
-                            )}
-                            {issueDate && (
-                              <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
-                                {issueDate}
-                              </span>
-                            )}
-                            {issue.itemId && (
-                              <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
-                                Post #{issue.itemId}
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-3 font-semibold">
-                            {issue.message ||
-                              issue.code ||
-                              "Ukendt valideringsproblem"}
-                          </p>
-                          {(actor || issue.jobFunctionName) && (
-                            <p className="mt-2 opacity-85">
-                              {actor ? `Medarbejder: ${actor}` : null}
-                              {actor && issue.jobFunctionName ? " · " : null}
-                              {issue.jobFunctionName
-                                ? `Jobfunktion: ${issue.jobFunctionName}`
-                                : null}
-                            </p>
-                          )}
-                        </article>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {hiddenValidationIssueCount > 0 && (
-                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                    {hiddenValidationIssueCount} flere valideringsproblemer er
-                    skjult i denne kompakte visning.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+          <ShiftPlanningDraftValidationPanel
+            errorMessage={validationError}
+            result={validationResult}
+          />
 
           {selectedItems.length === 0 && (
             <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
