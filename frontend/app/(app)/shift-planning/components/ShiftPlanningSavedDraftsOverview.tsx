@@ -7,6 +7,10 @@ import {
   PUBLISH_CONFIRMATION_TEXT,
   ShiftPlanningPublishPanel,
 } from "./ShiftPlanningPublishPanel";
+import {
+  ShiftPlanningSavedDraftsList,
+  type DraftStatusFilter,
+} from "./ShiftPlanningSavedDraftsList";
 
 import {
   appendCinemaId,
@@ -180,20 +184,6 @@ type ShiftPlanningSavedDraftsOverviewProps = {
   onDraftPublished?: () => Promise<void> | void;
 };
 
-type DraftStatusFilter = "ALL" | "DRAFT" | "PUBLISHED" | "SUPERSEDED" | "OTHER";
-
-const DRAFT_STATUS_FILTERS: Array<{
-  value: DraftStatusFilter;
-  label: string;
-}> = [
-  { value: "ALL", label: "Alle" },
-  { value: "DRAFT", label: "Kladder" },
-  { value: "PUBLISHED", label: "Publicerede" },
-  { value: "SUPERSEDED", label: "Erstattede" },
-  { value: "OTHER", label: "Andre" },
-];
-
-const MAX_VISIBLE_DRAFTS = 5;
 const MAX_VISIBLE_DATE_GROUPS = 10;
 const MAX_VISIBLE_ITEMS_PER_DAY = 6;
 const MAX_VISIBLE_VALIDATION_ISSUES = 20;
@@ -215,52 +205,6 @@ function formatDraftStatus(status?: string | null) {
       return "Annulleret";
     default:
       return status || "Ukendt status";
-  }
-}
-
-function getDraftStatusFilterValue(status?: string | null): DraftStatusFilter {
-  if (status === "DRAFT" || status === "PUBLISHED" || status === "SUPERSEDED") {
-    return status;
-  }
-
-  return "OTHER";
-}
-
-function draftMatchesStatusFilter(
-  draft: SavedDraftSummary,
-  filter: DraftStatusFilter,
-) {
-  if (filter === "ALL") {
-    return true;
-  }
-
-  return getDraftStatusFilterValue(draft.status) === filter;
-}
-
-function getDraftStatusCount(
-  drafts: SavedDraftSummary[],
-  filter: DraftStatusFilter,
-) {
-  if (filter === "ALL") {
-    return drafts.length;
-  }
-
-  return drafts.filter((draft) => draftMatchesStatusFilter(draft, filter))
-    .length;
-}
-
-function formatSelectedFilterText(filter: DraftStatusFilter) {
-  switch (filter) {
-    case "DRAFT":
-      return "åbne kladder";
-    case "PUBLISHED":
-      return "publicerede kladder";
-    case "SUPERSEDED":
-      return "erstattede kladder";
-    case "OTHER":
-      return "andre kladder";
-    default:
-      return "kladder";
   }
 }
 
@@ -589,34 +533,6 @@ export default function ShiftPlanningSavedDraftsOverview({
     useState<DraftStatusFilter>("ALL");
   const [showAllDrafts, setShowAllDrafts] = useState(false);
 
-  const draftStatusCounts = useMemo(() => {
-    return DRAFT_STATUS_FILTERS.reduce(
-      (counts, filter) => ({
-        ...counts,
-        [filter.value]: getDraftStatusCount(drafts, filter.value),
-      }),
-      {} as Record<DraftStatusFilter, number>,
-    );
-  }, [drafts]);
-  const filteredDrafts = useMemo(
-    () =>
-      drafts.filter((draft) =>
-        draftMatchesStatusFilter(draft, draftStatusFilter),
-      ),
-    [draftStatusFilter, drafts],
-  );
-  const visibleDrafts = useMemo(
-    () =>
-      showAllDrafts
-        ? filteredDrafts
-        : filteredDrafts.slice(0, MAX_VISIBLE_DRAFTS),
-    [filteredDrafts, showAllDrafts],
-  );
-  const hiddenDraftCount = Math.max(
-    0,
-    filteredDrafts.length - visibleDrafts.length,
-  );
-  const canToggleDraftList = filteredDrafts.length > MAX_VISIBLE_DRAFTS;
   const selectedItems = selectedDraft?.items ?? [];
   const controlSummary = useMemo(
     () => getDraftControlSummary(selectedItems),
@@ -1076,159 +992,19 @@ export default function ShiftPlanningSavedDraftsOverview({
         </div>
       </div>
 
-      {drafts.length > 0 && (
-        <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-center lg:text-left">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                Filtrér kladder
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Vælg om du vil fokusere på åbne, publicerede eller erstattede
-                kladder.
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 lg:justify-end">
-              {DRAFT_STATUS_FILTERS.map((filter) => {
-                const isActive = draftStatusFilter === filter.value;
-                const count = draftStatusCounts[filter.value] ?? 0;
 
-                return (
-                  <button
-                    key={filter.value}
-                    type="button"
-                    onClick={() => {
-                      setDraftStatusFilter(filter.value);
-                      setShowAllDrafts(false);
-                    }}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${
-                      isActive
-                        ? "bg-blue-600 text-white ring-blue-600 dark:bg-blue-500 dark:ring-blue-500"
-                        : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-800 dark:hover:bg-gray-800"
-                    }`}
-                  >
-                    {filter.label} · {count}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-100">
-          {errorMessage}
-        </div>
-      )}
-
-      {loading && (
-        <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-          Henter gemte kladder...
-        </div>
-      )}
-
-      {!loading && drafts.length === 0 && !errorMessage && (
-        <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-          Der er endnu ingen gemte kladder for måneden.
-        </div>
-      )}
-
-      {!loading &&
-        drafts.length > 0 &&
-        filteredDrafts.length === 0 &&
-        !errorMessage && (
-          <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-            Der er ingen {formatSelectedFilterText(draftStatusFilter)} i denne
-            måned.
-          </div>
-        )}
-
-      {!loading && visibleDrafts.length > 0 && (
-        <div className="mt-5 grid gap-3">
-          {visibleDrafts.map((draft) => {
-            const isSelected =
-              selectedDraft && String(selectedDraft.id) === String(draft.id);
-
-            return (
-              <article
-                key={draft.id}
-                className={`rounded-2xl border p-4 ${
-                  isSelected
-                    ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30"
-                    : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
-                }`}
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-bold text-gray-950 dark:text-white">
-                        Kladde #{draft.id}
-                      </h3>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClasses(
-                          draft.status,
-                        )}`}
-                      >
-                        {formatDraftStatus(draft.status)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                      Gemt {formatCreatedAt(draft.createdAt)}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
-                      <span className="rounded-full bg-white px-2.5 py-1 dark:bg-gray-900">
-                        {toNumber(draft.itemCount)} poster
-                      </span>
-                      <span className="rounded-full bg-white px-2.5 py-1 dark:bg-gray-900">
-                        {toNumber(draft.unassignedItemCount)} uden standard
-                      </span>
-                      <span className="rounded-full bg-white px-2.5 py-1 dark:bg-gray-900">
-                        {toNumber(draft.warningItemCount)} advarsler
-                      </span>
-                    </div>
-                    {draft.note && (
-                      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                        {draft.note}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openDraft(draft.id)}
-                    className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-white"
-                    disabled={openingDraftId === draft.id}
-                  >
-                    {openingDraftId === draft.id ? "Åbner..." : "Åbn kladde"}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-
-      {canToggleDraftList && (
-        <div className="mt-3 flex flex-col items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-center text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300 sm:flex-row">
-          <span>
-            {showAllDrafts
-              ? `Alle ${filteredDrafts.length} ${formatSelectedFilterText(
-                  draftStatusFilter,
-                )} vises.`
-              : `${hiddenDraftCount} ældre ${formatSelectedFilterText(
-                  draftStatusFilter,
-                )} er skjult i den kompakte visning.`}
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowAllDrafts((current) => !current)}
-            className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-white dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-900"
-          >
-            {showAllDrafts ? "Vis færre" : `Vis alle ${filteredDrafts.length}`}
-          </button>
-        </div>
-      )}
+      <ShiftPlanningSavedDraftsList
+        drafts={drafts}
+        loading={loading}
+        errorMessage={errorMessage}
+        selectedDraftId={selectedDraft?.id ?? null}
+        openingDraftId={openingDraftId}
+        draftStatusFilter={draftStatusFilter}
+        setDraftStatusFilter={setDraftStatusFilter}
+        showAllDrafts={showAllDrafts}
+        setShowAllDrafts={setShowAllDrafts}
+        onOpenDraft={openDraft}
+      />
 
       {selectedDraft && (
         <div className="mt-6 rounded-3xl border border-blue-200 bg-blue-50/70 p-5 dark:border-blue-900/70 dark:bg-blue-950/25">
