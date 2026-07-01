@@ -20,15 +20,15 @@ export function ShiftPlanningDraftPreviewStatusPanel({
     <>
       {latestDraft && (
         <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900/70 dark:bg-green-950/30 dark:text-green-100">
-          Seneste kladde #{latestDraft.id} · {toNumber(latestDraft.itemCount)} poster ·{" "}
-          {toNumber(latestDraft.unassignedItemCount)} uden standardmedarbejder ·{" "}
-          {toNumber(latestDraft.warningItemCount)} med advarsel
+          Seneste gemte kladde #{latestDraft.id} · {toNumber(latestDraft.itemCount)} poster ·{" "}
+          {toNumber(latestDraft.unassignedItemCount)} uden standard ·{" "}
+          {toNumber(latestDraft.warningItemCount)} med kontroladvarsel
         </div>
       )}
 
       {loading && (
         <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/50 dark:text-gray-300">
-          Henter kladdepreview...
+          Henter kladdepreview fra månedens skabeloner...
         </div>
       )}
 

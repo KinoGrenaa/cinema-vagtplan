@@ -26,15 +26,15 @@ export function ShiftPlanningDraftPreviewRowCard({
       <p className="mt-1 text-sm font-semibold text-gray-950 dark:text-white">
         {row.template
           ? `${row.template.name} · ${formatWeekParity(row.template.weekParity)}`
-          : "Skabelon mangler data"}
+          : "Skabelon mangler ugedagsdata"}
       </p>
       <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
-        {row.requiredCount} vagter
+        {row.requiredCount} kladdeposter
       </p>
       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        {row.jobFunctionCount} funktioner · {row.assignedCount} standard
-        {!row.hasTemplateDay && " · ingen opsætning på ugedagen"}
-        {row.warning && " · ugeadvarsel"}
+        {row.jobFunctionCount} funktioner · {row.assignedCount} med standard
+        {!row.hasTemplateDay && " · mangler ugedagsopsætning"}
+        {row.warning && " · tjek ugeparitet"}
       </p>
     </button>
   );

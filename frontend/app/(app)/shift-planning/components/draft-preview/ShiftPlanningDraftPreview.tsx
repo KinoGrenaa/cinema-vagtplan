@@ -150,7 +150,7 @@ export default function ShiftPlanningDraftPreview({
         title: "Planlægningskladde gemt",
         description: `Kladde #${draft.id} er gemt med ${toNumber(
           draft.itemCount,
-        )} kladdeposter.\nDer er stadig ikke oprettet aktive vagter.`,
+        )} kladdeposter.\nDer er stadig ikke oprettet aktive vagter. Kør kladdekontrol og publiceringspreview, før kladden publiceres.`,
         variant: "success",
         buttonText: "OK",
       });
@@ -184,7 +184,7 @@ export default function ShiftPlanningDraftPreview({
               Kladdepreview
             </p>
             <h2 className="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
-              Forbered vagter
+              Forbered månedens vagter
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
               Viser hvad månedens valgte skabeloner foreløbigt vil kunne blive
@@ -206,10 +206,10 @@ export default function ShiftPlanningDraftPreview({
               disabled={!canPrepareDraft || savingDraft}
               className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
             >
-              {savingDraft ? "Gemmer kladde..." : "Gem kladde"}
+              {savingDraft ? "Gemmer planlægningskladde..." : "Gem planlægningskladde"}
             </button>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              En ny kladde for samme måned erstatter tidligere åben kladde.
+              En ny planlægningskladde for samme måned erstatter tidligere åben kladde, så du altid arbejder videre fra den nyeste version.
             </p>
           </div>
         </div>
@@ -236,17 +236,17 @@ export default function ShiftPlanningDraftPreview({
               <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
                 {hiddenCount > 0 && (
                   <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-900">
-                    {hiddenCount} flere dage ses i kalenderen
+                    {hiddenCount} flere dage ses i kalenderen nedenfor
                   </span>
                 )}
                 {warningCount > 0 && (
                   <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-                    {warningCount} med ugeadvarsel
+                    {warningCount} dage med ugeadvarsel
                   </span>
                 )}
                 {missingTemplateDayCount > 0 && (
                   <span className="rounded-full bg-red-100 px-3 py-1 text-red-900 dark:bg-red-950/40 dark:text-red-100">
-                    {missingTemplateDayCount} uden ugedagsopsætning
+                    {missingTemplateDayCount} dage uden ugedagsopsætning
                   </span>
                 )}
               </div>
