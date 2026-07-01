@@ -71,7 +71,7 @@ export function ShiftPlanningPublishFormFields({
             disabled={publishing || !selectedDraftCanBePublished}
           />
           <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-            Skriv {confirmationText} for at låse knappen op.
+            Skriv {confirmationText} for at låse publiceringsknappen op.
           </span>
         </label>
       </div>
@@ -82,7 +82,7 @@ export function ShiftPlanningPublishFormFields({
           value={publishNote}
           onChange={(event) => setPublishNote(event.target.value)}
           rows={2}
-          placeholder="Valgfri note, fx publiceret fra månedsplan"
+          placeholder="Valgfri note, fx publiceret fra planlægningskladde"
           className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
           disabled={publishing || !selectedDraftCanBePublished}
         />

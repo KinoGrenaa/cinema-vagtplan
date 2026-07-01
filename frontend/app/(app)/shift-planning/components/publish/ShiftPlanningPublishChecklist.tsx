@@ -61,7 +61,7 @@ export function ShiftPlanningPublishChecklist({
             Krav før publicering
           </p>
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-            Alle krav skal være grønne, før knappen kan oprette rigtige vagter.
+            Alle krav skal være grønne, før planlægningskladden kan oprette rigtige vagter.
           </p>
         </div>
         <span
