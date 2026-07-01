@@ -56,9 +56,9 @@ export function ShiftPlanningTemplatePreviewJobFunctionCard({
 
       <div className="mt-2 text-xs text-gray-600 dark:text-gray-300">
         <span className="font-semibold text-gray-800 dark:text-gray-100">
-          Standardmedarbejdere:
+          Standard:
         </span>{" "}
-        {assignmentNames.length > 0 ? assignmentNames.join(", ") : "Ingen valgt"}
+        {assignmentNames.length > 0 ? assignmentNames.join(", ") : "Ingen standard valgt"}
       </div>
     </article>
   );

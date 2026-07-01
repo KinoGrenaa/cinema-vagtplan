@@ -25,7 +25,7 @@ export default function ShiftPlanningTemplatePreview({
   if (!isActive) {
     return (
       <ShiftPlanningTemplatePreviewStateMessage tone="inactive">
-        Dagen er markeret som inaktiv. Der bruges derfor ingen vagtsskabelon på
+        Dagen er markeret som inaktiv i månedsplanen. Der bruges derfor ingen vagtsskabelon på
         denne dato.
       </ShiftPlanningTemplatePreviewStateMessage>
     );
@@ -52,13 +52,13 @@ export default function ShiftPlanningTemplatePreview({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Preview fra valgt skabelon
+            Skabelonpreview for valgt dato
           </p>
           <h3 className="mt-1 text-base font-bold text-gray-950 dark:text-white">
             {formatTemplateLabel(template)}
           </h3>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            Viser skabelonens aktive opsætning for {weekdayName}.
+            Viser den aktive opsætning for {weekdayName}, før der forberedes en kladde.
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export default function ShiftPlanningTemplatePreview({
 
       {weekParityWarning && (
         <p className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
-          Ugeadvarsel: {weekParityWarning}
+          Tjek ugeopsætning: {weekParityWarning}
         </p>
       )}
 
