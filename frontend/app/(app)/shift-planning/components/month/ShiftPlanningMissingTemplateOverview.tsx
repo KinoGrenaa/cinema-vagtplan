@@ -46,7 +46,7 @@ export default function ShiftPlanningMissingTemplateOverview({
             </h2>
           </div>
           <span className="w-fit rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-900 dark:bg-green-900/50 dark:text-green-100">
-            Klar på skabelon-niveau
+            Alle aktive dage har vagtsskabelon
           </span>
         </div>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">

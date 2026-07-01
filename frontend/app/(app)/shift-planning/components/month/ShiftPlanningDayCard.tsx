@@ -83,7 +83,7 @@ export default function ShiftPlanningDayCard({
             className="inline-flex rounded-md border border-amber-300 bg-amber-50/80 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200"
             title={weekParityWarning}
           >
-            Tjek ugeparitet
+            Tjek skabelonens uge
           </p>
         )}
 
@@ -97,13 +97,13 @@ export default function ShiftPlanningDayCard({
                 {requiredCount} vagter
               </span>
               <span className="rounded-md bg-white/70 px-1.5 py-1 dark:bg-black/20">
-                {assignedCount} stand.
+                {assignedCount} standard
               </span>
             </div>
 
             {templateJobFunctions.length === 0 ? (
               <p className="truncate rounded-md border border-dashed border-current/30 px-2 py-1 text-[11px] opacity-75">
-                Skabelonen har ingen jobfunktioner for denne ugedag.
+                Skabelonen har ingen jobfunktioner for denne ugedag endnu.
               </p>
             ) : (
               <div className="flex flex-wrap gap-1">
@@ -141,7 +141,7 @@ export default function ShiftPlanningDayCard({
         )}
 
         <p className="truncate text-[11px] opacity-80">
-          {day.movieShowingCount ?? 0} forest. · {day.plannedShiftCount ?? 0}{" "}
+          {day.movieShowingCount ?? 0} forestillinger · {day.plannedShiftCount ?? 0}{" "}
           vagter · {day.unassignedShiftCount ?? 0} ubesatte
         </p>
 

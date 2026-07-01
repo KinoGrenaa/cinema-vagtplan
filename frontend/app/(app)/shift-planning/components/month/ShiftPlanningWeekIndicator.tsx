@@ -23,13 +23,13 @@ export default function ShiftPlanningWeekIndicator({
 
       <div className="mt-3 grid grid-cols-3 gap-1 text-center text-[11px] font-semibold lg:grid-cols-1 lg:text-left">
         <span className="rounded-lg bg-white/70 px-2 py-1 dark:bg-black/20">
-          {activeDays} aktive
+          {activeDays} aktive dage
         </span>
         <span className="rounded-lg bg-white/70 px-2 py-1 dark:bg-black/20">
-          {daysWithTemplate} med skabelon
+          {daysWithTemplate} med vagtsskabelon
         </span>
         <span className="rounded-lg bg-white/70 px-2 py-1 dark:bg-black/20">
-          {missingTemplateDays} mangler
+          {missingTemplateDays} mangler planlægning
         </span>
       </div>
     </div>
