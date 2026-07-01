@@ -38,11 +38,11 @@ export function ShiftPlanningPublicationPreviewResultSection({
       >
         <div className="font-semibold">
           {canPublishLater
-            ? "Preview er klar til publicering"
-            : "Preview viser blokeringer før publicering"}
+            ? "Publiceringspreview er klar"
+            : "Publiceringspreview kræver rettelser"}
         </div>
         <div className="mt-1 text-xs opacity-80">
-          Mode: {result.mode || "Ukendt"} · Opretter vagter nu:{" "}
+          Kontroltype: {result.mode || "Ukendt"} · Opretter vagter i dette trin:{" "}
           {result.createsShifts ? "Ja" : "Nej"}
         </div>
       </div>
@@ -50,31 +50,31 @@ export function ShiftPlanningPublicationPreviewResultSection({
       {previewSummary && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <ShiftPlanningPublicationPreviewMetricCard
-            label="Poster"
+            label="Kladdeposter"
             value={toNumber(previewSummary.itemCount)}
           />
           <ShiftPlanningPublicationPreviewMetricCard
-            label="Kan blive vagter"
+            label="Kan publiceres"
             value={toNumber(previewSummary.publishableItemCount)}
             variant="success"
           />
           <ShiftPlanningPublicationPreviewMetricCard
-            label="Blokerede"
+            label="Blokeret"
             value={toNumber(previewSummary.blockedItemCount)}
             variant="warning"
           />
           <ShiftPlanningPublicationPreviewMetricCard
-            label="Valideringsfejl"
+            label="Fejl fra kontrol"
             value={toNumber(previewSummary.validationErrorCount)}
             variant="warning"
           />
           <ShiftPlanningPublicationPreviewMetricCard
-            label="Valideringsadvarsler"
+            label="Advarsler fra kontrol"
             value={toNumber(previewSummary.validationWarningCount)}
             variant="warning"
           />
           <ShiftPlanningPublicationPreviewMetricCard
-            label="Valideringsproblemer"
+            label="Kontrolpunkter"
             value={toNumber(previewSummary.validationIssueCount)}
             variant="warning"
           />
@@ -83,7 +83,7 @@ export function ShiftPlanningPublicationPreviewResultSection({
 
       {blockingReasons.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
-          <div className="font-semibold">Blokerende årsager</div>
+          <div className="font-semibold">Det blokerer publicering</div>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             {blockingReasons.map((reason) => (
               <li key={reason}>{reason}</li>
@@ -95,7 +95,7 @@ export function ShiftPlanningPublicationPreviewResultSection({
       {visiblePreviewItems.length > 0 && (
         <div className="space-y-2">
           <div className="text-sm font-semibold text-blue-950 dark:text-blue-100">
-            Preview-poster
+            Kladdeposter i previewet
           </div>
           {visiblePreviewItems.map((item, index) => (
             <ShiftPlanningPublicationPreviewItemCard
@@ -109,15 +109,15 @@ export function ShiftPlanningPublicationPreviewResultSection({
 
       {previewItems.length === 0 && (
         <div className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100">
-          Previewet har ingen poster. Kladden kan ikke publiceres, før den har
+          Previewet har ingen kladdeposter. Kladden kan ikke publiceres, før den har
           poster.
         </div>
       )}
 
       {hiddenPreviewItemCount > 0 && (
         <div className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100">
-          {hiddenPreviewItemCount} flere preview-poster er skjult i denne
-          kompakte visning.
+          {hiddenPreviewItemCount} flere kladdeposter er skjult i denne
+          kompakte preview-visning.
         </div>
       )}
     </div>

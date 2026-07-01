@@ -30,13 +30,13 @@ export function ShiftPlanningPublicationPreviewItemCard({
                 : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-100"
             }`}
           >
-            {item.canBecomeShift ? "Kan blive vagt" : "Blokeret"}
+            {item.canBecomeShift ? "Kan publiceres" : "Blokeret"}
           </span>
           <span className="font-semibold">{itemDate}</span>
         </div>
 
         <span className="text-xs text-blue-700 dark:text-blue-200/70">
-          {startTime && endTime ? `kl. ${startTime} - ${endTime}` : "Tid mangler"}
+          {startTime && endTime ? `kl. ${startTime} - ${endTime}` : "Mangler tid"}
         </span>
       </div>
 
@@ -49,7 +49,7 @@ export function ShiftPlanningPublicationPreviewItemCard({
         )}
         <span>{item.jobFunctionName || "Jobfunktion mangler"}</span>
         <span>·</span>
-        <span>{item.userName || "Ikke tildelt"}</span>
+        <span>{item.userName || "Uden medarbejder"}</span>
         <span>·</span>
         <span>Kladdepost #{item.draftItemId ?? "?"}</span>
       </div>
@@ -64,7 +64,7 @@ export function ShiftPlanningPublicationPreviewItemCard({
 
       {item.warningMessage && (
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
-          Advarsel: {item.warningMessage}
+          Kontroladvarsel: {item.warningMessage}
         </div>
       )}
     </div>

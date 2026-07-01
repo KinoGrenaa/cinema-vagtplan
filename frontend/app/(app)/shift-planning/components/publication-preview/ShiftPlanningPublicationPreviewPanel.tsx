@@ -40,7 +40,7 @@ export function ShiftPlanningPublicationPreviewPanel({
 
       {!result && !errorMessage && (
         <div className="mt-4 rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100">
-          Publiceringspreview er ikke hentet for den åbne kladde endnu.
+          Publiceringspreview er ikke hentet endnu. Hent previewet efter backend-validering, så du kan se præcis hvilke kladdeposter der kan blive til vagter.
         </div>
       )}
 
