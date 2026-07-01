@@ -18,10 +18,10 @@ export const DRAFT_STATUS_FILTERS: Array<{
   label: string;
 }> = [
   { value: "ALL", label: "Alle" },
-  { value: "DRAFT", label: "Kladder" },
+  { value: "DRAFT", label: "Åbne kladder" },
   { value: "PUBLISHED", label: "Publicerede" },
   { value: "SUPERSEDED", label: "Erstattede" },
-  { value: "OTHER", label: "Andre" },
+  { value: "OTHER", label: "Andre/annullerede" },
 ];
 
 export const MAX_VISIBLE_SAVED_DRAFTS = 5;
@@ -75,7 +75,7 @@ export function formatSelectedDraftFilterText(filter: DraftStatusFilter) {
     case "SUPERSEDED":
       return "erstattede kladder";
     case "OTHER":
-      return "andre kladder";
+      return "andre eller annullerede kladder";
     default:
       return "kladder";
   }
