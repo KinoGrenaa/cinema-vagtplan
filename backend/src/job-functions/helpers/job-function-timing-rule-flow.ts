@@ -18,6 +18,8 @@ const TIMING_ANCHORS: JobFunctionTimingAnchorValue[] = [
   'DAY_PERIOD_START',
   'DAY_PERIOD_END',
   'FIRST_MOVIE_START',
+  'FIRST_MOVIE_END',
+  'LAST_MOVIE_START',
   'LAST_MOVIE_END',
   'FIXED_TIME',
 ];
@@ -110,8 +112,8 @@ function parseBoolean(value: unknown, fallback: boolean) {
 }
 
 function normalizeTimingRuleData(data: JobFunctionTimingRuleData) {
-  const startAnchor = normalizeTimingAnchor(data.startAnchor, 'DAY_PERIOD_START');
-  const endAnchor = normalizeTimingAnchor(data.endAnchor, 'DAY_PERIOD_END');
+  const startAnchor = normalizeTimingAnchor(data.startAnchor, 'FIRST_MOVIE_START');
+  const endAnchor = normalizeTimingAnchor(data.endAnchor, 'LAST_MOVIE_END');
   const startOffsetMinutes = parseOffsetMinutes(
     data.startOffsetMinutes,
     'Start-forskydning',

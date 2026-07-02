@@ -193,9 +193,113 @@ function isWeekParityMismatch(templateWeekParity: string, date: Date) {
   return templateWeekParity !== getWeekParityForDate(date).parity;
 }
 
-function resolvePlannedStartMinute(jobFunction: any) {
-  const timingRule = jobFunction?.timingRule;
+type MovieShowingTimingData = {
+  startTime: Date;
+  endTime: Date;
+};
 
+function getMinuteOfDay(value: Date) {
+  return value.getUTCHours() * 60 + value.getUTCMinutes();
+}
+
+function getDateKeyFromDateTime(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function normalizeRangeEnd(startMinute: number, endMinute: number) {
+  return endMinute <= startMinute ? endMinute + 24 * 60 : endMinute;
+}
+
+function isMinuteRangeOverlap(
+  firstStart: number,
+  firstEnd: number,
+  secondStart: number,
+  secondEnd: number,
+) {
+  return firstStart < secondEnd && firstEnd > secondStart;
+}
+
+function getMovieIntervalsForDate(
+  date: Date,
+  jobFunction: any,
+  movieShowings: MovieShowingTimingData[],
+) {
+  const dateKey = toIsoDateOnly(date);
+  const dayPeriod = jobFunction?.dayPeriod;
+  const hasDayPeriod =
+    dayPeriod?.startMinute !== null &&
+    dayPeriod?.startMinute !== undefined &&
+    dayPeriod?.endMinute !== null &&
+    dayPeriod?.endMinute !== undefined;
+  const periodStart = hasDayPeriod ? Number(dayPeriod.startMinute) : 0;
+  const periodEnd = hasDayPeriod
+    ? normalizeRangeEnd(periodStart, Number(dayPeriod.endMinute))
+    : 24 * 60;
+
+  return movieShowings
+    .filter((showing) => getDateKeyFromDateTime(showing.startTime) === dateKey)
+    .map((showing) => {
+      const startMinute = getMinuteOfDay(showing.startTime);
+      const rawEndMinute = getMinuteOfDay(showing.endTime);
+      const endMinute = normalizeRangeEnd(startMinute, rawEndMinute);
+
+      return { startMinute, endMinute };
+    })
+    .filter((showing) =>
+      isMinuteRangeOverlap(
+        showing.startMinute,
+        showing.endMinute,
+        periodStart,
+        periodEnd,
+      ),
+    );
+}
+
+function resolveMovieAnchorMinute(
+  anchor: string | null | undefined,
+  movieIntervals: { startMinute: number; endMinute: number }[],
+) {
+  if (movieIntervals.length === 0) {
+    return null;
+  }
+
+  if (anchor === 'FIRST_MOVIE_START') {
+    return Math.min(...movieIntervals.map((showing) => showing.startMinute)) %
+      (24 * 60);
+  }
+
+  if (anchor === 'FIRST_MOVIE_END') {
+    return Math.min(...movieIntervals.map((showing) => showing.endMinute)) %
+      (24 * 60);
+  }
+
+  if (anchor === 'LAST_MOVIE_START') {
+    return Math.max(...movieIntervals.map((showing) => showing.startMinute)) %
+      (24 * 60);
+  }
+
+  if (anchor === 'LAST_MOVIE_END') {
+    return Math.max(...movieIntervals.map((showing) => showing.endMinute)) %
+      (24 * 60);
+  }
+
+  return null;
+}
+
+function applyTimingOffset(
+  anchorMinute: number,
+  offsetMinutes: number | null | undefined,
+) {
+  const offset = Number(offsetMinutes ?? 0);
+  return (anchorMinute + offset + 24 * 60) % (24 * 60);
+}
+
+function resolvePlannedStartMinute(
+  jobFunction: any,
+  date: Date,
+  movieShowings: MovieShowingTimingData[],
+) {
+  const timingRule = jobFunction?.timingRule;
   if (
     timingRule?.startAnchor === 'FIXED_TIME' &&
     timingRule.startFixedMinute !== null &&
@@ -204,26 +308,35 @@ function resolvePlannedStartMinute(jobFunction: any) {
     return timingRule.startFixedMinute;
   }
 
+  const movieAnchorMinute = resolveMovieAnchorMinute(
+    timingRule?.startAnchor ?? 'FIRST_MOVIE_START',
+    getMovieIntervalsForDate(date, jobFunction, movieShowings),
+  );
+  if (movieAnchorMinute !== null) {
+    return applyTimingOffset(movieAnchorMinute, timingRule?.startOffsetMinutes);
+  }
+
   if (
     timingRule?.fallbackStartMinute !== null &&
     timingRule?.fallbackStartMinute !== undefined
   ) {
     return timingRule.fallbackStartMinute;
   }
-
   if (
     jobFunction?.dayPeriod?.startMinute !== null &&
     jobFunction?.dayPeriod?.startMinute !== undefined
   ) {
     return jobFunction.dayPeriod.startMinute;
   }
-
   return null;
 }
 
-function resolvePlannedEndMinute(jobFunction: any) {
+function resolvePlannedEndMinute(
+  jobFunction: any,
+  date: Date,
+  movieShowings: MovieShowingTimingData[],
+) {
   const timingRule = jobFunction?.timingRule;
-
   if (
     timingRule?.endAnchor === 'FIXED_TIME' &&
     timingRule.endFixedMinute !== null &&
@@ -232,20 +345,26 @@ function resolvePlannedEndMinute(jobFunction: any) {
     return timingRule.endFixedMinute;
   }
 
+  const movieAnchorMinute = resolveMovieAnchorMinute(
+    timingRule?.endAnchor ?? 'LAST_MOVIE_END',
+    getMovieIntervalsForDate(date, jobFunction, movieShowings),
+  );
+  if (movieAnchorMinute !== null) {
+    return applyTimingOffset(movieAnchorMinute, timingRule?.endOffsetMinutes);
+  }
+
   if (
     timingRule?.fallbackEndMinute !== null &&
     timingRule?.fallbackEndMinute !== undefined
   ) {
     return timingRule.fallbackEndMinute;
   }
-
   if (
     jobFunction?.dayPeriod?.endMinute !== null &&
     jobFunction?.dayPeriod?.endMinute !== undefined
   ) {
     return jobFunction.dayPeriod.endMinute;
   }
-
   return null;
 }
 
@@ -778,6 +897,21 @@ export class ShiftPlanningDraftsService {
         },
       },
     });
+    const movieShowings = await this.prisma.movieShowing.findMany({
+      where: {
+        cinemaId,
+        startTime: {
+          gte: start,
+          lt: end,
+        },
+      },
+      orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
+      select: {
+        startTime: true,
+        endTime: true,
+      },
+    });
+
     const warnings: DraftWarning[] = [];
     const items: DraftItemInput[] = [];
 
@@ -832,8 +966,8 @@ export class ShiftPlanningDraftsService {
           Number(templateJobFunction.requiredCount ?? 1),
         );
         const jobFunction = templateJobFunction.jobFunction;
-        const plannedStartMinute = resolvePlannedStartMinute(jobFunction);
-        const plannedEndMinute = resolvePlannedEndMinute(jobFunction);
+        const plannedStartMinute = resolvePlannedStartMinute(jobFunction, date, movieShowings);
+        const plannedEndMinute = resolvePlannedEndMinute(jobFunction, date, movieShowings);
         const timeWarning =
           plannedStartMinute === null || plannedEndMinute === null
             ? 'Mangler tidsgrundlag for jobfunktionen.'

@@ -21,10 +21,10 @@ export type JobFunctionTimingAnchorValue =
   | 'DAY_PERIOD_START'
   | 'DAY_PERIOD_END'
   | 'FIRST_MOVIE_START'
+  | 'FIRST_MOVIE_END'
+  | 'LAST_MOVIE_START'
   | 'LAST_MOVIE_END'
-  | 'FIXED_TIME';
-
-export type JobFunctionCreateData = {
+  | 'FIXED_TIME'; export type JobFunctionCreateData = {
   name: string;
   description?: string | null;
   color?: string | null;

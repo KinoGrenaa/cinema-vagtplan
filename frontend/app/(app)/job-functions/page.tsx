@@ -61,9 +61,9 @@ const timingAnchorOptions: Array<{
   value: JobFunctionTimingAnchor;
   label: string;
 }> = [
-  { value: "DAY_PERIOD_START", label: "Dagsperiode start" },
-  { value: "DAY_PERIOD_END", label: "Dagsperiode slut" },
   { value: "FIRST_MOVIE_START", label: "Første filmstart" },
+  { value: "FIRST_MOVIE_END", label: "Første filmslut" },
+  { value: "LAST_MOVIE_START", label: "Sidste filmstart" },
   { value: "LAST_MOVIE_END", label: "Sidste filmslut" },
   { value: "FIXED_TIME", label: "Fast tidspunkt" },
 ];
@@ -73,6 +73,7 @@ const timingStartAnchorOptions: Array<{
   label: string;
 }> = [
   { value: "FIRST_MOVIE_START", label: "Første filmstart" },
+  { value: "FIRST_MOVIE_END", label: "Første filmslut" },
   { value: "FIXED_TIME", label: "Fast tidspunkt" },
 ];
 
@@ -80,6 +81,7 @@ const timingEndAnchorOptions: Array<{
   value: JobFunctionTimingAnchor;
   label: string;
 }> = [
+  { value: "LAST_MOVIE_START", label: "Sidste filmstart" },
   { value: "LAST_MOVIE_END", label: "Sidste filmslut" },
   { value: "FIXED_TIME", label: "Fast tidspunkt" },
 ];

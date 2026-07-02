@@ -18,14 +18,7 @@ export type DayPeriod = {
   updatedAt: string;
 };
 
-export type JobFunctionTimingAnchor =
-  | "DAY_PERIOD_START"
-  | "DAY_PERIOD_END"
-  | "FIRST_MOVIE_START"
-  | "LAST_MOVIE_END"
-  | "FIXED_TIME";
-
-export type JobFunctionTimingRule = {
+export type JobFunctionTimingAnchor = "DAY_PERIOD_START" | "DAY_PERIOD_END" | "FIRST_MOVIE_START" | "FIRST_MOVIE_END" | "LAST_MOVIE_START" | "LAST_MOVIE_END" | "FIXED_TIME"; export type JobFunctionTimingRule = {
   id: number;
   cinemaId: number;
   jobFunctionId: number;
