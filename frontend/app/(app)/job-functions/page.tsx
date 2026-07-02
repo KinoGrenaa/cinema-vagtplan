@@ -45,6 +45,7 @@ type FormState = {
 };
 
 type TimingRuleFormState = {
+  dayPeriodId: string;
   startAnchor: JobFunctionTimingAnchor;
   startOffsetMinutes: string;
   startFixedMinute: string;
@@ -67,6 +68,22 @@ const timingAnchorOptions: Array<{
   { value: "FIXED_TIME", label: "Fast tidspunkt" },
 ];
 
+const timingStartAnchorOptions: Array<{
+  value: JobFunctionTimingAnchor;
+  label: string;
+}> = [
+  { value: "FIRST_MOVIE_START", label: "Første filmstart" },
+  { value: "FIXED_TIME", label: "Fast tidspunkt" },
+];
+
+const timingEndAnchorOptions: Array<{
+  value: JobFunctionTimingAnchor;
+  label: string;
+}> = [
+  { value: "LAST_MOVIE_END", label: "Sidste filmslut" },
+  { value: "FIXED_TIME", label: "Fast tidspunkt" },
+];
+
 const emptyForm: FormState = {
   name: "",
   description: "",
@@ -76,16 +93,25 @@ const emptyForm: FormState = {
 };
 
 const emptyTimingRuleForm: TimingRuleFormState = {
-  startAnchor: "DAY_PERIOD_START",
+  dayPeriodId: "",
+  startAnchor: "FIRST_MOVIE_START",
   startOffsetMinutes: "0",
   startFixedMinute: "",
-  endAnchor: "DAY_PERIOD_END",
+  endAnchor: "LAST_MOVIE_END",
   endOffsetMinutes: "0",
   endFixedMinute: "",
   fallbackStartMinute: "",
   fallbackEndMinute: "",
   clampToDayPeriod: true,
 };
+
+function normalizeStartAnchor(anchor: JobFunctionTimingAnchor): JobFunctionTimingAnchor {
+  return anchor === "FIXED_TIME" ? "FIXED_TIME" : "FIRST_MOVIE_START";
+}
+
+function normalizeEndAnchor(anchor: JobFunctionTimingAnchor): JobFunctionTimingAnchor {
+  return anchor === "FIXED_TIME" ? "FIXED_TIME" : "LAST_MOVIE_END";
+}
 
 function toFormState(jobFunction: JobFunction): FormState {
   return {
@@ -132,21 +158,43 @@ function parseForm(form: FormState) {
   };
 }
 
+function getTimingRuleDayPeriodId(
+  jobFunction?: Pick<JobFunction, "dayPeriodId"> | null,
+  rule?: JobFunctionTimingRule | null,
+) {
+  const directDayPeriodId = jobFunction?.dayPeriodId;
+  if (typeof directDayPeriodId === "number" && directDayPeriodId > 0) {
+    return String(directDayPeriodId);
+  }
+
+  const ruleDayPeriodId = rule?.jobFunction?.dayPeriod?.id;
+  if (typeof ruleDayPeriodId === "number" && ruleDayPeriodId > 0) {
+    return String(ruleDayPeriodId);
+  }
+
+  return "";
+}
+
 function toTimingRuleForm(
   rule: JobFunctionTimingRule | null | undefined,
+  jobFunction?: Pick<JobFunction, "dayPeriodId"> | null,
 ): TimingRuleFormState {
   if (!rule) {
-    return emptyTimingRuleForm;
+    return {
+      ...emptyTimingRuleForm,
+      dayPeriodId: getTimingRuleDayPeriodId(jobFunction, null),
+    };
   }
 
   return {
-    startAnchor: rule.startAnchor,
+    dayPeriodId: getTimingRuleDayPeriodId(jobFunction, rule),
+    startAnchor: normalizeStartAnchor(rule.startAnchor),
     startOffsetMinutes: String(rule.startOffsetMinutes ?? 0),
     startFixedMinute:
       rule.startFixedMinute !== null
         ? formatMinute(rule.startFixedMinute).replace("kl. ", "")
         : "",
-    endAnchor: rule.endAnchor,
+    endAnchor: normalizeEndAnchor(rule.endAnchor),
     endOffsetMinutes: String(rule.endOffsetMinutes ?? 0),
     endFixedMinute:
       rule.endFixedMinute !== null
@@ -174,6 +222,19 @@ function parseOffsetInput(value: string, fieldName: string) {
 
   if (parsedValue < -720 || parsedValue > 720) {
     throw new Error(`${fieldName} skal være mellem -720 og 720 minutter.`);
+  }
+
+  return parsedValue;
+}
+
+function parseTimingRuleDayPeriodId(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  const parsedValue = Number(value);
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    throw new Error("Dagsperiode skal være et gyldigt valg.");
   }
 
   return parsedValue;
@@ -456,7 +517,7 @@ export default function JobFunctionsPage() {
 
         const data = (await response.json()) as JobFunctionTimingRule | null;
         setTimingRule(data);
-        setTimingRuleForm(toTimingRuleForm(data));
+        setTimingRuleForm(toTimingRuleForm(data, timingModalJobFunction));
       } catch (error) {
         setTimingRule(null);
         setTimingRuleForm(emptyTimingRuleForm);
@@ -518,7 +579,7 @@ export default function JobFunctionsPage() {
   const openTimingRuleModal = async (jobFunction: JobFunction) => {
     setTimingModalJobFunction(jobFunction);
     setTimingRule(jobFunction.timingRule ?? null);
-    setTimingRuleForm(toTimingRuleForm(jobFunction.timingRule));
+    setTimingRuleForm(toTimingRuleForm(jobFunction.timingRule, jobFunction));
     await fetchTimingRule(jobFunction);
   };
 
@@ -781,10 +842,32 @@ export default function JobFunctionsPage() {
 
     try {
       setTimingRuleSaving(true);
+      const dayPeriodId = parseTimingRuleDayPeriodId(timingRuleForm.dayPeriodId);
       const payload = {
         ...parseTimingRuleForm(timingRuleForm),
         cinemaId: activeCinemaId,
       };
+
+      const dayPeriodResponse = await apiFetch(
+        appendCinemaId(
+          `/job-functions/${timingModalJobFunction.id}`,
+          activeCinemaId,
+        ),
+        {
+          method: "PATCH",
+          body: JSON.stringify({ dayPeriodId, cinemaId: activeCinemaId }),
+        },
+      );
+
+      if (!dayPeriodResponse.ok) {
+        throw new Error(
+          await readErrorMessage(
+            dayPeriodResponse,
+            "Kunne ikke gemme dagsperiode for jobfunktion",
+          ),
+        );
+      }
+
       const response = await apiFetch(
         appendCinemaId(
           `/job-functions/${timingModalJobFunction.id}/timing-rule`,
@@ -853,7 +936,7 @@ export default function JobFunctionsPage() {
 
           const data = (await response.json()) as JobFunctionTimingRule;
           setTimingRule(data);
-          setTimingRuleForm(toTimingRuleForm(data));
+          setTimingRuleForm(toTimingRuleForm(data, timingModalJobFunction));
           await fetchData();
         } catch (error) {
           infoDialog.showError(
@@ -1168,30 +1251,6 @@ export default function JobFunctionsPage() {
                 />
               </label>
 
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  Dagsperiode
-                </span>
-                <select
-                  value={form.dayPeriodId}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      dayPeriodId: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  disabled={saving}
-                >
-                  <option value="">Ingen dagsperiode</option>
-                  {dayPeriods.map((dayPeriod) => (
-                    <option key={dayPeriod.id} value={dayPeriod.id}>
-                      {formatDayPeriod(dayPeriod)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -1301,7 +1360,36 @@ export default function JobFunctionsPage() {
                 }}
                 className="space-y-5"
               >
-                <div className="grid gap-4 lg:grid-cols-2">
+                
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60">
+                <label className="block">
+                  <span className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Dagsperiode for reglen
+                  </span>
+                  <select
+                    value={timingRuleForm.dayPeriodId}
+                    onChange={(event) =>
+                      setTimingRuleForm((current) => ({
+                        ...current,
+                        dayPeriodId: event.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    disabled={timingRuleSaving}
+                  >
+                    <option value="">Ingen dagsperiode</option>
+                    {dayPeriods.map((dayPeriod) => (
+                      <option key={dayPeriod.id} value={dayPeriod.id}>
+                        {formatDayPeriod(dayPeriod)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Dagsperioden afgrænser, hvilke forestillinger start- og slutreglen kigger på. Hvis der ikke ligger film i perioden, bruges tiderne uden filmprogram.
+                  </p>
+                </label>
+              </div>
+                  <div className="grid gap-5 lg:grid-cols-2">
                   <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60">
                     <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                       Start / mødetid
@@ -1323,7 +1411,7 @@ export default function JobFunctionsPage() {
                           className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                           disabled={timingRuleSaving}
                         >
-                          {timingAnchorOptions.map((option) => (
+                          {timingStartAnchorOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
                             </option>
@@ -1398,7 +1486,7 @@ export default function JobFunctionsPage() {
                           className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                           disabled={timingRuleSaving}
                         >
-                          {timingAnchorOptions.map((option) => (
+                          {timingEndAnchorOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
                             </option>
