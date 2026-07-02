@@ -20,7 +20,7 @@ export function ShiftPlanningPublicationPreviewPanel({
         <div>
           <h4 className="text-base font-semibold">Publiceringspreview</h4>
           <p className="mt-1 text-sm text-blue-800 dark:text-blue-200/80">
-            Viser hvad kladden kan blive til, uden at oprette eller publicere
+            Viser hvad planlægningskladden kan blive til, uden at oprette eller publicere
             vagter. Backend svarer eksplicit med <code>createsShifts: false</code>.
           </p>
         </div>
@@ -40,7 +40,7 @@ export function ShiftPlanningPublicationPreviewPanel({
 
       {!result && !errorMessage && (
         <div className="mt-4 rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100">
-          Publiceringspreview er ikke hentet endnu. Hent previewet efter backend-validering, så du kan se præcis hvilke kladdeposter der kan blive til vagter.
+          Publiceringspreview er ikke hentet endnu. Hent previewet efter backend-kontrol, så du kan se præcis hvilke kladdeposter der kan blive til vagter.
         </div>
       )}
 
