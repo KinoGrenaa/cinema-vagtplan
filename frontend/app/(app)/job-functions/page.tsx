@@ -314,6 +314,9 @@ export default function JobFunctionsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [expandedJobFunctionIds, setExpandedJobFunctionIds] = useState<Set<number>>(
+    () => new Set(),
+  );
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formModalOpen, setFormModalOpen] = useState(false);
@@ -349,6 +352,18 @@ export default function JobFunctionsPage() {
     (jobFunction) => jobFunction.isActive,
   ).length;
   const archivedCount = jobFunctions.length - activeCount;
+
+  const toggleJobFunctionDetails = (jobFunctionId: number) => {
+    setExpandedJobFunctionIds((current) => {
+      const next = new Set(current);
+      if (next.has(jobFunctionId)) {
+        next.delete(jobFunctionId);
+      } else {
+        next.add(jobFunctionId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     setCurrentUser(getCurrentUserFromToken());
@@ -1081,6 +1096,11 @@ export default function JobFunctionsPage() {
                                 </span>
                               </div>
 
+                              {expandedJobFunctionIds.has(jobFunction.id) && (
+
+
+                                <div className="space-y-4">
+
                               {jobFunction.description && (
                                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                                   {jobFunction.description}
@@ -1131,9 +1151,22 @@ export default function JobFunctionsPage() {
                                   </dd>
                                 </div>
                               </dl>
+
+
+                                </div>
+
+
+                              )}
                             </div>
 
                             <div className="flex flex-wrap gap-2 lg:justify-end">
+                              <button
+                                type="button"
+                                onClick={() => toggleJobFunctionDetails(jobFunction.id)}
+                                className="rounded-xl border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-white dark:border-gray-700 dark:hover:bg-gray-800"
+                              >
+                                {expandedJobFunctionIds.has(jobFunction.id) ? "Skjul detaljer" : "Vis detaljer"}
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => openTimingRuleModal(jobFunction)}
