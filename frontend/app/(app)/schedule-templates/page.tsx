@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
@@ -1449,7 +1449,7 @@ export default function ScheduleTemplatesPage() {
                         </div>
                       </div>
 
-                      <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_140px]">
+                      <div className="mt-3">
                         <label className="block text-sm font-semibold">
                           Note
                           <input
@@ -1462,21 +1462,6 @@ export default function ScheduleTemplatesPage() {
                             }
                             className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                             placeholder="Fx lukket dag eller særlig bemanding"
-                          />
-                        </label>
-                        <label className="block text-sm font-semibold">
-                          Sortering
-                          <input
-                            type="number"
-                            min="0"
-                            value={dayForm.sortOrder}
-                            onChange={(event) =>
-                              setDayForm((current) => ({
-                                ...current,
-                                sortOrder: event.target.value,
-                              }))
-                            }
-                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                           />
                         </label>
                       </div>
