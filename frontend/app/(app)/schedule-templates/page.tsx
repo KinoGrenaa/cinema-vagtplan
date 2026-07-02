@@ -836,26 +836,14 @@ export default function ScheduleTemplatesPage() {
     <AdminGuard>
       <main className="min-h-screen bg-gray-50 p-4 text-gray-950 dark:bg-gray-950 dark:text-white sm:p-6">
         <div className="mx-auto max-w-7xl space-y-6">
-          <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-300">
-                  Vagtplanlægning
-                </p>
-                <h1 className="mt-2 text-3xl font-black">Vagtsskabeloner</h1>
-                <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
-                  Opret de skabeloner, der senere kan vælges på konkrete datoer i vagtplanlægningen. En skabelon består af ugedage og jobfunktioner.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={fetchData}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                disabled={loading}
-              >
-                Opdater vagtsskabeloner
-              </button>
-            </div>
+          <section className="rounded-3xl border border-gray-200 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-300">
+              Vagtplanlægning
+            </p>
+            <h1 className="mt-2 text-3xl font-black">Vagtsskabeloner</h1>
+            <p className="mx-auto mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
+              Opret de skabeloner, der senere kan vælges på konkrete datoer i vagtplanlægningen. En skabelon består af ugedage og jobfunktioner.
+            </p>
           </section>
 
           {needsMasterCinemaSelection && (
