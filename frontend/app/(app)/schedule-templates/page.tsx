@@ -1002,6 +1002,13 @@ export default function ScheduleTemplatesPage() {
                       </div>
                     </div>
 
+                    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+                      <p className="font-bold">Ændringer gælder fremtidig generering</p>
+                      <p className="mt-1">
+                        Allerede oprettede vagter ændres ikke automatisk, når denne skabelon justeres.
+                      </p>
+                    </div>
+
                     {editingTemplate && (
                       <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
                         <div className="grid gap-3 lg:grid-cols-2">
