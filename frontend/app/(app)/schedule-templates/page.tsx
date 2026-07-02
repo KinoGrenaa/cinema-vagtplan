@@ -752,6 +752,19 @@ export default function ScheduleTemplatesPage() {
   ) => {
     if (!selectedTemplate) return;
 
+    const nextRequiredCount = updates.requiredCount ?? item.requiredCount;
+    const assignedCount = (item.assignments ?? []).filter(
+      (assignment) => getAssignmentUserId(assignment) !== null,
+    ).length;
+
+    if (nextRequiredCount < assignedCount) {
+      infoDialog.showError(
+        "Antal vagter er for lavt",
+        `Antal vagter kan ikke være lavere end antal faste medarbejdere (${assignedCount}).\nFjern faste medarbejdere først, eller hæv antal vagter.`,
+      );
+      return;
+    }
+
     try {
       const response = await apiFetch(
         appendCinemaId(
@@ -1520,7 +1533,7 @@ export default function ScheduleTemplatesPage() {
                         <label className="block text-sm font-semibold">
                           Antal vagter
                           <input
-                            type="number"
+                            type="text" inputMode="numeric" pattern="[0-9]*"
                             min="1"
                             max="50"
                             value={jobFunctionForm.requiredCount}
@@ -1537,7 +1550,7 @@ export default function ScheduleTemplatesPage() {
                         <label className="block text-sm font-semibold">
                           Sortering
                           <input
-                            type="number"
+                            type="text" inputMode="numeric" pattern="[0-9]*"
                             min="0"
                             value={jobFunctionForm.sortOrder}
                             onChange={(event) =>
@@ -1683,7 +1696,7 @@ export default function ScheduleTemplatesPage() {
                                     <label className="block text-sm font-semibold">
                                       Antal vagter
                                       <input
-                                        type="number"
+                                        type="text" inputMode="numeric" pattern="[0-9]*"
                                         min="1"
                                         max="50"
                                         defaultValue={item.requiredCount}
@@ -1707,7 +1720,7 @@ export default function ScheduleTemplatesPage() {
                                     <label className="block text-sm font-semibold">
                                       Sortering
                                       <input
-                                        type="number"
+                                        type="text" inputMode="numeric" pattern="[0-9]*"
                                         min="0"
                                         defaultValue={item.sortOrder}
                                         onBlur={(event) => {
@@ -1924,7 +1937,7 @@ export default function ScheduleTemplatesPage() {
                 <label className="block text-sm font-semibold">
                   Sortering
                   <input
-                    type="number"
+                    type="text" inputMode="numeric" pattern="[0-9]*"
                     min="0"
                     value={createTemplateForm.sortOrder}
                     onChange={(event) =>
