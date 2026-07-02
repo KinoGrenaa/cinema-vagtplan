@@ -104,7 +104,7 @@ const emptyTimingRuleForm: TimingRuleFormState = {
   endFixedMinute: "",
   fallbackStartMinute: "",
   fallbackEndMinute: "",
-  clampToDayPeriod: true,
+  clampToDayPeriod: false,
 };
 
 function normalizeStartAnchor(anchor: JobFunctionTimingAnchor): JobFunctionTimingAnchor {
@@ -1445,9 +1445,8 @@ export default function JobFunctionsPage() {
                             Forskydning i minutter
                           </span>
                           <input
-                            type="number"
-                            min="-720"
-                            max="720"
+                            type="text"
+                            inputMode="numeric"
                             value={timingRuleForm.startOffsetMinutes}
                             onChange={(event) =>
                               setTimingRuleForm((current) => ({
@@ -1520,9 +1519,8 @@ export default function JobFunctionsPage() {
                             Forskydning i minutter
                           </span>
                           <input
-                            type="number"
-                            min="-720"
-                            max="720"
+                            type="text"
+                            inputMode="numeric"
                             value={timingRuleForm.endOffsetMinutes}
                             onChange={(event) =>
                               setTimingRuleForm((current) => ({
@@ -1586,25 +1584,6 @@ export default function JobFunctionsPage() {
                       />
                     </label>
                   </div>
-                  <label className="mt-4 flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                    <input
-                      type="checkbox"
-                      checked={timingRuleForm.clampToDayPeriod}
-                      onChange={(event) =>
-                        setTimingRuleForm((current) => ({
-                          ...current,
-                          clampToDayPeriod: event.target.checked,
-                        }))
-                      }
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
-                      disabled={timingRuleSaving}
-                    />
-                    <span>
-                      Clamp til dagsperioden. Systemet må ikke beregne
-                      start/slut udenfor jobfunktionens dagsperiode, når reglen
-                      senere bruges til vagtplanlægning.
-                    </span>
-                  </label>
                 </div>
 
                 <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4 text-sm text-purple-900 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-100">
