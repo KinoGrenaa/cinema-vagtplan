@@ -1197,8 +1197,7 @@ export default function JobFunctionsPage() {
                   {isEditing ? "Redigér jobfunktion" : "Opret jobfunktion"}
                 </h2>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Angiv navn, farve og eventuel dagsperiode. Møde- og fyraftensregler
-                  redigeres separat fra listen.
+                  Angiv navn, beskrivelse, sortering og farve.
                 </p>
               </div>
               <button
@@ -1277,7 +1276,7 @@ export default function JobFunctionsPage() {
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                     Farve
                   </span>
-                  <div className="mt-1 flex items-center gap-3">
+                  <div className="mt-1">
                     <input
                       type="color"
                       value={form.color}
@@ -1287,18 +1286,7 @@ export default function JobFunctionsPage() {
                           color: event.target.value,
                         }))
                       }
-                      className="h-12 w-16 rounded-xl border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-800"
-                      disabled={saving}
-                    />
-                    <input
-                      value={form.color}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          color: event.target.value,
-                        }))
-                      }
-                      className="w-full rounded-xl border border-gray-300 bg-white p-3 font-mono text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      className="h-12 w-full cursor-pointer rounded-xl border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-800"
                       disabled={saving}
                     />
                   </div>
