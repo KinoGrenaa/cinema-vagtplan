@@ -71,9 +71,7 @@ export function ShiftPlanningPublishResultPanel({
       <a
         href={scheduleHref}
         className="mt-3 inline-flex rounded-xl border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
-      >
-        Åbn vagtplan
-      </a>
+      >{firstAffectedDateKey ? "Åbn vagtplan på første berørte dato" : "Åbn vagtplan"}</a>
     </div>
   );
 }
