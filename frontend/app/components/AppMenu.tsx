@@ -60,7 +60,7 @@ export default function AppMenu() {
       badge: totalTradeCount,
       children: [
         { href: "/schedule", label: "Vagtplan" },
-        { href: "/shift-planning", label: "Vagtplanlægning", adminOnly: true },
+        { href: "/shift-planning", label: "Vagtplanlægning", adminOnly: true }, { href: "/schedule-templates", label: "Vagtsskabeloner", adminOnly: true }, { href: "/day-periods", label: "Dagsperioder", adminOnly: true }, { href: "/job-functions", label: "Jobfunktioner", adminOnly: true },
         { href: "/my-shifts", label: "Mine vagter", badge: directCount },
         { href: "/my-time", label: "Mine timer" },
         { href: "/shift-trades", label: "Vagtpulje", badge: poolCount },
