@@ -1374,6 +1374,8 @@ export default function ScheduleTemplatesPage() {
                           weekday.value,
                         );
                         const active = selectedWeekday === weekday.value;
+                        const jobFunctionCount = day?.jobFunctions?.length ?? 0;
+                        const hasPlannedShifts = jobFunctionCount > 0;
                         return (
                           <button
                             key={weekday.value}
@@ -1391,8 +1393,20 @@ export default function ScheduleTemplatesPage() {
                             <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                               {day?.isActive ? "Aktiv" : "Ikke sat"}
                             </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                              {day?.jobFunctions?.length ?? 0} jobfunktioner
+                            <p
+                              className={`text-xs ${
+                                hasPlannedShifts
+                                  ? "text-gray-600 dark:text-gray-400"
+                                  : "font-bold text-amber-600 dark:text-yellow-300"
+                              }`}
+                            >
+                              {hasPlannedShifts
+                                ? `${jobFunctionCount} ${
+                                    jobFunctionCount === 1
+                                      ? "jobfunktion"
+                                      : "jobfunktioner"
+                                  }`
+                                : "Ingen vagter"}
                             </p>
                           </button>
                         );
