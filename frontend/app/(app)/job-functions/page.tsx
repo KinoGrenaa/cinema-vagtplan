@@ -517,12 +517,15 @@ export default function JobFunctionsPage() {
           );
         }
 
-        const data = (await response.json()) as JobFunctionTimingRule | null;
+        const rawText = await response.text();
+        const data = rawText.trim()
+          ? (JSON.parse(rawText) as JobFunctionTimingRule)
+          : null;
         setTimingRule(data);
-        setTimingRuleForm(toTimingRuleForm(data, timingModalJobFunction));
+        setTimingRuleForm(toTimingRuleForm(data, jobFunction));
       } catch (error) {
         setTimingRule(null);
-        setTimingRuleForm(emptyTimingRuleForm);
+        setTimingRuleForm(toTimingRuleForm(null, jobFunction));
         infoDialogRef.current.showError(
           "Kunne ikke hente møde- og fyraftensregel",
           error instanceof Error
@@ -887,7 +890,10 @@ export default function JobFunctionsPage() {
         );
       }
 
-      await response.json();
+      const savedRawText = await response.text();
+      if (savedRawText.trim()) {
+        setTimingRule(JSON.parse(savedRawText) as JobFunctionTimingRule);
+      }
       await fetchData();
       setTimingModalJobFunction(null);
       setTimingRule(null);
