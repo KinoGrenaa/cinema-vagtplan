@@ -150,6 +150,7 @@ export default function ShiftPlanningPage() {
   const [templates, setTemplates] = useState<ScheduleTemplateSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingWeekKey, setSavingWeekKey] = useState<string | null>(null);
   const [draftRefreshKey, setDraftRefreshKey] = useState(0);
   const [selectedDay, setSelectedDay] = useState<MonthPlanDay | null>(null);
   const [dayForm, setDayForm] = useState<DayFormState | null>(null);
@@ -331,6 +332,119 @@ export default function ShiftPlanningPage() {
     setDayForm(null);
   };
 
+  const applyTemplateToWeek = async (
+    weekKey: string,
+    weekDays: Array<MonthPlanDay | null>,
+    scheduleTemplateIdText: string,
+  ) => {
+    const parsedScheduleTemplateId = Number(scheduleTemplateIdText);
+
+    if (
+      !Number.isInteger(parsedScheduleTemplateId) ||
+      parsedScheduleTemplateId <= 0
+    ) {
+      infoDialog.showError(
+        "V\u00e6lg vagtsskabelon",
+        "V\u00e6lg en vagtsskabelon, f\u00f8r den anvendes p\u00e5 ugen.",
+      );
+      return;
+    }
+
+    const today = new Date();
+    const todayDateKey = `${today.getFullYear()}-${String(
+      today.getMonth() + 1,
+    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    const activeWeekDays = weekDays.filter((day): day is MonthPlanDay => {
+      if (!day?.isActive) {
+        return false;
+      }
+
+      const dateKey = getMonthPlanDayDateKey(day);
+      return Boolean(dateKey) && dateKey >= todayDateKey;
+    });
+
+    if (activeWeekDays.length === 0) {
+      infoDialog.showError(
+        "Ingen fremtidige aktive dage",
+        "Ugen har ingen aktive planl\u00e6gningsdage i dag eller frem, som skabelonen kan l\u00e6gges p\u00e5.",
+      );
+      return;
+    }
+
+    try {
+      setSavingWeekKey(weekKey);
+
+      const updatedDays = await Promise.all(
+        activeWeekDays.map(async (day) => {
+          const dateKey = getMonthPlanDayDateKey(day);
+
+          if (!dateKey) {
+            throw new Error("En planl\u00e6gningsdag i ugen mangler en gyldig dato.");
+          }
+
+          const response = await apiFetch(
+            appendCinemaId(`/month-plans/days/${dateKey}`, activeCinemaId),
+            {
+              method: "PATCH",
+              body: JSON.stringify(
+                parseDayForm(
+                  {
+                    ...toDayForm(day),
+                    isActive: true,
+                    scheduleTemplateId: String(parsedScheduleTemplateId),
+                  },
+                  activeCinemaId,
+                ),
+              ),
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error(
+              await readErrorMessage(
+                response,
+                `Kunne ikke gemme planl\u00e6gningsdagen ${formatDateKey(dateKey)}`,
+              ),
+            );
+          }
+
+          return normalizeMonthPlanDay((await response.json()) as MonthPlanDay);
+        }),
+      );
+
+      const updatedDaysByDateKey = new Map(
+        updatedDays.map((day) => [getMonthPlanDayDateKey(day), day]),
+      );
+
+      setMonthPlan((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          days: current.days.map(
+            (day) => updatedDaysByDateKey.get(getMonthPlanDayDateKey(day)) ?? day,
+          ),
+        };
+      });
+
+      infoDialog.show({
+        title: "Vagtsskabelon anvendt p\u00e5 uge",
+        description: `Vagtsskabelonen er lagt p\u00e5 ${updatedDays.length} aktive dage i ugen fra i dag og frem.`,
+        variant: "success",
+        buttonText: "OK",
+      });
+    } catch (error) {
+      infoDialog.showError(
+        "Kunne ikke anvende vagtsskabelon p\u00e5 uge",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagtsskabelonen skulle l\u00e6gges p\u00e5 ugen.",
+      );
+    } finally {
+      setSavingWeekKey(null);
+    }
+  };
   const submitDay = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -564,11 +678,20 @@ export default function ShiftPlanningPage() {
                       className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(7rem,8rem)_repeat(7,minmax(0,1fr))]"
                     >
                       <ShiftPlanningWeekIndicator
-                        weekNumber={week.weekNumber}
-                        activeDays={week.activeDays}
-                        daysWithTemplate={week.daysWithTemplate}
-                        missingTemplateDays={week.missingTemplateDays}
-                      />
+                      weekNumber={week.weekNumber}
+                      activeDays={week.activeDays}
+                      daysWithTemplate={week.daysWithTemplate}
+                      missingTemplateDays={week.missingTemplateDays}
+                      templates={templates}
+                      saving={savingWeekKey === week.weekKey}
+                      onApplyTemplate={(scheduleTemplateId) =>
+                        applyTemplateToWeek(
+                          week.weekKey,
+                          week.days,
+                          scheduleTemplateId,
+                        )
+                      }
+                    />
 
                       {week.days.map((day, dayIndex) => {
                         if (!day) {
