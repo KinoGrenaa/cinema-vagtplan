@@ -25,7 +25,7 @@ export function ShiftPlanningSavedDraftsTogglePanel({
         onClick={onToggle}
         className="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-white dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-900"
       >
-        {showAllDrafts ? "Vis færre" : `Vis alle ${filteredDraftCount} kladder`}
+        {showAllDrafts ? "Vis færre" : `Vis alle ${filteredDraftCount} forhÃ¥ndsvisninger`}
       </button>
     </div>
   );

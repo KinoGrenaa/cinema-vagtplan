@@ -64,7 +64,7 @@ export function ShiftPlanningPublishPanel({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-bold text-gray-950 dark:text-white">
-            Publicer kladde
+            Opret vagter
           </p>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Dette er det første trin, der kan oprette rigtige vagter i

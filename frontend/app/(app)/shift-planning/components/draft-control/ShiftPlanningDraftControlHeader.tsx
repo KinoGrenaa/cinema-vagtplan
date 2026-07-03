@@ -54,7 +54,7 @@ export function ShiftPlanningDraftControlHeader({
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">
-          Kladdekontrol
+          Kontrol fÃ¸r oprettelse
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h3 className="text-xl font-bold text-gray-950 dark:text-white">
@@ -92,7 +92,7 @@ export function ShiftPlanningDraftControlHeader({
         >
           {isLoadingPublicationPreview
             ? "Henter preview..."
-            : "Hent publiceringspreview"}
+            : "Hent oprettelsespreview"}
         </button>
         <button
           type="button"

@@ -29,7 +29,7 @@ export function ShiftPlanningDraftPreviewRowCard({
           : "Skabelon mangler ugedagsdata"}
       </p>
       <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
-        {row.requiredCount} kladdeposter
+        {row.requiredCount} vagter
       </p>
       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
         {row.jobFunctionCount} funktioner · {row.assignedCount} med standard · {row.emptyCount} tomme

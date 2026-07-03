@@ -71,13 +71,13 @@ export function formatSelectedDraftFilterText(filter: DraftStatusFilter) {
     case "DRAFT":
       return "åbne kladder";
     case "PUBLISHED":
-      return "publicerede kladder";
+      return "publicerede oprettelser";
     case "SUPERSEDED":
-      return "erstattede kladder";
+      return "erstattede forhÃ¥ndsvisninger";
     case "OTHER":
-      return "andre eller annullerede kladder";
+      return "andre eller annullerede forhÃ¥ndsvisninger";
     default:
-      return "kladder";
+      return "forhÃ¥ndsvisninger";
   }
 }
 

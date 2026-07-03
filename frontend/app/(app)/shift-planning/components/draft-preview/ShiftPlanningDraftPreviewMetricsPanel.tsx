@@ -17,7 +17,7 @@ export function ShiftPlanningDraftPreviewMetricsPanel({
         {rowCount} datoer med skabelon
       </span>
       <span className="rounded-full bg-green-50 px-3 py-1 text-green-800 dark:bg-green-950/40 dark:text-green-200">
-        {totalDraftShifts} kladdeposter
+        {totalDraftShifts} vagter
       </span>
       <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-700 dark:bg-gray-900 dark:text-gray-200">
         {totalStandardAssignments} med standard

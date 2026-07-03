@@ -31,7 +31,7 @@ export function ShiftPlanningSavedDraftCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold text-gray-950 dark:text-gray-50">
-              Kladde #{draft.id}
+              ForhÃ¥ndsvisning #{draft.id}
             </h3>
             <ShiftPlanningSavedDraftStatusBadge status={draft.status} />
           </div>

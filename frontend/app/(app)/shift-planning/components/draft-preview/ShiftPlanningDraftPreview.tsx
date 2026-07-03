@@ -128,7 +128,7 @@ export default function ShiftPlanningDraftPreview({
   const prepareDraft = async () => {
     if (!activeCinemaId) {
       infoDialog.showError(
-        "Kan ikke gemme kladde",
+        "Kan ikke gemme forhÃ¥ndsvisning",
         "Vælg en aktiv biograf, før du forbereder vagter.",
       );
       return;
@@ -160,7 +160,7 @@ export default function ShiftPlanningDraftPreview({
       onDraftPrepared?.(draft);
       infoDialog.show({
         title: "Planlægningskladde gemt",
-        description: `Kladde #${draft.id} er gemt med ${toNumber(
+        description: `ForhÃ¥ndsvisning #${draft.id} er gemt med ${toNumber(
           draft.itemCount,
         )} kladdeposter.\nDer er stadig ikke oprettet aktive vagter. Kør kladdekontrol og publiceringspreview, før kladden publiceres.`,
         variant: "success",
@@ -171,7 +171,7 @@ export default function ShiftPlanningDraftPreview({
         "Kunne ikke gemme planlægningskladde",
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da kladden skulle gemmes.",
+          : "Der opstod en fejl, da forhÃ¥ndsvisningen skulle gemmes.",
       );
     } finally {
       setSavingDraft(false);
@@ -193,7 +193,7 @@ export default function ShiftPlanningDraftPreview({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-              Kladdepreview
+              ForhÃ¥ndsvisning
             </p>
             <h2 className="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
               Forbered månedens vagter
