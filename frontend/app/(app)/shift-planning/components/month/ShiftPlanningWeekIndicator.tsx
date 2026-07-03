@@ -1,6 +1,5 @@
 type ShiftPlanningWeekIndicatorProps = {
   weekNumber: number | null;
-  weekParityLabel: string;
   activeDays: number;
   daysWithTemplate: number;
   missingTemplateDays: number;
@@ -8,7 +7,6 @@ type ShiftPlanningWeekIndicatorProps = {
 
 export default function ShiftPlanningWeekIndicator({
   weekNumber,
-  weekParityLabel,
   activeDays,
   daysWithTemplate,
   missingTemplateDays,
@@ -19,7 +17,6 @@ export default function ShiftPlanningWeekIndicator({
         Uge
       </p>
       <p className="mt-1 text-2xl font-bold">{weekNumber ?? "?"}</p>
-      <p className="text-sm font-semibold">{weekParityLabel}</p>
 
       <div className="mt-3 grid grid-cols-3 gap-1 text-center text-[11px] font-semibold lg:grid-cols-1 lg:text-left">
         <span className="rounded-lg bg-white/70 px-2 py-1 dark:bg-black/20">

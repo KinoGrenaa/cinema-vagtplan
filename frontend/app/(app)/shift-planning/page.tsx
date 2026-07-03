@@ -565,7 +565,6 @@ export default function ShiftPlanningPage() {
                     >
                       <ShiftPlanningWeekIndicator
                         weekNumber={week.weekNumber}
-                        weekParityLabel={week.weekParityLabel}
                         activeDays={week.activeDays}
                         daysWithTemplate={week.daysWithTemplate}
                         missingTemplateDays={week.missingTemplateDays}
