@@ -36,12 +36,25 @@ import type {
   UserJobFunction,
 } from "./helpers/jobFunctionTypes";
 
+type WorkType = {
+  id: number;
+  name: string;
+  color?: string | null;
+  isActive?: boolean;
+};
+
+type JobFunctionWithWorkType = JobFunction & {
+  workTypeId?: number | null;
+  workType?: WorkType | null;
+};
+
 type FormState = {
   name: string;
   description: string;
   color: string;
   sortOrder: string;
   dayPeriodId: string;
+  workTypeId: string;
 };
 
 type TimingRuleFormState = {
@@ -92,6 +105,7 @@ const emptyForm: FormState = {
   color: "#2563eb",
   sortOrder: "0",
   dayPeriodId: "",
+  workTypeId: "",
 };
 
 const emptyTimingRuleForm: TimingRuleFormState = {
@@ -115,13 +129,14 @@ function normalizeEndAnchor(anchor: JobFunctionTimingAnchor): JobFunctionTimingA
   return anchor === "FIXED_TIME" ? "FIXED_TIME" : "LAST_MOVIE_END";
 }
 
-function toFormState(jobFunction: JobFunction): FormState {
+function toFormState(jobFunction: JobFunctionWithWorkType): FormState {
   return {
     name: jobFunction.name,
     description: jobFunction.description ?? "",
     color: jobFunction.color || "#2563eb",
     sortOrder: String(jobFunction.sortOrder ?? 0),
     dayPeriodId: jobFunction.dayPeriodId ? String(jobFunction.dayPeriodId) : "",
+    workTypeId: jobFunction.workTypeId ? String(jobFunction.workTypeId) : "",
   };
 }
 
@@ -131,6 +146,7 @@ function parseForm(form: FormState) {
   const color = normalizeColorValue(form.color);
   const sortOrder = form.sortOrder.trim() ? Number(form.sortOrder) : 0;
   const dayPeriodId = form.dayPeriodId ? Number(form.dayPeriodId) : null;
+  const workTypeId = form.workTypeId ? Number(form.workTypeId) : null;
 
   if (!name) {
     throw new Error("Indtast et navn på jobfunktionen.");
@@ -151,12 +167,20 @@ function parseForm(form: FormState) {
     throw new Error("Dagsperiode skal være et gyldigt valg.");
   }
 
+  if (
+    form.workTypeId &&
+    (workTypeId === null || !Number.isInteger(workTypeId) || workTypeId <= 0)
+  ) {
+    throw new Error("Oprettes som skal være et gyldigt valg.");
+  }
+
   return {
     name,
     description,
     color,
     sortOrder,
     dayPeriodId,
+    workTypeId,
   };
 }
 
@@ -295,6 +319,14 @@ function parseTimingRuleForm(form: TimingRuleFormState) {
   };
 }
 
+function formatWorkType(workType: WorkType | null | undefined) {
+  if (!workType) {
+    return "Ikke valgt endnu";
+  }
+
+  return workType.name;
+}
+
 export default function JobFunctionsPage() {
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
@@ -308,8 +340,9 @@ export default function JobFunctionsPage() {
   const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
     number | null
   >(null);
-  const [jobFunctions, setJobFunctions] = useState<JobFunction[]>([]);
+  const [jobFunctions, setJobFunctions] = useState<JobFunctionWithWorkType[]>([]);
   const [dayPeriods, setDayPeriods] = useState<DayPeriod[]>([]);
+  const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -321,13 +354,13 @@ export default function JobFunctionsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [employeeModalJobFunction, setEmployeeModalJobFunction] =
-    useState<JobFunction | null>(null);
+    useState<JobFunctionWithWorkType | null>(null);
   const [assignments, setAssignments] = useState<UserJobFunction[]>([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [timingModalJobFunction, setTimingModalJobFunction] =
-    useState<JobFunction | null>(null);
+    useState<JobFunctionWithWorkType | null>(null);
   const [timingRule, setTimingRule] = useState<JobFunctionTimingRule | null>(
     null,
   );
@@ -392,8 +425,12 @@ export default function JobFunctionsPage() {
     try {
       setLoading(true);
 
-      const [jobFunctionsResponse, dayPeriodsResponse, usersResponse] =
-        await Promise.all([
+      const [
+        jobFunctionsResponse,
+        dayPeriodsResponse,
+        workTypesResponse,
+        usersResponse,
+      ] = await Promise.all([
           apiFetch(
             appendCinemaId(
               `/job-functions?includeArchived=${showArchived}`,
@@ -403,6 +440,12 @@ export default function JobFunctionsPage() {
           apiFetch(
             appendCinemaId(
               "/day-periods?includeArchived=false",
+              activeCinemaId,
+            ),
+          ),
+          apiFetch(
+            appendCinemaId(
+              "/work-types?includeArchived=false",
               activeCinemaId,
             ),
           ),
@@ -427,6 +470,15 @@ export default function JobFunctionsPage() {
         );
       }
 
+      if (!workTypesResponse.ok) {
+        throw new Error(
+          await readErrorMessage(
+            workTypesResponse,
+            "Kunne ikke hente arbejdstyper",
+          ),
+        );
+      }
+
       if (!usersResponse.ok) {
         throw new Error(
           await readErrorMessage(
@@ -436,20 +488,24 @@ export default function JobFunctionsPage() {
         );
       }
 
-      const [jobFunctionsData, dayPeriodsData, usersData] = await Promise.all([
-        jobFunctionsResponse.json(),
-        dayPeriodsResponse.json(),
-        usersResponse.json(),
-      ]);
+      const [jobFunctionsData, dayPeriodsData, workTypesData, usersData] =
+        await Promise.all([
+          jobFunctionsResponse.json(),
+          dayPeriodsResponse.json(),
+          workTypesResponse.json(),
+          usersResponse.json(),
+        ]);
 
       setJobFunctions(Array.isArray(jobFunctionsData) ? jobFunctionsData : []);
       setDayPeriods(Array.isArray(dayPeriodsData) ? dayPeriodsData : []);
+      setWorkTypes(Array.isArray(workTypesData) ? workTypesData : []);
       setUsers(
         Array.isArray(usersData) ? usersData.filter(isAssignableUser) : [],
       );
     } catch (error) {
       setJobFunctions([]);
       setDayPeriods([]);
+      setWorkTypes([]);
       setUsers([]);
       infoDialogRef.current.showError(
         "Kunne ikke hente jobfunktioner",
@@ -470,6 +526,7 @@ export default function JobFunctionsPage() {
     if (needsMasterCinemaSelection) {
       setJobFunctions([]);
       setDayPeriods([]);
+      setWorkTypes([]);
       setUsers([]);
       setLoading(false);
       return;
@@ -479,7 +536,7 @@ export default function JobFunctionsPage() {
   }, [currentUser, fetchData, needsMasterCinemaSelection]);
 
   const fetchAssignments = useCallback(
-    async (jobFunction: JobFunction) => {
+    async (jobFunction: JobFunctionWithWorkType) => {
       try {
         setAssignmentLoading(true);
         const response = await apiFetch(
@@ -516,7 +573,7 @@ export default function JobFunctionsPage() {
   );
 
   const fetchTimingRule = useCallback(
-    async (jobFunction: JobFunction) => {
+    async (jobFunction: JobFunctionWithWorkType) => {
       try {
         setTimingRuleLoading(true);
         const response = await apiFetch(
@@ -573,13 +630,13 @@ export default function JobFunctionsPage() {
     setFormModalOpen(true);
   };
 
-  const openEditModal = (jobFunction: JobFunction) => {
+  const openEditModal = (jobFunction: JobFunctionWithWorkType) => {
     setEditingId(jobFunction.id);
     setForm(toFormState(jobFunction));
     setFormModalOpen(true);
   };
 
-  const openEmployeeModal = async (jobFunction: JobFunction) => {
+  const openEmployeeModal = async (jobFunction: JobFunctionWithWorkType) => {
     setEmployeeModalJobFunction(jobFunction);
     setSelectedUserId("");
     setAssignments([]);
@@ -596,7 +653,7 @@ export default function JobFunctionsPage() {
     setSelectedUserId("");
   };
 
-  const openTimingRuleModal = async (jobFunction: JobFunction) => {
+  const openTimingRuleModal = async (jobFunction: JobFunctionWithWorkType) => {
     setTimingModalJobFunction(jobFunction);
     setTimingRule(jobFunction.timingRule ?? null);
     setTimingRuleForm(toTimingRuleForm(jobFunction.timingRule, jobFunction));
@@ -673,7 +730,7 @@ export default function JobFunctionsPage() {
     }
   };
 
-  const archiveJobFunction = (jobFunction: JobFunction) => {
+  const archiveJobFunction = (jobFunction: JobFunctionWithWorkType) => {
     confirmDialog.confirm({
       title: "Arkivér jobfunktion",
       description:
@@ -1107,7 +1164,7 @@ export default function JobFunctionsPage() {
                                 </p>
                               )}
 
-                              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
+                              <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-6">
                                 <div>
                                   <dt className="font-medium text-gray-500 dark:text-gray-400">
                                     Dagsperiode
@@ -1124,6 +1181,14 @@ export default function JobFunctionsPage() {
                                     {formatTimingRuleSummary(
                                       jobFunction.timingRule,
                                     )}
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt className="font-medium text-gray-500 dark:text-gray-400">
+                                    Oprettes som
+                                  </dt>
+                                  <dd className="mt-1 text-gray-900 dark:text-gray-100">
+                                    {formatWorkType(jobFunction.workType)}
                                   </dd>
                                 </div>
                                 <div>
@@ -1236,7 +1301,7 @@ export default function JobFunctionsPage() {
                   {isEditing ? "Redigér jobfunktion" : "Opret jobfunktion"}
                 </h2>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Angiv navn, beskrivelse, sortering og farve.
+                  Angiv navn, beskrivelse, farve og hvilken arbejdstype vagter skal oprettes som.
                 </p>
               </div>
               <button
@@ -1331,6 +1396,33 @@ export default function JobFunctionsPage() {
                   </div>
                 </label>
               </div>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Oprettes som
+                </span>
+                <select
+                  value={form.workTypeId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      workTypeId: event.target.value,
+                    }))
+                  }
+                  className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  disabled={saving}
+                >
+                  <option value="">Ingen arbejdstype valgt endnu</option>
+                  {workTypes.map((workType) => (
+                    <option key={workType.id} value={workType.id}>
+                      {workType.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Valget bruges senere, når forhåndsvisninger oprettes som rigtige vagter.
+                </p>
+              </label>
 
               <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-5 dark:border-gray-800 sm:flex-row sm:justify-end">
                 <button

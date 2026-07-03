@@ -24,12 +24,15 @@ export type JobFunctionTimingAnchorValue =
   | 'FIRST_MOVIE_END'
   | 'LAST_MOVIE_START'
   | 'LAST_MOVIE_END'
-  | 'FIXED_TIME'; export type JobFunctionCreateData = {
+  | 'FIXED_TIME';
+
+export type JobFunctionCreateData = {
   name: string;
   description?: string | null;
   color?: string | null;
   sortOrder?: NumberContextValue;
   dayPeriodId?: NumberContextValue;
+  workTypeId?: NumberContextValue;
   cinemaId?: CinemaContextValue;
 };
 
@@ -39,6 +42,7 @@ export type JobFunctionUpdateData = {
   color?: string | null;
   sortOrder?: NumberContextValue;
   dayPeriodId?: NumberContextValue;
+  workTypeId?: NumberContextValue;
   cinemaId?: CinemaContextValue;
 };
 
@@ -62,6 +66,16 @@ export type JobFunctionTimingRuleData = {
 
 export const jobFunctionInclude = {
   dayPeriod: true,
+  workType: {
+    select: {
+      id: true,
+      name: true,
+      color: true,
+      isActive: true,
+      cinemaId: true,
+      payrollTypeId: true,
+    },
+  },
   timingRule: true,
   _count: {
     select: {
@@ -291,9 +305,7 @@ export async function getDayPeriodIdForCinema(
       cinemaId,
       isActive: true,
     },
-    select: {
-      id: true,
-    },
+    select: { id: true },
   });
 
   if (!dayPeriod) {
@@ -303,6 +315,42 @@ export async function getDayPeriodIdForCinema(
   }
 
   return dayPeriod.id;
+}
+
+export async function getWorkTypeIdForCinema(
+  prisma: PrismaService,
+  cinemaId: number,
+  workTypeId: NumberContextValue,
+) {
+  const parsedWorkTypeId = parseOptionalPositiveId(
+    workTypeId,
+    'Arbejdstype skal være et gyldigt ID.',
+  );
+
+  if (parsedWorkTypeId === undefined) {
+    return undefined;
+  }
+
+  if (parsedWorkTypeId === null) {
+    return null;
+  }
+
+  const workType = await prisma.workType.findFirst({
+    where: {
+      id: parsedWorkTypeId,
+      cinemaId,
+      isActive: true,
+    },
+    select: { id: true },
+  });
+
+  if (!workType) {
+    throw new BadRequestException(
+      'Arbejdstypen findes ikke for den valgte biograf.',
+    );
+  }
+
+  return workType.id;
 }
 
 export async function findJobFunctionForCinema(

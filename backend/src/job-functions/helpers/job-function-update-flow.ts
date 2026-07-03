@@ -10,6 +10,7 @@ import {
   findJobFunctionForCinema,
   getDayPeriodIdForCinema,
   getRequiredJobFunctionCinemaId,
+  getWorkTypeIdForCinema,
   jobFunctionInclude,
   normalizeJobFunctionColor,
   normalizeJobFunctionName,
@@ -32,8 +33,7 @@ export async function updateJobFunction(
   );
   const existing = await findJobFunctionForCinema(prisma, id, cinemaId);
 
-  const name =
-    data.name === undefined ? undefined : normalizeJobFunctionName(data.name);
+  const name = data.name === undefined ? undefined : normalizeJobFunctionName(data.name);
   const description = normalizeOptionalText(data.description);
   const color = normalizeJobFunctionColor(data.color);
   const sortOrder = parseOptionalSortOrder(data.sortOrder);
@@ -41,6 +41,10 @@ export async function updateJobFunction(
     data.dayPeriodId === undefined
       ? undefined
       : await getDayPeriodIdForCinema(prisma, cinemaId, data.dayPeriodId);
+  const workTypeId =
+    data.workTypeId === undefined
+      ? undefined
+      : await getWorkTypeIdForCinema(prisma, cinemaId, data.workTypeId);
 
   if (name && name !== existing.name) {
     const duplicate = await prisma.jobFunction.findFirst({
@@ -63,6 +67,7 @@ export async function updateJobFunction(
     color?: string;
     sortOrder?: number;
     dayPeriodId?: number | null;
+    workTypeId?: number | null;
   } = {};
 
   if (name !== undefined) updateData.name = name;
@@ -70,6 +75,7 @@ export async function updateJobFunction(
   if (color !== undefined) updateData.color = color;
   if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
   if (dayPeriodId !== undefined) updateData.dayPeriodId = dayPeriodId;
+  if (workTypeId !== undefined) updateData.workTypeId = workTypeId;
 
   return prisma.jobFunction.update({
     where: { id },

@@ -8,6 +8,7 @@ import {
   ensureJobFunctionAdmin,
   getDayPeriodIdForCinema,
   getRequiredJobFunctionCinemaId,
+  getWorkTypeIdForCinema,
   jobFunctionInclude,
   normalizeJobFunctionColor,
   normalizeJobFunctionName,
@@ -29,6 +30,8 @@ export async function createJobFunction(
   const sortOrder = parseOptionalSortOrder(data.sortOrder) ?? 0;
   const dayPeriodId =
     (await getDayPeriodIdForCinema(prisma, cinemaId, data.dayPeriodId)) ?? null;
+  const workTypeId =
+    (await getWorkTypeIdForCinema(prisma, cinemaId, data.workTypeId)) ?? null;
 
   const existing = await prisma.jobFunction.findFirst({
     where: {
@@ -49,6 +52,7 @@ export async function createJobFunction(
       color,
       sortOrder,
       dayPeriodId,
+      workTypeId,
       cinemaId,
       isActive: true,
       archivedAt: null,

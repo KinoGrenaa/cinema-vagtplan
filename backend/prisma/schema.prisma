@@ -230,6 +230,7 @@ model WorkType {
   payrollType      PayrollType?      @relation(fields: [payrollTypeId], references: [id])
   shifts           Shift[]
   staffingRequests StaffingRequest[]
+  jobFunctions     JobFunction[]
 }
 
 model DayPeriod {
@@ -261,6 +262,8 @@ model JobFunction {
   sortOrder   Int        @default(0)
   dayPeriodId Int?
   dayPeriod   DayPeriod? @relation(fields: [dayPeriodId], references: [id])
+  workTypeId  Int?
+  workType    WorkType?  @relation(fields: [workTypeId], references: [id], onDelete: SetNull)
   isActive    Boolean    @default(true)
   archivedAt  DateTime?
   createdAt   DateTime   @default(now())
@@ -273,6 +276,7 @@ model JobFunction {
 
   @@index([cinemaId])
   @@index([dayPeriodId])
+  @@index([workTypeId])
   @@index([isActive])
 }
 
