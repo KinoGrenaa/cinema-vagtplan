@@ -111,7 +111,6 @@ export default function AppMenu() {
           badge: leaveRequestCount,
         },
         { href: "/payroll", label: "Løn / timer" },
-        { href: "/work-types", label: "Vagttyper" },
         { href: "/cinema-settings", label: "Biograf indstillinger" },
         { href: "/audit-log", label: "Audit log" },
         { href: "/cinema-settings/payroll-types", label: "Løn setup" },
