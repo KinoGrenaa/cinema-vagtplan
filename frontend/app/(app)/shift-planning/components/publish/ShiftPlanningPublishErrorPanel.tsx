@@ -8,19 +8,19 @@ export function ShiftPlanningPublishErrorPanel({
   const normalizedMessage = message.toLowerCase();
   const looksLikeDuplicateOrPublished =
     normalizedMessage.includes("allerede") ||
-    normalizedMessage.includes("publiceret") ||
+    normalizedMessage.includes("oprettet") ||
     normalizedMessage.includes("dublet") ||
     normalizedMessage.includes("duplicate") ||
     normalizedMessage.includes("published");
 
   return (
     <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
-      <p className="font-semibold">Publicering blev stoppet</p>
+      <p className="font-semibold">Oprettelse blev stoppet</p>
       <p className="mt-1">{message}</p>
       <p className="mt-2 text-xs text-red-800">
         {looksLikeDuplicateOrPublished
-          ? "Planlægningskladden kan være publiceret i en anden fane eller tidligere handling. Genindlæs de gemte planlægningskladder, og kontrollér vagtplanen før du prøver igen."
-          : "Tjek backend-kontrol, publiceringspreview, arbejdstype og tekstbekræftelse, før du prøver igen."}
+          ? "Forslaget kan være oprettet i en anden fane eller tidligere handling. Genindlæs de gemte forslag, og kontrollér vagtplanen før du prøver igen."
+          : "Tjek kontrol, oprettelsesoverblik, arbejdstype og tekstbekræftelse, før du prøver igen."}
       </p>
     </div>
   );

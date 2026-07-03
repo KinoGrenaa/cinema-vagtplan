@@ -11,11 +11,10 @@ export function ShiftPlanningDraftValidationHeader({
     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div>
         <p className="text-sm font-bold text-gray-950 dark:text-white">
-          Backend-kontrol
+          Kontrol
         </p>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-          Kalder backendens sikre valideringsendpoint og kontrollerer planlægningskladden
-          uden at oprette eller publicere vagter.
+          Kontrollerer forslaget og viser fejl eller advarsler, før der oprettes vagter.
         </p>
       </div>
 

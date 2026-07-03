@@ -38,7 +38,7 @@ export function ShiftPlanningDraftValidationIssueCard({
         )}
         {issue.itemId && (
           <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
-            Post #{issue.itemId}
+            Vagt #{issue.itemId}
           </span>
         )}
       </div>

@@ -20,7 +20,7 @@ export function ShiftPlanningDraftItemsByDate({
   if (dateGroups.length === 0) {
     return (
       <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-        Kladden har ingen poster endnu. Gem først en planlægningskladde, før der kan køres kontrol og publicering.
+        Forhåndsvisningen har ingen vagter endnu. Gem først en forhåndsvisning, før der kan køres kontrol og oprettelse.
       </div>
     );
   }

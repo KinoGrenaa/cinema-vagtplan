@@ -4,7 +4,7 @@ import { ShiftPlanningDraftPublicationReadinessPanel } from "./ShiftPlanningDraf
 import type { DraftControlSummary } from "../../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftControlSummaryProps = {
-  backendValidationIsGreen: boolean;
+  controlValidationIsGreen: boolean;
   controlSummary: DraftControlSummary;
   draftNeedsControl: boolean;
   hasValidationError: boolean;
@@ -13,7 +13,7 @@ type ShiftPlanningDraftControlSummaryProps = {
 };
 
 export function ShiftPlanningDraftControlSummary({
-  backendValidationIsGreen,
+  controlValidationIsGreen,
   controlSummary,
   draftNeedsControl,
   hasValidationError,
@@ -24,7 +24,7 @@ export function ShiftPlanningDraftControlSummary({
     <>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <ShiftPlanningDraftControlMetricCard
-          label="Poster"
+          label="Vagter"
           value={controlSummary.totalItems}
         />
         <ShiftPlanningDraftControlMetricCard
@@ -61,7 +61,7 @@ export function ShiftPlanningDraftControlSummary({
       />
 
       <ShiftPlanningDraftPublicationReadinessPanel
-        backendValidationIsGreen={backendValidationIsGreen}
+        controlValidationIsGreen={controlValidationIsGreen}
         hasValidationError={hasValidationError}
         hasValidationResult={hasValidationResult}
         isReadyForPublication={isReadyForPublication}

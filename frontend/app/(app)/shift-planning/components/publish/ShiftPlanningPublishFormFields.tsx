@@ -1,14 +1,11 @@
 import type { WorkTypeOption } from "../../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningPublishFormFieldsProps = {
-  confirmationText: string;
   loadingWorkTypes: boolean;
-  publishConfirmationText: string;
   publishNote: string;
   publishWorkTypeId: string;
   publishing: boolean;
   selectedDraftCanBePublished: boolean;
-  setPublishConfirmationText: (value: string) => void;
   setPublishNote: (value: string) => void;
   setPublishWorkTypeId: (value: string) => void;
   workTypes: WorkTypeOption[];
@@ -16,14 +13,11 @@ type ShiftPlanningPublishFormFieldsProps = {
 };
 
 export function ShiftPlanningPublishFormFields({
-  confirmationText,
   loadingWorkTypes,
-  publishConfirmationText,
   publishNote,
   publishWorkTypeId,
   publishing,
   selectedDraftCanBePublished,
-  setPublishConfirmationText,
   setPublishNote,
   setPublishWorkTypeId,
   workTypes,
@@ -31,7 +25,7 @@ export function ShiftPlanningPublishFormFields({
 }: ShiftPlanningPublishFormFieldsProps) {
   return (
     <>
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="mt-4 max-w-xl">
         <label className="grid gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
           Arbejdstype til oprettede vagter
           <select
@@ -60,29 +54,15 @@ export function ShiftPlanningPublishFormFields({
             </span>
           )}
         </label>
-
-        <label className="grid gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
-          Bekræft oprettelse
-          <input
-            value={publishConfirmationText}
-            onChange={(event) => setPublishConfirmationText(event.target.value)}
-            placeholder={confirmationText}
-            className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            disabled={publishing || !selectedDraftCanBePublished}
-          />
-          <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-            Skriv {confirmationText} for at låse publiceringsknappen op.
-          </span>
-        </label>
       </div>
 
       <label className="mt-4 grid gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
-        Intern note til vagterne
+        Note til oprettelsen
         <textarea
           value={publishNote}
           onChange={(event) => setPublishNote(event.target.value)}
           rows={2}
-          placeholder="Valgfri note, fx publiceret fra planlægningskladde"
+          placeholder="Valgfri note til de oprettede vagter"
           className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-950 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
           disabled={publishing || !selectedDraftCanBePublished}
         />

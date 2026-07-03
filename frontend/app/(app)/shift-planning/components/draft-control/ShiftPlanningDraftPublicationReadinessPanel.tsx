@@ -1,22 +1,22 @@
 type ShiftPlanningDraftPublicationReadinessPanelProps = {
-  backendValidationIsGreen: boolean;
+  controlValidationIsGreen: boolean;
   hasValidationError: boolean;
   hasValidationResult: boolean;
   isReadyForPublication: boolean;
 };
 
 function getReadinessPanelClasses({
-  backendValidationIsGreen,
+  controlValidationIsGreen,
   isReadyForPublication,
 }: Pick<
   ShiftPlanningDraftPublicationReadinessPanelProps,
-  "backendValidationIsGreen" | "isReadyForPublication"
+  "controlValidationIsGreen" | "isReadyForPublication"
 >) {
   if (isReadyForPublication) {
     return "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-100";
   }
 
-  if (backendValidationIsGreen) {
+  if (controlValidationIsGreen) {
     return "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100";
   }
 
@@ -24,67 +24,67 @@ function getReadinessPanelClasses({
 }
 
 function getReadinessTitle({
-  backendValidationIsGreen,
+  controlValidationIsGreen,
   hasValidationError,
   hasValidationResult,
   isReadyForPublication,
 }: ShiftPlanningDraftPublicationReadinessPanelProps) {
   if (isReadyForPublication) {
-    return "Klar til publicering";
+    return "Klar til oprettelse";
   }
 
-  if (backendValidationIsGreen) {
-    return "Backend-kontrol er grøn — gennemgå lokale kontroladvarsler";
+  if (controlValidationIsGreen) {
+    return "Kontrol er grøn — gennemgå lokale advarsler";
   }
 
   if (hasValidationResult) {
-    return "Ikke klar til publicering";
+    return "Ikke klar til oprettelse";
   }
 
   if (hasValidationError) {
-    return "Ikke klar — backend-kontrol fejlede";
+    return "Ikke klar — kontrollen fejlede";
   }
 
-  return "Ikke klar — kør backend-kontrol først";
+  return "Ikke klar — kontrollér først";
 }
 
 function getReadinessDescription({
-  backendValidationIsGreen,
+  controlValidationIsGreen,
   hasValidationError,
   hasValidationResult,
   isReadyForPublication,
 }: ShiftPlanningDraftPublicationReadinessPanelProps) {
   if (isReadyForPublication) {
-    return "Planlægningsplanlægningskladden har grøn backend-kontrol og ingen synlige lokale kontroladvarsler. Publicering er stadig låst bag publiceringspreview, arbejdstype og præcis bekræftelse.";
+    return "Forslaget er kontrolleret, og der er ingen synlige advarsler. Gennemgå oprettelsesoverblikket, vælg arbejdstype og bekræft, før vagterne oprettes.";
   }
 
-  if (backendValidationIsGreen) {
-    return "Backend-kontrollen fandt ingen fejl eller advarsler, men planlægningsplanlægningskladden har lokale kontrolpunkter. Gennemgå dem før du henter publiceringspreview og publicerer.";
+  if (controlValidationIsGreen) {
+    return "Kontrollen fandt ingen fejl, men der er stadig lokale advarsler. Gennemgå dem, før du går videre til oprettelse.";
   }
 
   if (hasValidationResult) {
-    return "Backend-kontrollen skal være grøn, før planlægningsplanlægningskladden kan vises som klar til publiceringspreview og publicering.";
+    return "Kontrollen skal være grøn, før forslaget kan vises som klar til oprettelse.";
   }
 
   if (hasValidationError) {
-    return "Ret fejlen eller prøv valideringen igen. Planlægningskladden kan ikke markeres klar til publiceringspreview eller publicering uden en grøn backend-kontrol.";
+    return "Ret fejlen eller prøv kontrollen igen. Forslaget kan ikke markeres klar, før kontrollen er grøn.";
   }
 
-  return "Klik på “Kør backend-kontrol”. En kladde kan først vises som klar til publiceringspreview og publicering, når backend-kontrollen er kørt og er grøn.";
+  return "Klik på “Kontrollér”. Forslaget kan først markeres klar til oprettelse, når kontrollen er gennemført og er grøn.";
 }
 
 function getReadinessBadgeClasses({
-  backendValidationIsGreen,
+  controlValidationIsGreen,
   isReadyForPublication,
 }: Pick<
   ShiftPlanningDraftPublicationReadinessPanelProps,
-  "backendValidationIsGreen" | "isReadyForPublication"
+  "controlValidationIsGreen" | "isReadyForPublication"
 >) {
   if (isReadyForPublication) {
     return "bg-green-100 text-green-950 dark:bg-green-900/60 dark:text-green-100";
   }
 
-  if (backendValidationIsGreen) {
+  if (controlValidationIsGreen) {
     return "bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-100";
   }
 
@@ -92,17 +92,17 @@ function getReadinessBadgeClasses({
 }
 
 function getReadinessBadgeLabel({
-  backendValidationIsGreen,
+  controlValidationIsGreen,
   isReadyForPublication,
 }: Pick<
   ShiftPlanningDraftPublicationReadinessPanelProps,
-  "backendValidationIsGreen" | "isReadyForPublication"
+  "controlValidationIsGreen" | "isReadyForPublication"
 >) {
   if (isReadyForPublication) {
     return "Klar";
   }
 
-  if (backendValidationIsGreen) {
+  if (controlValidationIsGreen) {
     return "Kontrol";
   }
 
@@ -121,7 +121,7 @@ export function ShiftPlanningDraftPublicationReadinessPanel(
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-70">
-            Publiceringsklarhed
+            Status før oprettelse
           </p>
           <p className="mt-2 text-base font-bold">{getReadinessTitle(props)}</p>
           <p className="mt-1 opacity-85">{getReadinessDescription(props)}</p>

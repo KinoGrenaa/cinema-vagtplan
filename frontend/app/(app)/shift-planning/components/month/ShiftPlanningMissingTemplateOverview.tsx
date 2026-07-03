@@ -50,7 +50,7 @@ export default function ShiftPlanningMissingTemplateOverview({
           </span>
         </div>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          Næste trin er at forberede og kontrollere en kladde, før der oprettes vagter.
+          Næste trin er at forberede og kontrollere forslaget, før der oprettes vagter.
         </p>
       </section>
     );

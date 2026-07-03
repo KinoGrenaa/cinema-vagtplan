@@ -15,13 +15,13 @@ export function ShiftPlanningDraftControlWarningPanel({
     >
       <p className="font-semibold">
         {draftNeedsControl
-          ? "Kræver kontrol før publicering"
-          : "Ingen synlige kontroladvarsler i kladden"}
+          ? "Kræver kontrol før oprettelse"
+          : "Ingen synlige kontroladvarsler"}
       </p>
       <p className="mt-1 opacity-85">
         {draftNeedsControl
-          ? "Ret eller godkend afvigelserne bevidst, før kladden publiceres til den rigtige vagtplan."
-          : "Kladden ser umiddelbart klar ud til publicering, når backend-valideringen og publiceringspreview også er grønne."}
+          ? "Ret eller godkend afvigelserne bevidst, før vagterne oprettes i vagtplanen."
+          : "Forslaget ser umiddelbart klar ud, når kontrollen og oprettelsesoverblikket er grønne."}
       </p>
     </div>
   );

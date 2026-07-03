@@ -18,7 +18,7 @@ export const DRAFT_STATUS_FILTERS: Array<{
   label: string;
 }> = [
   { value: "ALL", label: "Alle" },
-  { value: "DRAFT", label: "Åbne kladder" },
+  { value: "DRAFT", label: "Åbne" },
   { value: "PUBLISHED", label: "Oprettede" },
   { value: "SUPERSEDED", label: "Erstattede" },
   { value: "OTHER", label: "Andre/afsluttede" },
@@ -69,9 +69,9 @@ export function getDraftStatusFilterOptions(
 export function formatSelectedDraftFilterText(filter: DraftStatusFilter) {
   switch (filter) {
     case "DRAFT":
-      return "åbne kladder";
+      return "åbne forslag";
     case "PUBLISHED":
-      return "publicerede oprettelser";
+      return "oprettede forslag";
     case "SUPERSEDED":
       return "erstattede forhåndsvisninger";
     case "OTHER":

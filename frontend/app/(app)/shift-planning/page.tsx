@@ -493,7 +493,7 @@ export default function ShiftPlanningPage() {
       setDayForm(toDayForm(updatedDay));
       infoDialog.show({
         title: "Planlægningsdag gemt",
-        description: `Planlægningsdagen for ${formatDateKey(updatedDay.dateKey)} er gemt. Gem en planlægningskladde, når månedens datoer er klar.`,
+        description: `Datoen ${formatDateKey(updatedDay.dateKey)} er gemt. Gem en forhåndsvisning, når månedens datoer er klar.`,
         variant: "success",
         buttonText: "OK",
       });
@@ -521,9 +521,8 @@ export default function ShiftPlanningPage() {
             Månedsplan
           </h1>
           <p className="mx-auto mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
-            Læg vagtsskabeloner på konkrete datoer. Der oprettes stadig
-            ingen aktive vagter herfra — denne side forbereder månedens
-            planlægningsgrundlag.
+            Vælg vagtsskabeloner på dage eller hele uger. Gennemgå
+            forhåndsvisningen, før vagterne oprettes i vagtplanen.
           </p>
         </section>
 
@@ -567,14 +566,6 @@ export default function ShiftPlanningPage() {
                     className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                   >
                     Næste
-                  </button>
-                  <button
-                    type="button"
-                    onClick={fetchData}
-                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                    disabled={loading}
-                  >
-                    Opdater
                   </button>
                 </div>
               </div>
@@ -815,8 +806,8 @@ export default function ShiftPlanningPage() {
                   {templates.length === 0 && (
                     <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                       Der findes ingen aktive vagtsskabeloner endnu. Opret en
-                      skabelon via backend/API eller kommende skabelon-UI, før
-                      du kan lægge den på en dato.
+                      skabelon på siden Vagtsskabeloner, før du kan lægge den
+                      på en dato.
                     </p>
                   )}
                 </div>

@@ -162,7 +162,7 @@ export default function ShiftPlanningDraftPreview({
         title: "Forhåndsvisning gemt",
         description: `Forhåndsvisning #${draft.id} er gemt med ${toNumber(
           draft.itemCount,
-        )} poster.\nDer er stadig ikke oprettet aktive vagter. Åbn kontrollen, hent oprettelsespreview og opret først derefter vagter.`,
+        )} vagter.\nDer er stadig ikke oprettet aktive vagter. Åbn kontrollen, gennemgå oprettelsesoverblikket og opret først derefter vagter.`,
         variant: "success",
         buttonText: "OK",
       });
@@ -200,7 +200,7 @@ export default function ShiftPlanningDraftPreview({
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
               Viser hvad månedens valgte skabeloner foreløbigt vil kunne blive
-              til. Knappen gemmer en planlægningskladde i backend, men opretter
+              til. Knappen gemmer en forhåndsvisning, men opretter
               stadig ingen aktive vagter i vagtplanen.
             </p>
             <ShiftPlanningDraftPreviewMetricsPanel

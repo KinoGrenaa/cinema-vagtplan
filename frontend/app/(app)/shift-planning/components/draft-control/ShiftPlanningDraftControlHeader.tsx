@@ -16,7 +16,7 @@ function formatDraftStatus(status?: string | null) {
     case "SUPERSEDED":
       return "Erstattet";
     case "PUBLISHED":
-      return "Publiceret";
+      return "Oprettet";
     case "CANCELLED":
       return "Annulleret";
     default:
@@ -58,7 +58,7 @@ export function ShiftPlanningDraftControlHeader({
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h3 className="text-xl font-bold text-gray-950 dark:text-white">
-            Forhåndsvisning #{draftId} · {totalItems} poster
+            Forhåndsvisning #{draftId} · {totalItems} vagter
           </h3>
           <span
             className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClasses(
@@ -69,9 +69,8 @@ export function ShiftPlanningDraftControlHeader({
           </span>
         </div>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          Gennemgå poster, medarbejdere, tider, backend-validering og
-          publiceringspreview. Publicering kræver stadig arbejdstype og præcis
-          bekræftelse.
+          Gennemgå vagter, medarbejdere og tider. Opret først vagterne, når
+          kontrollen er grøn, og arbejdstypen er valgt.
         </p>
       </div>
 
@@ -82,7 +81,7 @@ export function ShiftPlanningDraftControlHeader({
           className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
           disabled={isValidating}
         >
-          {isValidating ? "Kontrollerer..." : "Kør backend-kontrol"}
+          {isValidating ? "Kontrollerer..." : "Kontrollér"}
         </button>
         <button
           type="button"
@@ -90,9 +89,7 @@ export function ShiftPlanningDraftControlHeader({
           className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-white"
           disabled={isLoadingPublicationPreview}
         >
-          {isLoadingPublicationPreview
-            ? "Henter preview..."
-            : "Forhåndsvis oprettelse"}
+          {isLoadingPublicationPreview ? "Henter vagter..." : "Se vagter"}
         </button>
         <button
           type="button"

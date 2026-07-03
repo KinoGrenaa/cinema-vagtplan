@@ -35,8 +35,7 @@ export function ShiftPlanningPublishResultPanel({
       </p>
       <p className="mt-1">
         Der er oprettet {createdShiftCount} rigtige vagter med arbejdstypen{" "}
-        <span className="font-semibold">{workTypeName}</span>. Kladden er nu
-        låst mod ny publicering, så samme planlægningskladde ikke kan oprette dubletter.
+        <span className="font-semibold">{workTypeName}</span>. Forslaget er nu låst mod ny oprettelse, så samme forslag ikke kan oprette dubletter.
       </p>
 
       {publishedShiftIdsText && (
@@ -48,7 +47,7 @@ export function ShiftPlanningPublishResultPanel({
       {publishedAffectedDateLabels.length > 0 && (
         <div className="mt-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
-            Opdaterede datoer i månedsplanen
+            Berørte datoer i månedsplanen
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {publishedAffectedDateLabels.map((date) => (
@@ -64,9 +63,7 @@ export function ShiftPlanningPublishResultPanel({
       )}
 
       <p className="mt-3 text-xs text-emerald-800">
-        Listen er skiftet til Publicerede planlægningskladder, så den oprettede forhÅndsvisning kan
-        kontrolleres med det samme. Brug vagtplanen til at gennemgå de oprettede
-        vagter på de berørte datoer.
+        Listen er skiftet til oprettede forslag, så den oprettede forhåndsvisning kan kontrolleres med det samme. Brug vagtplanen til at gennemgå de oprettede vagter på de berørte datoer.
       </p>
       <a
         href={scheduleHref}

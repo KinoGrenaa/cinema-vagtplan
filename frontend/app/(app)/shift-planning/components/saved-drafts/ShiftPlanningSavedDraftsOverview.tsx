@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
@@ -81,7 +81,6 @@ export default function ShiftPlanningSavedDraftsOverview({
   const [loadingWorkTypes, setLoadingWorkTypes] = useState(false);
   const [workTypesError, setWorkTypesError] = useState<string | null>(null);
   const [publishWorkTypeId, setPublishWorkTypeId] = useState("");
-  const [publishConfirmationText, setPublishConfirmationText] = useState("");
   const [publishNote, setPublishNote] = useState("");
   const [publishingDraftId, setPublishingDraftId] = useState<
     number | string | null
@@ -112,24 +111,21 @@ export default function ShiftPlanningSavedDraftsOverview({
     publicationPreviewSummary?.canPublishLater === true;
   const selectedDraftIsPublished = selectedDraft?.status === "PUBLISHED";
   const selectedDraftCanBePublished = selectedDraft?.status === "DRAFT";
-  const publishConfirmationMatches =
-    publishConfirmationText.trim() === PUBLISH_CONFIRMATION_TEXT;
   const canSubmitPublish =
     Boolean(selectedDraft) &&
     selectedDraftCanBePublished &&
     publicationPreviewCanPublishLater &&
     Boolean(publishWorkTypeId) &&
-    publishConfirmationMatches &&
     publishingDraftId !== selectedDraft?.id;
-  const backendValidationIsGreen = Boolean(
+  const controlValidationIsGreen = Boolean(
     validationResult &&
     validationSummary?.isValid === true &&
     toNumber(validationSummary.errorCount) === 0 &&
     toNumber(validationSummary.warningCount) === 0 &&
     toNumber(validationSummary.issueCount) === 0,
   );
-  const isReadyForFuturePublication =
-    backendValidationIsGreen && !draftNeedsControl;
+  const isReadyForCreation =
+    controlValidationIsGreen && !draftNeedsControl;
 
   const fetchDrafts = useCallback(async () => {
     if (!activeCinemaId) {
@@ -160,7 +156,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke hente planlÃ¦gningskladder",
+            "Kunne ikke hente forhåndsvisninger",
           ),
         );
       }
@@ -192,7 +188,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlÃ¦gningskladderne skulle hentes.",
+          : "Der opstod en fejl, da forhåndsvisningerne skulle hentes.",
       );
     } finally {
       setLoading(false);
@@ -260,7 +256,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const openDraft = async (draftId: number | string) => {
     if (!activeCinemaId) {
-      setErrorMessage("VÃ¦lg en aktiv biograf, fÃ¸r du Ã¥bner planlÃ¦gningskladder.");
+      setErrorMessage("Vælg en aktiv biograf, før du åbner forhåndsvisninger.");
       return;
     }
 
@@ -273,7 +269,6 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublicationPreviewError(null);
       setPublishResult(null);
       setPublishError(null);
-      setPublishConfirmationText("");
       setPublishNote("");
 
       const response = await apiFetch(
@@ -284,7 +279,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke Ã¥bne planlÃ¦gningskladde",
+            "Kunne ikke åbne forhåndsvisning",
           ),
         );
       }
@@ -301,7 +296,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlÃ¦gningskladden skulle Ã¥bnes.",
+          : "Der opstod en fejl, da forhåndsvisningen skulle åbnes.",
       );
     } finally {
       setOpeningDraftId(null);
@@ -310,12 +305,12 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const validateSelectedDraft = async () => {
     if (!selectedDraft) {
-      setValidationError("Ã…bn en planlÃ¦gningskladde, fÃ¸r du kÃ¸rer kontrol.");
+      setValidationError("Åbn en forhåndsvisning, før du kører kontrol.");
       return;
     }
 
     if (!activeCinemaId) {
-      setValidationError("VÃ¦lg en aktiv biograf, fÃ¸r du kÃ¸rer kontrol pÃ¥ planlÃ¦gningskladden.");
+      setValidationError("Vælg en aktiv biograf, før du kører kontrol på forhåndsvisningen.");
       return;
     }
 
@@ -334,7 +329,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke kÃ¸re kontrol pÃ¥ planlÃ¦gningskladden",
+            "Kunne ikke køre kontrol på forhåndsvisningen",
           ),
         );
       }
@@ -345,7 +340,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlÃ¦gningskladden skulle kontrolleres.",
+          : "Der opstod en fejl, da forhåndsvisningen skulle kontrolleres.",
       );
     } finally {
       setValidatingDraftId(null);
@@ -355,14 +350,14 @@ export default function ShiftPlanningSavedDraftsOverview({
   const loadPublicationPreview = async () => {
     if (!selectedDraft) {
       setPublicationPreviewError(
-        "Ã…bn en planlÃ¦gningskladde, fÃ¸r du henter oprettelsesoverblik.",
+        "Åbn en forhåndsvisning, før du henter oprettelsesoverblik.",
       );
       return;
     }
 
     if (!activeCinemaId) {
       setPublicationPreviewError(
-        "VÃ¦lg en aktiv biograf, fÃ¸r du henter oprettelsesoverblik for planlÃ¦gningskladden.",
+        "Vælg en aktiv biograf, før du henter oprettelsesoverblik.",
       );
       return;
     }
@@ -406,38 +401,32 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const publishSelectedDraft = async () => {
     if (!selectedDraft) {
-      setPublishError("Ã…bn en planlÃ¦gningskladde, fÃ¸r du opretter.");
+      setPublishError("Åbn en forhåndsvisning, før du opretter vagter.");
       return;
     }
 
     if (!activeCinemaId) {
-      setPublishError("VÃ¦lg en aktiv biograf, fÃ¸r du opretter planlÃ¦gningskladden.");
+      setPublishError("Vælg en aktiv biograf, før du opretter vagter.");
       return;
     }
 
     if (!selectedDraftCanBePublished) {
-      setPublishError("Kun Ã¥bne planlÃ¦gningskladder kan oprettes. Publicerede eller erstattede planlÃ¦gningskladder er lÃ¥st mod ny oprettelse.");
+      setPublishError("Kun åbne forslag kan oprette vagter. Oprettede eller erstattede forslag er låst mod ny oprettelse.");
       return;
     }
 
     if (!publicationPreviewCanPublishLater) {
       setPublishError(
-        "Hent et oprettelsesoverblik uden blokerende fejl, fÃ¸r planlÃ¦gningskladden oprettes.",
+        "Hent et oprettelsesoverblik uden blokerende fejl, før vagterne oprettes.",
       );
       return;
     }
 
     if (!publishWorkTypeId) {
-      setPublishError("VÃ¦lg den arbejdstype, som skal sÃ¦ttes pÃ¥ alle vagter ved oprettelse.");
+      setPublishError("Vælg den arbejdstype, som skal sættes på alle vagter ved oprettelse.");
       return;
     }
 
-    if (!publishConfirmationMatches) {
-      setPublishError(
-        `Skriv ${PUBLISH_CONFIRMATION_TEXT} for at bekrÃ¦fte oprettelse.`,
-      );
-      return;
-    }
 
     try {
       setPublishingDraftId(selectedDraft.id);
@@ -461,7 +450,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke oprette planlÃ¦gningskladden"),
+          await readErrorMessage(response, "Kunne ikke oprette vagter"),
         );
       }
 
@@ -484,7 +473,6 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationResult(null);
       setDraftStatusFilter("PUBLISHED");
       setShowAllDrafts(false);
-      setPublishConfirmationText("");
       setPublishNote("");
       await fetchDrafts();
       await onDraftPublished?.();
@@ -493,7 +481,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublishError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlÃ¦gningskladden skulle oprettes.",
+          : "Der opstod en fejl, da vagterne skulle oprettes.",
       );
     } finally {
       setPublishingDraftId(null);
@@ -508,7 +496,6 @@ export default function ShiftPlanningSavedDraftsOverview({
     setPublicationPreviewError(null);
     setPublishResult(null);
     setPublishError(null);
-    setPublishConfirmationText("");
     setPublishNote("");
   };
 
@@ -517,7 +504,6 @@ export default function ShiftPlanningSavedDraftsOverview({
       <ShiftPlanningSavedDraftsHeader
         loading={loading}
         month={month}
-        onRefresh={fetchDrafts}
         year={year}
       />
 
@@ -551,12 +537,12 @@ export default function ShiftPlanningSavedDraftsOverview({
           />
 
           <ShiftPlanningDraftControlSummary
-            backendValidationIsGreen={backendValidationIsGreen}
+            controlValidationIsGreen={controlValidationIsGreen}
             controlSummary={controlSummary}
             draftNeedsControl={draftNeedsControl}
             hasValidationError={Boolean(validationError)}
             hasValidationResult={Boolean(validationResult)}
-            isReadyForPublication={isReadyForFuturePublication}
+            isReadyForPublication={isReadyForCreation}
           />
 
           <ShiftPlanningPublicationPreviewPanel
@@ -572,8 +558,6 @@ export default function ShiftPlanningSavedDraftsOverview({
             publicationPreviewCanPublishLater={
               publicationPreviewCanPublishLater
             }
-            publishConfirmationMatches={publishConfirmationMatches}
-            publishConfirmationText={publishConfirmationText}
             publishError={publishError}
             publishNote={publishNote}
             publishResult={publishResult}
@@ -581,7 +565,6 @@ export default function ShiftPlanningSavedDraftsOverview({
             publishing={publishingDraftId === selectedDraft.id}
             selectedDraftCanBePublished={selectedDraftCanBePublished}
             selectedDraftIsPublished={selectedDraftIsPublished}
-            setPublishConfirmationText={setPublishConfirmationText}
             setPublishNote={setPublishNote}
             setPublishWorkTypeId={setPublishWorkTypeId}
             workTypes={workTypes}

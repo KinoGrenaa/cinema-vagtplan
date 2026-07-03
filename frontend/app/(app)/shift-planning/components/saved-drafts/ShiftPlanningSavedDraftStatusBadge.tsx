@@ -5,11 +5,11 @@ type ShiftPlanningSavedDraftStatusBadgeProps = {
 function formatDraftStatus(status?: string | null) {
   switch (status) {
     case "DRAFT":
-      return "Åben kladde";
+      return "Åben";
     case "SUPERSEDED":
       return "Erstattet";
     case "PUBLISHED":
-      return "Publiceret";
+      return "Oprettet";
     case "CANCELLED":
       return "Annulleret";
     default:

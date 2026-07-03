@@ -1,9 +1,9 @@
 export function ShiftPlanningAlreadyPublishedPanel() {
   return (
     <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-      <p className="font-semibold">Planlægningskladde er allerede publiceret</p>
+      <p className="font-semibold">Vagter er allerede oprettet</p>
       <p className="mt-1">
-        Denne kladde er låst for ny publicering, så der ikke oprettes
+        Dette forslag er låst, så der ikke oprettes
         dubletvagter. Åbn vagtplanen for at gennemgå de vagter, der allerede er
         oprettet.
       </p>

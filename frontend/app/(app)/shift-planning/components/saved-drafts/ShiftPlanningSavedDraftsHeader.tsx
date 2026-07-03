@@ -3,14 +3,11 @@ import { getMonthName } from "../../helpers/shiftPlanningHelpers";
 type ShiftPlanningSavedDraftsHeaderProps = {
   loading: boolean;
   month: number;
-  onRefresh: () => Promise<void> | void;
   year: number;
 };
 
 export function ShiftPlanningSavedDraftsHeader({
-  loading,
   month,
-  onRefresh,
   year,
 }: ShiftPlanningSavedDraftsHeaderProps) {
   return (
@@ -23,20 +20,9 @@ export function ShiftPlanningSavedDraftsHeader({
           Forhåndsvisninger for {getMonthName(year, month)}
         </h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          Kladderne ligger i backend og kan åbnes til kontrol. Publicering er
-          låst bag validering, preview, arbejdstype og præcis bekræftelse.
+          Åbn en forhåndsvisning for at kontrollere forslaget, gennemgå
+          advarsler og oprette vagter i vagtplanen.
         </p>
-      </div>
-
-      <div className="flex shrink-0 justify-center lg:absolute lg:right-5">
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="rounded-xl border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-100 dark:hover:bg-blue-950/50"
-          disabled={loading}
-        >
-          {loading ? "Opdaterer forhåndsvisninger..." : "Opdater forhåndsvisninger"}
-        </button>
       </div>
     </div>
   );

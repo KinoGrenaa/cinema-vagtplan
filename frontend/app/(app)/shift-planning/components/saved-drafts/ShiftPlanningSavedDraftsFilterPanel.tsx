@@ -18,11 +18,10 @@ export function ShiftPlanningSavedDraftsFilterPanel({
     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60">
       <div className="mb-3 flex flex-col gap-1">
         <h3 className="text-sm font-semibold text-gray-950 dark:text-gray-50">
-          Filtrér kladder
+          Filtrér forslag
         </h3>
         <p className="text-xs text-gray-600 dark:text-gray-400">
-          Brug filtrene til hurtigt at skifte mellem åbne kladder,
-          publicerede kladder og historiske kladder.
+          Brug filtrene til hurtigt at skifte mellem åbne, oprettede og historiske forslag.
         </p>
       </div>
 

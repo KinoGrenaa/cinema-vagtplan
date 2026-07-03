@@ -36,7 +36,7 @@ export function ShiftPlanningDraftItemCard({
           </p>
         </div>
         <div className="text-sm text-gray-600 dark:text-gray-300 lg:text-right">
-          Medarbejder i kladden: {formatDraftItemUserName(item)}
+          Medarbejder i forslaget: {formatDraftItemUserName(item)}
         </div>
       </div>
 

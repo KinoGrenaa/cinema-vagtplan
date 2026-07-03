@@ -1,8 +1,6 @@
 type ShiftPlanningPublishChecklistProps = {
   allRequirementsMet: boolean;
-  confirmationMatches: boolean;
-  confirmationText: string;
-  publicationPreviewIsGreen: boolean;
+  creationOverviewIsGreen: boolean;
   statusIsDraft: boolean;
   workTypeSelected: boolean;
 };
@@ -47,9 +45,7 @@ function PublishChecklistItem({
 
 export function ShiftPlanningPublishChecklist({
   allRequirementsMet,
-  confirmationMatches,
-  confirmationText,
-  publicationPreviewIsGreen,
+  creationOverviewIsGreen,
   statusIsDraft,
   workTypeSelected,
 }: ShiftPlanningPublishChecklistProps) {
@@ -58,10 +54,11 @@ export function ShiftPlanningPublishChecklist({
       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-bold text-gray-950 dark:text-white">
-            Krav før oprettelse
+            Klar til oprettelse
           </p>
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-            Alle krav skal være grønne, før planlægningskladden kan oprette rigtige vagter.
+            Opret-knappen kan åbnes hele tiden. Selve oprettelsen kræver, at
+            disse punkter er opfyldt.
           </p>
         </div>
         <span
@@ -71,29 +68,24 @@ export function ShiftPlanningPublishChecklist({
               : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
           }`}
         >
-          {allRequirementsMet ? "Alle krav opfyldt" : "Mangler krav"}
+          {allRequirementsMet ? "Klar" : "Mangler punkter"}
         </span>
       </div>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
         <PublishChecklistItem
           complete={statusIsDraft}
-          label="Status er Kladde"
-          description="Kun åbne kladder kan publiceres. Publicerede og erstattede kladder er låst."
+          label="Forslag er åbent"
+          description="Forslaget må ikke allerede være oprettet eller erstattet."
         />
         <PublishChecklistItem
-          complete={publicationPreviewIsGreen}
-          label="Grønt oprettelsesoverblik"
-          description="Backend skal have kontrolleret, at previewet kan blive til vagter."
+          complete={creationOverviewIsGreen}
+          label="Vagter er tjekket"
+          description="Kontrollen og visningen af vagter skal være grøn."
         />
         <PublishChecklistItem
           complete={workTypeSelected}
           label="Arbejdstype valgt"
-          description="Alle oprettede vagter får den valgte arbejdstype."
-        />
-        <PublishChecklistItem
-          complete={confirmationMatches}
-          label="Bekræftelse skrevet"
-          description={`Skriv ${confirmationText} præcist for at låse publicering op.`}
+          description="Alle nye vagter får den valgte arbejdstype."
         />
       </div>
     </div>

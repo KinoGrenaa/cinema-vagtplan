@@ -58,7 +58,7 @@ export default function ShiftPlanningTemplatePreview({
             {formatTemplateLabel(template)}
           </h3>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            Viser den aktive opsætning for {weekdayName}, før der forberedes en kladde.
+            Viser den aktive opsætning for {weekdayName}, før der forberedes et forslag.
           </p>
         </div>
 

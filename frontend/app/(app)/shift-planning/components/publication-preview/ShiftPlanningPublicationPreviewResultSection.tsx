@@ -38,23 +38,22 @@ export function ShiftPlanningPublicationPreviewResultSection({
       >
         <div className="font-semibold">
           {canPublishLater
-            ? "Publiceringspreview er klar"
-            : "Publiceringspreview kræver rettelser"}
+            ? "Vagterne kan oprettes"
+            : "Der er noget, der skal rettes"}
         </div>
         <div className="mt-1 text-xs opacity-80">
-          Kontroltype: {result.mode || "Ukendt"} · Opretter vagter i dette trin:{" "}
-          {result.createsShifts ? "Ja" : "Nej"}
+          Dette overblik opretter ikke vagter. Vagterne oprettes først i sidste trin.
         </div>
       </div>
 
       {previewSummary && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <ShiftPlanningPublicationPreviewMetricCard
-            label="Kladdeposter"
+            label="Vagter"
             value={toNumber(previewSummary.itemCount)}
           />
           <ShiftPlanningPublicationPreviewMetricCard
-            label="Kan publiceres"
+            label="Kan oprettes"
             value={toNumber(previewSummary.publishableItemCount)}
             variant="success"
           />
@@ -83,7 +82,7 @@ export function ShiftPlanningPublicationPreviewResultSection({
 
       {blockingReasons.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
-          <div className="font-semibold">Det blokerer publicering</div>
+          <div className="font-semibold">Det blokerer oprettelse</div>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             {blockingReasons.map((reason) => (
               <li key={reason}>{reason}</li>
@@ -95,7 +94,7 @@ export function ShiftPlanningPublicationPreviewResultSection({
       {visiblePreviewItems.length > 0 && (
         <div className="space-y-2">
           <div className="text-sm font-semibold text-blue-950 dark:text-blue-100">
-            Kladdeposter i previewet
+            Vagter i overblikket
           </div>
           {visiblePreviewItems.map((item, index) => (
             <ShiftPlanningPublicationPreviewItemCard
@@ -109,15 +108,13 @@ export function ShiftPlanningPublicationPreviewResultSection({
 
       {previewItems.length === 0 && (
         <div className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100">
-          Previewet har ingen kladdeposter. Kladden kan ikke publiceres, før den har
-          poster.
+          Overblikket har ingen vagter endnu.
         </div>
       )}
 
       {hiddenPreviewItemCount > 0 && (
         <div className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100">
-          {hiddenPreviewItemCount} flere kladdeposter er skjult i denne
-          kompakte preview-visning.
+          {hiddenPreviewItemCount} flere vagter er skjult i denne kompakte visning.
         </div>
       )}
     </div>

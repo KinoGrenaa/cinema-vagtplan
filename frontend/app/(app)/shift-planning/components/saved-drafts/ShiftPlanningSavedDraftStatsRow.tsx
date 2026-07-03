@@ -10,7 +10,7 @@ export function ShiftPlanningSavedDraftStatsRow({
 }: ShiftPlanningSavedDraftStatsRowProps) {
   return (
     <div className="flex flex-wrap gap-2 text-xs text-gray-700 dark:text-gray-300">
-      <span>{toNumber(draft.itemCount)} poster</span>
+      <span>{toNumber(draft.itemCount)} vagter</span>
       <span>{toNumber(draft.unassignedItemCount)} uden standard</span>
       <span>{toNumber(draft.warningItemCount)} advarsler</span>
     </div>

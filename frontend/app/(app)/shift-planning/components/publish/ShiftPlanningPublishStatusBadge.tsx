@@ -10,7 +10,7 @@ export function ShiftPlanningPublishStatusBadge({
   selectedDraftIsPublished,
 }: ShiftPlanningPublishStatusBadgeProps) {
   const label = selectedDraftIsPublished
-    ? "Publiceret"
+    ? "Oprettet"
     : selectedDraftCanBePublished && publicationPreviewCanPublishLater
       ? "Kan bekræftes"
       : "Blokeret";

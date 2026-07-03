@@ -30,7 +30,7 @@ export function ShiftPlanningPublicationPreviewItemCard({
                 : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-100"
             }`}
           >
-            {item.canBecomeShift ? "Kan publiceres" : "Blokeret"}
+            {item.canBecomeShift ? "Kan oprettes" : "Blokeret"}
           </span>
           <span className="font-semibold">{itemDate}</span>
         </div>
@@ -51,7 +51,7 @@ export function ShiftPlanningPublicationPreviewItemCard({
         <span>·</span>
         <span>{item.userName || "Uden medarbejder"}</span>
         <span>·</span>
-        <span>Kladdepost #{item.draftItemId ?? "?"}</span>
+        <span>Forslag #{item.draftItemId ?? "?"}</span>
       </div>
 
       {blockReasons.length > 0 && (

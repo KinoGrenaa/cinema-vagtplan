@@ -20,7 +20,7 @@ export function ShiftPlanningDraftPreviewStatusPanel({
     <>
       {latestDraft && (
         <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900/70 dark:bg-green-950/30 dark:text-green-100">
-          Seneste gemte forhåndsvisning #{latestDraft.id} · {toNumber(latestDraft.itemCount)} poster ·{" "}
+          Seneste gemte forhåndsvisning #{latestDraft.id} · {toNumber(latestDraft.itemCount)} vagter ·{" "}
           {toNumber(latestDraft.unassignedItemCount)} uden standard ·{" "}
           {toNumber(latestDraft.warningItemCount)} med kontroladvarsel
         </div>
@@ -28,14 +28,14 @@ export function ShiftPlanningDraftPreviewStatusPanel({
 
       {loading && (
         <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/50 dark:text-gray-300">
-          Henter kladdepreview fra månedens skabeloner...
+          Henter forhåndsvisning fra månedens skabeloner...
         </div>
       )}
 
       {!loading && rowCount === 0 && (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
           Ingen aktive dage har vagtsskabelon endnu. Læg først skabeloner på
-          datoer, før måneden kan forberedes til kladder.
+          datoer, før måneden kan forberedes til oprettelse.
         </div>
       )}
     </>
