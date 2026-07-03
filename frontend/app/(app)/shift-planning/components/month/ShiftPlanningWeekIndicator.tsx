@@ -38,11 +38,11 @@ export default function ShiftPlanningWeekIndicator({
 
       <div className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
         <p>{activeDays} aktive dage</p>
-        <p>{daysWithTemplate} med vagtsskabelon</p>
+        <p>{daysWithTemplate} med skabelon</p>
         <p>{missingTemplateDays} mangler planlægning</p>
       </div>
 
-      <div className="mt-4 border-t border-gray-200 pt-3 dark:border-gray-800">
+      <div className="mt-4 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-800">
         <label
           className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
           htmlFor={`week-template-${weekNumber ?? "unknown"}`}
@@ -53,7 +53,7 @@ export default function ShiftPlanningWeekIndicator({
           id={`week-template-${weekNumber ?? "unknown"}`}
           value={selectedTemplateId}
           onChange={(event) => setSelectedTemplateId(event.target.value)}
-          className="mt-2 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          className="block w-full min-w-0 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
           disabled={saving || activeDays === 0 || templates.length === 0}
         >
           <option value="">Vælg</option>
@@ -68,7 +68,7 @@ export default function ShiftPlanningWeekIndicator({
           onClick={() => {
             void onApplyTemplate(selectedTemplateId);
           }}
-          className="mt-2 w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={!canApply}
         >
           {saving ? "Gemmer..." : "Anvend"}

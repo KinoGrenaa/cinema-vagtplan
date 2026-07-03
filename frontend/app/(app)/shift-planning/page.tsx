@@ -17,7 +17,6 @@ import {
   addMonths,
   appendCinemaId,
   formatDateKey,
-  formatWeekParity,
   getCalendarLeadingBlankCount,
   getDateWeekParityLabel,
   getCurrentUserFromToken,
@@ -41,9 +40,6 @@ type DayFormState = {
   isActive: boolean;
   scheduleTemplateId: string;
   note: string;
-  movieShowingCount: string;
-  plannedShiftCount: string;
-  unassignedShiftCount: string;
 };
 
 const weekdayHeaders = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -62,12 +58,8 @@ function toDayForm(day: MonthPlanDay): DayFormState {
     isActive: day.isActive,
     scheduleTemplateId: day.scheduleTemplateId ? String(day.scheduleTemplateId) : "",
     note: day.note ?? "",
-    movieShowingCount: String(day.movieShowingCount ?? 0),
-    plannedShiftCount: String(day.plannedShiftCount ?? 0),
-    unassignedShiftCount: String(day.unassignedShiftCount ?? 0),
   };
 }
-
 
 function normalizeMonthPlanDay(day: MonthPlanDay): MonthPlanDay {
   return {
@@ -83,16 +75,6 @@ function normalizeMonthPlanResponse(data: MonthPlanResponse): MonthPlanResponse 
       ? data.days.map((day) => normalizeMonthPlanDay(day))
       : [],
   };
-}
-
-function parseNonNegativeInteger(value: string, fieldName: string) {
-  const parsedValue = value.trim() ? Number(value) : 0;
-
-  if (!Number.isInteger(parsedValue) || parsedValue < 0) {
-    throw new Error(`${fieldName} skal være et positivt heltal.`);
-  }
-
-  return parsedValue;
 }
 
 function parseDayForm(form: DayFormState, activeCinemaId: number | null) {
@@ -116,18 +98,6 @@ function parseDayForm(form: DayFormState, activeCinemaId: number | null) {
     isActive: form.isActive,
     scheduleTemplateId,
     note: form.note.trim() || null,
-    movieShowingCount: parseNonNegativeInteger(
-      form.movieShowingCount,
-      "Antal forestillinger",
-    ),
-    plannedShiftCount: parseNonNegativeInteger(
-      form.plannedShiftCount,
-      "Antal vagter",
-    ),
-    unassignedShiftCount: parseNonNegativeInteger(
-      form.unassignedShiftCount,
-      "Ubesatte vagter",
-    ),
   };
 }
 
@@ -571,7 +541,7 @@ export default function ShiftPlanningPage() {
               </div>
             </section>
 
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Aktive dage
@@ -602,14 +572,6 @@ export default function ShiftPlanningPage() {
                 </p>
                 <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">
                   {monthSummary.inactiveDays}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  Ubesatte vagter
-                </p>
-                <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">
-                  {monthSummary.totalUnassigned}
                 </p>
               </div>
             </section>
@@ -768,7 +730,7 @@ export default function ShiftPlanningPage() {
                     className="text-sm font-semibold"
                     htmlFor="scheduleTemplateId"
                   >
-                    Vagtsskabelon på denne dato
+                    Anvendt skabelon på denne dato
                   </label>
                   <select
                     id="scheduleTemplateId"
@@ -792,7 +754,7 @@ export default function ShiftPlanningPage() {
 
                       return (
                         <option key={template.id} value={template.id}>
-                          {template.name} · {formatWeekParity(template.weekParity)}
+                          {template.name}
                           {!weekParityMatches ? " · passer ikke til denne uge" : ""}
                         </option>
                       );
@@ -835,87 +797,6 @@ export default function ShiftPlanningPage() {
                     placeholder="Fx lukket dag, særlig bemanding eller afvigelse fra normal uge."
                     disabled={saving}
                   />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <label
-                      className="text-sm font-semibold"
-                      htmlFor="movieShowingCount"
-                    >
-                      Forestillinger
-                    </label>
-                    <input
-                      id="movieShowingCount"
-                      type="number"
-                      min="0"
-                      value={dayForm.movieShowingCount}
-                      onChange={(event) =>
-                        setDayForm((current) =>
-                          current
-                            ? {
-                                ...current,
-                                movieShowingCount: event.target.value,
-                              }
-                            : current,
-                        )
-                      }
-                      className="mt-2 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="text-sm font-semibold"
-                      htmlFor="plannedShiftCount"
-                    >
-                      Vagter
-                    </label>
-                    <input
-                      id="plannedShiftCount"
-                      type="number"
-                      min="0"
-                      value={dayForm.plannedShiftCount}
-                      onChange={(event) =>
-                        setDayForm((current) =>
-                          current
-                            ? {
-                                ...current,
-                                plannedShiftCount: event.target.value,
-                              }
-                            : current,
-                        )
-                      }
-                      className="mt-2 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      disabled={saving}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="text-sm font-semibold"
-                      htmlFor="unassignedShiftCount"
-                    >
-                      Ubesatte
-                    </label>
-                    <input
-                      id="unassignedShiftCount"
-                      type="number"
-                      min="0"
-                      value={dayForm.unassignedShiftCount}
-                      onChange={(event) =>
-                        setDayForm((current) =>
-                          current
-                            ? {
-                                ...current,
-                                unassignedShiftCount: event.target.value,
-                              }
-                            : current,
-                        )
-                      }
-                      className="mt-2 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      disabled={saving}
-                    />
-                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 border-t border-gray-200 pt-5 dark:border-gray-800">

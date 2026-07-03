@@ -1,6 +1,6 @@
 import {
   formatDateKey,
-  formatWeekParity,
+  formatTemplateLabel,
   getWeekdayName,
 } from "../../helpers/shiftPlanningHelpers";
 import type { DraftPreviewRow } from "./ShiftPlanningDraftPreview";
@@ -24,18 +24,17 @@ export function ShiftPlanningDraftPreviewRowCard({
         {getWeekdayName(row.dateKey, "long")} {formatDateKey(row.dateKey)}
       </p>
       <p className="mt-1 text-sm font-semibold text-gray-950 dark:text-white">
-        {row.template
-          ? `${row.template.name} · ${formatWeekParity(row.template.weekParity)}`
-          : "Skabelon mangler ugedagsdata"}
+        {row.template ? formatTemplateLabel(row.template) : "Skabelon mangler ugedagsdata"}
       </p>
       <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
-        {row.requiredCount} vagter
+        {row.requiredCount} vagter{row.emptyCount > 0 ? ` · ${row.emptyCount} tomme` : ""}
       </p>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        {row.jobFunctionCount} funktioner · {row.assignedCount} med standard · {row.emptyCount} tomme
-        {!row.hasTemplateDay && " · mangler ugedagsopsætning"}
-        {row.warning && " · tjek ugeparitet"}
-      </p>
+      {(row.warning || !row.hasTemplateDay) && (
+        <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+          {!row.hasTemplateDay && "Mangler ugedagsopsætning"}
+          {row.warning && `${!row.hasTemplateDay ? " · " : ""}Tjek ugeopsætning`}
+        </p>
+      )}
     </button>
   );
 }

@@ -1,14 +1,11 @@
 import {
   formatTemplateLabel,
-  getTemplateDayAssignedCount,
   getTemplateDayForDate,
-  getTemplateDayRequiredCount,
   getTemplateWeekParityWarning,
   getWeekdayName,
 } from "../../helpers/shiftPlanningHelpers";
 import type { ScheduleTemplateSummary } from "../../helpers/shiftPlanningTypes";
 import { ShiftPlanningTemplatePreviewJobFunctionCard } from "./ShiftPlanningTemplatePreviewJobFunctionCard";
-import { ShiftPlanningTemplatePreviewMetricCard } from "./ShiftPlanningTemplatePreviewMetricCard";
 import { ShiftPlanningTemplatePreviewStateMessage } from "./ShiftPlanningTemplatePreviewStateMessage";
 
 type ShiftPlanningTemplatePreviewProps = {
@@ -34,48 +31,29 @@ export default function ShiftPlanningTemplatePreview({
   if (!template) {
     return (
       <ShiftPlanningTemplatePreviewStateMessage tone="missing">
-        Vælg en vagtsskabelon for at se, hvilke jobfunktioner og
-        standardmedarbejdere der ligger på denne ugedag.
+        Vælg en vagtsskabelon for at se, hvilke jobfunktioner der ligger på
+        denne ugedag.
       </ShiftPlanningTemplatePreviewStateMessage>
     );
   }
 
   const templateDay = getTemplateDayForDate(template, dateKey);
   const templateJobFunctions = templateDay?.jobFunctions ?? [];
-  const requiredCount = getTemplateDayRequiredCount(templateDay);
-  const assignedCount = getTemplateDayAssignedCount(templateDay);
   const weekdayName = getWeekdayName(dateKey, "long");
   const weekParityWarning = getTemplateWeekParityWarning(template, dateKey);
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Skabelonpreview for valgt dato
-          </p>
-          <h3 className="mt-1 text-base font-bold text-gray-950 dark:text-white">
-            {formatTemplateLabel(template)}
-          </h3>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            Viser den aktive opsætning for {weekdayName}, før der forberedes et forslag.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-200">
-          <ShiftPlanningTemplatePreviewMetricCard
-            label="funktioner"
-            value={templateJobFunctions.length}
-          />
-          <ShiftPlanningTemplatePreviewMetricCard
-            label="vagter"
-            value={requiredCount}
-          />
-          <ShiftPlanningTemplatePreviewMetricCard
-            label="standard"
-            value={assignedCount}
-          />
-        </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Anvendt skabelon
+        </p>
+        <h3 className="mt-1 text-base font-bold text-gray-950 dark:text-white">
+          {formatTemplateLabel(template)}
+        </h3>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+          Viser opsætningen for {weekdayName}, før der forberedes et forslag.
+        </p>
       </div>
 
       {weekParityWarning && (

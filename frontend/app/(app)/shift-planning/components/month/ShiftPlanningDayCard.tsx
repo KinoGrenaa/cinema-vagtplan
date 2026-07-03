@@ -3,9 +3,7 @@ import {
   getDayStatusClasses,
   getDayStatusLabel,
   getMonthPlanDayDateKey,
-  getTemplateDayAssignedCount,
   getTemplateDayForDate,
-  getTemplateDayRequiredCount,
   getTemplateWeekParityWarning,
   getWeekdayName,
   isToday,
@@ -21,7 +19,7 @@ type ShiftPlanningDayCardProps = {
   onOpen: () => void;
 };
 
-const MAX_VISIBLE_JOB_FUNCTIONS = 2;
+const MAX_VISIBLE_JOB_FUNCTIONS = 3;
 
 export default function ShiftPlanningDayCard({
   day,
@@ -35,8 +33,6 @@ export default function ShiftPlanningDayCard({
     : null;
   const dayNumberLabel = dateKey ? String(Number(dateKey.slice(-2))) : "?";
   const templateJobFunctions = templateDay?.jobFunctions ?? [];
-  const requiredCount = getTemplateDayRequiredCount(templateDay);
-  const assignedCount = getTemplateDayAssignedCount(templateDay);
   const weekParityWarning = day.isActive
     ? getTemplateWeekParityWarning(displayTemplate, dateKey)
     : null;
@@ -52,7 +48,7 @@ export default function ShiftPlanningDayCard({
     <button
       type="button"
       onClick={onOpen}
-      className={`min-h-32 rounded-2xl border p-2.5 text-left text-xs transition hover:shadow-md ${getDayStatusClasses(
+      className={`min-h-32 rounded-2xl border p-3 text-left text-xs transition hover:shadow-md ${getDayStatusClasses(
         day,
       )}`}
     >
@@ -73,37 +69,42 @@ export default function ShiftPlanningDayCard({
         <p className="text-2xl font-bold leading-none">{dayNumberLabel}</p>
       </div>
 
-      <div className="mt-2 space-y-1.5">
-        <p className="line-clamp-2 text-[13px] font-semibold" title={templateLabel}>
-          {templateLabel}
-        </p>
+      <div className="mt-3 space-y-2">
+        {day.isActive && displayTemplate ? (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">
+              Anvendt skabelon
+            </p>
+            <p
+              className="line-clamp-2 text-[13px] font-bold"
+              title={templateLabel}
+            >
+              {templateLabel}
+            </p>
+          </div>
+        ) : (
+          <p
+            className="line-clamp-2 text-[13px] font-semibold"
+            title={templateLabel}
+          >
+            {templateLabel}
+          </p>
+        )}
 
         {weekParityWarning && (
           <p
             className="inline-flex rounded-md border border-amber-300 bg-amber-50/80 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200"
             title={weekParityWarning}
           >
-            Tjek skabelonens uge
+            Tjek ugeopsætning
           </p>
         )}
 
         {day.isActive && displayTemplate && (
           <div className="space-y-1.5">
-            <div className="grid grid-cols-3 gap-1 text-center text-[10px] font-semibold">
-              <span className="rounded-md bg-white/70 px-1.5 py-1 dark:bg-black/20">
-                {templateJobFunctions.length} funkt.
-              </span>
-              <span className="rounded-md bg-white/70 px-1.5 py-1 dark:bg-black/20">
-                {requiredCount} vagter
-              </span>
-              <span className="rounded-md bg-white/70 px-1.5 py-1 dark:bg-black/20">
-                {assignedCount} standard
-              </span>
-            </div>
-
             {templateJobFunctions.length === 0 ? (
-              <p className="truncate rounded-md border border-dashed border-current/30 px-2 py-1 text-[11px] opacity-75">
-                Skabelonen har ingen jobfunktioner for denne ugedag endnu.
+              <p className="rounded-md border border-dashed border-current/30 px-2 py-1 text-[11px] opacity-75">
+                Ingen jobfunktioner på denne ugedag.
               </p>
             ) : (
               <div className="flex flex-wrap gap-1">
@@ -124,8 +125,8 @@ export default function ShiftPlanningDayCard({
                       <span className="truncate">
                         {templateJobFunction.jobFunction.name}
                       </span>
-                      <span className="shrink-0 opacity-75">
-                        {templateJobFunction.requiredCount}
+                      <span className="shrink-0 opacity-80">
+                        × {templateJobFunction.requiredCount}
                       </span>
                     </span>
                   ))}
@@ -139,11 +140,6 @@ export default function ShiftPlanningDayCard({
             )}
           </div>
         )}
-
-        <p className="truncate text-[11px] opacity-80">
-          {day.movieShowingCount ?? 0} forestillinger · {day.plannedShiftCount ?? 0}{" "}
-          vagter · {day.unassignedShiftCount ?? 0} ubesatte
-        </p>
 
         {day.note && (
           <p className="truncate rounded-md bg-white/60 px-2 py-1 text-[11px] dark:bg-black/20">

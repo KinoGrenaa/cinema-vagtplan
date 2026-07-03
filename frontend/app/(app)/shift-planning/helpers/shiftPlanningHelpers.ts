@@ -289,6 +289,10 @@ export function formatTemplateLabel(template: ScheduleTemplateSummary | null) {
     return "Ingen skabelon";
   }
 
+  if (template.weekParity === "ANY") {
+    return template.name;
+  }
+
   return `${template.name} · ${formatWeekParity(template.weekParity)}`;
 }
 
