@@ -621,6 +621,55 @@ export class ShiftPlanningDraftsService {
     };
   }
 
+  async deleteDraft(user: AuthUser, id: number, cinemaIdValue?: string) {
+    const selectedCinemaId = user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
+    const cinemaId = resolveCinemaId(user, selectedCinemaId);
+    const draftRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT id, status, year, month
+      FROM "ShiftPlanningDraft"
+      WHERE id = ${id}
+        AND "cinemaId" = ${cinemaId}
+      LIMIT 1
+    `);
+
+    if (draftRows.length === 0) {
+      throw new NotFoundException('Forhåndsvisningen findes ikke.');
+    }
+
+    const draft = draftRows[0];
+    const status = String(draft.status ?? '').toUpperCase();
+
+    if (status === 'PUBLISHED') {
+      throw new BadRequestException(
+        'Forhåndsvisningen har allerede oprettet vagter og kan ikke slettes.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw(Prisma.sql`
+        DELETE FROM "ShiftPlanningDraftItem"
+        WHERE "draftId" = ${id}
+          AND "cinemaId" = ${cinemaId}
+      `);
+
+      await tx.$executeRaw(Prisma.sql`
+        DELETE FROM "ShiftPlanningDraft"
+        WHERE id = ${id}
+          AND "cinemaId" = ${cinemaId}
+          AND status <> 'PUBLISHED'
+      `);
+    });
+
+    return {
+      id,
+      cinemaId,
+      year: Number(draft.year),
+      month: Number(draft.month),
+      deleted: true,
+      message: 'Forhåndsvisningen er slettet.',
+    };
+  }
+
   async validateDraft(user: AuthUser, id: number, cinemaIdValue?: string) {
     const selectedCinemaId = user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
     const cinemaId = resolveCinemaId(user, selectedCinemaId);

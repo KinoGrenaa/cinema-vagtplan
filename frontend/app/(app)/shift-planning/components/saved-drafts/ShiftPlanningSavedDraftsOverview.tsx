@@ -64,6 +64,12 @@ export default function ShiftPlanningSavedDraftsOverview({
   const [selectedDraft, setSelectedDraft] = useState<SavedDraftDetails | null>(
     null,
   );
+  const [draftPendingDelete, setDraftPendingDelete] =
+    useState<SavedDraftSummary | null>(null);
+  const [deletingDraftId, setDeletingDraftId] = useState<
+    number | string | null
+  >(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [validatingDraftId, setValidatingDraftId] = useState<
     number | string | null
   >(null);
@@ -138,6 +144,8 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublishResult(null);
       setPublishError(null);
       setErrorMessage(null);
+      setDraftPendingDelete(null);
+      setDeleteError(null);
       return;
     }
 
@@ -300,6 +308,78 @@ export default function ShiftPlanningSavedDraftsOverview({
       );
     } finally {
       setOpeningDraftId(null);
+    }
+  };
+
+  const requestDeleteDraft = (draft: SavedDraftSummary) => {
+    if (String(draft.status ?? "").toUpperCase() === "PUBLISHED") {
+      setDeleteError(
+        "Forhåndsvisningen har allerede oprettet vagter og kan ikke slettes.",
+      );
+      return;
+    }
+
+    setDeleteError(null);
+    setDraftPendingDelete(draft);
+  };
+
+  const confirmDeleteDraft = async () => {
+    if (!draftPendingDelete) {
+      return;
+    }
+
+    if (!activeCinemaId) {
+      setDeleteError("Vælg en aktiv biograf, før du sletter forhåndsvisningen.");
+      return;
+    }
+
+    try {
+      setDeletingDraftId(draftPendingDelete.id);
+      setDeleteError(null);
+
+      const response = await apiFetch(
+        appendCinemaId(
+          `/shift-planning-drafts/${draftPendingDelete.id}`,
+          activeCinemaId,
+        ),
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Kunne ikke slette forhåndsvisningen",
+          ),
+        );
+      }
+
+      const deletedDraftId = String(draftPendingDelete.id);
+
+      if (String(selectedDraft?.id ?? "") === deletedDraftId) {
+        setSelectedDraft(null);
+        setValidationResult(null);
+        setValidationError(null);
+        setPublicationPreviewResult(null);
+        setPublicationPreviewError(null);
+        setPublishResult(null);
+        setPublishError(null);
+        setPublishNote("");
+      }
+
+      setDrafts((current) =>
+        current.filter((draft) => String(draft.id) !== deletedDraftId),
+      );
+      setDraftPendingDelete(null);
+      await fetchDrafts();
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da forhåndsvisningen skulle slettes.",
+      );
+    } finally {
+      setDeletingDraftId(null);
     }
   };
 
@@ -514,10 +594,12 @@ export default function ShiftPlanningSavedDraftsOverview({
         errorMessage={errorMessage}
         selectedDraftId={selectedDraft?.id ?? null}
         openingDraftId={openingDraftId}
+        deletingDraftId={deletingDraftId}
         draftStatusFilter={draftStatusFilter}
         setDraftStatusFilter={setDraftStatusFilter}
         showAllDrafts={showAllDrafts}
         setShowAllDrafts={setShowAllDrafts}
+        onDeleteDraft={requestDeleteDraft}
         onOpenDraft={openDraft}
       />
 
@@ -579,6 +661,52 @@ export default function ShiftPlanningSavedDraftsOverview({
           <ShiftPlanningDraftItemsByDate dateGroups={dateGroups} />
         </div>
       )}
+
+      {draftPendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-red-600 dark:text-red-300">
+                Slet forhåndsvisning
+              </p>
+              <h3 className="mt-2 text-xl font-extrabold text-gray-950 dark:text-gray-50">
+                Slet forhåndsvisning #{draftPendingDelete.id}?
+              </h3>
+            </div>
+
+            <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+              Forhåndsvisningen fjernes fra listen. Der slettes ikke vagter i
+              vagtplanen, fordi forhåndsvisningen ikke har oprettet vagter.
+            </p>
+
+            {deleteError && (
+              <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+                {deleteError}
+              </p>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDraftPendingDelete(null)}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                disabled={Boolean(deletingDraftId)}
+              >
+                Annuller
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteDraft}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                disabled={Boolean(deletingDraftId)}
+              >
+                {deletingDraftId ? "Sletter..." : "Ja, slet forhåndsvisning"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }

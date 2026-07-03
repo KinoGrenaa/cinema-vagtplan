@@ -20,10 +20,12 @@ type ShiftPlanningSavedDraftsListProps = {
   errorMessage: string | null;
   selectedDraftId: number | string | null;
   openingDraftId: number | string | null;
+  deletingDraftId: number | string | null;
   draftStatusFilter: DraftStatusFilter;
   setDraftStatusFilter: Dispatch<SetStateAction<DraftStatusFilter>>;
   showAllDrafts: boolean;
   setShowAllDrafts: Dispatch<SetStateAction<boolean>>;
+  onDeleteDraft: (draft: SavedDraftSummary) => void;
   onOpenDraft: (draftId: number | string) => void;
 };
 
@@ -35,10 +37,12 @@ export function ShiftPlanningSavedDraftsList({
   errorMessage,
   selectedDraftId,
   openingDraftId,
+  deletingDraftId,
   draftStatusFilter,
   setDraftStatusFilter,
   showAllDrafts,
   setShowAllDrafts,
+  onDeleteDraft,
   onOpenDraft,
 }: ShiftPlanningSavedDraftsListProps) {
   const filterOptions = getDraftStatusFilterOptions(drafts);
@@ -84,6 +88,8 @@ export function ShiftPlanningSavedDraftsList({
               draft={draft}
               isSelected={String(selectedDraftId ?? "") === String(draft.id)}
               openingDraftId={openingDraftId}
+              deletingDraftId={deletingDraftId}
+              onDeleteDraft={onDeleteDraft}
               onOpenDraft={onOpenDraft}
             />
           ))}

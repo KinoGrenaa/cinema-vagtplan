@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -69,6 +70,20 @@ export class ShiftPlanningDraftsController {
     return this.shiftPlanningDraftsService.validateDraft(
       req.user,
       this.parseRequiredId(id, 'Planlægningskladde skal være et gyldigt ID.'),
+      cinemaId,
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Delete(':id')
+  deleteDraft(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.shiftPlanningDraftsService.deleteDraft(
+      req.user,
+      this.parseRequiredId(id, 'Forhåndsvisning skal være et gyldigt ID.'),
       cinemaId,
     );
   }
