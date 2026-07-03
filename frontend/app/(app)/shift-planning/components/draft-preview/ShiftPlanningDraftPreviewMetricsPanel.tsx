@@ -1,12 +1,14 @@
 type ShiftPlanningDraftPreviewMetricsPanelProps = {
   totalDraftShifts: number;
   totalStandardAssignments: number;
+  totalEmptyDraftShifts: number;
   rowCount: number;
 };
 
 export function ShiftPlanningDraftPreviewMetricsPanel({
   totalDraftShifts,
   totalStandardAssignments,
+  totalEmptyDraftShifts,
   rowCount,
 }: ShiftPlanningDraftPreviewMetricsPanelProps) {
   return (
@@ -19,6 +21,9 @@ export function ShiftPlanningDraftPreviewMetricsPanel({
       </span>
       <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-700 dark:bg-gray-900 dark:text-gray-200">
         {totalStandardAssignments} med standard
+      </span>
+      <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+        {totalEmptyDraftShifts} tomme
       </span>
     </div>
   );

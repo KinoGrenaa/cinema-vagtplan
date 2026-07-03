@@ -32,7 +32,7 @@ export function ShiftPlanningDraftPreviewRowCard({
         {row.requiredCount} kladdeposter
       </p>
       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        {row.jobFunctionCount} funktioner · {row.assignedCount} med standard
+        {row.jobFunctionCount} funktioner · {row.assignedCount} med standard · {row.emptyCount} tomme
         {!row.hasTemplateDay && " · mangler ugedagsopsætning"}
         {row.warning && " · tjek ugeparitet"}
       </p>

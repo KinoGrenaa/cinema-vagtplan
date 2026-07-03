@@ -1,10 +1,13 @@
 import { useState } from "react";
+
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+
 import { ShiftPlanningDraftPreviewMetricsPanel } from "./ShiftPlanningDraftPreviewMetricsPanel";
 import { ShiftPlanningDraftPreviewRowCard } from "./ShiftPlanningDraftPreviewRowCard";
 import { ShiftPlanningDraftPreviewStatusPanel } from "./ShiftPlanningDraftPreviewStatusPanel";
+
 import {
   appendCinemaId,
   getMonthName,
@@ -37,6 +40,7 @@ export type DraftPreviewRow = {
   template: ScheduleTemplateSummary | null;
   requiredCount: number;
   assignedCount: number;
+  emptyCount: number;
   jobFunctionCount: number;
   warning: string | null;
   hasTemplateDay: boolean;
@@ -63,13 +67,16 @@ function getPreviewRows(
       ? templatesById.get(day.scheduleTemplateId) ?? day.scheduleTemplate
       : null;
     const templateDay = getTemplateDayForDate(template, dateKey);
+    const requiredCount = getTemplateDayRequiredCount(templateDay);
+    const assignedCount = getTemplateDayAssignedCount(templateDay);
 
     return {
       day,
       dateKey,
       template,
-      requiredCount: getTemplateDayRequiredCount(templateDay),
-      assignedCount: getTemplateDayAssignedCount(templateDay),
+      requiredCount,
+      assignedCount,
+      emptyCount: Math.max(0, requiredCount - assignedCount),
       jobFunctionCount: templateDay?.jobFunctions?.length ?? 0,
       warning: getTemplateWeekParityWarning(template, dateKey),
       hasTemplateDay: Boolean(templateDay),
@@ -106,11 +113,16 @@ export default function ShiftPlanningDraftPreview({
     (sum, row) => sum + row.assignedCount,
     0,
   );
+  const totalEmptyDraftShifts = rows.reduce(
+    (sum, row) => sum + row.emptyCount,
+    0,
+  );
   const warningCount = rows.filter((row) => row.warning).length;
   const missingTemplateDayCount = rows.filter((row) => !row.hasTemplateDay)
     .length;
   const visibleRows = rows.slice(0, MAX_VISIBLE_DAYS);
   const hiddenCount = Math.max(0, rows.length - visibleRows.length);
+
   const canPrepareDraft = !loading && rows.length > 0 && Boolean(activeCinemaId);
 
   const prepareDraft = async () => {
@@ -191,11 +203,11 @@ export default function ShiftPlanningDraftPreview({
               til. Knappen gemmer en planlægningskladde i backend, men opretter
               stadig ingen aktive vagter i vagtplanen.
             </p>
-
             <ShiftPlanningDraftPreviewMetricsPanel
               rowCount={rows.length}
               totalDraftShifts={totalDraftShifts}
               totalStandardAssignments={totalStandardAssignments}
+              totalEmptyDraftShifts={totalEmptyDraftShifts}
             />
           </div>
 
