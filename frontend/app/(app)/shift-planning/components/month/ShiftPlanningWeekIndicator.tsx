@@ -27,16 +27,12 @@ export default function ShiftPlanningWeekIndicator({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-3 text-gray-900 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Uge
-          </p>
-          <p className="text-2xl font-bold text-gray-950 dark:text-white">
-            {weekNumber ?? "?"}
-          </p>
-        </div>
-      </div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        Uge
+      </p>
+      <p className="text-2xl font-bold text-gray-950 dark:text-white">
+        {weekNumber ?? "?"}
+      </p>
 
       <div className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
         <p>{activeDays} aktive dage</p>
@@ -45,10 +41,14 @@ export default function ShiftPlanningWeekIndicator({
       </div>
 
       <div className="mt-4 space-y-2 border-t border-gray-200 pt-3 dark:border-gray-800">
-        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          Vagtsskabelon for uge
+        <label
+          className="block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+          htmlFor={`week-template-${weekNumber ?? "unknown"}`}
+        >
+          Vagtsskabelon
         </label>
         <select
+          id={`week-template-${weekNumber ?? "unknown"}`}
           value={selectedTemplateId}
           onChange={(event) => setSelectedTemplateId(event.target.value)}
           className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
@@ -69,7 +69,7 @@ export default function ShiftPlanningWeekIndicator({
           className="w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={!canApply}
         >
-          {saving ? "Anvender..." : "Anvend på uge"}
+          {saving ? "Anvender..." : "Anvend"}
         </button>
       </div>
     </div>

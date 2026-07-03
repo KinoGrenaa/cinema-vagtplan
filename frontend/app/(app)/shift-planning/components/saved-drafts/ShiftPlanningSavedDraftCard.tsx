@@ -31,7 +31,7 @@ export function ShiftPlanningSavedDraftCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold text-gray-950 dark:text-gray-50">
-              ForhÃ¥ndsvisning #{draft.id}
+              Forhåndsvisning #{draft.id}
             </h3>
             <ShiftPlanningSavedDraftStatusBadge status={draft.status} />
           </div>
@@ -46,7 +46,7 @@ export function ShiftPlanningSavedDraftCard({
           className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-white"
           disabled={isOpening}
         >
-          {isOpening ? "Åbner..." : "Åbn kladde"}
+          {isOpening ? "Åbner..." : "Åbn forhåndsvisning"}
         </button>
       </div>
 

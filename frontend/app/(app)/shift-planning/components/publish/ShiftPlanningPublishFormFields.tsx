@@ -62,7 +62,7 @@ export function ShiftPlanningPublishFormFields({
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
-          Bekræft publicering
+          Bekræft oprettelse
           <input
             value={publishConfirmationText}
             onChange={(event) => setPublishConfirmationText(event.target.value)}

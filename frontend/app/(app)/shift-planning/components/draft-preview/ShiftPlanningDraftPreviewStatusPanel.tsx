@@ -20,7 +20,7 @@ export function ShiftPlanningDraftPreviewStatusPanel({
     <>
       {latestDraft && (
         <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900/70 dark:bg-green-950/30 dark:text-green-100">
-          Seneste gemte forhÃ¥ndsvisning #{latestDraft.id} · {toNumber(latestDraft.itemCount)} poster ·{" "}
+          Seneste gemte forhåndsvisning #{latestDraft.id} · {toNumber(latestDraft.itemCount)} poster ·{" "}
           {toNumber(latestDraft.unassignedItemCount)} uden standard ·{" "}
           {toNumber(latestDraft.warningItemCount)} med kontroladvarsel
         </div>

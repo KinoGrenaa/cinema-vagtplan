@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
@@ -160,7 +160,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke hente planlægningskladder",
+            "Kunne ikke hente planlÃ¦gningskladder",
           ),
         );
       }
@@ -192,7 +192,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlægningskladderne skulle hentes.",
+          : "Der opstod en fejl, da planlÃ¦gningskladderne skulle hentes.",
       );
     } finally {
       setLoading(false);
@@ -260,7 +260,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const openDraft = async (draftId: number | string) => {
     if (!activeCinemaId) {
-      setErrorMessage("Vælg en aktiv biograf, før du åbner planlægningskladder.");
+      setErrorMessage("VÃ¦lg en aktiv biograf, fÃ¸r du Ã¥bner planlÃ¦gningskladder.");
       return;
     }
 
@@ -284,7 +284,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke åbne planlægningskladde",
+            "Kunne ikke Ã¥bne planlÃ¦gningskladde",
           ),
         );
       }
@@ -301,7 +301,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlægningskladden skulle åbnes.",
+          : "Der opstod en fejl, da planlÃ¦gningskladden skulle Ã¥bnes.",
       );
     } finally {
       setOpeningDraftId(null);
@@ -310,12 +310,12 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const validateSelectedDraft = async () => {
     if (!selectedDraft) {
-      setValidationError("Åbn en planlægningskladde, før du kører backend-kontrol.");
+      setValidationError("Ã…bn en planlÃ¦gningskladde, fÃ¸r du kÃ¸rer kontrol.");
       return;
     }
 
     if (!activeCinemaId) {
-      setValidationError("Vælg en aktiv biograf, før du kører backend-kontrol på planlægningskladden.");
+      setValidationError("VÃ¦lg en aktiv biograf, fÃ¸r du kÃ¸rer kontrol pÃ¥ planlÃ¦gningskladden.");
       return;
     }
 
@@ -334,7 +334,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke køre backend-kontrol på planlægningskladden",
+            "Kunne ikke kÃ¸re kontrol pÃ¥ planlÃ¦gningskladden",
           ),
         );
       }
@@ -345,7 +345,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlægningskladden skulle backend-kontrolleres.",
+          : "Der opstod en fejl, da planlÃ¦gningskladden skulle kontrolleres.",
       );
     } finally {
       setValidatingDraftId(null);
@@ -355,14 +355,14 @@ export default function ShiftPlanningSavedDraftsOverview({
   const loadPublicationPreview = async () => {
     if (!selectedDraft) {
       setPublicationPreviewError(
-        "Åbn en planlægningskladde, før du henter publiceringspreview.",
+        "Ã…bn en planlÃ¦gningskladde, fÃ¸r du henter oprettelsesoverblik.",
       );
       return;
     }
 
     if (!activeCinemaId) {
       setPublicationPreviewError(
-        "Vælg en aktiv biograf, før du henter publiceringspreview for planlægningskladden.",
+        "VÃ¦lg en aktiv biograf, fÃ¸r du henter oprettelsesoverblik for planlÃ¦gningskladden.",
       );
       return;
     }
@@ -384,7 +384,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke hente publiceringspreview",
+            "Kunne ikke hente oprettelsesoverblik",
           ),
         );
       }
@@ -397,7 +397,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublicationPreviewError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da publiceringspreviewet skulle hentes.",
+          : "Der opstod en fejl, da oprettelsesoverbliket skulle hentes.",
       );
     } finally {
       setLoadingPublicationPreviewId(null);
@@ -406,35 +406,35 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const publishSelectedDraft = async () => {
     if (!selectedDraft) {
-      setPublishError("Åbn en planlægningskladde, før du publicerer.");
+      setPublishError("Ã…bn en planlÃ¦gningskladde, fÃ¸r du opretter.");
       return;
     }
 
     if (!activeCinemaId) {
-      setPublishError("Vælg en aktiv biograf, før du publicerer planlægningskladden.");
+      setPublishError("VÃ¦lg en aktiv biograf, fÃ¸r du opretter planlÃ¦gningskladden.");
       return;
     }
 
     if (!selectedDraftCanBePublished) {
-      setPublishError("Kun åbne planlægningskladder kan publiceres. Publicerede eller erstattede planlægningskladder er låst mod ny publicering.");
+      setPublishError("Kun Ã¥bne planlÃ¦gningskladder kan oprettes. Publicerede eller erstattede planlÃ¦gningskladder er lÃ¥st mod ny oprettelse.");
       return;
     }
 
     if (!publicationPreviewCanPublishLater) {
       setPublishError(
-        "Hent et publiceringspreview uden blokerende fejl, før planlægningskladden publiceres.",
+        "Hent et oprettelsesoverblik uden blokerende fejl, fÃ¸r planlÃ¦gningskladden oprettes.",
       );
       return;
     }
 
     if (!publishWorkTypeId) {
-      setPublishError("Vælg den arbejdstype, som skal sættes på alle vagter ved publicering.");
+      setPublishError("VÃ¦lg den arbejdstype, som skal sÃ¦ttes pÃ¥ alle vagter ved oprettelse.");
       return;
     }
 
     if (!publishConfirmationMatches) {
       setPublishError(
-        `Skriv ${PUBLISH_CONFIRMATION_TEXT} for at bekræfte publicering.`,
+        `Skriv ${PUBLISH_CONFIRMATION_TEXT} for at bekrÃ¦fte oprettelse.`,
       );
       return;
     }
@@ -461,7 +461,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke publicere planlægningskladden"),
+          await readErrorMessage(response, "Kunne ikke oprette planlÃ¦gningskladden"),
         );
       }
 
@@ -493,7 +493,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setPublishError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da planlægningskladden skulle publiceres.",
+          : "Der opstod en fejl, da planlÃ¦gningskladden skulle oprettes.",
       );
     } finally {
       setPublishingDraftId(null);

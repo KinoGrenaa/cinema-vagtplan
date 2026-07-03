@@ -31,7 +31,7 @@ export function ShiftPlanningPublishResultPanel({
   return (
     <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
       <p className="font-semibold">
-        {publishResult.message || "Planlægningskladden er publiceret."}
+        {publishResult.message || "Vagterne er oprettet."}
       </p>
       <p className="mt-1">
         Der er oprettet {createdShiftCount} rigtige vagter med arbejdstypen{" "}
@@ -64,7 +64,7 @@ export function ShiftPlanningPublishResultPanel({
       )}
 
       <p className="mt-3 text-xs text-emerald-800">
-        Listen er skiftet til Publicerede planlægningskladder, så den publicerede kladde kan
+        Listen er skiftet til Publicerede planlægningskladder, så den oprettede forhÅndsvisning kan
         kontrolleres med det samme. Brug vagtplanen til at gennemgå de oprettede
         vagter på de berørte datoer.
       </p>

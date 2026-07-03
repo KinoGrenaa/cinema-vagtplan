@@ -68,7 +68,7 @@ export function ShiftPlanningPublishPanel({
           </p>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Dette er det første trin, der kan oprette rigtige vagter i
-            vagtplanen. Knappen kræver grønt publiceringspreview, aktiv
+            vagtplanen. Knappen kræver grønt oprettelsesoverblik, aktiv
             arbejdstype og præcis tekstbekræftelse.
           </p>
         </div>

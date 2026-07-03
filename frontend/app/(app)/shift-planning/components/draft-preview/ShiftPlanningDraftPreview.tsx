@@ -128,7 +128,7 @@ export default function ShiftPlanningDraftPreview({
   const prepareDraft = async () => {
     if (!activeCinemaId) {
       infoDialog.showError(
-        "Kan ikke gemme forhÃ¥ndsvisning",
+        "Kan ikke gemme forhåndsvisning",
         "Vælg en aktiv biograf, før du forbereder vagter.",
       );
       return;
@@ -151,7 +151,7 @@ export default function ShiftPlanningDraftPreview({
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke gemme planlægningskladde"),
+          await readErrorMessage(response, "Kunne ikke gemme forhåndsvisning"),
         );
       }
 
@@ -159,19 +159,19 @@ export default function ShiftPlanningDraftPreview({
       setLatestDraft(draft);
       onDraftPrepared?.(draft);
       infoDialog.show({
-        title: "Planlægningskladde gemt",
-        description: `ForhÃ¥ndsvisning #${draft.id} er gemt med ${toNumber(
+        title: "Forhåndsvisning gemt",
+        description: `Forhåndsvisning #${draft.id} er gemt med ${toNumber(
           draft.itemCount,
-        )} kladdeposter.\nDer er stadig ikke oprettet aktive vagter. Kør kladdekontrol og publiceringspreview, før kladden publiceres.`,
+        )} poster.\nDer er stadig ikke oprettet aktive vagter. Åbn kontrollen, hent oprettelsespreview og opret først derefter vagter.`,
         variant: "success",
         buttonText: "OK",
       });
     } catch (error) {
       infoDialog.showError(
-        "Kunne ikke gemme planlægningskladde",
+        "Kunne ikke gemme forhåndsvisning",
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da forhÃ¥ndsvisningen skulle gemmes.",
+          : "Der opstod en fejl, da forhåndsvisningen skulle gemmes.",
       );
     } finally {
       setSavingDraft(false);
@@ -193,10 +193,10 @@ export default function ShiftPlanningDraftPreview({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-              ForhÃ¥ndsvisning
+              Forhåndsvisning
             </p>
             <h2 className="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
-              Forbered månedens vagter
+              Forhåndsvis vagter
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
               Viser hvad månedens valgte skabeloner foreløbigt vil kunne blive
@@ -218,10 +218,10 @@ export default function ShiftPlanningDraftPreview({
               disabled={!canPrepareDraft || savingDraft}
               className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
             >
-              {savingDraft ? "Gemmer planlægningskladde..." : "Gem planlægningskladde"}
+              {savingDraft ? "Gemmer forhåndsvisning..." : "Gem forhåndsvisning"}
             </button>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              En ny planlægningskladde for samme måned erstatter tidligere åben kladde, så du altid arbejder videre fra den nyeste version.
+              En ny forhåndsvisning for samme måned erstatter den tidligere åbne forhåndsvisning, så du altid arbejder videre fra den nyeste version.
             </p>
           </div>
         </div>

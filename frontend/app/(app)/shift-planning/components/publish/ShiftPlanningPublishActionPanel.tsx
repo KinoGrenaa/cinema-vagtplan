@@ -12,17 +12,17 @@ export function ShiftPlanningPublishActionPanel({
   selectedDraftIsPublished,
 }: ShiftPlanningPublishActionPanelProps) {
   const buttonLabel = publishing
-    ? "Publicerer..."
+    ? "Opretter vagter..."
     : selectedDraftIsPublished
-      ? "Allerede publiceret"
+      ? "Vagter er oprettet"
       : "Publicer planlægningskladde";
 
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
       <p className="font-semibold">Publicering opretter vagter i vagtplanen</p>
       <p className="mt-1">
-        Kør kun publicering, når kladden er gennemgået, publiceringspreviewet er
-        grønt, og arbejdstypen er korrekt. Backend blokerer også
+        Kør kun publicering, når forhÅndsvisningen er gennemgået, oprettelsesoverblikket er
+        grønt, og arbejdstypen er korrekt. Systemet blokerer også
         dobbeltpublicering, så samme kladde ikke kan oprette dubletvagter.
       </p>
       <button

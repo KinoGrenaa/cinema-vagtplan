@@ -19,9 +19,9 @@ export const DRAFT_STATUS_FILTERS: Array<{
 }> = [
   { value: "ALL", label: "Alle" },
   { value: "DRAFT", label: "Åbne kladder" },
-  { value: "PUBLISHED", label: "Publicerede" },
+  { value: "PUBLISHED", label: "Oprettede" },
   { value: "SUPERSEDED", label: "Erstattede" },
-  { value: "OTHER", label: "Andre/annullerede" },
+  { value: "OTHER", label: "Andre/afsluttede" },
 ];
 
 export const MAX_VISIBLE_SAVED_DRAFTS = 5;
@@ -73,11 +73,11 @@ export function formatSelectedDraftFilterText(filter: DraftStatusFilter) {
     case "PUBLISHED":
       return "publicerede oprettelser";
     case "SUPERSEDED":
-      return "erstattede forhÃ¥ndsvisninger";
+      return "erstattede forhåndsvisninger";
     case "OTHER":
-      return "andre eller annullerede forhÃ¥ndsvisninger";
+      return "andre eller annullerede forhåndsvisninger";
     default:
-      return "forhÃ¥ndsvisninger";
+      return "forhåndsvisninger";
   }
 }
 

@@ -58,7 +58,7 @@ export function ShiftPlanningPublishChecklist({
       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-bold text-gray-950 dark:text-white">
-            Krav før publicering
+            Krav før oprettelse
           </p>
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
             Alle krav skal være grønne, før planlægningskladden kan oprette rigtige vagter.
@@ -82,7 +82,7 @@ export function ShiftPlanningPublishChecklist({
         />
         <PublishChecklistItem
           complete={publicationPreviewIsGreen}
-          label="Grønt publiceringspreview"
+          label="Grønt oprettelsesoverblik"
           description="Backend skal have kontrolleret, at previewet kan blive til vagter."
         />
         <PublishChecklistItem
