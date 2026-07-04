@@ -334,8 +334,12 @@ function parseTimingRuleForm(form: TimingRuleFormState) {
   };
 }
 
+function isMissingPayrollType(workType: WorkType | null | undefined) {
+  return !workType?.payrollType?.id && !workType?.payrollTypeId;
+}
+
 function formatPayrollType(workType: WorkType | null | undefined) {
-  if (!workType?.payrollType?.id && !workType?.payrollTypeId) {
+  if (isMissingPayrollType(workType)) {
     return "Mangler løntype";
   }
 
@@ -400,6 +404,19 @@ export default function JobFunctionsPage() {
     (jobFunction) => jobFunction.isActive,
   ).length;
   const archivedCount = jobFunctions.length - activeCount;
+  const missingPayrollTypeJobFunctions = jobFunctions.filter(
+    (jobFunction) =>
+      jobFunction.isActive && isMissingPayrollType(jobFunction.workType),
+  );
+  const missingPayrollTypeCount = missingPayrollTypeJobFunctions.length;
+  const missingPayrollTypeNames = missingPayrollTypeJobFunctions
+    .slice(0, 3)
+    .map((jobFunction) => jobFunction.name)
+    .join(", ");
+  const remainingMissingPayrollTypeCount = Math.max(
+    missingPayrollTypeCount - 3,
+    0,
+  );
 
   const toggleJobFunctionDetails = (jobFunctionId: number) => {
     setExpandedJobFunctionIds((current) => {
@@ -1118,6 +1135,23 @@ export default function JobFunctionsPage() {
                   og hvilke medarbejdere der kan ønskes, tildeles eller foreslås
                   til vagten. Vagtgenerering kommer i senere trin.
                 </div>
+
+                {!loading && missingPayrollTypeCount > 0 && (
+                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
+                    <p className="font-semibold">
+                      {missingPayrollTypeCount === 1
+                        ? "1 aktiv jobfunktion mangler Oprettes som"
+                        : `${missingPayrollTypeCount} aktive jobfunktioner mangler Oprettes som`}
+                    </p>
+                    <p className="mt-1">
+                      Vælg en løntype på {missingPayrollTypeNames}
+                      {remainingMissingPayrollTypeCount > 0
+                        ? ` og ${remainingMissingPayrollTypeCount} mere`
+                        : ""}
+                      , før vagter kan oprettes fra dem i vagtplanlægningen.
+                    </p>
+                  </div>
+                )}
 
                 {loading && (
                   <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
