@@ -4,7 +4,6 @@ import type {
   DraftControlSummary,
   DraftDateGroup,
   SavedDraftItem,
-  WorkTypeOption,
 } from "./shiftPlanningDraftTypes";
 
 export function toNumber(value: unknown) {
@@ -146,7 +145,6 @@ export function getDraftControlSummary(items: SavedDraftItem[]): DraftControlSum
 
 export function hasControlWarnings(summary: DraftControlSummary) {
   return (
-    summary.unassignedCount > 0 ||
     summary.warningCount > 0 ||
     summary.missingTimeCount > 0 ||
     summary.missingJobFunctionCount > 0 ||
@@ -190,15 +188,6 @@ export function getDateGroups(items: SavedDraftItem[]): DraftDateGroup[] {
   return Array.from(groups.values());
 }
 
-
-export function getSelectedWorkTypeName(
-  workTypes: WorkTypeOption[],
-  workTypeId: string,
-) {
-  const workType = workTypes.find((item) => String(item.id) === workTypeId);
-
-  return workType?.name || "Valgt arbejdstype";
-}
 
 export function formatCreatedShiftIds(ids?: Array<number | string>) {
   if (!Array.isArray(ids) || ids.length === 0) {

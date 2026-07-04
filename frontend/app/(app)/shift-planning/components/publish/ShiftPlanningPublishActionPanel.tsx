@@ -22,8 +22,8 @@ export function ShiftPlanningPublishActionPanel({
       <p className="font-semibold">Opret vagter i vagtplanen</p>
       <p className="mt-1">
         Knappen åbner en bekræftelse, før noget oprettes. Hvis der mangler
-        kontrol, vagtoverblik eller arbejdstype, viser bekræftelsen hvad der
-        mangler.
+        kontrol eller vagtoverblik, viser bekræftelsen hvad der mangler.
+        Arbejdstype vælges på jobfunktionen.
       </p>
       <button
         type="button"

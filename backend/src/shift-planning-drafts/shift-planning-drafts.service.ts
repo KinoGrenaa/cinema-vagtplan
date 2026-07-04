@@ -21,6 +21,13 @@ type DraftRequestData = {
   note?: string | null;
 };
 
+type PublishDraftData = {
+  confirm?: string | null;
+  note?: string | null;
+};
+
+const PUBLISH_CONFIRMATION_TEXT = 'OPRET VAGTER';
+
 type DraftWarning = {
   code: string;
   dateKey?: string;
@@ -503,6 +510,50 @@ function buildDraftItemInterval(row: any): DraftValidationInterval {
   };
 }
 
+
+function buildDateTimeFromMinute(dateValue: unknown, minuteValue: unknown) {
+  const date = toDate(dateValue);
+  const minute = toNullableNumber(minuteValue);
+
+  if (minute === null) {
+    return null;
+  }
+
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      0,
+      minute,
+      0,
+      0,
+    ),
+  );
+}
+
+function getJobFunctionWorkTypeBlockReason(row: any) {
+  const jobFunctionName = row.jobFunctionName || 'Jobfunktionen';
+
+  if (!row.jobFunctionId) {
+    return 'Jobfunktion mangler.';
+  }
+
+  if (!row.jobFunctionWorkTypeId) {
+    return `${jobFunctionName} mangler feltet “Oprettes som”. Ret jobfunktionen først.`;
+  }
+
+  if (row.workTypeIsActive === false || row.workTypeArchivedAt) {
+    return `${jobFunctionName} er koblet til en inaktiv arbejdstype. Ret “Oprettes som” på jobfunktionen først.`;
+  }
+
+  return null;
+}
+
+function getUniqueMessages(messages: string[]) {
+  return Array.from(new Set(messages.filter(Boolean)));
+}
+
 function rangesOverlap(
   firstStart: Date,
   firstEnd: Date,
@@ -594,7 +645,7 @@ export class ShiftPlanningDraftsService {
     `);
 
     if (draftRows.length === 0) {
-      throw new NotFoundException('Planlægningskladden findes ikke.');
+      throw new NotFoundException('Forhåndsvisningen findes ikke.');
     }
 
     const itemRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
@@ -690,11 +741,16 @@ export class ShiftPlanningDraftsService {
         i."warningCode",
         i."warningMessage",
         jf.name AS "jobFunctionName",
+        jf."workTypeId" AS "jobFunctionWorkTypeId",
+        wt.name AS "workTypeName",
+        wt."isActive" AS "workTypeIsActive",
+        wt."archivedAt" AS "workTypeArchivedAt",
         u."firstName" AS "userFirstName",
         u."lastName" AS "userLastName",
         u."isActive" AS "userIsActive"
       FROM "ShiftPlanningDraftItem" i
       LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId"
+      LEFT JOIN "WorkType" wt ON wt.id = jf."workTypeId" AND wt."cinemaId" = i."cinemaId"
       LEFT JOIN "User" u ON u.id = i."userId"
       WHERE i."draftId" = ${id}
         AND i."cinemaId" = ${cinemaId}
@@ -718,7 +774,7 @@ export class ShiftPlanningDraftsService {
           itemId,
           dateKey,
           userId,
-          message: 'Kladdeposten mangler reference til vagtsskabelon eller ugedag.',
+          message: 'Vagten mangler reference til vagtsskabelon eller ugedag.',
         });
       }
 
@@ -729,7 +785,21 @@ export class ShiftPlanningDraftsService {
           itemId,
           dateKey,
           userId,
-          message: 'Kladdeposten mangler jobfunktion.',
+          message: 'Vagten mangler jobfunktion.',
+        });
+      }
+
+      const workTypeBlockReason = getJobFunctionWorkTypeBlockReason(row);
+      if (workTypeBlockReason) {
+        issues.push({
+          severity: 'ERROR',
+          code: row.jobFunctionWorkTypeId
+            ? 'INACTIVE_JOB_FUNCTION_WORK_TYPE'
+            : 'MISSING_JOB_FUNCTION_WORK_TYPE',
+          itemId,
+          dateKey,
+          userId,
+          message: workTypeBlockReason,
         });
       }
 
@@ -740,18 +810,7 @@ export class ShiftPlanningDraftsService {
           itemId,
           dateKey,
           userId,
-          message: 'Kladdeposten mangler mødetid eller fyraften.',
-        });
-      }
-
-      if (userId === null) {
-        issues.push({
-          severity: 'WARNING',
-          code: 'UNASSIGNED_DRAFT_ITEM',
-          itemId,
-          dateKey,
-          userId,
-          message: 'Kladdeposten er ikke tildelt en medarbejder.',
+          message: 'Vagten mangler mødetid eller fyraften.',
         });
       }
 
@@ -762,7 +821,7 @@ export class ShiftPlanningDraftsService {
           itemId,
           dateKey,
           userId,
-          message: 'Kladdepostens medarbejder er ikke aktiv.',
+          message: 'Medarbejderen på vagten er ikke aktiv.',
         });
       }
 
@@ -773,7 +832,7 @@ export class ShiftPlanningDraftsService {
           itemId,
           dateKey,
           userId,
-          message: row.warningMessage ?? 'Kladdeposten har en advarsel.',
+          message: row.warningMessage ?? 'Vagten har en advarsel.',
         });
       }
     }
@@ -807,7 +866,7 @@ export class ShiftPlanningDraftsService {
             dateKey: current.dateKey,
             userId: current.userId,
             message:
-              'Samme medarbejder er planlagt i overlappende kladdeposter.',
+              'Samme medarbejder er planlagt i overlappende vagter.',
           });
         }
       }
@@ -869,7 +928,7 @@ export class ShiftPlanningDraftsService {
                 dateKey: interval.dateKey,
                 userId: interval.userId,
                 message:
-                  'Kladdeposten overlapper en eksisterende vagt for samme medarbejder.',
+                  'Vagten overlapper en eksisterende vagt for samme medarbejder.',
               });
             }
           }
@@ -922,6 +981,7 @@ export class ShiftPlanningDraftsService {
                       include: {
                         dayPeriod: true,
                         timingRule: true,
+                        workType: true,
                       },
                     },
                     assignments: {
@@ -1056,6 +1116,8 @@ export class ShiftPlanningDraftsService {
               templateWeekParity: template.weekParity,
               jobFunctionName: jobFunction?.name ?? null,
               jobFunctionColor: jobFunction?.color ?? null,
+              jobFunctionWorkTypeId: jobFunction?.workTypeId ?? null,
+              jobFunctionWorkTypeName: jobFunction?.workType?.name ?? null,
               dayPeriodName: jobFunction?.dayPeriod?.name ?? null,
               assignedUserName: assignment?.user
                 ? `${assignment.user.firstName} ${assignment.user.lastName}`.trim()
@@ -1131,5 +1193,249 @@ export class ShiftPlanningDraftsService {
     const draftId = Number(draftRows[0].id);
 
     return this.findOne(user, draftId, String(cinemaId));
+  }
+
+  async publicationPreview(user: AuthUser, id: number, cinemaIdValue?: string) {
+    const selectedCinemaId = user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
+    const cinemaId = resolveCinemaId(user, selectedCinemaId);
+    const draft = await this.findOne(user, id, String(cinemaId));
+    const validationResult = await this.validateDraft(user, id, String(cinemaId));
+    const validationIssues = validationResult.issues ?? [];
+    const errorMessagesByItemId = new Map<number, string[]>();
+
+    validationIssues
+      .filter((issue) => issue.severity === 'ERROR' && issue.itemId)
+      .forEach((issue) => {
+        const itemId = Number(issue.itemId);
+        const messages = errorMessagesByItemId.get(itemId) ?? [];
+        messages.push(issue.message);
+        errorMessagesByItemId.set(itemId, messages);
+      });
+
+    const itemRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT
+        i.id,
+        i."cinemaId",
+        i."draftId",
+        i.date,
+        i.status,
+        i."jobFunctionId",
+        i."userId",
+        i."plannedStartMinute",
+        i."plannedEndMinute",
+        i."warningMessage",
+        jf.name AS "jobFunctionName",
+        jf.color AS "jobFunctionColor",
+        jf."workTypeId" AS "jobFunctionWorkTypeId",
+        wt.name AS "workTypeName",
+        wt."isActive" AS "workTypeIsActive",
+        wt."archivedAt" AS "workTypeArchivedAt",
+        u."firstName" AS "userFirstName",
+        u."lastName" AS "userLastName",
+        u.email AS "userEmail"
+      FROM "ShiftPlanningDraftItem" i
+      LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId"
+      LEFT JOIN "WorkType" wt ON wt.id = jf."workTypeId" AND wt."cinemaId" = i."cinemaId"
+      LEFT JOIN "User" u ON u.id = i."userId"
+      WHERE i."draftId" = ${id}
+        AND i."cinemaId" = ${cinemaId}
+      ORDER BY i.date ASC, i."plannedStartMinute" ASC NULLS LAST, i.id ASC
+    `);
+
+    const draftStatus = String(draft.status ?? '').toUpperCase();
+    const previewItems = itemRows.map((row) => {
+      const itemId = Number(row.id);
+      const dateKey = toIsoDateOnly(toDate(row.date));
+      const blockReasons: string[] = [];
+      const startTime = buildDateTimeFromMinute(row.date, row.plannedStartMinute);
+      const endTime = buildDateTimeFromMinute(row.date, row.plannedEndMinute);
+      const workTypeBlockReason = getJobFunctionWorkTypeBlockReason(row);
+      const userName = `${row.userFirstName ?? ''} ${row.userLastName ?? ''}`.trim() || row.userEmail || null;
+
+      if (draftStatus !== 'DRAFT') {
+        blockReasons.push('Forslaget er ikke åbent længere.');
+      }
+
+      if (!startTime || !endTime) {
+        blockReasons.push('Vagten mangler mødetid eller fyraften.');
+      }
+
+      if (workTypeBlockReason) {
+        blockReasons.push(workTypeBlockReason);
+      }
+
+      blockReasons.push(...(errorMessagesByItemId.get(itemId) ?? []));
+
+      return {
+        draftItemId: itemId,
+        dateKey,
+        status: row.status ?? null,
+        jobFunctionName: row.jobFunctionName ?? null,
+        jobFunctionColor: row.jobFunctionColor ?? null,
+        workTypeId: toNullableNumber(row.jobFunctionWorkTypeId),
+        workTypeName: row.workTypeName ?? null,
+        userName,
+        plannedStartMinute: toNullableNumber(row.plannedStartMinute),
+        plannedEndMinute: toNullableNumber(row.plannedEndMinute),
+        canBecomeShift: blockReasons.length === 0,
+        blockReasons: getUniqueMessages(blockReasons),
+        warningMessage: row.warningMessage ?? null,
+      };
+    });
+    const blockedItems = previewItems.filter((item) => !item.canBecomeShift);
+    const validationSummary = validationResult.summary ?? null;
+    const blockingReasons = getUniqueMessages(
+      blockedItems.flatMap((item) => item.blockReasons ?? []),
+    );
+
+    return {
+      draftId: id,
+      cinemaId,
+      year: draft.year,
+      month: draft.month,
+      status: draft.status,
+      checkedAt: new Date(),
+      mode: 'PREVIEW_ONLY',
+      createsShifts: false,
+      summary: {
+        canPublishLater: blockedItems.length === 0,
+        itemCount: previewItems.length,
+        publishableItemCount: previewItems.length - blockedItems.length,
+        blockedItemCount: blockedItems.length,
+        validationErrorCount: toNullableNumber(validationSummary?.errorCount) ?? 0,
+        validationWarningCount: toNullableNumber(validationSummary?.warningCount) ?? 0,
+        validationIssueCount: toNullableNumber(validationSummary?.issueCount) ?? 0,
+      },
+      blockingReasons,
+      validationSummary,
+      validationIssues,
+      previewItems,
+    };
+  }
+
+  async publishDraft(
+    user: AuthUser,
+    id: number,
+    data: PublishDraftData,
+    cinemaIdValue?: string,
+  ) {
+    const selectedCinemaId = user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
+    const cinemaId = resolveCinemaId(user, selectedCinemaId);
+    const confirm = typeof data?.confirm === 'string' ? data.confirm.trim() : '';
+    const note = parseOptionalNote(data?.note);
+
+    if (confirm !== PUBLISH_CONFIRMATION_TEXT) {
+      throw new BadRequestException('Bekræft oprettelsen, før vagterne oprettes.');
+    }
+
+    const preview = await this.publicationPreview(user, id, String(cinemaId));
+    const canPublish = preview.summary?.canPublishLater === true;
+
+    if (!canPublish) {
+      throw new BadRequestException(
+        preview.blockingReasons?.[0] ??
+          'Ret de markerede punkter, før vagterne oprettes.',
+      );
+    }
+
+    const draftRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT id, status, year, month
+      FROM "ShiftPlanningDraft"
+      WHERE id = ${id}
+        AND "cinemaId" = ${cinemaId}
+      LIMIT 1
+    `);
+
+    if (draftRows.length === 0) {
+      throw new NotFoundException('Forhåndsvisningen findes ikke.');
+    }
+
+    const draft = draftRows[0];
+    if (String(draft.status ?? '').toUpperCase() !== 'DRAFT') {
+      throw new BadRequestException('Forslaget er ikke åbent længere.');
+    }
+
+    const itemRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT
+        i.id,
+        i.date,
+        i."userId",
+        i."plannedStartMinute",
+        i."plannedEndMinute",
+        jf."workTypeId" AS "jobFunctionWorkTypeId",
+        wt.name AS "workTypeName"
+      FROM "ShiftPlanningDraftItem" i
+      LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId"
+      LEFT JOIN "WorkType" wt ON wt.id = jf."workTypeId" AND wt."cinemaId" = i."cinemaId"
+      WHERE i."draftId" = ${id}
+        AND i."cinemaId" = ${cinemaId}
+      ORDER BY i.date ASC, i."plannedStartMinute" ASC NULLS LAST, i.id ASC
+    `);
+
+    const createdShiftIds: number[] = [];
+    const affectedDateKeys = new Set<string>();
+    const workTypeNames = new Set<string>();
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const row of itemRows) {
+        const startTime = buildDateTimeFromMinute(row.date, row.plannedStartMinute);
+        const endTime = buildDateTimeFromMinute(row.date, row.plannedEndMinute);
+        const workTypeId = toNullableNumber(row.jobFunctionWorkTypeId);
+
+        if (!startTime || !endTime || workTypeId === null) {
+          throw new BadRequestException(
+            'Ret jobfunktionens “Oprettes som” og tider, før vagterne oprettes.',
+          );
+        }
+
+        const createdRows = await tx.$queryRaw<any[]>(Prisma.sql`
+          INSERT INTO "Shift" (
+            "cinemaId", "userId", "workTypeId", "startTime", "endTime", note
+          ) VALUES (
+            ${cinemaId}, ${toNullableNumber(row.userId)}, ${workTypeId}, ${startTime}, ${endTime}, ${note}
+          )
+          RETURNING id
+        `);
+
+        createdShiftIds.push(Number(createdRows[0].id));
+        affectedDateKeys.add(toIsoDateOnly(toDate(row.date)));
+        if (row.workTypeName) {
+          workTypeNames.add(String(row.workTypeName));
+        }
+
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE "ShiftPlanningDraftItem"
+          SET status = 'PUBLISHED', "startTime" = ${startTime}, "endTime" = ${endTime}, "updatedAt" = CURRENT_TIMESTAMP
+          WHERE id = ${Number(row.id)}
+            AND "cinemaId" = ${cinemaId}
+        `);
+      }
+
+      await tx.$executeRaw(Prisma.sql`
+        UPDATE "ShiftPlanningDraft"
+        SET status = 'PUBLISHED', "updatedAt" = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+          AND "cinemaId" = ${cinemaId}
+          AND status = 'DRAFT'
+      `);
+    });
+
+    return {
+      draftId: id,
+      cinemaId,
+      year: Number(draft.year),
+      month: Number(draft.month),
+      status: 'PUBLISHED',
+      mode: 'CREATE_SHIFTS',
+      createsShifts: true,
+      createdShiftCount: createdShiftIds.length,
+      createdShiftIds,
+      affectedDateKeys: Array.from(affectedDateKeys).sort(),
+      workTypeId: null,
+      workTypeName: Array.from(workTypeNames).join(', ') || null,
+      workTypeNames: Array.from(workTypeNames).sort(),
+      publishedAt: new Date(),
+      message: `${createdShiftIds.length} vagter er oprettet i vagtplanen.`,
+    };
   }
 }

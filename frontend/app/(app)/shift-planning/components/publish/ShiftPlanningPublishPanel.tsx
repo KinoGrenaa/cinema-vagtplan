@@ -7,54 +7,36 @@ import { ShiftPlanningPublishErrorPanel } from "./ShiftPlanningPublishErrorPanel
 import { ShiftPlanningPublishFormFields } from "./ShiftPlanningPublishFormFields";
 import { ShiftPlanningPublishResultPanel } from "./ShiftPlanningPublishResultPanel";
 import { ShiftPlanningPublishStatusBadge } from "./ShiftPlanningPublishStatusBadge";
-import { getSelectedWorkTypeName } from "../../helpers/shiftPlanningDraftHelpers";
-import type {
-  DraftPublishResult,
-  WorkTypeOption,
-} from "../../helpers/shiftPlanningDraftTypes";
+import type { DraftPublishResult } from "../../helpers/shiftPlanningDraftTypes";
 
 export const PUBLISH_CONFIRMATION_TEXT = "OPRET VAGTER";
 
 type ShiftPlanningPublishPanelProps = {
   canSubmitPublish: boolean;
-  loadingWorkTypes: boolean;
   onPublish: () => void;
   publicationPreviewCanPublishLater: boolean;
   publishError: string | null;
   publishNote: string;
   publishResult: DraftPublishResult | null;
-  publishWorkTypeId: string;
   publishing: boolean;
   selectedDraftCanBePublished: boolean;
   selectedDraftIsPublished: boolean;
   setPublishNote: (value: string) => void;
-  setPublishWorkTypeId: (value: string) => void;
-  workTypes: WorkTypeOption[];
-  workTypesError: string | null;
 };
 
 export function ShiftPlanningPublishPanel({
   canSubmitPublish,
-  loadingWorkTypes,
   onPublish,
   publicationPreviewCanPublishLater,
   publishError,
   publishNote,
   publishResult,
-  publishWorkTypeId,
   publishing,
   selectedDraftCanBePublished,
   selectedDraftIsPublished,
   setPublishNote,
-  setPublishWorkTypeId,
-  workTypes,
-  workTypesError,
 }: ShiftPlanningPublishPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const selectedWorkTypeName = getSelectedWorkTypeName(
-    workTypes,
-    publishWorkTypeId,
-  );
   const canOpenConfirm =
     selectedDraftCanBePublished && !selectedDraftIsPublished && !publishing;
   const missingRequirements = useMemo(() => {
@@ -68,12 +50,8 @@ export function ShiftPlanningPublishPanel({
       missing.push("Kontrollér og se vagterne først.");
     }
 
-    if (!publishWorkTypeId) {
-      missing.push("Vælg arbejdstype til de nye vagter.");
-    }
-
     return missing;
-  }, [publicationPreviewCanPublishLater, publishWorkTypeId, selectedDraftCanBePublished]);
+  }, [publicationPreviewCanPublishLater, selectedDraftCanBePublished]);
 
   return (
     <div className="mt-5 rounded-2xl border border-red-200 bg-white p-4 dark:border-red-900/70 dark:bg-gray-950/70">
@@ -98,7 +76,7 @@ export function ShiftPlanningPublishPanel({
       {publishResult && (
         <ShiftPlanningPublishResultPanel
           publishResult={publishResult}
-          selectedWorkTypeName={selectedWorkTypeName}
+          selectedWorkTypeName={publishResult.workTypeName ?? "Jobfunktionernes valgte typer"}
         />
       )}
 
@@ -115,20 +93,14 @@ export function ShiftPlanningPublishPanel({
           allRequirementsMet={canSubmitPublish}
           creationOverviewIsGreen={publicationPreviewCanPublishLater}
           statusIsDraft={selectedDraftCanBePublished}
-          workTypeSelected={Boolean(publishWorkTypeId)}
         />
       )}
 
       <ShiftPlanningPublishFormFields
-        loadingWorkTypes={loadingWorkTypes}
         publishNote={publishNote}
-        publishWorkTypeId={publishWorkTypeId}
         publishing={publishing}
         selectedDraftCanBePublished={selectedDraftCanBePublished}
         setPublishNote={setPublishNote}
-        setPublishWorkTypeId={setPublishWorkTypeId}
-        workTypes={workTypes}
-        workTypesError={workTypesError}
       />
 
       <ShiftPlanningPublishActionPanel
@@ -160,9 +132,9 @@ export function ShiftPlanningPublishPanel({
             </div>
 
             <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
-              Når du fortsætter, bliver vagterne oprettet i vagtplanen med den
-              valgte arbejdstype. Det kan ikke bruges til at oprette samme
-              forslag to gange.
+              Når du fortsætter, bliver vagterne oprettet i vagtplanen.
+              Hver jobfunktion bruger feltet “Oprettes som”, som er valgt
+              under Jobfunktioner.
             </p>
 
             {missingRequirements.length > 0 && (

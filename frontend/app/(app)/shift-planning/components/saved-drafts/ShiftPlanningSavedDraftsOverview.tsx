@@ -35,7 +35,6 @@ import type {
   MonthDraftResponse,
   SavedDraftDetails,
   SavedDraftSummary,
-  WorkTypeOption,
 } from "../../helpers/shiftPlanningDraftTypes";
 
 
@@ -83,10 +82,6 @@ export default function ShiftPlanningSavedDraftsOverview({
   const [publicationPreviewError, setPublicationPreviewError] = useState<
     string | null
   >(null);
-  const [workTypes, setWorkTypes] = useState<WorkTypeOption[]>([]);
-  const [loadingWorkTypes, setLoadingWorkTypes] = useState(false);
-  const [workTypesError, setWorkTypesError] = useState<string | null>(null);
-  const [publishWorkTypeId, setPublishWorkTypeId] = useState("");
   const [publishNote, setPublishNote] = useState("");
   const [publishingDraftId, setPublishingDraftId] = useState<
     number | string | null
@@ -121,7 +116,6 @@ export default function ShiftPlanningSavedDraftsOverview({
     Boolean(selectedDraft) &&
     selectedDraftCanBePublished &&
     publicationPreviewCanPublishLater &&
-    Boolean(publishWorkTypeId) &&
     publishingDraftId !== selectedDraft?.id;
   const controlValidationIsGreen = Boolean(
     validationResult &&
@@ -206,61 +200,6 @@ export default function ShiftPlanningSavedDraftsOverview({
   useEffect(() => {
     fetchDrafts();
   }, [fetchDrafts, refreshKey]);
-
-  const fetchWorkTypes = useCallback(async () => {
-    if (!activeCinemaId) {
-      setWorkTypes([]);
-      setPublishWorkTypeId("");
-      setWorkTypesError(null);
-      return;
-    }
-
-    try {
-      setLoadingWorkTypes(true);
-      setWorkTypesError(null);
-
-      const response = await apiFetch(
-        appendCinemaId("/work-types?includeArchived=false", activeCinemaId),
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke hente arbejdstyper"),
-        );
-      }
-
-      const data = await response.json();
-      const activeWorkTypes = Array.isArray(data)
-        ? data.filter(
-            (workType: WorkTypeOption) =>
-              workType.isActive !== false && !workType.archivedAt,
-          )
-        : [];
-
-      setWorkTypes(activeWorkTypes);
-      setPublishWorkTypeId((current) =>
-        activeWorkTypes.some(
-          (workType: WorkTypeOption) => String(workType.id) === current,
-        )
-          ? current
-          : "",
-      );
-    } catch (error) {
-      setWorkTypes([]);
-      setPublishWorkTypeId("");
-      setWorkTypesError(
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da arbejdstyperne skulle hentes.",
-      );
-    } finally {
-      setLoadingWorkTypes(false);
-    }
-  }, [activeCinemaId]);
-
-  useEffect(() => {
-    fetchWorkTypes();
-  }, [fetchWorkTypes]);
 
   const openDraft = async (draftId: number | string) => {
     if (!activeCinemaId) {
@@ -502,11 +441,6 @@ export default function ShiftPlanningSavedDraftsOverview({
       return;
     }
 
-    if (!publishWorkTypeId) {
-      setPublishError("Vælg den arbejdstype, som skal sættes på alle vagter ved oprettelse.");
-      return;
-    }
-
 
     try {
       setPublishingDraftId(selectedDraft.id);
@@ -521,7 +455,6 @@ export default function ShiftPlanningSavedDraftsOverview({
         {
           method: "POST",
           body: JSON.stringify({
-            workTypeId: Number(publishWorkTypeId),
             confirm: PUBLISH_CONFIRMATION_TEXT,
             note: publishNote.trim() || undefined,
           }),
@@ -635,7 +568,6 @@ export default function ShiftPlanningSavedDraftsOverview({
 
           <ShiftPlanningPublishPanel
             canSubmitPublish={canSubmitPublish}
-            loadingWorkTypes={loadingWorkTypes}
             onPublish={publishSelectedDraft}
             publicationPreviewCanPublishLater={
               publicationPreviewCanPublishLater
@@ -643,14 +575,10 @@ export default function ShiftPlanningSavedDraftsOverview({
             publishError={publishError}
             publishNote={publishNote}
             publishResult={publishResult}
-            publishWorkTypeId={publishWorkTypeId}
             publishing={publishingDraftId === selectedDraft.id}
             selectedDraftCanBePublished={selectedDraftCanBePublished}
             selectedDraftIsPublished={selectedDraftIsPublished}
             setPublishNote={setPublishNote}
-            setPublishWorkTypeId={setPublishWorkTypeId}
-            workTypes={workTypes}
-            workTypesError={workTypesError}
           />
 
           <ShiftPlanningDraftValidationPanel

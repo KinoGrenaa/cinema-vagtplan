@@ -2,7 +2,6 @@ type ShiftPlanningPublishChecklistProps = {
   allRequirementsMet: boolean;
   creationOverviewIsGreen: boolean;
   statusIsDraft: boolean;
-  workTypeSelected: boolean;
 };
 
 type PublishChecklistItemProps = {
@@ -47,7 +46,6 @@ export function ShiftPlanningPublishChecklist({
   allRequirementsMet,
   creationOverviewIsGreen,
   statusIsDraft,
-  workTypeSelected,
 }: ShiftPlanningPublishChecklistProps) {
   return (
     <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/70">
@@ -58,7 +56,7 @@ export function ShiftPlanningPublishChecklist({
           </p>
           <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
             Opret-knappen kan åbnes hele tiden. Selve oprettelsen kræver, at
-            disse punkter er opfyldt.
+            disse punkter er opfyldt. Arbejdstype hentes automatisk fra jobfunktionerne.
           </p>
         </div>
         <span
@@ -71,7 +69,7 @@ export function ShiftPlanningPublishChecklist({
           {allRequirementsMet ? "Klar" : "Mangler punkter"}
         </span>
       </div>
-      <div className="mt-3 grid gap-3 md:grid-cols-3">
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
         <PublishChecklistItem
           complete={statusIsDraft}
           label="Forslag er åbent"
@@ -81,11 +79,6 @@ export function ShiftPlanningPublishChecklist({
           complete={creationOverviewIsGreen}
           label="Vagter er tjekket"
           description="Kontrollen og visningen af vagter skal være grøn."
-        />
-        <PublishChecklistItem
-          complete={workTypeSelected}
-          label="Arbejdstype valgt"
-          description="Alle nye vagter får den valgte arbejdstype."
         />
       </div>
     </div>

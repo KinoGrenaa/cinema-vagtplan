@@ -110,6 +110,8 @@ export type DraftPublicationPreviewItem = {
   plannedStartMinute?: number | string | null;
   plannedEndMinute?: number | string | null;
   canBecomeShift?: boolean | null;
+  workTypeId?: number | string | null;
+  workTypeName?: string | null;
   blockReasons?: string[] | null;
   warningMessage?: string | null;
 };
@@ -151,6 +153,7 @@ export type DraftPublishResult = {
   affectedDateKeys?: string[];
   workTypeId?: number | string | null;
   workTypeName?: string | null;
+  workTypeNames?: string[];
   publishedAt?: string | null;
   message?: string | null;
 };
