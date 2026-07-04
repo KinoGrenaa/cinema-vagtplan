@@ -33,6 +33,7 @@ export type JobFunctionCreateData = {
   sortOrder?: NumberContextValue;
   dayPeriodId?: NumberContextValue;
   workTypeId?: NumberContextValue;
+  payrollTypeId?: NumberContextValue;
   cinemaId?: CinemaContextValue;
 };
 
@@ -43,6 +44,7 @@ export type JobFunctionUpdateData = {
   sortOrder?: NumberContextValue;
   dayPeriodId?: NumberContextValue;
   workTypeId?: NumberContextValue;
+  payrollTypeId?: NumberContextValue;
   cinemaId?: CinemaContextValue;
 };
 
@@ -74,6 +76,17 @@ export const jobFunctionInclude = {
       isActive: true,
       cinemaId: true,
       payrollTypeId: true,
+      payrollType: {
+        select: {
+          id: true,
+          name: true,
+          payrollCode: true,
+          exportCode: true,
+          color: true,
+          isDefault: true,
+          isActive: true,
+        },
+      },
     },
   },
   timingRule: true,
@@ -349,6 +362,111 @@ export async function getWorkTypeIdForCinema(
       'Arbejdstypen findes ikke for den valgte biograf.',
     );
   }
+
+  return workType.id;
+}
+
+export async function getWorkTypeIdForPayrollType(
+  prisma: PrismaService,
+  cinemaId: number,
+  payrollTypeId: NumberContextValue,
+) {
+  const parsedPayrollTypeId = parseOptionalPositiveId(
+    payrollTypeId,
+    'Løntype skal være et gyldigt ID.',
+  );
+
+  if (parsedPayrollTypeId === undefined) {
+    return undefined;
+  }
+
+  if (parsedPayrollTypeId === null) {
+    return null;
+  }
+
+  const payrollType = await prisma.payrollType.findFirst({
+    where: {
+      id: parsedPayrollTypeId,
+      cinemaId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      color: true,
+    },
+  });
+
+  if (!payrollType) {
+    throw new BadRequestException(
+      'Løntypen findes ikke for den valgte biograf.',
+    );
+  }
+
+  const workTypeColor = payrollType.color || '#2563eb';
+  const existingWorkType =
+    (await prisma.workType.findFirst({
+      where: {
+        cinemaId,
+        payrollTypeId: payrollType.id,
+        isActive: true,
+      },
+      orderBy: { id: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        isActive: true,
+        archivedAt: true,
+      },
+    })) ??
+    (await prisma.workType.findFirst({
+      where: {
+        cinemaId,
+        payrollTypeId: payrollType.id,
+      },
+      orderBy: { id: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        isActive: true,
+        archivedAt: true,
+      },
+    }));
+
+  if (existingWorkType) {
+    if (
+      !existingWorkType.isActive ||
+      existingWorkType.archivedAt ||
+      existingWorkType.name !== payrollType.name ||
+      existingWorkType.color !== workTypeColor
+    ) {
+      await prisma.workType.update({
+        where: { id: existingWorkType.id },
+        data: {
+          name: payrollType.name,
+          color: workTypeColor,
+          isActive: true,
+          archivedAt: null,
+        },
+      });
+    }
+
+    return existingWorkType.id;
+  }
+
+  const workType = await prisma.workType.create({
+    data: {
+      cinemaId,
+      name: payrollType.name,
+      color: workTypeColor,
+      payrollTypeId: payrollType.id,
+      isActive: true,
+      archivedAt: null,
+    },
+    select: { id: true },
+  });
 
   return workType.id;
 }

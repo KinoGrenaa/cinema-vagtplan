@@ -8,6 +8,10 @@ import type {
   JobFunctionUpdateData,
   UserJobFunctionAssignData,
 } from './helpers/job-function-service-helpers';
+import {
+  ensureJobFunctionAdmin,
+  getRequiredJobFunctionCinemaId,
+} from './helpers/job-function-service-helpers';
 import { createJobFunction } from './helpers/job-function-create-flow';
 import { findJobFunctions } from './helpers/job-function-read-flow';
 import {
@@ -41,6 +45,35 @@ export class JobFunctionsService {
       includeArchived,
       selectedCinemaId,
     );
+  }
+
+  async findPayrollTypes(
+    user: AuthUser,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    ensureJobFunctionAdmin(user);
+    const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
+
+    return this.prisma.payrollType.findMany({
+      where: {
+        cinemaId,
+        isActive: true,
+      },
+      orderBy: [
+        { isDefault: 'desc' },
+        { name: 'asc' },
+      ],
+      select: {
+        id: true,
+        name: true,
+        payrollCode: true,
+        exportCode: true,
+        description: true,
+        color: true,
+        isDefault: true,
+        isActive: true,
+      },
+    });
   }
 
   async create(user: AuthUser, data: JobFunctionCreateData) {

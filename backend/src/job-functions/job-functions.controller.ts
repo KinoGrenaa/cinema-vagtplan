@@ -43,6 +43,12 @@ export class JobFunctionsController {
   }
 
   @UseGuards(JwtGuard)
+  @Get('payroll-types')
+  findPayrollTypes(@Req() req, @Query('cinemaId') cinemaId?: string) {
+    return this.jobFunctionsService.findPayrollTypes(req.user, cinemaId);
+  }
+
+  @UseGuards(JwtGuard)
   @Post()
   create(@Req() req, @Body() body) {
     return this.jobFunctionsService.create(req.user, body);

@@ -9,6 +9,7 @@ import {
   getDayPeriodIdForCinema,
   getRequiredJobFunctionCinemaId,
   getWorkTypeIdForCinema,
+  getWorkTypeIdForPayrollType,
   jobFunctionInclude,
   normalizeJobFunctionColor,
   normalizeJobFunctionName,
@@ -30,8 +31,10 @@ export async function createJobFunction(
   const sortOrder = parseOptionalSortOrder(data.sortOrder) ?? 0;
   const dayPeriodId =
     (await getDayPeriodIdForCinema(prisma, cinemaId, data.dayPeriodId)) ?? null;
-  const workTypeId =
-    (await getWorkTypeIdForCinema(prisma, cinemaId, data.workTypeId)) ?? null;
+  const resolvedWorkTypeId = data.payrollTypeId !== undefined
+    ? await getWorkTypeIdForPayrollType(prisma, cinemaId, data.payrollTypeId)
+    : await getWorkTypeIdForCinema(prisma, cinemaId, data.workTypeId);
+  const workTypeId = resolvedWorkTypeId ?? null;
 
   const existing = await prisma.jobFunction.findFirst({
     where: {

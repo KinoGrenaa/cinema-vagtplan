@@ -36,11 +36,24 @@ import type {
   UserJobFunction,
 } from "./helpers/jobFunctionTypes";
 
+type PayrollTypeOption = {
+  id: number;
+  name: string;
+  payrollCode?: string | null;
+  exportCode?: string | null;
+  description?: string | null;
+  color?: string | null;
+  isDefault?: boolean;
+  isActive?: boolean;
+};
+
 type WorkType = {
   id: number;
   name: string;
   color?: string | null;
   isActive?: boolean;
+  payrollTypeId?: number | null;
+  payrollType?: PayrollTypeOption | null;
 };
 
 type JobFunctionWithWorkType = JobFunction & {
@@ -54,7 +67,7 @@ type FormState = {
   color: string;
   sortOrder: string;
   dayPeriodId: string;
-  workTypeId: string;
+  payrollTypeId: string;
 };
 
 type TimingRuleFormState = {
@@ -105,7 +118,7 @@ const emptyForm: FormState = {
   color: "#2563eb",
   sortOrder: "0",
   dayPeriodId: "",
-  workTypeId: "",
+  payrollTypeId: "",
 };
 
 const emptyTimingRuleForm: TimingRuleFormState = {
@@ -136,7 +149,7 @@ function toFormState(jobFunction: JobFunctionWithWorkType): FormState {
     color: jobFunction.color || "#2563eb",
     sortOrder: String(jobFunction.sortOrder ?? 0),
     dayPeriodId: jobFunction.dayPeriodId ? String(jobFunction.dayPeriodId) : "",
-    workTypeId: jobFunction.workTypeId ? String(jobFunction.workTypeId) : "",
+    payrollTypeId: jobFunction.workType?.payrollType?.id ? String(jobFunction.workType.payrollType.id) : jobFunction.workType?.payrollTypeId ? String(jobFunction.workType.payrollTypeId) : "",
   };
 }
 
@@ -146,7 +159,7 @@ function parseForm(form: FormState) {
   const color = normalizeColorValue(form.color);
   const sortOrder = form.sortOrder.trim() ? Number(form.sortOrder) : 0;
   const dayPeriodId = form.dayPeriodId ? Number(form.dayPeriodId) : null;
-  const workTypeId = form.workTypeId ? Number(form.workTypeId) : null;
+  const payrollTypeId = form.payrollTypeId ? Number(form.payrollTypeId) : null;
 
   if (!name) {
     throw new Error("Indtast et navn på jobfunktionen.");
@@ -168,10 +181,12 @@ function parseForm(form: FormState) {
   }
 
   if (
-    form.workTypeId &&
-    (workTypeId === null || !Number.isInteger(workTypeId) || workTypeId <= 0)
+    form.payrollTypeId &&
+    (payrollTypeId === null ||
+      !Number.isInteger(payrollTypeId) ||
+      payrollTypeId <= 0)
   ) {
-    throw new Error("Oprettes som skal være et gyldigt valg.");
+    throw new Error("Oprettes som skal være en gyldig løntype.");
   }
 
   return {
@@ -180,7 +195,7 @@ function parseForm(form: FormState) {
     color,
     sortOrder,
     dayPeriodId,
-    workTypeId,
+    payrollTypeId,
   };
 }
 
@@ -319,12 +334,12 @@ function parseTimingRuleForm(form: TimingRuleFormState) {
   };
 }
 
-function formatWorkType(workType: WorkType | null | undefined) {
+function formatPayrollType(workType: WorkType | null | undefined) {
   if (!workType) {
     return "Ikke valgt endnu";
   }
 
-  return workType.name;
+  return workType.payrollType?.name ?? workType.name;
 }
 
 export default function JobFunctionsPage() {
@@ -342,7 +357,7 @@ export default function JobFunctionsPage() {
   >(null);
   const [jobFunctions, setJobFunctions] = useState<JobFunctionWithWorkType[]>([]);
   const [dayPeriods, setDayPeriods] = useState<DayPeriod[]>([]);
-  const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
+  const [payrollTypes, setPayrollTypes] = useState<PayrollTypeOption[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -428,7 +443,7 @@ export default function JobFunctionsPage() {
       const [
         jobFunctionsResponse,
         dayPeriodsResponse,
-        workTypesResponse,
+        payrollTypesResponse,
         usersResponse,
       ] = await Promise.all([
           apiFetch(
@@ -445,7 +460,7 @@ export default function JobFunctionsPage() {
           ),
           apiFetch(
             appendCinemaId(
-              "/work-types?includeArchived=false",
+              "/job-functions/payroll-types",
               activeCinemaId,
             ),
           ),
@@ -470,11 +485,11 @@ export default function JobFunctionsPage() {
         );
       }
 
-      if (!workTypesResponse.ok) {
+      if (!payrollTypesResponse.ok) {
         throw new Error(
           await readErrorMessage(
-            workTypesResponse,
-            "Kunne ikke hente arbejdstyper",
+            payrollTypesResponse,
+            "Kunne ikke hente løntyper",
           ),
         );
       }
@@ -488,24 +503,24 @@ export default function JobFunctionsPage() {
         );
       }
 
-      const [jobFunctionsData, dayPeriodsData, workTypesData, usersData] =
+      const [jobFunctionsData, dayPeriodsData, payrollTypesData, usersData] =
         await Promise.all([
           jobFunctionsResponse.json(),
           dayPeriodsResponse.json(),
-          workTypesResponse.json(),
+          payrollTypesResponse.json(),
           usersResponse.json(),
         ]);
 
       setJobFunctions(Array.isArray(jobFunctionsData) ? jobFunctionsData : []);
       setDayPeriods(Array.isArray(dayPeriodsData) ? dayPeriodsData : []);
-      setWorkTypes(Array.isArray(workTypesData) ? workTypesData : []);
+      setPayrollTypes(Array.isArray(payrollTypesData) ? payrollTypesData : []);
       setUsers(
         Array.isArray(usersData) ? usersData.filter(isAssignableUser) : [],
       );
     } catch (error) {
       setJobFunctions([]);
       setDayPeriods([]);
-      setWorkTypes([]);
+      setPayrollTypes([]);
       setUsers([]);
       infoDialogRef.current.showError(
         "Kunne ikke hente jobfunktioner",
@@ -526,7 +541,7 @@ export default function JobFunctionsPage() {
     if (needsMasterCinemaSelection) {
       setJobFunctions([]);
       setDayPeriods([]);
-      setWorkTypes([]);
+      setPayrollTypes([]);
       setUsers([]);
       setLoading(false);
       return;
@@ -1188,7 +1203,7 @@ export default function JobFunctionsPage() {
                                     Oprettes som
                                   </dt>
                                   <dd className="mt-1 text-gray-900 dark:text-gray-100">
-                                    {formatWorkType(jobFunction.workType)}
+                                    {formatPayrollType(jobFunction.workType)}
                                   </dd>
                                 </div>
                                 <div>
@@ -1301,7 +1316,7 @@ export default function JobFunctionsPage() {
                   {isEditing ? "Redigér jobfunktion" : "Opret jobfunktion"}
                 </h2>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Angiv navn, beskrivelse, farve og hvilken arbejdstype vagter skal oprettes som.
+                  Angiv navn, beskrivelse, farve og hvilken løntype vagter skal oprettes som.
                 </p>
               </div>
               <button
@@ -1402,25 +1417,31 @@ export default function JobFunctionsPage() {
                   Oprettes som
                 </span>
                 <select
-                  value={form.workTypeId}
+                  value={form.payrollTypeId}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
-                      workTypeId: event.target.value,
+                      payrollTypeId: event.target.value,
                     }))
                   }
                   className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   disabled={saving}
                 >
-                  <option value="">Ingen arbejdstype valgt endnu</option>
-                  {workTypes.map((workType) => (
-                    <option key={workType.id} value={workType.id}>
-                      {workType.name}
+                  <option value="">Ingen løntype valgt endnu</option>
+                  {payrollTypes.map((payrollType) => (
+                    <option key={payrollType.id} value={payrollType.id}>
+                      {payrollType.name}
+                      {payrollType.payrollCode ? ` · ${payrollType.payrollCode}` : ""}
                     </option>
                   ))}
                 </select>
+                {payrollTypes.length === 0 && (
+                  <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                    Der er ingen aktive løntyper endnu. Opret en løntype under biografens lønopsætning, før jobfunktionen kan bruges til oprettelse af vagter.
+                  </p>
+                )}
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Valget bruges senere, når forhåndsvisninger oprettes som rigtige vagter.
+                  Valget bruges senere, når forhåndsvisninger oprettes som rigtige vagter. Systemet opretter den tekniske vagttype automatisk.
                 </p>
               </label>
 

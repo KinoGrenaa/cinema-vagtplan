@@ -11,6 +11,7 @@ import {
   getDayPeriodIdForCinema,
   getRequiredJobFunctionCinemaId,
   getWorkTypeIdForCinema,
+  getWorkTypeIdForPayrollType,
   jobFunctionInclude,
   normalizeJobFunctionColor,
   normalizeJobFunctionName,
@@ -42,9 +43,11 @@ export async function updateJobFunction(
       ? undefined
       : await getDayPeriodIdForCinema(prisma, cinemaId, data.dayPeriodId);
   const workTypeId =
-    data.workTypeId === undefined
-      ? undefined
-      : await getWorkTypeIdForCinema(prisma, cinemaId, data.workTypeId);
+    data.payrollTypeId !== undefined
+      ? await getWorkTypeIdForPayrollType(prisma, cinemaId, data.payrollTypeId)
+      : data.workTypeId === undefined
+        ? undefined
+        : await getWorkTypeIdForCinema(prisma, cinemaId, data.workTypeId);
 
   if (name && name !== existing.name) {
     const duplicate = await prisma.jobFunction.findFirst({
