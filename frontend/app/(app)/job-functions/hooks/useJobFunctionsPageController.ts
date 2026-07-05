@@ -1,7 +1,5 @@
-import {
-  buildJobFunctionsPageContentProps,
-  buildJobFunctionsPageModalsProps,
-} from "../helpers/jobFunctionsPageControllerProps";
+import { buildJobFunctionsPageContentProps } from "../helpers/jobFunctionsPageContentProps";
+import { buildJobFunctionsPageModalsProps } from "../helpers/jobFunctionsPageModalProps";
 import type { JobFunctionsPageControllerResult } from "../helpers/jobFunctionsPageControllerTypes";
 import { useJobFunctionArchiveActions } from "./useJobFunctionArchiveActions";
 import { useJobFunctionDetailsExpansion } from "./useJobFunctionDetailsExpansion";
