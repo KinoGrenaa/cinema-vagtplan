@@ -1,16 +1,11 @@
 "use client";
 
 import AdminGuard from "@/app/components/AdminGuard";
-import ConfirmModal from "@/app/components/modals/ConfirmModal";
-import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import JobFunctionEmployeeModal from "./components/JobFunctionEmployeeModal";
-import JobFunctionFormModal from "./components/JobFunctionFormModal";
-import JobFunctionTimingRuleModal from "./components/JobFunctionTimingRuleModal";
-import JobFunctionsMasterCinemaRequired from "./components/JobFunctionsMasterCinemaRequired";
-import JobFunctionsOverviewSection from "./components/JobFunctionsOverviewSection";
-import JobFunctionsPageHeader from "./components/JobFunctionsPageHeader";
+import JobFunctionsFeedbackModals from "./components/JobFunctionsFeedbackModals";
+import JobFunctionsPageContent from "./components/JobFunctionsPageContent";
+import JobFunctionsPageModals from "./components/JobFunctionsPageModals";
 import { useJobFunctionArchiveActions } from "./hooks/useJobFunctionArchiveActions";
 import { useJobFunctionDetailsExpansion } from "./hooks/useJobFunctionDetailsExpansion";
 import { useJobFunctionEmployeeAssignments } from "./hooks/useJobFunctionEmployeeAssignments";
@@ -111,94 +106,93 @@ export default function JobFunctionsPage() {
 
   return (
     <AdminGuard>
-      <main className="min-h-screen bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl space-y-6">
-          <JobFunctionsPageHeader />
-
-          {needsMasterCinemaSelection && <JobFunctionsMasterCinemaRequired />}
-
-          {!needsMasterCinemaSelection && (
-            <JobFunctionsOverviewSection
-              activeCount={activeCount}
-              archivedCount={archivedCount}
-              expandedJobFunctionIds={expandedJobFunctionIds}
-              jobFunctions={jobFunctions}
-              loading={loading}
-              missingPayrollTypeWarning={missingPayrollTypeWarning}
-              showArchived={showArchived}
-              onArchive={archiveJobFunction}
-              onCreate={openCreateModal}
-              onEdit={openEditModal}
-              onOpenEmployees={openEmployeeModal}
-              onOpenTimingRule={openTimingRuleModal}
-              onReactivate={reactivateJobFunction}
-              onRefresh={fetchData}
-              onShowArchivedChange={setShowArchived}
-              onToggleDetails={toggleJobFunctionDetails}
-            />
-          )}
-        </div>
-      </main>
-
-      {formModalOpen && (
-        <JobFunctionFormModal
-          form={form}
-          isEditing={isEditing}
-          payrollTypes={payrollTypes}
-          saving={saving}
-          setForm={setForm}
-          onClose={closeFormModal}
-          onSubmit={submitForm}
-        />
-      )}
-
-      {timingModalJobFunction && (
-        <JobFunctionTimingRuleModal
-          dayPeriods={dayPeriods}
-          jobFunction={timingModalJobFunction}
-          timingRule={timingRule}
-          timingRuleForm={timingRuleForm}
-          timingRuleLoading={timingRuleLoading}
-          timingRuleSaving={timingRuleSaving}
-          setTimingRuleForm={setTimingRuleForm}
-          onArchive={archiveTimingRule}
-          onClose={closeTimingRuleModal}
-          onSubmit={saveTimingRule}
-        />
-      )}
-
-      {employeeModalJobFunction && (
-        <JobFunctionEmployeeModal
-          jobFunction={employeeModalJobFunction}
-          assignments={assignments}
-          assignmentLoading={assignmentLoading}
-          assignmentSaving={assignmentSaving}
-          availableUsers={availableUsers}
-          selectedUserId={selectedUserId}
-          onSelectedUserIdChange={setSelectedUserId}
-          onAssignSelectedUser={assignSelectedUser}
-          onRemoveAssignedUser={removeAssignedUser}
-          onClose={closeEmployeeModal}
-        />
-      )}
-      <ConfirmModal
-        open={confirmDialog.open}
-        title={confirmDialog.title}
-        description={confirmDialog.description}
-        confirmText={confirmDialog.confirmText}
-        cancelText={confirmDialog.cancelText}
-        confirmVariant={confirmDialog.confirmVariant}
-        loading={confirmDialog.loading}
-        onConfirm={confirmDialog.handleConfirm}
-        onCancel={confirmDialog.handleCancel}
+      <JobFunctionsPageContent
+        needsMasterCinemaSelection={needsMasterCinemaSelection}
+        overviewProps={{
+          activeCount,
+          archivedCount,
+          expandedJobFunctionIds,
+          jobFunctions,
+          loading,
+          missingPayrollTypeWarning,
+          showArchived,
+          onArchive: archiveJobFunction,
+          onCreate: openCreateModal,
+          onEdit: openEditModal,
+          onOpenEmployees: openEmployeeModal,
+          onOpenTimingRule: openTimingRuleModal,
+          onReactivate: reactivateJobFunction,
+          onRefresh: fetchData,
+          onShowArchivedChange: setShowArchived,
+          onToggleDetails: toggleJobFunctionDetails,
+        }}
       />
-      <InfoModal
-        open={infoDialog.open}
-        title={infoDialog.title}
-        description={infoDialog.description}
-        buttonText={infoDialog.buttonText}
-        variant={infoDialog.variant}
-        onClose={infoDialog.close}
+
+      <JobFunctionsPageModals
+        formModalOpen={formModalOpen}
+        formModalProps={{
+          form,
+          isEditing,
+          payrollTypes,
+          saving,
+          setForm,
+          onClose: closeFormModal,
+          onSubmit: submitForm,
+        }}
+        timingRuleModalProps={
+          timingModalJobFunction
+            ? {
+                dayPeriods,
+                jobFunction: timingModalJobFunction,
+                timingRule,
+                timingRuleForm,
+                timingRuleLoading,
+                timingRuleSaving,
+                setTimingRuleForm,
+                onArchive: archiveTimingRule,
+                onClose: closeTimingRuleModal,
+                onSubmit: saveTimingRule,
+              }
+            : null
+        }
+        employeeModalProps={
+          employeeModalJobFunction
+            ? {
+                jobFunction: employeeModalJobFunction,
+                assignments,
+                assignmentLoading,
+                assignmentSaving,
+                availableUsers,
+                selectedUserId,
+                onSelectedUserIdChange: setSelectedUserId,
+                onAssignSelectedUser: assignSelectedUser,
+                onRemoveAssignedUser: removeAssignedUser,
+                onClose: closeEmployeeModal,
+              }
+            : null
+        }
+      />
+
+      <JobFunctionsFeedbackModals
+        confirmModalProps={{
+          open: confirmDialog.open,
+          title: confirmDialog.title,
+          description: confirmDialog.description,
+          confirmText: confirmDialog.confirmText,
+          cancelText: confirmDialog.cancelText,
+          confirmVariant: confirmDialog.confirmVariant,
+          loading: confirmDialog.loading,
+          onConfirm: confirmDialog.handleConfirm,
+          onCancel: confirmDialog.handleCancel,
+        }}
+        infoModalProps={{
+          open: infoDialog.open,
+          title: infoDialog.title,
+          description: infoDialog.description,
+          buttonText: infoDialog.buttonText,
+          variant: infoDialog.variant,
+          onClose: infoDialog.close,
+        }}
       />
     </AdminGuard>
   );
