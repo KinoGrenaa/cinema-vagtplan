@@ -1202,6 +1202,12 @@ export default function JobFunctionsPage() {
                             >
                               {jobFunction.isActive ? "Aktiv" : "Arkiveret"}
                             </span>
+                            {jobFunction.isActive &&
+                              isMissingPayrollType(jobFunction.workType) && (
+                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-100">
+                                  Mangler løntype
+                                </span>
+                              )}
                           </div>
                         </div>
 
