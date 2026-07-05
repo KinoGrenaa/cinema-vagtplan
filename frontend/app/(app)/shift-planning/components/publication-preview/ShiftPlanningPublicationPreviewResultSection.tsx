@@ -1,10 +1,86 @@
 import { toNumber } from "../../helpers/shiftPlanningDraftHelpers";
-import type { DraftPublicationPreviewResult } from "../../helpers/shiftPlanningDraftTypes";
-
+import type {
+  DraftPublicationPreviewItem,
+  DraftPublicationPreviewResult,
+} from "../../helpers/shiftPlanningDraftTypes";
 import { ShiftPlanningPublicationPreviewItemCard } from "./ShiftPlanningPublicationPreviewItemCard";
 import { ShiftPlanningPublicationPreviewMetricCard } from "./ShiftPlanningPublicationPreviewMetricCard";
 
 const MAX_VISIBLE_PUBLICATION_PREVIEW_ITEMS = 12;
+
+function getPublicationPreviewItemDisplayRank(
+  item: DraftPublicationPreviewItem,
+) {
+  if (!item.canBecomeShift || (item.blockReasons?.length ?? 0) > 0) {
+    return 0;
+  }
+
+  if (item.warningMessage) {
+    return 1;
+  }
+
+  return 2;
+}
+
+function compareOptionalText(first: unknown, second: unknown) {
+  const firstText = first == null ? "" : String(first);
+  const secondText = second == null ? "" : String(second);
+
+  return firstText.localeCompare(secondText, "da-DK", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function compareOptionalNumber(first: unknown, second: unknown) {
+  const firstNumber = Number(first);
+  const secondNumber = Number(second);
+  const normalizedFirst = Number.isFinite(firstNumber)
+    ? firstNumber
+    : Number.MAX_SAFE_INTEGER;
+  const normalizedSecond = Number.isFinite(secondNumber)
+    ? secondNumber
+    : Number.MAX_SAFE_INTEGER;
+
+  return normalizedFirst - normalizedSecond;
+}
+
+function sortPublicationPreviewItemsForDisplay(
+  items: DraftPublicationPreviewItem[],
+) {
+  return [...items].sort((firstItem, secondItem) => {
+    const rankDifference =
+      getPublicationPreviewItemDisplayRank(firstItem) -
+      getPublicationPreviewItemDisplayRank(secondItem);
+
+    if (rankDifference !== 0) {
+      return rankDifference;
+    }
+
+    const dateDifference = compareOptionalText(
+      firstItem.dateKey,
+      secondItem.dateKey,
+    );
+
+    if (dateDifference !== 0) {
+      return dateDifference;
+    }
+
+    const startDifference = compareOptionalNumber(
+      firstItem.plannedStartMinute,
+      secondItem.plannedStartMinute,
+    );
+
+    if (startDifference !== 0) {
+      return startDifference;
+    }
+
+    return compareOptionalText(
+      firstItem.draftItemId,
+      secondItem.draftItemId,
+    );
+  });
+}
 
 type ShiftPlanningPublicationPreviewResultSectionProps = {
   canPublishLater: boolean;
@@ -16,7 +92,9 @@ export function ShiftPlanningPublicationPreviewResultSection({
   result,
 }: ShiftPlanningPublicationPreviewResultSectionProps) {
   const previewSummary = result.summary;
-  const previewItems = result.previewItems ?? [];
+  const previewItems = sortPublicationPreviewItemsForDisplay(
+    result.previewItems ?? [],
+  );
   const visiblePreviewItems = previewItems.slice(
     0,
     MAX_VISIBLE_PUBLICATION_PREVIEW_ITEMS,
@@ -42,7 +120,8 @@ export function ShiftPlanningPublicationPreviewResultSection({
             : "Der er noget, der skal rettes"}
         </div>
         <div className="mt-1 text-xs opacity-80">
-          Dette overblik opretter ikke vagter. Vagterne oprettes først i sidste trin.
+          Dette overblik opretter ikke vagter. Vagterne oprettes først i sidste
+          trin.
         </div>
       </div>
 
@@ -114,7 +193,8 @@ export function ShiftPlanningPublicationPreviewResultSection({
 
       {hiddenPreviewItemCount > 0 && (
         <div className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100">
-          {hiddenPreviewItemCount} flere vagter er skjult i denne kompakte visning.
+          {hiddenPreviewItemCount} flere vagter er skjult i denne kompakte
+          visning. Blokerede vagter og advarsler vises først.
         </div>
       )}
     </div>
