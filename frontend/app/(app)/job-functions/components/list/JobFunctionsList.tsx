@@ -3,7 +3,7 @@ import JobFunctionMissingPayrollWarning from "./JobFunctionMissingPayrollWarning
 import type {
   JobFunctionWithWorkType,
   MissingPayrollTypeWarningData,
-} from "../helpers/jobFunctionPayrollHelpers";
+} from "../../helpers/jobFunctionPayrollHelpers";
 
 type JobFunctionsListProps = {
   expandedJobFunctionIds: ReadonlySet<number>;

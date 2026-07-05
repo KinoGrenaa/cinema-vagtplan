@@ -1,8 +1,8 @@
-import JobFunctionsList from "./JobFunctionsList";
+import JobFunctionsList from "../list/JobFunctionsList";
 import type {
   JobFunctionWithWorkType,
   MissingPayrollTypeWarningData,
-} from "../helpers/jobFunctionPayrollHelpers";
+} from "../../helpers/jobFunctionPayrollHelpers";
 
 type JobFunctionsOverviewSectionProps = {
   activeCount: number;

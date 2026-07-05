@@ -1,5 +1,5 @@
-import { formatUserName } from "../helpers/jobFunctionHelpers";
-import type { UserJobFunction } from "../helpers/jobFunctionTypes";
+import { formatUserName } from "../../helpers/jobFunctionHelpers";
+import type { UserJobFunction } from "../../helpers/jobFunctionTypes";
 
 type JobFunctionEmployeeAssignmentsListProps = {
   assignments: UserJobFunction[];

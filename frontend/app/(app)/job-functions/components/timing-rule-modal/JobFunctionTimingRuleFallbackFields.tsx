@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { TimingRuleFormState } from "../helpers/jobFunctionTimingRuleFormHelpers";
+import type { TimingRuleFormState } from "../../helpers/jobFunctionTimingRuleFormHelpers";
 
 type JobFunctionTimingRuleFallbackFieldsProps = {
   timingRuleForm: TimingRuleFormState;

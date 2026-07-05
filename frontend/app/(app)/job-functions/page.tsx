@@ -1,9 +1,9 @@
 "use client";
 
 import AdminGuard from "@/app/components/AdminGuard";
-import JobFunctionsFeedbackModals from "./components/JobFunctionsFeedbackModals";
-import JobFunctionsPageContent from "./components/JobFunctionsPageContent";
-import JobFunctionsPageModals from "./components/JobFunctionsPageModals";
+import JobFunctionsFeedbackModals from "./components/page/JobFunctionsFeedbackModals";
+import JobFunctionsPageContent from "./components/page/JobFunctionsPageContent";
+import JobFunctionsPageModals from "./components/page/JobFunctionsPageModals";
 import { useJobFunctionsPageController } from "./hooks/useJobFunctionsPageController";
 
 export default function JobFunctionsPage() {

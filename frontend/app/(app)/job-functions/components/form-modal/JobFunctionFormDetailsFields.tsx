@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { JobFunctionFormState } from "../helpers/jobFunctionFormHelpers";
+import type { JobFunctionFormState } from "../../helpers/jobFunctionFormHelpers";
 
 type JobFunctionFormDetailsFieldsProps = {
   form: JobFunctionFormState;

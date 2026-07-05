@@ -2,12 +2,12 @@ import {
   formatDayPeriod,
   formatTimingRuleSummary,
   getJobFunctionEmployeeCount,
-} from "../helpers/jobFunctionHelpers";
+} from "../../helpers/jobFunctionHelpers";
 import {
   formatPayrollType,
   isMissingPayrollType,
-} from "../helpers/jobFunctionPayrollHelpers";
-import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
+} from "../../helpers/jobFunctionPayrollHelpers";
+import type { JobFunctionWithWorkType } from "../../helpers/jobFunctionPayrollHelpers";
 
 type JobFunctionCardProps = {
   jobFunction: JobFunctionWithWorkType;

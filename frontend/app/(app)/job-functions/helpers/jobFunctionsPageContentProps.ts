@@ -1,4 +1,4 @@
-import type { JobFunctionsPageContentProps } from "../components/JobFunctionsPageContent";
+import type { JobFunctionsPageContentProps } from "../components/page/JobFunctionsPageContent";
 import type { useJobFunctionArchiveActions } from "../hooks/useJobFunctionArchiveActions";
 import type { useJobFunctionDetailsExpansion } from "../hooks/useJobFunctionDetailsExpansion";
 import type { useJobFunctionEmployeeAssignments } from "../hooks/useJobFunctionEmployeeAssignments";

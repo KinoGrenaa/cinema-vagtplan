@@ -1,7 +1,7 @@
 import type { useConfirm } from "@/app/hooks/useConfirm";
 import type { useInfoModal } from "@/app/hooks/useInfoModal";
 
-import type { JobFunctionsFeedbackModalsProps } from "../components/JobFunctionsFeedbackModals";
+import type { JobFunctionsFeedbackModalsProps } from "../components/page/JobFunctionsFeedbackModals";
 
 type ConfirmDialog = ReturnType<typeof useConfirm>;
 type InfoDialog = ReturnType<typeof useInfoModal>;

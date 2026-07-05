@@ -1,4 +1,4 @@
-import type { JobFunctionsPageModalsProps } from "../components/JobFunctionsPageModals";
+import type { JobFunctionsPageModalsProps } from "../components/page/JobFunctionsPageModals";
 import type { useJobFunctionEmployeeAssignments } from "../hooks/useJobFunctionEmployeeAssignments";
 import type { useJobFunctionForm } from "../hooks/useJobFunctionForm";
 import type { useJobFunctionTimingRule } from "../hooks/useJobFunctionTimingRule";

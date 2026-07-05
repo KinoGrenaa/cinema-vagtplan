@@ -1,8 +1,8 @@
 import type { ComponentProps } from "react";
 
-import JobFunctionEmployeeModal from "./JobFunctionEmployeeModal";
-import JobFunctionFormModal from "./JobFunctionFormModal";
-import JobFunctionTimingRuleModal from "./JobFunctionTimingRuleModal";
+import JobFunctionEmployeeModal from "../employee-modal/JobFunctionEmployeeModal";
+import JobFunctionFormModal from "../form-modal/JobFunctionFormModal";
+import JobFunctionTimingRuleModal from "../timing-rule-modal/JobFunctionTimingRuleModal";
 
 export type JobFunctionsPageModalsProps = {
   formModalOpen: boolean;

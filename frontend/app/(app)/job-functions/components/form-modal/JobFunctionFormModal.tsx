@@ -3,8 +3,8 @@ import JobFunctionFormActions from "./JobFunctionFormActions";
 import JobFunctionFormDetailsFields from "./JobFunctionFormDetailsFields";
 import JobFunctionFormModalHeader from "./JobFunctionFormModalHeader";
 import JobFunctionFormPlanningFields from "./JobFunctionFormPlanningFields";
-import type { JobFunctionFormState } from "../helpers/jobFunctionFormHelpers";
-import type { PayrollTypeOption } from "../helpers/jobFunctionPayrollHelpers";
+import type { JobFunctionFormState } from "../../helpers/jobFunctionFormHelpers";
+import type { PayrollTypeOption } from "../../helpers/jobFunctionPayrollHelpers";
 
 type JobFunctionFormModalProps = {
   form: JobFunctionFormState;
