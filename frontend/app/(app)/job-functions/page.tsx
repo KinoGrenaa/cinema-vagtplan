@@ -8,6 +8,7 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+import JobFunctionMissingPayrollWarning from "./components/JobFunctionMissingPayrollWarning";
 import JobFunctionsMasterCinemaRequired from "./components/JobFunctionsMasterCinemaRequired";
 import {
   appendCinemaId,
@@ -1137,22 +1138,12 @@ export default function JobFunctionsPage() {
                   til vagten, og hvilken løntype vagten oprettes som.
                 </div>
 
-                {!loading && missingPayrollTypeCount > 0 && (
-                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
-                    <p className="font-semibold">
-                      {missingPayrollTypeCount === 1
-                        ? "1 aktiv jobfunktion mangler Oprettes som"
-                        : `${missingPayrollTypeCount} aktive jobfunktioner mangler Oprettes som`}
-                    </p>
-                    <p className="mt-1">
-                      Vælg en løntype på {missingPayrollTypeNames}
-                      {remainingMissingPayrollTypeCount > 0
-                        ? ` og ${remainingMissingPayrollTypeCount} mere`
-                        : ""}
-                      , før vagter kan oprettes fra dem i vagtplanlægningen.
-                    </p>
-                  </div>
-                )}
+                <JobFunctionMissingPayrollWarning
+                  count={missingPayrollTypeCount}
+                  names={missingPayrollTypeNames}
+                  remainingCount={remainingMissingPayrollTypeCount}
+                  visible={!loading && missingPayrollTypeCount > 0}
+                />
 
                 {loading && (
                   <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
