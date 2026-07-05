@@ -1,32 +1,23 @@
-import { useConfirm } from "@/app/hooks/useConfirm";
-import { useInfoModal } from "@/app/hooks/useInfoModal";
 import {
-  buildJobFunctionsFeedbackModalsProps,
   buildJobFunctionsPageContentProps,
   buildJobFunctionsPageModalsProps,
 } from "../helpers/jobFunctionsPageControllerProps";
-import type { JobFunctionsFeedbackModalsProps } from "../components/JobFunctionsFeedbackModals";
-import type { JobFunctionsPageContentProps } from "../components/JobFunctionsPageContent";
-import type { JobFunctionsPageModalsProps } from "../components/JobFunctionsPageModals";
+import type { JobFunctionsPageControllerResult } from "../helpers/jobFunctionsPageControllerTypes";
 import { useJobFunctionArchiveActions } from "./useJobFunctionArchiveActions";
 import { useJobFunctionDetailsExpansion } from "./useJobFunctionDetailsExpansion";
 import { useJobFunctionEmployeeAssignments } from "./useJobFunctionEmployeeAssignments";
 import { useJobFunctionForm } from "./useJobFunctionForm";
+import { useJobFunctionsFeedbackDialogs } from "./useJobFunctionsFeedbackDialogs";
 import { useJobFunctionTimingRule } from "./useJobFunctionTimingRule";
 import { useJobFunctionsData } from "./useJobFunctionsData";
 import { useJobFunctionsMasterCinema } from "./useJobFunctionsMasterCinema";
 
-type UseJobFunctionsPageControllerResult = {
-  contentProps: JobFunctionsPageContentProps;
-  feedbackModalProps: JobFunctionsFeedbackModalsProps;
-  pageModalProps: JobFunctionsPageModalsProps;
-};
-
-export function useJobFunctionsPageController(): UseJobFunctionsPageControllerResult {
-  const confirmDialog = useConfirm();
-  const infoDialog = useInfoModal();
+export function useJobFunctionsPageController(): JobFunctionsPageControllerResult {
+  const { confirmDialog, feedbackModalProps, infoDialog } =
+    useJobFunctionsFeedbackDialogs();
   const { activeCinemaId, currentUser, needsMasterCinemaSelection } =
     useJobFunctionsMasterCinema();
+
   const data = useJobFunctionsData({
     activeCinemaId,
     currentUserReady: currentUser !== null,
@@ -35,6 +26,7 @@ export function useJobFunctionsPageController(): UseJobFunctionsPageControllerRe
   });
 
   const detailsExpansion = useJobFunctionDetailsExpansion();
+
   const form = useJobFunctionForm({
     activeCinemaId,
     needsMasterCinemaSelection,
@@ -42,6 +34,7 @@ export function useJobFunctionsPageController(): UseJobFunctionsPageControllerRe
     show: infoDialog.show,
     showError: infoDialog.showError,
   });
+
   const assignments = useJobFunctionEmployeeAssignments({
     activeCinemaId,
     confirm: confirmDialog.confirm,
@@ -49,12 +42,14 @@ export function useJobFunctionsPageController(): UseJobFunctionsPageControllerRe
     showError: infoDialog.showError,
     users: data.users,
   });
+
   const timingRule = useJobFunctionTimingRule({
     activeCinemaId,
     confirm: confirmDialog.confirm,
     refreshData: data.fetchData,
     showError: infoDialog.showError,
   });
+
   const archiveActions = useJobFunctionArchiveActions({
     activeCinemaId,
     closeFormModal: form.closeFormModal,
@@ -80,9 +75,6 @@ export function useJobFunctionsPageController(): UseJobFunctionsPageControllerRe
       form,
       timingRule,
     }),
-    feedbackModalProps: buildJobFunctionsFeedbackModalsProps({
-      confirmDialog,
-      infoDialog,
-    }),
+    feedbackModalProps,
   };
 }
