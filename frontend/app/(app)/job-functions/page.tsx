@@ -339,7 +339,7 @@ function isMissingPayrollType(workType: WorkType | null | undefined) {
 }
 
 function formatPayrollType(workType: WorkType | null | undefined) {
-  if (isMissingPayrollType(workType)) {
+  if (!workType || isMissingPayrollType(workType)) {
     return "Mangler løntype";
   }
 
@@ -1074,8 +1074,9 @@ export default function JobFunctionsPage() {
               Jobfunktioner
             </h1>
             <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              Jobfunktioner beskriver bemandingsroller og kompetencer. De er
-              ikke lønarter og ændrer ikke vagtplanen endnu.
+              Jobfunktioner beskriver bemandingsroller og kompetencer.
+              Vagtplanlægning bruger dem til at oprette vagter med korrekt
+              løntype via feltet Oprettes som.
             </p>
           </header>
 
@@ -1132,8 +1133,8 @@ export default function JobFunctionsPage() {
               <div className="p-5">
                 <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-100">
                   Brug jobfunktioner til at styre hvilke roller en vagt kræver,
-                  og hvilke medarbejdere der kan ønskes, tildeles eller foreslås
-                  til vagten. Vagtgenerering kommer i senere trin.
+                  hvilke medarbejdere der kan ønskes, tildeles eller foreslås
+                  til vagten, og hvilken løntype vagten oprettes som.
                 </div>
 
                 {!loading && missingPayrollTypeCount > 0 && (
