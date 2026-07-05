@@ -10,25 +10,36 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import JobFunctionsList from "./components/JobFunctionsList";
 import JobFunctionsMasterCinemaRequired from "./components/JobFunctionsMasterCinemaRequired";
+import {
+  emptyJobFunctionForm,
+  parseJobFunctionForm,
+  toJobFunctionFormState,
+} from "./helpers/jobFunctionFormHelpers";
+import type { JobFunctionFormState } from "./helpers/jobFunctionFormHelpers";
 import { getMissingPayrollTypeWarningData } from "./helpers/jobFunctionPayrollHelpers";
 import type {
   JobFunctionWithWorkType,
   PayrollTypeOption,
 } from "./helpers/jobFunctionPayrollHelpers";
 import {
+  emptyTimingRuleForm,
+  parseTimingRuleDayPeriodId,
+  parseTimingRuleForm,
+  timingEndAnchorOptions,
+  timingStartAnchorOptions,
+  toTimingRuleForm,
+} from "./helpers/jobFunctionTimingRuleFormHelpers";
+import type { TimingRuleFormState } from "./helpers/jobFunctionTimingRuleFormHelpers";
+import {
   appendCinemaId,
   formatDayPeriod,
-  formatMinute,
   formatTimingAnchor,
   formatTimingOffset,
   formatUserName,
   getCurrentUserFromToken,
   getSelectedMasterCinemaId,
   isAssignableUser,
-  normalizeColorValue,
-  optionalTimeToMinute,
   readErrorMessage,
-  timeToMinute,
 } from "./helpers/jobFunctionHelpers";
 import type {
   CurrentUser,
@@ -39,279 +50,6 @@ import type {
   User,
   UserJobFunction,
 } from "./helpers/jobFunctionTypes";
-
-type FormState = {
-  name: string;
-  description: string;
-  color: string;
-  sortOrder: string;
-  dayPeriodId: string;
-  payrollTypeId: string;
-};
-
-type TimingRuleFormState = {
-  dayPeriodId: string;
-  startAnchor: JobFunctionTimingAnchor;
-  startOffsetMinutes: string;
-  startFixedMinute: string;
-  endAnchor: JobFunctionTimingAnchor;
-  endOffsetMinutes: string;
-  endFixedMinute: string;
-  fallbackStartMinute: string;
-  fallbackEndMinute: string;
-  clampToDayPeriod: boolean;
-};
-
-const timingAnchorOptions: Array<{
-  value: JobFunctionTimingAnchor;
-  label: string;
-}> = [
-  { value: "FIRST_MOVIE_START", label: "Første filmstart" },
-  { value: "FIRST_MOVIE_END", label: "Første filmslut" },
-  { value: "LAST_MOVIE_START", label: "Sidste filmstart" },
-  { value: "LAST_MOVIE_END", label: "Sidste filmslut" },
-  { value: "FIXED_TIME", label: "Fast tidspunkt" },
-];
-
-const timingStartAnchorOptions: Array<{
-  value: JobFunctionTimingAnchor;
-  label: string;
-}> = [
-  { value: "FIRST_MOVIE_START", label: "Første filmstart" },
-  { value: "FIRST_MOVIE_END", label: "Første filmslut" },
-  { value: "FIXED_TIME", label: "Fast tidspunkt" },
-];
-
-const timingEndAnchorOptions: Array<{
-  value: JobFunctionTimingAnchor;
-  label: string;
-}> = [
-  { value: "LAST_MOVIE_START", label: "Sidste filmstart" },
-  { value: "LAST_MOVIE_END", label: "Sidste filmslut" },
-  { value: "FIXED_TIME", label: "Fast tidspunkt" },
-];
-
-const emptyForm: FormState = {
-  name: "",
-  description: "",
-  color: "#2563eb",
-  sortOrder: "0",
-  dayPeriodId: "",
-  payrollTypeId: "",
-};
-
-const emptyTimingRuleForm: TimingRuleFormState = {
-  dayPeriodId: "",
-  startAnchor: "FIRST_MOVIE_START",
-  startOffsetMinutes: "0",
-  startFixedMinute: "",
-  endAnchor: "LAST_MOVIE_END",
-  endOffsetMinutes: "0",
-  endFixedMinute: "",
-  fallbackStartMinute: "",
-  fallbackEndMinute: "",
-  clampToDayPeriod: false,
-};
-
-function normalizeStartAnchor(anchor: JobFunctionTimingAnchor): JobFunctionTimingAnchor {
-  return anchor === "FIXED_TIME" ? "FIXED_TIME" : "FIRST_MOVIE_START";
-}
-
-function normalizeEndAnchor(anchor: JobFunctionTimingAnchor): JobFunctionTimingAnchor {
-  return anchor === "FIXED_TIME" ? "FIXED_TIME" : "LAST_MOVIE_END";
-}
-
-function toFormState(jobFunction: JobFunctionWithWorkType): FormState {
-  return {
-    name: jobFunction.name,
-    description: jobFunction.description ?? "",
-    color: jobFunction.color || "#2563eb",
-    sortOrder: String(jobFunction.sortOrder ?? 0),
-    dayPeriodId: jobFunction.dayPeriodId ? String(jobFunction.dayPeriodId) : "",
-    payrollTypeId: jobFunction.workType?.payrollType?.id ? String(jobFunction.workType.payrollType.id) : jobFunction.workType?.payrollTypeId ? String(jobFunction.workType.payrollTypeId) : "",
-  };
-}
-
-function parseForm(form: FormState) {
-  const name = form.name.trim();
-  const description = form.description.trim() || null;
-  const color = normalizeColorValue(form.color);
-  const sortOrder = form.sortOrder.trim() ? Number(form.sortOrder) : 0;
-  const dayPeriodId = form.dayPeriodId ? Number(form.dayPeriodId) : null;
-  const payrollTypeId = form.payrollTypeId ? Number(form.payrollTypeId) : null;
-
-  if (!name) {
-    throw new Error("Indtast et navn på jobfunktionen.");
-  }
-
-  if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
-    throw new Error("Farve skal være en gyldig hex-farve.");
-  }
-
-  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-    throw new Error("Sortering skal være et gyldigt tal.");
-  }
-
-  if (
-    form.dayPeriodId &&
-    (dayPeriodId === null || !Number.isInteger(dayPeriodId) || dayPeriodId <= 0)
-  ) {
-    throw new Error("Dagsperiode skal være et gyldigt valg.");
-  }
-
-  if (
-    form.payrollTypeId &&
-    (payrollTypeId === null ||
-      !Number.isInteger(payrollTypeId) ||
-      payrollTypeId <= 0)
-  ) {
-    throw new Error("Oprettes som skal være en gyldig løntype.");
-  }
-
-  return {
-    name,
-    description,
-    color,
-    sortOrder,
-    dayPeriodId,
-    payrollTypeId,
-  };
-}
-
-function getTimingRuleDayPeriodId(
-  jobFunction?: Pick<JobFunction, "dayPeriodId"> | null,
-  rule?: JobFunctionTimingRule | null,
-) {
-  const directDayPeriodId = jobFunction?.dayPeriodId;
-  if (typeof directDayPeriodId === "number" && directDayPeriodId > 0) {
-    return String(directDayPeriodId);
-  }
-
-  const ruleDayPeriodId = rule?.jobFunction?.dayPeriod?.id;
-  if (typeof ruleDayPeriodId === "number" && ruleDayPeriodId > 0) {
-    return String(ruleDayPeriodId);
-  }
-
-  return "";
-}
-
-function toTimingRuleForm(
-  rule: JobFunctionTimingRule | null | undefined,
-  jobFunction?: Pick<JobFunction, "dayPeriodId"> | null,
-): TimingRuleFormState {
-  if (!rule) {
-    return {
-      ...emptyTimingRuleForm,
-      dayPeriodId: getTimingRuleDayPeriodId(jobFunction, null),
-    };
-  }
-
-  return {
-    dayPeriodId: getTimingRuleDayPeriodId(jobFunction, rule),
-    startAnchor: normalizeStartAnchor(rule.startAnchor),
-    startOffsetMinutes: String(rule.startOffsetMinutes ?? 0),
-    startFixedMinute:
-      rule.startFixedMinute !== null
-        ? formatMinute(rule.startFixedMinute).replace("kl. ", "")
-        : "",
-    endAnchor: normalizeEndAnchor(rule.endAnchor),
-    endOffsetMinutes: String(rule.endOffsetMinutes ?? 0),
-    endFixedMinute:
-      rule.endFixedMinute !== null
-        ? formatMinute(rule.endFixedMinute).replace("kl. ", "")
-        : "",
-    fallbackStartMinute:
-      rule.fallbackStartMinute !== null
-        ? formatMinute(rule.fallbackStartMinute).replace("kl. ", "")
-        : "",
-    fallbackEndMinute:
-      rule.fallbackEndMinute !== null
-        ? formatMinute(rule.fallbackEndMinute).replace("kl. ", "")
-        : "",
-    clampToDayPeriod: rule.clampToDayPeriod,
-  };
-}
-
-function parseOffsetInput(value: string, fieldName: string) {
-  const normalized = value.trim();
-  const parsedValue = normalized ? Number(normalized) : 0;
-
-  if (!Number.isInteger(parsedValue)) {
-    throw new Error(`${fieldName} skal være et helt antal minutter.`);
-  }
-
-  if (parsedValue < -720 || parsedValue > 720) {
-    throw new Error(`${fieldName} skal være mellem -720 og 720 minutter.`);
-  }
-
-  return parsedValue;
-}
-
-function parseTimingRuleDayPeriodId(value: string) {
-  if (!value) {
-    return null;
-  }
-
-  const parsedValue = Number(value);
-  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
-    throw new Error("Dagsperiode skal være et gyldigt valg.");
-  }
-
-  return parsedValue;
-}
-
-function parseTimingRuleForm(form: TimingRuleFormState) {
-  const startFixedMinute =
-    form.startAnchor === "FIXED_TIME"
-      ? timeToMinute(form.startFixedMinute, "Fast starttidspunkt")
-      : null;
-  const endFixedMinute =
-    form.endAnchor === "FIXED_TIME"
-      ? timeToMinute(form.endFixedMinute, "Fast sluttidspunkt")
-      : null;
-  const fallbackStartMinute = optionalTimeToMinute(
-    form.fallbackStartMinute,
-    "Tidspunkt hvor vagten starter uden filmprogram",
-  );
-  const fallbackEndMinute = optionalTimeToMinute(
-    form.fallbackEndMinute,
-    "Tidspunkt hvor vagten slutter uden filmprogram",
-  );
-  const hasFallbackStart = fallbackStartMinute !== null;
-  const hasFallbackEnd = fallbackEndMinute !== null;
-
-  if (hasFallbackStart !== hasFallbackEnd) {
-    throw new Error("Udfyld både start og slut, når der angives tider uden filmprogram.");
-  }
-
-  if (
-    fallbackStartMinute !== null &&
-    fallbackEndMinute !== null &&
-    fallbackEndMinute <= fallbackStartMinute
-  ) {
-    throw new Error(
-      "Starttidspunkt uden filmprogram skal være før sluttidspunkt uden filmprogram.",
-    );
-  }
-
-  return {
-    startAnchor: form.startAnchor,
-    startOffsetMinutes: parseOffsetInput(
-      form.startOffsetMinutes,
-      "Start-forskydning",
-    ),
-    startFixedMinute,
-    endAnchor: form.endAnchor,
-    endOffsetMinutes: parseOffsetInput(
-      form.endOffsetMinutes,
-      "Slut-forskydning",
-    ),
-    endFixedMinute,
-    fallbackStartMinute,
-    fallbackEndMinute,
-    clampToDayPeriod: form.clampToDayPeriod,
-  };
-}
 
 export default function JobFunctionsPage() {
   const confirmDialog = useConfirm();
@@ -336,7 +74,7 @@ export default function JobFunctionsPage() {
   const [expandedJobFunctionIds, setExpandedJobFunctionIds] = useState<Set<number>>(
     () => new Set(),
   );
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<JobFunctionFormState>(emptyJobFunctionForm);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [employeeModalJobFunction, setEmployeeModalJobFunction] =
@@ -602,7 +340,7 @@ export default function JobFunctionsPage() {
   );
 
   const resetForm = () => {
-    setForm(emptyForm);
+    setForm(emptyJobFunctionForm);
     setEditingId(null);
   };
 
@@ -622,7 +360,7 @@ export default function JobFunctionsPage() {
 
   const openEditModal = (jobFunction: JobFunctionWithWorkType) => {
     setEditingId(jobFunction.id);
-    setForm(toFormState(jobFunction));
+    setForm(toJobFunctionFormState(jobFunction));
     setFormModalOpen(true);
   };
 
@@ -672,7 +410,7 @@ export default function JobFunctionsPage() {
     try {
       setSaving(true);
       const payload = {
-        ...parseForm(form),
+        ...parseJobFunctionForm(form),
         cinemaId: activeCinemaId,
       };
       const response = await apiFetch(
