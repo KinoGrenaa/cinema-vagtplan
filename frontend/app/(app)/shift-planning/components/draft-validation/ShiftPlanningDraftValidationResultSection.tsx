@@ -4,6 +4,7 @@ import { toNumber } from "../../helpers/shiftPlanningDraftHelpers";
 import {
   getValidationIssueKey,
   MAX_VISIBLE_VALIDATION_ISSUES,
+  sortValidationIssuesBySeverity,
 } from "../../helpers/shiftPlanningDraftValidationHelpers";
 import type {
   DraftValidationIssue,
@@ -19,7 +20,8 @@ export function ShiftPlanningDraftValidationResultSection({
   issues,
   summary,
 }: ShiftPlanningDraftValidationResultSectionProps) {
-  const visibleIssues = issues.slice(0, MAX_VISIBLE_VALIDATION_ISSUES);
+  const sortedIssues = sortValidationIssuesBySeverity(issues);
+  const visibleIssues = sortedIssues.slice(0, MAX_VISIBLE_VALIDATION_ISSUES);
   const hiddenIssueCount = Math.max(0, issues.length - visibleIssues.length);
 
   return (
@@ -67,7 +69,7 @@ export function ShiftPlanningDraftValidationResultSection({
       {hiddenIssueCount > 0 && (
         <p className="text-center text-sm text-gray-500 dark:text-gray-400">
           {hiddenIssueCount} flere kontrolpunkter er skjult i denne
-          kompakte visning.
+          kompakte visning. Fejl og advarsler vises først.
         </p>
       )}
     </div>

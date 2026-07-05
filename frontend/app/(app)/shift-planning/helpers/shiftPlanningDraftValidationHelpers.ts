@@ -6,7 +6,6 @@ export const MAX_VISIBLE_VALIDATION_ISSUES = 20;
 
 export function formatValidationIssueDate(issue: DraftValidationIssue) {
   const dateKey = getDateKey(issue.dateKey || issue.date || null);
-
   return dateKey ? formatDateKey(dateKey) : null;
 }
 
@@ -43,4 +42,55 @@ export function getValidationIssueKey(
   index: number,
 ) {
   return `${issue.code ?? "issue"}-${issue.itemId ?? issue.id ?? index}`;
+}
+
+export function getValidationSeverityRank(severity?: string | null) {
+  switch ((severity || "").toUpperCase()) {
+    case "ERROR":
+      return 0;
+    case "WARNING":
+      return 1;
+    case "INFO":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function getValidationIssueSortDateKey(issue: DraftValidationIssue) {
+  return getDateKey(issue.dateKey || issue.date || null) ?? "";
+}
+
+function compareOptionalText(first: unknown, second: unknown) {
+  const firstText = first == null ? "" : String(first);
+  const secondText = second == null ? "" : String(second);
+  return firstText.localeCompare(secondText, "da-DK", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+export function sortValidationIssuesBySeverity(
+  issues: DraftValidationIssue[],
+) {
+  return [...issues].sort((firstIssue, secondIssue) => {
+    const severityDifference =
+      getValidationSeverityRank(firstIssue.severity) -
+      getValidationSeverityRank(secondIssue.severity);
+
+    if (severityDifference !== 0) {
+      return severityDifference;
+    }
+
+    const dateDifference = compareOptionalText(
+      getValidationIssueSortDateKey(firstIssue),
+      getValidationIssueSortDateKey(secondIssue),
+    );
+
+    if (dateDifference !== 0) {
+      return dateDifference;
+    }
+
+    return compareOptionalText(firstIssue.itemId ?? firstIssue.id, secondIssue.itemId ?? secondIssue.id);
+  });
 }
