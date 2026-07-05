@@ -1,21 +1,15 @@
 import { useCallback, useState } from "react";
 
-import { apiFetch } from "@/app/lib/api";
-
 import type {
   JobFunctionConfirm,
   JobFunctionShowError,
 } from "../../helpers/types/jobFunctionDialogTypes";
 import {
-  appendCinemaId,
-  readErrorMessage,
-} from "../../helpers/page/jobFunctionHelpers";
+  archiveJobFunctionTimingRule,
+  fetchJobFunctionTimingRule,
+  saveJobFunctionTimingRule,
+} from "../../helpers/actions/jobFunctionTimingRuleApi";
 import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
-import {
-  buildJobFunctionDayPeriodPayload,
-  buildTimingRulePayload,
-  parseTimingRuleResponseText,
-} from "../../helpers/actions/jobFunctionTimingRuleApiHelpers";
 import {
   emptyTimingRuleForm,
   toTimingRuleForm,
@@ -50,24 +44,10 @@ export function useJobFunctionTimingRule({
     async (jobFunction: JobFunctionWithWorkType) => {
       try {
         setTimingRuleLoading(true);
-        const response = await apiFetch(
-          appendCinemaId(
-            `/job-functions/${jobFunction.id}/timing-rule?includeInactive=true`,
-            activeCinemaId,
-          ),
+        const data = await fetchJobFunctionTimingRule(
+          jobFunction.id,
+          activeCinemaId,
         );
-
-        if (!response.ok) {
-          throw new Error(
-            await readErrorMessage(
-              response,
-              "Kunne ikke hente møde- og fyraftensregel",
-            ),
-          );
-        }
-
-        const rawText = await response.text();
-        const data = parseTimingRuleResponseText(rawText);
         setTimingRule(data);
         setTimingRuleForm(toTimingRuleForm(data, jobFunction));
       } catch (error) {
@@ -106,6 +86,12 @@ export function useJobFunctionTimingRule({
     setTimingRuleForm(emptyTimingRuleForm);
   }, [timingRuleSaving]);
 
+  const resetTimingRuleModal = useCallback(() => {
+    setTimingModalJobFunction(null);
+    setTimingRule(null);
+    setTimingRuleForm(emptyTimingRuleForm);
+  }, []);
+
   const saveTimingRule = useCallback(async () => {
     if (!timingModalJobFunction) {
       return;
@@ -113,60 +99,17 @@ export function useJobFunctionTimingRule({
 
     try {
       setTimingRuleSaving(true);
-      const dayPeriodPayload = buildJobFunctionDayPeriodPayload(
+      const data = await saveJobFunctionTimingRule(
+        timingModalJobFunction,
         timingRuleForm,
         activeCinemaId,
       );
-      const payload = buildTimingRulePayload(timingRuleForm, activeCinemaId);
 
-      const dayPeriodResponse = await apiFetch(
-        appendCinemaId(
-          `/job-functions/${timingModalJobFunction.id}`,
-          activeCinemaId,
-        ),
-        {
-          method: "PATCH",
-          body: JSON.stringify(dayPeriodPayload),
-        },
-      );
-
-      if (!dayPeriodResponse.ok) {
-        throw new Error(
-          await readErrorMessage(
-            dayPeriodResponse,
-            "Kunne ikke gemme dagsperiode for jobfunktion",
-          ),
-        );
-      }
-
-      const response = await apiFetch(
-        appendCinemaId(
-          `/job-functions/${timingModalJobFunction.id}/timing-rule`,
-          activeCinemaId,
-        ),
-        {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(
-            response,
-            "Kunne ikke gemme møde- og fyraftensregel",
-          ),
-        );
-      }
-
-      const savedRawText = await response.text();
-      if (savedRawText.trim()) {
-        setTimingRule(JSON.parse(savedRawText) as JobFunctionTimingRule);
+      if (data) {
+        setTimingRule(data);
       }
       await refreshData();
-      setTimingModalJobFunction(null);
-      setTimingRule(null);
-      setTimingRuleForm(emptyTimingRuleForm);
+      resetTimingRuleModal();
     } catch (error) {
       showError(
         "Kunne ikke gemme møde- og fyraftensregel",
@@ -177,7 +120,14 @@ export function useJobFunctionTimingRule({
     } finally {
       setTimingRuleSaving(false);
     }
-  }, [activeCinemaId, refreshData, showError, timingModalJobFunction, timingRuleForm]);
+  }, [
+    activeCinemaId,
+    refreshData,
+    resetTimingRuleModal,
+    showError,
+    timingModalJobFunction,
+    timingRuleForm,
+  ]);
 
   const archiveTimingRule = useCallback(() => {
     if (!timingModalJobFunction) {
@@ -194,24 +144,10 @@ export function useJobFunctionTimingRule({
       confirmVariant: "danger",
       onConfirm: async () => {
         try {
-          const response = await apiFetch(
-            appendCinemaId(
-              `/job-functions/${timingModalJobFunction.id}/timing-rule`,
-              activeCinemaId,
-            ),
-            { method: "DELETE" },
+          const data = await archiveJobFunctionTimingRule(
+            timingModalJobFunction.id,
+            activeCinemaId,
           );
-
-          if (!response.ok) {
-            throw new Error(
-              await readErrorMessage(
-                response,
-                "Kunne ikke arkivere møde- og fyraftensregel",
-              ),
-            );
-          }
-
-          const data = (await response.json()) as JobFunctionTimingRule;
           setTimingRule(data);
           setTimingRuleForm(toTimingRuleForm(data, timingModalJobFunction));
           await refreshData();

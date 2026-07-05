@@ -1,20 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { apiFetch } from "@/app/lib/api";
-
 import type {
   JobFunctionConfirm,
   JobFunctionShowError,
 } from "../../helpers/types/jobFunctionDialogTypes";
 import {
+  assignJobFunctionUser,
+  fetchJobFunctionAssignments,
+  removeJobFunctionUser,
+} from "../../helpers/actions/jobFunctionEmployeeAssignmentApi";
+import {
   getAvailableJobFunctionUsers,
   parseSelectedAssignmentUserId,
 } from "../../helpers/actions/jobFunctionEmployeeAssignmentHelpers";
-import {
-  appendCinemaId,
-  formatUserName,
-  readErrorMessage,
-} from "../../helpers/page/jobFunctionHelpers";
+import { formatUserName } from "../../helpers/page/jobFunctionHelpers";
 import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 import type { User, UserJobFunction } from "../../helpers/types/jobFunctionTypes";
 
@@ -44,24 +43,11 @@ export function useJobFunctionEmployeeAssignments({
     async (jobFunction: JobFunctionWithWorkType) => {
       try {
         setAssignmentLoading(true);
-        const response = await apiFetch(
-          appendCinemaId(
-            `/job-functions/${jobFunction.id}/users`,
-            activeCinemaId,
-          ),
+        const data = await fetchJobFunctionAssignments(
+          jobFunction.id,
+          activeCinemaId,
         );
-
-        if (!response.ok) {
-          throw new Error(
-            await readErrorMessage(
-              response,
-              "Kunne ikke hente medarbejdere for jobfunktion",
-            ),
-          );
-        }
-
-        const data = await response.json();
-        setAssignments(Array.isArray(data) ? data : []);
+        setAssignments(data);
       } catch (error) {
         setAssignments([]);
         showError(
@@ -117,23 +103,11 @@ export function useJobFunctionEmployeeAssignments({
 
     try {
       setAssignmentSaving(true);
-      const response = await apiFetch(
-        appendCinemaId(
-          `/job-functions/${employeeModalJobFunction.id}/users`,
-          activeCinemaId,
-        ),
-        {
-          method: "POST",
-          body: JSON.stringify({ userId, cinemaId: activeCinemaId }),
-        },
+      await assignJobFunctionUser(
+        employeeModalJobFunction.id,
+        userId,
+        activeCinemaId,
       );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke tilføje medarbejder"),
-        );
-      }
-
       setSelectedUserId("");
       await fetchAssignments(employeeModalJobFunction);
       await refreshData();
@@ -172,19 +146,11 @@ export function useJobFunctionEmployeeAssignments({
         confirmVariant: "danger",
         onConfirm: async () => {
           try {
-            const response = await apiFetch(
-              appendCinemaId(
-                `/job-functions/${employeeModalJobFunction.id}/users/${assignment.user.id}`,
-                activeCinemaId,
-              ),
-              { method: "DELETE" },
+            await removeJobFunctionUser(
+              employeeModalJobFunction.id,
+              assignment.user.id,
+              activeCinemaId,
             );
-
-            if (!response.ok) {
-              throw new Error(
-                await readErrorMessage(response, "Kunne ikke fjerne medarbejder"),
-              );
-            }
 
             await fetchAssignments(employeeModalJobFunction);
             await refreshData();
