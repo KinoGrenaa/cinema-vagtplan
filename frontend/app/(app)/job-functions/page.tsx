@@ -744,7 +744,7 @@ export default function JobFunctionsPage() {
         title: editingId ? "Jobfunktion opdateret" : "Jobfunktion oprettet",
         description: editingId
           ? "Jobfunktionen er gemt."
-          : "Jobfunktionen er oprettet og kan senere bruges til bemanding og vagtønsker.",
+          : "Jobfunktionen er oprettet og kan bruges i vagtplanlægning.",
         variant: "success",
         buttonText: "OK",
       });
@@ -809,7 +809,7 @@ export default function JobFunctionsPage() {
       title: "Genaktivér jobfunktion",
       description:
         `Vil du genaktivere jobfunktionen "${jobFunction.name}"?\n\n` +
-        "Jobfunktionen kan igen bruges til bemanding og vagtønsker senere.",
+        "Jobfunktionen kan igen bruges i vagtplanlægning.",
       confirmText: "Genaktivér",
       cancelText: "Annuller",
       confirmVariant: "success",
