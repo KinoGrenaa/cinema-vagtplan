@@ -1459,7 +1459,7 @@ export default function JobFunctionsPage() {
                   </p>
                 )}
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Valget bruges senere, når forhåndsvisninger oprettes som rigtige vagter. Systemet opretter den tekniske vagttype automatisk.
+                  Valget bruges, når forhåndsvisninger oprettes som rigtige vagter. Systemet opretter den tekniske vagttype automatisk.
                 </p>
               </label>
 
@@ -1500,9 +1500,9 @@ export default function JobFunctionsPage() {
                 {timingModalJobFunction.name}
               </h2>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Reglen beskriver, hvordan mødetid og fyraften senere skal
-                beregnes ud fra dagsperiode, filmprogram og tider uden
-                filmprogram. Den ændrer ikke vagtplanen endnu.
+                Reglen bruges til at beregne mødetid og fyraften ud fra
+                dagsperiode, filmprogram og tider uden filmprogram, når
+                vagtplanlægning opretter vagter fra en forhåndsvisning.
               </p>
             </div>
 
