@@ -2,31 +2,24 @@ import { useCallback } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
-import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
+import type {
+  JobFunctionConfirm,
+  JobFunctionShowError,
+} from "../helpers/jobFunctionDialogTypes";
 import {
   appendCinemaId,
   readErrorMessage,
 } from "../helpers/jobFunctionHelpers";
+import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
 import type { JobFunction } from "../helpers/jobFunctionTypes";
-
-type Confirm = (options: {
-  title: string;
-  description: string;
-  confirmText: string;
-  cancelText: string;
-  confirmVariant: "danger" | "success";
-  onConfirm: () => Promise<void>;
-}) => void;
-
-type ShowError = (title: string, description: string) => void;
 
 type UseJobFunctionArchiveActionsOptions = {
   activeCinemaId: number | null;
   closeFormModal: () => void;
-  confirm: Confirm;
+  confirm: JobFunctionConfirm;
   editingId: number | null;
   refreshData: () => Promise<void>;
-  showError: ShowError;
+  showError: JobFunctionShowError;
 };
 
 export function useJobFunctionArchiveActions({

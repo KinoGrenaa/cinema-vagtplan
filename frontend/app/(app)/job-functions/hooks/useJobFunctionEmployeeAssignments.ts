@@ -2,6 +2,14 @@ import { useCallback, useMemo, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
+import type {
+  JobFunctionConfirm,
+  JobFunctionShowError,
+} from "../helpers/jobFunctionDialogTypes";
+import {
+  getAvailableJobFunctionUsers,
+  parseSelectedAssignmentUserId,
+} from "../helpers/jobFunctionEmployeeAssignmentHelpers";
 import {
   appendCinemaId,
   formatUserName,
@@ -10,22 +18,11 @@ import {
 import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
 import type { User, UserJobFunction } from "../helpers/jobFunctionTypes";
 
-type Confirm = (options: {
-  title: string;
-  description: string;
-  confirmText: string;
-  cancelText: string;
-  confirmVariant: "danger" | "success";
-  onConfirm: () => Promise<void> | void;
-}) => void;
-
-type ShowError = (title: string, description: string) => void;
-
 type UseJobFunctionEmployeeAssignmentsOptions = {
   activeCinemaId: number | null;
-  confirm: Confirm;
+  confirm: JobFunctionConfirm;
   refreshData: () => Promise<void>;
-  showError: ShowError;
+  showError: JobFunctionShowError;
   users: User[];
 };
 
@@ -100,21 +97,17 @@ export function useJobFunctionEmployeeAssignments({
     setSelectedUserId("");
   }, [assignmentSaving]);
 
-  const assignedUserIds = useMemo(() => {
-    return new Set(assignments.map((assignment) => assignment.user.id));
-  }, [assignments]);
-
   const availableUsers = useMemo(() => {
-    return users.filter((user) => !assignedUserIds.has(user.id));
-  }, [assignedUserIds, users]);
+    return getAvailableJobFunctionUsers(users, assignments);
+  }, [assignments, users]);
 
   const assignSelectedUser = useCallback(async () => {
     if (!employeeModalJobFunction) {
       return;
     }
 
-    const userId = Number(selectedUserId);
-    if (!Number.isInteger(userId) || userId <= 0) {
+    const userId = parseSelectedAssignmentUserId(selectedUserId);
+    if (userId === null) {
       showError(
         "Vælg medarbejder",
         "Vælg en medarbejder, før du tilføjer jobfunktionen.",

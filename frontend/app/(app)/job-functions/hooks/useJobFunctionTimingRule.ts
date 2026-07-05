@@ -2,33 +2,32 @@ import { useCallback, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
-import { appendCinemaId, readErrorMessage } from "../helpers/jobFunctionHelpers";
+import type {
+  JobFunctionConfirm,
+  JobFunctionShowError,
+} from "../helpers/jobFunctionDialogTypes";
+import {
+  appendCinemaId,
+  readErrorMessage,
+} from "../helpers/jobFunctionHelpers";
 import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
 import {
+  buildJobFunctionDayPeriodPayload,
+  buildTimingRulePayload,
+  parseTimingRuleResponseText,
+} from "../helpers/jobFunctionTimingRuleApiHelpers";
+import {
   emptyTimingRuleForm,
-  parseTimingRuleDayPeriodId,
-  parseTimingRuleForm,
   toTimingRuleForm,
   type TimingRuleFormState,
 } from "../helpers/jobFunctionTimingRuleFormHelpers";
 import type { JobFunctionTimingRule } from "../helpers/jobFunctionTypes";
 
-type Confirm = (options: {
-  title: string;
-  description: string;
-  confirmText: string;
-  cancelText: string;
-  confirmVariant: "danger" | "success";
-  onConfirm: () => Promise<void> | void;
-}) => void;
-
-type ShowError = (title: string, description: string) => void;
-
 type UseJobFunctionTimingRuleOptions = {
   activeCinemaId: number | null;
-  confirm: Confirm;
+  confirm: JobFunctionConfirm;
   refreshData: () => Promise<void>;
-  showError: ShowError;
+  showError: JobFunctionShowError;
 };
 
 export function useJobFunctionTimingRule({
@@ -68,9 +67,7 @@ export function useJobFunctionTimingRule({
         }
 
         const rawText = await response.text();
-        const data = rawText.trim()
-          ? (JSON.parse(rawText) as JobFunctionTimingRule)
-          : null;
+        const data = parseTimingRuleResponseText(rawText);
         setTimingRule(data);
         setTimingRuleForm(toTimingRuleForm(data, jobFunction));
       } catch (error) {
@@ -116,11 +113,11 @@ export function useJobFunctionTimingRule({
 
     try {
       setTimingRuleSaving(true);
-      const dayPeriodId = parseTimingRuleDayPeriodId(timingRuleForm.dayPeriodId);
-      const payload = {
-        ...parseTimingRuleForm(timingRuleForm),
-        cinemaId: activeCinemaId,
-      };
+      const dayPeriodPayload = buildJobFunctionDayPeriodPayload(
+        timingRuleForm,
+        activeCinemaId,
+      );
+      const payload = buildTimingRulePayload(timingRuleForm, activeCinemaId);
 
       const dayPeriodResponse = await apiFetch(
         appendCinemaId(
@@ -129,7 +126,7 @@ export function useJobFunctionTimingRule({
         ),
         {
           method: "PATCH",
-          body: JSON.stringify({ dayPeriodId, cinemaId: activeCinemaId }),
+          body: JSON.stringify(dayPeriodPayload),
         },
       );
 

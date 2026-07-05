@@ -8,27 +8,22 @@ import {
   toJobFunctionFormState,
 } from "../helpers/jobFunctionFormHelpers";
 import type { JobFunctionFormState } from "../helpers/jobFunctionFormHelpers";
-import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
+import type {
+  JobFunctionShowError,
+  JobFunctionShowInfo,
+} from "../helpers/jobFunctionDialogTypes";
 import {
   appendCinemaId,
   readErrorMessage,
 } from "../helpers/jobFunctionHelpers";
-
-type ShowInfo = (options: {
-  title: string;
-  description: string;
-  variant: "success";
-  buttonText: string;
-}) => void;
-
-type ShowError = (title: string, description: string) => void;
+import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
 
 type UseJobFunctionFormOptions = {
   activeCinemaId: number | null;
   needsMasterCinemaSelection: boolean;
   refreshData: () => Promise<void>;
-  show: ShowInfo;
-  showError: ShowError;
+  show: JobFunctionShowInfo;
+  showError: JobFunctionShowError;
 };
 
 export function useJobFunctionForm({
