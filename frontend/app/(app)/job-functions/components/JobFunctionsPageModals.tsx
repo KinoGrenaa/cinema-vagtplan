@@ -4,7 +4,7 @@ import JobFunctionEmployeeModal from "./JobFunctionEmployeeModal";
 import JobFunctionFormModal from "./JobFunctionFormModal";
 import JobFunctionTimingRuleModal from "./JobFunctionTimingRuleModal";
 
-type JobFunctionsPageModalsProps = {
+export type JobFunctionsPageModalsProps = {
   formModalOpen: boolean;
   formModalProps: ComponentProps<typeof JobFunctionFormModal>;
   timingRuleModalProps: ComponentProps<typeof JobFunctionTimingRuleModal> | null;

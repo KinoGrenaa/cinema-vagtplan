@@ -4,7 +4,7 @@ import JobFunctionsMasterCinemaRequired from "./JobFunctionsMasterCinemaRequired
 import JobFunctionsOverviewSection from "./JobFunctionsOverviewSection";
 import JobFunctionsPageHeader from "./JobFunctionsPageHeader";
 
-type JobFunctionsPageContentProps = {
+export type JobFunctionsPageContentProps = {
   needsMasterCinemaSelection: boolean;
   overviewProps: ComponentProps<typeof JobFunctionsOverviewSection>;
 };
