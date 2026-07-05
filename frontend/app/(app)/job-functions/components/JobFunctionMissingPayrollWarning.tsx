@@ -17,6 +17,7 @@ export default function JobFunctionMissingPayrollWarning({
 
   const nameText =
     remainingCount > 0 ? `${names} og ${remainingCount} mere` : names;
+  const targetText = count === 1 ? "den" : "dem";
 
   return (
     <div
@@ -30,7 +31,7 @@ export default function JobFunctionMissingPayrollWarning({
       </p>
       <p className="mt-1">
         Vælg en løntype for <span className="font-semibold">{nameText}</span>,
-        før vagter kan oprettes fra dem i vagtplanlægningen.
+        før vagter kan oprettes fra {targetText} i vagtplanlægningen.
       </p>
     </div>
   );
