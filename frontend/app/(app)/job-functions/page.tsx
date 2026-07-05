@@ -8,8 +8,9 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-import JobFunctionsList from "./components/JobFunctionsList";
 import JobFunctionsMasterCinemaRequired from "./components/JobFunctionsMasterCinemaRequired";
+import JobFunctionsOverviewSection from "./components/JobFunctionsOverviewSection";
+import JobFunctionsPageHeader from "./components/JobFunctionsPageHeader";
 import {
   emptyJobFunctionForm,
   parseJobFunctionForm,
@@ -762,83 +763,29 @@ export default function JobFunctionsPage() {
     <AdminGuard>
       <main className="min-h-screen bg-gray-50 px-4 py-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl space-y-6">
-          <header className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">
-              Vagtplanlægning
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
-              Jobfunktioner
-            </h1>
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              Jobfunktioner beskriver bemandingsroller og kompetencer.
-              Vagtplanlægning bruger dem til at oprette vagter med korrekt
-              løntype via feltet Oprettes som.
-            </p>
-          </header>
+          <JobFunctionsPageHeader />
 
           {needsMasterCinemaSelection && <JobFunctionsMasterCinemaRequired />}
 
           {!needsMasterCinemaSelection && (
-            <section className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex flex-col gap-4 border-b border-gray-200 p-5 dark:border-gray-800 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    Overblik
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold text-gray-950 dark:text-white">
-                    Jobfunktioner
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    {loading
-                      ? "Henter jobfunktioner..."
-                      : `${jobFunctions.length} jobfunktioner vist · ${activeCount} aktive${
-                          showArchived ? ` · ${archivedCount} arkiverede` : ""
-                        }`}
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <button
-                    type="button"
-                    onClick={openCreateModal}
-                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-                  >
-                    Opret jobfunktion
-                  </button>
-                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200">
-                    <input
-                      type="checkbox"
-                      checked={showArchived}
-                      onChange={(event) =>
-                        setShowArchived(event.target.checked)
-                      }
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    Vis arkiverede
-                  </label>
-                  <button
-                    type="button"
-                    onClick={fetchData}
-                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
-                  >
-                    Opdater
-                  </button>
-                </div>
-              </div>
-
-              <JobFunctionsList
-                expandedJobFunctionIds={expandedJobFunctionIds}
-                jobFunctions={jobFunctions}
-                loading={loading}
-                missingPayrollTypeWarning={missingPayrollTypeWarning}
-                onArchive={archiveJobFunction}
-                onEdit={openEditModal}
-                onOpenEmployees={openEmployeeModal}
-                onOpenTimingRule={openTimingRuleModal}
-                onReactivate={reactivateJobFunction}
-                onToggleDetails={toggleJobFunctionDetails}
-              />
-            </section>
+            <JobFunctionsOverviewSection
+              activeCount={activeCount}
+              archivedCount={archivedCount}
+              expandedJobFunctionIds={expandedJobFunctionIds}
+              jobFunctions={jobFunctions}
+              loading={loading}
+              missingPayrollTypeWarning={missingPayrollTypeWarning}
+              showArchived={showArchived}
+              onArchive={archiveJobFunction}
+              onCreate={openCreateModal}
+              onEdit={openEditModal}
+              onOpenEmployees={openEmployeeModal}
+              onOpenTimingRule={openTimingRuleModal}
+              onReactivate={reactivateJobFunction}
+              onRefresh={fetchData}
+              onShowArchivedChange={setShowArchived}
+              onToggleDetails={toggleJobFunctionDetails}
+            />
           )}
         </div>
       </main>
