@@ -37,8 +37,26 @@ export function ShiftPlanningPublishPanel({
   setPublishNote,
 }: ShiftPlanningPublishPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+
   const canOpenConfirm =
     selectedDraftCanBePublished && !selectedDraftIsPublished && !publishing;
+
+  const openConfirmBlockedReason = useMemo(() => {
+    if (publishing) {
+      return "Oprettelsen er allerede i gang.";
+    }
+
+    if (selectedDraftIsPublished) {
+      return "Vagterne er allerede oprettet for dette forslag.";
+    }
+
+    if (!selectedDraftCanBePublished) {
+      return "Forslaget er ikke åbent længere og kan derfor ikke oprettes.";
+    }
+
+    return null;
+  }, [publishing, selectedDraftCanBePublished, selectedDraftIsPublished]);
+
   const missingRequirements = useMemo(() => {
     const missing: string[] = [];
 
@@ -65,7 +83,6 @@ export function ShiftPlanningPublishPanel({
             i vagtplanen. Du får en bekræftelse, før noget oprettes.
           </p>
         </div>
-
         <ShiftPlanningPublishStatusBadge
           publicationPreviewCanPublishLater={publicationPreviewCanPublishLater}
           selectedDraftCanBePublished={selectedDraftCanBePublished}
@@ -76,7 +93,9 @@ export function ShiftPlanningPublishPanel({
       {publishResult && (
         <ShiftPlanningPublishResultPanel
           publishResult={publishResult}
-          selectedWorkTypeName={publishResult.workTypeName ?? "Jobfunktionernes valgte typer"}
+          selectedWorkTypeName={
+            publishResult.workTypeName ?? "Jobfunktionernes valgte typer"
+          }
         />
       )}
 
@@ -84,9 +103,7 @@ export function ShiftPlanningPublishPanel({
         <ShiftPlanningAlreadyPublishedPanel />
       )}
 
-      {publishError && (
-        <ShiftPlanningPublishErrorPanel message={publishError} />
-      )}
+      {publishError && <ShiftPlanningPublishErrorPanel message={publishError} />}
 
       {!selectedDraftIsPublished && (
         <ShiftPlanningPublishChecklist
@@ -104,6 +121,7 @@ export function ShiftPlanningPublishPanel({
       />
 
       <ShiftPlanningPublishActionPanel
+        blockedReason={openConfirmBlockedReason}
         canOpenConfirm={canOpenConfirm}
         onOpenConfirm={() => setConfirmOpen(true)}
         publishing={publishing}
@@ -132,9 +150,9 @@ export function ShiftPlanningPublishPanel({
             </div>
 
             <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
-              Når du fortsætter, bliver vagterne oprettet i vagtplanen.
-              Hver jobfunktion bruger feltet “Oprettes som”, som er valgt
-              under Jobfunktioner.
+              Når du fortsætter, bliver vagterne oprettet i vagtplanen. Hver
+              jobfunktion bruger feltet “Oprettes som”, som er valgt under
+              Jobfunktioner.
             </p>
 
             {missingRequirements.length > 0 && (

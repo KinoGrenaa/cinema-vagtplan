@@ -1,4 +1,5 @@
 type ShiftPlanningPublishActionPanelProps = {
+  blockedReason: string | null;
   canOpenConfirm: boolean;
   onOpenConfirm: () => void;
   publishing: boolean;
@@ -6,6 +7,7 @@ type ShiftPlanningPublishActionPanelProps = {
 };
 
 export function ShiftPlanningPublishActionPanel({
+  blockedReason,
   canOpenConfirm,
   onOpenConfirm,
   publishing,
@@ -33,6 +35,11 @@ export function ShiftPlanningPublishActionPanel({
       >
         {buttonLabel}
       </button>
+      {!canOpenConfirm && blockedReason && (
+        <p className="mt-2 text-xs font-semibold text-amber-950 dark:text-amber-100">
+          {blockedReason}
+        </p>
+      )}
     </div>
   );
 }
