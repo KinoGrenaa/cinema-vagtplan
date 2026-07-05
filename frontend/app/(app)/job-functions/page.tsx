@@ -1816,8 +1816,8 @@ export default function JobFunctionsPage() {
                   {employeeModalJobFunction.name}
                 </h2>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                  Vælg hvilke medarbejdere der kan tage denne jobfunktion. Dette
-                  er kompetence/eligibility og ikke løn.
+                  Vælg hvilke medarbejdere der kan bemande denne jobfunktion. Dette
+                  styrer kompetence/egnethed og ikke løn.
                 </p>
               </div>
               <button
