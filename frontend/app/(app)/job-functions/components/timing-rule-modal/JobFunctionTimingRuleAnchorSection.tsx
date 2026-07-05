@@ -1,8 +1,12 @@
 import type { Dispatch, SetStateAction } from "react";
+
 import type { TimingRuleFormState } from "../../helpers/form/jobFunctionTimingRuleFormHelpers";
 import type { JobFunctionTimingAnchor } from "../../helpers/types/jobFunctionTypes";
 
-type TimingAnchorOption = {
+import JobFunctionTimingRuleAnchorSelectField from "./JobFunctionTimingRuleAnchorSelectField";
+import JobFunctionTimingRuleAnchorValueField from "./JobFunctionTimingRuleAnchorValueField";
+
+export type TimingAnchorOption = {
   value: JobFunctionTimingAnchor;
   label: string;
 };
@@ -42,70 +46,24 @@ export default function JobFunctionTimingRuleAnchorSection({
         {title}
       </h3>
       <div className="mt-4 space-y-4">
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-            {anchorLabel}
-          </span>
-          <select
-            value={selectedAnchor}
-            onChange={(event) =>
-              setTimingRuleForm((current) => ({
-                ...current,
-                [anchorField]: event.target.value as JobFunctionTimingAnchor,
-              }))
-            }
-            className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            disabled={timingRuleSaving}
-          >
-            {options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {selectedAnchor === "FIXED_TIME" ? (
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-              {fixedTimeLabel}
-            </span>
-            <input
-              type="time"
-              value={timingRuleForm[fixedMinuteField]}
-              onChange={(event) =>
-                setTimingRuleForm((current) => ({
-                  ...current,
-                  [fixedMinuteField]: event.target.value,
-                }))
-              }
-              className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:[color-scheme:dark] dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              disabled={timingRuleSaving}
-            />
-          </label>
-        ) : (
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-              Forskydning i minutter
-            </span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={timingRuleForm[offsetField]}
-              onChange={(event) =>
-                setTimingRuleForm((current) => ({
-                  ...current,
-                  [offsetField]: event.target.value,
-                }))
-              }
-              className="mt-1 w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              disabled={timingRuleSaving}
-            />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {offsetHelpText}
-            </p>
-          </label>
-        )}
+        <JobFunctionTimingRuleAnchorSelectField
+          anchorField={anchorField}
+          anchorLabel={anchorLabel}
+          options={options}
+          selectedAnchor={selectedAnchor}
+          timingRuleSaving={timingRuleSaving}
+          setTimingRuleForm={setTimingRuleForm}
+        />
+        <JobFunctionTimingRuleAnchorValueField
+          fixedMinuteField={fixedMinuteField}
+          fixedTimeLabel={fixedTimeLabel}
+          offsetField={offsetField}
+          offsetHelpText={offsetHelpText}
+          selectedAnchor={selectedAnchor}
+          timingRuleForm={timingRuleForm}
+          timingRuleSaving={timingRuleSaving}
+          setTimingRuleForm={setTimingRuleForm}
+        />
       </div>
     </div>
   );
