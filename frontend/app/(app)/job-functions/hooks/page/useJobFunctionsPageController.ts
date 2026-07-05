@@ -1,12 +1,12 @@
-import { buildJobFunctionsPageContentProps } from "../helpers/jobFunctionsPageContentProps";
-import { buildJobFunctionsPageModalsProps } from "../helpers/jobFunctionsPageModalProps";
-import type { JobFunctionsPageControllerResult } from "../helpers/jobFunctionsPageControllerTypes";
-import { useJobFunctionArchiveActions } from "./useJobFunctionArchiveActions";
-import { useJobFunctionDetailsExpansion } from "./useJobFunctionDetailsExpansion";
-import { useJobFunctionEmployeeAssignments } from "./useJobFunctionEmployeeAssignments";
-import { useJobFunctionForm } from "./useJobFunctionForm";
+import { buildJobFunctionsPageContentProps } from "../../helpers/page/jobFunctionsPageContentProps";
+import { buildJobFunctionsPageModalsProps } from "../../helpers/page/jobFunctionsPageModalProps";
+import type { JobFunctionsPageControllerResult } from "../../helpers/types/jobFunctionsPageControllerTypes";
+import { useJobFunctionArchiveActions } from "../actions/useJobFunctionArchiveActions";
+import { useJobFunctionDetailsExpansion } from "../ui/useJobFunctionDetailsExpansion";
+import { useJobFunctionEmployeeAssignments } from "../actions/useJobFunctionEmployeeAssignments";
+import { useJobFunctionForm } from "../actions/useJobFunctionForm";
 import { useJobFunctionsFeedbackDialogs } from "./useJobFunctionsFeedbackDialogs";
-import { useJobFunctionTimingRule } from "./useJobFunctionTimingRule";
+import { useJobFunctionTimingRule } from "../actions/useJobFunctionTimingRule";
 import { useJobFunctionsData } from "./useJobFunctionsData";
 import { useJobFunctionsMasterCinema } from "./useJobFunctionsMasterCinema";
 

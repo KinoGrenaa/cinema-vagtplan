@@ -1,5 +1,5 @@
-import { normalizeColorValue } from "./jobFunctionHelpers";
-import type { JobFunctionWithWorkType } from "./jobFunctionPayrollHelpers";
+import { normalizeColorValue } from "../page/jobFunctionHelpers";
+import type { JobFunctionWithWorkType } from "../payroll/jobFunctionPayrollHelpers";
 
 export type JobFunctionFormState = {
   name: string;

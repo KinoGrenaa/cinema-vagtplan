@@ -5,18 +5,18 @@ import { apiFetch } from "@/app/lib/api";
 import type {
   JobFunctionConfirm,
   JobFunctionShowError,
-} from "../helpers/jobFunctionDialogTypes";
+} from "../../helpers/types/jobFunctionDialogTypes";
 import {
   getAvailableJobFunctionUsers,
   parseSelectedAssignmentUserId,
-} from "../helpers/jobFunctionEmployeeAssignmentHelpers";
+} from "../../helpers/actions/jobFunctionEmployeeAssignmentHelpers";
 import {
   appendCinemaId,
   formatUserName,
   readErrorMessage,
-} from "../helpers/jobFunctionHelpers";
-import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
-import type { User, UserJobFunction } from "../helpers/jobFunctionTypes";
+} from "../../helpers/page/jobFunctionHelpers";
+import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { User, UserJobFunction } from "../../helpers/types/jobFunctionTypes";
 
 type UseJobFunctionEmployeeAssignmentsOptions = {
   activeCinemaId: number | null;

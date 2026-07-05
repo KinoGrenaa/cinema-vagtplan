@@ -2,8 +2,8 @@ import {
   parseTimingRuleDayPeriodId,
   parseTimingRuleForm,
   type TimingRuleFormState,
-} from "./jobFunctionTimingRuleFormHelpers";
-import type { JobFunctionTimingRule } from "./jobFunctionTypes";
+} from "../form/jobFunctionTimingRuleFormHelpers";
+import type { JobFunctionTimingRule } from "../types/jobFunctionTypes";
 
 export function parseTimingRuleResponseText(
   rawText: string,

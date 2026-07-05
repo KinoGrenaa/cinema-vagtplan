@@ -1,8 +1,8 @@
 import JobFunctionEmployeeAssignmentControls from "./JobFunctionEmployeeAssignmentControls";
 import JobFunctionEmployeeAssignmentsList from "./JobFunctionEmployeeAssignmentsList";
 import JobFunctionEmployeeModalHeader from "./JobFunctionEmployeeModalHeader";
-import type { JobFunctionWithWorkType } from "../../helpers/jobFunctionPayrollHelpers";
-import type { User, UserJobFunction } from "../../helpers/jobFunctionTypes";
+import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { User, UserJobFunction } from "../../helpers/types/jobFunctionTypes";
 
 type JobFunctionEmployeeModalProps = {
   jobFunction: JobFunctionWithWorkType;

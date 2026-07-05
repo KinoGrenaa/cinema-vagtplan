@@ -5,7 +5,7 @@ import type {
   JobFunctionTimingAnchor,
   JobFunctionTimingRule,
   User,
-} from "./jobFunctionTypes";
+} from "../types/jobFunctionTypes";
 
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 

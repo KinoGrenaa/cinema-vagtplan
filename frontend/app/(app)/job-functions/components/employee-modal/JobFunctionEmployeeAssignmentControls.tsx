@@ -1,5 +1,5 @@
-import { formatUserName } from "../../helpers/jobFunctionHelpers";
-import type { User } from "../../helpers/jobFunctionTypes";
+import { formatUserName } from "../../helpers/page/jobFunctionHelpers";
+import type { User } from "../../helpers/types/jobFunctionTypes";
 
 type JobFunctionEmployeeAssignmentControlsProps = {
   assignmentSaving: boolean;

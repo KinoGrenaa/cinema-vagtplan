@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getCurrentUserFromToken,
   getSelectedMasterCinemaId,
-} from "../helpers/jobFunctionHelpers";
-import type { CurrentUser } from "../helpers/jobFunctionTypes";
+} from "../../helpers/page/jobFunctionHelpers";
+import type { CurrentUser } from "../../helpers/types/jobFunctionTypes";
 
 export function useJobFunctionsMasterCinema() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);

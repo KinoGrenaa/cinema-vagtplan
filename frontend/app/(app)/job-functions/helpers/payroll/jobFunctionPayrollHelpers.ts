@@ -1,4 +1,4 @@
-import type { JobFunction } from "./jobFunctionTypes";
+import type { JobFunction } from "../types/jobFunctionTypes";
 
 export type PayrollTypeOption = {
   id: number;

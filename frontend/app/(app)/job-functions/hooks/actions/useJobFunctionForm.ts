@@ -6,17 +6,17 @@ import {
   emptyJobFunctionForm,
   parseJobFunctionForm,
   toJobFunctionFormState,
-} from "../helpers/jobFunctionFormHelpers";
-import type { JobFunctionFormState } from "../helpers/jobFunctionFormHelpers";
+} from "../../helpers/form/jobFunctionFormHelpers";
+import type { JobFunctionFormState } from "../../helpers/form/jobFunctionFormHelpers";
 import type {
   JobFunctionShowError,
   JobFunctionShowInfo,
-} from "../helpers/jobFunctionDialogTypes";
+} from "../../helpers/types/jobFunctionDialogTypes";
 import {
   appendCinemaId,
   readErrorMessage,
-} from "../helpers/jobFunctionHelpers";
-import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
+} from "../../helpers/page/jobFunctionHelpers";
+import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
 type UseJobFunctionFormOptions = {
   activeCinemaId: number | null;

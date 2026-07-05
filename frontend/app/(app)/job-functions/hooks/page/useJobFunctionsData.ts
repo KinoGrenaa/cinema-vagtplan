@@ -6,13 +6,13 @@ import {
   appendCinemaId,
   isAssignableUser,
   readErrorMessage,
-} from "../helpers/jobFunctionHelpers";
+} from "../../helpers/page/jobFunctionHelpers";
 import {
   getMissingPayrollTypeWarningData,
   type JobFunctionWithWorkType,
   type PayrollTypeOption,
-} from "../helpers/jobFunctionPayrollHelpers";
-import type { DayPeriod, User } from "../helpers/jobFunctionTypes";
+} from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { DayPeriod, User } from "../../helpers/types/jobFunctionTypes";
 
 type ShowError = (title: string, description: string) => void;
 

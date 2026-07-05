@@ -2,12 +2,12 @@ import {
   formatMinute,
   optionalTimeToMinute,
   timeToMinute,
-} from "./jobFunctionHelpers";
+} from "../page/jobFunctionHelpers";
 import type {
   JobFunction,
   JobFunctionTimingAnchor,
   JobFunctionTimingRule,
-} from "./jobFunctionTypes";
+} from "../types/jobFunctionTypes";
 
 export type TimingRuleFormState = {
   dayPeriodId: string;

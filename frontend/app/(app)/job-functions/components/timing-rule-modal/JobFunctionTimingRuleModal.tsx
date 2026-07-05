@@ -7,13 +7,13 @@ import JobFunctionTimingRuleSummary from "./JobFunctionTimingRuleSummary";
 import {
   timingEndAnchorOptions,
   timingStartAnchorOptions,
-} from "../../helpers/jobFunctionTimingRuleFormHelpers";
-import type { TimingRuleFormState } from "../../helpers/jobFunctionTimingRuleFormHelpers";
-import type { JobFunctionWithWorkType } from "../../helpers/jobFunctionPayrollHelpers";
+} from "../../helpers/form/jobFunctionTimingRuleFormHelpers";
+import type { TimingRuleFormState } from "../../helpers/form/jobFunctionTimingRuleFormHelpers";
+import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 import type {
   DayPeriod,
   JobFunctionTimingRule,
-} from "../../helpers/jobFunctionTypes";
+} from "../../helpers/types/jobFunctionTypes";
 
 type JobFunctionTimingRuleModalProps = {
   dayPeriods: DayPeriod[];

@@ -5,23 +5,23 @@ import { apiFetch } from "@/app/lib/api";
 import type {
   JobFunctionConfirm,
   JobFunctionShowError,
-} from "../helpers/jobFunctionDialogTypes";
+} from "../../helpers/types/jobFunctionDialogTypes";
 import {
   appendCinemaId,
   readErrorMessage,
-} from "../helpers/jobFunctionHelpers";
-import type { JobFunctionWithWorkType } from "../helpers/jobFunctionPayrollHelpers";
+} from "../../helpers/page/jobFunctionHelpers";
+import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 import {
   buildJobFunctionDayPeriodPayload,
   buildTimingRulePayload,
   parseTimingRuleResponseText,
-} from "../helpers/jobFunctionTimingRuleApiHelpers";
+} from "../../helpers/actions/jobFunctionTimingRuleApiHelpers";
 import {
   emptyTimingRuleForm,
   toTimingRuleForm,
   type TimingRuleFormState,
-} from "../helpers/jobFunctionTimingRuleFormHelpers";
-import type { JobFunctionTimingRule } from "../helpers/jobFunctionTypes";
+} from "../../helpers/form/jobFunctionTimingRuleFormHelpers";
+import type { JobFunctionTimingRule } from "../../helpers/types/jobFunctionTypes";
 
 type UseJobFunctionTimingRuleOptions = {
   activeCinemaId: number | null;

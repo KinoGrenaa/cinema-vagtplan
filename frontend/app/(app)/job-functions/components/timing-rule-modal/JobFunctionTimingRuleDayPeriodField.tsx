@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { TimingRuleFormState } from "../../helpers/jobFunctionTimingRuleFormHelpers";
-import { formatDayPeriod } from "../../helpers/jobFunctionHelpers";
-import type { DayPeriod } from "../../helpers/jobFunctionTypes";
+import type { TimingRuleFormState } from "../../helpers/form/jobFunctionTimingRuleFormHelpers";
+import { formatDayPeriod } from "../../helpers/page/jobFunctionHelpers";
+import type { DayPeriod } from "../../helpers/types/jobFunctionTypes";
 
 type JobFunctionTimingRuleDayPeriodFieldProps = {
   dayPeriods: DayPeriod[];

@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { TimingRuleFormState } from "../../helpers/jobFunctionTimingRuleFormHelpers";
-import type { JobFunctionTimingAnchor } from "../../helpers/jobFunctionTypes";
+import type { TimingRuleFormState } from "../../helpers/form/jobFunctionTimingRuleFormHelpers";
+import type { JobFunctionTimingAnchor } from "../../helpers/types/jobFunctionTypes";
 
 type TimingAnchorOption = {
   value: JobFunctionTimingAnchor;

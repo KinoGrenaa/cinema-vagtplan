@@ -1,4 +1,4 @@
-import type { User, UserJobFunction } from "./jobFunctionTypes";
+import type { User, UserJobFunction } from "../types/jobFunctionTypes";
 
 export function getAssignedUserIds(
   assignments: UserJobFunction[],

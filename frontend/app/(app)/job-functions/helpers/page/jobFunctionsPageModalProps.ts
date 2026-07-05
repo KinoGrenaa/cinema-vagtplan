@@ -1,8 +1,8 @@
-import type { JobFunctionsPageModalsProps } from "../components/page/JobFunctionsPageModals";
-import type { useJobFunctionEmployeeAssignments } from "../hooks/useJobFunctionEmployeeAssignments";
-import type { useJobFunctionForm } from "../hooks/useJobFunctionForm";
-import type { useJobFunctionTimingRule } from "../hooks/useJobFunctionTimingRule";
-import type { useJobFunctionsData } from "../hooks/useJobFunctionsData";
+import type { JobFunctionsPageModalsProps } from "../../components/page/JobFunctionsPageModals";
+import type { useJobFunctionEmployeeAssignments } from "../../hooks/actions/useJobFunctionEmployeeAssignments";
+import type { useJobFunctionForm } from "../../hooks/actions/useJobFunctionForm";
+import type { useJobFunctionTimingRule } from "../../hooks/actions/useJobFunctionTimingRule";
+import type { useJobFunctionsData } from "../../hooks/page/useJobFunctionsData";
 
 type JobFunctionsData = ReturnType<typeof useJobFunctionsData>;
 type JobFunctionForm = ReturnType<typeof useJobFunctionForm>;
