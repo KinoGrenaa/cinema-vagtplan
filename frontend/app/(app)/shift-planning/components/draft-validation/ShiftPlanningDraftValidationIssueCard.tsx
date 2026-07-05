@@ -4,6 +4,7 @@ import {
   getValidationSeverityClasses,
   getValidationSeverityLabel,
 } from "../../helpers/shiftPlanningDraftValidationHelpers";
+import { getDraftValidationIssueActionHint } from "../../helpers/shiftPlanningIssueActionHints";
 import type { DraftValidationIssue } from "../../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftValidationIssueCardProps = {
@@ -15,6 +16,7 @@ export function ShiftPlanningDraftValidationIssueCard({
 }: ShiftPlanningDraftValidationIssueCardProps) {
   const issueDate = formatValidationIssueDate(issue);
   const actor = formatValidationActor(issue);
+  const actionHint = getDraftValidationIssueActionHint(issue);
 
   return (
     <article
@@ -52,6 +54,12 @@ export function ShiftPlanningDraftValidationIssueCard({
           {actor ? `Medarbejder: ${actor}` : null}
           {actor && issue.jobFunctionName ? " · " : null}
           {issue.jobFunctionName ? `Jobfunktion: ${issue.jobFunctionName}` : null}
+        </p>
+      )}
+
+      {actionHint && (
+        <p className="mt-3 rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-xs dark:border-gray-800 dark:bg-gray-950/50">
+          <span className="font-semibold">Næste handling:</span> {actionHint}
         </p>
       )}
     </article>

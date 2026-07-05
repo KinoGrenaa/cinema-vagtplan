@@ -1,4 +1,5 @@
 import { formatMinute } from "../../helpers/shiftPlanningDraftHelpers";
+import { getPublicationPreviewItemActionHint } from "../../helpers/shiftPlanningIssueActionHints";
 import type { DraftPublicationPreviewItem } from "../../helpers/shiftPlanningDraftTypes";
 import { formatDateKey } from "../../helpers/shiftPlanningHelpers";
 
@@ -13,6 +14,7 @@ export function ShiftPlanningPublicationPreviewItemCard({
 }: ShiftPlanningPublicationPreviewItemCardProps) {
   const itemDate = item.dateKey ? formatDateKey(item.dateKey) : "Dato mangler";
   const blockReasons = item.blockReasons ?? [];
+  const actionHint = getPublicationPreviewItemActionHint(item);
   const startTime = formatMinute(item.plannedStartMinute);
   const endTime = formatMinute(item.plannedEndMinute);
 
@@ -34,7 +36,6 @@ export function ShiftPlanningPublicationPreviewItemCard({
           </span>
           <span className="font-semibold">{itemDate}</span>
         </div>
-
         <span className="text-xs text-blue-700 dark:text-blue-200/70">
           {startTime && endTime ? `kl. ${startTime} - ${endTime}` : "Mangler tid"}
         </span>
@@ -65,6 +66,12 @@ export function ShiftPlanningPublicationPreviewItemCard({
       {item.warningMessage && (
         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
           Kontroladvarsel: {item.warningMessage}
+        </div>
+      )}
+
+      {actionHint && (
+        <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-900 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-100">
+          <span className="font-semibold">Næste handling:</span> {actionHint}
         </div>
       )}
     </div>
