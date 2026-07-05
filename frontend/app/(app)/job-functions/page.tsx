@@ -11,6 +11,15 @@ import { apiFetch } from "@/app/lib/api";
 import JobFunctionMissingPayrollWarning from "./components/JobFunctionMissingPayrollWarning";
 import JobFunctionsMasterCinemaRequired from "./components/JobFunctionsMasterCinemaRequired";
 import {
+  formatPayrollType,
+  getMissingPayrollTypeWarningData,
+  isMissingPayrollType,
+} from "./helpers/jobFunctionPayrollHelpers";
+import type {
+  JobFunctionWithWorkType,
+  PayrollTypeOption,
+} from "./helpers/jobFunctionPayrollHelpers";
+import {
   appendCinemaId,
   formatDayPeriod,
   formatMinute,
@@ -36,31 +45,6 @@ import type {
   User,
   UserJobFunction,
 } from "./helpers/jobFunctionTypes";
-
-type PayrollTypeOption = {
-  id: number;
-  name: string;
-  payrollCode?: string | null;
-  exportCode?: string | null;
-  description?: string | null;
-  color?: string | null;
-  isDefault?: boolean;
-  isActive?: boolean;
-};
-
-type WorkType = {
-  id: number;
-  name: string;
-  color?: string | null;
-  isActive?: boolean;
-  payrollTypeId?: number | null;
-  payrollType?: PayrollTypeOption | null;
-};
-
-type JobFunctionWithWorkType = JobFunction & {
-  workTypeId?: number | null;
-  workType?: WorkType | null;
-};
 
 type FormState = {
   name: string;
@@ -335,18 +319,6 @@ function parseTimingRuleForm(form: TimingRuleFormState) {
   };
 }
 
-function isMissingPayrollType(workType: WorkType | null | undefined) {
-  return !workType?.payrollType?.id && !workType?.payrollTypeId;
-}
-
-function formatPayrollType(workType: WorkType | null | undefined) {
-  if (!workType || isMissingPayrollType(workType)) {
-    return "Mangler løntype";
-  }
-
-  return workType.payrollType?.name ?? workType.name;
-}
-
 export default function JobFunctionsPage() {
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
@@ -405,18 +377,9 @@ export default function JobFunctionsPage() {
     (jobFunction) => jobFunction.isActive,
   ).length;
   const archivedCount = jobFunctions.length - activeCount;
-  const missingPayrollTypeJobFunctions = jobFunctions.filter(
-    (jobFunction) =>
-      jobFunction.isActive && isMissingPayrollType(jobFunction.workType),
-  );
-  const missingPayrollTypeCount = missingPayrollTypeJobFunctions.length;
-  const missingPayrollTypeNames = missingPayrollTypeJobFunctions
-    .slice(0, 3)
-    .map((jobFunction) => jobFunction.name)
-    .join(", ");
-  const remainingMissingPayrollTypeCount = Math.max(
-    missingPayrollTypeCount - 3,
-    0,
+  const missingPayrollTypeWarning = getMissingPayrollTypeWarningData(
+    jobFunctions,
+    loading,
   );
 
   const toggleJobFunctionDetails = (jobFunctionId: number) => {
@@ -1139,10 +1102,10 @@ export default function JobFunctionsPage() {
                 </div>
 
                 <JobFunctionMissingPayrollWarning
-                  count={missingPayrollTypeCount}
-                  names={missingPayrollTypeNames}
-                  remainingCount={remainingMissingPayrollTypeCount}
-                  visible={!loading && missingPayrollTypeCount > 0}
+                  count={missingPayrollTypeWarning.count}
+                  names={missingPayrollTypeWarning.names}
+                  remainingCount={missingPayrollTypeWarning.remainingCount}
+                  visible={missingPayrollTypeWarning.visible}
                 />
 
                 {loading && (
