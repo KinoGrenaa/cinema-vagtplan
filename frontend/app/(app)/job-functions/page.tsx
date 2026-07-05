@@ -767,7 +767,7 @@ export default function JobFunctionsPage() {
       title: "Arkivér jobfunktion",
       description:
         `Vil du arkivere jobfunktionen "${jobFunction.name}"?\n\n` +
-        "Historik bevares, og jobfunktionen kan genaktiveres senere.",
+        "Historik bevares. Jobfunktionen skjules fra aktive valg og kan genaktiveres igen.",
       confirmText: "Arkivér",
       cancelText: "Annuller",
       confirmVariant: "danger",
