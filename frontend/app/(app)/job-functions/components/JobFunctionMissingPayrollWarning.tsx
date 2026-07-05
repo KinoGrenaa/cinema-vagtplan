@@ -19,7 +19,10 @@ export default function JobFunctionMissingPayrollWarning({
     remainingCount > 0 ? `${names} og ${remainingCount} mere` : names;
 
   return (
-    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
+    <div
+      role="alert"
+      className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
+    >
       <p className="font-semibold">
         {count === 1
           ? "1 aktiv jobfunktion mangler Oprettes som"
