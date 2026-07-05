@@ -1,8 +1,14 @@
 import { toNumber } from "../../helpers/shiftPlanningDraftHelpers";
+import {
+  getPublicationPreviewActionHints,
+} from "../../helpers/shiftPlanningIssueActionHints";
 import type {
   DraftPublicationPreviewItem,
   DraftPublicationPreviewResult,
 } from "../../helpers/shiftPlanningDraftTypes";
+
+import { ShiftPlanningIssueActionSummary } from "../shared/ShiftPlanningIssueActionSummary";
+
 import { ShiftPlanningPublicationPreviewItemCard } from "./ShiftPlanningPublicationPreviewItemCard";
 import { ShiftPlanningPublicationPreviewMetricCard } from "./ShiftPlanningPublicationPreviewMetricCard";
 
@@ -104,6 +110,10 @@ export function ShiftPlanningPublicationPreviewResultSection({
     previewItems.length - visiblePreviewItems.length,
   );
   const blockingReasons = result.blockingReasons ?? [];
+  const actionHints = getPublicationPreviewActionHints(
+    previewItems,
+    blockingReasons,
+  );
 
   return (
     <div className="mt-4 space-y-4">
@@ -169,6 +179,11 @@ export function ShiftPlanningPublicationPreviewResultSection({
           </ul>
         </div>
       )}
+
+      <ShiftPlanningIssueActionSummary
+        hints={actionHints}
+        intro="Ret de vigtigste punkter først, og kør overblikket igen bagefter."
+      />
 
       {visiblePreviewItems.length > 0 && (
         <div className="space-y-2">

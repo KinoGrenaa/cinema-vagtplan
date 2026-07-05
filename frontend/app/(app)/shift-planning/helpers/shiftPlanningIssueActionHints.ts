@@ -95,6 +95,27 @@ function getActionHintFromSearchText(searchText: string) {
   return null;
 }
 
+function collectUniqueActionHints(
+  hints: Array<string | null | undefined>,
+  limit = 4,
+) {
+  const uniqueHints: string[] = [];
+
+  for (const hint of hints) {
+    if (!hint || uniqueHints.includes(hint)) {
+      continue;
+    }
+
+    uniqueHints.push(hint);
+
+    if (uniqueHints.length >= limit) {
+      break;
+    }
+  }
+
+  return uniqueHints;
+}
+
 export function getDraftValidationIssueActionHint(
   issue: DraftValidationIssue,
 ) {
@@ -110,6 +131,16 @@ export function getDraftValidationIssueActionHint(
   );
 }
 
+export function getDraftValidationIssueActionHints(
+  issues: DraftValidationIssue[],
+  limit = 4,
+) {
+  return collectUniqueActionHints(
+    issues.map((issue) => getDraftValidationIssueActionHint(issue)),
+    limit,
+  );
+}
+
 export function getPublicationPreviewItemActionHint(
   item: DraftPublicationPreviewItem,
 ) {
@@ -122,5 +153,19 @@ export function getPublicationPreviewItemActionHint(
     ]
       .filter(Boolean)
       .join(" "),
+  );
+}
+
+export function getPublicationPreviewActionHints(
+  items: DraftPublicationPreviewItem[],
+  blockingReasons: string[] = [],
+  limit = 4,
+) {
+  return collectUniqueActionHints(
+    [
+      ...blockingReasons.map((reason) => getActionHintFromSearchText(reason)),
+      ...items.map((item) => getPublicationPreviewItemActionHint(item)),
+    ],
+    limit,
   );
 }
