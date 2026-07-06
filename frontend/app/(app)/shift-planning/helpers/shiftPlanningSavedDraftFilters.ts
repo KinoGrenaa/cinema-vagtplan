@@ -1,4 +1,7 @@
-import { compareSavedDraftAttentionPriority } from "./shiftPlanningSavedDraftAttention";
+import {
+  compareSavedDraftAttentionPriority,
+  hasSavedDraftAttention,
+} from "./shiftPlanningSavedDraftAttention";
 import type { SavedDraftSummary } from "./shiftPlanningDraftTypes";
 
 export type DraftStatusFilter =
@@ -12,6 +15,11 @@ export type DraftStatusFilterOption = {
   value: DraftStatusFilter;
   label: string;
   count: number;
+};
+
+export type HiddenSavedDraftSummary = {
+  count: number;
+  attentionCount: number;
 };
 
 export const DRAFT_STATUS_FILTERS: Array<{
@@ -116,4 +124,21 @@ export function getHiddenSavedDraftCount(
   visibleDrafts: SavedDraftSummary[],
 ) {
   return Math.max(0, filteredDrafts.length - visibleDrafts.length);
+}
+
+export function getHiddenSavedDraftSummary(
+  filteredDrafts: SavedDraftSummary[],
+  visibleDrafts: SavedDraftSummary[],
+): HiddenSavedDraftSummary {
+  const visibleDraftIds = new Set(
+    visibleDrafts.map((draft) => String(draft.id ?? "")),
+  );
+  const hiddenDrafts = filteredDrafts.filter(
+    (draft) => !visibleDraftIds.has(String(draft.id ?? "")),
+  );
+
+  return {
+    count: hiddenDrafts.length,
+    attentionCount: hiddenDrafts.filter(hasSavedDraftAttention).length,
+  };
 }

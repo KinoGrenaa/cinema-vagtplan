@@ -53,6 +53,10 @@ export function getSavedDraftAttentionPriorityScore(draft: SavedDraftSummary) {
   return warningCount * 1000 + unassignedCount;
 }
 
+export function hasSavedDraftAttention(draft: SavedDraftSummary) {
+  return getSavedDraftAttentionPriorityScore(draft) > 0;
+}
+
 export function compareSavedDraftAttentionPriority(
   firstDraft: SavedDraftSummary,
   secondDraft: SavedDraftSummary,

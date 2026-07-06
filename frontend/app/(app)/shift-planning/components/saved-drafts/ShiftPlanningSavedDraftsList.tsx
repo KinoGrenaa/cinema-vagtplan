@@ -8,7 +8,7 @@ import {
   draftMatchesStatusFilter,
   formatSelectedDraftFilterText,
   getDraftStatusFilterOptions,
-  getHiddenSavedDraftCount,
+  getHiddenSavedDraftSummary,
   getPrioritizedSavedDrafts,
   getVisibleSavedDrafts,
   MAX_VISIBLE_SAVED_DRAFTS,
@@ -53,7 +53,7 @@ export function ShiftPlanningSavedDraftsList({
   );
   const prioritizedDrafts = getPrioritizedSavedDrafts(filteredDrafts);
   const visibleDrafts = getVisibleSavedDrafts(prioritizedDrafts, showAllDrafts);
-  const hiddenDraftCount = getHiddenSavedDraftCount(
+  const hiddenDraftSummary = getHiddenSavedDraftSummary(
     prioritizedDrafts,
     visibleDrafts,
   );
@@ -102,7 +102,8 @@ export function ShiftPlanningSavedDraftsList({
       {canToggleDraftList && (
         <ShiftPlanningSavedDraftsTogglePanel
           filteredDraftCount={prioritizedDrafts.length}
-          hiddenDraftCount={hiddenDraftCount}
+          hiddenAttentionDraftCount={hiddenDraftSummary.attentionCount}
+          hiddenDraftCount={hiddenDraftSummary.count}
           selectedFilterText={selectedFilterText}
           showAllDrafts={showAllDrafts}
           onToggle={() => setShowAllDrafts((current) => !current)}
