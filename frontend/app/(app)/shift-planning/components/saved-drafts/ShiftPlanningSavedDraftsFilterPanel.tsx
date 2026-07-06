@@ -9,6 +9,10 @@ type ShiftPlanningSavedDraftsFilterPanelProps = {
   onSelectFilter: (filter: DraftStatusFilter) => void;
 };
 
+function formatAttentionCount(count: number) {
+  return count === 1 ? "1 kræver kontrol" : `${count} kræver kontrol`;
+}
+
 export function ShiftPlanningSavedDraftsFilterPanel({
   activeFilter,
   filters,
@@ -28,19 +32,33 @@ export function ShiftPlanningSavedDraftsFilterPanel({
       <div className="flex flex-wrap gap-2">
         {filters.map((filter) => {
           const isActive = activeFilter === filter.value;
+          const hasAttention = filter.attentionCount > 0;
 
           return (
             <button
               key={filter.value}
               type="button"
               onClick={() => onSelectFilter(filter.value)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${
                 isActive
                   ? "bg-blue-600 text-white ring-blue-600 dark:bg-blue-500 dark:ring-blue-500"
                   : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-800 dark:hover:bg-gray-800"
               }`}
             >
-              {filter.label} · {filter.count}
+              <span>
+                {filter.label} · {filter.count}
+              </span>
+              {hasAttention && (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-100"
+                  }`}
+                >
+                  {formatAttentionCount(filter.attentionCount)}
+                </span>
+              )}
             </button>
           );
         })}

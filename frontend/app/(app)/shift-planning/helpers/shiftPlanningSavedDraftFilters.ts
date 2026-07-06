@@ -15,6 +15,7 @@ export type DraftStatusFilterOption = {
   value: DraftStatusFilter;
   label: string;
   count: number;
+  attentionCount: number;
 };
 
 export type HiddenSavedDraftSummary = {
@@ -66,12 +67,23 @@ function getDraftStatusCount(
     .length;
 }
 
+function getDraftStatusAttentionCount(
+  drafts: SavedDraftSummary[],
+  filter: DraftStatusFilter,
+) {
+  return drafts.filter(
+    (draft) =>
+      draftMatchesStatusFilter(draft, filter) && hasSavedDraftAttention(draft),
+  ).length;
+}
+
 export function getDraftStatusFilterOptions(
   drafts: SavedDraftSummary[],
 ): DraftStatusFilterOption[] {
   return DRAFT_STATUS_FILTERS.map((filter) => ({
     ...filter,
     count: getDraftStatusCount(drafts, filter.value),
+    attentionCount: getDraftStatusAttentionCount(drafts, filter.value),
   }));
 }
 
@@ -133,6 +145,7 @@ export function getHiddenSavedDraftSummary(
   const visibleDraftIds = new Set(
     visibleDrafts.map((draft) => String(draft.id ?? "")),
   );
+
   const hiddenDrafts = filteredDrafts.filter(
     (draft) => !visibleDraftIds.has(String(draft.id ?? "")),
   );
