@@ -16,6 +16,7 @@ import {
   getDraftPreviewPrepareButtonLabel,
   getDraftPreviewPrepareState,
 } from "../../helpers/shiftPlanningDraftPreviewReadiness";
+import { getPreparedDraftSuccessDescription } from "../../helpers/shiftPlanningPreparedDraftStatus";
 import {
   appendCinemaId,
   getMonthName,
@@ -92,11 +93,6 @@ function getPreviewRows(
   });
 }
 
-function toNumber(value: unknown) {
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
 export default function ShiftPlanningDraftPreview({
   activeCinemaId,
   days,
@@ -128,8 +124,9 @@ export default function ShiftPlanningDraftPreview({
     0,
   );
   const warningCount = rows.filter((row) => row.warning).length;
-  const missingTemplateDayCount = rows.filter((row) => !row.hasTemplateDay)
-    .length;
+  const missingTemplateDayCount = rows.filter(
+    (row) => !row.hasTemplateDay,
+  ).length;
   const visibleRows = prioritizedRows.slice(0, MAX_VISIBLE_DAYS);
   const hiddenCount = Math.max(0, rows.length - visibleRows.length);
   const hiddenAttentionCount = getHiddenDraftPreviewAttentionCount(
@@ -185,9 +182,7 @@ export default function ShiftPlanningDraftPreview({
       onDraftPrepared?.(draft);
       infoDialog.show({
         title: "Forhåndsvisning gemt",
-        description: `Forhåndsvisning #${draft.id} er gemt med ${toNumber(
-          draft.itemCount,
-        )} vagter.\nDer er stadig ikke oprettet aktive vagter.\nÅbn kontrollen, gennemgå oprettelsesoverblikket og opret først derefter vagter.`,
+        description: getPreparedDraftSuccessDescription(draft),
         variant: "success",
         buttonText: "OK",
       });

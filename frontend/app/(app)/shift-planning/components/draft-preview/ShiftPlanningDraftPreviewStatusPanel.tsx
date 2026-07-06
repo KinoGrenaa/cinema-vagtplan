@@ -1,4 +1,8 @@
 import type { PreparedDraftSummary } from "./ShiftPlanningDraftPreview";
+import {
+  getPreparedDraftStatus,
+  toPreparedDraftNumber,
+} from "../../helpers/shiftPlanningPreparedDraftStatus";
 
 type ShiftPlanningDraftPreviewStatusPanelProps = {
   latestDraft: PreparedDraftSummary | null;
@@ -6,23 +10,55 @@ type ShiftPlanningDraftPreviewStatusPanelProps = {
   rowCount: number;
 };
 
-function toNumber(value: unknown) {
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
+const statusClasses = {
+  attention:
+    "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100",
+  ready:
+    "border-green-200 bg-green-50 text-green-900 dark:border-green-900/70 dark:bg-green-950/30 dark:text-green-100",
+};
+
+const badgeClasses = {
+  attention:
+    "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-100",
+  ready:
+    "bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-100",
+};
 
 export function ShiftPlanningDraftPreviewStatusPanel({
   latestDraft,
   loading,
   rowCount,
 }: ShiftPlanningDraftPreviewStatusPanelProps) {
+  const latestDraftStatus = latestDraft
+    ? getPreparedDraftStatus(latestDraft)
+    : null;
+
   return (
     <>
-      {latestDraft && (
-        <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-900 dark:border-green-900/70 dark:bg-green-950/30 dark:text-green-100">
-          Seneste gemte forhåndsvisning #{latestDraft.id} · {toNumber(latestDraft.itemCount)} vagter ·{" "}
-          {toNumber(latestDraft.unassignedItemCount)} uden standard ·{" "}
-          {toNumber(latestDraft.warningItemCount)} med kontroladvarsel
+      {latestDraft && latestDraftStatus && (
+        <div
+          className={`mt-4 rounded-2xl border p-4 text-sm ${statusClasses[latestDraftStatus.tone]}`}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide">
+                {latestDraftStatus.badgeText}
+              </p>
+              <p className="mt-1 font-semibold">{latestDraftStatus.title}</p>
+            </div>
+            <span
+              className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${badgeClasses[latestDraftStatus.tone]}`}
+            >
+              {toPreparedDraftNumber(latestDraft.itemCount)} vagter ·{" "}
+              {toPreparedDraftNumber(latestDraft.unassignedItemCount)} uden
+              standard · {toPreparedDraftNumber(latestDraft.warningItemCount)}
+              {" "}med kontroladvarsel
+            </span>
+          </div>
+          <p className="mt-3">{latestDraftStatus.description}</p>
+          <p className="mt-2 font-medium">
+            Næste trin: {latestDraftStatus.nextStep}
+          </p>
         </div>
       )}
 
