@@ -7,6 +7,7 @@ import { ShiftPlanningPublishErrorPanel } from "./ShiftPlanningPublishErrorPanel
 import { ShiftPlanningPublishFormFields } from "./ShiftPlanningPublishFormFields";
 import { ShiftPlanningPublishResultPanel } from "./ShiftPlanningPublishResultPanel";
 import { ShiftPlanningPublishStatusBadge } from "./ShiftPlanningPublishStatusBadge";
+import { getShiftPlanningPublishReadiness } from "../../helpers/shiftPlanningPublishReadiness";
 import type { DraftPublishResult } from "../../helpers/shiftPlanningDraftTypes";
 
 export const PUBLISH_CONFIRMATION_TEXT = "OPRET VAGTER";
@@ -57,19 +58,19 @@ export function ShiftPlanningPublishPanel({
     return null;
   }, [publishing, selectedDraftCanBePublished, selectedDraftIsPublished]);
 
-  const missingRequirements = useMemo(() => {
-    const missing: string[] = [];
-
-    if (!selectedDraftCanBePublished) {
-      missing.push("Forslaget er ikke åbent længere.");
-    }
-
-    if (!publicationPreviewCanPublishLater) {
-      missing.push("Kontrollér og se vagterne først.");
-    }
-
-    return missing;
-  }, [publicationPreviewCanPublishLater, selectedDraftCanBePublished]);
+  const publishReadiness = useMemo(
+    () =>
+      getShiftPlanningPublishReadiness({
+        canSubmitPublish,
+        publicationPreviewCanPublishLater,
+        selectedDraftCanBePublished,
+      }),
+    [
+      canSubmitPublish,
+      publicationPreviewCanPublishLater,
+      selectedDraftCanBePublished,
+    ],
+  );
 
   return (
     <div className="mt-5 rounded-2xl border border-red-200 bg-white p-4 dark:border-red-900/70 dark:bg-gray-950/70">
@@ -106,11 +107,7 @@ export function ShiftPlanningPublishPanel({
       {publishError && <ShiftPlanningPublishErrorPanel message={publishError} />}
 
       {!selectedDraftIsPublished && (
-        <ShiftPlanningPublishChecklist
-          allRequirementsMet={canSubmitPublish}
-          creationOverviewIsGreen={publicationPreviewCanPublishLater}
-          statusIsDraft={selectedDraftCanBePublished}
-        />
+        <ShiftPlanningPublishChecklist readiness={publishReadiness} />
       )}
 
       <ShiftPlanningPublishFormFields
@@ -155,11 +152,11 @@ export function ShiftPlanningPublishPanel({
               Jobfunktioner.
             </p>
 
-            {missingRequirements.length > 0 && (
+            {publishReadiness.missingRequirements.length > 0 && (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
                 <p className="font-semibold">Der mangler stadig noget</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {missingRequirements.map((requirement) => (
+                  {publishReadiness.missingRequirements.map((requirement) => (
                     <li key={requirement}>{requirement}</li>
                   ))}
                 </ul>
