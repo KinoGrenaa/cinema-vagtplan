@@ -57,6 +57,12 @@ export function hasSavedDraftAttention(draft: SavedDraftSummary) {
   return getSavedDraftAttentionPriorityScore(draft) > 0;
 }
 
+export function getSavedDraftOpenActionLabel(draft: SavedDraftSummary) {
+  return hasSavedDraftAttention(draft)
+    ? "Åbn og kontrollér"
+    : "Åbn forhåndsvisning";
+}
+
 export function compareSavedDraftAttentionPriority(
   firstDraft: SavedDraftSummary,
   secondDraft: SavedDraftSummary,
