@@ -6,6 +6,7 @@ import type { SavedDraftSummary } from "./shiftPlanningDraftTypes";
 
 export type DraftStatusFilter =
   | "ALL"
+  | "ATTENTION"
   | "DRAFT"
   | "PUBLISHED"
   | "SUPERSEDED"
@@ -28,6 +29,7 @@ export const DRAFT_STATUS_FILTERS: Array<{
   label: string;
 }> = [
   { value: "ALL", label: "Alle" },
+  { value: "ATTENTION", label: "Kræver kontrol" },
   { value: "DRAFT", label: "Åbne" },
   { value: "PUBLISHED", label: "Oprettede" },
   { value: "SUPERSEDED", label: "Erstattede" },
@@ -50,6 +52,10 @@ export function draftMatchesStatusFilter(
 ) {
   if (filter === "ALL") {
     return true;
+  }
+
+  if (filter === "ATTENTION") {
+    return hasSavedDraftAttention(draft);
   }
 
   return getDraftStatusFilterValue(draft.status) === filter;
@@ -89,6 +95,8 @@ export function getDraftStatusFilterOptions(
 
 export function formatSelectedDraftFilterText(filter: DraftStatusFilter) {
   switch (filter) {
+    case "ATTENTION":
+      return "forslag der kræver kontrol";
     case "DRAFT":
       return "åbne forslag";
     case "PUBLISHED":

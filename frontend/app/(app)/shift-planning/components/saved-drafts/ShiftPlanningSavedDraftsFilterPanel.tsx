@@ -19,20 +19,21 @@ export function ShiftPlanningSavedDraftsFilterPanel({
   onSelectFilter,
 }: ShiftPlanningSavedDraftsFilterPanelProps) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/60">
-      <div className="mb-3 flex flex-col gap-1">
-        <h3 className="text-sm font-semibold text-gray-950 dark:text-gray-50">
+    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           Filtrér forslag
         </h3>
-        <p className="text-xs text-gray-600 dark:text-gray-400">
-          Brug filtrene til hurtigt at skifte mellem åbne, oprettede og historiske forslag.
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Brug “Kræver kontrol” til kun at se åbne forslag med advarsler eller
+          vagter uden standardmedarbejder.
         </p>
       </div>
-
       <div className="flex flex-wrap gap-2">
         {filters.map((filter) => {
           const isActive = activeFilter === filter.value;
-          const hasAttention = filter.attentionCount > 0;
+          const hasAttention =
+            filter.value !== "ATTENTION" && filter.attentionCount > 0;
 
           return (
             <button
@@ -50,10 +51,10 @@ export function ShiftPlanningSavedDraftsFilterPanel({
               </span>
               {hasAttention && (
                 <span
-                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                     isActive
                       ? "bg-white/20 text-white"
-                      : "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-100"
+                      : "bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-100"
                   }`}
                 >
                   {formatAttentionCount(filter.attentionCount)}
