@@ -1,14 +1,21 @@
 import { useState } from "react";
+
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+
 import { ShiftPlanningDraftPreviewMetricsPanel } from "./ShiftPlanningDraftPreviewMetricsPanel";
+import { ShiftPlanningDraftPreviewPrepareNotice } from "./ShiftPlanningDraftPreviewPrepareNotice";
 import { ShiftPlanningDraftPreviewRowCard } from "./ShiftPlanningDraftPreviewRowCard";
 import { ShiftPlanningDraftPreviewStatusPanel } from "./ShiftPlanningDraftPreviewStatusPanel";
 import {
   getHiddenDraftPreviewAttentionCount,
   getPrioritizedDraftPreviewRows,
 } from "../../helpers/shiftPlanningDraftPreviewPriority";
+import {
+  getDraftPreviewPrepareButtonLabel,
+  getDraftPreviewPrepareState,
+} from "../../helpers/shiftPlanningDraftPreviewReadiness";
 import {
   appendCinemaId,
   getMonthName,
@@ -129,7 +136,19 @@ export default function ShiftPlanningDraftPreview({
     visibleRows,
     prioritizedRows,
   );
-  const canPrepareDraft = !loading && rows.length > 0 && Boolean(activeCinemaId);
+  const prepareState = getDraftPreviewPrepareState({
+    activeCinemaId,
+    emptyDraftShiftCount: totalEmptyDraftShifts,
+    loading,
+    missingTemplateDayCount,
+    rowCount: rows.length,
+    warningCount,
+  });
+  const canPrepareDraft = prepareState.canPrepareDraft;
+  const prepareButtonLabel = getDraftPreviewPrepareButtonLabel(
+    prepareState,
+    savingDraft,
+  );
 
   const prepareDraft = async () => {
     if (!activeCinemaId) {
@@ -201,13 +220,14 @@ export default function ShiftPlanningDraftPreview({
               aktive vagter i vagtplanen.
             </p>
           </div>
+
           <button
             type="button"
             onClick={prepareDraft}
             disabled={!canPrepareDraft || savingDraft}
             className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
           >
-            {savingDraft ? "Gemmer forhåndsvisning..." : "Gem forhåndsvisning"}
+            {prepareButtonLabel}
           </button>
         </div>
 
@@ -215,6 +235,8 @@ export default function ShiftPlanningDraftPreview({
           En ny forhåndsvisning for samme måned erstatter den tidligere åbne
           forhåndsvisning, så du altid arbejder videre fra den nyeste version.
         </p>
+
+        <ShiftPlanningDraftPreviewPrepareNotice state={prepareState} />
 
         <div className="mt-5 space-y-4">
           <ShiftPlanningDraftPreviewStatusPanel
