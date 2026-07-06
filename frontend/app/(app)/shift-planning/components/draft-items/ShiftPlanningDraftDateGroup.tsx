@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { ShiftPlanningDraftItemCard } from "./ShiftPlanningDraftItemCard";
+import { getPrioritizedDraftItems } from "../../helpers/shiftPlanningDraftItemPriority";
 import type { DraftDateGroup } from "../../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftDateGroupProps = {
@@ -13,10 +14,11 @@ export function ShiftPlanningDraftDateGroup({
   maxVisibleItems,
 }: ShiftPlanningDraftDateGroupProps) {
   const [expanded, setExpanded] = useState(false);
-  const visibleItemsForDay = group.items.slice(0, maxVisibleItems);
+  const prioritizedItemsForDay = getPrioritizedDraftItems(group.items);
+  const visibleItemsForDay = prioritizedItemsForDay.slice(0, maxVisibleItems);
   const hiddenItemsForDay = Math.max(
     0,
-    group.items.length - visibleItemsForDay.length,
+    prioritizedItemsForDay.length - visibleItemsForDay.length,
   );
 
   return (
@@ -36,7 +38,6 @@ export function ShiftPlanningDraftDateGroup({
           {expanded ? "Skjul vagter" : "Vis vagter"}
         </button>
       </div>
-
       <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
         {group.unassignedCount > 0 && (
           <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
@@ -63,7 +64,7 @@ export function ShiftPlanningDraftDateGroup({
 
           {hiddenItemsForDay > 0 && (
             <p className="rounded-2xl border border-dashed border-gray-300 p-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
-              {hiddenItemsForDay} flere vagter på datoen er skjult i denne kompakte visning.
+              {hiddenItemsForDay} flere vagter på datoen er skjult i denne kompakte visning. Vagter med advarsler eller mangler vises først.
             </p>
           )}
         </div>

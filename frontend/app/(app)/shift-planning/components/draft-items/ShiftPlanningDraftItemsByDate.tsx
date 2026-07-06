@@ -1,4 +1,5 @@
 import { ShiftPlanningDraftDateGroup } from "./ShiftPlanningDraftDateGroup";
+import { getPrioritizedDraftDateGroups } from "../../helpers/shiftPlanningDraftItemPriority";
 import type { DraftDateGroup } from "../../helpers/shiftPlanningDraftTypes";
 
 type ShiftPlanningDraftItemsByDateProps = {
@@ -11,10 +12,11 @@ const MAX_VISIBLE_ITEMS_PER_DAY = 6;
 export function ShiftPlanningDraftItemsByDate({
   dateGroups,
 }: ShiftPlanningDraftItemsByDateProps) {
-  const visibleDateGroups = dateGroups.slice(0, MAX_VISIBLE_DATE_GROUPS);
+  const prioritizedDateGroups = getPrioritizedDraftDateGroups(dateGroups);
+  const visibleDateGroups = prioritizedDateGroups.slice(0, MAX_VISIBLE_DATE_GROUPS);
   const hiddenDateGroupCount = Math.max(
     0,
-    dateGroups.length - visibleDateGroups.length,
+    prioritizedDateGroups.length - visibleDateGroups.length,
   );
 
   if (dateGroups.length === 0) {
@@ -39,8 +41,7 @@ export function ShiftPlanningDraftItemsByDate({
 
       {hiddenDateGroupCount > 0 && (
         <p className="mt-3 text-center text-sm text-gray-500 dark:text-gray-400">
-          {hiddenDateGroupCount} flere datoer er skjult i denne kompakte
-          kontrolvisning.
+          {hiddenDateGroupCount} flere datoer er skjult i denne kompakte kontrolvisning. Datoer med advarsler eller mangler vises først.
         </p>
       )}
     </>
