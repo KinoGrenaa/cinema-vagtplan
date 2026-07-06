@@ -1,6 +1,6 @@
 import { formatCreatedAt } from "../../helpers/shiftPlanningDraftHelpers";
 import type { SavedDraftSummary } from "../../helpers/shiftPlanningDraftTypes";
-
+import { ShiftPlanningSavedDraftAttentionNotice } from "./ShiftPlanningSavedDraftAttentionNotice";
 import { ShiftPlanningSavedDraftStatsRow } from "./ShiftPlanningSavedDraftStatsRow";
 import { ShiftPlanningSavedDraftStatusBadge } from "./ShiftPlanningSavedDraftStatusBadge";
 
@@ -45,7 +45,6 @@ export function ShiftPlanningSavedDraftCard({
             Gemt {formatCreatedAt(draft.createdAt)}
           </p>
         </div>
-
         <div className="flex flex-wrap gap-2 sm:justify-end">
           {canDelete && (
             <button
@@ -67,13 +66,12 @@ export function ShiftPlanningSavedDraftCard({
           </button>
         </div>
       </div>
-
       {draft.note && (
         <p className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-300">
           {draft.note}
         </p>
       )}
-
+      <ShiftPlanningSavedDraftAttentionNotice draft={draft} />
       <ShiftPlanningSavedDraftStatsRow draft={draft} />
     </article>
   );
