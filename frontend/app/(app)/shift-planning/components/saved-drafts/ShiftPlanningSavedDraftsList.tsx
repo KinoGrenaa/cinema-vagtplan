@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+
 import { ShiftPlanningSavedDraftCard } from "./ShiftPlanningSavedDraftCard";
 import { ShiftPlanningSavedDraftsFilterPanel } from "./ShiftPlanningSavedDraftsFilterPanel";
 import { ShiftPlanningSavedDraftsListMessages } from "./ShiftPlanningSavedDraftsListMessages";
@@ -8,6 +9,7 @@ import {
   formatSelectedDraftFilterText,
   getDraftStatusFilterOptions,
   getHiddenSavedDraftCount,
+  getPrioritizedSavedDrafts,
   getVisibleSavedDrafts,
   MAX_VISIBLE_SAVED_DRAFTS,
   type DraftStatusFilter,
@@ -49,12 +51,13 @@ export function ShiftPlanningSavedDraftsList({
   const filteredDrafts = drafts.filter((draft) =>
     draftMatchesStatusFilter(draft, draftStatusFilter),
   );
-  const visibleDrafts = getVisibleSavedDrafts(filteredDrafts, showAllDrafts);
+  const prioritizedDrafts = getPrioritizedSavedDrafts(filteredDrafts);
+  const visibleDrafts = getVisibleSavedDrafts(prioritizedDrafts, showAllDrafts);
   const hiddenDraftCount = getHiddenSavedDraftCount(
-    filteredDrafts,
+    prioritizedDrafts,
     visibleDrafts,
   );
-  const canToggleDraftList = filteredDrafts.length > MAX_VISIBLE_SAVED_DRAFTS;
+  const canToggleDraftList = prioritizedDrafts.length > MAX_VISIBLE_SAVED_DRAFTS;
   const selectedFilterText = formatSelectedDraftFilterText(draftStatusFilter);
 
   const selectDraftStatusFilter = (filter: DraftStatusFilter) => {
@@ -75,7 +78,7 @@ export function ShiftPlanningSavedDraftsList({
       <ShiftPlanningSavedDraftsListMessages
         errorMessage={errorMessage}
         hasAnyDrafts={drafts.length > 0}
-        hasMatchingDrafts={filteredDrafts.length > 0}
+        hasMatchingDrafts={prioritizedDrafts.length > 0}
         loading={loading}
         selectedFilterText={selectedFilterText}
       />
@@ -98,7 +101,7 @@ export function ShiftPlanningSavedDraftsList({
 
       {canToggleDraftList && (
         <ShiftPlanningSavedDraftsTogglePanel
-          filteredDraftCount={filteredDrafts.length}
+          filteredDraftCount={prioritizedDrafts.length}
           hiddenDraftCount={hiddenDraftCount}
           selectedFilterText={selectedFilterText}
           showAllDrafts={showAllDrafts}

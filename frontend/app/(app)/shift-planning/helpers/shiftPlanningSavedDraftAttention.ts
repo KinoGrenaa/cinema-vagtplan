@@ -39,6 +39,30 @@ function formatUnassignedText(count: number) {
     : `${count} vagter mangler standardmedarbejder`;
 }
 
+export function getSavedDraftAttentionPriorityScore(draft: SavedDraftSummary) {
+  if (!isOpenDraft(draft)) {
+    return 0;
+  }
+
+  const { unassignedCount, warningCount } = getSavedDraftAttentionCounts(draft);
+
+  if (warningCount <= 0 && unassignedCount <= 0) {
+    return 0;
+  }
+
+  return warningCount * 1000 + unassignedCount;
+}
+
+export function compareSavedDraftAttentionPriority(
+  firstDraft: SavedDraftSummary,
+  secondDraft: SavedDraftSummary,
+) {
+  return (
+    getSavedDraftAttentionPriorityScore(secondDraft) -
+    getSavedDraftAttentionPriorityScore(firstDraft)
+  );
+}
+
 export function getSavedDraftAttention(
   draft: SavedDraftSummary,
 ): SavedDraftAttention | null {

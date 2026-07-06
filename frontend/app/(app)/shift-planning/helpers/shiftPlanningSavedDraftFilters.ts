@@ -1,3 +1,4 @@
+import { compareSavedDraftAttentionPriority } from "./shiftPlanningSavedDraftAttention";
 import type { SavedDraftSummary } from "./shiftPlanningDraftTypes";
 
 export type DraftStatusFilter =
@@ -79,6 +80,24 @@ export function formatSelectedDraftFilterText(filter: DraftStatusFilter) {
     default:
       return "forhåndsvisninger";
   }
+}
+
+export function getPrioritizedSavedDrafts(filteredDrafts: SavedDraftSummary[]) {
+  return filteredDrafts
+    .map((draft, index) => ({ draft, index }))
+    .sort((firstDraft, secondDraft) => {
+      const attentionPriority = compareSavedDraftAttentionPriority(
+        firstDraft.draft,
+        secondDraft.draft,
+      );
+
+      if (attentionPriority !== 0) {
+        return attentionPriority;
+      }
+
+      return firstDraft.index - secondDraft.index;
+    })
+    .map(({ draft }) => draft);
 }
 
 export function getVisibleSavedDrafts(
