@@ -3,17 +3,33 @@ import type {
   DraftValidationIssue,
 } from "./shiftPlanningDraftTypes";
 
-const PAYROLL_TYPE_ACTION_HINT =
-  "Ret jobfunktionen under Jobfunktioner: vælg “Oprettes som”, så vagten kan få korrekt løntype.";
+export type ShiftPlanningIssueActionHint = {
+  href?: string;
+  linkLabel?: string;
+  text: string;
+};
 
-const JOB_FUNCTION_ACTION_HINT =
-  "Ret forslaget, så vagten har en aktiv jobfunktion, og kontrollér igen.";
+const PAYROLL_TYPE_ACTION_HINT: ShiftPlanningIssueActionHint = {
+  href: "/job-functions",
+  linkLabel: "Åbn Jobfunktioner",
+  text: "Ret jobfunktionen under Jobfunktioner: vælg “Oprettes som”, så vagten kan få korrekt løntype.",
+};
 
-const TIME_RULE_ACTION_HINT =
-  "Ret tidsreglen på jobfunktionen eller fallback-tiderne, så mødetid og fyraften kan beregnes.";
+const JOB_FUNCTION_ACTION_HINT: ShiftPlanningIssueActionHint = {
+  text: "Ret forslaget, så vagten har en aktiv jobfunktion, og kontrollér igen.",
+};
 
-const TEMPLATE_ACTION_HINT =
-  "Vælg en vagtskabelon for dagen, og kontrollér forslaget igen.";
+const TIME_RULE_ACTION_HINT: ShiftPlanningIssueActionHint = {
+  href: "/job-functions",
+  linkLabel: "Åbn Jobfunktioner",
+  text: "Ret tidsreglen på jobfunktionen eller fallback-tiderne, så mødetid og fyraften kan beregnes.",
+};
+
+const TEMPLATE_ACTION_HINT: ShiftPlanningIssueActionHint = {
+  href: "/schedule-templates",
+  linkLabel: "Åbn Vagtskabeloner",
+  text: "Vælg en vagtskabelon for dagen, og kontrollér forslaget igen.",
+};
 
 function normalizeSearchText(value: unknown) {
   return String(value ?? "").toLowerCase();
@@ -95,18 +111,29 @@ function getActionHintFromSearchText(searchText: string) {
   return null;
 }
 
+function getActionHintKey(hint: ShiftPlanningIssueActionHint) {
+  return [hint.text, hint.href ?? "", hint.linkLabel ?? ""].join("|");
+}
+
 function collectUniqueActionHints(
-  hints: Array<string | null | undefined>,
+  hints: Array<ShiftPlanningIssueActionHint | null>,
   limit = 4,
 ) {
-  const uniqueHints: string[] = [];
+  const uniqueHints: ShiftPlanningIssueActionHint[] = [];
+  const seenHintKeys = new Set<string>();
 
   for (const hint of hints) {
-    if (!hint || uniqueHints.includes(hint)) {
+    if (!hint) {
+      continue;
+    }
+
+    const hintKey = getActionHintKey(hint);
+    if (seenHintKeys.has(hintKey)) {
       continue;
     }
 
     uniqueHints.push(hint);
+    seenHintKeys.add(hintKey);
 
     if (uniqueHints.length >= limit) {
       break;

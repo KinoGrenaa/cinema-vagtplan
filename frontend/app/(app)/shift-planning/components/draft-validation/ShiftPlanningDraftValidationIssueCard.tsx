@@ -24,33 +24,19 @@ export function ShiftPlanningDraftValidationIssueCard({
         issue.severity,
       )}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold dark:bg-gray-950/60">
-          {getValidationSeverityLabel(issue.severity)}
-        </span>
-        {issue.code && (
-          <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
-            {issue.code}
-          </span>
-        )}
-        {issueDate && (
-          <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
-            {issueDate}
-          </span>
-        )}
-        {issue.itemId && (
-          <span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-semibold dark:bg-gray-950/60">
-            Vagt #{issue.itemId}
-          </span>
-        )}
+      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
+        <span>{getValidationSeverityLabel(issue.severity)}</span>
+        {issue.code && <span>{issue.code}</span>}
+        {issueDate && <span>{issueDate}</span>}
+        {issue.itemId && <span>Vagt #{issue.itemId}</span>}
       </div>
 
-      <p className="mt-3 font-semibold">
+      <p className="mt-2 font-medium">
         {issue.message || issue.code || "Ukendt valideringsproblem"}
       </p>
 
       {(actor || issue.jobFunctionName) && (
-        <p className="mt-2 opacity-85">
+        <p className="mt-2 text-xs opacity-80">
           {actor ? `Medarbejder: ${actor}` : null}
           {actor && issue.jobFunctionName ? " · " : null}
           {issue.jobFunctionName ? `Jobfunktion: ${issue.jobFunctionName}` : null}
@@ -58,9 +44,18 @@ export function ShiftPlanningDraftValidationIssueCard({
       )}
 
       {actionHint && (
-        <p className="mt-3 rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-xs dark:border-gray-800 dark:bg-gray-950/50">
-          <span className="font-semibold">Næste handling:</span> {actionHint}
-        </p>
+        <div className="mt-3 rounded-xl border border-current/20 bg-white/60 p-3 text-xs dark:bg-black/20">
+          <span className="font-semibold">Næste handling:</span>{" "}
+          <span>{actionHint.text}</span>
+          {actionHint.href && (
+            <a
+              href={actionHint.href}
+              className="ml-2 inline-flex rounded-full border border-current/30 px-2 py-0.5 font-semibold hover:bg-white/70 dark:hover:bg-white/10"
+            >
+              {actionHint.linkLabel ?? "Åbn"}
+            </a>
+          )}
+        </div>
       )}
     </article>
   );

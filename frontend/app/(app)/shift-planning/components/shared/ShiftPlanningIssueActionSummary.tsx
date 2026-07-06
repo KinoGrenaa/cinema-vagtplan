@@ -1,5 +1,7 @@
+import type { ShiftPlanningIssueActionHint } from "../../helpers/shiftPlanningIssueActionHints";
+
 type ShiftPlanningIssueActionSummaryProps = {
-  hints: string[];
+  hints: ShiftPlanningIssueActionHint[];
   intro?: string;
   title?: string;
 };
@@ -14,14 +16,24 @@ export function ShiftPlanningIssueActionSummary({
   }
 
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
-      <div className="font-semibold">{title}</div>
-      <p className="mt-1 text-xs opacity-85">{intro}</p>
-      <ol className="mt-2 list-decimal space-y-1 pl-5">
-        {hints.map((hint) => (
-          <li key={hint}>{hint}</li>
+    <section className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100">
+      <p className="font-semibold">{title}</p>
+      <p className="mt-1 text-sky-800 dark:text-sky-200">{intro}</p>
+      <ol className="mt-3 space-y-2 pl-5">
+        {hints.map((hint, index) => (
+          <li key={`${hint.text}-${index}`} className="list-decimal">
+            <span>{hint.text}</span>
+            {hint.href && (
+              <a
+                href={hint.href}
+                className="ml-2 inline-flex rounded-full border border-sky-300 px-2 py-0.5 text-xs font-semibold text-sky-800 hover:bg-sky-100 dark:border-sky-700 dark:text-sky-100 dark:hover:bg-sky-900"
+              >
+                {hint.linkLabel ?? "Åbn"}
+              </a>
+            )}
+          </li>
         ))}
       </ol>
-    </div>
+    </section>
   );
 }
