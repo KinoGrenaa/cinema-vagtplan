@@ -338,6 +338,26 @@ function formatCopyTargetButtonText(targetCount: number) {
   return `Kopiér til ${targetCount} valgte dage`;
 }
 
+function formatCopyTargetStatus(day: TemplateDay | null) {
+  if (!day || day.jobFunctions.length === 0) {
+    return "Tom modtagerdag";
+  }
+
+  const shiftCount = day.jobFunctions.reduce(
+    (sum, item) => sum + item.requiredCount,
+    0,
+  );
+  const openShiftCount = summarizeStaffingGaps(
+    getDayStaffingGaps(day),
+  ).missingShiftCount;
+  const shiftLabel = shiftCount === 1 ? "vagt" : "vagter";
+  const openShiftLabel = openShiftCount > 0
+    ? ` · ${formatOpenShiftText(openShiftCount)}`
+    : "";
+
+  return `${shiftCount} ${shiftLabel} erstattes${openShiftLabel}`;
+}
+
 function getCopyTargetWeekdays(selectedWeekday: number, weekdays: number[]) {
   return weekdays
     .filter((weekday) => weekday !== selectedWeekday)
@@ -2133,20 +2153,29 @@ export default function ScheduleTemplatesPage() {
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {weekdayOptions
                   .filter((weekday) => weekday.value !== selectedWeekday)
-                  .map((weekday) => (
-                    <label
-                      key={weekday.value}
-                      className="flex items-center gap-3 rounded-2xl border border-gray-200 p-3 text-sm font-semibold dark:border-gray-800"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={copyDayTargets.includes(weekday.value)}
-                        onChange={() => toggleCopyDayTarget(weekday.value)}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                      {weekday.label}
-                    </label>
-                  ))}
+                  .map((weekday) => {
+                    const targetDay = getTemplateDay(selectedTemplate, weekday.value);
+
+                    return (
+                      <label
+                        key={weekday.value}
+                        className="flex items-start gap-3 rounded-2xl border border-gray-200 p-3 text-sm font-semibold dark:border-gray-800"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={copyDayTargets.includes(weekday.value)}
+                          onChange={() => toggleCopyDayTarget(weekday.value)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300"
+                        />
+                        <span>
+                          <span className="block">{weekday.label}</span>
+                          <span className="mt-0.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
+                            {formatCopyTargetStatus(targetDay)}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
               </div>
 
               <button
