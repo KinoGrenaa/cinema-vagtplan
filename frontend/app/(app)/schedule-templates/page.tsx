@@ -327,9 +327,9 @@ function parseOptionalPositiveInteger(value: string, fallback: number) {
   return nextValue;
 }
 
-function formatMissingStandardText(missingCount: number) {
-  if (missingCount === 1) return "1 uden standard";
-  return `${missingCount} uden standard`;
+function formatOpenShiftText(openShiftCount: number) {
+  if (openShiftCount === 1) return "1 åben vagt";
+  return `${openShiftCount} åbne vagter`;
 }
 
 function getAssignedUserIdSet(item: TemplateJobFunction) {
@@ -1204,15 +1204,15 @@ export default function ScheduleTemplatesPage() {
                   }`}
                 >
                   <p className="text-xs font-bold uppercase tracking-[0.2em]">
-                    Mangler standard
+                    Åbne vagter
                   </p>
                   <p className="mt-2 text-3xl font-black">
                     {totalStaffingGapSummary.missingShiftCount}
                   </p>
                   <p className="mt-1 text-xs font-semibold">
                     {totalStaffingGapSummary.missingShiftCount > 0
-                      ? "faste medarbejdere mangler"
-                      : "alle viste skabeloner er dækket"}
+                      ? "oprettes uden fast medarbejder"
+                      : "alle viste skabeloner er fast bemandet"}
                   </p>
                 </div>
               </section>
@@ -1300,13 +1300,13 @@ export default function ScheduleTemplatesPage() {
                           <div className="mt-3">
                             {templateGapSummary.missingShiftCount > 0 ? (
                               <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
-                                {formatMissingStandardText(
+                                {formatOpenShiftText(
                                   templateGapSummary.missingShiftCount,
                                 )}
                               </span>
                             ) : (
                               <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800 dark:bg-green-950/50 dark:text-green-100">
-                                Standard OK
+                                Fast bemandet
                               </span>
                             )}
                           </div>
@@ -1379,12 +1379,13 @@ export default function ScheduleTemplatesPage() {
                           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                             <div>
                               <p className="font-black">
-                                {selectedTemplateGapSummary.missingShiftCount} vagter
-                                mangler fast standardmedarbejder
+                                {formatOpenShiftText(
+                                  selectedTemplateGapSummary.missingShiftCount,
+                                )} i skabelonen
                               </p>
                               <p className="mt-1 text-sm">
-                                De bliver synlige som uden standard, så de kan
-                                rettes før skabelonen bruges i /shift-planning.
+                                De oprettes uden fast medarbejder i /shift-planning,
+                                så medarbejderne kan ønske dem som åbne vagter.
                               </p>
                             </div>
                             <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-900/60 dark:text-amber-50">
@@ -1406,7 +1407,7 @@ export default function ScheduleTemplatesPage() {
                                   className="rounded-2xl bg-white/70 p-3 text-sm dark:bg-gray-950/40"
                                 >
                                   <p className="font-black">
-                                    {weekday.label}: {daySummary.missingShiftCount} uden standard
+                                    {weekday.label}: {formatOpenShiftText(daySummary.missingShiftCount)}
                                   </p>
                                   <p className="mt-1 text-xs">
                                     {gapsForDay
@@ -1509,7 +1510,7 @@ export default function ScheduleTemplatesPage() {
                               </p>
                               {dayGapSummary.missingShiftCount > 0 && (
                                 <p className="mt-2 rounded-full bg-amber-100 px-2 py-1 text-center text-[11px] font-black text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
-                                  {dayGapSummary.missingShiftCount} uden standard
+                                  {formatOpenShiftText(dayGapSummary.missingShiftCount)}
                                 </p>
                               )}
                             </button>
@@ -1528,8 +1529,9 @@ export default function ScheduleTemplatesPage() {
                             </h3>
                             {selectedDayGapSummary.missingShiftCount > 0 && (
                               <p className="mt-1 text-sm font-bold text-amber-700 dark:text-amber-300">
-                                {selectedDayGapSummary.missingShiftCount} vagter
-                                mangler standardmedarbejder på denne ugedag.
+                                {formatOpenShiftText(
+                                  selectedDayGapSummary.missingShiftCount,
+                                )} oprettes uden fast medarbejder på denne ugedag.
                               </p>
                             )}
                           </div>
@@ -1606,8 +1608,8 @@ export default function ScheduleTemplatesPage() {
                           </p>
                           <h3 className="text-xl font-black">Vagter fra skabelonen</h3>
                           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            Fast medarbejder er frivilligt, men manglende standard
-                            vises tydeligt her og i skabelonoversigten.
+                            Fast medarbejder er frivilligt. Vagter uden fast
+                            medarbejder vises som åbne vagter i skabelonen.
                           </p>
                         </div>
 
@@ -1739,11 +1741,11 @@ export default function ScheduleTemplatesPage() {
                                       </h4>
                                       {missingCount > 0 ? (
                                         <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-950/60 dark:text-amber-100">
-                                          Mangler {missingCount} standard
+                                          {formatOpenShiftText(missingCount)}
                                         </span>
                                       ) : (
                                         <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800 dark:bg-green-950/60 dark:text-green-100">
-                                          Standard OK
+                                          Fast bemandet
                                         </span>
                                       )}
                                     </div>
@@ -1778,11 +1780,11 @@ export default function ScheduleTemplatesPage() {
 
                                 {missingCount > 0 && (
                                   <div className="mt-3 rounded-2xl bg-amber-100 p-3 text-sm text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">
-                                    <p className="font-black">Uden fast standard</p>
+                                    <p className="font-black">Åben vagt fra skabelonen</p>
                                     <p className="mt-1">
                                       Når skabelonen bruges i vagtplanlægningen,
-                                      er der {missingCount} vagt{missingCount === 1 ? "" : "er"},
-                                      som ikke har fast medarbejder på forhånd.
+                                      oprettes {formatOpenShiftText(missingCount)} uden
+                                      fast medarbejder, så medarbejderne kan ønske dem.
                                     </p>
                                   </div>
                                 )}
