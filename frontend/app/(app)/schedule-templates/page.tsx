@@ -382,24 +382,35 @@ function formatCopyTargetStatus(day: TemplateDay | null) {
   return `${formatShiftText(summary.shiftCount)} erstattes${openShiftLabel}`;
 }
 
-function formatTemplateCopyDayDetail(summary: {
-  jobFunctionCount: number;
-  shiftCount: number;
-  assignedShiftCount: number;
-  openShiftCount: number;
-}) {
+function formatTemplateCopyDayDetail(
+  summary: {
+    jobFunctionCount: number;
+    shiftCount: number;
+    assignedShiftCount: number;
+    openShiftCount: number;
+  },
+  includeAssignments: boolean,
+) {
   if (summary.shiftCount === 0) {
     return "Ingen vagter";
   }
 
+  const copiedOpenShiftCount = includeAssignments
+    ? summary.openShiftCount
+    : summary.shiftCount;
   const parts = [
     formatShiftText(summary.shiftCount),
     formatJobFunctionText(summary.jobFunctionCount),
-    formatFixedStaffingText(summary.assignedShiftCount),
   ];
 
-  if (summary.openShiftCount > 0) {
-    parts.push(formatOpenShiftText(summary.openShiftCount));
+  if (includeAssignments) {
+    parts.push(formatFixedStaffingText(summary.assignedShiftCount));
+  } else {
+    parts.push("Faste medarbejdere kopieres ikke");
+  }
+
+  if (copiedOpenShiftCount > 0) {
+    parts.push(formatOpenShiftText(copiedOpenShiftCount));
   }
 
   return parts.join(" · ");
@@ -457,6 +468,8 @@ export default function ScheduleTemplatesPage() {
   const [copyDayTargets, setCopyDayTargets] = useState<number[]>([]);
   const [copyTemplateModalOpen, setCopyTemplateModalOpen] = useState(false);
   const [copyTemplateName, setCopyTemplateName] = useState("");
+  const [copyTemplateIncludeAssignments, setCopyTemplateIncludeAssignments] =
+    useState(true);
 
   useEffect(() => {
     infoDialogRef.current = infoDialog;
@@ -504,6 +517,10 @@ export default function ScheduleTemplatesPage() {
   const selectedTemplateStaffingSummary = useMemo(() => {
     return summarizeTemplateStaffing(selectedTemplate);
   }, [selectedTemplate]);
+
+  const copiedTemplateOpenShiftCount = copyTemplateIncludeAssignments
+    ? selectedTemplateStaffingSummary.openShiftCount
+    : selectedTemplateStaffingSummary.shiftCount;
 
   const selectedTemplateCopyDaySummaries = useMemo(() => {
     return summarizeTemplateCopyDays(selectedTemplate);
@@ -1093,6 +1110,7 @@ export default function ScheduleTemplatesPage() {
         ignoredTemplateId: selectedTemplate.id,
       }),
     );
+    setCopyTemplateIncludeAssignments(true);
     setCopyTemplateModalOpen(true);
   };
 
@@ -1126,6 +1144,7 @@ export default function ScheduleTemplatesPage() {
         sourceTemplate: selectedTemplate,
         newTemplateName: nextTemplateName,
         activeCinemaId,
+        includeAssignments: copyTemplateIncludeAssignments,
       });
 
       await fetchData();
@@ -1133,6 +1152,7 @@ export default function ScheduleTemplatesPage() {
       setSelectedWeekday(1);
       setCopyTemplateModalOpen(false);
       setCopyTemplateName("");
+      setCopyTemplateIncludeAssignments(true);
       infoDialog.show({
         title: "Vagtsskabelon kopieret",
         description: `"${selectedTemplate.name}" er kopieret til "${nextTemplateName}".`,
@@ -2270,16 +2290,20 @@ export default function ScheduleTemplatesPage() {
                       selectedTemplateStaffingSummary.jobFunctionCount,
                     )}
                   </span>
-                  <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                    {formatFixedStaffingText(
-                      selectedTemplateStaffingSummary.assignedShiftCount,
-                    )}
-                  </span>
-                  {selectedTemplateStaffingSummary.openShiftCount > 0 && (
-                    <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
-                      {formatOpenShiftText(
-                        selectedTemplateStaffingSummary.openShiftCount,
+                  {copyTemplateIncludeAssignments ? (
+                    <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                      {formatFixedStaffingText(
+                        selectedTemplateStaffingSummary.assignedShiftCount,
                       )}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-950 dark:bg-blue-950/40 dark:text-blue-100">
+                      Faste medarbejdere kopieres ikke
+                    </span>
+                  )}
+                  {copiedTemplateOpenShiftCount > 0 && (
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+                      {formatOpenShiftText(copiedTemplateOpenShiftCount)}
                     </span>
                   )}
                 </div>
@@ -2301,7 +2325,10 @@ export default function ScheduleTemplatesPage() {
                             {formatWeekday(daySummary.weekday)}
                           </p>
                           <p className="text-gray-600 dark:text-gray-400">
-                            {formatTemplateCopyDayDetail(daySummary)}
+                            {formatTemplateCopyDayDetail(
+                              daySummary,
+                              copyTemplateIncludeAssignments,
+                            )}
                           </p>
                         </div>
                         {!daySummary.isActive && (
@@ -2314,6 +2341,35 @@ export default function ScheduleTemplatesPage() {
                   </div>
                 </div>
               )}
+
+              <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+                <label className="flex cursor-pointer items-start gap-3 font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={copyTemplateIncludeAssignments}
+                    onChange={(event) =>
+                      setCopyTemplateIncludeAssignments(event.target.checked)
+                    }
+                    className="mt-1 h-4 w-4"
+                    disabled={copyingTemplate}
+                  />
+                  <span>
+                    <span className="block font-black">
+                      Kopiér faste medarbejdere
+                    </span>
+                    <span className="mt-1 block text-xs font-semibold text-blue-900 dark:text-blue-200">
+                      Slå fra hvis kopien skal starte med åbne vagter, som
+                      medarbejderne kan ønske.
+                    </span>
+                  </span>
+                </label>
+                {!copyTemplateIncludeAssignments && copiedTemplateOpenShiftCount > 0 && (
+                  <p className="mt-3 rounded-2xl bg-white p-3 text-xs font-bold text-blue-950 dark:bg-gray-950 dark:text-blue-100">
+                    {formatOpenShiftText(copiedTemplateOpenShiftCount)} oprettes
+                    som åbne vagter i kopien.
+                  </p>
+                )}
+              </div>
 
               <form onSubmit={copySelectedTemplate} className="mt-5 space-y-4">
                 <label className="block text-sm font-semibold">

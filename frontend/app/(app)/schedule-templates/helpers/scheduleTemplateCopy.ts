@@ -159,10 +159,12 @@ export async function copyScheduleTemplate({
   sourceTemplate,
   newTemplateName,
   activeCinemaId,
+  includeAssignments = true,
 }: {
   sourceTemplate: ScheduleTemplateCopySource;
   newTemplateName: string;
   activeCinemaId: number | null;
+  includeAssignments?: boolean;
 }) {
   const createResponse = await apiFetch("/schedule-templates", {
     method: "POST",
@@ -242,7 +244,7 @@ export async function copyScheduleTemplate({
         .json()
         .catch(() => null)) as TemplateJobFunction | null;
 
-      if (!createdItem?.id) continue;
+      if (!createdItem?.id || !includeAssignments) continue;
 
       for (const assignment of sortTemplateAssignments(item.assignments ?? [])) {
         const userId = getAssignmentUserId(assignment);
