@@ -13,6 +13,10 @@ import {
   summarizeTemplateStaffing,
 } from "./helpers/scheduleTemplateCopy";
 import {
+  getUniqueCopiedScheduleTemplateName,
+  scheduleTemplateNameExists,
+} from "./helpers/scheduleTemplateCopyNames";
+import {
   countAssignedTemplateUsers,
   getDayStaffingGaps,
   getJobFunctionStaffingGap,
@@ -478,15 +482,11 @@ export default function ScheduleTemplatesPage() {
   }, [selectedTemplate]);
 
   const copyTemplateNameExists = useMemo(() => {
-    const normalizedName = copyTemplateName.trim().toLowerCase();
-
-    if (!normalizedName) return false;
-
-    return templates.some(
-      (template) =>
-        template.id !== selectedTemplate?.id &&
-        template.name.trim().toLowerCase() === normalizedName,
-    );
+    return scheduleTemplateNameExists({
+      templates,
+      name: copyTemplateName,
+      ignoredTemplateId: selectedTemplate?.id,
+    });
   }, [copyTemplateName, selectedTemplate?.id, templates]);
 
   const activeTemplates = templates.filter((template) => template.isActive).length;
@@ -1058,7 +1058,13 @@ export default function ScheduleTemplatesPage() {
   const openCopyTemplateModal = () => {
     if (!selectedTemplate) return;
 
-    setCopyTemplateName(`Kopi af ${selectedTemplate.name}`);
+    setCopyTemplateName(
+      getUniqueCopiedScheduleTemplateName({
+        sourceName: selectedTemplate.name,
+        templates,
+        ignoredTemplateId: selectedTemplate.id,
+      }),
+    );
     setCopyTemplateModalOpen(true);
   };
 
