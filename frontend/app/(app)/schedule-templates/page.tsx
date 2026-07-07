@@ -1,11 +1,21 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+
 import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+
+import {
+  countAssignedTemplateUsers,
+  getDayStaffingGaps,
+  getJobFunctionStaffingGap,
+  getTemplateStaffingGaps,
+  getTemplateStaffingGapSummary,
+  summarizeStaffingGaps,
+} from "./helpers/scheduleTemplateStaffingGaps";
 
 type CurrentUser = {
   sub: number;
@@ -152,14 +162,17 @@ function getSelectedMasterCinemaId() {
 
 function appendCinemaId(path: string, cinemaId: number | null) {
   if (!cinemaId) return path;
+
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}cinemaId=${cinemaId}`;
 }
 
 async function readErrorMessage(response: Response, fallback: string) {
   const data = await response.json().catch(() => null);
+
   if (typeof data?.message === "string") return data.message;
   if (Array.isArray(data?.message)) return data.message.join("\n");
+
   return fallback;
 }
 
@@ -169,11 +182,13 @@ function minuteToTime(value: number) {
     : 0;
   const hours = Math.floor(safeValue / 60);
   const minutes = safeValue % 60;
+
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function formatDayPeriod(dayPeriod: DayPeriod | null | undefined) {
   if (!dayPeriod) return "Ingen dagsperiode";
+
   return `${dayPeriod.name} · kl. ${minuteToTime(dayPeriod.startMinute)}-${minuteToTime(
     dayPeriod.endMinute,
   )}`;
@@ -197,14 +212,17 @@ function formatUserName(user: ScheduleTemplateUser | null | undefined) {
     .filter(Boolean)
     .join(" ")
     .trim();
+
   return name || user?.email || "Ukendt medarbejder";
 }
 
 function getAssignmentUserId(assignment: ScheduleTemplateAssignment) {
   const userId = Number(assignment.userId ?? assignment.user?.id);
+
   if (!Number.isInteger(userId) || userId <= 0) {
     return null;
   }
+
   return userId;
 }
 
@@ -299,10 +317,32 @@ function parseJobFunctionForm(form: JobFunctionFormState) {
   };
 }
 
+function parseOptionalPositiveInteger(value: string, fallback: number) {
+  const nextValue = value.trim() ? Number(value) : fallback;
+
+  if (!Number.isInteger(nextValue) || nextValue < 0) {
+    return null;
+  }
+
+  return nextValue;
+}
+
+function formatMissingStandardText(missingCount: number) {
+  if (missingCount === 1) return "1 uden standard";
+  return `${missingCount} uden standard`;
+}
+
+function getAssignedUserIdSet(item: TemplateJobFunction) {
+  return new Set(
+    (item.assignments ?? [])
+      .map(getAssignmentUserId)
+      .filter((userId): userId is number => userId !== null),
+  );
+}
+
 export default function ScheduleTemplatesPage() {
   const infoDialog = useInfoModal();
   const infoDialogRef = useRef(infoDialog);
-
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
     number | null
@@ -344,6 +384,7 @@ export default function ScheduleTemplatesPage() {
     if (currentUser?.role === "MASTER" && !currentUser.cinemaId) {
       return selectedMasterCinemaId;
     }
+
     return currentUser?.cinemaId ?? null;
   }, [currentUser, selectedMasterCinemaId]);
 
@@ -351,19 +392,42 @@ export default function ScheduleTemplatesPage() {
     currentUser?.role === "MASTER" && !currentUser.cinemaId && !activeCinemaId;
 
   const selectedTemplate = useMemo(() => {
-    return (
-      templates.find((template) => template.id === selectedTemplateId) ?? null
-    );
+    return templates.find((template) => template.id === selectedTemplateId) ?? null;
   }, [selectedTemplateId, templates]);
 
   const selectedDay = useMemo(() => {
     return getTemplateDay(selectedTemplate, selectedWeekday);
   }, [selectedTemplate, selectedWeekday]);
 
-  const activeTemplates = templates.filter(
-    (template) => template.isActive,
-  ).length;
+  const selectedTemplateGaps = useMemo(() => {
+    return getTemplateStaffingGaps(selectedTemplate);
+  }, [selectedTemplate]);
+
+  const selectedTemplateGapSummary = useMemo(() => {
+    return summarizeStaffingGaps(selectedTemplateGaps);
+  }, [selectedTemplateGaps]);
+
+  const selectedDayGaps = useMemo(() => {
+    return getDayStaffingGaps(selectedDay);
+  }, [selectedDay]);
+
+  const selectedDayGapSummary = useMemo(() => {
+    return summarizeStaffingGaps(selectedDayGaps);
+  }, [selectedDayGaps]);
+
+  const activeTemplates = templates.filter((template) => template.isActive).length;
   const archivedTemplates = templates.length - activeTemplates;
+  const totalStaffingGapSummary = templates.reduce(
+    (summary, template) => {
+      const templateSummary = getTemplateStaffingGapSummary(template);
+
+      return {
+        jobFunctionCount: summary.jobFunctionCount + templateSummary.jobFunctionCount,
+        missingShiftCount: summary.missingShiftCount + templateSummary.missingShiftCount,
+      };
+    },
+    { jobFunctionCount: 0, missingShiftCount: 0 },
+  );
 
   useEffect(() => {
     setCurrentUser(getCurrentUserFromToken());
@@ -373,10 +437,7 @@ export default function ScheduleTemplatesPage() {
     };
 
     updateSelectedCinema();
-    window.addEventListener(
-      "masterSelectedCinemaChanged",
-      updateSelectedCinema,
-    );
+    window.addEventListener("masterSelectedCinemaChanged", updateSelectedCinema);
     window.addEventListener("storage", updateSelectedCinema);
 
     return () => {
@@ -444,10 +505,7 @@ export default function ScheduleTemplatesPage() {
 
       if (!usersResponse.ok) {
         throw new Error(
-          await readErrorMessage(
-            usersResponse,
-            "Kunne ikke hente medarbejdere",
-          ),
+          await readErrorMessage(usersResponse, "Kunne ikke hente medarbejdere"),
         );
       }
 
@@ -456,6 +514,7 @@ export default function ScheduleTemplatesPage() {
         jobFunctionsResponse.json(),
         usersResponse.json(),
       ]);
+
       const nextTemplates = Array.isArray(templatesData)
         ? (templatesData as ScheduleTemplate[])
         : [];
@@ -477,12 +536,10 @@ export default function ScheduleTemplatesPage() {
           : [],
       );
       setSelectedTemplateId((current) => {
-        if (
-          current &&
-          nextTemplates.some((template) => template.id === current)
-        ) {
+        if (current && nextTemplates.some((template) => template.id === current)) {
           return current;
         }
+
         return nextTemplates[0]?.id ?? null;
       });
     } catch (error) {
@@ -531,6 +588,7 @@ export default function ScheduleTemplatesPage() {
         ...parseTemplateForm(createTemplateForm),
         cinemaId: activeCinemaId,
       };
+
       const response = await apiFetch("/schedule-templates", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -550,16 +608,14 @@ export default function ScheduleTemplatesPage() {
       infoDialog.show({
         title: "Vagtsskabelon oprettet",
         description:
-          "Skabelonen er oprettet.\nVælg ugedage og tilføj jobfunktioner, før den bruges i vagtplanlægningen.",
+          "Skabelonen er oprettet.\nVælg ugedage, jobfunktioner og faste medarbejdere, før den bruges i vagtplanlægningen.",
         variant: "success",
         buttonText: "OK",
       });
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke oprette vagtsskabelon",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     } finally {
       setSavingTemplate(false);
@@ -575,11 +631,9 @@ export default function ScheduleTemplatesPage() {
         ...parseTemplateForm(templateForm),
         cinemaId: activeCinemaId,
       };
+
       const response = await apiFetch(
-        appendCinemaId(
-          `/schedule-templates/${selectedTemplate.id}`,
-          activeCinemaId,
-        ),
+        appendCinemaId(`/schedule-templates/${selectedTemplate.id}`, activeCinemaId),
         {
           method: "PATCH",
           body: JSON.stringify(payload),
@@ -597,9 +651,7 @@ export default function ScheduleTemplatesPage() {
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke opdatere vagtsskabelon",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     } finally {
       setSavingTemplate(false);
@@ -607,8 +659,9 @@ export default function ScheduleTemplatesPage() {
   };
 
   const archiveTemplate = async (template: ScheduleTemplate) => {
-    if (!window.confirm(`Vil du arkivere vagtsskabelonen "${template.name}"?`))
+    if (!window.confirm(`Vil du arkivere vagtsskabelonen "${template.name}"?`)) {
       return;
+    }
 
     try {
       const response = await apiFetch(
@@ -626,9 +679,7 @@ export default function ScheduleTemplatesPage() {
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke arkivere vagtsskabelon",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     }
   };
@@ -645,10 +696,7 @@ export default function ScheduleTemplatesPage() {
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(
-            response,
-            "Kunne ikke genaktivere vagtsskabelon",
-          ),
+          await readErrorMessage(response, "Kunne ikke genaktivere vagtsskabelon"),
         );
       }
 
@@ -657,9 +705,7 @@ export default function ScheduleTemplatesPage() {
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke genaktivere vagtsskabelon",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     }
   };
@@ -673,6 +719,7 @@ export default function ScheduleTemplatesPage() {
         ...parseDayForm(dayForm),
         cinemaId: activeCinemaId,
       };
+
       const response = await apiFetch(
         appendCinemaId(
           `/schedule-templates/${selectedTemplate.id}/days/${selectedWeekday}`,
@@ -685,18 +732,14 @@ export default function ScheduleTemplatesPage() {
       );
 
       if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke gemme ugedag"),
-        );
+        throw new Error(await readErrorMessage(response, "Kunne ikke gemme ugedag"));
       }
 
       await fetchData();
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke gemme ugedag",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     } finally {
       setSavingDay(false);
@@ -713,6 +756,7 @@ export default function ScheduleTemplatesPage() {
         ...parseJobFunctionForm(jobFunctionForm),
         cinemaId: activeCinemaId,
       };
+
       const response = await apiFetch(
         appendCinemaId(
           `/schedule-templates/${selectedTemplate.id}/days/${selectedWeekday}/job-functions`,
@@ -735,9 +779,7 @@ export default function ScheduleTemplatesPage() {
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke tilføje jobfunktion",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     } finally {
       setSavingJobFunction(false);
@@ -746,16 +788,12 @@ export default function ScheduleTemplatesPage() {
 
   const updateTemplateJobFunction = async (
     item: TemplateJobFunction,
-    updates: Partial<
-      Pick<TemplateJobFunction, "requiredCount" | "sortOrder" | "note">
-    >,
+    updates: Partial<Pick<TemplateJobFunction, "requiredCount" | "sortOrder" | "note">>,
   ) => {
     if (!selectedTemplate) return;
 
     const nextRequiredCount = updates.requiredCount ?? item.requiredCount;
-    const assignedCount = (item.assignments ?? []).filter(
-      (assignment) => getAssignmentUserId(assignment) !== null,
-    ).length;
+    const assignedCount = countAssignedTemplateUsers(item.assignments);
 
     if (nextRequiredCount < assignedCount) {
       infoDialog.showError(
@@ -793,9 +831,7 @@ export default function ScheduleTemplatesPage() {
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke opdatere jobfunktion",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     }
   };
@@ -830,9 +866,7 @@ export default function ScheduleTemplatesPage() {
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke fjerne jobfunktion",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     }
   };
@@ -849,9 +883,10 @@ export default function ScheduleTemplatesPage() {
     const alreadyAssigned = (item.assignments ?? []).some(
       (assignment) => getAssignmentUserId(assignment) === userId,
     );
+
     if (alreadyAssigned) return;
 
-    if ((item.assignments?.length ?? 0) >= item.requiredCount) {
+    if (countAssignedTemplateUsers(item.assignments) >= item.requiredCount) {
       infoDialog.showError(
         "Alle vagter har fast medarbejder",
         "Hæv antal vagter på jobfunktionen, hvis der skal tilføjes flere faste medarbejdere.",
@@ -888,9 +923,7 @@ export default function ScheduleTemplatesPage() {
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke tildele medarbejder",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     } finally {
       setSavingAssignmentKey(null);
@@ -925,9 +958,7 @@ export default function ScheduleTemplatesPage() {
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke fjerne medarbejder",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     } finally {
       setSavingAssignmentKey(null);
@@ -937,11 +968,13 @@ export default function ScheduleTemplatesPage() {
   const toggleJobFunctionDetails = (id: number) => {
     setExpandedJobFunctionIds((current) => {
       const next = new Set(current);
+
       if (next.has(id)) {
         next.delete(id);
       } else {
         next.add(id);
       }
+
       return next;
     });
   };
@@ -995,10 +1028,7 @@ export default function ScheduleTemplatesPage() {
 
           if (!deleteResponse.ok) {
             throw new Error(
-              await readErrorMessage(
-                deleteResponse,
-                "Kunne ikke rydde modtagerdag",
-              ),
+              await readErrorMessage(deleteResponse, "Kunne ikke rydde modtagerdag"),
             );
           }
         }
@@ -1045,10 +1075,7 @@ export default function ScheduleTemplatesPage() {
 
           if (!createResponse.ok) {
             throw new Error(
-              await readErrorMessage(
-                createResponse,
-                "Kunne ikke kopiere jobfunktion",
-              ),
+              await readErrorMessage(createResponse, "Kunne ikke kopiere jobfunktion"),
             );
           }
 
@@ -1056,34 +1083,34 @@ export default function ScheduleTemplatesPage() {
             .json()
             .catch(() => null)) as TemplateJobFunction | null;
 
-          if (createdItem?.id) {
-            for (const assignment of item.assignments ?? []) {
-              const userId = getAssignmentUserId(assignment);
-              if (!userId) continue;
+          if (!createdItem?.id) continue;
 
-              const assignmentResponse = await apiFetch(
-                appendCinemaId(
-                  `/schedule-templates/${selectedTemplate.id}/day-job-functions/${createdItem.id}/assignments`,
-                  activeCinemaId,
+          for (const assignment of item.assignments ?? []) {
+            const userId = getAssignmentUserId(assignment);
+            if (!userId) continue;
+
+            const assignmentResponse = await apiFetch(
+              appendCinemaId(
+                `/schedule-templates/${selectedTemplate.id}/day-job-functions/${createdItem.id}/assignments`,
+                activeCinemaId,
+              ),
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  userId,
+                  sortOrder: assignment.sortOrder ?? 0,
+                  cinemaId: activeCinemaId,
+                }),
+              },
+            );
+
+            if (!assignmentResponse.ok) {
+              throw new Error(
+                await readErrorMessage(
+                  assignmentResponse,
+                  "Kunne ikke kopiere faste medarbejdere",
                 ),
-                {
-                  method: "POST",
-                  body: JSON.stringify({
-                    userId,
-                    sortOrder: assignment.sortOrder ?? 0,
-                    cinemaId: activeCinemaId,
-                  }),
-                },
               );
-
-              if (!assignmentResponse.ok) {
-                throw new Error(
-                  await readErrorMessage(
-                    assignmentResponse,
-                    "Kunne ikke kopiere faste medarbejdere",
-                  ),
-                );
-              }
             }
           }
         }
@@ -1094,16 +1121,16 @@ export default function ScheduleTemplatesPage() {
       setCopyDayTargets([]);
       infoDialog.show({
         title: "Ugedag kopieret",
-        description: `${formatWeekday(selectedWeekday)} er kopieret til ${copyDayTargets.length} ugedag${copyDayTargets.length === 1 ? "" : "e"}.`,
+        description: `${formatWeekday(selectedWeekday)} er kopieret til ${copyDayTargets.length} ugedag${
+          copyDayTargets.length === 1 ? "" : "e"
+        }.`,
         variant: "success",
         buttonText: "OK",
       });
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke kopiere ugedag",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl.\nPrøv igen.",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
       );
     } finally {
       setCopyingDay(false);
@@ -1112,28 +1139,29 @@ export default function ScheduleTemplatesPage() {
 
   return (
     <AdminGuard>
-      <main className="min-h-screen bg-gray-50 p-4 text-gray-950 dark:bg-gray-950 dark:text-white sm:p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <section className="rounded-3xl border border-gray-200 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-300">
+      <main className="min-h-screen bg-gray-100 p-6 text-gray-950 dark:bg-gray-950 dark:text-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
               Vagtplanlægning
             </p>
-            <h1 className="mt-2 text-3xl font-black">Vagtsskabeloner</h1>
-            <p className="mx-auto mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
+            <h1 className="text-3xl font-black">Vagtsskabeloner</h1>
+            <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
               Opret de skabeloner, der senere kan vælges på konkrete datoer i
-              vagtplanlægningen. En skabelon består af ugedage og jobfunktioner.
+              vagtplanlægningen. En skabelon består af ugedage, jobfunktioner og
+              faste medarbejdere.
             </p>
-          </section>
+          </div>
 
           {needsMasterCinemaSelection && (
             <section className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-              <p className="text-xs font-bold uppercase tracking-[0.2em]">
+              <p className="text-xs font-black uppercase tracking-[0.2em]">
                 Ingen aktiv biograf valgt
               </p>
-              <h2 className="mt-2 text-xl font-black">
+              <h2 className="mt-2 text-2xl font-black">
                 Vælg biograf før vagtsskabeloner
               </h2>
-              <p className="mt-2 text-sm">
+              <p className="mt-2 max-w-3xl text-sm">
                 MASTER skal vælge en aktiv biograf, før vagtsskabeloner kan
                 oprettes eller redigeres. Skabelonerne knyttes til den valgte
                 biograf og bruges i vagtplanlægningen.
@@ -1149,50 +1177,55 @@ export default function ScheduleTemplatesPage() {
 
           {!needsMasterCinemaSelection && (
             <>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
                     Vist
                   </p>
                   <p className="mt-2 text-3xl font-black">{templates.length}</p>
                 </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <div className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
                     Aktive
                   </p>
                   <p className="mt-2 text-3xl font-black">{activeTemplates}</p>
                 </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+                <div className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
                     Arkiverede
                   </p>
+                  <p className="mt-2 text-3xl font-black">{archivedTemplates}</p>
+                </div>
+                <div
+                  className={`rounded-3xl border p-5 ${
+                    totalStaffingGapSummary.missingShiftCount > 0
+                      ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+                      : "border-green-200 bg-green-50 text-green-950 dark:border-green-900 dark:bg-green-950/30 dark:text-green-100"
+                  }`}
+                >
+                  <p className="text-xs font-bold uppercase tracking-[0.2em]">
+                    Mangler standard
+                  </p>
                   <p className="mt-2 text-3xl font-black">
-                    {archivedTemplates}
+                    {totalStaffingGapSummary.missingShiftCount}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold">
+                    {totalStaffingGapSummary.missingShiftCount > 0
+                      ? "faste medarbejdere mangler"
+                      : "alle viste skabeloner er dækket"}
                   </p>
                 </div>
-              </div>
+              </section>
 
-              <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <h2 className="text-xl font-black">Vagtsskabeloner</h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                      Vælg en skabelon for at redigere ugedage og jobfunktioner.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <label className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold dark:border-gray-800 dark:bg-gray-950">
-                      <input
-                        type="checkbox"
-                        checked={showArchived}
-                        onChange={(event) =>
-                          setShowArchived(event.target.checked)
-                        }
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                      Vis arkiverede
-                    </label>
+              <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
+                <aside className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch">
+                    <div>
+                      <h2 className="text-xl font-black">Vagtsskabeloner</h2>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Vælg en skabelon for at redigere ugedage og jobfunktioner.
+                      </p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
@@ -1204,718 +1237,755 @@ export default function ScheduleTemplatesPage() {
                       Opret vagtsskabelon
                     </button>
                   </div>
-                </div>
 
-                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {loading && (
-                    <p className="text-sm text-gray-500 md:col-span-2 xl:col-span-3">
-                      Henter vagtsskabeloner...
-                    </p>
-                  )}
+                  <label className="mt-4 flex items-center gap-3 text-sm font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={showArchived}
+                      onChange={(event) => setShowArchived(event.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    Vis arkiverede
+                  </label>
 
-                  {!loading && templates.length === 0 && (
-                    <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300 md:col-span-2 xl:col-span-3">
-                      Der er endnu ingen vagtsskabeloner for den valgte biograf.
-                    </p>
-                  )}
-
-                  {templates.map((template) => {
-                    const selected = selectedTemplateId === template.id;
-                    return (
-                      <button
-                        key={template.id}
-                        type="button"
-                        onClick={() => setSelectedTemplateId(template.id)}
-                        className={`w-full rounded-2xl border p-4 text-left transition ${
-                          selected
-                            ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
-                            : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-black">{template.name}</p>
-                            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                              {formatWeekParity(template.weekParity)} ·{" "}
-                              {template.days?.length ?? 0} ugedage ·{" "}
-                              {getTemplateJobFunctionCount(template)} vagter
-                            </p>
-                          </div>
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-bold ${
-                              template.isActive
-                                ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200"
-                                : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                            }`}
-                          >
-                            {template.isActive ? "Aktiv" : "Arkiveret"}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                {!selectedTemplate && (
-                  <div className="rounded-2xl bg-gray-50 p-6 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
-                    Opret eller vælg en vagtsskabelon for at redigere ugedage og
-                    jobfunktioner.
-                  </div>
-                )}
-
-                {selectedTemplate && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-                          Valgt skabelon
-                        </p>
-                        <h2 className="text-2xl font-black">
-                          {selectedTemplate.name}
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                          {selectedTemplate.description || "Ingen beskrivelse"}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {selectedTemplate.isActive ? (
-                          <button
-                            type="button"
-                            onClick={() => archiveTemplate(selectedTemplate)}
-                            className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
-                          >
-                            Arkivér
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => reactivateTemplate(selectedTemplate)}
-                            className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700"
-                          >
-                            Genaktivér
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditingTemplate((current) => !current)
-                          }
-                          className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                        >
-                          {editingTemplate
-                            ? "Luk stamdata"
-                            : "Redigér stamdata"}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
-                      <p className="font-bold">
-                        Ændringer gælder fremtidig generering
+                  <div className="mt-4 flex flex-col gap-3">
+                    {loading && (
+                      <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
+                        Henter vagtsskabeloner...
                       </p>
-                      <p className="mt-1">
-                        Allerede oprettede vagter ændres ikke automatisk, når
-                        denne skabelon justeres.
-                      </p>
-                    </div>
-
-                    {editingTemplate && (
-                      <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-                        <div className="grid gap-3 lg:grid-cols-2">
-                          <label className="block text-sm font-semibold">
-                            Navn
-                            <input
-                              value={templateForm.name}
-                              onChange={(event) =>
-                                setTemplateForm((current) => ({
-                                  ...current,
-                                  name: event.target.value,
-                                }))
-                              }
-                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            />
-                          </label>
-                          <label className="block text-sm font-semibold">
-                            Ugeregel
-                            <select
-                              value={templateForm.weekParity}
-                              onChange={(event) =>
-                                setTemplateForm((current) => ({
-                                  ...current,
-                                  weekParity: event.target.value as WeekParity,
-                                }))
-                              }
-                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            >
-                              <option value="ANY">Alle uger</option>
-                              <option value="EVEN">Kun lige uger</option>
-                              <option value="ODD">Kun ulige uger</option>
-                            </select>
-                          </label>
-                          <label className="block text-sm font-semibold lg:col-span-2">
-                            Beskrivelse
-                            <textarea
-                              value={templateForm.description}
-                              onChange={(event) =>
-                                setTemplateForm((current) => ({
-                                  ...current,
-                                  description: event.target.value,
-                                }))
-                              }
-                              className="mt-1 min-h-20 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            />
-                          </label>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={updateTemplate}
-                          className="mt-3 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                          disabled={savingTemplate}
-                        >
-                          {savingTemplate ? "Gemmer..." : "Gem stamdata"}
-                        </button>
-                      </div>
                     )}
 
-                    <div className="grid gap-2 sm:grid-cols-7">
-                      {weekdayOptions.map((weekday) => {
-                        const day = getTemplateDay(
-                          selectedTemplate,
-                          weekday.value,
-                        );
-                        const active = selectedWeekday === weekday.value;
-                        const jobFunctionCount = day?.jobFunctions?.length ?? 0;
-                        const hasPlannedShifts = jobFunctionCount > 0;
-                        return (
-                          <button
-                            key={weekday.value}
-                            type="button"
-                            onClick={() => setSelectedWeekday(weekday.value)}
-                            className={`rounded-2xl border p-3 text-left text-sm transition ${
-                              active
-                                ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
-                                : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
-                            }`}
-                          >
-                            <p className="font-black uppercase">
-                              {weekday.shortLabel}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                              {day?.isActive ? "Aktiv" : "Ikke sat"}
-                            </p>
-                            <p
-                              className={`text-xs ${
-                                hasPlannedShifts
-                                  ? "text-gray-600 dark:text-gray-400"
-                                  : "font-bold text-amber-600 dark:text-yellow-300"
+                    {!loading && templates.length === 0 && (
+                      <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
+                        Der er endnu ingen vagtsskabeloner for den valgte biograf.
+                      </p>
+                    )}
+
+                    {templates.map((template) => {
+                      const selected = selectedTemplateId === template.id;
+                      const templateGapSummary =
+                        getTemplateStaffingGapSummary(template);
+
+                      return (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => setSelectedTemplateId(template.id)}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${
+                            selected
+                              ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
+                              : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-black">{template.name}</p>
+                              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                {formatWeekParity(template.weekParity)} ·{" "}
+                                {template.days?.length ?? 0} ugedage ·{" "}
+                                {getTemplateJobFunctionCount(template)} vagter
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-black ${
+                                template.isActive
+                                  ? "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-200"
+                                  : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
                               }`}
                             >
-                              {hasPlannedShifts
-                                ? `${jobFunctionCount} ${
-                                    jobFunctionCount === 1
-                                      ? "jobfunktion"
-                                      : "jobfunktioner"
-                                  }`
-                                : "Ingen vagter"}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
+                              {template.isActive ? "Aktiv" : "Arkiveret"}
+                            </span>
+                          </div>
 
-                    <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="mt-3">
+                            {templateGapSummary.missingShiftCount > 0 ? (
+                              <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
+                                {formatMissingStandardText(
+                                  templateGapSummary.missingShiftCount,
+                                )}
+                              </span>
+                            ) : (
+                              <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800 dark:bg-green-950/50 dark:text-green-100">
+                                Standard OK
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </aside>
+
+                <section className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+                  {!selectedTemplate && (
+                    <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
+                      Opret eller vælg en vagtsskabelon for at redigere ugedage
+                      og jobfunktioner.
+                    </p>
+                  )}
+
+                  {selectedTemplate && (
+                    <div className="flex flex-col gap-5">
+                      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                         <div>
                           <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                            Ugedag
+                            Valgt skabelon
                           </p>
-                          <h3 className="text-xl font-black">
-                            {formatWeekday(selectedWeekday)}
-                          </h3>
+                          <h2 className="text-2xl font-black">
+                            {selectedTemplate.name}
+                          </h2>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            {selectedTemplate.description || "Ingen beskrivelse"}
+                          </p>
                         </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="flex flex-wrap gap-2">
+                          {selectedTemplate.isActive ? (
+                            <button
+                              type="button"
+                              onClick={() => archiveTemplate(selectedTemplate)}
+                              className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+                            >
+                              Arkivér
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => reactivateTemplate(selectedTemplate)}
+                              className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700"
+                            >
+                              Genaktivér
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={openCopyDayModal}
-                            className="rounded-2xl border border-blue-300 px-4 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40"
-                            disabled={!selectedDay || copyingDay}
+                            onClick={() => setEditingTemplate((current) => !current)}
+                            className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                           >
-                            Kopiér ugedag
+                            {editingTemplate ? "Luk stamdata" : "Redigér stamdata"}
                           </button>
-                          <label className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold dark:border-gray-800 dark:bg-gray-900">
-                            <input
-                              type="checkbox"
-                              checked={dayForm.isActive}
-                              onChange={(event) =>
-                                setDayForm((current) => ({
-                                  ...current,
-                                  isActive: event.target.checked,
-                                }))
-                              }
-                              className="h-4 w-4 rounded border-gray-300"
-                            />
-                            Aktiv ugedag i skabelonen
-                          </label>
                         </div>
                       </div>
 
-                      <div className="mt-3">
-                        <label className="block text-sm font-semibold">
-                          Note
-                          <input
-                            value={dayForm.note}
-                            onChange={(event) =>
-                              setDayForm((current) => ({
-                                ...current,
-                                note: event.target.value,
-                              }))
-                            }
-                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            placeholder="Fx lukket dag eller særlig bemanding"
-                          />
-                        </label>
+                      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+                        <p className="font-black">Ændringer gælder fremtidig generering</p>
+                        <p className="mt-1">
+                          Allerede oprettede vagter ændres ikke automatisk, når
+                          denne skabelon justeres.
+                        </p>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={saveSelectedDay}
-                        className="mt-3 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                        disabled={savingDay}
-                      >
-                        {savingDay ? "Gemmer..." : "Gem ugedag"}
-                      </button>
-                    </div>
+                      {selectedTemplateGapSummary.missingShiftCount > 0 && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                              <p className="font-black">
+                                {selectedTemplateGapSummary.missingShiftCount} vagter
+                                mangler fast standardmedarbejder
+                              </p>
+                              <p className="mt-1 text-sm">
+                                De bliver synlige som uden standard, så de kan
+                                rettes før skabelonen bruges i /shift-planning.
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-900/60 dark:text-amber-50">
+                              {selectedTemplateGapSummary.jobFunctionCount} jobfunktioner
+                            </span>
+                          </div>
+                          <div className="mt-3 grid gap-2 md:grid-cols-2">
+                            {weekdayOptions.map((weekday) => {
+                              const gapsForDay = selectedTemplateGaps.filter(
+                                (gap) => gap.weekday === weekday.value,
+                              );
+                              const daySummary = summarizeStaffingGaps(gapsForDay);
 
-                    <div className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-                          Jobfunktioner på{" "}
-                          {formatWeekday(selectedWeekday).toLowerCase()}
-                        </p>
-                        <h3 className="text-xl font-black">
-                          Vagter fra skabelonen
-                        </h3>
-                      </div>
+                              if (daySummary.missingShiftCount === 0) return null;
 
-                      <form
-                        className="mt-4 grid gap-3 lg:grid-cols-[1fr_130px_130px]"
-                        onSubmit={addJobFunction}
-                      >
-                        <label className="block text-sm font-semibold">
-                          Jobfunktion
-                          <select
-                            value={jobFunctionForm.jobFunctionId}
-                            onChange={(event) =>
-                              setJobFunctionForm((current) => ({
-                                ...current,
-                                jobFunctionId: event.target.value,
-                              }))
-                            }
-                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            disabled={
-                              savingJobFunction || jobFunctions.length === 0
-                            }
-                          >
-                            <option value="">Vælg jobfunktion</option>
-                            {jobFunctions.map((jobFunction) => (
-                              <option
-                                key={jobFunction.id}
-                                value={jobFunction.id}
-                              >
-                                {jobFunction.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="block text-sm font-semibold">
-                          Antal vagter
-                          <input
-                            type="text" inputMode="numeric" pattern="[0-9]*"
-                            min="1"
-                            max="50"
-                            value={jobFunctionForm.requiredCount}
-                            onChange={(event) =>
-                              setJobFunctionForm((current) => ({
-                                ...current,
-                                requiredCount: event.target.value,
-                              }))
-                            }
-                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            disabled={savingJobFunction}
-                          />
-                        </label>
-                        <label className="block text-sm font-semibold">
-                          Sortering
-                          <input
-                            type="text" inputMode="numeric" pattern="[0-9]*"
-                            min="0"
-                            value={jobFunctionForm.sortOrder}
-                            onChange={(event) =>
-                              setJobFunctionForm((current) => ({
-                                ...current,
-                                sortOrder: event.target.value,
-                              }))
-                            }
-                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            disabled={savingJobFunction}
-                          />
-                        </label>
-                        <label className="block text-sm font-semibold lg:col-span-3">
-                          Note
-                          <input
-                            value={jobFunctionForm.note}
-                            onChange={(event) =>
-                              setJobFunctionForm((current) => ({
-                                ...current,
-                                note: event.target.value,
-                              }))
-                            }
-                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            placeholder="Valgfri note til jobfunktionen i denne skabelon"
-                            disabled={savingJobFunction}
-                          />
-                        </label>
-                        <button
-                          type="submit"
-                          className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-60 lg:col-span-3"
-                          disabled={
-                            savingJobFunction || jobFunctions.length === 0
-                          }
-                        >
-                          {savingJobFunction
-                            ? "Tilføjer..."
-                            : "Tilføj jobfunktion"}
-                        </button>
-                      </form>
-
-                      {jobFunctions.length === 0 && (
-                        <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                          Der er ingen aktive jobfunktioner. Opret
-                          jobfunktioner, før de kan bruges i vagtsskabeloner.
-                        </p>
+                              return (
+                                <div
+                                  key={weekday.value}
+                                  className="rounded-2xl bg-white/70 p-3 text-sm dark:bg-gray-950/40"
+                                >
+                                  <p className="font-black">
+                                    {weekday.label}: {daySummary.missingShiftCount} uden standard
+                                  </p>
+                                  <p className="mt-1 text-xs">
+                                    {gapsForDay
+                                      .map(
+                                        (gap) =>
+                                          `${gap.jobFunctionName} (${gap.missingCount})`,
+                                      )
+                                      .join(", ")}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       )}
 
-                      <div className="mt-5 space-y-3">
-                        {(selectedDay?.jobFunctions ?? []).length === 0 && (
-                          <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
-                            Der er ingen jobfunktioner på{" "}
-                            {formatWeekday(selectedWeekday).toLowerCase()}{" "}
-                            endnu.
-                          </p>
-                        )}
+                      {editingTemplate && (
+                        <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+                          <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
+                            <label className="block text-sm font-semibold">
+                              Navn
+                              <input
+                                value={templateForm.name}
+                                onChange={(event) =>
+                                  setTemplateForm((current) => ({
+                                    ...current,
+                                    name: event.target.value,
+                                  }))
+                                }
+                                className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              />
+                            </label>
+                            <label className="block text-sm font-semibold">
+                              Ugeregel
+                              <select
+                                value={templateForm.weekParity}
+                                onChange={(event) =>
+                                  setTemplateForm((current) => ({
+                                    ...current,
+                                    weekParity: event.target.value as WeekParity,
+                                  }))
+                                }
+                                className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              >
+                                <option value="ANY">Alle uger</option>
+                                <option value="EVEN">Kun lige uger</option>
+                                <option value="ODD">Kun ulige uger</option>
+                              </select>
+                            </label>
+                            <label className="block text-sm font-semibold lg:col-span-2">
+                              Beskrivelse
+                              <textarea
+                                value={templateForm.description}
+                                onChange={(event) =>
+                                  setTemplateForm((current) => ({
+                                    ...current,
+                                    description: event.target.value,
+                                  }))
+                                }
+                                className="mt-1 min-h-20 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              />
+                            </label>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={updateTemplate}
+                            className="mt-3 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+                            disabled={savingTemplate}
+                          >
+                            {savingTemplate ? "Gemmer..." : "Gem stamdata"}
+                          </button>
+                        </div>
+                      )}
 
-                        {(selectedDay?.jobFunctions ?? []).map((item) => {
-                          const detailsOpen = expandedJobFunctionIds.has(
-                            item.id,
+                      <div className="grid gap-2 sm:grid-cols-7">
+                        {weekdayOptions.map((weekday) => {
+                          const day = getTemplateDay(selectedTemplate, weekday.value);
+                          const active = selectedWeekday === weekday.value;
+                          const dayGapSummary = summarizeStaffingGaps(
+                            getDayStaffingGaps(day),
                           );
-                          const assignmentUserIds = new Set(
-                            (item.assignments ?? [])
-                              .map((assignment) =>
-                                getAssignmentUserId(assignment),
-                              )
-                              .filter(
-                                (userId): userId is number => userId !== null,
-                              ),
-                          );
-                          const assignedCount = assignmentUserIds.size;
-                          const emptyShiftCount = Math.max(
-                            0,
-                            item.requiredCount - assignedCount,
-                          );
-                          const availableEmployees = employees.filter(
-                            (employee) => !assignmentUserIds.has(employee.id),
-                          );
-                          const assignmentLocked =
-                            savingAssignmentKey?.startsWith(`${item.id}:`) ??
-                            false;
 
                           return (
-                            <div
-                              key={item.id}
-                              className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950"
+                            <button
+                              key={weekday.value}
+                              type="button"
+                              onClick={() => setSelectedWeekday(weekday.value)}
+                              className={`rounded-2xl border p-3 text-left text-sm transition ${
+                                active
+                                  ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
+                                  : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
+                              }`}
                             >
-                              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className="h-3 w-3 rounded-full"
-                                      style={{
-                                        backgroundColor:
-                                          item.jobFunction.color || "#2563eb",
-                                      }}
-                                    />
-                                    <p className="font-black">
-                                      {item.jobFunction.name}
-                                    </p>
-                                  </div>
-                                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                    {formatDayPeriod(
-                                      item.jobFunction.dayPeriod,
-                                    )}
-                                  </p>
-                                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                    {item.requiredCount} vagt
-                                    {item.requiredCount === 1 ? "" : "er"} ·{" "}
-                                    {assignedCount} fast medarbejder
-                                    {assignedCount === 1 ? "" : "e"} ·{" "}
-                                    {emptyShiftCount} tom vagt
-                                    {emptyShiftCount === 1 ? "" : "er"} ·
-                                    sortering {item.sortOrder}
-                                  </p>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      toggleJobFunctionDetails(item.id)
-                                    }
-                                    className="rounded-2xl border border-gray-300 px-3 py-2 text-sm font-bold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-900"
-                                  >
-                                    {detailsOpen
-                                      ? "Skjul detaljer"
-                                      : "Vis detaljer"}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      removeTemplateJobFunction(item)
-                                    }
-                                    className="rounded-2xl bg-red-600 px-3 py-2 text-sm font-bold text-white hover:bg-red-700"
-                                  >
-                                    Fjern
-                                  </button>
-                                </div>
-                              </div>
-
-                              {detailsOpen && (
-                                <>
-                                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                                    <label className="block text-sm font-semibold">
-                                      Antal vagter
-                                      <input
-                                        type="text" inputMode="numeric" pattern="[0-9]*"
-                                        min="1"
-                                        max="50"
-                                        defaultValue={item.requiredCount}
-                                        onBlur={(event) => {
-                                          const nextValue = Number(
-                                            event.target.value,
-                                          );
-                                          if (
-                                            Number.isInteger(nextValue) &&
-                                            nextValue > 0 &&
-                                            nextValue !== item.requiredCount
-                                          ) {
-                                            updateTemplateJobFunction(item, {
-                                              requiredCount: nextValue,
-                                            });
-                                          }
-                                        }}
-                                        className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                      />
-                                    </label>
-                                    <label className="block text-sm font-semibold">
-                                      Sortering
-                                      <input
-                                        type="text" inputMode="numeric" pattern="[0-9]*"
-                                        min="0"
-                                        defaultValue={item.sortOrder}
-                                        onBlur={(event) => {
-                                          const nextValue = Number(
-                                            event.target.value,
-                                          );
-                                          if (
-                                            Number.isInteger(nextValue) &&
-                                            nextValue >= 0 &&
-                                            nextValue !== item.sortOrder
-                                          ) {
-                                            updateTemplateJobFunction(item, {
-                                              sortOrder: nextValue,
-                                            });
-                                          }
-                                        }}
-                                        className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                      />
-                                    </label>
-                                    <label className="block text-sm font-semibold sm:col-span-3">
-                                      Note
-                                      <input
-                                        defaultValue={item.note ?? ""}
-                                        onBlur={(event) => {
-                                          const nextValue =
-                                            event.target.value.trim() || null;
-                                          if (
-                                            nextValue !== (item.note ?? null)
-                                          ) {
-                                            updateTemplateJobFunction(item, {
-                                              note: nextValue,
-                                            });
-                                          }
-                                        }}
-                                        className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                      />
-                                    </label>
-                                  </div>
-
-                                  <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-                                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                      <div>
-                                        <p className="text-sm font-black">
-                                          Faste medarbejdere
-                                        </p>
-                                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                          Valgfrit. Mangler der medarbejdere,
-                                          oprettes resten som tomme vagter.
-                                        </p>
-                                      </div>
-                                      <select
-                                        defaultValue=""
-                                        onChange={(event) => {
-                                          const userId = Number(
-                                            event.currentTarget.value,
-                                          );
-                                          event.currentTarget.value = "";
-                                          addTemplateAssignment(item, userId);
-                                        }}
-                                        className="w-full rounded-2xl border border-gray-300 bg-white p-3 text-sm text-gray-950 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-white lg:max-w-xs"
-                                        disabled={
-                                          assignmentLocked ||
-                                          employees.length === 0 ||
-                                          availableEmployees.length === 0 ||
-                                          assignedCount >= item.requiredCount
-                                        }
-                                      >
-                                        <option value="">
-                                          {assignedCount >= item.requiredCount
-                                            ? "Alle vagter har fast medarbejder"
-                                            : employees.length === 0
-                                              ? "Ingen medarbejdere at vælge"
-                                              : "Tilføj fast medarbejder"}
-                                        </option>
-                                        {availableEmployees.map((employee) => (
-                                          <option
-                                            key={employee.id}
-                                            value={employee.id}
-                                          >
-                                            {formatUserName(employee)}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </div>
-
-                                    {(item.assignments ?? []).length === 0 ? (
-                                      <p className="mt-3 rounded-2xl bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
-                                        Ingen faste medarbejdere. Der laves{" "}
-                                        {item.requiredCount} tom vagt
-                                        {item.requiredCount === 1 ? "" : "er"},
-                                        hvis skabelonen genereres nu.
-                                      </p>
-                                    ) : (
-                                      <div className="mt-3 flex flex-wrap gap-2">
-                                        {(item.assignments ?? []).map(
-                                          (assignment) => (
-                                            <span
-                                              key={assignment.id}
-                                              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-800 dark:bg-gray-950"
-                                            >
-                                              {formatUserName(assignment.user)}
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  removeTemplateAssignment(
-                                                    item,
-                                                    assignment,
-                                                  )
-                                                }
-                                                className="text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-60 dark:text-red-300"
-                                                disabled={
-                                                  savingAssignmentKey ===
-                                                  `${item.id}:remove:${assignment.id}`
-                                                }
-                                              >
-                                                Fjern
-                                              </button>
-                                            </span>
-                                          ),
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </>
+                              <p className="font-black uppercase">{weekday.shortLabel}</p>
+                              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                {day?.isActive ? "Aktiv" : "Ikke sat"}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                {day?.jobFunctions?.length ?? 0} jobfunktioner
+                              </p>
+                              {dayGapSummary.missingShiftCount > 0 && (
+                                <p className="mt-2 rounded-full bg-amber-100 px-2 py-1 text-center text-[11px] font-black text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
+                                  {dayGapSummary.missingShiftCount} uden standard
+                                </p>
                               )}
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
+
+                      <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                              Ugedag
+                            </p>
+                            <h3 className="text-xl font-black">
+                              {formatWeekday(selectedWeekday)}
+                            </h3>
+                            {selectedDayGapSummary.missingShiftCount > 0 && (
+                              <p className="mt-1 text-sm font-bold text-amber-700 dark:text-amber-300">
+                                {selectedDayGapSummary.missingShiftCount} vagter
+                                mangler standardmedarbejder på denne ugedag.
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <button
+                              type="button"
+                              onClick={openCopyDayModal}
+                              className="rounded-2xl border border-blue-300 px-4 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40"
+                              disabled={!selectedDay || copyingDay}
+                            >
+                              Kopiér ugedag
+                            </button>
+                            <label className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold dark:border-gray-800 dark:bg-gray-900">
+                              <input
+                                type="checkbox"
+                                checked={dayForm.isActive}
+                                onChange={(event) =>
+                                  setDayForm((current) => ({
+                                    ...current,
+                                    isActive: event.target.checked,
+                                  }))
+                                }
+                                className="h-4 w-4 rounded border-gray-300"
+                              />
+                              Aktiv ugedag i skabelonen
+                            </label>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_140px]">
+                          <label className="block text-sm font-semibold">
+                            Note
+                            <input
+                              value={dayForm.note}
+                              onChange={(event) =>
+                                setDayForm((current) => ({
+                                  ...current,
+                                  note: event.target.value,
+                                }))
+                              }
+                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              placeholder="Fx lukket dag eller særlig bemanding"
+                            />
+                          </label>
+                          <label className="block text-sm font-semibold">
+                            Sortering
+                            <input
+                              type="number"
+                              min="0"
+                              value={dayForm.sortOrder}
+                              onChange={(event) =>
+                                setDayForm((current) => ({
+                                  ...current,
+                                  sortOrder: event.target.value,
+                                }))
+                              }
+                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                            />
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={saveSelectedDay}
+                          className="mt-3 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+                          disabled={savingDay}
+                        >
+                          {savingDay ? "Gemmer..." : "Gem ugedag"}
+                        </button>
+                      </div>
+
+                      <div className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
+                            Jobfunktioner på {formatWeekday(selectedWeekday).toLowerCase()}
+                          </p>
+                          <h3 className="text-xl font-black">Vagter fra skabelonen</h3>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            Fast medarbejder er frivilligt, men manglende standard
+                            vises tydeligt her og i skabelonoversigten.
+                          </p>
+                        </div>
+
+                        <form
+                          className="mt-4 grid gap-3 lg:grid-cols-[1fr_130px_130px]"
+                          onSubmit={addJobFunction}
+                        >
+                          <label className="block text-sm font-semibold">
+                            Jobfunktion
+                            <select
+                              value={jobFunctionForm.jobFunctionId}
+                              onChange={(event) =>
+                                setJobFunctionForm((current) => ({
+                                  ...current,
+                                  jobFunctionId: event.target.value,
+                                }))
+                              }
+                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              disabled={savingJobFunction || jobFunctions.length === 0}
+                            >
+                              <option value="">Vælg jobfunktion</option>
+                              {jobFunctions.map((jobFunction) => (
+                                <option key={jobFunction.id} value={jobFunction.id}>
+                                  {jobFunction.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block text-sm font-semibold">
+                            Antal vagter
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={jobFunctionForm.requiredCount}
+                              onChange={(event) =>
+                                setJobFunctionForm((current) => ({
+                                  ...current,
+                                  requiredCount: event.target.value,
+                                }))
+                              }
+                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              disabled={savingJobFunction}
+                            />
+                          </label>
+                          <label className="block text-sm font-semibold">
+                            Sortering
+                            <input
+                              type="number"
+                              min="0"
+                              value={jobFunctionForm.sortOrder}
+                              onChange={(event) =>
+                                setJobFunctionForm((current) => ({
+                                  ...current,
+                                  sortOrder: event.target.value,
+                                }))
+                              }
+                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              disabled={savingJobFunction}
+                            />
+                          </label>
+                          <label className="block text-sm font-semibold lg:col-span-3">
+                            Note
+                            <input
+                              value={jobFunctionForm.note}
+                              onChange={(event) =>
+                                setJobFunctionForm((current) => ({
+                                  ...current,
+                                  note: event.target.value,
+                                }))
+                              }
+                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              placeholder="Valgfri note til jobfunktionen i denne skabelon"
+                              disabled={savingJobFunction}
+                            />
+                          </label>
+                          <button
+                            type="submit"
+                            className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-60 lg:col-span-3"
+                            disabled={savingJobFunction || jobFunctions.length === 0}
+                          >
+                            {savingJobFunction ? "Tilføjer..." : "Tilføj jobfunktion"}
+                          </button>
+                        </form>
+
+                        {jobFunctions.length === 0 && (
+                          <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                            Der er ingen aktive jobfunktioner. Opret eller aktivér
+                            jobfunktioner før skabelonen kan bemandes.
+                          </p>
+                        )}
+
+                        <div className="mt-5 flex flex-col gap-3">
+                          {(selectedDay?.jobFunctions ?? []).length === 0 && (
+                            <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
+                              Der er ingen jobfunktioner på denne ugedag endnu.
+                            </p>
+                          )}
+
+                          {(selectedDay?.jobFunctions ?? []).map((item) => {
+                            const expanded = expandedJobFunctionIds.has(item.id);
+                            const assignedCount = countAssignedTemplateUsers(
+                              item.assignments,
+                            );
+                            const missingCount = getJobFunctionStaffingGap(item);
+                            const assignedUserIds = getAssignedUserIdSet(item);
+                            const availableEmployees = employees.filter(
+                              (employee) => !assignedUserIds.has(employee.id),
+                            );
+
+                            return (
+                              <div
+                                key={item.id}
+                                className={`rounded-3xl border p-4 ${
+                                  missingCount > 0
+                                    ? "border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20"
+                                    : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
+                                }`}
+                              >
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span
+                                        className="h-3 w-3 rounded-full"
+                                        style={{ backgroundColor: item.jobFunction.color }}
+                                      />
+                                      <h4 className="text-lg font-black">
+                                        {item.jobFunction.name}
+                                      </h4>
+                                      {missingCount > 0 ? (
+                                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-950/60 dark:text-amber-100">
+                                          Mangler {missingCount} standard
+                                        </span>
+                                      ) : (
+                                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800 dark:bg-green-950/60 dark:text-green-100">
+                                          Standard OK
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                      {formatDayPeriod(item.jobFunction.dayPeriod)} ·{" "}
+                                      {assignedCount}/{item.requiredCount} faste
+                                      medarbejdere
+                                    </p>
+                                    {item.note && (
+                                      <p className="mt-2 rounded-2xl bg-white p-3 text-sm text-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                        {item.note}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleJobFunctionDetails(item.id)}
+                                      className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold hover:bg-white dark:border-gray-700 dark:hover:bg-gray-900"
+                                    >
+                                      {expanded ? "Skjul detaljer" : "Vis detaljer"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeTemplateJobFunction(item)}
+                                      className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+                                    >
+                                      Fjern
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {missingCount > 0 && (
+                                  <div className="mt-3 rounded-2xl bg-amber-100 p-3 text-sm text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">
+                                    <p className="font-black">Uden fast standard</p>
+                                    <p className="mt-1">
+                                      Når skabelonen bruges i vagtplanlægningen,
+                                      er der {missingCount} vagt{missingCount === 1 ? "" : "er"},
+                                      som ikke har fast medarbejder på forhånd.
+                                    </p>
+                                  </div>
+                                )}
+
+                                {expanded && (
+                                  <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
+                                    <div className="rounded-2xl bg-white p-4 dark:bg-gray-900">
+                                      <p className="font-black">Faste medarbejdere</p>
+                                      <div className="mt-3 flex flex-col gap-2">
+                                        {(item.assignments ?? []).length === 0 && (
+                                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Ingen faste medarbejdere valgt.
+                                          </p>
+                                        )}
+                                        {(item.assignments ?? []).map((assignment) => {
+                                          const removeKey = `${item.id}:remove:${assignment.id}`;
+
+                                          return (
+                                            <div
+                                              key={assignment.id}
+                                              className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 p-3 dark:border-gray-800"
+                                            >
+                                              <span className="text-sm font-semibold">
+                                                {formatUserName(assignment.user)}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  removeTemplateAssignment(item, assignment)
+                                                }
+                                                className="rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                                                disabled={savingAssignmentKey === removeKey}
+                                              >
+                                                {savingAssignmentKey === removeKey
+                                                  ? "Fjerner..."
+                                                  : "Fjern"}
+                                              </button>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+
+                                      <label className="mt-3 block text-sm font-semibold">
+                                        Tilføj fast medarbejder
+                                        <select
+                                          defaultValue=""
+                                          onChange={(event) => {
+                                            const selectedValue = event.target.value;
+                                            event.currentTarget.value = "";
+                                            addTemplateAssignment(item, selectedValue);
+                                          }}
+                                          className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                          disabled={
+                                            savingAssignmentKey === `${item.id}:add` ||
+                                            availableEmployees.length === 0 ||
+                                            assignedCount >= item.requiredCount
+                                          }
+                                        >
+                                          <option value="">
+                                            {assignedCount >= item.requiredCount
+                                              ? "Alle vagter har fast medarbejder"
+                                              : "Vælg medarbejder"}
+                                          </option>
+                                          {availableEmployees.map((employee) => (
+                                            <option key={employee.id} value={employee.id}>
+                                              {formatUserName(employee)}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white p-4 dark:bg-gray-900">
+                                      <p className="font-black">Indstillinger</p>
+                                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                        <label className="block text-sm font-semibold">
+                                          Antal vagter
+                                          <input
+                                            key={`required-${item.id}-${item.requiredCount}`}
+                                            type="number"
+                                            min="1"
+                                            max="50"
+                                            defaultValue={item.requiredCount}
+                                            onBlur={(event) => {
+                                              const value = parseOptionalPositiveInteger(
+                                                event.currentTarget.value,
+                                                item.requiredCount,
+                                              );
+
+                                              if (!value || value < 1 || value > 50) {
+                                                event.currentTarget.value = String(
+                                                  item.requiredCount,
+                                                );
+                                                return;
+                                              }
+
+                                              if (value !== item.requiredCount) {
+                                                updateTemplateJobFunction(item, {
+                                                  requiredCount: value,
+                                                });
+                                              }
+                                            }}
+                                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                          />
+                                        </label>
+                                        <label className="block text-sm font-semibold">
+                                          Sortering
+                                          <input
+                                            key={`sort-${item.id}-${item.sortOrder}`}
+                                            type="number"
+                                            min="0"
+                                            defaultValue={item.sortOrder}
+                                            onBlur={(event) => {
+                                              const value = parseOptionalPositiveInteger(
+                                                event.currentTarget.value,
+                                                item.sortOrder,
+                                              );
+
+                                              if (value === null) {
+                                                event.currentTarget.value = String(
+                                                  item.sortOrder,
+                                                );
+                                                return;
+                                              }
+
+                                              if (value !== item.sortOrder) {
+                                                updateTemplateJobFunction(item, {
+                                                  sortOrder: value,
+                                                });
+                                              }
+                                            }}
+                                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                          />
+                                        </label>
+                                        <label className="block text-sm font-semibold sm:col-span-2">
+                                          Note
+                                          <textarea
+                                            key={`note-${item.id}-${item.note ?? ""}`}
+                                            defaultValue={item.note ?? ""}
+                                            onBlur={(event) => {
+                                              const value =
+                                                event.currentTarget.value.trim() || null;
+
+                                              if (value !== item.note) {
+                                                updateTemplateJobFunction(item, {
+                                                  note: value,
+                                                });
+                                              }
+                                            }}
+                                            className="mt-1 min-h-20 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                                          />
+                                        </label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </section>
               </section>
             </>
           )}
         </div>
-      </main>
 
-      {createTemplateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-template-modal-title"
-            className="w-full max-w-xl rounded-3xl border border-gray-200 bg-white p-5 text-gray-950 shadow-xl dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-              Stamdata
-            </p>
-            <h2
-              id="create-template-modal-title"
-              className="mt-2 text-2xl font-black"
-            >
-              Opret vagtsskabelon
-            </h2>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              Opret en tom skabelon. Ugedage og jobfunktioner tilføjes bagefter
-              i oversigten.
-            </p>
+        {createTemplateModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-2xl rounded-3xl bg-white p-6 text-gray-950 shadow-2xl dark:bg-gray-900 dark:text-white">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
+                    Ny skabelon
+                  </p>
+                  <h2 className="text-2xl font-black">Opret vagtsskabelon</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCreateTemplateModalOpen(false)}
+                  className="rounded-2xl border border-gray-300 px-3 py-2 text-sm font-bold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Luk
+                </button>
+              </div>
 
-            <form className="mt-4 space-y-3" onSubmit={createTemplate}>
-              <label className="block text-sm font-semibold">
-                Navn
-                <input
-                  value={createTemplateForm.name}
-                  onChange={(event) =>
-                    setCreateTemplateForm((current) => ({
-                      ...current,
-                      name: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  placeholder="Fx Normal hverdag"
-                  disabled={savingTemplate}
-                  autoFocus
-                />
-              </label>
-
-              <label className="block text-sm font-semibold">
-                Beskrivelse
-                <textarea
-                  value={createTemplateForm.description}
-                  onChange={(event) =>
-                    setCreateTemplateForm((current) => ({
-                      ...current,
-                      description: event.target.value,
-                    }))
-                  }
-                  className="mt-1 min-h-24 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  placeholder="Kort note om hvornår skabelonen bruges."
-                  disabled={savingTemplate}
-                />
-              </label>
-
-              <div className="grid gap-3 sm:grid-cols-2">
+              <form className="mt-5 grid gap-3" onSubmit={createTemplate}>
+                <label className="block text-sm font-semibold">
+                  Navn
+                  <input
+                    value={createTemplateForm.name}
+                    onChange={(event) =>
+                      setCreateTemplateForm((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    autoFocus
+                  />
+                </label>
                 <label className="block text-sm font-semibold">
                   Ugeregel
                   <select
@@ -1927,7 +1997,6 @@ export default function ScheduleTemplatesPage() {
                       }))
                     }
                     className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    disabled={savingTemplate}
                   >
                     <option value="ANY">Alle uger</option>
                     <option value="EVEN">Kun lige uger</option>
@@ -1935,9 +2004,22 @@ export default function ScheduleTemplatesPage() {
                   </select>
                 </label>
                 <label className="block text-sm font-semibold">
+                  Beskrivelse
+                  <textarea
+                    value={createTemplateForm.description}
+                    onChange={(event) =>
+                      setCreateTemplateForm((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
+                    }
+                    className="mt-1 min-h-24 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  />
+                </label>
+                <label className="block text-sm font-semibold">
                   Sortering
                   <input
-                    type="text" inputMode="numeric" pattern="[0-9]*"
+                    type="number"
                     min="0"
                     value={createTemplateForm.sortOrder}
                     onChange={(event) =>
@@ -1947,112 +2029,85 @@ export default function ScheduleTemplatesPage() {
                       }))
                     }
                     className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    disabled={savingTemplate}
                   />
                 </label>
-              </div>
-
-              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreateTemplateModalOpen(false);
-                    setCreateTemplateForm(emptyTemplateForm);
-                  }}
-                  className="rounded-2xl border border-gray-300 px-4 py-3 text-sm font-bold hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:hover:bg-gray-800"
-                  disabled={savingTemplate}
-                >
-                  Annuller
-                </button>
                 <button
                   type="submit"
                   className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
                   disabled={savingTemplate}
                 >
-                  {savingTemplate ? "Gemmer..." : "Opret vagtsskabelon"}
+                  {savingTemplate ? "Opretter..." : "Opret vagtsskabelon"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {copyDayModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-xl rounded-3xl bg-white p-6 text-gray-950 shadow-2xl dark:bg-gray-900 dark:text-white">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
+                    Kopiér ugedag
+                  </p>
+                  <h2 className="text-2xl font-black">
+                    Kopiér {formatWeekday(selectedWeekday).toLowerCase()}
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Modtagerdage ryddes først og får derefter samme jobfunktioner
+                    og faste medarbejdere.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCopyDayModalOpen(false)}
+                  className="rounded-2xl border border-gray-300 px-3 py-2 text-sm font-bold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Luk
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {copyDayModalOpen && selectedDay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="copy-day-modal-title"
-            className="w-full max-w-xl rounded-3xl border border-gray-200 bg-white p-5 text-gray-950 shadow-xl dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-              Kopiér ugedag
-            </p>
-            <h2 id="copy-day-modal-title" className="mt-2 text-2xl font-black">
-              Kopiér {formatWeekday(selectedWeekday)}
-            </h2>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              Vælg de ugedage, der skal overskrives med samme aktiv-status,
-              note, sortering og jobfunktioner som{" "}
-              {formatWeekday(selectedWeekday).toLowerCase()}.
-            </p>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                {weekdayOptions
+                  .filter((weekday) => weekday.value !== selectedWeekday)
+                  .map((weekday) => (
+                    <label
+                      key={weekday.value}
+                      className="flex items-center gap-3 rounded-2xl border border-gray-200 p-3 text-sm font-semibold dark:border-gray-800"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={copyDayTargets.includes(weekday.value)}
+                        onChange={() => toggleCopyDayTarget(weekday.value)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      {weekday.label}
+                    </label>
+                  ))}
+              </div>
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {weekdayOptions
-                .filter((weekday) => weekday.value !== selectedWeekday)
-                .map((weekday) => (
-                  <label
-                    key={weekday.value}
-                    className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold dark:border-gray-800 dark:bg-gray-950"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={copyDayTargets.includes(weekday.value)}
-                      onChange={() => toggleCopyDayTarget(weekday.value)}
-                      className="h-4 w-4 rounded border-gray-300"
-                      disabled={copyingDay}
-                    />
-                    {weekday.label}
-                  </label>
-                ))}
-            </div>
-
-            <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-              Eksisterende jobfunktioner på de valgte modtagerdage fjernes og
-              erstattes af jobfunktionerne fra{" "}
-              {formatWeekday(selectedWeekday).toLowerCase()}.
-            </p>
-
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setCopyDayModalOpen(false)}
-                className="rounded-2xl border border-gray-300 px-4 py-3 text-sm font-bold hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:hover:bg-gray-800"
-                disabled={copyingDay}
-              >
-                Annuller
-              </button>
               <button
                 type="button"
                 onClick={copySelectedDayToTargets}
-                className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                disabled={copyingDay || copyDayTargets.length === 0}
+                className="mt-5 w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+                disabled={copyingDay}
               >
                 {copyingDay ? "Kopierer..." : "Kopiér til valgte dage"}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <InfoModal
-        open={infoDialog.open}
-        title={infoDialog.title}
-        description={infoDialog.description}
-        buttonText={infoDialog.buttonText}
-        variant={infoDialog.variant}
-        onClose={infoDialog.close}
-      />
+        <InfoModal
+          open={infoDialog.open}
+          title={infoDialog.title}
+          description={infoDialog.description}
+          buttonText={infoDialog.buttonText}
+          variant={infoDialog.variant}
+          onClose={infoDialog.close}
+        />
+      </main>
     </AdminGuard>
   );
 }
