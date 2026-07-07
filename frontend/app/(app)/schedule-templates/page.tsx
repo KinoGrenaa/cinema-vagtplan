@@ -534,6 +534,8 @@ export default function ScheduleTemplatesPage() {
     });
   }, [copyTemplateName, selectedTemplate?.id, templates]);
 
+  const copyTemplateNameIsBlank = copyTemplateName.trim().length === 0;
+
   const activeTemplates = templates.filter((template) => template.isActive).length;
   const archivedTemplates = templates.length - activeTemplates;
   const totalStaffingGapSummary = templates.reduce(
@@ -2382,7 +2384,12 @@ export default function ScheduleTemplatesPage() {
                     autoFocus
                     disabled={copyingTemplate}
                   />
-                  {copyTemplateNameExists && (
+                  {copyTemplateNameIsBlank && (
+                    <span className="mt-2 block rounded-2xl bg-blue-50 p-3 text-sm font-semibold text-blue-950 dark:bg-blue-950/30 dark:text-blue-100">
+                      Indtast et navn på den nye vagtsskabelon.
+                    </span>
+                  )}
+                  {!copyTemplateNameIsBlank && copyTemplateNameExists && (
                     <span className="mt-2 block rounded-2xl bg-amber-50 p-3 text-sm font-semibold text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
                       Der findes allerede en skabelon med dette navn. Vælg et
                       andet navn til kopien.
@@ -2392,13 +2399,17 @@ export default function ScheduleTemplatesPage() {
                 <button
                   type="submit"
                   className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                  disabled={copyingTemplate || copyTemplateNameExists}
+                  disabled={
+                    copyingTemplate || copyTemplateNameIsBlank || copyTemplateNameExists
+                  }
                 >
                   {copyingTemplate
                     ? "Kopierer..."
-                    : copyTemplateNameExists
-                      ? "Vælg et andet navn"
-                      : "Opret kopi"}
+                    : copyTemplateNameIsBlank
+                      ? "Indtast navn"
+                      : copyTemplateNameExists
+                        ? "Vælg et andet navn"
+                        : "Opret kopi"}
                 </button>
               </form>
             </div>
