@@ -7,8 +7,11 @@ import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
 import ScheduleTemplateCopyDayModal from "./components/ScheduleTemplateCopyDayModal";
+import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
+import ScheduleTemplateCreateModal from "./components/ScheduleTemplateCreateModal";
+import ScheduleTemplateList from "./components/ScheduleTemplateList";
+import ScheduleTemplateSummaryCards from "./components/ScheduleTemplateSummaryCards";
 
 import {
   copyScheduleTemplate,
@@ -206,12 +209,6 @@ function formatDayPeriod(dayPeriod: DayPeriod | null | undefined) {
   )}`;
 }
 
-function formatWeekParity(value: WeekParity) {
-  if (value === "EVEN") return "Kun lige uger";
-  if (value === "ODD") return "Kun ulige uger";
-  return "Alle uger";
-}
-
 function formatWeekday(value: number) {
   return (
     weekdayOptions.find((weekday) => weekday.value === value)?.label ??
@@ -240,15 +237,6 @@ function getAssignmentUserId(assignment: ScheduleTemplateAssignment) {
 
 function getTemplateDay(template: ScheduleTemplate | null, weekday: number) {
   return template?.days?.find((day) => day.weekday === weekday) ?? null;
-}
-
-function getTemplateJobFunctionCount(template: ScheduleTemplate) {
-  return (template.days ?? []).reduce(
-    (sum, day) =>
-      sum +
-      day.jobFunctions.reduce((daySum, item) => daySum + item.requiredCount, 0),
-    0,
-  );
 }
 
 function parseTemplateForm(form: TemplateFormState) {
@@ -1336,144 +1324,26 @@ export default function ScheduleTemplatesPage() {
 
           {!needsMasterCinemaSelection && (
             <>
-              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                    Vist
-                  </p>
-                  <p className="mt-2 text-3xl font-black">{templates.length}</p>
-                </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                    Aktive
-                  </p>
-                  <p className="mt-2 text-3xl font-black">{activeTemplates}</p>
-                </div>
-                <div className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                    Arkiverede
-                  </p>
-                  <p className="mt-2 text-3xl font-black">{archivedTemplates}</p>
-                </div>
-                <div
-                  className={`rounded-3xl border p-5 ${
-                    totalStaffingGapSummary.missingShiftCount > 0
-                      ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
-                      : "border-green-200 bg-green-50 text-green-950 dark:border-green-900 dark:bg-green-950/30 dark:text-green-100"
-                  }`}
-                >
-                  <p className="text-xs font-bold uppercase tracking-[0.2em]">
-                    Åbne vagter
-                  </p>
-                  <p className="mt-2 text-3xl font-black">
-                    {totalStaffingGapSummary.missingShiftCount}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold">
-                    {totalStaffingGapSummary.missingShiftCount > 0
-                      ? "oprettes uden fast medarbejder"
-                      : "alle viste skabeloner er fast bemandet"}
-                  </p>
-                </div>
-              </section>
+              <ScheduleTemplateSummaryCards
+                totalCount={templates.length}
+                activeCount={activeTemplates}
+                archivedCount={archivedTemplates}
+                openShiftCount={totalStaffingGapSummary.missingShiftCount}
+              />
 
               <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
-                <aside className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch">
-                    <div>
-                      <h2 className="text-xl font-black">Vagtsskabeloner</h2>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Vælg en skabelon for at redigere ugedage og jobfunktioner.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCreateTemplateForm(emptyTemplateForm);
-                        setCreateTemplateModalOpen(true);
-                      }}
-                      className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700"
-                    >
-                      Opret vagtsskabelon
-                    </button>
-                  </div>
-
-                  <label className="mt-4 flex items-center gap-3 text-sm font-semibold">
-                    <input
-                      type="checkbox"
-                      checked={showArchived}
-                      onChange={(event) => setShowArchived(event.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    Vis arkiverede
-                  </label>
-
-                  <div className="mt-4 flex flex-col gap-3">
-                    {loading && (
-                      <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
-                        Henter vagtsskabeloner...
-                      </p>
-                    )}
-
-                    {!loading && templates.length === 0 && (
-                      <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
-                        Der er endnu ingen vagtsskabeloner for den valgte biograf.
-                      </p>
-                    )}
-
-                    {templates.map((template) => {
-                      const selected = selectedTemplateId === template.id;
-                      const templateGapSummary =
-                        getTemplateStaffingGapSummary(template);
-
-                      return (
-                        <button
-                          key={template.id}
-                          type="button"
-                          onClick={() => setSelectedTemplateId(template.id)}
-                          className={`w-full rounded-2xl border p-4 text-left transition ${
-                            selected
-                              ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
-                              : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-black">{template.name}</p>
-                              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                {formatWeekParity(template.weekParity)} ·{" "}
-                                {template.days?.length ?? 0} ugedage ·{" "}
-                                {getTemplateJobFunctionCount(template)} vagter
-                              </p>
-                            </div>
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-black ${
-                                template.isActive
-                                  ? "bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-200"
-                                  : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                              }`}
-                            >
-                              {template.isActive ? "Aktiv" : "Arkiveret"}
-                            </span>
-                          </div>
-
-                          <div className="mt-3">
-                            {templateGapSummary.missingShiftCount > 0 ? (
-                              <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
-                                {formatOpenShiftText(
-                                  templateGapSummary.missingShiftCount,
-                                )}
-                              </span>
-                            ) : (
-                              <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800 dark:bg-green-950/50 dark:text-green-100">
-                                Fast bemandet
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </aside>
+                <ScheduleTemplateList
+                  templates={templates}
+                  loading={loading}
+                  showArchived={showArchived}
+                  selectedTemplateId={selectedTemplateId}
+                  onShowArchivedChange={setShowArchived}
+                  onSelectTemplate={(templateId) => setSelectedTemplateId(templateId)}
+                  onCreateTemplate={() => {
+                    setCreateTemplateForm(emptyTemplateForm);
+                    setCreateTemplateModalOpen(true);
+                  }}
+                />
 
                 <section className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                   {!selectedTemplate && (
@@ -2122,94 +1992,13 @@ export default function ScheduleTemplatesPage() {
         </div>
 
         {createTemplateModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="w-full max-w-2xl rounded-3xl bg-white p-6 text-gray-950 shadow-2xl dark:bg-gray-900 dark:text-white">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-                    Ny skabelon
-                  </p>
-                  <h2 className="text-2xl font-black">Opret vagtsskabelon</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCreateTemplateModalOpen(false)}
-                  className="rounded-2xl border border-gray-300 px-3 py-2 text-sm font-bold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Luk
-                </button>
-              </div>
-
-              <form className="mt-5 grid gap-3" onSubmit={createTemplate}>
-                <label className="block text-sm font-semibold">
-                  Navn
-                  <input
-                    value={createTemplateForm.name}
-                    onChange={(event) =>
-                      setCreateTemplateForm((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    autoFocus
-                  />
-                </label>
-                <label className="block text-sm font-semibold">
-                  Ugeregel
-                  <select
-                    value={createTemplateForm.weekParity}
-                    onChange={(event) =>
-                      setCreateTemplateForm((current) => ({
-                        ...current,
-                        weekParity: event.target.value as WeekParity,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  >
-                    <option value="ANY">Alle uger</option>
-                    <option value="EVEN">Kun lige uger</option>
-                    <option value="ODD">Kun ulige uger</option>
-                  </select>
-                </label>
-                <label className="block text-sm font-semibold">
-                  Beskrivelse
-                  <textarea
-                    value={createTemplateForm.description}
-                    onChange={(event) =>
-                      setCreateTemplateForm((current) => ({
-                        ...current,
-                        description: event.target.value,
-                      }))
-                    }
-                    className="mt-1 min-h-24 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  />
-                </label>
-                <label className="block text-sm font-semibold">
-                  Sortering
-                  <input
-                    type="number"
-                    min="0"
-                    value={createTemplateForm.sortOrder}
-                    onChange={(event) =>
-                      setCreateTemplateForm((current) => ({
-                        ...current,
-                        sortOrder: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  />
-                </label>
-                <button
-                  type="submit"
-                  className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                  disabled={savingTemplate}
-                >
-                  {savingTemplate ? "Opretter..." : "Opret vagtsskabelon"}
-                </button>
-              </form>
-            </div>
-          </div>
+          <ScheduleTemplateCreateModal
+            form={createTemplateForm}
+            setForm={setCreateTemplateForm}
+            saving={savingTemplate}
+            onClose={() => setCreateTemplateModalOpen(false)}
+            onSubmit={createTemplate}
+          />
         )}
 
         {copyTemplateModalOpen && selectedTemplate && (
