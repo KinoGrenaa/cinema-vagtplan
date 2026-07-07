@@ -477,6 +477,18 @@ export default function ScheduleTemplatesPage() {
     return summarizeTemplateStaffing(selectedTemplate);
   }, [selectedTemplate]);
 
+  const copyTemplateNameExists = useMemo(() => {
+    const normalizedName = copyTemplateName.trim().toLowerCase();
+
+    if (!normalizedName) return false;
+
+    return templates.some(
+      (template) =>
+        template.id !== selectedTemplate?.id &&
+        template.name.trim().toLowerCase() === normalizedName,
+    );
+  }, [copyTemplateName, selectedTemplate?.id, templates]);
+
   const activeTemplates = templates.filter((template) => template.isActive).length;
   const archivedTemplates = templates.length - activeTemplates;
   const totalStaffingGapSummary = templates.reduce(
@@ -1061,6 +1073,14 @@ export default function ScheduleTemplatesPage() {
       infoDialog.showError(
         "Navn mangler",
         "Indtast et navn på den nye vagtsskabelon.",
+      );
+      return;
+    }
+
+    if (copyTemplateNameExists) {
+      infoDialog.showError(
+        "Skabelonnavn findes allerede",
+        "Vælg et andet navn til kopien, så den er nem at kende fra den eksisterende skabelon.",
       );
       return;
     }
@@ -2242,13 +2262,23 @@ export default function ScheduleTemplatesPage() {
                     autoFocus
                     disabled={copyingTemplate}
                   />
+                  {copyTemplateNameExists && (
+                    <span className="mt-2 block rounded-2xl bg-amber-50 p-3 text-sm font-semibold text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+                      Der findes allerede en skabelon med dette navn. Vælg et
+                      andet navn til kopien.
+                    </span>
+                  )}
                 </label>
                 <button
                   type="submit"
                   className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                  disabled={copyingTemplate}
+                  disabled={copyingTemplate || copyTemplateNameExists}
                 >
-                  {copyingTemplate ? "Kopierer..." : "Opret kopi"}
+                  {copyingTemplate
+                    ? "Kopierer..."
+                    : copyTemplateNameExists
+                      ? "Vælg et andet navn"
+                      : "Opret kopi"}
                 </button>
               </form>
             </div>
