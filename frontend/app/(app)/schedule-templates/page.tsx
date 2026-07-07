@@ -545,6 +545,7 @@ export default function ScheduleTemplatesPage() {
   }, [copyTemplateName, selectedTemplate?.id, templates]);
 
   const copyTemplateNameIsBlank = copyTemplateName.trim().length === 0;
+  const copyTemplateHasNoDays = selectedTemplateStaffingSummary.dayCount === 0;
 
   const activeTemplates = templates.filter((template) => template.isActive).length;
   const archivedTemplates = templates.length - activeTemplates;
@@ -1146,6 +1147,14 @@ export default function ScheduleTemplatesPage() {
       infoDialog.showError(
         "Skabelonnavn findes allerede",
         "Vælg et andet navn til kopien, så den er nem at kende fra den eksisterende skabelon.",
+      );
+      return;
+    }
+
+    if (copyTemplateHasNoDays) {
+      infoDialog.showError(
+        "Ingen ugedage valgt",
+        "Kopien skal indeholde mindst én ugedag. Slå inaktive ugedage til igen, eller vælg en skabelon med aktive ugedage.",
       );
       return;
     }
@@ -2324,6 +2333,13 @@ export default function ScheduleTemplatesPage() {
                 </div>
               </div>
 
+              {copyTemplateHasNoDays && (
+                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                  Kopien har ingen ugedage lige nu. Slå inaktive ugedage til igen,
+                  eller vælg en skabelon med aktive ugedage.
+                </div>
+              )}
+
               {selectedTemplateCopyDaySummaries.length > 0 && (
                 <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
                   <p className="font-black uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
@@ -2443,7 +2459,10 @@ export default function ScheduleTemplatesPage() {
                   type="submit"
                   className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
                   disabled={
-                    copyingTemplate || copyTemplateNameIsBlank || copyTemplateNameExists
+                    copyingTemplate ||
+                    copyTemplateNameIsBlank ||
+                    copyTemplateNameExists ||
+                    copyTemplateHasNoDays
                   }
                 >
                   {copyingTemplate
@@ -2452,7 +2471,9 @@ export default function ScheduleTemplatesPage() {
                       ? "Indtast navn"
                       : copyTemplateNameExists
                         ? "Vælg et andet navn"
-                        : "Opret kopi"}
+                        : copyTemplateHasNoDays
+                          ? "Vælg mindst én ugedag"
+                          : "Opret kopi"}
                 </button>
               </form>
             </div>
