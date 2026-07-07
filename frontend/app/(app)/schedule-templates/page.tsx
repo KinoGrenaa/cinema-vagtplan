@@ -7,6 +7,7 @@ import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
 
 import {
   copyScheduleTemplate,
@@ -363,11 +364,6 @@ function formatCopyTargetButtonText(targetCount: number) {
   return `Kopiér til ${targetCount} valgte dage`;
 }
 
-function formatWeekdayCountText(dayCount: number) {
-  if (dayCount === 1) return "1 ugedag";
-  return `${dayCount} ugedage`;
-}
-
 function formatCopyTargetStatus(day: TemplateDay | null) {
   const summary = summarizeTemplateDayStaffing(day);
 
@@ -380,40 +376,6 @@ function formatCopyTargetStatus(day: TemplateDay | null) {
     : "";
 
   return `${formatShiftText(summary.shiftCount)} erstattes${openShiftLabel}`;
-}
-
-function formatTemplateCopyDayDetail(
-  summary: {
-    jobFunctionCount: number;
-    shiftCount: number;
-    assignedShiftCount: number;
-    openShiftCount: number;
-  },
-  includeAssignments: boolean,
-) {
-  if (summary.shiftCount === 0) {
-    return "Ingen vagter";
-  }
-
-  const copiedOpenShiftCount = includeAssignments
-    ? summary.openShiftCount
-    : summary.shiftCount;
-  const parts = [
-    formatShiftText(summary.shiftCount),
-    formatJobFunctionText(summary.jobFunctionCount),
-  ];
-
-  if (includeAssignments) {
-    parts.push(formatFixedStaffingText(summary.assignedShiftCount));
-  } else {
-    parts.push("Faste medarbejdere kopieres ikke");
-  }
-
-  if (copiedOpenShiftCount > 0) {
-    parts.push(formatOpenShiftText(copiedOpenShiftCount));
-  }
-
-  return parts.join(" · ");
 }
 
 function getCopyTargetWeekdays(selectedWeekday: number, weekdays: number[]) {
@@ -2276,243 +2238,27 @@ export default function ScheduleTemplatesPage() {
         )}
 
         {copyTemplateModalOpen && selectedTemplate && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 text-gray-950 shadow-2xl dark:bg-gray-900 dark:text-white">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-                    Kopiér skabelon
-                  </p>
-                  <h2 className="text-2xl font-black">
-                    Kopiér {selectedTemplate.name}
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Den nye skabelon får samme ugedage, jobfunktioner, faste
-                    medarbejdere og åbne vagter. Allerede oprettede vagter
-                    påvirkes ikke.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCopyTemplateModalOpen(false)}
-                  className="rounded-2xl border border-gray-300 px-3 py-2 text-sm font-bold hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:hover:bg-gray-800"
-                  disabled={copyingTemplate}
-                >
-                  Luk
-                </button>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-                <p className="font-black uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
-                  Det kopieres
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                    {formatWeekdayCountText(selectedTemplateStaffingSummary.dayCount)}
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                    {formatShiftText(selectedTemplateStaffingSummary.shiftCount)}
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                    {formatJobFunctionText(
-                      selectedTemplateStaffingSummary.jobFunctionCount,
-                    )}
-                  </span>
-                  {copyTemplateIncludeAssignments ? (
-                    <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                      {formatFixedStaffingText(
-                        selectedTemplateStaffingSummary.assignedShiftCount,
-                      )}
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-950 dark:bg-blue-950/40 dark:text-blue-100">
-                      Faste medarbejdere kopieres ikke
-                    </span>
-                  )}
-                  {copiedTemplateOpenShiftCount > 0 && (
-                    <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
-                      {formatOpenShiftText(copiedTemplateOpenShiftCount)}
-                    </span>
-                  )}
-                  {!copyTemplateIncludeNotes && (
-                    <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                      Noter kopieres ikke
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {copyTemplateHasNoDays && (
-                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                  Kopien har ingen ugedage lige nu. Slå inaktive ugedage til igen,
-                  eller vælg en skabelon med aktive ugedage.
-                </div>
-              )}
-
-              {selectedTemplateCopyDaySummaries.length > 0 && (
-                <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-                  <p className="font-black uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
-                    Ugedage i kopien
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    {selectedTemplateCopyDaySummaries.map((daySummary) => (
-                      <div
-                        key={daySummary.weekday}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-gray-50 px-3 py-2 dark:bg-gray-900"
-                      >
-                        <div>
-                          <p className="font-black text-gray-950 dark:text-white">
-                            {formatWeekday(daySummary.weekday)}
-                          </p>
-                          <p className="text-gray-600 dark:text-gray-400">
-                            {formatTemplateCopyDayDetail(
-                              daySummary,
-                              copyTemplateIncludeAssignments,
-                            )}
-                          </p>
-                        </div>
-                        {!daySummary.isActive && (
-                          <span className="rounded-full bg-gray-200 px-3 py-1 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                            Inaktiv
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {selectedTemplateInactiveDayCount > 0 && (
-                <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
-                  <label className="flex cursor-pointer items-start gap-3 font-semibold">
-                    <input
-                      type="checkbox"
-                      checked={copyTemplateIncludeInactiveDays}
-                      onChange={(event) =>
-                        setCopyTemplateIncludeInactiveDays(event.target.checked)
-                      }
-                      className="mt-1 h-4 w-4"
-                      disabled={copyingTemplate}
-                    />
-                    <span>
-                      <span className="block font-black">
-                        Kopiér inaktive ugedage
-                      </span>
-                      <span className="mt-1 block text-xs font-semibold text-gray-600 dark:text-gray-400">
-                        Slå fra hvis kopien kun skal indeholde aktive ugedage.
-                      </span>
-                    </span>
-                  </label>
-                  {!copyTemplateIncludeInactiveDays && (
-                    <p className="mt-3 rounded-2xl bg-white p-3 text-xs font-bold text-gray-700 dark:bg-gray-900 dark:text-gray-200">
-                      {formatWeekdayCountText(selectedTemplateInactiveDayCount)}
-                      {" "}springes over i kopien.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
-                <label className="flex cursor-pointer items-start gap-3 font-semibold">
-                  <input
-                    type="checkbox"
-                    checked={copyTemplateIncludeNotes}
-                    onChange={(event) =>
-                      setCopyTemplateIncludeNotes(event.target.checked)
-                    }
-                    className="mt-1 h-4 w-4"
-                    disabled={copyingTemplate}
-                  />
-                  <span>
-                    <span className="block font-black">Kopiér noter</span>
-                    <span className="mt-1 block text-xs font-semibold text-gray-600 dark:text-gray-400">
-                      Slå fra hvis kopien skal starte uden beskrivelse,
-                      ugedagsnoter og jobfunktionsnoter.
-                    </span>
-                  </span>
-                </label>
-                {!copyTemplateIncludeNotes && (
-                  <p className="mt-3 rounded-2xl bg-white p-3 text-xs font-bold text-gray-700 dark:bg-gray-900 dark:text-gray-200">
-                    Beskrivelse og noter udelades i kopien.
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
-                <label className="flex cursor-pointer items-start gap-3 font-semibold">
-                  <input
-                    type="checkbox"
-                    checked={copyTemplateIncludeAssignments}
-                    onChange={(event) =>
-                      setCopyTemplateIncludeAssignments(event.target.checked)
-                    }
-                    className="mt-1 h-4 w-4"
-                    disabled={copyingTemplate}
-                  />
-                  <span>
-                    <span className="block font-black">
-                      Kopiér faste medarbejdere
-                    </span>
-                    <span className="mt-1 block text-xs font-semibold text-blue-900 dark:text-blue-200">
-                      Slå fra hvis kopien skal starte med åbne vagter, som
-                      medarbejderne kan ønske.
-                    </span>
-                  </span>
-                </label>
-                {!copyTemplateIncludeAssignments && copiedTemplateOpenShiftCount > 0 && (
-                  <p className="mt-3 rounded-2xl bg-white p-3 text-xs font-bold text-blue-950 dark:bg-gray-950 dark:text-blue-100">
-                    {formatOpenShiftText(copiedTemplateOpenShiftCount)} oprettes
-                    som åbne vagter i kopien.
-                  </p>
-                )}
-              </div>
-
-              <form onSubmit={copySelectedTemplate} className="mt-5 space-y-4">
-                <label className="block text-sm font-semibold">
-                  Navn på ny skabelon
-                  <input
-                    value={copyTemplateName}
-                    onChange={(event) => setCopyTemplateName(event.target.value)}
-                    className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                    placeholder={`Kopi af ${selectedTemplate.name}`}
-                    autoFocus
-                    disabled={copyingTemplate}
-                  />
-                  {copyTemplateNameIsBlank && (
-                    <span className="mt-2 block rounded-2xl bg-blue-50 p-3 text-sm font-semibold text-blue-950 dark:bg-blue-950/30 dark:text-blue-100">
-                      Indtast et navn på den nye vagtsskabelon.
-                    </span>
-                  )}
-                  {!copyTemplateNameIsBlank && copyTemplateNameExists && (
-                    <span className="mt-2 block rounded-2xl bg-amber-50 p-3 text-sm font-semibold text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
-                      Der findes allerede en skabelon med dette navn. Vælg et
-                      andet navn til kopien.
-                    </span>
-                  )}
-                </label>
-                <button
-                  type="submit"
-                  className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                  disabled={
-                    copyingTemplate ||
-                    copyTemplateNameIsBlank ||
-                    copyTemplateNameExists ||
-                    copyTemplateHasNoDays
-                  }
-                >
-                  {copyingTemplate
-                    ? "Kopierer..."
-                    : copyTemplateNameIsBlank
-                      ? "Indtast navn"
-                      : copyTemplateNameExists
-                        ? "Vælg et andet navn"
-                        : copyTemplateHasNoDays
-                          ? "Vælg mindst én ugedag"
-                          : "Opret kopi"}
-                </button>
-              </form>
-            </div>
-          </div>
+          <ScheduleTemplateCopyModal
+            sourceTemplate={selectedTemplate}
+            copyName={copyTemplateName}
+            setCopyName={setCopyTemplateName}
+            includeAssignments={copyTemplateIncludeAssignments}
+            setIncludeAssignments={setCopyTemplateIncludeAssignments}
+            includeInactiveDays={copyTemplateIncludeInactiveDays}
+            setIncludeInactiveDays={setCopyTemplateIncludeInactiveDays}
+            includeNotes={copyTemplateIncludeNotes}
+            setIncludeNotes={setCopyTemplateIncludeNotes}
+            inactiveDayCount={selectedTemplateInactiveDayCount}
+            staffingSummary={selectedTemplateStaffingSummary}
+            copiedOpenShiftCount={copiedTemplateOpenShiftCount}
+            daySummaries={selectedTemplateCopyDaySummaries}
+            nameIsBlank={copyTemplateNameIsBlank}
+            nameExists={copyTemplateNameExists}
+            hasNoDays={copyTemplateHasNoDays}
+            copying={copyingTemplate}
+            onClose={() => setCopyTemplateModalOpen(false)}
+            onSubmit={copySelectedTemplate}
+          />
         )}
 
         {copyDayModalOpen && (
