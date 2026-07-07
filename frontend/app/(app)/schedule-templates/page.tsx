@@ -470,6 +470,8 @@ export default function ScheduleTemplatesPage() {
   const [copyTemplateName, setCopyTemplateName] = useState("");
   const [copyTemplateIncludeAssignments, setCopyTemplateIncludeAssignments] =
     useState(true);
+  const [copyTemplateIncludeInactiveDays, setCopyTemplateIncludeInactiveDays] =
+    useState(true);
 
   useEffect(() => {
     infoDialogRef.current = infoDialog;
@@ -514,17 +516,25 @@ export default function ScheduleTemplatesPage() {
     return summarizeTemplateDayStaffing(selectedDay);
   }, [selectedDay]);
 
-  const selectedTemplateStaffingSummary = useMemo(() => {
-    return summarizeTemplateStaffing(selectedTemplate);
+  const selectedTemplateInactiveDayCount = useMemo(() => {
+    return (selectedTemplate?.days ?? []).filter((day) => !day.isActive).length;
   }, [selectedTemplate]);
+
+  const selectedTemplateStaffingSummary = useMemo(() => {
+    return summarizeTemplateStaffing(selectedTemplate, {
+      includeInactiveDays: copyTemplateIncludeInactiveDays,
+    });
+  }, [copyTemplateIncludeInactiveDays, selectedTemplate]);
 
   const copiedTemplateOpenShiftCount = copyTemplateIncludeAssignments
     ? selectedTemplateStaffingSummary.openShiftCount
     : selectedTemplateStaffingSummary.shiftCount;
 
   const selectedTemplateCopyDaySummaries = useMemo(() => {
-    return summarizeTemplateCopyDays(selectedTemplate);
-  }, [selectedTemplate]);
+    return summarizeTemplateCopyDays(selectedTemplate, {
+      includeInactiveDays: copyTemplateIncludeInactiveDays,
+    });
+  }, [copyTemplateIncludeInactiveDays, selectedTemplate]);
 
   const copyTemplateNameExists = useMemo(() => {
     return scheduleTemplateNameExists({
@@ -1113,6 +1123,7 @@ export default function ScheduleTemplatesPage() {
       }),
     );
     setCopyTemplateIncludeAssignments(true);
+    setCopyTemplateIncludeInactiveDays(true);
     setCopyTemplateModalOpen(true);
   };
 
@@ -1147,6 +1158,7 @@ export default function ScheduleTemplatesPage() {
         newTemplateName: nextTemplateName,
         activeCinemaId,
         includeAssignments: copyTemplateIncludeAssignments,
+        includeInactiveDays: copyTemplateIncludeInactiveDays,
       });
 
       await fetchData();
@@ -1155,6 +1167,7 @@ export default function ScheduleTemplatesPage() {
       setCopyTemplateModalOpen(false);
       setCopyTemplateName("");
       setCopyTemplateIncludeAssignments(true);
+      setCopyTemplateIncludeInactiveDays(true);
       infoDialog.show({
         title: "Vagtsskabelon kopieret",
         description: `"${selectedTemplate.name}" er kopieret til "${nextTemplateName}".`,
@@ -2341,6 +2354,36 @@ export default function ScheduleTemplatesPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {selectedTemplateInactiveDayCount > 0 && (
+                <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+                  <label className="flex cursor-pointer items-start gap-3 font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={copyTemplateIncludeInactiveDays}
+                      onChange={(event) =>
+                        setCopyTemplateIncludeInactiveDays(event.target.checked)
+                      }
+                      className="mt-1 h-4 w-4"
+                      disabled={copyingTemplate}
+                    />
+                    <span>
+                      <span className="block font-black">
+                        Kopiér inaktive ugedage
+                      </span>
+                      <span className="mt-1 block text-xs font-semibold text-gray-600 dark:text-gray-400">
+                        Slå fra hvis kopien kun skal indeholde aktive ugedage.
+                      </span>
+                    </span>
+                  </label>
+                  {!copyTemplateIncludeInactiveDays && (
+                    <p className="mt-3 rounded-2xl bg-white p-3 text-xs font-bold text-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                      {formatWeekdayCountText(selectedTemplateInactiveDayCount)}
+                      {" "}springes over i kopien.
+                    </p>
+                  )}
                 </div>
               )}
 

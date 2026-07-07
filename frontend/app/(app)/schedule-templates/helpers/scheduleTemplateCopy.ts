@@ -90,6 +90,19 @@ function sortTemplateDays(days: TemplateDay[]) {
   return [...days].sort((a, b) => a.weekday - b.weekday);
 }
 
+function getTemplateDaysForCopy(
+  template: ScheduleTemplateCopySource | null,
+  includeInactiveDays: boolean,
+) {
+  const days = sortTemplateDays(template?.days ?? []);
+
+  if (includeInactiveDays) {
+    return days;
+  }
+
+  return days.filter((day) => day.isActive);
+}
+
 function sortTemplateJobFunctions(items: TemplateJobFunction[]) {
   return [...items].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.id - b.id,
@@ -125,8 +138,11 @@ function summarizeTemplateCopyDay(day: TemplateDay): TemplateCopyDaySummary {
 
 export function summarizeTemplateStaffing(
   template: ScheduleTemplateCopySource | null,
+  options: { includeInactiveDays?: boolean } = {},
 ): TemplateStaffingSummary {
-  return (template?.days ?? []).reduce<TemplateStaffingSummary>(
+  const includeInactiveDays = options.includeInactiveDays ?? true;
+
+  return getTemplateDaysForCopy(template, includeInactiveDays).reduce<TemplateStaffingSummary>(
     (summary, day) => {
       const daySummary = summarizeTemplateCopyDay(day);
 
@@ -151,8 +167,13 @@ export function summarizeTemplateStaffing(
 
 export function summarizeTemplateCopyDays(
   template: ScheduleTemplateCopySource | null,
+  options: { includeInactiveDays?: boolean } = {},
 ): TemplateCopyDaySummary[] {
-  return sortTemplateDays(template?.days ?? []).map(summarizeTemplateCopyDay);
+  const includeInactiveDays = options.includeInactiveDays ?? true;
+
+  return getTemplateDaysForCopy(template, includeInactiveDays).map(
+    summarizeTemplateCopyDay,
+  );
 }
 
 export async function copyScheduleTemplate({
@@ -160,11 +181,13 @@ export async function copyScheduleTemplate({
   newTemplateName,
   activeCinemaId,
   includeAssignments = true,
+  includeInactiveDays = true,
 }: {
   sourceTemplate: ScheduleTemplateCopySource;
   newTemplateName: string;
   activeCinemaId: number | null;
   includeAssignments?: boolean;
+  includeInactiveDays?: boolean;
 }) {
   const createResponse = await apiFetch("/schedule-templates", {
     method: "POST",
@@ -190,7 +213,7 @@ export async function copyScheduleTemplate({
     throw new Error("Kopien blev oprettet, men svaret manglede skabelon-id.");
   }
 
-  for (const day of sortTemplateDays(sourceTemplate.days ?? [])) {
+  for (const day of getTemplateDaysForCopy(sourceTemplate, includeInactiveDays)) {
     const dayResponse = await apiFetch(
       appendCinemaId(
         `/schedule-templates/${createdTemplate.id}/days/${day.weekday}`,
