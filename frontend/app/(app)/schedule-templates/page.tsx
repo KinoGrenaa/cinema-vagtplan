@@ -9,6 +9,10 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
 import {
+  copyScheduleTemplate,
+  summarizeTemplateStaffing,
+} from "./helpers/scheduleTemplateCopy";
+import {
   countAssignedTemplateUsers,
   getDayStaffingGaps,
   getJobFunctionStaffingGap,
@@ -354,6 +358,11 @@ function formatCopyTargetButtonText(targetCount: number) {
   return `Kopiér til ${targetCount} valgte dage`;
 }
 
+function formatWeekdayCountText(dayCount: number) {
+  if (dayCount === 1) return "1 ugedag";
+  return `${dayCount} ugedage`;
+}
+
 function formatCopyTargetStatus(day: TemplateDay | null) {
   const summary = summarizeTemplateDayStaffing(day);
 
@@ -407,6 +416,7 @@ export default function ScheduleTemplatesPage() {
   const [savingDay, setSavingDay] = useState(false);
   const [savingJobFunction, setSavingJobFunction] = useState(false);
   const [copyingDay, setCopyingDay] = useState(false);
+  const [copyingTemplate, setCopyingTemplate] = useState(false);
   const [savingAssignmentKey, setSavingAssignmentKey] = useState<string | null>(
     null,
   );
@@ -417,6 +427,8 @@ export default function ScheduleTemplatesPage() {
   >(() => new Set());
   const [copyDayModalOpen, setCopyDayModalOpen] = useState(false);
   const [copyDayTargets, setCopyDayTargets] = useState<number[]>([]);
+  const [copyTemplateModalOpen, setCopyTemplateModalOpen] = useState(false);
+  const [copyTemplateName, setCopyTemplateName] = useState("");
 
   useEffect(() => {
     infoDialogRef.current = infoDialog;
@@ -461,6 +473,10 @@ export default function ScheduleTemplatesPage() {
     return summarizeTemplateDayStaffing(selectedDay);
   }, [selectedDay]);
 
+  const selectedTemplateStaffingSummary = useMemo(() => {
+    return summarizeTemplateStaffing(selectedTemplate);
+  }, [selectedTemplate]);
+
   const activeTemplates = templates.filter((template) => template.isActive).length;
   const archivedTemplates = templates.length - activeTemplates;
   const totalStaffingGapSummary = templates.reduce(
@@ -500,6 +516,8 @@ export default function ScheduleTemplatesPage() {
       selectedTemplate ? toTemplateForm(selectedTemplate) : emptyTemplateForm,
     );
     setEditingTemplate(false);
+    setCopyTemplateModalOpen(false);
+    setCopyTemplateName("");
   }, [selectedTemplate]);
 
   useEffect(() => {
@@ -1025,6 +1043,58 @@ export default function ScheduleTemplatesPage() {
     });
   };
 
+  const openCopyTemplateModal = () => {
+    if (!selectedTemplate) return;
+
+    setCopyTemplateName(`Kopi af ${selectedTemplate.name}`);
+    setCopyTemplateModalOpen(true);
+  };
+
+  const copySelectedTemplate = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!selectedTemplate) return;
+
+    const nextTemplateName = copyTemplateName.trim();
+
+    if (!nextTemplateName) {
+      infoDialog.showError(
+        "Navn mangler",
+        "Indtast et navn på den nye vagtsskabelon.",
+      );
+      return;
+    }
+
+    try {
+      setCopyingTemplate(true);
+
+      const createdTemplate = await copyScheduleTemplate({
+        sourceTemplate: selectedTemplate,
+        newTemplateName: nextTemplateName,
+        activeCinemaId,
+      });
+
+      await fetchData();
+      setSelectedTemplateId(createdTemplate.id);
+      setSelectedWeekday(1);
+      setCopyTemplateModalOpen(false);
+      setCopyTemplateName("");
+      infoDialog.show({
+        title: "Vagtsskabelon kopieret",
+        description: `"${selectedTemplate.name}" er kopieret til "${nextTemplateName}".`,
+        variant: "success",
+        buttonText: "OK",
+      });
+    } catch (error) {
+      infoDialog.showError(
+        "Kunne ikke kopiere vagtsskabelon",
+        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
+      );
+    } finally {
+      setCopyingTemplate(false);
+    }
+  };
+
   const openCopyDayModal = () => {
     if (!selectedTemplate || !selectedDay) {
       infoDialog.showError(
@@ -1406,6 +1476,14 @@ export default function ScheduleTemplatesPage() {
                               Genaktivér
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={openCopyTemplateModal}
+                            className="rounded-2xl border border-blue-300 px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40"
+                            disabled={copyingTemplate}
+                          >
+                            Kopiér skabelon
+                          </button>
                           <button
                             type="button"
                             onClick={() => setEditingTemplate((current) => !current)}
@@ -2089,6 +2167,88 @@ export default function ScheduleTemplatesPage() {
                   disabled={savingTemplate}
                 >
                   {savingTemplate ? "Opretter..." : "Opret vagtsskabelon"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {copyTemplateModalOpen && selectedTemplate && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-xl rounded-3xl bg-white p-6 text-gray-950 shadow-2xl dark:bg-gray-900 dark:text-white">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
+                    Kopiér skabelon
+                  </p>
+                  <h2 className="text-2xl font-black">
+                    Kopiér {selectedTemplate.name}
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Den nye skabelon får samme ugedage, jobfunktioner, faste
+                    medarbejdere og åbne vagter. Allerede oprettede vagter
+                    påvirkes ikke.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCopyTemplateModalOpen(false)}
+                  className="rounded-2xl border border-gray-300 px-3 py-2 text-sm font-bold hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:hover:bg-gray-800"
+                  disabled={copyingTemplate}
+                >
+                  Luk
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
+                <p className="font-black uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                  Det kopieres
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                    {formatWeekdayCountText(selectedTemplateStaffingSummary.dayCount)}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                    {formatShiftText(selectedTemplateStaffingSummary.shiftCount)}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                    {formatJobFunctionText(
+                      selectedTemplateStaffingSummary.jobFunctionCount,
+                    )}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                    {formatFixedStaffingText(
+                      selectedTemplateStaffingSummary.assignedShiftCount,
+                    )}
+                  </span>
+                  {selectedTemplateStaffingSummary.openShiftCount > 0 && (
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+                      {formatOpenShiftText(
+                        selectedTemplateStaffingSummary.openShiftCount,
+                      )}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <form onSubmit={copySelectedTemplate} className="mt-5 space-y-4">
+                <label className="block text-sm font-semibold">
+                  Navn på ny skabelon
+                  <input
+                    value={copyTemplateName}
+                    onChange={(event) => setCopyTemplateName(event.target.value)}
+                    className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    placeholder={`Kopi af ${selectedTemplate.name}`}
+                    autoFocus
+                    disabled={copyingTemplate}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+                  disabled={copyingTemplate}
+                >
+                  {copyingTemplate ? "Kopierer..." : "Opret kopi"}
                 </button>
               </form>
             </div>
