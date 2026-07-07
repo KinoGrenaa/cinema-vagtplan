@@ -15,6 +15,7 @@ import {
   getTemplateStaffingGaps,
   getTemplateStaffingGapSummary,
   summarizeStaffingGaps,
+  summarizeTemplateDayStaffing,
 } from "./helpers/scheduleTemplateStaffingGaps";
 
 type CurrentUser = {
@@ -332,6 +333,21 @@ function formatOpenShiftText(openShiftCount: number) {
   return `${openShiftCount} åbne vagter`;
 }
 
+function formatShiftText(shiftCount: number) {
+  if (shiftCount === 1) return "1 vagt";
+  return `${shiftCount} vagter`;
+}
+
+function formatFixedStaffingText(assignedShiftCount: number) {
+  if (assignedShiftCount === 1) return "1 fast medarbejder";
+  return `${assignedShiftCount} faste medarbejdere`;
+}
+
+function formatJobFunctionText(jobFunctionCount: number) {
+  if (jobFunctionCount === 1) return "1 jobfunktion";
+  return `${jobFunctionCount} jobfunktioner`;
+}
+
 function formatCopyTargetButtonText(targetCount: number) {
   if (targetCount === 0) return "Kopiér til valgte dage";
   if (targetCount === 1) return "Kopiér til 1 valgt dag";
@@ -339,23 +355,17 @@ function formatCopyTargetButtonText(targetCount: number) {
 }
 
 function formatCopyTargetStatus(day: TemplateDay | null) {
-  if (!day || day.jobFunctions.length === 0) {
+  const summary = summarizeTemplateDayStaffing(day);
+
+  if (summary.shiftCount === 0) {
     return "Tom modtagerdag";
   }
 
-  const shiftCount = day.jobFunctions.reduce(
-    (sum, item) => sum + item.requiredCount,
-    0,
-  );
-  const openShiftCount = summarizeStaffingGaps(
-    getDayStaffingGaps(day),
-  ).missingShiftCount;
-  const shiftLabel = shiftCount === 1 ? "vagt" : "vagter";
-  const openShiftLabel = openShiftCount > 0
-    ? ` · ${formatOpenShiftText(openShiftCount)}`
+  const openShiftLabel = summary.openShiftCount > 0
+    ? ` · ${formatOpenShiftText(summary.openShiftCount)}`
     : "";
 
-  return `${shiftCount} ${shiftLabel} erstattes${openShiftLabel}`;
+  return `${formatShiftText(summary.shiftCount)} erstattes${openShiftLabel}`;
 }
 
 function getCopyTargetWeekdays(selectedWeekday: number, weekdays: number[]) {
@@ -446,6 +456,10 @@ export default function ScheduleTemplatesPage() {
   const selectedDayGapSummary = useMemo(() => {
     return summarizeStaffingGaps(selectedDayGaps);
   }, [selectedDayGaps]);
+
+  const selectedDayStaffingSummary = useMemo(() => {
+    return summarizeTemplateDayStaffing(selectedDay);
+  }, [selectedDay]);
 
   const activeTemplates = templates.filter((template) => template.isActive).length;
   const archivedTemplates = templates.length - activeTemplates;
@@ -2105,6 +2119,33 @@ export default function ScheduleTemplatesPage() {
                       medarbejderne kan ønske.
                     </p>
                   )}
+                  <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
+                    <p className="font-black uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                      Det kopieres
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                        {formatShiftText(selectedDayStaffingSummary.shiftCount)}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                        {formatJobFunctionText(
+                          selectedDayStaffingSummary.jobFunctionCount,
+                        )}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                        {formatFixedStaffingText(
+                          selectedDayStaffingSummary.assignedShiftCount,
+                        )}
+                      </span>
+                      {selectedDayStaffingSummary.openShiftCount > 0 && (
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
+                          {formatOpenShiftText(
+                            selectedDayStaffingSummary.openShiftCount,
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="button"

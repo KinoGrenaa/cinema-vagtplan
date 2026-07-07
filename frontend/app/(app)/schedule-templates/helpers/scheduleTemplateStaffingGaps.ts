@@ -106,6 +106,44 @@ export function summarizeStaffingGaps(
   };
 }
 
+export type ScheduleTemplateStaffingDaySummary = {
+  jobFunctionCount: number;
+  shiftCount: number;
+  assignedShiftCount: number;
+  openShiftCount: number;
+};
+
+export function summarizeTemplateDayStaffing(
+  day: ScheduleTemplateStaffingDay | null,
+): ScheduleTemplateStaffingDaySummary {
+  return (day?.jobFunctions ?? []).reduce(
+    (summary, item) => {
+      const requiredCount = Number.isInteger(item.requiredCount)
+        ? Math.max(item.requiredCount, 0)
+        : 0;
+      const assignedShiftCount = Math.min(
+        countAssignedTemplateUsers(item.assignments),
+        requiredCount,
+      );
+
+      return {
+        jobFunctionCount: summary.jobFunctionCount + 1,
+        shiftCount: summary.shiftCount + requiredCount,
+        assignedShiftCount: summary.assignedShiftCount + assignedShiftCount,
+        openShiftCount:
+          summary.openShiftCount +
+          Math.max(requiredCount - assignedShiftCount, 0),
+      };
+    },
+    {
+      jobFunctionCount: 0,
+      shiftCount: 0,
+      assignedShiftCount: 0,
+      openShiftCount: 0,
+    },
+  );
+}
+
 export function getTemplateStaffingGapSummary(
   template: ScheduleTemplateStaffingTemplate | null,
 ) {
