@@ -332,6 +332,18 @@ function formatOpenShiftText(openShiftCount: number) {
   return `${openShiftCount} åbne vagter`;
 }
 
+function formatCopyTargetButtonText(targetCount: number) {
+  if (targetCount === 0) return "Kopiér til valgte dage";
+  if (targetCount === 1) return "Kopiér til 1 valgt dag";
+  return `Kopiér til ${targetCount} valgte dage`;
+}
+
+function getCopyTargetWeekdays(selectedWeekday: number, weekdays: number[]) {
+  return weekdays
+    .filter((weekday) => weekday !== selectedWeekday)
+    .sort((a, b) => a - b);
+}
+
 function getAssignedUserIdSet(item: TemplateJobFunction) {
   return new Set(
     (item.assignments ?? [])
@@ -998,6 +1010,10 @@ export default function ScheduleTemplatesPage() {
         ? current.filter((value) => value !== weekday)
         : [...current, weekday].sort((a, b) => a - b),
     );
+  };
+
+  const selectCopyDayTargets = (weekdays: number[]) => {
+    setCopyDayTargets(getCopyTargetWeekdays(selectedWeekday, weekdays));
   };
 
   const copySelectedDayToTargets = async () => {
@@ -2079,7 +2095,42 @@ export default function ScheduleTemplatesPage() {
                 </button>
               </div>
 
-              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => selectCopyDayTargets([1, 2, 3, 4, 5])}
+                  className="rounded-2xl border border-gray-300 px-3 py-2 text-xs font-black hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Vælg hverdage
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectCopyDayTargets([6, 7])}
+                  className="rounded-2xl border border-gray-300 px-3 py-2 text-xs font-black hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Vælg weekend
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    selectCopyDayTargets(
+                      weekdayOptions.map((weekday) => weekday.value),
+                    )
+                  }
+                  className="rounded-2xl border border-gray-300 px-3 py-2 text-xs font-black hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Vælg alle
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCopyDayTargets([])}
+                  className="rounded-2xl border border-gray-300 px-3 py-2 text-xs font-black hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Ryd valg
+                </button>
+              </div>
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {weekdayOptions
                   .filter((weekday) => weekday.value !== selectedWeekday)
                   .map((weekday) => (
@@ -2104,7 +2155,9 @@ export default function ScheduleTemplatesPage() {
                 className="mt-5 w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
                 disabled={copyingDay}
               >
-                {copyingDay ? "Kopierer..." : "Kopiér til valgte dage"}
+                {copyingDay
+                  ? "Kopierer..."
+                  : formatCopyTargetButtonText(copyDayTargets.length)}
               </button>
             </div>
           </div>
