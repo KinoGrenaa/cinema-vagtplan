@@ -10,6 +10,7 @@ import { apiFetch } from "@/app/lib/api";
 
 import {
   copyScheduleTemplate,
+  summarizeTemplateCopyDays,
   summarizeTemplateStaffing,
 } from "./helpers/scheduleTemplateCopy";
 import {
@@ -381,6 +382,29 @@ function formatCopyTargetStatus(day: TemplateDay | null) {
   return `${formatShiftText(summary.shiftCount)} erstattes${openShiftLabel}`;
 }
 
+function formatTemplateCopyDayDetail(summary: {
+  jobFunctionCount: number;
+  shiftCount: number;
+  assignedShiftCount: number;
+  openShiftCount: number;
+}) {
+  if (summary.shiftCount === 0) {
+    return "Ingen vagter";
+  }
+
+  const parts = [
+    formatShiftText(summary.shiftCount),
+    formatJobFunctionText(summary.jobFunctionCount),
+    formatFixedStaffingText(summary.assignedShiftCount),
+  ];
+
+  if (summary.openShiftCount > 0) {
+    parts.push(formatOpenShiftText(summary.openShiftCount));
+  }
+
+  return parts.join(" · ");
+}
+
 function getCopyTargetWeekdays(selectedWeekday: number, weekdays: number[]) {
   return weekdays
     .filter((weekday) => weekday !== selectedWeekday)
@@ -479,6 +503,10 @@ export default function ScheduleTemplatesPage() {
 
   const selectedTemplateStaffingSummary = useMemo(() => {
     return summarizeTemplateStaffing(selectedTemplate);
+  }, [selectedTemplate]);
+
+  const selectedTemplateCopyDaySummaries = useMemo(() => {
+    return summarizeTemplateCopyDays(selectedTemplate);
   }, [selectedTemplate]);
 
   const copyTemplateNameExists = useMemo(() => {
@@ -2201,7 +2229,7 @@ export default function ScheduleTemplatesPage() {
 
         {copyTemplateModalOpen && selectedTemplate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="w-full max-w-xl rounded-3xl bg-white p-6 text-gray-950 shadow-2xl dark:bg-gray-900 dark:text-white">
+            <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 text-gray-950 shadow-2xl dark:bg-gray-900 dark:text-white">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
@@ -2256,6 +2284,36 @@ export default function ScheduleTemplatesPage() {
                   )}
                 </div>
               </div>
+
+              {selectedTemplateCopyDaySummaries.length > 0 && (
+                <div className="mt-3 rounded-2xl border border-gray-200 bg-white p-3 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
+                  <p className="font-black uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                    Ugedage i kopien
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {selectedTemplateCopyDaySummaries.map((daySummary) => (
+                      <div
+                        key={daySummary.weekday}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-gray-50 px-3 py-2 dark:bg-gray-900"
+                      >
+                        <div>
+                          <p className="font-black text-gray-950 dark:text-white">
+                            {formatWeekday(daySummary.weekday)}
+                          </p>
+                          <p className="text-gray-600 dark:text-gray-400">
+                            {formatTemplateCopyDayDetail(daySummary)}
+                          </p>
+                        </div>
+                        {!daySummary.isActive && (
+                          <span className="rounded-full bg-gray-200 px-3 py-1 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                            Inaktiv
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={copySelectedTemplate} className="mt-5 space-y-4">
                 <label className="block text-sm font-semibold">
