@@ -8,6 +8,7 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
+import ScheduleTemplateCopyDayModal from "./components/ScheduleTemplateCopyDayModal";
 
 import {
   copyScheduleTemplate,
@@ -343,41 +344,6 @@ function formatOpenShiftText(openShiftCount: number) {
   return `${openShiftCount} åbne vagter`;
 }
 
-function formatShiftText(shiftCount: number) {
-  if (shiftCount === 1) return "1 vagt";
-  return `${shiftCount} vagter`;
-}
-
-function formatFixedStaffingText(assignedShiftCount: number) {
-  if (assignedShiftCount === 1) return "1 fast medarbejder";
-  return `${assignedShiftCount} faste medarbejdere`;
-}
-
-function formatJobFunctionText(jobFunctionCount: number) {
-  if (jobFunctionCount === 1) return "1 jobfunktion";
-  return `${jobFunctionCount} jobfunktioner`;
-}
-
-function formatCopyTargetButtonText(targetCount: number) {
-  if (targetCount === 0) return "Kopiér til valgte dage";
-  if (targetCount === 1) return "Kopiér til 1 valgt dag";
-  return `Kopiér til ${targetCount} valgte dage`;
-}
-
-function formatCopyTargetStatus(day: TemplateDay | null) {
-  const summary = summarizeTemplateDayStaffing(day);
-
-  if (summary.shiftCount === 0) {
-    return "Tom modtagerdag";
-  }
-
-  const openShiftLabel = summary.openShiftCount > 0
-    ? ` · ${formatOpenShiftText(summary.openShiftCount)}`
-    : "";
-
-  return `${formatShiftText(summary.shiftCount)} erstattes${openShiftLabel}`;
-}
-
 function getCopyTargetWeekdays(selectedWeekday: number, weekdays: number[]) {
   return weekdays
     .filter((weekday) => weekday !== selectedWeekday)
@@ -478,6 +444,15 @@ export default function ScheduleTemplatesPage() {
   const selectedDayStaffingSummary = useMemo(() => {
     return summarizeTemplateDayStaffing(selectedDay);
   }, [selectedDay]);
+
+  const copyDayTargetOptions = useMemo(() => {
+    return weekdayOptions
+      .filter((weekday) => weekday.value !== selectedWeekday)
+      .map((weekday) => ({
+        weekday,
+        day: getTemplateDay(selectedTemplate, weekday.value),
+      }));
+  }, [selectedTemplate, selectedWeekday]);
 
   const selectedTemplateInactiveDayCount = useMemo(() => {
     return (selectedTemplate?.days ?? []).filter((day) => !day.isActive).length;
@@ -2262,141 +2237,19 @@ export default function ScheduleTemplatesPage() {
         )}
 
         {copyDayModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="w-full max-w-xl rounded-3xl bg-white p-6 text-gray-950 shadow-2xl dark:bg-gray-900 dark:text-white">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-                    Kopiér ugedag
-                  </p>
-                  <h2 className="text-2xl font-black">
-                    Kopiér {formatWeekday(selectedWeekday).toLowerCase()}
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Modtagerdage ryddes først og får derefter samme jobfunktioner
-                    og faste medarbejdere.
-                  </p>
-                  {selectedDayGapSummary.missingShiftCount > 0 && (
-                    <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm font-semibold text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
-                      {formatOpenShiftText(
-                        selectedDayGapSummary.missingShiftCount,
-                      )}{" "}
-                      uden fast medarbejder kopieres også som åbne vagter, som
-                      medarbejderne kan ønske.
-                    </p>
-                  )}
-                  <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-                    <p className="font-black uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
-                      Det kopieres
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                        {formatShiftText(selectedDayStaffingSummary.shiftCount)}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                        {formatJobFunctionText(
-                          selectedDayStaffingSummary.jobFunctionCount,
-                        )}
-                      </span>
-                      <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
-                        {formatFixedStaffingText(
-                          selectedDayStaffingSummary.assignedShiftCount,
-                        )}
-                      </span>
-                      {selectedDayStaffingSummary.openShiftCount > 0 && (
-                        <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
-                          {formatOpenShiftText(
-                            selectedDayStaffingSummary.openShiftCount,
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCopyDayModalOpen(false)}
-                  className="rounded-2xl border border-gray-300 px-3 py-2 text-sm font-bold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Luk
-                </button>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => selectCopyDayTargets([1, 2, 3, 4, 5])}
-                  className="rounded-2xl border border-gray-300 px-3 py-2 text-xs font-black hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Vælg hverdage
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectCopyDayTargets([6, 7])}
-                  className="rounded-2xl border border-gray-300 px-3 py-2 text-xs font-black hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Vælg weekend
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    selectCopyDayTargets(
-                      weekdayOptions.map((weekday) => weekday.value),
-                    )
-                  }
-                  className="rounded-2xl border border-gray-300 px-3 py-2 text-xs font-black hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Vælg alle
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCopyDayTargets([])}
-                  className="rounded-2xl border border-gray-300 px-3 py-2 text-xs font-black hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  Ryd valg
-                </button>
-              </div>
-
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {weekdayOptions
-                  .filter((weekday) => weekday.value !== selectedWeekday)
-                  .map((weekday) => {
-                    const targetDay = getTemplateDay(selectedTemplate, weekday.value);
-
-                    return (
-                      <label
-                        key={weekday.value}
-                        className="flex items-start gap-3 rounded-2xl border border-gray-200 p-3 text-sm font-semibold dark:border-gray-800"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={copyDayTargets.includes(weekday.value)}
-                          onChange={() => toggleCopyDayTarget(weekday.value)}
-                          className="mt-1 h-4 w-4 rounded border-gray-300"
-                        />
-                        <span>
-                          <span className="block">{weekday.label}</span>
-                          <span className="mt-0.5 block text-xs font-semibold text-gray-500 dark:text-gray-400">
-                            {formatCopyTargetStatus(targetDay)}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })}
-              </div>
-
-              <button
-                type="button"
-                onClick={copySelectedDayToTargets}
-                className="mt-5 w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                disabled={copyingDay}
-              >
-                {copyingDay
-                  ? "Kopierer..."
-                  : formatCopyTargetButtonText(copyDayTargets.length)}
-              </button>
-            </div>
-          </div>
+          <ScheduleTemplateCopyDayModal
+            sourceWeekday={selectedWeekday}
+            targetOptions={copyDayTargetOptions}
+            selectedTargets={copyDayTargets}
+            selectedDayGapSummary={selectedDayGapSummary}
+            selectedDayStaffingSummary={selectedDayStaffingSummary}
+            copying={copyingDay}
+            onClose={() => setCopyDayModalOpen(false)}
+            onToggleTarget={toggleCopyDayTarget}
+            onSelectTargets={selectCopyDayTargets}
+            onClearTargets={() => setCopyDayTargets([])}
+            onSubmit={copySelectedDayToTargets}
+          />
         )}
 
         <InfoModal
