@@ -182,18 +182,20 @@ export async function copyScheduleTemplate({
   activeCinemaId,
   includeAssignments = true,
   includeInactiveDays = true,
+  includeNotes = true,
 }: {
   sourceTemplate: ScheduleTemplateCopySource;
   newTemplateName: string;
   activeCinemaId: number | null;
   includeAssignments?: boolean;
   includeInactiveDays?: boolean;
+  includeNotes?: boolean;
 }) {
   const createResponse = await apiFetch("/schedule-templates", {
     method: "POST",
     body: JSON.stringify({
       name: newTemplateName,
-      description: sourceTemplate.description,
+      description: includeNotes ? sourceTemplate.description : null,
       weekParity: sourceTemplate.weekParity,
       sortOrder: (sourceTemplate.sortOrder ?? 0) + 1,
       cinemaId: activeCinemaId,
@@ -223,7 +225,7 @@ export async function copyScheduleTemplate({
         method: "PATCH",
         body: JSON.stringify({
           isActive: day.isActive,
-          note: day.note,
+          note: includeNotes ? day.note : null,
           sortOrder: day.sortOrder,
           cinemaId: activeCinemaId,
         }),
@@ -248,7 +250,7 @@ export async function copyScheduleTemplate({
             jobFunctionId: item.jobFunctionId,
             requiredCount: item.requiredCount,
             sortOrder: item.sortOrder,
-            note: item.note,
+            note: includeNotes ? item.note : null,
             cinemaId: activeCinemaId,
           }),
         },

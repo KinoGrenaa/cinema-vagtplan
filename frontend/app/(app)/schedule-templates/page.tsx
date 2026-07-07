@@ -472,6 +472,7 @@ export default function ScheduleTemplatesPage() {
     useState(true);
   const [copyTemplateIncludeInactiveDays, setCopyTemplateIncludeInactiveDays] =
     useState(true);
+  const [copyTemplateIncludeNotes, setCopyTemplateIncludeNotes] = useState(true);
 
   useEffect(() => {
     infoDialogRef.current = infoDialog;
@@ -1125,6 +1126,7 @@ export default function ScheduleTemplatesPage() {
     );
     setCopyTemplateIncludeAssignments(true);
     setCopyTemplateIncludeInactiveDays(true);
+    setCopyTemplateIncludeNotes(true);
     setCopyTemplateModalOpen(true);
   };
 
@@ -1168,6 +1170,7 @@ export default function ScheduleTemplatesPage() {
         activeCinemaId,
         includeAssignments: copyTemplateIncludeAssignments,
         includeInactiveDays: copyTemplateIncludeInactiveDays,
+        includeNotes: copyTemplateIncludeNotes,
       });
 
       await fetchData();
@@ -1177,6 +1180,7 @@ export default function ScheduleTemplatesPage() {
       setCopyTemplateName("");
       setCopyTemplateIncludeAssignments(true);
       setCopyTemplateIncludeInactiveDays(true);
+      setCopyTemplateIncludeNotes(true);
       infoDialog.show({
         title: "Vagtsskabelon kopieret",
         description: `"${selectedTemplate.name}" er kopieret til "${nextTemplateName}".`,
@@ -2330,6 +2334,11 @@ export default function ScheduleTemplatesPage() {
                       {formatOpenShiftText(copiedTemplateOpenShiftCount)}
                     </span>
                   )}
+                  {!copyTemplateIncludeNotes && (
+                    <span className="rounded-full bg-white px-3 py-1 dark:bg-gray-900">
+                      Noter kopieres ikke
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2402,6 +2411,32 @@ export default function ScheduleTemplatesPage() {
                   )}
                 </div>
               )}
+
+              <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+                <label className="flex cursor-pointer items-start gap-3 font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={copyTemplateIncludeNotes}
+                    onChange={(event) =>
+                      setCopyTemplateIncludeNotes(event.target.checked)
+                    }
+                    className="mt-1 h-4 w-4"
+                    disabled={copyingTemplate}
+                  />
+                  <span>
+                    <span className="block font-black">Kopiér noter</span>
+                    <span className="mt-1 block text-xs font-semibold text-gray-600 dark:text-gray-400">
+                      Slå fra hvis kopien skal starte uden beskrivelse,
+                      ugedagsnoter og jobfunktionsnoter.
+                    </span>
+                  </span>
+                </label>
+                {!copyTemplateIncludeNotes && (
+                  <p className="mt-3 rounded-2xl bg-white p-3 text-xs font-bold text-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                    Beskrivelse og noter udelades i kopien.
+                  </p>
+                )}
+              </div>
 
               <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
                 <label className="flex cursor-pointer items-start gap-3 font-semibold">
