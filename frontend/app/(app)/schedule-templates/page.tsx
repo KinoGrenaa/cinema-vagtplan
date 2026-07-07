@@ -2060,6 +2060,15 @@ export default function ScheduleTemplatesPage() {
                     Modtagerdage ryddes først og får derefter samme jobfunktioner
                     og faste medarbejdere.
                   </p>
+                  {selectedDayGapSummary.missingShiftCount > 0 && (
+                    <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm font-semibold text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+                      {formatOpenShiftText(
+                        selectedDayGapSummary.missingShiftCount,
+                      )}{" "}
+                      uden fast medarbejder kopieres også som åbne vagter, som
+                      medarbejderne kan ønske.
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"
