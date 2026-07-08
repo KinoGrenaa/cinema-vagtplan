@@ -35,269 +35,35 @@ import {
   summarizeTemplateDayStaffing,
 } from "./helpers/scheduleTemplateStaffingGaps";
 
-type CurrentUser = {
-  sub: number;
-  email: string;
-  role: "MASTER" | "ADMIN" | "EMPLOYEE";
-  cinemaId: number | null;
-};
+import {
+  appendCinemaId,
+  formatWeekday,
+  getAssignmentUserId,
+  getCopyTargetWeekdays,
+  getCurrentUserFromToken,
+  getSelectedMasterCinemaId,
+  getTemplateDay,
+  readErrorMessage,
+  weekdayOptions,
+} from "./helpers/scheduleTemplatePageHelpers";
+import {
+  emptyJobFunctionForm,
+  emptyTemplateForm,
+  parseDayForm,
+  parseJobFunctionForm,
+  parseTemplateForm,
+  toDayForm,
+  toTemplateForm,
+} from "./helpers/scheduleTemplateFormHelpers";
+import type {
+  CurrentUser,
+  JobFunction,
+  ScheduleTemplate,
+  ScheduleTemplateAssignment,
+  ScheduleTemplateUser,
+  TemplateJobFunction,
+} from "./helpers/scheduleTemplatePageTypes";
 
-type WeekParity = "ANY" | "EVEN" | "ODD";
-
-type DayPeriod = {
-  id: number;
-  name: string;
-  startMinute: number;
-  endMinute: number;
-  isActive: boolean;
-};
-
-type JobFunction = {
-  id: number;
-  name: string;
-  description: string | null;
-  color: string;
-  isActive: boolean;
-  dayPeriod?: DayPeriod | null;
-};
-
-type ScheduleTemplateUser = {
-  id: number;
-  firstName: string | null;
-  lastName: string | null;
-  email: string;
-  role?: "MASTER" | "ADMIN" | "EMPLOYEE";
-  isActive?: boolean;
-};
-
-type ScheduleTemplateAssignment = {
-  id: number;
-  userId?: number | null;
-  sortOrder?: number | null;
-  user?: ScheduleTemplateUser | null;
-};
-
-type TemplateJobFunction = {
-  id: number;
-  jobFunctionId: number;
-  requiredCount: number;
-  sortOrder: number;
-  note: string | null;
-  jobFunction: JobFunction;
-  assignments?: ScheduleTemplateAssignment[];
-};
-
-type TemplateDay = {
-  id: number;
-  weekday: number;
-  isActive: boolean;
-  note: string | null;
-  sortOrder: number;
-  jobFunctions: TemplateJobFunction[];
-};
-
-type ScheduleTemplate = {
-  id: number;
-  name: string;
-  description: string | null;
-  weekParity: WeekParity;
-  startsOn: string | null;
-  sortOrder: number;
-  isActive: boolean;
-  archivedAt: string | null;
-  days?: TemplateDay[];
-};
-
-type TemplateFormState = {
-  name: string;
-  description: string;
-  weekParity: WeekParity;
-  sortOrder: string;
-};
-
-type DayFormState = {
-  isActive: boolean;
-  note: string;
-  sortOrder: string;
-};
-
-type JobFunctionFormState = {
-  jobFunctionId: string;
-  requiredCount: string;
-  sortOrder: string;
-  note: string;
-};
-
-const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
-
-const emptyTemplateForm: TemplateFormState = {
-  name: "",
-  description: "",
-  weekParity: "ANY",
-  sortOrder: "0",
-};
-
-const emptyJobFunctionForm: JobFunctionFormState = {
-  jobFunctionId: "",
-  requiredCount: "1",
-  sortOrder: "0",
-  note: "",
-};
-
-const weekdayOptions = [
-  { value: 1, shortLabel: "Man", label: "Mandag" },
-  { value: 2, shortLabel: "Tir", label: "Tirsdag" },
-  { value: 3, shortLabel: "Ons", label: "Onsdag" },
-  { value: 4, shortLabel: "Tor", label: "Torsdag" },
-  { value: 5, shortLabel: "Fre", label: "Fredag" },
-  { value: 6, shortLabel: "Lør", label: "Lørdag" },
-  { value: 7, shortLabel: "Søn", label: "Søndag" },
-];
-
-function getCurrentUserFromToken(): CurrentUser | null {
-  const token = localStorage.getItem("token");
-  if (!token) return null;
-
-  try {
-    const payload = token.split(".")[1];
-    return JSON.parse(atob(payload)) as CurrentUser;
-  } catch {
-    return null;
-  }
-}
-
-function getSelectedMasterCinemaId() {
-  const selectedCinemaId = Number(
-    localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
-  );
-
-  if (!Number.isFinite(selectedCinemaId) || selectedCinemaId <= 0) {
-    return null;
-  }
-
-  return selectedCinemaId;
-}
-
-function appendCinemaId(path: string, cinemaId: number | null) {
-  if (!cinemaId) return path;
-
-  const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}cinemaId=${cinemaId}`;
-}
-
-async function readErrorMessage(response: Response, fallback: string) {
-  const data = await response.json().catch(() => null);
-
-  if (typeof data?.message === "string") return data.message;
-  if (Array.isArray(data?.message)) return data.message.join("\n");
-
-  return fallback;
-}
-
-function formatWeekday(value: number) {
-  return (
-    weekdayOptions.find((weekday) => weekday.value === value)?.label ??
-    "Ukendt dag"
-  );
-}
-
-function getAssignmentUserId(assignment: ScheduleTemplateAssignment) {
-  const userId = Number(assignment.userId ?? assignment.user?.id);
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return null;
-  }
-
-  return userId;
-}
-
-function getTemplateDay(template: ScheduleTemplate | null, weekday: number) {
-  return template?.days?.find((day) => day.weekday === weekday) ?? null;
-}
-
-function parseTemplateForm(form: TemplateFormState) {
-  const name = form.name.trim();
-  const description = form.description.trim() || null;
-  const sortOrder = form.sortOrder.trim() ? Number(form.sortOrder) : 0;
-
-  if (!name) {
-    throw new Error("Indtast et navn på vagtsskabelonen.");
-  }
-
-  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-    throw new Error("Sortering skal være et gyldigt tal.");
-  }
-
-  return { name, description, weekParity: form.weekParity, sortOrder };
-}
-
-function toTemplateForm(template: ScheduleTemplate): TemplateFormState {
-  return {
-    name: template.name,
-    description: template.description ?? "",
-    weekParity: template.weekParity,
-    sortOrder: String(template.sortOrder ?? 0),
-  };
-}
-
-function toDayForm(day: TemplateDay | null): DayFormState {
-  return {
-    isActive: day?.isActive ?? true,
-    note: day?.note ?? "",
-    sortOrder: String(day?.sortOrder ?? 0),
-  };
-}
-
-function parseDayForm(form: DayFormState) {
-  const sortOrder = form.sortOrder.trim() ? Number(form.sortOrder) : 0;
-
-  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-    throw new Error("Sortering skal være et gyldigt tal.");
-  }
-
-  return {
-    isActive: form.isActive,
-    note: form.note.trim() || null,
-    sortOrder,
-  };
-}
-
-function parseJobFunctionForm(form: JobFunctionFormState) {
-  const jobFunctionId = Number(form.jobFunctionId);
-  const requiredCount = form.requiredCount.trim()
-    ? Number(form.requiredCount)
-    : 1;
-  const sortOrder = form.sortOrder.trim() ? Number(form.sortOrder) : 0;
-
-  if (!Number.isInteger(jobFunctionId) || jobFunctionId <= 0) {
-    throw new Error("Vælg en jobfunktion.");
-  }
-
-  if (
-    !Number.isInteger(requiredCount) ||
-    requiredCount <= 0 ||
-    requiredCount > 50
-  ) {
-    throw new Error("Antal vagter skal være mellem 1 og 50.");
-  }
-
-  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-    throw new Error("Sortering skal være et gyldigt tal.");
-  }
-
-  return {
-    jobFunctionId,
-    requiredCount,
-    sortOrder,
-    note: form.note.trim() || null,
-  };
-}
-
-function getCopyTargetWeekdays(selectedWeekday: number, weekdays: number[]) {
-  return weekdays
-    .filter((weekday) => weekday !== selectedWeekday)
-    .sort((a, b) => a - b);
-}
 
 export default function ScheduleTemplatesPage() {
   const infoDialog = useInfoModal();
