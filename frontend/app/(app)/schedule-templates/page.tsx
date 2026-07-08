@@ -1,46 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import AdminGuard from "@/app/components/AdminGuard";
-import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import ScheduleTemplateCopyDayModal from "./components/ScheduleTemplateCopyDayModal";
-import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
-import ScheduleTemplateCreateModal from "./components/ScheduleTemplateCreateModal";
 import ScheduleTemplateList from "./components/ScheduleTemplateList";
+import ScheduleTemplateModals from "./components/ScheduleTemplateModals";
 import ScheduleTemplateEditorPanel from "./components/ScheduleTemplateEditorPanel";
 import ScheduleTemplatesMasterCinemaRequired from "./components/ScheduleTemplatesMasterCinemaRequired";
 import ScheduleTemplatesPageIntro from "./components/ScheduleTemplatesPageIntro";
 import ScheduleTemplateSummaryCards from "./components/ScheduleTemplateSummaryCards";
 
-import {
-  copyScheduleTemplate,
-  summarizeTemplateCopyDays,
-  summarizeTemplateStaffing,
-} from "./helpers/scheduleTemplateCopy";
-import {
-  getUniqueCopiedScheduleTemplateName,
-  scheduleTemplateNameExists,
-} from "./helpers/scheduleTemplateCopyNames";
-import {
-  countAssignedTemplateUsers,
-  getDayStaffingGaps,
-  getTemplateStaffingGaps,
-  getTemplateStaffingGapSummary,
-  summarizeStaffingGaps,
-  summarizeTemplateDayStaffing,
-} from "./helpers/scheduleTemplateStaffingGaps";
+import { copyScheduleTemplate } from "./helpers/scheduleTemplateCopy";
+import { getUniqueCopiedScheduleTemplateName } from "./helpers/scheduleTemplateCopyNames";
+import { countAssignedTemplateUsers } from "./helpers/scheduleTemplateStaffingGaps";
 
 import {
   formatWeekday,
   getAssignmentUserId,
   getCopyTargetWeekdays,
-  getCurrentUserFromToken,
-  getSelectedMasterCinemaId,
-  getTemplateDay,
-  weekdayOptions,
 } from "./helpers/scheduleTemplatePageHelpers";
 import {
   emptyJobFunctionForm,
@@ -66,22 +45,21 @@ import {
 import { fetchScheduleTemplatePageData } from "./helpers/scheduleTemplateDataApi";
 
 import type {
-  CurrentUser,
   JobFunction,
   ScheduleTemplate,
   ScheduleTemplateAssignment,
   ScheduleTemplateUser,
   TemplateJobFunction,
 } from "./helpers/scheduleTemplatePageTypes";
+import { useScheduleTemplateDerivedState } from "./hooks/useScheduleTemplateDerivedState";
+import { useScheduleTemplateMasterCinema } from "./hooks/useScheduleTemplateMasterCinema";
 
 
 export default function ScheduleTemplatesPage() {
   const infoDialog = useInfoModal();
   const infoDialogRef = useRef(infoDialog);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
-    number | null
-  >(null);
+  const { currentUser, activeCinemaId, needsMasterCinemaSelection } =
+    useScheduleTemplateMasterCinema();
   const [templates, setTemplates] = useState<ScheduleTemplate[]>([]);
   const [jobFunctions, setJobFunctions] = useState<JobFunction[]>([]);
   const [employees, setEmployees] = useState<ScheduleTemplateUser[]>([]);
@@ -123,118 +101,32 @@ export default function ScheduleTemplatesPage() {
     infoDialogRef.current = infoDialog;
   }, [infoDialog]);
 
-  const activeCinemaId = useMemo(() => {
-    if (currentUser?.role === "MASTER" && !currentUser.cinemaId) {
-      return selectedMasterCinemaId;
-    }
-
-    return currentUser?.cinemaId ?? null;
-  }, [currentUser, selectedMasterCinemaId]);
-
-  const needsMasterCinemaSelection =
-    currentUser?.role === "MASTER" && !currentUser.cinemaId && !activeCinemaId;
-
-  const selectedTemplate = useMemo(() => {
-    return templates.find((template) => template.id === selectedTemplateId) ?? null;
-  }, [selectedTemplateId, templates]);
-
-  const selectedDay = useMemo(() => {
-    return getTemplateDay(selectedTemplate, selectedWeekday);
-  }, [selectedTemplate, selectedWeekday]);
-
-  const selectedTemplateGaps = useMemo(() => {
-    return getTemplateStaffingGaps(selectedTemplate);
-  }, [selectedTemplate]);
-
-  const selectedTemplateGapSummary = useMemo(() => {
-    return summarizeStaffingGaps(selectedTemplateGaps);
-  }, [selectedTemplateGaps]);
-
-  const selectedDayGaps = useMemo(() => {
-    return getDayStaffingGaps(selectedDay);
-  }, [selectedDay]);
-
-  const selectedDayGapSummary = useMemo(() => {
-    return summarizeStaffingGaps(selectedDayGaps);
-  }, [selectedDayGaps]);
-
-  const selectedDayStaffingSummary = useMemo(() => {
-    return summarizeTemplateDayStaffing(selectedDay);
-  }, [selectedDay]);
-
-  const copyDayTargetOptions = useMemo(() => {
-    return weekdayOptions
-      .filter((weekday) => weekday.value !== selectedWeekday)
-      .map((weekday) => ({
-        weekday,
-        day: getTemplateDay(selectedTemplate, weekday.value),
-      }));
-  }, [selectedTemplate, selectedWeekday]);
-
-  const selectedTemplateInactiveDayCount = useMemo(() => {
-    return (selectedTemplate?.days ?? []).filter((day) => !day.isActive).length;
-  }, [selectedTemplate]);
-
-  const selectedTemplateStaffingSummary = useMemo(() => {
-    return summarizeTemplateStaffing(selectedTemplate, {
-      includeInactiveDays: copyTemplateIncludeInactiveDays,
-    });
-  }, [copyTemplateIncludeInactiveDays, selectedTemplate]);
-
-  const copiedTemplateOpenShiftCount = copyTemplateIncludeAssignments
-    ? selectedTemplateStaffingSummary.openShiftCount
-    : selectedTemplateStaffingSummary.shiftCount;
-
-  const selectedTemplateCopyDaySummaries = useMemo(() => {
-    return summarizeTemplateCopyDays(selectedTemplate, {
-      includeInactiveDays: copyTemplateIncludeInactiveDays,
-    });
-  }, [copyTemplateIncludeInactiveDays, selectedTemplate]);
-
-  const copyTemplateNameExists = useMemo(() => {
-    return scheduleTemplateNameExists({
-      templates,
-      name: copyTemplateName,
-      ignoredTemplateId: selectedTemplate?.id,
-    });
-  }, [copyTemplateName, selectedTemplate?.id, templates]);
-
-  const copyTemplateNameIsBlank = copyTemplateName.trim().length === 0;
-  const copyTemplateHasNoDays = selectedTemplateStaffingSummary.dayCount === 0;
-
-  const activeTemplates = templates.filter((template) => template.isActive).length;
-  const archivedTemplates = templates.length - activeTemplates;
-  const totalStaffingGapSummary = templates.reduce(
-    (summary, template) => {
-      const templateSummary = getTemplateStaffingGapSummary(template);
-
-      return {
-        jobFunctionCount: summary.jobFunctionCount + templateSummary.jobFunctionCount,
-        missingShiftCount: summary.missingShiftCount + templateSummary.missingShiftCount,
-      };
-    },
-    { jobFunctionCount: 0, missingShiftCount: 0 },
-  );
-
-  useEffect(() => {
-    setCurrentUser(getCurrentUserFromToken());
-
-    const updateSelectedCinema = () => {
-      setSelectedMasterCinemaId(getSelectedMasterCinemaId());
-    };
-
-    updateSelectedCinema();
-    window.addEventListener("masterSelectedCinemaChanged", updateSelectedCinema);
-    window.addEventListener("storage", updateSelectedCinema);
-
-    return () => {
-      window.removeEventListener(
-        "masterSelectedCinemaChanged",
-        updateSelectedCinema,
-      );
-      window.removeEventListener("storage", updateSelectedCinema);
-    };
-  }, []);
+  const {
+    selectedTemplate,
+    selectedDay,
+    selectedTemplateGaps,
+    selectedTemplateGapSummary,
+    selectedDayGapSummary,
+    selectedDayStaffingSummary,
+    copyDayTargetOptions,
+    selectedTemplateInactiveDayCount,
+    selectedTemplateStaffingSummary,
+    copiedTemplateOpenShiftCount,
+    selectedTemplateCopyDaySummaries,
+    copyTemplateNameExists,
+    copyTemplateNameIsBlank,
+    copyTemplateHasNoDays,
+    activeTemplates,
+    archivedTemplates,
+    totalStaffingGapSummary,
+  } = useScheduleTemplateDerivedState({
+    templates,
+    selectedTemplateId,
+    selectedWeekday,
+    copyTemplateName,
+    copyTemplateIncludeAssignments,
+    copyTemplateIncludeInactiveDays,
+  });
 
   useEffect(() => {
     setTemplateForm(
@@ -826,63 +718,61 @@ export default function ScheduleTemplatesPage() {
           )}
         </div>
 
-        {createTemplateModalOpen && (
-          <ScheduleTemplateCreateModal
-            form={createTemplateForm}
-            setForm={setCreateTemplateForm}
-            saving={savingTemplate}
-            onClose={() => setCreateTemplateModalOpen(false)}
-            onSubmit={createTemplate}
-          />
-        )}
-
-        {copyTemplateModalOpen && selectedTemplate && (
-          <ScheduleTemplateCopyModal
-            sourceTemplate={selectedTemplate}
-            copyName={copyTemplateName}
-            setCopyName={setCopyTemplateName}
-            includeAssignments={copyTemplateIncludeAssignments}
-            setIncludeAssignments={setCopyTemplateIncludeAssignments}
-            includeInactiveDays={copyTemplateIncludeInactiveDays}
-            setIncludeInactiveDays={setCopyTemplateIncludeInactiveDays}
-            includeNotes={copyTemplateIncludeNotes}
-            setIncludeNotes={setCopyTemplateIncludeNotes}
-            inactiveDayCount={selectedTemplateInactiveDayCount}
-            staffingSummary={selectedTemplateStaffingSummary}
-            copiedOpenShiftCount={copiedTemplateOpenShiftCount}
-            daySummaries={selectedTemplateCopyDaySummaries}
-            nameIsBlank={copyTemplateNameIsBlank}
-            nameExists={copyTemplateNameExists}
-            hasNoDays={copyTemplateHasNoDays}
-            copying={copyingTemplate}
-            onClose={() => setCopyTemplateModalOpen(false)}
-            onSubmit={copySelectedTemplate}
-          />
-        )}
-
-        {copyDayModalOpen && (
-          <ScheduleTemplateCopyDayModal
-            sourceWeekday={selectedWeekday}
-            targetOptions={copyDayTargetOptions}
-            selectedTargets={copyDayTargets}
-            selectedDayGapSummary={selectedDayGapSummary}
-            selectedDayStaffingSummary={selectedDayStaffingSummary}
-            copying={copyingDay}
-            onClose={() => setCopyDayModalOpen(false)}
-            onToggleTarget={toggleCopyDayTarget}
-            onSelectTargets={selectCopyDayTargets}
-            onClearTargets={() => setCopyDayTargets([])}
-            onSubmit={copySelectedDayToTargets}
-          />
-        )}
-
-        <InfoModal
-          open={infoDialog.open}
-          title={infoDialog.title}
-          description={infoDialog.description}
-          buttonText={infoDialog.buttonText}
-          variant={infoDialog.variant}
-          onClose={infoDialog.close}
+        <ScheduleTemplateModals
+          createTemplateModalOpen={createTemplateModalOpen}
+          createTemplateModalProps={{
+            form: createTemplateForm,
+            setForm: setCreateTemplateForm,
+            saving: savingTemplate,
+            onClose: () => setCreateTemplateModalOpen(false),
+            onSubmit: createTemplate,
+          }}
+          copyTemplateModalOpen={copyTemplateModalOpen}
+          copyTemplateModalProps={selectedTemplate
+            ? {
+                sourceTemplate: selectedTemplate,
+                copyName: copyTemplateName,
+                setCopyName: setCopyTemplateName,
+                includeAssignments: copyTemplateIncludeAssignments,
+                setIncludeAssignments: setCopyTemplateIncludeAssignments,
+                includeInactiveDays: copyTemplateIncludeInactiveDays,
+                setIncludeInactiveDays: setCopyTemplateIncludeInactiveDays,
+                includeNotes: copyTemplateIncludeNotes,
+                setIncludeNotes: setCopyTemplateIncludeNotes,
+                inactiveDayCount: selectedTemplateInactiveDayCount,
+                staffingSummary: selectedTemplateStaffingSummary,
+                copiedOpenShiftCount: copiedTemplateOpenShiftCount,
+                daySummaries: selectedTemplateCopyDaySummaries,
+                nameIsBlank: copyTemplateNameIsBlank,
+                nameExists: copyTemplateNameExists,
+                hasNoDays: copyTemplateHasNoDays,
+                copying: copyingTemplate,
+                onClose: () => setCopyTemplateModalOpen(false),
+                onSubmit: copySelectedTemplate,
+              }
+            : null}
+          copyDayModalOpen={copyDayModalOpen}
+          copyDayModalProps={{
+            sourceWeekday: selectedWeekday,
+            targetOptions: copyDayTargetOptions,
+            selectedTargets: copyDayTargets,
+            selectedDayGapSummary,
+            selectedDayStaffingSummary,
+            copying: copyingDay,
+            onClose: () => setCopyDayModalOpen(false),
+            onToggleTarget: toggleCopyDayTarget,
+            onSelectTargets: selectCopyDayTargets,
+            onClearTargets: () => setCopyDayTargets([]),
+            onSubmit: copySelectedDayToTargets,
+          }}
+          infoModalProps={{
+            open: infoDialog.open,
+            title: infoDialog.title,
+            description: infoDialog.description,
+            buttonText: infoDialog.buttonText,
+            variant: infoDialog.variant,
+            onClose: infoDialog.close,
+          }}
         />
       </main>
     </AdminGuard>
