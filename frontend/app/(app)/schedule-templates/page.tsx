@@ -6,7 +6,6 @@ import type { FormEvent } from "react";
 import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import { apiFetch } from "@/app/lib/api";
 import ScheduleTemplateCopyDayModal from "./components/ScheduleTemplateCopyDayModal";
 import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
 import ScheduleTemplateCreateModal from "./components/ScheduleTemplateCreateModal";
@@ -36,25 +35,37 @@ import {
 } from "./helpers/scheduleTemplateStaffingGaps";
 
 import {
-  appendCinemaId,
   formatWeekday,
   getAssignmentUserId,
   getCopyTargetWeekdays,
   getCurrentUserFromToken,
   getSelectedMasterCinemaId,
   getTemplateDay,
-  readErrorMessage,
   weekdayOptions,
 } from "./helpers/scheduleTemplatePageHelpers";
 import {
   emptyJobFunctionForm,
   emptyTemplateForm,
-  parseDayForm,
-  parseJobFunctionForm,
-  parseTemplateForm,
   toDayForm,
   toTemplateForm,
 } from "./helpers/scheduleTemplateFormHelpers";
+import { copyScheduleTemplateDayToTargets } from "./helpers/scheduleTemplateCopyDayApi";
+import {
+  addScheduleTemplateAssignmentRequest,
+  addScheduleTemplateJobFunctionRequest,
+  removeScheduleTemplateAssignmentRequest,
+  removeScheduleTemplateJobFunctionRequest,
+  updateScheduleTemplateJobFunctionRequest,
+} from "./helpers/scheduleTemplateJobFunctionApi";
+import {
+  archiveScheduleTemplateRequest,
+  createScheduleTemplateRequest,
+  reactivateScheduleTemplateRequest,
+  saveScheduleTemplateDayRequest,
+  updateScheduleTemplateRequest,
+} from "./helpers/scheduleTemplateCrudApi";
+import { fetchScheduleTemplatePageData } from "./helpers/scheduleTemplateDataApi";
+
 import type {
   CurrentUser,
   JobFunction,
@@ -247,79 +258,23 @@ export default function ScheduleTemplatesPage() {
     try {
       setLoading(true);
 
-      const [templatesResponse, jobFunctionsResponse, usersResponse] =
-        await Promise.all([
-          apiFetch(
-            appendCinemaId(
-              `/schedule-templates?includeArchived=${showArchived}`,
-              activeCinemaId,
-            ),
-          ),
-          apiFetch(
-            appendCinemaId(
-              "/job-functions?includeArchived=false",
-              activeCinemaId,
-            ),
-          ),
-          apiFetch(appendCinemaId("/users", activeCinemaId)),
-        ]);
+      const nextData = await fetchScheduleTemplatePageData({
+        activeCinemaId,
+        showArchived,
+      });
 
-      if (!templatesResponse.ok) {
-        throw new Error(
-          await readErrorMessage(
-            templatesResponse,
-            "Kunne ikke hente vagtsskabeloner",
-          ),
-        );
-      }
-
-      if (!jobFunctionsResponse.ok) {
-        throw new Error(
-          await readErrorMessage(
-            jobFunctionsResponse,
-            "Kunne ikke hente jobfunktioner",
-          ),
-        );
-      }
-
-      if (!usersResponse.ok) {
-        throw new Error(
-          await readErrorMessage(usersResponse, "Kunne ikke hente medarbejdere"),
-        );
-      }
-
-      const [templatesData, jobFunctionsData, usersData] = await Promise.all([
-        templatesResponse.json(),
-        jobFunctionsResponse.json(),
-        usersResponse.json(),
-      ]);
-
-      const nextTemplates = Array.isArray(templatesData)
-        ? (templatesData as ScheduleTemplate[])
-        : [];
-
-      setTemplates(nextTemplates);
-      setJobFunctions(
-        Array.isArray(jobFunctionsData)
-          ? (jobFunctionsData as JobFunction[]).filter(
-              (jobFunction) => jobFunction.isActive,
-            )
-          : [],
-      );
-      setEmployees(
-        Array.isArray(usersData)
-          ? (usersData as ScheduleTemplateUser[]).filter(
-              (employee) =>
-                employee.isActive !== false && employee.role !== "MASTER",
-            )
-          : [],
-      );
+      setTemplates(nextData.templates);
+      setJobFunctions(nextData.jobFunctions);
+      setEmployees(nextData.employees);
       setSelectedTemplateId((current) => {
-        if (current && nextTemplates.some((template) => template.id === current)) {
+        if (
+          current &&
+          nextData.templates.some((template) => template.id === current)
+        ) {
           return current;
         }
 
-        return nextTemplates[0]?.id ?? null;
+        return nextData.templates[0]?.id ?? null;
       });
     } catch (error) {
       setTemplates([]);
@@ -363,23 +318,11 @@ export default function ScheduleTemplatesPage() {
 
     try {
       setSavingTemplate(true);
-      const payload = {
-        ...parseTemplateForm(createTemplateForm),
-        cinemaId: activeCinemaId,
-      };
-
-      const response = await apiFetch("/schedule-templates", {
-        method: "POST",
-        body: JSON.stringify(payload),
+      const createdTemplate = await createScheduleTemplateRequest({
+        form: createTemplateForm,
+        activeCinemaId,
       });
 
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke oprette vagtsskabelon"),
-        );
-      }
-
-      const createdTemplate = (await response.json()) as ScheduleTemplate;
       await fetchData();
       setSelectedTemplateId(createdTemplate.id);
       setCreateTemplateForm(emptyTemplateForm);
@@ -406,24 +349,11 @@ export default function ScheduleTemplatesPage() {
 
     try {
       setSavingTemplate(true);
-      const payload = {
-        ...parseTemplateForm(templateForm),
-        cinemaId: activeCinemaId,
-      };
-
-      const response = await apiFetch(
-        appendCinemaId(`/schedule-templates/${selectedTemplate.id}`, activeCinemaId),
-        {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke opdatere vagtsskabelon"),
-        );
-      }
+      await updateScheduleTemplateRequest({
+        templateId: selectedTemplate.id,
+        form: templateForm,
+        activeCinemaId,
+      });
 
       await fetchData();
       setEditingTemplate(false);
@@ -443,16 +373,10 @@ export default function ScheduleTemplatesPage() {
     }
 
     try {
-      const response = await apiFetch(
-        appendCinemaId(`/schedule-templates/${template.id}`, activeCinemaId),
-        { method: "DELETE" },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke arkivere vagtsskabelon"),
-        );
-      }
+      await archiveScheduleTemplateRequest({
+        templateId: template.id,
+        activeCinemaId,
+      });
 
       await fetchData();
     } catch (error) {
@@ -465,19 +389,10 @@ export default function ScheduleTemplatesPage() {
 
   const reactivateTemplate = async (template: ScheduleTemplate) => {
     try {
-      const response = await apiFetch(
-        appendCinemaId(
-          `/schedule-templates/${template.id}/reactivate`,
-          activeCinemaId,
-        ),
-        { method: "PATCH" },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke genaktivere vagtsskabelon"),
-        );
-      }
+      await reactivateScheduleTemplateRequest({
+        templateId: template.id,
+        activeCinemaId,
+      });
 
       await fetchData();
       setSelectedTemplateId(template.id);
@@ -494,25 +409,12 @@ export default function ScheduleTemplatesPage() {
 
     try {
       setSavingDay(true);
-      const payload = {
-        ...parseDayForm(dayForm),
-        cinemaId: activeCinemaId,
-      };
-
-      const response = await apiFetch(
-        appendCinemaId(
-          `/schedule-templates/${selectedTemplate.id}/days/${selectedWeekday}`,
-          activeCinemaId,
-        ),
-        {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Kunne ikke gemme ugedag"));
-      }
+      await saveScheduleTemplateDayRequest({
+        templateId: selectedTemplate.id,
+        weekday: selectedWeekday,
+        form: dayForm,
+        activeCinemaId,
+      });
 
       await fetchData();
     } catch (error) {
@@ -531,27 +433,12 @@ export default function ScheduleTemplatesPage() {
 
     try {
       setSavingJobFunction(true);
-      const payload = {
-        ...parseJobFunctionForm(jobFunctionForm),
-        cinemaId: activeCinemaId,
-      };
-
-      const response = await apiFetch(
-        appendCinemaId(
-          `/schedule-templates/${selectedTemplate.id}/days/${selectedWeekday}/job-functions`,
-          activeCinemaId,
-        ),
-        {
-          method: "POST",
-          body: JSON.stringify(payload),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke tilføje jobfunktion"),
-        );
-      }
+      await addScheduleTemplateJobFunctionRequest({
+        templateId: selectedTemplate.id,
+        weekday: selectedWeekday,
+        form: jobFunctionForm,
+        activeCinemaId,
+      });
 
       setJobFunctionForm(emptyJobFunctionForm);
       await fetchData();
@@ -583,28 +470,12 @@ export default function ScheduleTemplatesPage() {
     }
 
     try {
-      const response = await apiFetch(
-        appendCinemaId(
-          `/schedule-templates/${selectedTemplate.id}/day-job-functions/${item.id}`,
-          activeCinemaId,
-        ),
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            jobFunctionId: item.jobFunctionId,
-            requiredCount: updates.requiredCount ?? item.requiredCount,
-            sortOrder: updates.sortOrder ?? item.sortOrder,
-            note: updates.note ?? item.note,
-            cinemaId: activeCinemaId,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke opdatere jobfunktion"),
-        );
-      }
+      await updateScheduleTemplateJobFunctionRequest({
+        templateId: selectedTemplate.id,
+        item,
+        updates,
+        activeCinemaId,
+      });
 
       await fetchData();
     } catch (error) {
@@ -627,19 +498,11 @@ export default function ScheduleTemplatesPage() {
     }
 
     try {
-      const response = await apiFetch(
-        appendCinemaId(
-          `/schedule-templates/${selectedTemplate.id}/day-job-functions/${item.id}`,
-          activeCinemaId,
-        ),
-        { method: "DELETE" },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke fjerne jobfunktion"),
-        );
-      }
+      await removeScheduleTemplateJobFunctionRequest({
+        templateId: selectedTemplate.id,
+        itemId: item.id,
+        activeCinemaId,
+      });
 
       await fetchData();
     } catch (error) {
@@ -677,26 +540,12 @@ export default function ScheduleTemplatesPage() {
 
     try {
       setSavingAssignmentKey(key);
-      const response = await apiFetch(
-        appendCinemaId(
-          `/schedule-templates/${selectedTemplate.id}/day-job-functions/${item.id}/assignments`,
-          activeCinemaId,
-        ),
-        {
-          method: "POST",
-          body: JSON.stringify({
-            userId,
-            sortOrder: item.assignments?.length ?? 0,
-            cinemaId: activeCinemaId,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke tildele medarbejder"),
-        );
-      }
+      await addScheduleTemplateAssignmentRequest({
+        templateId: selectedTemplate.id,
+        item,
+        userId,
+        activeCinemaId,
+      });
 
       await fetchData();
     } catch (error) {
@@ -719,19 +568,12 @@ export default function ScheduleTemplatesPage() {
 
     try {
       setSavingAssignmentKey(key);
-      const response = await apiFetch(
-        appendCinemaId(
-          `/schedule-templates/${selectedTemplate.id}/day-job-functions/${item.id}/assignments/${assignment.id}`,
-          activeCinemaId,
-        ),
-        { method: "DELETE" },
-      );
-
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke fjerne medarbejder"),
-        );
-      }
+      await removeScheduleTemplateAssignmentRequest({
+        templateId: selectedTemplate.id,
+        item,
+        assignment,
+        activeCinemaId,
+      });
 
       await fetchData();
     } catch (error) {
@@ -879,108 +721,12 @@ export default function ScheduleTemplatesPage() {
 
     try {
       setCopyingDay(true);
-
-      for (const targetWeekday of copyDayTargets) {
-        const targetDay = getTemplateDay(selectedTemplate, targetWeekday);
-
-        for (const item of targetDay?.jobFunctions ?? []) {
-          const deleteResponse = await apiFetch(
-            appendCinemaId(
-              `/schedule-templates/${selectedTemplate.id}/day-job-functions/${item.id}`,
-              activeCinemaId,
-            ),
-            { method: "DELETE" },
-          );
-
-          if (!deleteResponse.ok) {
-            throw new Error(
-              await readErrorMessage(deleteResponse, "Kunne ikke rydde modtagerdag"),
-            );
-          }
-        }
-
-        const dayResponse = await apiFetch(
-          appendCinemaId(
-            `/schedule-templates/${selectedTemplate.id}/days/${targetWeekday}`,
-            activeCinemaId,
-          ),
-          {
-            method: "PATCH",
-            body: JSON.stringify({
-              isActive: selectedDay.isActive,
-              note: selectedDay.note,
-              sortOrder: selectedDay.sortOrder,
-              cinemaId: activeCinemaId,
-            }),
-          },
-        );
-
-        if (!dayResponse.ok) {
-          throw new Error(
-            await readErrorMessage(dayResponse, "Kunne ikke kopiere ugedag"),
-          );
-        }
-
-        for (const item of selectedDay.jobFunctions) {
-          const createResponse = await apiFetch(
-            appendCinemaId(
-              `/schedule-templates/${selectedTemplate.id}/days/${targetWeekday}/job-functions`,
-              activeCinemaId,
-            ),
-            {
-              method: "POST",
-              body: JSON.stringify({
-                jobFunctionId: item.jobFunctionId,
-                requiredCount: item.requiredCount,
-                sortOrder: item.sortOrder,
-                note: item.note,
-                cinemaId: activeCinemaId,
-              }),
-            },
-          );
-
-          if (!createResponse.ok) {
-            throw new Error(
-              await readErrorMessage(createResponse, "Kunne ikke kopiere jobfunktion"),
-            );
-          }
-
-          const createdItem = (await createResponse
-            .json()
-            .catch(() => null)) as TemplateJobFunction | null;
-
-          if (!createdItem?.id) continue;
-
-          for (const assignment of item.assignments ?? []) {
-            const userId = getAssignmentUserId(assignment);
-            if (!userId) continue;
-
-            const assignmentResponse = await apiFetch(
-              appendCinemaId(
-                `/schedule-templates/${selectedTemplate.id}/day-job-functions/${createdItem.id}/assignments`,
-                activeCinemaId,
-              ),
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  userId,
-                  sortOrder: assignment.sortOrder ?? 0,
-                  cinemaId: activeCinemaId,
-                }),
-              },
-            );
-
-            if (!assignmentResponse.ok) {
-              throw new Error(
-                await readErrorMessage(
-                  assignmentResponse,
-                  "Kunne ikke kopiere faste medarbejdere",
-                ),
-              );
-            }
-          }
-        }
-      }
+      await copyScheduleTemplateDayToTargets({
+        selectedTemplate,
+        selectedDay,
+        targetWeekdays: copyDayTargets,
+        activeCinemaId,
+      });
 
       await fetchData();
       setCopyDayModalOpen(false);
