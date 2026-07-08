@@ -10,8 +10,11 @@ import { apiFetch } from "@/app/lib/api";
 import ScheduleTemplateCopyDayModal from "./components/ScheduleTemplateCopyDayModal";
 import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
 import ScheduleTemplateCreateModal from "./components/ScheduleTemplateCreateModal";
+import ScheduleTemplateDaySettings from "./components/ScheduleTemplateDaySettings";
 import ScheduleTemplateList from "./components/ScheduleTemplateList";
+import ScheduleTemplateSelectedHeader from "./components/ScheduleTemplateSelectedHeader";
 import ScheduleTemplateSummaryCards from "./components/ScheduleTemplateSummaryCards";
+import ScheduleTemplateWeekdayTabs from "./components/ScheduleTemplateWeekdayTabs";
 
 import {
   copyScheduleTemplate,
@@ -1355,288 +1358,43 @@ export default function ScheduleTemplatesPage() {
 
                   {selectedTemplate && (
                     <div className="flex flex-col gap-5">
-                      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                            Valgt skabelon
-                          </p>
-                          <h2 className="text-2xl font-black">
-                            {selectedTemplate.name}
-                          </h2>
-                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            {selectedTemplate.description || "Ingen beskrivelse"}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedTemplate.isActive ? (
-                            <button
-                              type="button"
-                              onClick={() => archiveTemplate(selectedTemplate)}
-                              className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
-                            >
-                              Arkivér
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => reactivateTemplate(selectedTemplate)}
-                              className="rounded-2xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700"
-                            >
-                              Genaktivér
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={openCopyTemplateModal}
-                            className="rounded-2xl border border-blue-300 px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40"
-                            disabled={copyingTemplate}
-                          >
-                            Kopiér skabelon
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingTemplate((current) => !current)}
-                            className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                          >
-                            {editingTemplate ? "Luk stamdata" : "Redigér stamdata"}
-                          </button>
-                        </div>
-                      </div>
+                      <ScheduleTemplateSelectedHeader
+                        template={selectedTemplate}
+                        form={templateForm}
+                        setForm={setTemplateForm}
+                        editing={editingTemplate}
+                        saving={savingTemplate}
+                        copying={copyingTemplate}
+                        gapSummary={selectedTemplateGapSummary}
+                        gaps={selectedTemplateGaps}
+                        weekdays={weekdayOptions}
+                        onArchive={() => archiveTemplate(selectedTemplate)}
+                        onReactivate={() => reactivateTemplate(selectedTemplate)}
+                        onCopyTemplate={openCopyTemplateModal}
+                        onToggleEditing={() =>
+                          setEditingTemplate((current) => !current)
+                        }
+                        onSave={updateTemplate}
+                      />
 
-                      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
-                        <p className="font-black">Ændringer gælder fremtidig generering</p>
-                        <p className="mt-1">
-                          Allerede oprettede vagter ændres ikke automatisk, når
-                          denne skabelon justeres.
-                        </p>
-                      </div>
+                      <ScheduleTemplateWeekdayTabs
+                        template={selectedTemplate}
+                        weekdays={weekdayOptions}
+                        selectedWeekday={selectedWeekday}
+                        onSelectWeekday={setSelectedWeekday}
+                      />
 
-                      {selectedTemplateGapSummary.missingShiftCount > 0 && (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                            <div>
-                              <p className="font-black">
-                                {formatOpenShiftText(
-                                  selectedTemplateGapSummary.missingShiftCount,
-                                )} i skabelonen
-                              </p>
-                              <p className="mt-1 text-sm">
-                                De oprettes uden fast medarbejder i /shift-planning,
-                                så medarbejderne kan ønske dem som åbne vagter.
-                              </p>
-                            </div>
-                            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-900/60 dark:text-amber-50">
-                              {selectedTemplateGapSummary.jobFunctionCount} jobfunktioner
-                            </span>
-                          </div>
-                          <div className="mt-3 grid gap-2 md:grid-cols-2">
-                            {weekdayOptions.map((weekday) => {
-                              const gapsForDay = selectedTemplateGaps.filter(
-                                (gap) => gap.weekday === weekday.value,
-                              );
-                              const daySummary = summarizeStaffingGaps(gapsForDay);
-
-                              if (daySummary.missingShiftCount === 0) return null;
-
-                              return (
-                                <div
-                                  key={weekday.value}
-                                  className="rounded-2xl bg-white/70 p-3 text-sm dark:bg-gray-950/40"
-                                >
-                                  <p className="font-black">
-                                    {weekday.label}: {formatOpenShiftText(daySummary.missingShiftCount)}
-                                  </p>
-                                  <p className="mt-1 text-xs">
-                                    {gapsForDay
-                                      .map(
-                                        (gap) =>
-                                          `${gap.jobFunctionName} (${gap.missingCount})`,
-                                      )
-                                      .join(", ")}
-                                  </p>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {editingTemplate && (
-                        <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-                          <div className="grid gap-3 lg:grid-cols-[1fr_180px]">
-                            <label className="block text-sm font-semibold">
-                              Navn
-                              <input
-                                value={templateForm.name}
-                                onChange={(event) =>
-                                  setTemplateForm((current) => ({
-                                    ...current,
-                                    name: event.target.value,
-                                  }))
-                                }
-                                className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              />
-                            </label>
-                            <label className="block text-sm font-semibold">
-                              Ugeregel
-                              <select
-                                value={templateForm.weekParity}
-                                onChange={(event) =>
-                                  setTemplateForm((current) => ({
-                                    ...current,
-                                    weekParity: event.target.value as WeekParity,
-                                  }))
-                                }
-                                className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              >
-                                <option value="ANY">Alle uger</option>
-                                <option value="EVEN">Kun lige uger</option>
-                                <option value="ODD">Kun ulige uger</option>
-                              </select>
-                            </label>
-                            <label className="block text-sm font-semibold lg:col-span-2">
-                              Beskrivelse
-                              <textarea
-                                value={templateForm.description}
-                                onChange={(event) =>
-                                  setTemplateForm((current) => ({
-                                    ...current,
-                                    description: event.target.value,
-                                  }))
-                                }
-                                className="mt-1 min-h-20 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              />
-                            </label>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={updateTemplate}
-                            className="mt-3 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                            disabled={savingTemplate}
-                          >
-                            {savingTemplate ? "Gemmer..." : "Gem stamdata"}
-                          </button>
-                        </div>
-                      )}
-
-                      <div className="grid gap-2 sm:grid-cols-7">
-                        {weekdayOptions.map((weekday) => {
-                          const day = getTemplateDay(selectedTemplate, weekday.value);
-                          const active = selectedWeekday === weekday.value;
-                          const dayGapSummary = summarizeStaffingGaps(
-                            getDayStaffingGaps(day),
-                          );
-
-                          return (
-                            <button
-                              key={weekday.value}
-                              type="button"
-                              onClick={() => setSelectedWeekday(weekday.value)}
-                              className={`rounded-2xl border p-3 text-left text-sm transition ${
-                                active
-                                  ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
-                                  : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
-                              }`}
-                            >
-                              <p className="font-black uppercase">{weekday.shortLabel}</p>
-                              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                {day?.isActive ? "Aktiv" : "Ikke sat"}
-                              </p>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">
-                                {day?.jobFunctions?.length ?? 0} jobfunktioner
-                              </p>
-                              {dayGapSummary.missingShiftCount > 0 && (
-                                <p className="mt-2 rounded-full bg-amber-100 px-2 py-1 text-center text-[11px] font-black text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
-                                  {formatOpenShiftText(dayGapSummary.missingShiftCount)}
-                                </p>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div className="rounded-3xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                              Ugedag
-                            </p>
-                            <h3 className="text-xl font-black">
-                              {formatWeekday(selectedWeekday)}
-                            </h3>
-                            {selectedDayGapSummary.missingShiftCount > 0 && (
-                              <p className="mt-1 text-sm font-bold text-amber-700 dark:text-amber-300">
-                                {formatOpenShiftText(
-                                  selectedDayGapSummary.missingShiftCount,
-                                )} oprettes uden fast medarbejder på denne ugedag.
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                            <button
-                              type="button"
-                              onClick={openCopyDayModal}
-                              className="rounded-2xl border border-blue-300 px-4 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-60 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40"
-                              disabled={!selectedDay || copyingDay}
-                            >
-                              Kopiér ugedag
-                            </button>
-                            <label className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold dark:border-gray-800 dark:bg-gray-900">
-                              <input
-                                type="checkbox"
-                                checked={dayForm.isActive}
-                                onChange={(event) =>
-                                  setDayForm((current) => ({
-                                    ...current,
-                                    isActive: event.target.checked,
-                                  }))
-                                }
-                                className="h-4 w-4 rounded border-gray-300"
-                              />
-                              Aktiv ugedag i skabelonen
-                            </label>
-                          </div>
-                        </div>
-                        <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_140px]">
-                          <label className="block text-sm font-semibold">
-                            Note
-                            <input
-                              value={dayForm.note}
-                              onChange={(event) =>
-                                setDayForm((current) => ({
-                                  ...current,
-                                  note: event.target.value,
-                                }))
-                              }
-                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              placeholder="Fx lukket dag eller særlig bemanding"
-                            />
-                          </label>
-                          <label className="block text-sm font-semibold">
-                            Sortering
-                            <input
-                              type="number"
-                              min="0"
-                              value={dayForm.sortOrder}
-                              onChange={(event) =>
-                                setDayForm((current) => ({
-                                  ...current,
-                                  sortOrder: event.target.value,
-                                }))
-                              }
-                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                            />
-                          </label>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={saveSelectedDay}
-                          className="mt-3 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                          disabled={savingDay}
-                        >
-                          {savingDay ? "Gemmer..." : "Gem ugedag"}
-                        </button>
-                      </div>
+                      <ScheduleTemplateDaySettings
+                        weekdayLabel={formatWeekday(selectedWeekday)}
+                        hasSelectedDay={Boolean(selectedDay)}
+                        form={dayForm}
+                        setForm={setDayForm}
+                        gapSummary={selectedDayGapSummary}
+                        saving={savingDay}
+                        copying={copyingDay}
+                        onSave={saveSelectedDay}
+                        onCopyDay={openCopyDayModal}
+                      />
 
                       <div className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800">
                         <div>
