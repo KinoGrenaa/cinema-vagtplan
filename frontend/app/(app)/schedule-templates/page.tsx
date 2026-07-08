@@ -11,6 +11,7 @@ import ScheduleTemplateCopyDayModal from "./components/ScheduleTemplateCopyDayMo
 import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
 import ScheduleTemplateCreateModal from "./components/ScheduleTemplateCreateModal";
 import ScheduleTemplateDaySettings from "./components/ScheduleTemplateDaySettings";
+import ScheduleTemplateJobFunctionsSection from "./components/ScheduleTemplateJobFunctionsSection";
 import ScheduleTemplateList from "./components/ScheduleTemplateList";
 import ScheduleTemplateSelectedHeader from "./components/ScheduleTemplateSelectedHeader";
 import ScheduleTemplateSummaryCards from "./components/ScheduleTemplateSummaryCards";
@@ -28,7 +29,6 @@ import {
 import {
   countAssignedTemplateUsers,
   getDayStaffingGaps,
-  getJobFunctionStaffingGap,
   getTemplateStaffingGaps,
   getTemplateStaffingGapSummary,
   summarizeStaffingGaps,
@@ -194,38 +194,11 @@ async function readErrorMessage(response: Response, fallback: string) {
   return fallback;
 }
 
-function minuteToTime(value: number) {
-  const safeValue = Number.isFinite(value)
-    ? Math.min(Math.max(Math.trunc(value), 0), 1439)
-    : 0;
-  const hours = Math.floor(safeValue / 60);
-  const minutes = safeValue % 60;
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
-function formatDayPeriod(dayPeriod: DayPeriod | null | undefined) {
-  if (!dayPeriod) return "Ingen dagsperiode";
-
-  return `${dayPeriod.name} · kl. ${minuteToTime(dayPeriod.startMinute)}-${minuteToTime(
-    dayPeriod.endMinute,
-  )}`;
-}
-
 function formatWeekday(value: number) {
   return (
     weekdayOptions.find((weekday) => weekday.value === value)?.label ??
     "Ukendt dag"
   );
-}
-
-function formatUserName(user: ScheduleTemplateUser | null | undefined) {
-  const name = [user?.firstName, user?.lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  return name || user?.email || "Ukendt medarbejder";
 }
 
 function getAssignmentUserId(assignment: ScheduleTemplateAssignment) {
@@ -320,33 +293,10 @@ function parseJobFunctionForm(form: JobFunctionFormState) {
   };
 }
 
-function parseOptionalPositiveInteger(value: string, fallback: number) {
-  const nextValue = value.trim() ? Number(value) : fallback;
-
-  if (!Number.isInteger(nextValue) || nextValue < 0) {
-    return null;
-  }
-
-  return nextValue;
-}
-
-function formatOpenShiftText(openShiftCount: number) {
-  if (openShiftCount === 1) return "1 åben vagt";
-  return `${openShiftCount} åbne vagter`;
-}
-
 function getCopyTargetWeekdays(selectedWeekday: number, weekdays: number[]) {
   return weekdays
     .filter((weekday) => weekday !== selectedWeekday)
     .sort((a, b) => a - b);
-}
-
-function getAssignedUserIdSet(item: TemplateJobFunction) {
-  return new Set(
-    (item.assignments ?? [])
-      .map(getAssignmentUserId)
-      .filter((userId): userId is number => userId !== null),
-  );
 }
 
 export default function ScheduleTemplatesPage() {
@@ -1396,351 +1346,23 @@ export default function ScheduleTemplatesPage() {
                         onCopyDay={openCopyDayModal}
                       />
 
-                      <div className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800">
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-                            Jobfunktioner på {formatWeekday(selectedWeekday).toLowerCase()}
-                          </p>
-                          <h3 className="text-xl font-black">Vagter fra skabelonen</h3>
-                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            Fast medarbejder er frivilligt. Vagter uden fast
-                            medarbejder vises som åbne vagter i skabelonen.
-                          </p>
-                        </div>
-
-                        <form
-                          className="mt-4 grid gap-3 lg:grid-cols-[1fr_130px_130px]"
-                          onSubmit={addJobFunction}
-                        >
-                          <label className="block text-sm font-semibold">
-                            Jobfunktion
-                            <select
-                              value={jobFunctionForm.jobFunctionId}
-                              onChange={(event) =>
-                                setJobFunctionForm((current) => ({
-                                  ...current,
-                                  jobFunctionId: event.target.value,
-                                }))
-                              }
-                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              disabled={savingJobFunction || jobFunctions.length === 0}
-                            >
-                              <option value="">Vælg jobfunktion</option>
-                              {jobFunctions.map((jobFunction) => (
-                                <option key={jobFunction.id} value={jobFunction.id}>
-                                  {jobFunction.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block text-sm font-semibold">
-                            Antal vagter
-                            <input
-                              type="number"
-                              min="1"
-                              max="50"
-                              value={jobFunctionForm.requiredCount}
-                              onChange={(event) =>
-                                setJobFunctionForm((current) => ({
-                                  ...current,
-                                  requiredCount: event.target.value,
-                                }))
-                              }
-                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              disabled={savingJobFunction}
-                            />
-                          </label>
-                          <label className="block text-sm font-semibold">
-                            Sortering
-                            <input
-                              type="number"
-                              min="0"
-                              value={jobFunctionForm.sortOrder}
-                              onChange={(event) =>
-                                setJobFunctionForm((current) => ({
-                                  ...current,
-                                  sortOrder: event.target.value,
-                                }))
-                              }
-                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              disabled={savingJobFunction}
-                            />
-                          </label>
-                          <label className="block text-sm font-semibold lg:col-span-3">
-                            Note
-                            <input
-                              value={jobFunctionForm.note}
-                              onChange={(event) =>
-                                setJobFunctionForm((current) => ({
-                                  ...current,
-                                  note: event.target.value,
-                                }))
-                              }
-                              className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                              placeholder="Valgfri note til jobfunktionen i denne skabelon"
-                              disabled={savingJobFunction}
-                            />
-                          </label>
-                          <button
-                            type="submit"
-                            className="rounded-2xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-60 lg:col-span-3"
-                            disabled={savingJobFunction || jobFunctions.length === 0}
-                          >
-                            {savingJobFunction ? "Tilføjer..." : "Tilføj jobfunktion"}
-                          </button>
-                        </form>
-
-                        {jobFunctions.length === 0 && (
-                          <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                            Der er ingen aktive jobfunktioner. Opret eller aktivér
-                            jobfunktioner før skabelonen kan bemandes.
-                          </p>
-                        )}
-
-                        <div className="mt-5 flex flex-col gap-3">
-                          {(selectedDay?.jobFunctions ?? []).length === 0 && (
-                            <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
-                              Der er ingen jobfunktioner på denne ugedag endnu.
-                            </p>
-                          )}
-
-                          {(selectedDay?.jobFunctions ?? []).map((item) => {
-                            const expanded = expandedJobFunctionIds.has(item.id);
-                            const assignedCount = countAssignedTemplateUsers(
-                              item.assignments,
-                            );
-                            const missingCount = getJobFunctionStaffingGap(item);
-                            const assignedUserIds = getAssignedUserIdSet(item);
-                            const availableEmployees = employees.filter(
-                              (employee) => !assignedUserIds.has(employee.id),
-                            );
-
-                            return (
-                              <div
-                                key={item.id}
-                                className={`rounded-3xl border p-4 ${
-                                  missingCount > 0
-                                    ? "border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20"
-                                    : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950"
-                                }`}
-                              >
-                                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                  <div className="min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <span
-                                        className="h-3 w-3 rounded-full"
-                                        style={{ backgroundColor: item.jobFunction.color }}
-                                      />
-                                      <h4 className="text-lg font-black">
-                                        {item.jobFunction.name}
-                                      </h4>
-                                      {missingCount > 0 ? (
-                                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-950/60 dark:text-amber-100">
-                                          {formatOpenShiftText(missingCount)}
-                                        </span>
-                                      ) : (
-                                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-800 dark:bg-green-950/60 dark:text-green-100">
-                                          Fast bemandet
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                      {formatDayPeriod(item.jobFunction.dayPeriod)} ·{" "}
-                                      {assignedCount}/{item.requiredCount} faste
-                                      medarbejdere
-                                    </p>
-                                    {item.note && (
-                                      <p className="mt-2 rounded-2xl bg-white p-3 text-sm text-gray-700 dark:bg-gray-900 dark:text-gray-300">
-                                        {item.note}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleJobFunctionDetails(item.id)}
-                                      className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold hover:bg-white dark:border-gray-700 dark:hover:bg-gray-900"
-                                    >
-                                      {expanded ? "Skjul detaljer" : "Vis detaljer"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeTemplateJobFunction(item)}
-                                      className="rounded-2xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
-                                    >
-                                      Fjern
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {missingCount > 0 && (
-                                  <div className="mt-3 rounded-2xl bg-amber-100 p-3 text-sm text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">
-                                    <p className="font-black">Åben vagt fra skabelonen</p>
-                                    <p className="mt-1">
-                                      Når skabelonen bruges i vagtplanlægningen,
-                                      oprettes {formatOpenShiftText(missingCount)} uden
-                                      fast medarbejder, så medarbejderne kan ønske dem.
-                                    </p>
-                                  </div>
-                                )}
-
-                                {expanded && (
-                                  <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
-                                    <div className="rounded-2xl bg-white p-4 dark:bg-gray-900">
-                                      <p className="font-black">Faste medarbejdere</p>
-                                      <div className="mt-3 flex flex-col gap-2">
-                                        {(item.assignments ?? []).length === 0 && (
-                                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                                            Ingen faste medarbejdere valgt.
-                                          </p>
-                                        )}
-                                        {(item.assignments ?? []).map((assignment) => {
-                                          const removeKey = `${item.id}:remove:${assignment.id}`;
-
-                                          return (
-                                            <div
-                                              key={assignment.id}
-                                              className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 p-3 dark:border-gray-800"
-                                            >
-                                              <span className="text-sm font-semibold">
-                                                {formatUserName(assignment.user)}
-                                              </span>
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  removeTemplateAssignment(item, assignment)
-                                                }
-                                                className="rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
-                                                disabled={savingAssignmentKey === removeKey}
-                                              >
-                                                {savingAssignmentKey === removeKey
-                                                  ? "Fjerner..."
-                                                  : "Fjern"}
-                                              </button>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-
-                                      <label className="mt-3 block text-sm font-semibold">
-                                        Tilføj fast medarbejder
-                                        <select
-                                          defaultValue=""
-                                          onChange={(event) => {
-                                            const selectedValue = event.target.value;
-                                            event.currentTarget.value = "";
-                                            addTemplateAssignment(item, selectedValue);
-                                          }}
-                                          className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                          disabled={
-                                            savingAssignmentKey === `${item.id}:add` ||
-                                            availableEmployees.length === 0 ||
-                                            assignedCount >= item.requiredCount
-                                          }
-                                        >
-                                          <option value="">
-                                            {assignedCount >= item.requiredCount
-                                              ? "Alle vagter har fast medarbejder"
-                                              : "Vælg medarbejder"}
-                                          </option>
-                                          {availableEmployees.map((employee) => (
-                                            <option key={employee.id} value={employee.id}>
-                                              {formatUserName(employee)}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </label>
-                                    </div>
-
-                                    <div className="rounded-2xl bg-white p-4 dark:bg-gray-900">
-                                      <p className="font-black">Indstillinger</p>
-                                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                        <label className="block text-sm font-semibold">
-                                          Antal vagter
-                                          <input
-                                            key={`required-${item.id}-${item.requiredCount}`}
-                                            type="number"
-                                            min="1"
-                                            max="50"
-                                            defaultValue={item.requiredCount}
-                                            onBlur={(event) => {
-                                              const value = parseOptionalPositiveInteger(
-                                                event.currentTarget.value,
-                                                item.requiredCount,
-                                              );
-
-                                              if (!value || value < 1 || value > 50) {
-                                                event.currentTarget.value = String(
-                                                  item.requiredCount,
-                                                );
-                                                return;
-                                              }
-
-                                              if (value !== item.requiredCount) {
-                                                updateTemplateJobFunction(item, {
-                                                  requiredCount: value,
-                                                });
-                                              }
-                                            }}
-                                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                          />
-                                        </label>
-                                        <label className="block text-sm font-semibold">
-                                          Sortering
-                                          <input
-                                            key={`sort-${item.id}-${item.sortOrder}`}
-                                            type="number"
-                                            min="0"
-                                            defaultValue={item.sortOrder}
-                                            onBlur={(event) => {
-                                              const value = parseOptionalPositiveInteger(
-                                                event.currentTarget.value,
-                                                item.sortOrder,
-                                              );
-
-                                              if (value === null) {
-                                                event.currentTarget.value = String(
-                                                  item.sortOrder,
-                                                );
-                                                return;
-                                              }
-
-                                              if (value !== item.sortOrder) {
-                                                updateTemplateJobFunction(item, {
-                                                  sortOrder: value,
-                                                });
-                                              }
-                                            }}
-                                            className="mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                          />
-                                        </label>
-                                        <label className="block text-sm font-semibold sm:col-span-2">
-                                          Note
-                                          <textarea
-                                            key={`note-${item.id}-${item.note ?? ""}`}
-                                            defaultValue={item.note ?? ""}
-                                            onBlur={(event) => {
-                                              const value =
-                                                event.currentTarget.value.trim() || null;
-
-                                              if (value !== item.note) {
-                                                updateTemplateJobFunction(item, {
-                                                  note: value,
-                                                });
-                                              }
-                                            }}
-                                            className="mt-1 min-h-20 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                          />
-                                        </label>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <ScheduleTemplateJobFunctionsSection
+                        weekdayLabel={formatWeekday(selectedWeekday)}
+                        selectedDay={selectedDay}
+                        jobFunctions={jobFunctions}
+                        employees={employees}
+                        form={jobFunctionForm}
+                        setForm={setJobFunctionForm}
+                        savingJobFunction={savingJobFunction}
+                        expandedJobFunctionIds={expandedJobFunctionIds}
+                        savingAssignmentKey={savingAssignmentKey}
+                        onAddJobFunction={addJobFunction}
+                        onToggleJobFunctionDetails={toggleJobFunctionDetails}
+                        onRemoveTemplateJobFunction={removeTemplateJobFunction}
+                        onAddTemplateAssignment={addTemplateAssignment}
+                        onRemoveTemplateAssignment={removeTemplateAssignment}
+                        onUpdateTemplateJobFunction={updateTemplateJobFunction}
+                      />
                     </div>
                   )}
                 </section>
