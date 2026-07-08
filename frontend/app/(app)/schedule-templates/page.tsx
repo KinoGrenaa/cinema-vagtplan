@@ -9,12 +9,11 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import ScheduleTemplateCopyDayModal from "./components/ScheduleTemplateCopyDayModal";
 import ScheduleTemplateCopyModal from "./components/ScheduleTemplateCopyModal";
 import ScheduleTemplateCreateModal from "./components/ScheduleTemplateCreateModal";
-import ScheduleTemplateDaySettings from "./components/ScheduleTemplateDaySettings";
-import ScheduleTemplateJobFunctionsSection from "./components/ScheduleTemplateJobFunctionsSection";
 import ScheduleTemplateList from "./components/ScheduleTemplateList";
-import ScheduleTemplateSelectedHeader from "./components/ScheduleTemplateSelectedHeader";
+import ScheduleTemplateEditorPanel from "./components/ScheduleTemplateEditorPanel";
+import ScheduleTemplatesMasterCinemaRequired from "./components/ScheduleTemplatesMasterCinemaRequired";
+import ScheduleTemplatesPageIntro from "./components/ScheduleTemplatesPageIntro";
 import ScheduleTemplateSummaryCards from "./components/ScheduleTemplateSummaryCards";
-import ScheduleTemplateWeekdayTabs from "./components/ScheduleTemplateWeekdayTabs";
 
 import {
   copyScheduleTemplate,
@@ -753,39 +752,9 @@ export default function ScheduleTemplatesPage() {
     <AdminGuard>
       <main className="min-h-screen bg-gray-100 p-6 text-gray-950 dark:bg-gray-950 dark:text-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-6">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-              Vagtplanlægning
-            </p>
-            <h1 className="text-3xl font-black">Vagtsskabeloner</h1>
-            <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
-              Opret de skabeloner, der senere kan vælges på konkrete datoer i
-              vagtplanlægningen. En skabelon består af ugedage, jobfunktioner og
-              faste medarbejdere.
-            </p>
-          </div>
+          <ScheduleTemplatesPageIntro />
 
-          {needsMasterCinemaSelection && (
-            <section className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-              <p className="text-xs font-black uppercase tracking-[0.2em]">
-                Ingen aktiv biograf valgt
-              </p>
-              <h2 className="mt-2 text-2xl font-black">
-                Vælg biograf før vagtsskabeloner
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm">
-                MASTER skal vælge en aktiv biograf, før vagtsskabeloner kan
-                oprettes eller redigeres. Skabelonerne knyttes til den valgte
-                biograf og bruges i vagtplanlægningen.
-              </p>
-              <a
-                href="/master"
-                className="mt-4 inline-flex rounded-2xl bg-amber-600 px-4 py-3 text-sm font-bold text-white hover:bg-amber-700"
-              >
-                Vælg biograf
-              </a>
-            </section>
-          )}
+          {needsMasterCinemaSelection && <ScheduleTemplatesMasterCinemaRequired />}
 
           {!needsMasterCinemaSelection && (
             <>
@@ -810,74 +779,48 @@ export default function ScheduleTemplatesPage() {
                   }}
                 />
 
-                <section className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-                  {!selectedTemplate && (
-                    <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
-                      Opret eller vælg en vagtsskabelon for at redigere ugedage
-                      og jobfunktioner.
-                    </p>
-                  )}
-
-                  {selectedTemplate && (
-                    <div className="flex flex-col gap-5">
-                      <ScheduleTemplateSelectedHeader
-                        template={selectedTemplate}
-                        form={templateForm}
-                        setForm={setTemplateForm}
-                        editing={editingTemplate}
-                        saving={savingTemplate}
-                        copying={copyingTemplate}
-                        gapSummary={selectedTemplateGapSummary}
-                        gaps={selectedTemplateGaps}
-                        weekdays={weekdayOptions}
-                        onArchive={() => archiveTemplate(selectedTemplate)}
-                        onReactivate={() => reactivateTemplate(selectedTemplate)}
-                        onCopyTemplate={openCopyTemplateModal}
-                        onToggleEditing={() =>
-                          setEditingTemplate((current) => !current)
-                        }
-                        onSave={updateTemplate}
-                      />
-
-                      <ScheduleTemplateWeekdayTabs
-                        template={selectedTemplate}
-                        weekdays={weekdayOptions}
-                        selectedWeekday={selectedWeekday}
-                        onSelectWeekday={setSelectedWeekday}
-                      />
-
-                      <ScheduleTemplateDaySettings
-                        weekdayLabel={formatWeekday(selectedWeekday)}
-                        hasSelectedDay={Boolean(selectedDay)}
-                        form={dayForm}
-                        setForm={setDayForm}
-                        gapSummary={selectedDayGapSummary}
-                        saving={savingDay}
-                        copying={copyingDay}
-                        onSave={saveSelectedDay}
-                        onCopyDay={openCopyDayModal}
-                      />
-
-                      <ScheduleTemplateJobFunctionsSection
-                        weekdayLabel={formatWeekday(selectedWeekday)}
-                        selectedDay={selectedDay}
-                        jobFunctions={jobFunctions}
-                        employees={employees}
-                        form={jobFunctionForm}
-                        setForm={setJobFunctionForm}
-                        savingJobFunction={savingJobFunction}
-                        expandedJobFunctionIds={expandedJobFunctionIds}
-                        savingAssignmentKey={savingAssignmentKey}
-                        onAddJobFunction={addJobFunction}
-                        onToggleJobFunctionDetails={toggleJobFunctionDetails}
-                        onRemoveTemplateJobFunction={removeTemplateJobFunction}
-                        onAddTemplateAssignment={addTemplateAssignment}
-                        onRemoveTemplateAssignment={removeTemplateAssignment}
-                        onUpdateTemplateJobFunction={updateTemplateJobFunction}
-                      />
-                    </div>
-                  )}
-                </section>
+                <ScheduleTemplateEditorPanel
+                  selectedTemplate={selectedTemplate}
+                  templateForm={templateForm}
+                  setTemplateForm={setTemplateForm}
+                  editingTemplate={editingTemplate}
+                  savingTemplate={savingTemplate}
+                  copyingTemplate={copyingTemplate}
+                  selectedTemplateGapSummary={selectedTemplateGapSummary}
+                  selectedTemplateGaps={selectedTemplateGaps}
+                  selectedWeekday={selectedWeekday}
+                  onSelectWeekday={setSelectedWeekday}
+                  selectedDay={selectedDay}
+                  dayForm={dayForm}
+                  setDayForm={setDayForm}
+                  selectedDayGapSummary={selectedDayGapSummary}
+                  savingDay={savingDay}
+                  copyingDay={copyingDay}
+                  jobFunctions={jobFunctions}
+                  employees={employees}
+                  jobFunctionForm={jobFunctionForm}
+                  setJobFunctionForm={setJobFunctionForm}
+                  savingJobFunction={savingJobFunction}
+                  expandedJobFunctionIds={expandedJobFunctionIds}
+                  savingAssignmentKey={savingAssignmentKey}
+                  onArchiveSelectedTemplate={() => {
+                    if (selectedTemplate) archiveTemplate(selectedTemplate);
+                  }}
+                  onReactivateSelectedTemplate={() => {
+                    if (selectedTemplate) reactivateTemplate(selectedTemplate);
+                  }}
+                  onCopyTemplate={openCopyTemplateModal}
+                  onToggleEditing={() => setEditingTemplate((current) => !current)}
+                  onSaveTemplate={updateTemplate}
+                  onSaveDay={saveSelectedDay}
+                  onCopyDay={openCopyDayModal}
+                  onAddJobFunction={addJobFunction}
+                  onToggleJobFunctionDetails={toggleJobFunctionDetails}
+                  onRemoveTemplateJobFunction={removeTemplateJobFunction}
+                  onAddTemplateAssignment={addTemplateAssignment}
+                  onRemoveTemplateAssignment={removeTemplateAssignment}
+                  onUpdateTemplateJobFunction={updateTemplateJobFunction}
+                />
               </section>
             </>
           )}
