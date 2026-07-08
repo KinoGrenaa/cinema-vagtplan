@@ -1,7 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import AdminGuard from "@/app/components/AdminGuard";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import ScheduleTemplateList from "./components/ScheduleTemplateList";
@@ -11,72 +9,33 @@ import ScheduleTemplatesMasterCinemaRequired from "./components/ScheduleTemplate
 import ScheduleTemplatesPageIntro from "./components/ScheduleTemplatesPageIntro";
 import ScheduleTemplateSummaryCards from "./components/ScheduleTemplateSummaryCards";
 
-import {
-  emptyJobFunctionForm,
-  emptyTemplateForm,
-  toDayForm,
-  toTemplateForm,
-} from "./helpers/scheduleTemplateFormHelpers";
-import { fetchScheduleTemplatePageData } from "./helpers/scheduleTemplateDataApi";
-
-import type {
-  JobFunction,
-  ScheduleTemplate,
-  ScheduleTemplateUser,
-} from "./helpers/scheduleTemplatePageTypes";
-import { useScheduleTemplateDerivedState } from "./hooks/useScheduleTemplateDerivedState";
 import { useScheduleTemplateMasterCinema } from "./hooks/useScheduleTemplateMasterCinema";
 import { useScheduleTemplateCopyActions } from "./hooks/useScheduleTemplateCopyActions";
 import { useScheduleTemplateCrudActions } from "./hooks/useScheduleTemplateCrudActions";
 import { useScheduleTemplateJobFunctionActions } from "./hooks/useScheduleTemplateJobFunctionActions";
-
+import { useScheduleTemplateData } from "./hooks/useScheduleTemplateData";
+import { useScheduleTemplatePageState } from "./hooks/useScheduleTemplatePageState";
 
 export default function ScheduleTemplatesPage() {
   const infoDialog = useInfoModal();
-  const infoDialogRef = useRef(infoDialog);
   const { currentUser, activeCinemaId, needsMasterCinemaSelection } =
     useScheduleTemplateMasterCinema();
-  const [templates, setTemplates] = useState<ScheduleTemplate[]>([]);
-  const [jobFunctions, setJobFunctions] = useState<JobFunction[]>([]);
-  const [employees, setEmployees] = useState<ScheduleTemplateUser[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(
-    null,
-  );
-  const [selectedWeekday, setSelectedWeekday] = useState(1);
-  const [createTemplateForm, setCreateTemplateForm] =
-    useState(emptyTemplateForm);
-  const [templateForm, setTemplateForm] = useState(emptyTemplateForm);
-  const [dayForm, setDayForm] = useState(toDayForm(null));
-  const [jobFunctionForm, setJobFunctionForm] = useState(emptyJobFunctionForm);
-  const [showArchived, setShowArchived] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [savingTemplate, setSavingTemplate] = useState(false);
-  const [savingDay, setSavingDay] = useState(false);
-  const [savingJobFunction, setSavingJobFunction] = useState(false);
-  const [copyingDay, setCopyingDay] = useState(false);
-  const [copyingTemplate, setCopyingTemplate] = useState(false);
-  const [savingAssignmentKey, setSavingAssignmentKey] = useState<string | null>(
-    null,
-  );
-  const [editingTemplate, setEditingTemplate] = useState(false);
-  const [createTemplateModalOpen, setCreateTemplateModalOpen] = useState(false);
-  const [expandedJobFunctionIds, setExpandedJobFunctionIds] = useState<
-    Set<number>
-  >(() => new Set());
-  const [copyDayModalOpen, setCopyDayModalOpen] = useState(false);
-  const [copyDayTargets, setCopyDayTargets] = useState<number[]>([]);
-  const [copyTemplateModalOpen, setCopyTemplateModalOpen] = useState(false);
-  const [copyTemplateName, setCopyTemplateName] = useState("");
-  const [copyTemplateIncludeAssignments, setCopyTemplateIncludeAssignments] =
-    useState(true);
-  const [copyTemplateIncludeInactiveDays, setCopyTemplateIncludeInactiveDays] =
-    useState(true);
-  const [copyTemplateIncludeNotes, setCopyTemplateIncludeNotes] = useState(true);
-
-  useEffect(() => {
-    infoDialogRef.current = infoDialog;
-  }, [infoDialog]);
-
+  const {
+    templates,
+    jobFunctions,
+    employees,
+    selectedTemplateId,
+    setSelectedTemplateId,
+    showArchived,
+    setShowArchived,
+    loading,
+    fetchData,
+  } = useScheduleTemplateData({
+    currentUser,
+    activeCinemaId,
+    needsMasterCinemaSelection,
+    infoDialog,
+  });
   const {
     selectedTemplate,
     selectedDay,
@@ -95,101 +54,77 @@ export default function ScheduleTemplatesPage() {
     activeTemplates,
     archivedTemplates,
     totalStaffingGapSummary,
-  } = useScheduleTemplateDerivedState({
+    selectedWeekday,
+    setSelectedWeekday,
+    createTemplateForm,
+    setCreateTemplateForm,
+    templateForm,
+    setTemplateForm,
+    dayForm,
+    setDayForm,
+    jobFunctionForm,
+    setJobFunctionForm,
+    savingTemplate,
+    setSavingTemplate,
+    savingDay,
+    setSavingDay,
+    savingJobFunction,
+    setSavingJobFunction,
+    copyingDay,
+    setCopyingDay,
+    copyingTemplate,
+    setCopyingTemplate,
+    savingAssignmentKey,
+    setSavingAssignmentKey,
+    editingTemplate,
+    setEditingTemplate,
+    createTemplateModalOpen,
+    setCreateTemplateModalOpen,
+    expandedJobFunctionIds,
+    setExpandedJobFunctionIds,
+    copyDayModalOpen,
+    setCopyDayModalOpen,
+    copyDayTargets,
+    setCopyDayTargets,
+    copyTemplateModalOpen,
+    setCopyTemplateModalOpen,
+    copyTemplateName,
+    setCopyTemplateName,
+    copyTemplateIncludeAssignments,
+    setCopyTemplateIncludeAssignments,
+    copyTemplateIncludeInactiveDays,
+    setCopyTemplateIncludeInactiveDays,
+    copyTemplateIncludeNotes,
+    setCopyTemplateIncludeNotes,
+    openCreateTemplateModal,
+  } = useScheduleTemplatePageState({
     templates,
     selectedTemplateId,
-    selectedWeekday,
-    copyTemplateName,
-    copyTemplateIncludeAssignments,
-    copyTemplateIncludeInactiveDays,
   });
 
-  useEffect(() => {
-    setTemplateForm(
-      selectedTemplate ? toTemplateForm(selectedTemplate) : emptyTemplateForm,
-    );
-    setEditingTemplate(false);
-    setCopyTemplateModalOpen(false);
-    setCopyTemplateName("");
-  }, [selectedTemplate]);
-
-  useEffect(() => {
-    setDayForm(toDayForm(selectedDay));
-    setJobFunctionForm(emptyJobFunctionForm);
-    setExpandedJobFunctionIds(new Set());
-    setCopyDayModalOpen(false);
-    setCopyDayTargets([]);
-  }, [selectedDay, selectedWeekday]);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      const nextData = await fetchScheduleTemplatePageData({
-        activeCinemaId,
-        showArchived,
-      });
-
-      setTemplates(nextData.templates);
-      setJobFunctions(nextData.jobFunctions);
-      setEmployees(nextData.employees);
-      setSelectedTemplateId((current) => {
-        if (
-          current &&
-          nextData.templates.some((template) => template.id === current)
-        ) {
-          return current;
-        }
-
-        return nextData.templates[0]?.id ?? null;
-      });
-    } catch (error) {
-      setTemplates([]);
-      setJobFunctions([]);
-      setEmployees([]);
-      infoDialogRef.current.showError(
-        "Kunne ikke hente vagtsskabeloner",
-        error instanceof Error
-          ? error.message
-          : "Der opstod en fejl, da vagtsskabeloner skulle hentes.\nPrøv igen.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCinemaId, showArchived]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    if (needsMasterCinemaSelection) {
-      setTemplates([]);
-      setJobFunctions([]);
-      setEmployees([]);
-      setLoading(false);
-      return;
-    }
-
-    fetchData();
-  }, [currentUser, fetchData, needsMasterCinemaSelection]);
-
-  const { createTemplate, updateTemplate, archiveTemplate, reactivateTemplate, saveSelectedDay } =
-    useScheduleTemplateCrudActions({
-      infoDialog,
-      needsMasterCinemaSelection,
-      activeCinemaId,
-      selectedTemplate,
-      selectedWeekday,
-      createTemplateForm,
-      templateForm,
-      dayForm,
-      fetchData,
-      setSavingTemplate,
-      setSavingDay,
-      setSelectedTemplateId,
-      setCreateTemplateForm,
-      setCreateTemplateModalOpen,
-      setEditingTemplate,
-    });
+  const {
+    createTemplate,
+    updateTemplate,
+    archiveTemplate,
+    reactivateTemplate,
+    saveSelectedDay,
+  } = useScheduleTemplateCrudActions({
+    infoDialog,
+    needsMasterCinemaSelection,
+    activeCinemaId,
+    selectedTemplate,
+    selectedWeekday,
+    createTemplateForm,
+    templateForm,
+    dayForm,
+    fetchData,
+    setSavingTemplate,
+    setSavingDay,
+    setSelectedTemplateId,
+    setCreateTemplateForm,
+    setCreateTemplateModalOpen,
+    setEditingTemplate,
+  });
 
   const {
     addJobFunction,
@@ -271,10 +206,7 @@ export default function ScheduleTemplatesPage() {
                   selectedTemplateId={selectedTemplateId}
                   onShowArchivedChange={setShowArchived}
                   onSelectTemplate={(templateId) => setSelectedTemplateId(templateId)}
-                  onCreateTemplate={() => {
-                    setCreateTemplateForm(emptyTemplateForm);
-                    setCreateTemplateModalOpen(true);
-                  }}
+                  onCreateTemplate={openCreateTemplateModal}
                 />
 
                 <ScheduleTemplateEditorPanel
