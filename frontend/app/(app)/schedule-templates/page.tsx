@@ -1,9 +1,9 @@
 "use client";
 
 import AdminGuard from "@/app/components/AdminGuard";
-import ScheduleTemplatesPageContent from "./components/ScheduleTemplatesPageContent";
-import ScheduleTemplatesPageModals from "./components/ScheduleTemplatesPageModals";
-import { useScheduleTemplatePageController } from "./hooks/useScheduleTemplatePageController";
+import ScheduleTemplatesPageContent from "./components/layout/ScheduleTemplatesPageContent";
+import ScheduleTemplatesPageModals from "./components/layout/ScheduleTemplatesPageModals";
+import { useScheduleTemplatePageController } from "./hooks/controllers/useScheduleTemplatePageController";
 
 export default function ScheduleTemplatesPage() {
   const controller = useScheduleTemplatePageController();
