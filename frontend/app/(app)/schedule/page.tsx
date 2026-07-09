@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import StaffingRequestModal from "./components/StaffingRequestModal";
+import StaffingRequestModal from "./components/staffing/StaffingRequestModal";
 import {
   ManualTimeRegistrationModal,
   TimeRegistrationModal,

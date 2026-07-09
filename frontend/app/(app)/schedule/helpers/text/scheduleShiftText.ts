@@ -1,6 +1,6 @@
 import { formatDateDK, formatTimeDK } from "@/app/utils/dateTime";
 import type { Shift, User } from "../../../../../../shared/types";
-import type { StaffingRequestType } from "../../components/StaffingRequestModal";
+import type { StaffingRequestType } from "../../components/staffing/StaffingRequestModal";
 
 export function formatShiftDate(value: string) {
   return formatDateDK(value);

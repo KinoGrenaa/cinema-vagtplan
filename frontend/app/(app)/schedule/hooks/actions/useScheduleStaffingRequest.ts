@@ -9,7 +9,7 @@ import type { Shift, User, WorkType } from "../../../../../../shared/types";
 import type {
   StaffingRequestType,
   StaffingTargetMode,
-} from "../../components/StaffingRequestModal";
+} from "../../components/staffing/StaffingRequestModal";
 import { getDefaultStaffingMessage } from "../../helpers/scheduleShiftText";
 import { getScheduleStaffingTargetUsers } from "../../helpers/scheduleDerivedData";
 
