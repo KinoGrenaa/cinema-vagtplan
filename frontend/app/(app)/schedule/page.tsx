@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import StaffingRequestModal from "./components/StaffingRequestModal";
 import {
   ManualTimeRegistrationModal,
   TimeRegistrationModal,
-} from "./components/TimeRegistrationModals";
-import ScheduleShiftFormModal from "./components/ScheduleShiftFormModal";
-import ScheduleMainContent from "./components/ScheduleMainContent";
+} from "./components/time-registration/TimeRegistrationModals";
+import ScheduleShiftFormModal from "./components/shift-form/ScheduleShiftFormModal";
+import ScheduleMainContent from "./components/layout/ScheduleMainContent";
 import { useScheduleShiftForm } from "./hooks/useScheduleShiftForm";
 import { useScheduleShiftTimelineActions } from "./hooks/useScheduleShiftTimelineActions";
 import { useScheduleStaffingRequest } from "./hooks/useScheduleStaffingRequest";
 import { useScheduleTimeRegistration } from "./hooks/useScheduleTimeRegistration";
 import { useSchedule } from "../../hooks/useSchedule";
-import AiScheduleFeatures from "./components/AiScheduleFeatures";
+import AiScheduleFeatures from "./components/ai/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
   dateToLocalDateString,
@@ -34,8 +35,8 @@ export default function SchedulePage() {
   const infoDialog = useInfoModal();
   const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === "true";
   const todayDefault = getTodayLocalDate();
-
-  const [selectedDate, setSelectedDate] = useState(todayDefault); const scheduleDateQueryApplied = useRef(false);
+  const [selectedDate, setSelectedDate] = useState(todayDefault);
+  const scheduleDateQueryApplied = useRef(false);
 
   const {
     user: currentUser,
@@ -53,12 +54,10 @@ export default function SchedulePage() {
     deleteShift,
     offerShiftTrade,
     createStaffingRequest,
-
     openTimeEntry,
     timeEntries,
     clockIn,
     clockOut,
-
     submitManualTime: submitManualTimeEntry,
   } = useSchedule(selectedDate, {
     onError: infoDialog.showError,
@@ -113,24 +112,23 @@ export default function SchedulePage() {
 
   useEffect(() => {
     if (scheduleDateQueryApplied.current) return;
+
     scheduleDateQueryApplied.current = true;
 
     const queryDate = new URLSearchParams(window.location.search).get("date");
+
     if (!queryDate || !/^\d{4}-\d{2}-\d{2}$/.test(queryDate)) return;
 
     setSelectedDate(queryDate);
     resetShiftFormForDate(queryDate);
   }, [resetShiftFormForDate]);
 
-  const {
-    handleMoveShift,
-    handleChangeShiftUser,
-    handleResizeShift,
-  } = useScheduleShiftTimelineActions({
-    selectedDate,
-    updateShift,
-    infoDialog,
-  });
+  const { handleMoveShift, handleChangeShiftUser, handleResizeShift } =
+    useScheduleShiftTimelineActions({
+      selectedDate,
+      updateShift,
+      infoDialog,
+    });
 
   const {
     showClockModal,
@@ -227,16 +225,13 @@ export default function SchedulePage() {
   function changeDate(days: number) {
     const date = new Date(`${selectedDate}T12:00:00`);
     date.setDate(date.getDate() + days);
-
     const nextDate = dateToLocalDateString(date);
-
     setSelectedDate(nextDate);
     resetShiftFormForDate(nextDate);
   }
 
   function goToToday() {
     const today = getTodayLocalDate();
-
     setSelectedDate(today);
     resetShiftFormForDate(today);
   }
