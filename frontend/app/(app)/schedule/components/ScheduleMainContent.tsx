@@ -3,7 +3,7 @@
 import type { ComponentProps } from "react";
 
 import MovieProgram from "./movie-program/MovieProgram";
-import { SchedulePageHeader } from "./ScheduleHeader";
+import { SchedulePageHeader } from "./layout/ScheduleHeader";
 import ScheduleLeaveOverview from "./leave/ScheduleLeaveOverview";
 import ScheduleShiftsPanel from "./ScheduleShiftsPanel";
 
