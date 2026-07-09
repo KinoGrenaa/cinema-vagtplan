@@ -1,28 +1,13 @@
-import type { Dispatch, FormEvent, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
-import {
-  archiveScheduleTemplateRequest,
-  createScheduleTemplateRequest,
-  reactivateScheduleTemplateRequest,
-  saveScheduleTemplateDayRequest,
-  updateScheduleTemplateRequest,
-} from "../helpers/scheduleTemplateCrudApi";
-import { emptyTemplateForm } from "../helpers/scheduleTemplateFormHelpers";
 import type {
   DayFormState,
   ScheduleTemplate,
   TemplateFormState,
 } from "../helpers/scheduleTemplatePageTypes";
-
-type InfoDialogLike = {
-  show: (options: {
-    title: string;
-    description: string;
-    variant: "success" | "error" | "warning" | "info";
-    buttonText: string;
-  }) => void;
-  showError: (title: string, description: string) => void;
-};
+import type { InfoDialogLike } from "./scheduleTemplateActionTypes";
+import { useScheduleTemplateDayActions } from "./useScheduleTemplateDayActions";
+import { useScheduleTemplateTemplateActions } from "./useScheduleTemplateTemplateActions";
 
 type UseScheduleTemplateCrudActionsArgs = {
   infoDialog: InfoDialogLike;
@@ -59,133 +44,33 @@ export function useScheduleTemplateCrudActions({
   setCreateTemplateModalOpen,
   setEditingTemplate,
 }: UseScheduleTemplateCrudActionsArgs) {
-  const createTemplate = async (event: FormEvent) => {
-    event.preventDefault();
+  const templateActions = useScheduleTemplateTemplateActions({
+    infoDialog,
+    needsMasterCinemaSelection,
+    activeCinemaId,
+    selectedTemplate,
+    createTemplateForm,
+    templateForm,
+    fetchData,
+    setSavingTemplate,
+    setSelectedTemplateId,
+    setCreateTemplateForm,
+    setCreateTemplateModalOpen,
+    setEditingTemplate,
+  });
 
-    if (needsMasterCinemaSelection) {
-      infoDialog.showError(
-        "Biograf mangler",
-        "Vælg først en biograf i MASTER-panelet, før du opretter vagtsskabeloner.",
-      );
-      return;
-    }
-
-    try {
-      setSavingTemplate(true);
-      const createdTemplate = await createScheduleTemplateRequest({
-        form: createTemplateForm,
-        activeCinemaId,
-      });
-
-      await fetchData();
-      setSelectedTemplateId(createdTemplate.id);
-      setCreateTemplateForm(emptyTemplateForm);
-      setCreateTemplateModalOpen(false);
-      infoDialog.show({
-        title: "Vagtsskabelon oprettet",
-        description:
-          "Skabelonen er oprettet.\nVælg ugedage, jobfunktioner og faste medarbejdere, før den bruges i vagtplanlægningen.",
-        variant: "success",
-        buttonText: "OK",
-      });
-    } catch (error) {
-      infoDialog.showError(
-        "Kunne ikke oprette vagtsskabelon",
-        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
-      );
-    } finally {
-      setSavingTemplate(false);
-    }
-  };
-
-  const updateTemplate = async () => {
-    if (!selectedTemplate) return;
-
-    try {
-      setSavingTemplate(true);
-      await updateScheduleTemplateRequest({
-        templateId: selectedTemplate.id,
-        form: templateForm,
-        activeCinemaId,
-      });
-
-      await fetchData();
-      setEditingTemplate(false);
-    } catch (error) {
-      infoDialog.showError(
-        "Kunne ikke opdatere vagtsskabelon",
-        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
-      );
-    } finally {
-      setSavingTemplate(false);
-    }
-  };
-
-  const archiveTemplate = async (template: ScheduleTemplate) => {
-    if (!window.confirm(`Vil du arkivere vagtsskabelonen "${template.name}"?`)) {
-      return;
-    }
-
-    try {
-      await archiveScheduleTemplateRequest({
-        templateId: template.id,
-        activeCinemaId,
-      });
-
-      await fetchData();
-    } catch (error) {
-      infoDialog.showError(
-        "Kunne ikke arkivere vagtsskabelon",
-        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
-      );
-    }
-  };
-
-  const reactivateTemplate = async (template: ScheduleTemplate) => {
-    try {
-      await reactivateScheduleTemplateRequest({
-        templateId: template.id,
-        activeCinemaId,
-      });
-
-      await fetchData();
-      setSelectedTemplateId(template.id);
-    } catch (error) {
-      infoDialog.showError(
-        "Kunne ikke genaktivere vagtsskabelon",
-        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
-      );
-    }
-  };
-
-  const saveSelectedDay = async () => {
-    if (!selectedTemplate) return;
-
-    try {
-      setSavingDay(true);
-      await saveScheduleTemplateDayRequest({
-        templateId: selectedTemplate.id,
-        weekday: selectedWeekday,
-        form: dayForm,
-        activeCinemaId,
-      });
-
-      await fetchData();
-    } catch (error) {
-      infoDialog.showError(
-        "Kunne ikke gemme ugedag",
-        error instanceof Error ? error.message : "Der opstod en fejl.\nPrøv igen.",
-      );
-    } finally {
-      setSavingDay(false);
-    }
-  };
+  const dayActions = useScheduleTemplateDayActions({
+    infoDialog,
+    activeCinemaId,
+    selectedTemplate,
+    selectedWeekday,
+    dayForm,
+    fetchData,
+    setSavingDay,
+  });
 
   return {
-    createTemplate,
-    updateTemplate,
-    archiveTemplate,
-    reactivateTemplate,
-    saveSelectedDay,
+    ...templateActions,
+    ...dayActions,
   };
 }
