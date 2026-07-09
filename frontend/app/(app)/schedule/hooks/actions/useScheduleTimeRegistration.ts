@@ -5,7 +5,7 @@ import {
   toInputDateTime,
 } from "@/app/utils/dateTime";
 import type { Shift } from "../../../../../../shared/types";
-import { getShiftsForTimeRegistration } from "../../helpers/scheduleDerivedData";
+import { getShiftsForTimeRegistration } from "../../helpers/derived/scheduleDerivedData";
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;

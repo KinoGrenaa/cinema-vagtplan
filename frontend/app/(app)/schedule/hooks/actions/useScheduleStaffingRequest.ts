@@ -10,8 +10,8 @@ import type {
   StaffingRequestType,
   StaffingTargetMode,
 } from "../../components/staffing/StaffingRequestModal";
-import { getDefaultStaffingMessage } from "../../helpers/scheduleShiftText";
-import { getScheduleStaffingTargetUsers } from "../../helpers/scheduleDerivedData";
+import { getDefaultStaffingMessage } from "../../helpers/text/scheduleShiftText";
+import { getScheduleStaffingTargetUsers } from "../../helpers/derived/scheduleDerivedData";
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;

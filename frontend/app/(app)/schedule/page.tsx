@@ -9,10 +9,10 @@ import {
 } from "./components/time-registration/TimeRegistrationModals";
 import ScheduleShiftFormModal from "./components/shift-form/ScheduleShiftFormModal";
 import ScheduleMainContent from "./components/layout/ScheduleMainContent";
-import { useScheduleShiftForm } from "./hooks/useScheduleShiftForm";
-import { useScheduleShiftTimelineActions } from "./hooks/useScheduleShiftTimelineActions";
-import { useScheduleStaffingRequest } from "./hooks/useScheduleStaffingRequest";
-import { useScheduleTimeRegistration } from "./hooks/useScheduleTimeRegistration";
+import { useScheduleShiftForm } from "./hooks/state/useScheduleShiftForm";
+import { useScheduleShiftTimelineActions } from "./hooks/actions/useScheduleShiftTimelineActions";
+import { useScheduleStaffingRequest } from "./hooks/actions/useScheduleStaffingRequest";
+import { useScheduleTimeRegistration } from "./hooks/actions/useScheduleTimeRegistration";
 import { useSchedule } from "../../hooks/useSchedule";
 import AiScheduleFeatures from "./components/ai/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
@@ -23,8 +23,8 @@ import {
 import {
   getStaffingShiftOptionText,
   getUserDisplayName,
-} from "./helpers/scheduleShiftText";
-import { getMovieShowingsForDate } from "./helpers/scheduleDerivedData";
+} from "./helpers/text/scheduleShiftText";
+import { getMovieShowingsForDate } from "./helpers/derived/scheduleDerivedData";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
