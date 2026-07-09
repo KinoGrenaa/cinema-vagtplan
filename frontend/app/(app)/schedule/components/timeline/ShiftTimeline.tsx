@@ -1,18 +1,17 @@
 "use client";
 
 import { memo, useCallback, useMemo } from "react";
-import type { Shift, User } from "../../../../../shared/types";
+
+import type { Shift, User } from "../../../../../../shared/types";
 import ShiftCard from "./ShiftCard";
 import { getTodayLocalDate } from "@/app/utils/dateTime";
 
 const HOURS = Array.from({ length: 25 }, (_, i) =>
   i.toString().padStart(2, "0"),
 );
-
 const HOUR_LINES = Array.from({ length: 25 }, (_, index) => index);
 const HALF_HOUR_LINES = Array.from({ length: 24 }, (_, index) => index);
 const LANES = Array.from({ length: 8 }, (_, index) => index);
-
 const TIMELINE_WIDTH = 2400;
 const START_HOUR = 0;
 const TOTAL_HOURS = 24;
@@ -21,17 +20,13 @@ type ShiftTimelineProps = {
   shifts: Shift[];
   users: User[];
   selectedDate: string;
-
   onSelectShift: (shift: Shift) => void;
-
   onMoveShift: (
     shift: Shift,
     newStartHour: number,
     newStartMinute: number,
   ) => void;
-
   onChangeShiftUser: (shift: Shift, newUserId: number) => void;
-
   onResizeShift: (
     shift: Shift,
     newStartHour: number,
@@ -57,7 +52,8 @@ function ShiftTimelineComponent({
     return {
       showNowLine: selectedDate === today,
       nowLeft:
-        ((now.getHours() * 60 + now.getMinutes()) / (24 * 60)) * TIMELINE_WIDTH,
+        ((now.getHours() * 60 + now.getMinutes()) / (24 * 60)) *
+        TIMELINE_WIDTH,
     };
   }, [selectedDate]);
 
@@ -71,7 +67,6 @@ function ShiftTimelineComponent({
   const calculateWidth = useCallback((startTime: string, endTime: string) => {
     const start = new Date(startTime);
     const end = new Date(endTime);
-
     const durationMinutes = (end.getTime() - start.getTime()) / 1000 / 60;
 
     return (durationMinutes / (TOTAL_HOURS * 60)) * TIMELINE_WIDTH;

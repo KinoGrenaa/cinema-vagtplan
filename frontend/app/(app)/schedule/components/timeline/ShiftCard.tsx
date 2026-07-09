@@ -2,7 +2,8 @@
 
 import { memo, useCallback } from "react";
 import { Rnd } from "react-rnd";
-import type { Shift, User } from "../../../../../shared/types";
+
+import type { Shift, User } from "../../../../../../shared/types";
 
 type ShiftCardProps = {
   shift: Shift;
@@ -42,7 +43,6 @@ function ShiftCardComponent({
   const x = calculateLeft(shift.startTime);
   const width = calculateWidth(shift.startTime, shift.endTime);
   const y = 30 + index * 84;
-
   const workTypeColor = shift.workType?.color || "#3b82f6";
   const workTypeName = shift.workType?.name || "Vagt";
 
@@ -79,7 +79,6 @@ function ShiftCardComponent({
       minWidth={35}
       onDragStop={(_, data) => {
         const newStart = pixelsToTime(data.x);
-
         onMove(shift, newStart.hour, newStart.minute);
       }}
       onResizeStop={(_, __, ref, ___, position) => {
@@ -103,15 +102,12 @@ function ShiftCardComponent({
         }}
       >
         <div className="absolute inset-0 bg-black/5 transition group-hover:bg-black/10 dark:bg-black/20 dark:group-hover:bg-black/10" />
-
         <div className="relative z-10 space-y-1">
           <select
             value={shift.userId}
             onClick={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
-            onChange={(event) =>
-              onChangeUser(shift, Number(event.target.value))
-            }
+            onChange={(event) => onChangeUser(shift, Number(event.target.value))}
             className="w-full rounded-lg border border-white/30 bg-white/90 px-2 py-1 text-sm font-medium text-black shadow-sm outline-none transition focus:ring-2 focus:ring-white/50 dark:bg-gray-950/90 dark:text-white"
           >
             {users.map((user) => (
@@ -125,7 +121,6 @@ function ShiftCardComponent({
             <div className="truncate text-xs font-semibold uppercase tracking-wide text-white/90">
               {workTypeName}
             </div>
-
             <div className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
               Vagt
             </div>
