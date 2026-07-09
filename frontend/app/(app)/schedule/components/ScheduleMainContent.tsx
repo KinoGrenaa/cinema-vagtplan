@@ -1,13 +1,13 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import MovieProgram from "./MovieProgram";
+
+import MovieProgram from "./movie-program/MovieProgram";
 import { SchedulePageHeader } from "./ScheduleHeader";
-import ScheduleLeaveOverview from "./ScheduleLeaveOverview";
+import ScheduleLeaveOverview from "./leave/ScheduleLeaveOverview";
 import ScheduleShiftsPanel from "./ScheduleShiftsPanel";
 
 type ScheduleShiftsPanelProps = ComponentProps<typeof ScheduleShiftsPanel>;
-
 type ScheduleMainContentProps = {
   ai: ScheduleShiftsPanelProps["ai"];
   shifts: ScheduleShiftsPanelProps["shifts"];

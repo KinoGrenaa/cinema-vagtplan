@@ -1,6 +1,6 @@
 "use client";
 
-import type { LeaveRequest } from "../../../../../shared/types";
+import type { LeaveRequest } from "../../../../../../shared/types";
 
 type ScheduleLeaveOverviewProps = {
   leaveRequests: LeaveRequest[];
@@ -40,9 +40,9 @@ export default function ScheduleLeaveOverview({
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
       <h2 className="mb-4 text-2xl font-bold">Fravær denne dag</h2>
-
       <div className="space-y-2">
         {selectedDateLeaveRequests.map((request) => (
+
           <div
             key={request.id}
             className={`rounded-xl border p-3 ${getLeaveStyle(request.status)}`}
@@ -52,7 +52,6 @@ export default function ScheduleLeaveOverview({
             </div>
 
             <div className="text-sm">Status: {request.status}</div>
-
             {request.reason && (
               <div className="mt-1 text-sm">Årsag: {request.reason}</div>
             )}
@@ -60,6 +59,7 @@ export default function ScheduleLeaveOverview({
         ))}
 
         {selectedDateLeaveRequests.length === 0 && (
+
           <div className="text-gray-500 dark:text-gray-400">
             Ingen fravær denne dag.
           </div>
