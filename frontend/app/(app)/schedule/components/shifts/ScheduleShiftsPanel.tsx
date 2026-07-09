@@ -1,11 +1,8 @@
-import type { Shift, User } from "../../../../../shared/types";
-import AiSuggestionsPanel from "../../../components/schedule/AiSuggestionsPanel";
-
-import ShiftTimeline from "../../../components/schedule/ShiftTimeline";
-
-import type { useScheduleAi } from "../../../hooks/useScheduleAi";
-
-import { ScheduleDateNavigation } from "./layout/ScheduleHeader";
+import type { Shift, User } from "../../../../../../shared/types";
+import AiSuggestionsPanel from "../../../../components/schedule/AiSuggestionsPanel";
+import ShiftTimeline from "../../../../components/schedule/ShiftTimeline";
+import type { useScheduleAi } from "../../../../hooks/useScheduleAi";
+import { ScheduleDateNavigation } from "../layout/ScheduleHeader";
 
 type AiScheduleData = ReturnType<typeof useScheduleAi>;
 
@@ -70,6 +67,7 @@ export default function ScheduleShiftsPanel({
               : "Se dagens vagtplan"}
           </p>
         </div>
+
         {canManageShifts && !needsMasterCinemaSelection && (
           <div className="flex flex-wrap gap-2">
             <button
@@ -89,6 +87,7 @@ export default function ScheduleShiftsPanel({
           </div>
         )}
       </div>
+
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-800 dark:bg-gray-950">
         {ai && (
           <AiSuggestionsPanel
@@ -114,6 +113,7 @@ export default function ScheduleShiftsPanel({
             sendRealStaffingMessage={ai.sendRealStaffingMessage}
           />
         )}
+
         <ScheduleDateNavigation
           selectedDate={selectedDate}
           onPreviousDay={onPreviousDay}
@@ -121,6 +121,7 @@ export default function ScheduleShiftsPanel({
           onDateChange={onDateChange}
           onNextDay={onNextDay}
         />
+
         <ShiftTimeline
           shifts={shifts}
           users={users}

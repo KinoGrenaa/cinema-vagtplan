@@ -5,9 +5,10 @@ import type { ComponentProps } from "react";
 import MovieProgram from "./movie-program/MovieProgram";
 import { SchedulePageHeader } from "./layout/ScheduleHeader";
 import ScheduleLeaveOverview from "./leave/ScheduleLeaveOverview";
-import ScheduleShiftsPanel from "./ScheduleShiftsPanel";
+import ScheduleShiftsPanel from "./shifts/ScheduleShiftsPanel";
 
 type ScheduleShiftsPanelProps = ComponentProps<typeof ScheduleShiftsPanel>;
+
 type ScheduleMainContentProps = {
   ai: ScheduleShiftsPanelProps["ai"];
   shifts: ScheduleShiftsPanelProps["shifts"];
