@@ -4,12 +4,13 @@ import {
   getRestoreTargetLabel,
   getShortBody,
   getUserName,
-} from "../helpers/archiveMessageHelpers";
+} from "../../helpers/archiveMessageHelpers";
+
 import type {
   ArchiveSection,
   Message,
   MessageDateGroup,
-} from "../helpers/archiveMessageTypes";
+} from "../../helpers/archiveMessageTypes";
 
 type ArchivedMessagesListSectionProps = {
   pageLoading: boolean;
@@ -83,7 +84,6 @@ export default function ArchivedMessagesListSection({
           >
             <div className="flex items-center justify-between gap-3">
               <div className="font-semibold">Modtagne</div>
-
               <span
                 className={`rounded-full px-3 py-1 text-sm font-bold ${
                   activeSection === "received"
@@ -107,7 +107,6 @@ export default function ArchivedMessagesListSection({
           >
             <div className="flex items-center justify-between gap-3">
               <div className="font-semibold">Sendte</div>
-
               <span
                 className={`rounded-full px-3 py-1 text-sm font-bold ${
                   activeSection === "sent"
@@ -156,7 +155,6 @@ export default function ArchivedMessagesListSection({
                   {group.messages.length} beskeder sendt denne dato
                 </div>
               </div>
-
               <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-950">
                 {isGroupExpanded ? "Skjul" : "Vis"}
               </span>
@@ -203,7 +201,6 @@ export default function ArchivedMessagesListSection({
                             <h2 className="truncate text-lg font-bold text-black dark:text-white">
                               {message.subject}
                             </h2>
-
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                               {activeSection === "sent" ? "Til: " : "Fra: "}
                               {activeSection === "sent"

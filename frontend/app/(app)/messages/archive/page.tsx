@@ -10,7 +10,7 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 
 import ArchivedMessagesHeader from "./components/layout/ArchivedMessagesHeader";
 
-import ArchivedMessagesListSection from "./components/ArchivedMessagesListSection";
+import ArchivedMessagesListSection from "./components/list/ArchivedMessagesListSection";
 import { useArchivedMessages } from "./hooks/useArchivedMessages";
 
 export default function ArchivedMessagesPage() {
