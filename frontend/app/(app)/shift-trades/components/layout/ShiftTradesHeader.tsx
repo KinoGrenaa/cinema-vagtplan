@@ -10,12 +10,10 @@ export default function ShiftTradesHeader({ message }: ShiftTradesHeaderProps) {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Vagtpulje</h1>
-
           <p className="mt-2 text-gray-500 dark:text-gray-400">
             Se åbne vagter som andre medarbejdere har lagt i puljen.
           </p>
         </div>
-
         <Link
           href="/dashboard"
           className="rounded-xl bg-black px-4 py-2 text-center font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"

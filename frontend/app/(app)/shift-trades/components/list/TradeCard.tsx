@@ -1,5 +1,8 @@
-import { formatShiftDate, formatShiftTime } from "../helpers/shiftTradeHelpers";
-import type { ShiftTrade } from "../helpers/shiftTradeTypes";
+import {
+  formatShiftDate,
+  formatShiftTime,
+} from "../../helpers/shiftTradeHelpers";
+import type { ShiftTrade } from "../../helpers/shiftTradeTypes";
 
 type TradeCardProps = {
   trade: ShiftTrade;
@@ -24,14 +27,11 @@ export default function TradeCard({
         <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
           {trade.type === "POOL" ? "Vagtpulje" : "Direkte"}
         </span>
-
         <span className="rounded-full bg-green-600 px-2 py-1 text-xs font-semibold text-white">
           Åben
         </span>
       </div>
-
       <h3 className="text-xl font-bold">{trade.shift.workType.name}</h3>
-
       <div className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-300">
         <div>{formatShiftDate(trade.shift.startTime)}</div>
         <div>{formatShiftTime(trade.shift.startTime, trade.shift.endTime)}</div>
@@ -39,7 +39,6 @@ export default function TradeCard({
           Udbydes af: {trade.offeredByUser.firstName}{" "}
           {trade.offeredByUser.lastName}
         </div>
-
         {trade.targetUser && (
           <div>
             Tilbudt til: {trade.targetUser.firstName}{" "}
@@ -47,13 +46,11 @@ export default function TradeCard({
           </div>
         )}
       </div>
-
       {trade.message && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
           Besked: {trade.message}
         </div>
       )}
-
       <div className="mt-4 flex flex-wrap gap-3">
         <button
           type="button"
@@ -68,7 +65,6 @@ export default function TradeCard({
         >
           {actionLabel}
         </button>
-
         {onReject && (
           <button
             type="button"

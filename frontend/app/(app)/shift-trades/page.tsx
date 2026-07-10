@@ -6,9 +6,10 @@ import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import ShiftTradesHeader from "./components/ShiftTradesHeader";
-import ShiftTradesHistorySection from "./components/ShiftTradesHistorySection";
-import ShiftTradesOpenSection from "./components/ShiftTradesOpenSection";
+
+import ShiftTradesHeader from "./components/layout/ShiftTradesHeader";
+import ShiftTradesHistorySection from "./components/list/ShiftTradesHistorySection";
+import ShiftTradesOpenSection from "./components/list/ShiftTradesOpenSection";
 import { useShiftTradeActions } from "./hooks/useShiftTradeActions";
 import { useShiftTradesData } from "./hooks/useShiftTradesData";
 

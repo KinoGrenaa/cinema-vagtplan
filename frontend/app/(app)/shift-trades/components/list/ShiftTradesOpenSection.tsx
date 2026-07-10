@@ -1,4 +1,5 @@
-import type { ShiftTrade } from "../helpers/shiftTradeTypes";
+import type { ShiftTrade } from "../../helpers/shiftTradeTypes";
+
 import TradeCard from "./TradeCard";
 
 type ShiftTradesOpenSectionProps = {
@@ -23,7 +24,6 @@ export default function ShiftTradesOpenSection({
       <h2 className="mb-4 text-2xl font-bold">
         {title} ({trades.length})
       </h2>
-
       <div className="space-y-4">
         {trades.map((trade) => (
           <TradeCard
@@ -40,7 +40,6 @@ export default function ShiftTradesOpenSection({
             }
           />
         ))}
-
         {trades.length === 0 && (
           <div className="text-gray-500 dark:text-gray-400">{emptyText}</div>
         )}
