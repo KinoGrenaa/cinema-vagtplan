@@ -1,7 +1,12 @@
 import { useCallback } from "react";
+
 import type { Dispatch, SetStateAction } from "react";
-import { formatShiftDate, formatShiftTime } from "../helpers/shiftTradeHelpers";
-import type { ShiftTrade } from "../helpers/shiftTradeTypes";
+
+import {
+  formatShiftDate,
+  formatShiftTime,
+} from "../../helpers/core/shiftTradeHelpers";
+import type { ShiftTrade } from "../../helpers/core/shiftTradeTypes";
 
 type ApiFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -53,7 +58,6 @@ export function useShiftTradeActions({
       confirmModal.confirm({
         title: "Acceptér vagt",
         description: `Er du sikker på, at du vil acceptere denne vagt fra ${offeredBy}?
-
 ${shiftInfo}`,
         confirmText: "Acceptér",
         cancelText: "Annuller",
@@ -93,7 +97,6 @@ ${shiftInfo}`,
       confirmModal.confirm({
         title: "Afvis vagt",
         description: `Er du sikker på, at du vil afvise denne vagt?
-
 ${shiftInfo}`,
         confirmText: "Afvis",
         cancelText: "Annuller",

@@ -1,4 +1,4 @@
-import type { ShiftTrade } from "../../helpers/shiftTradeTypes";
+import type { ShiftTrade } from "../../helpers/core/shiftTradeTypes";
 
 import TradeCard from "./TradeCard";
 

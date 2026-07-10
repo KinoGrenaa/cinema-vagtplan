@@ -1,8 +1,8 @@
 import {
   formatShiftDate,
   formatShiftTime,
-} from "../../helpers/shiftTradeHelpers";
-import type { ShiftTrade } from "../../helpers/shiftTradeTypes";
+} from "../../helpers/core/shiftTradeHelpers";
+import type { ShiftTrade } from "../../helpers/core/shiftTradeTypes";
 
 type TradeCardProps = {
   trade: ShiftTrade;

@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/app/hooks/useApi";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import { useAuth } from "@/app/providers/AuthProvider";
-import type { ShiftTrade } from "../helpers/shiftTradeTypes";
+
+import type { ShiftTrade } from "../../helpers/core/shiftTradeTypes";
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;
@@ -53,7 +54,6 @@ export function useShiftTradesData({ infoDialog }: UseShiftTradesDataArgs) {
 
     try {
       setLoading(true);
-
       const masterCinemaQuery = getMasterCinemaQuery();
       const shouldSelectMasterCinema =
         user.role === "MASTER" && !user.cinemaId && !masterCinemaQuery;

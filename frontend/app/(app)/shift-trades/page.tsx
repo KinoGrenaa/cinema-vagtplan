@@ -10,8 +10,8 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import ShiftTradesHeader from "./components/layout/ShiftTradesHeader";
 import ShiftTradesHistorySection from "./components/list/ShiftTradesHistorySection";
 import ShiftTradesOpenSection from "./components/list/ShiftTradesOpenSection";
-import { useShiftTradeActions } from "./hooks/useShiftTradeActions";
-import { useShiftTradesData } from "./hooks/useShiftTradesData";
+import { useShiftTradeActions } from "./hooks/actions/useShiftTradeActions";
+import { useShiftTradesData } from "./hooks/data/useShiftTradesData";
 
 export default function ShiftTradesPage() {
   const confirmModal = useConfirm();
