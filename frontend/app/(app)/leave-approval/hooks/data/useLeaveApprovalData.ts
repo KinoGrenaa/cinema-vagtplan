@@ -10,12 +10,12 @@ import {
   getSelectedMasterCinemaId,
   getStoredUser,
   readErrorMessage,
-} from "../../helpers/leaveApprovalHelpers";
+} from "../../helpers/core/leaveApprovalHelpers";
 import type {
   LeaveRequest,
   LeaveStatus,
   StoredUser,
-} from "../../helpers/leaveApprovalTypes";
+} from "../../helpers/core/leaveApprovalTypes";
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;

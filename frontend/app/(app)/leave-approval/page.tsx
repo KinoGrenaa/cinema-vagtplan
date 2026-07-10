@@ -11,7 +11,7 @@ import LeaveApprovalRequestsSection from "./components/list/LeaveApprovalRequest
 
 import LeaveApprovalSummaryCards from "./components/overview/LeaveApprovalSummaryCards";
 
-import { makeDateGroupExpansionKey } from "./helpers/leaveApprovalHelpers";
+import { makeDateGroupExpansionKey } from "./helpers/core/leaveApprovalHelpers";
 
 import { useLeaveApprovalData } from "./hooks/data/useLeaveApprovalData";
 import { useLeaveApprovalFilters } from "./hooks/filters/useLeaveApprovalFilters";

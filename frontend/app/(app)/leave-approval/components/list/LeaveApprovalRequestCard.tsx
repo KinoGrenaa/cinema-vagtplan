@@ -7,7 +7,7 @@ import type {
   LeaveRequest,
   LeaveRequestUser,
   LeaveStatus,
-} from "../../helpers/leaveApprovalTypes";
+} from "../../helpers/core/leaveApprovalTypes";
 
 type LeaveDisplayDateRange = {
   startDate: string;

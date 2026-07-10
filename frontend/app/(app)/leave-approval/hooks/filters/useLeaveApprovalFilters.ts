@@ -12,13 +12,13 @@ import {
   makeDateGroupExpansionKey,
   matchesDateFilter,
   matchesStatusFilter,
-} from "../../helpers/leaveApprovalHelpers";
+} from "../../helpers/core/leaveApprovalHelpers";
 import type {
   LeaveDateGroup,
   LeaveRequest,
   LeaveStatusFilters,
-} from "../../helpers/leaveApprovalTypes";
-import { DEFAULT_STATUS_FILTERS } from "../../helpers/leaveApprovalTypes";
+} from "../../helpers/core/leaveApprovalTypes";
+import { DEFAULT_STATUS_FILTERS } from "../../helpers/core/leaveApprovalTypes";
 
 export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
   const [showFilterModal, setShowFilterModal] = useState(false);
