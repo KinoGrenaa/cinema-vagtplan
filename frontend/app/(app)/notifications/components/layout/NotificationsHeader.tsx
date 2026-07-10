@@ -1,4 +1,4 @@
-import type { NotificationCategory } from "../helpers/notificationTypes";
+import type { NotificationCategory } from "../../helpers/notificationTypes";
 
 type NotificationsHeaderProps = {
   totalCount: number;
@@ -45,7 +45,6 @@ export default function NotificationsHeader({
                   ? "Push er aktiveret"
                   : "Aktivér push-notifikationer"}
             </button>
-
             <button
               type="button"
               onClick={onDisablePush}

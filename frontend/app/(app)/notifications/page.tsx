@@ -3,13 +3,18 @@
 import { useCallback, useState } from "react";
 
 import InfoModal from "@/app/components/modals/InfoModal";
+
 import { useNotifications } from "@/app/hooks/useNotifications";
 
-import NotificationsHeader from "./components/NotificationsHeader";
+import NotificationsHeader from "./components/layout/NotificationsHeader";
+
 import NotificationsOverview from "./components/NotificationsOverview";
+
 import { useNotificationGroups } from "./hooks/useNotificationGroups";
+
 import { useNotificationPushActions } from "./hooks/useNotificationPushActions";
 import { useNotificationsExtraData } from "./hooks/useNotificationsExtraData";
+
 import type { ErrorDialogState } from "./helpers/notificationTypes";
 
 export default function NotificationsPage() {
