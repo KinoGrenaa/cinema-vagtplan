@@ -1,4 +1,4 @@
-import type { PushStatus } from "../../helpers/pushHelpers";
+import type { PushStatus } from "../../helpers/core/pushHelpers";
 
 type PushStatusSectionProps = {
   status: PushStatus;

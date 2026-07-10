@@ -12,7 +12,7 @@ import {
 import PushHeader from "./components/layout/PushHeader";
 import PushManageSection from "./components/sections/PushManageSection";
 import PushStatusSection from "./components/sections/PushStatusSection";
-import { getPushStatus } from "./helpers/pushHelpers";
+import { getPushStatus } from "./helpers/core/pushHelpers";
 
 type StoredUser = {
   role?: string;
