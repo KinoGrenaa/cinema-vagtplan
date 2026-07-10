@@ -3,8 +3,9 @@ import {
   getShortBody,
   getUserName,
   type MessageDateGroup,
-} from "../helpers/sentMessageHelpers";
-import type { Message } from "../../../../types/messages";
+} from "../../helpers/sentMessageHelpers";
+
+import type { Message } from "../../../../../types/messages";
 
 type SentMessagesListProps = {
   sortedMessages: Message[];
@@ -26,7 +27,7 @@ export default function SentMessagesList({
   onArchive,
 }: SentMessagesListProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
         Viser {sortedMessages.length} sendte beskeder grupperet efter sendtdato.
       </div>
@@ -49,12 +50,10 @@ export default function SentMessagesList({
                 <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {group.dateLabel}
                 </div>
-
                 <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   {group.messages.length} beskeder sendt denne dato
                 </div>
               </div>
-
               <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-950">
                 {isGroupExpanded ? "Skjul" : "Vis"}
               </span>
@@ -87,7 +86,7 @@ export default function SentMessagesList({
                             </h2>
 
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                              Til: {" "}
+                              Til:{" "}
                               {message.isBroadcast
                                 ? "Alle"
                                 : getUserName(message.receiver) || "Ukendt"}
@@ -109,15 +108,15 @@ export default function SentMessagesList({
                       {isExpanded && (
                         <div className="space-y-4 border-t border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                           <div className="grid gap-1 text-sm text-gray-500 dark:text-gray-400">
-                            <div>Fra: {getUserName(message.sender) || "Dig"}</div>
-
                             <div>
-                              Til: {" "}
+                              Fra: {getUserName(message.sender) || "Dig"}
+                            </div>
+                            <div>
+                              Til:{" "}
                               {message.isBroadcast
                                 ? "Alle"
                                 : getUserName(message.receiver) || "Ukendt"}
                             </div>
-
                             <div>Sendt: {formatDateTime(message.createdAt)}</div>
                           </div>
 

@@ -1,10 +1,15 @@
 "use client";
 
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+
 import InfoModal from "@/app/components/modals/InfoModal";
-import SentMessagesEmptyState from "./components/SentMessagesEmptyState";
-import SentMessagesHeader from "./components/SentMessagesHeader";
-import SentMessagesList from "./components/SentMessagesList";
+
+import SentMessagesEmptyState from "./components/list/SentMessagesEmptyState";
+
+import SentMessagesHeader from "./components/layout/SentMessagesHeader";
+
+import SentMessagesList from "./components/list/SentMessagesList";
+
 import { useSentMessagesPage } from "./hooks/useSentMessagesPage";
 
 export default function SentMessagesPage() {
