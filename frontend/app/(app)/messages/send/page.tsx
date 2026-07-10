@@ -1,8 +1,11 @@
 "use client";
 
 import InfoModal from "@/app/components/modals/InfoModal";
-import SendMessageForm from "./components/SendMessageForm";
-import SendMessagesHeader from "./components/SendMessagesHeader";
+
+import SendMessageForm from "./components/form/SendMessageForm";
+
+import SendMessagesHeader from "./components/layout/SendMessagesHeader";
+
 import { useSendMessagePage } from "./hooks/useSendMessagePage";
 
 export default function SendMessagePage() {

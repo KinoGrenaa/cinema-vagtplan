@@ -1,6 +1,8 @@
 import type { FormEvent } from "react";
-import { inputClass, labelClass } from "../helpers/sendMessageHelpers";
-import type { User } from "../helpers/sendMessageTypes";
+
+import { inputClass, labelClass } from "../../helpers/sendMessageHelpers";
+
+import type { User } from "../../helpers/sendMessageTypes";
 
 type SendMessageFormProps = {
   users: User[];
@@ -60,14 +62,12 @@ export default function SendMessageForm({
       {!isBroadcast && (
         <div>
           <label className={labelClass}>Modtager</label>
-
           <select
             value={receiverId}
             onChange={(event) => onReceiverIdChange(event.target.value)}
             className={inputClass}
           >
             <option value="">Vælg medarbejder</option>
-
             {users.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.firstName} {user.lastName}
@@ -79,7 +79,6 @@ export default function SendMessageForm({
 
       <div>
         <label className={labelClass}>Emne</label>
-
         <input
           value={subject}
           onChange={(event) => onSubjectChange(event.target.value)}
@@ -90,7 +89,6 @@ export default function SendMessageForm({
 
       <div>
         <label className={labelClass}>Besked</label>
-
         <textarea
           value={body}
           onChange={(event) => onBodyChange(event.target.value)}
