@@ -1,7 +1,9 @@
 import { useState } from "react";
+
 import { apiFetch } from "@/app/lib/api";
-import { readErrorMessage } from "../helpers/leaveRequestHelpers";
-import type { LeaveRequest } from "../helpers/leaveRequestTypes";
+
+import { readErrorMessage } from "../helpers/core/leaveRequestHelpers";
+import type { LeaveRequest } from "../helpers/core/leaveRequestTypes";
 
 type UseLeaveRequestCancelOptions = {
   fetchRequests: () => Promise<void>;
@@ -38,6 +40,7 @@ export function useLeaveRequestCancel({
 
       setRequestToCancel(null);
       setSuccess("Fraværsansøgningen er annulleret.");
+
       await fetchRequests();
     } catch (error) {
       showError(

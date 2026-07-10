@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
-import { readErrorMessage } from "../helpers/leaveRequestHelpers";
-import type { LeaveRequest } from "../helpers/leaveRequestTypes";
+
+import { readErrorMessage } from "../helpers/core/leaveRequestHelpers";
+import type { LeaveRequest } from "../helpers/core/leaveRequestTypes";
 
 export type LeaveRequestCurrentUser = {
   id?: number;
@@ -20,7 +21,6 @@ type UseLeaveRequestsDataOptions = {
 
 function readStoredCurrentUser() {
   const savedUser = localStorage.getItem("user");
-
   if (!savedUser) {
     return null;
   }
@@ -91,10 +91,12 @@ export function useLeaveRequestsData({
   const refreshUserContext = useCallback(() => {
     const storedUser = readStoredCurrentUser();
     const selectedMasterCinemaId = readStoredMasterCinemaId();
+
     const nextActiveCinemaId = getActiveCinemaId(
       storedUser,
       selectedMasterCinemaId,
     );
+
     const masterWithoutActiveCinema =
       storedUser?.role === "MASTER" && !storedUser.cinemaId && !nextActiveCinemaId;
 
@@ -157,7 +159,6 @@ export function useLeaveRequestsData({
 
   useEffect(() => {
     refreshUserContext();
-
     window.addEventListener("masterSelectedCinemaChanged", refreshUserContext);
 
     return () => {

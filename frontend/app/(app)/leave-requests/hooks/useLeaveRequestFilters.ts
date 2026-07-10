@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
 import {
   countLeaveStatuses,
   getActiveFilterCount,
@@ -8,12 +9,12 @@ import {
   getGroupKey,
   isRequestVisibleByStatus,
   requestOverlapsDateFilter,
-} from "../helpers/leaveRequestHelpers";
+} from "../helpers/core/leaveRequestHelpers";
 import {
   DEFAULT_STATUS_FILTERS,
   type LeaveRequest,
   type LeaveStatusFilters,
-} from "../helpers/leaveRequestTypes";
+} from "../helpers/core/leaveRequestTypes";
 
 export function useLeaveRequestFilters(requests: LeaveRequest[]) {
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -26,7 +27,6 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
   const [filterEndDate, setFilterEndDate] = useState("");
   const [draftFilterStartDate, setDraftFilterStartDate] = useState("");
   const [draftFilterEndDate, setDraftFilterEndDate] = useState("");
-
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<string[]>([]);
 
   const visibleRequests = useMemo(() => {
