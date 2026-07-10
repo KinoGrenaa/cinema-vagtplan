@@ -6,13 +6,14 @@ import {
   getCategoryLabel,
   getNotificationTypeLabel,
   getUserName,
-} from "../helpers/notificationHelpers";
+} from "../../helpers/notificationHelpers";
+
 import type {
   Message,
   NotificationCategory,
   NotificationGroup,
   ShiftTrade,
-} from "../helpers/notificationTypes";
+} from "../../helpers/notificationTypes";
 
 type NotificationsOverviewProps = {
   activeCategory: NotificationCategory;
@@ -70,7 +71,6 @@ export default function NotificationsOverview({
                   <div className="font-semibold">
                     {getCategoryLabel(category)}
                   </div>
-
                   <span
                     className={`rounded-full px-3 py-1 text-sm font-bold ${
                       isActive
@@ -118,7 +118,6 @@ export default function NotificationsOverview({
                   <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {group.dateLabel}
                   </div>
-
                   <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     {group.items.length} {activeCategoryLabel.toLowerCase()}
                     {activeCategory === "system" && group.unreadCount
@@ -126,7 +125,6 @@ export default function NotificationsOverview({
                       : ""}
                   </div>
                 </div>
-
                 <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-950">
                   {isExpanded ? "Skjul" : "Vis"}
                 </span>
@@ -158,21 +156,17 @@ export default function NotificationsOverview({
                                   Ny
                                 </span>
                               )}
-
                               <span className="rounded-full bg-gray-700 px-2 py-1 text-xs font-semibold text-white">
                                 {getNotificationTypeLabel(notification.type)}
                               </span>
                             </div>
-
                             <div className="font-bold">
                               {notification.title}
                             </div>
-
                             <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                               {notification.message}
                             </div>
                           </div>
-
                           <div className="shrink-0 text-sm text-gray-400 dark:text-gray-500 md:text-right">
                             {formatDateTimeDK(notification.createdAt)}
                           </div>
@@ -191,24 +185,19 @@ export default function NotificationsOverview({
                           <span className="rounded-full bg-red-600 px-2 py-1 text-xs font-semibold text-white">
                             Ulæst
                           </span>
-
                           {message.isBroadcast && (
                             <span className="rounded-full bg-blue-600 px-2 py-1 text-xs font-semibold text-white">
                               Sendt til alle
                             </span>
                           )}
                         </div>
-
                         <div className="font-bold">{message.subject}</div>
-
                         <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                           Fra: {getUserName(message.sender) || "System"}
                         </div>
-
                         <div className="mt-2 line-clamp-2 text-sm text-gray-600 dark:text-gray-300">
                           {message.body}
                         </div>
-
                         <div className="mt-3 text-sm text-gray-400 dark:text-gray-500">
                           {formatDateTimeDK(message.createdAt)}
                         </div>
@@ -227,15 +216,12 @@ export default function NotificationsOverview({
                             Direkte bytte
                           </span>
                         </div>
-
                         <div className="font-bold">
                           {trade.shift.workType?.name || "Vagt"}
                         </div>
-
                         <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                           Fra: {getUserName(trade.offeredByUser) || "Ukendt"}
                         </div>
-
                         <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                           {formatDateTimeDK(trade.shift.startTime)}
                         </div>
@@ -254,15 +240,12 @@ export default function NotificationsOverview({
                             Åben vagt
                           </span>
                         </div>
-
                         <div className="font-bold">
                           {trade.shift.workType?.name || "Vagt"}
                         </div>
-
                         <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                           Fra: {getUserName(trade.offeredByUser) || "Ukendt"}
                         </div>
-
                         <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                           {formatDateTimeDK(trade.shift.startTime)}
                         </div>

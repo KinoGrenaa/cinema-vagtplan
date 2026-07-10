@@ -8,7 +8,7 @@ import { useNotifications } from "@/app/hooks/useNotifications";
 
 import NotificationsHeader from "./components/layout/NotificationsHeader";
 
-import NotificationsOverview from "./components/NotificationsOverview";
+import NotificationsOverview from "./components/overview/NotificationsOverview";
 
 import { useNotificationGroups } from "./hooks/useNotificationGroups";
 
