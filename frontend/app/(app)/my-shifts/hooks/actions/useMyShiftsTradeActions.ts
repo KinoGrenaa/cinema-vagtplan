@@ -1,18 +1,20 @@
 import { useState } from "react";
+
 import type { useConfirm } from "@/app/hooks/useConfirm";
 import type { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+
 import {
   getShiftConfirmText,
   hasOwnCinema,
   readErrorMessage,
-} from "../helpers/myShiftsHelpers";
+} from "../../helpers/core/myShiftsHelpers";
 import type {
   CurrentUser,
   Shift,
   ShiftTrade,
   User,
-} from "../helpers/myShiftsTypes";
+} from "../../helpers/core/myShiftsTypes";
 
 type UseMyShiftsTradeActionsOptions = {
   currentUser: CurrentUser | null;
@@ -43,16 +45,16 @@ export function useMyShiftsTradeActions({
     if (!shift) {
       infoDialog.showError(
         "Vagten blev ikke fundet",
-        "Vagten kunne ikke findes. Prøv at opdatere siden.",
+        "Vagten kunne ikke findes.\nPrøv at opdatere siden.",
       );
       return;
     }
 
     confirmDialog.confirm({
       title: "Send vagt i vagtpulje",
-      description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen?
-
-${getShiftConfirmText(shift)}`,
+      description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen? ${getShiftConfirmText(
+        shift,
+      )}`,
       confirmText: "Send i pulje",
       cancelText: "Annuller",
       confirmVariant: "primary",
@@ -70,10 +72,7 @@ ${getShiftConfirmText(shift)}`,
         if (!response.ok) {
           infoDialog.showError(
             "Vagten kunne ikke sendes til puljen",
-            await readErrorMessage(
-              response,
-              "Kunne ikke sende vagten til puljen.",
-            ),
+            await readErrorMessage(response, "Kunne ikke sende vagten til puljen."),
           );
           return;
         }
@@ -92,22 +91,21 @@ ${getShiftConfirmText(shift)}`,
     if (!shift) {
       infoDialog.showError(
         "Vagten blev ikke fundet",
-        "Vagten kunne ikke findes. Prøv at opdatere siden.",
+        "Vagten kunne ikke findes.\nPrøv at opdatere siden.",
       );
       return;
     }
 
     const targetUser = users.find((user) => user.id === targetUserId);
-
     const targetName = targetUser
       ? `${targetUser.firstName} ${targetUser.lastName}`
       : "den valgte kollega";
 
     confirmDialog.confirm({
       title: "Send vagt direkte",
-      description: `Er du sikker på, at du vil sende denne vagt direkte til ${targetName}?
-
-${getShiftConfirmText(shift)}`,
+      description: `Er du sikker på, at du vil sende denne vagt direkte til ${targetName}? ${getShiftConfirmText(
+        shift,
+      )}`,
       confirmText: "Send vagt",
       cancelText: "Annuller",
       confirmVariant: "primary",
@@ -154,16 +152,16 @@ ${getShiftConfirmText(shift)}`,
     if (!shift) {
       infoDialog.showError(
         "Vagten blev ikke fundet",
-        "Vagten kunne ikke findes. Prøv at opdatere siden.",
+        "Vagten kunne ikke findes.\nPrøv at opdatere siden.",
       );
       return;
     }
 
     confirmDialog.confirm({
       title: "Acceptér vagt",
-      description: `Er du sikker på, at du vil acceptere denne vagt?
-
-${getShiftConfirmText(shift)}`,
+      description: `Er du sikker på, at du vil acceptere denne vagt? ${getShiftConfirmText(
+        shift,
+      )}`,
       confirmText: "Acceptér",
       cancelText: "Annuller",
       confirmVariant: "success",
@@ -195,16 +193,16 @@ ${getShiftConfirmText(shift)}`,
     if (!shift) {
       infoDialog.showError(
         "Vagten blev ikke fundet",
-        "Vagten kunne ikke findes. Prøv at opdatere siden.",
+        "Vagten kunne ikke findes.\nPrøv at opdatere siden.",
       );
       return;
     }
 
     confirmDialog.confirm({
       title: "Afvis vagt",
-      description: `Er du sikker på, at du vil afvise denne vagt?
-
-${getShiftConfirmText(shift)}`,
+      description: `Er du sikker på, at du vil afvise denne vagt? ${getShiftConfirmText(
+        shift,
+      )}`,
       confirmText: "Afvis",
       cancelText: "Annuller",
       confirmVariant: "danger",
@@ -230,8 +228,7 @@ ${getShiftConfirmText(shift)}`,
   function cancelTrade(tradeId: number) {
     confirmDialog.confirm({
       title: "Annullér udsendelse",
-      description:
-        "Er du sikker på, at du vil annullere udsendelsen af denne vagt?",
+      description: "Er du sikker på, at du vil annullere udsendelsen af denne vagt?",
       confirmText: "Annullér",
       cancelText: "Tilbage",
       confirmVariant: "danger",

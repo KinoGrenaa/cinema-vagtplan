@@ -15,9 +15,9 @@ import MyShiftsListSection from "./components/list/MyShiftsListSection";
 
 import MyShiftsMonthControls from "./components/layout/MyShiftsMonthControls";
 
-import { useMyShiftsData } from "./hooks/useMyShiftsData";
+import { useMyShiftsTradeActions } from "./hooks/actions/useMyShiftsTradeActions";
 
-import { useMyShiftsTradeActions } from "./hooks/useMyShiftsTradeActions";
+import { useMyShiftsData } from "./hooks/data/useMyShiftsData";
 
 export default function MyShiftsPage() {
   const confirmDialog = useConfirm();

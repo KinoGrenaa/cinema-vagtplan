@@ -1,4 +1,4 @@
-import type { ShiftTrade } from "../../helpers/myShiftsTypes";
+import type { ShiftTrade } from "../../helpers/core/myShiftsTypes";
 
 type MyShiftsDirectTradesSectionProps = {
   directTradesForMe: ShiftTrade[];

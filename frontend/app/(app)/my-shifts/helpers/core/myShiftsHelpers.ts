@@ -1,4 +1,5 @@
 import { formatDateDK, formatTimeDK } from "@/app/utils/dateTime";
+
 import type { CurrentUser } from "./myShiftsTypes";
 
 export async function readErrorMessage(response: Response, fallback: string) {
@@ -43,7 +44,10 @@ export function formatShiftDate(value: string) {
   return formatDateDK(value);
 }
 
-export function formatShiftTimeRange(shift: { startTime: string; endTime: string }) {
+export function formatShiftTimeRange(shift: {
+  startTime: string;
+  endTime: string;
+}) {
   return `${formatTimeDK(shift.startTime)} - ${formatTimeDK(shift.endTime)}`;
 }
 
@@ -62,7 +66,7 @@ export function getShiftConfirmText(shift: {
     name: string;
   };
 }) {
-  return `${getShiftWorkTypeName(shift)}
-${formatShiftDate(shift.startTime)}
-${formatShiftTimeRange(shift)}`;
+  return `${getShiftWorkTypeName(shift)} ${formatShiftDate(
+    shift.startTime,
+  )} ${formatShiftTimeRange(shift)}`;
 }

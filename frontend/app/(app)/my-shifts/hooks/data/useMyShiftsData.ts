@@ -1,20 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import type { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import { apiFetch } from "@/app/lib/api";
 import { dateToLocalMonthString } from "@/app/utils/dateTime";
+
 import {
   getStoredUser,
   hasOwnCinema,
   readErrorMessage,
-} from "../helpers/myShiftsHelpers";
+} from "../../helpers/core/myShiftsHelpers";
 import type {
   CinemaSettings,
   CurrentUser,
   Shift,
   ShiftTrade,
   User,
-} from "../helpers/myShiftsTypes";
+} from "../../helpers/core/myShiftsTypes";
 
 type UseMyShiftsDataOptions = {
   infoDialog: ReturnType<typeof useInfoModal>;
@@ -29,9 +31,14 @@ export function useMyShiftsData({ infoDialog }: UseMyShiftsDataOptions) {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     return dateToLocalMonthString(new Date());
   });
-  const [cinemaSettings, setCinemaSettings] = useState<CinemaSettings | null>(
-    null,
-  );
+  const [cinemaSettings, setCinemaSettings] =
+    useState<CinemaSettings | null>(null);
+
+  const showErrorRef = useRef(infoDialog.showError);
+
+  useEffect(() => {
+    showErrorRef.current = infoDialog.showError;
+  }, [infoDialog.showError]);
 
   const isMasterWithoutOwnCinema =
     currentUser?.role === "MASTER" && !currentUser.cinemaId;
@@ -62,7 +69,7 @@ export function useMyShiftsData({ infoDialog }: UseMyShiftsDataOptions) {
       );
     } catch (error) {
       setShifts([]);
-      infoDialog.showError(
+      showErrorRef.current(
         "Vagter kunne ikke hentes",
         error instanceof Error
           ? error.message
@@ -87,10 +94,11 @@ export function useMyShiftsData({ infoDialog }: UseMyShiftsDataOptions) {
       }
 
       const data = await response.json();
+
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       setUsers([]);
-      infoDialog.showError(
+      showErrorRef.current(
         "Kollegaer kunne ikke hentes",
         error instanceof Error
           ? error.message
@@ -115,10 +123,11 @@ export function useMyShiftsData({ infoDialog }: UseMyShiftsDataOptions) {
       }
 
       const data = await response.json();
+
       setShiftTrades(Array.isArray(data) ? data : []);
     } catch (error) {
       setShiftTrades([]);
-      infoDialog.showError(
+      showErrorRef.current(
         "Vagtbytter kunne ikke hentes",
         error instanceof Error
           ? error.message
@@ -157,7 +166,7 @@ export function useMyShiftsData({ infoDialog }: UseMyShiftsDataOptions) {
       });
     } catch (error) {
       setCinemaSettings(null);
-      infoDialog.showError(
+      showErrorRef.current(
         "Biografindstillinger kunne ikke hentes",
         error instanceof Error
           ? error.message
@@ -228,6 +237,7 @@ export function useMyShiftsData({ infoDialog }: UseMyShiftsDataOptions) {
 
     return shifts.filter((shift) => {
       const shiftMonth = dateToLocalMonthString(new Date(shift.startTime));
+
       return shift.userId === currentUser.id && shiftMonth === selectedMonth;
     });
   }, [currentUser, isMasterWithoutOwnCinema, selectedMonth, shifts]);
@@ -243,6 +253,7 @@ export function useMyShiftsData({ infoDialog }: UseMyShiftsDataOptions) {
 
   function changeMonth(direction: number) {
     const date = new Date(`${selectedMonth}-01T12:00:00`);
+
     date.setMonth(date.getMonth() + direction);
     setSelectedMonth(dateToLocalMonthString(date));
   }

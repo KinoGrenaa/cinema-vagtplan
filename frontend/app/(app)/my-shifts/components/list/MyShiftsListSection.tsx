@@ -3,7 +3,7 @@ import type {
   Shift,
   ShiftTrade,
   User,
-} from "../../helpers/myShiftsTypes";
+} from "../../helpers/core/myShiftsTypes";
 
 type MyShiftsListSectionProps = {
   myMonthShifts: Shift[];
