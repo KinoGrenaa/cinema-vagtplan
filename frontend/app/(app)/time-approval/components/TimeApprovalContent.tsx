@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
-
 import type { TimeEntry } from "../types";
+
 import TimeApprovalToolbar from "./TimeApprovalToolbar";
-import TimeApprovalUserGroup from "./TimeApprovalUserGroup";
+import TimeApprovalUserGroup from "./entry/TimeApprovalUserGroup";
 
 type TimeApprovalGroup = {
   userId: string;
@@ -68,19 +68,16 @@ export default function TimeApprovalContent({
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
           <h1 className="text-3xl font-bold">Godkend timer</h1>
-
           <p className="mt-2 text-gray-500 dark:text-gray-400">
             Gennemgå, godkend eller send mødetid og fyraften retur til rettelse
             med tydelig sammenligning mellem vagtplan og registreret tid.
           </p>
         </div>
-
         {loading && (
           <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
             Henter tidsregistreringer...
           </div>
         )}
-
         {!loading && (
           <div className="space-y-4">
             <TimeApprovalToolbar
@@ -92,15 +89,12 @@ export default function TimeApprovalContent({
               onOpenFilters={onOpenFilters}
               onResetFilters={onResetFilters}
             />
-
             {entriesCount > 0 && visibleEntriesCount === 0 ? (
               <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-                <div className="mb-2 text-4xl">🔎</div>
-
+                <div className="mb-2 text-4xl"></div>
                 <h2 className="text-xl font-bold">
                   Ingen tidsregistreringer matcher filteret
                 </h2>
-
                 <p className="mt-2 text-gray-500 dark:text-gray-400">
                   Justér filteret for at se flere registreringer.
                 </p>
@@ -125,16 +119,13 @@ export default function TimeApprovalContent({
             )}
           </div>
         )}
-
         {!loading &&
           entriesCount === 0 &&
           activeFilterCount === 0 &&
           !employeeSearch.trim() && (
             <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="mb-2 text-4xl">⏱️</div>
-
               <h2 className="text-xl font-bold">Ingen tidsregistreringer</h2>
-
               <p className="mt-2 text-gray-500 dark:text-gray-400">
                 Der er ingen registreringer at godkende lige nu.
               </p>

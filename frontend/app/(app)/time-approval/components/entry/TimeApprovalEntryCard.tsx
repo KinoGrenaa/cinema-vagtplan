@@ -1,8 +1,8 @@
-import type { TimeEntry } from "../types";
-import { formatDateTime } from "../utils";
-import DeviationPanel from "./DeviationPanel";
-import TimeApprovalEntryActions from "./entry/TimeApprovalEntryActions";
-import TimeApprovalEntryNotes from "./entry/TimeApprovalEntryNotes";
+import type { TimeEntry } from "../../types";
+import { formatDateTime } from "../../utils";
+import DeviationPanel from "../DeviationPanel";
+import TimeApprovalEntryActions from "./TimeApprovalEntryActions";
+import TimeApprovalEntryNotes from "./TimeApprovalEntryNotes";
 
 type TimeApprovalEntryCardProps = {
   entry: TimeEntry;
