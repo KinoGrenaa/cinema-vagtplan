@@ -1,4 +1,4 @@
-import { formatHoursDuration } from "../helpers/myTimeEntries";
+import { formatHoursDuration } from "../../helpers/myTimeEntries";
 
 type MyTimeSummaryCardsProps = {
   approvedHours: number;
@@ -19,9 +19,11 @@ export default function MyTimeSummaryCards({
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Godkendte timer
         </div>
+
         <div className="mt-1 text-2xl font-bold">
           {formatHoursDuration(approvedHours)}
         </div>
+
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Tæller med i løngrundlaget.
         </div>
@@ -31,9 +33,11 @@ export default function MyTimeSummaryCards({
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Afventer godkendelse
         </div>
+
         <div className="mt-1 text-2xl font-bold">
           {formatHoursDuration(pendingHours)}
         </div>
+
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Ikke med i løn før godkendelse.
         </div>
@@ -55,6 +59,7 @@ export default function MyTimeSummaryCards({
         >
           Kræver handling
         </div>
+
         <div
           className={`mt-1 text-2xl font-bold ${
             needsChangesCount > 0 ? "text-orange-700 dark:text-orange-300" : ""
@@ -62,6 +67,7 @@ export default function MyTimeSummaryCards({
         >
           {needsChangesCount}
         </div>
+
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Registreringer sendt retur til rettelse.
         </div>

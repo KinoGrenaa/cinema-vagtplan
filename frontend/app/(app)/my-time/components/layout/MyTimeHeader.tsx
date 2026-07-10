@@ -1,4 +1,4 @@
-import { formatDate } from "../helpers/myTimeDate";
+import { formatDate } from "../../helpers/myTimeDate";
 
 type PayrollPeriod = {
   startDate: string;
@@ -35,6 +35,7 @@ export default function MyTimeHeader({
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Mine timer</h1>
+
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Se dine indberettede og godkendte timer.
           </p>
