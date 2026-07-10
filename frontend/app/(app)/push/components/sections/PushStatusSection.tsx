@@ -1,4 +1,4 @@
-import type { PushStatus } from "../helpers/pushHelpers";
+import type { PushStatus } from "../../helpers/pushHelpers";
 
 type PushStatusSectionProps = {
   status: PushStatus;
@@ -14,7 +14,6 @@ export default function PushStatusSection({ status }: PushStatusSectionProps) {
 
         <div>
           <h2 className="text-2xl font-bold">{status.title}</h2>
-
           <p className="mt-1 text-gray-700 dark:text-gray-300">
             {status.text}
           </p>
