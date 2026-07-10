@@ -5,7 +5,7 @@ import {
   getTomorrowLocalDate,
   localDateTimeToISOString,
 } from "@/app/utils/dateTime";
-import { readErrorMessage } from "../helpers/leaveRequestHelpers";
+import { readErrorMessage } from "../helpers/core/leaveRequestHelpers";
 import type { LeaveRequestEmployeeOption } from "./useLeaveRequestEmployeeOptions";
 
 type UseLeaveRequestFormOptions = {
