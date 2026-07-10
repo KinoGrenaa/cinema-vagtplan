@@ -7,7 +7,7 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useAuth } from "@/app/providers/AuthProvider";
 
-import MyTimeDayGroupsSection from "./components/MyTimeDayGroupsSection";
+import MyTimeDayGroupsSection from "./components/list/MyTimeDayGroupsSection";
 
 import MyTimeHeader from "./components/layout/MyTimeHeader";
 
