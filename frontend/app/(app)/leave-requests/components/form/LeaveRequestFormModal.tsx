@@ -3,7 +3,7 @@ import { FormEvent, useRef } from "react";
 import { Calendar } from "lucide-react";
 
 import BaseModal from "@/app/components/modals/BaseModal";
-import type { LeaveRequestEmployeeOption } from "../../hooks/useLeaveRequestEmployeeOptions";
+import type { LeaveRequestEmployeeOption } from "../../hooks/form/useLeaveRequestEmployeeOptions";
 
 const inputClass =
   "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
@@ -37,9 +37,7 @@ type LeaveRequestFormModalProps = {
 
 function openDatePicker(input: HTMLInputElement | null) {
   if (!input) return;
-
   input.focus();
-
   if (typeof input.showPicker === "function") {
     input.showPicker();
   }
