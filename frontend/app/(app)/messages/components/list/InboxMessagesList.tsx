@@ -3,7 +3,7 @@ import {
   getShortBody,
   getUserName,
   type InboxMessage,
-} from "../helpers/inboxMessageHelpers";
+} from "../../helpers/inboxMessageHelpers";
 
 type InboxMessagesListProps = {
   messages: InboxMessage[];
@@ -84,14 +84,12 @@ export default function InboxMessagesList({
               <div className="space-y-4 border-t border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
                 <div className="grid gap-1 text-sm text-gray-500 dark:text-gray-400">
                   <div>Fra: {getUserName(message.sender) || "System"}</div>
-
                   <div>
                     Til:{" "}
                     {message.isBroadcast
                       ? "Alle"
                       : getUserName(message.receiver) || "Dig"}
                   </div>
-
                   <div>Sendt: {formatDateTime(message.createdAt)}</div>
                 </div>
 

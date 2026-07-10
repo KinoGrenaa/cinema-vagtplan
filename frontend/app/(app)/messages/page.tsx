@@ -1,10 +1,15 @@
 "use client";
 
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+
 import InfoModal from "@/app/components/modals/InfoModal";
-import InboxMessagesEmptyState from "./components/InboxMessagesEmptyState";
-import InboxMessagesHeader from "./components/InboxMessagesHeader";
-import InboxMessagesList from "./components/InboxMessagesList";
+
+import InboxMessagesEmptyState from "./components/list/InboxMessagesEmptyState";
+
+import InboxMessagesHeader from "./components/layout/InboxMessagesHeader";
+
+import InboxMessagesList from "./components/list/InboxMessagesList";
+
 import { useInboxMessagesPage } from "./hooks/useInboxMessagesPage";
 
 export default function MessagesPage() {
