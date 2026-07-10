@@ -11,7 +11,7 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import ArchivedMessagesHeader from "./components/layout/ArchivedMessagesHeader";
 
 import ArchivedMessagesListSection from "./components/list/ArchivedMessagesListSection";
-import { useArchivedMessages } from "./hooks/useArchivedMessages";
+import { useArchivedMessages } from "./hooks/page/useArchivedMessages";
 
 export default function ArchivedMessagesPage() {
   const confirmDialog = useConfirm();

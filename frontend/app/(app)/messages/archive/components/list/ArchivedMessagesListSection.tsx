@@ -4,13 +4,13 @@ import {
   getRestoreTargetLabel,
   getShortBody,
   getUserName,
-} from "../../helpers/archiveMessageHelpers";
+} from "../../helpers/core/archiveMessageHelpers";
 
 import type {
   ArchiveSection,
   Message,
   MessageDateGroup,
-} from "../../helpers/archiveMessageTypes";
+} from "../../helpers/core/archiveMessageTypes";
 
 type ArchivedMessagesListSectionProps = {
   pageLoading: boolean;

@@ -10,8 +10,11 @@ import {
   getRestoreTargetLabel,
   groupMessagesBySentDate,
   readErrorMessage,
-} from "../helpers/archiveMessageHelpers";
-import type { ArchiveSection, Message } from "../helpers/archiveMessageTypes";
+} from "../../helpers/core/archiveMessageHelpers";
+import type {
+  ArchiveSection,
+  Message,
+} from "../../helpers/core/archiveMessageTypes";
 
 type ErrorDialog = {
   showError: (title: string, description: string) => void;
@@ -76,13 +79,11 @@ export function useArchivedMessages({
               "Der opstod en fejl under hentning af arkiverede beskeder.",
             ),
           );
-
           setMessages([]);
           return;
         }
 
         const data = await response.json();
-
         setMessages(Array.isArray(data) ? data : []);
       } catch (error) {
         errorDialog.showError(
@@ -91,7 +92,6 @@ export function useArchivedMessages({
             ? error.message
             : "Der opstod en uventet fejl under hentning af arkiverede beskeder.",
         );
-
         setMessages([]);
       } finally {
         if (showLoading) {
@@ -99,7 +99,7 @@ export function useArchivedMessages({
         }
       }
     },
-    [user],
+    [errorDialog, user],
   );
 
   useEffect(() => {
@@ -204,7 +204,6 @@ export function useArchivedMessages({
             )}.`,
           ),
         );
-
         return;
       }
 
