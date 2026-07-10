@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { TimeEntry } from "../types";
 
-import TimeApprovalToolbar from "./TimeApprovalToolbar";
+import TimeApprovalToolbar from "./filters/TimeApprovalToolbar";
 import TimeApprovalUserGroup from "./entry/TimeApprovalUserGroup";
 
 type TimeApprovalGroup = {

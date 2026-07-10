@@ -31,7 +31,6 @@ export default function TimeApprovalToolbar({
               Skal rettes: {needsChangesCount}
             </span>
           </div>
-
           <label className="block max-w-xl text-sm font-medium text-gray-700 dark:text-gray-200">
             Søg medarbejder
             <input
@@ -43,7 +42,6 @@ export default function TimeApprovalToolbar({
             />
           </label>
         </div>
-
         <div className="flex flex-wrap items-center gap-3">
           {activeFilterCount > 0 && (
             <button
@@ -54,7 +52,6 @@ export default function TimeApprovalToolbar({
               Nulstil filtre
             </button>
           )}
-
           <button
             type="button"
             onClick={onOpenFilters}

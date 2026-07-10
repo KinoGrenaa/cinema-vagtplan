@@ -1,5 +1,5 @@
-import type { TimeEntry } from "../types";
-import { formatDateTime, formatMinutes } from "../utils";
+import type { TimeEntry } from "../../types";
+import { formatDateTime, formatMinutes } from "../../utils";
 
 export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
   const deviation = entry.deviation;
@@ -22,7 +22,6 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
           entry.shift.endTime,
         )}`
       : "-";
-
   const registeredRange = `${formatDateTime(entry.clockIn)} - ${formatDateTime(
     entry.clockOut,
   )}`;
@@ -39,7 +38,6 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
         <span className="font-semibold">
           {isManualEntry ? "Manuel registrering" : "Afvigelsesanalyse"}
         </span>
-
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
             deviation.hasDeviation
@@ -53,7 +51,6 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
               ? "Afvigelse"
               : "OK"}
         </span>
-
         {!isManualEntry && deviation.requiresNote && (
           <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-semibold text-red-900 dark:bg-red-900 dark:text-red-100">
             Kræver note
@@ -68,7 +65,6 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
           </span>{" "}
           {isManualEntry ? "Arbejde uden planlagt vagt" : plannedRange}
         </div>
-
         <div>
           <span className="font-semibold">Registreret:</span> {registeredRange}
         </div>
@@ -76,9 +72,7 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
 
       <div className="mt-3 space-y-1">
         {isManualEntry ? (
-          <div>
-            ℹ️ Denne tidsregistrering er ikke tilknyttet en planlagt vagt.
-          </div>
+          <div>ℹ️ Denne tidsregistrering er ikke tilknyttet en planlagt vagt.</div>
         ) : (
           deviation.messages.map((message, index) => (
             <div key={`${entry.id}-deviation-${index}`}>

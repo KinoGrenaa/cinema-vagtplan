@@ -1,6 +1,6 @@
 import type { TimeEntry } from "../../types";
 import { formatDateTime } from "../../utils";
-import DeviationPanel from "../DeviationPanel";
+import DeviationPanel from "./DeviationPanel";
 import TimeApprovalEntryActions from "./TimeApprovalEntryActions";
 import TimeApprovalEntryNotes from "./TimeApprovalEntryNotes";
 
