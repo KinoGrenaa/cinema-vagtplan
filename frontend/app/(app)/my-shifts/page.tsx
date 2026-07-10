@@ -1,18 +1,27 @@
 "use client";
 
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+
 import InfoModal from "@/app/components/modals/InfoModal";
+
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import MyShiftsDirectTradesSection from "./components/MyShiftsDirectTradesSection";
-import MyShiftsHeader from "./components/MyShiftsHeader";
-import MyShiftsListSection from "./components/MyShiftsListSection";
-import MyShiftsMonthControls from "./components/MyShiftsMonthControls";
+
+import MyShiftsDirectTradesSection from "./components/list/MyShiftsDirectTradesSection";
+
+import MyShiftsHeader from "./components/layout/MyShiftsHeader";
+
+import MyShiftsListSection from "./components/list/MyShiftsListSection";
+
+import MyShiftsMonthControls from "./components/layout/MyShiftsMonthControls";
+
 import { useMyShiftsData } from "./hooks/useMyShiftsData";
+
 import { useMyShiftsTradeActions } from "./hooks/useMyShiftsTradeActions";
 
 export default function MyShiftsPage() {
   const confirmDialog = useConfirm();
+
   const infoDialog = useInfoModal();
 
   const {
@@ -73,7 +82,10 @@ export default function MyShiftsPage() {
 
             <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
               <h2 className="text-xl font-bold">Samlet timer</h2>
-              <p className="mt-2 text-4xl font-bold">{totalHours.toFixed(2)}</p>
+
+              <p className="mt-2 text-4xl font-bold">
+                {totalHours.toFixed(2)}
+              </p>
               <p className="text-gray-500 dark:text-gray-400">
                 timer i valgt måned
               </p>
