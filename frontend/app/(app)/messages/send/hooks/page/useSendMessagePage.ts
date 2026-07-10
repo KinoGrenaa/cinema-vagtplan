@@ -1,10 +1,16 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
+
 import { toast } from "sonner";
-import { useApi } from "../../../../hooks/useApi";
-import { useAuth } from "../../../../providers/AuthProvider";
-import { sendMessage as sendMessageService } from "../../../../services/messagesService";
-import { getErrorMessage } from "../helpers/sendMessageHelpers";
-import type { ErrorDialogState, User } from "../helpers/sendMessageTypes";
+
+import { useApi } from "../../../../../hooks/useApi";
+import { useAuth } from "../../../../../providers/AuthProvider";
+import { sendMessage as sendMessageService } from "../../../../../services/messagesService";
+
+import { getErrorMessage } from "../../helpers/core/sendMessageHelpers";
+import type {
+  ErrorDialogState,
+  User,
+} from "../../helpers/core/sendMessageTypes";
 
 export function useSendMessagePage() {
   const { apiFetch } = useApi();
@@ -46,24 +52,20 @@ export function useSendMessagePage() {
 
       if (!response.ok) {
         setUsers([]);
-
         showErrorDialog(
           "Kunne ikke hente medarbejdere",
-          "Modtagerlisten kunne ikke hentes. Prøv igen.",
+          "Modtagerlisten kunne ikke hentes.\nPrøv igen.",
         );
-
         return;
       }
 
       const data = await response.json();
-
       setUsers(Array.isArray(data) ? data : []);
     } catch {
       setUsers([]);
-
       showErrorDialog(
         "Kunne ikke hente medarbejdere",
-        "Modtagerlisten kunne ikke hentes. Prøv igen.",
+        "Modtagerlisten kunne ikke hentes.\nPrøv igen.",
       );
     }
   }, [apiFetch, showErrorDialog, user]);
@@ -79,7 +81,7 @@ export function useSendMessagePage() {
     fetchUsers();
   }, [authLoading, fetchUsers, user]);
 
-  async function handleSendMessage(event: FormEvent<HTMLFormElement>) {
+  async function handleSendMessage(event: FormEvent) {
     event.preventDefault();
 
     if (!subject.trim() || !body.trim()) {
@@ -119,7 +121,7 @@ export function useSendMessagePage() {
         "Beskeden kunne ikke sendes",
         getErrorMessage(
           error,
-          "Der opstod en fejl, da beskeden skulle sendes. Prøv igen.",
+          "Der opstod en fejl, da beskeden skulle sendes.\nPrøv igen.",
         ),
       );
     } finally {

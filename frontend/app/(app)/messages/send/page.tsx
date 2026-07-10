@@ -6,7 +6,7 @@ import SendMessageForm from "./components/form/SendMessageForm";
 
 import SendMessagesHeader from "./components/layout/SendMessagesHeader";
 
-import { useSendMessagePage } from "./hooks/useSendMessagePage";
+import { useSendMessagePage } from "./hooks/page/useSendMessagePage";
 
 export default function SendMessagePage() {
   const {

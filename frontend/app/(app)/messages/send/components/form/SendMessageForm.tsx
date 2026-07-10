@@ -1,8 +1,8 @@
 import type { FormEvent } from "react";
 
-import { inputClass, labelClass } from "../../helpers/sendMessageHelpers";
+import { inputClass, labelClass } from "../../helpers/core/sendMessageHelpers";
 
-import type { User } from "../../helpers/sendMessageTypes";
+import type { User } from "../../helpers/core/sendMessageTypes";
 
 type SendMessageFormProps = {
   users: User[];
