@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
+
 import { readErrorMessage } from "../helpers/core/leaveRequestHelpers";
-import type { LeaveRequestCurrentUser } from "./useLeaveRequestsData";
+import type { LeaveRequestCurrentUser } from "./data/useLeaveRequestsData";
 
 type UserOptionSource = {
   id: number;
@@ -28,6 +29,7 @@ type UseLeaveRequestEmployeeOptionsOptions = {
 
 function formatUserOption(user: UserOptionSource) {
   const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+
   return fullName || user.email || `Bruger #${user.id}`;
 }
 
@@ -62,6 +64,7 @@ export function useLeaveRequestEmployeeOptions({
   const [users, setUsers] = useState<UserOptionSource[]>([]);
   const [loadingEmployeeOptions, setLoadingEmployeeOptions] = useState(false);
   const showErrorRef = useRef(showError);
+
   const canCreateForEmployees =
     currentUser?.role === "ADMIN" || currentUser?.role === "MASTER";
 
