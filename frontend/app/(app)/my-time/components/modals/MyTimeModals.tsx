@@ -1,8 +1,11 @@
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
 
-import type { MyTimeStatusFilters } from "../../helpers/myTimeStatus";
+import type { MyTimeStatusFilters } from "../../helpers/core/myTimeStatus";
 
-import type { TimeEntry, TimeEntryRevision } from "../../helpers/myTimeTypes";
+import type {
+  TimeEntry,
+  TimeEntryRevision,
+} from "../../helpers/core/myTimeTypes";
 
 import MyTimeEditModal from "./MyTimeEditModal";
 

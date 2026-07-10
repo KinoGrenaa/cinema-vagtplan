@@ -1,4 +1,4 @@
-import { formatDate } from "../../helpers/myTimeDate";
+import { formatDate } from "../../helpers/core/myTimeDate";
 
 type PayrollPeriod = {
   startDate: string;

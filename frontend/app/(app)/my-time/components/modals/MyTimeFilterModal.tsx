@@ -1,6 +1,6 @@
 import FilterModal from "@/app/components/modals/FilterModal";
 
-import type { MyTimeStatusFilters } from "../../helpers/myTimeStatus";
+import type { MyTimeStatusFilters } from "../../helpers/core/myTimeStatus";
 
 type MyTimeFilterModalProps = {
   open: boolean;

@@ -1,6 +1,6 @@
 import MyTimeEntryCard from "./MyTimeEntryCard";
 
-import type { TimeEntry } from "../../helpers/myTimeTypes";
+import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type MyTimeDayGroup = {
   dayKey: string;

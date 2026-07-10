@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+
 import { toast } from "sonner";
+
 import { apiFetch } from "@/app/lib/api";
-import { getErrorMessage } from "../helpers/myTimeErrors";
-import { toInputDateTime } from "../helpers/myTimeDate";
-import type { TimeEntry } from "../helpers/myTimeTypes";
+
+import { toInputDateTime } from "../helpers/core/myTimeDate";
+import { getErrorMessage } from "../helpers/core/myTimeErrors";
+import type { TimeEntry } from "../helpers/core/myTimeTypes";
 
 type ShowError = (title: string, description: string) => void;
 
@@ -48,19 +51,16 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
 
     if (Number.isNaN(parsedClockIn.getTime())) {
       onError("Ugyldig mødetid", "Mødetiden er ikke en gyldig dato eller tid.");
-
       return;
     }
 
     if (parsedClockOut && Number.isNaN(parsedClockOut.getTime())) {
       onError("Ugyldig fyraften", "Fyraften er ikke en gyldig dato eller tid.");
-
       return;
     }
 
     if (parsedClockOut && parsedClockOut <= parsedClockIn) {
       onError("Ugyldigt tidsrum", "Fyraften skal være efter mødetid.");
-
       return;
     }
 
@@ -81,7 +81,6 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
         const errorText = await response.text();
 
         onError("Timeregistreringen kunne ikke rettes", getErrorMessage(errorText));
-
         return;
       }
 
@@ -91,7 +90,7 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
     } catch {
       onError(
         "Timeregistreringen kunne ikke rettes",
-        "Der opstod en fejl, da timeregistreringen skulle rettes. Prøv igen.",
+        "Der opstod en fejl, da timeregistreringen skulle rettes.\nPrøv igen.",
       );
     } finally {
       setSavingEdit(false);

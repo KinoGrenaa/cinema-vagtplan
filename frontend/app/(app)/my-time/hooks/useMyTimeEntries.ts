@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
-import type { TimeEntry } from "../helpers/myTimeTypes";
+
+import type { TimeEntry } from "../helpers/core/myTimeTypes";
 
 type ShowError = (title: string, description: string) => void;
 
@@ -14,6 +16,7 @@ export function useMyTimeEntries(
   options: UseMyTimeEntriesOptions = {},
 ) {
   const disabled = options.disabled ?? false;
+
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const showErrorRef = useRef(showError);
@@ -31,13 +34,14 @@ export function useMyTimeEntries(
 
     try {
       setLoading(true);
+
       const response = await apiFetch("/time-entries/me");
 
       if (!response.ok) {
         setEntries([]);
         showErrorRef.current(
           "Kunne ikke hente dine timer",
-          "Der opstod en fejl, da dine timer skulle hentes. Prøv igen.",
+          "Der opstod en fejl, da dine timer skulle hentes.\nPrøv igen.",
         );
         return;
       }

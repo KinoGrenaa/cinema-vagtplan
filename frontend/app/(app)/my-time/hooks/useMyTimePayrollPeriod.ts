@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { apiFetch } from "@/app/lib/api";
+
 import {
   getCurrentPayrollPeriodReferenceDate,
   getInitialPayrollPeriod,
   getNextPayrollPeriodReferenceDate,
   getPreviousPayrollPeriodReferenceDate,
-} from "../helpers/myTimePayrollPeriod";
+} from "../helpers/core/myTimePayrollPeriod";
 
 type PayrollPeriod = {
   startDate: string;
@@ -25,7 +27,7 @@ export function useMyTimePayrollPeriod({
   onPayrollPeriodChanged,
   disabled = false,
 }: UseMyTimePayrollPeriodOptions) {
-  const [payrollPeriod, setPayrollPeriod] = useState<PayrollPeriod>(
+  const [payrollPeriod, setPayrollPeriod] = useState(
     getInitialPayrollPeriod,
   );
   const [payrollPeriodLoading, setPayrollPeriodLoading] = useState(false);
@@ -50,6 +52,7 @@ export function useMyTimePayrollPeriod({
 
       try {
         setPayrollPeriodLoading(true);
+
         const response = await apiFetch(
           `/payroll/period-for-date?date=${encodeURIComponent(referenceDate)}`,
         );
@@ -57,7 +60,7 @@ export function useMyTimePayrollPeriod({
         if (!response.ok) {
           onErrorRef.current(
             "Kunne ikke hente lønperiode",
-            "Der opstod en fejl, da lønperioden skulle hentes. Prøv igen.",
+            "Der opstod en fejl, da lønperioden skulle hentes.\nPrøv igen.",
           );
           return;
         }
@@ -83,7 +86,7 @@ export function useMyTimePayrollPeriod({
       } catch {
         onErrorRef.current(
           "Kunne ikke hente lønperiode",
-          "Der opstod en fejl, da lønperioden skulle hentes. Prøv igen.",
+          "Der opstod en fejl, da lønperioden skulle hentes.\nPrøv igen.",
         );
       } finally {
         setPayrollPeriodLoading(false);

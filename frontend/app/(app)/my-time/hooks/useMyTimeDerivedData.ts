@@ -1,16 +1,17 @@
 import { useMemo } from "react";
+
 import {
   isEntryVisibleWithStatusFilters,
   isInPayrollPeriod,
-} from "../helpers/myTimeEntries";
+} from "../helpers/core/myTimeEntries";
 import {
   getApprovedHours,
   getMyTimeDayGroups,
   getNeedsChangesCount,
   getPendingHours,
-} from "../helpers/myTimeSummary";
-import type { MyTimeStatusFilters } from "../helpers/myTimeStatus";
-import type { TimeEntry } from "../helpers/myTimeTypes";
+} from "../helpers/core/myTimeSummary";
+import type { MyTimeStatusFilters } from "../helpers/core/myTimeStatus";
+import type { TimeEntry } from "../helpers/core/myTimeTypes";
 
 type PayrollPeriod = {
   startDate: string;

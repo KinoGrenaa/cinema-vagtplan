@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
+
 import {
   DEFAULT_STATUS_FILTERS,
   getActiveStatusFilterCount,
   getStatusFilterSummary,
   type MyTimeStatusFilters,
-} from "../helpers/myTimeStatus";
+} from "../helpers/core/myTimeStatus";
 
 type UseMyTimeStatusFiltersOptions = {
   onFiltersChanged: () => void;
@@ -13,11 +14,11 @@ type UseMyTimeStatusFiltersOptions = {
 export function useMyTimeStatusFilters({
   onFiltersChanged,
 }: UseMyTimeStatusFiltersOptions) {
-  const [statusFilters, setStatusFilters] = useState<MyTimeStatusFilters>(
+  const [statusFilters, setStatusFilters] = useState(
     DEFAULT_STATUS_FILTERS,
   );
   const [draftStatusFilters, setDraftStatusFilters] =
-    useState<MyTimeStatusFilters>(DEFAULT_STATUS_FILTERS);
+    useState(DEFAULT_STATUS_FILTERS);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   const activeStatusFilterCount = useMemo(() => {

@@ -1,4 +1,4 @@
-import { formatHoursDuration } from "../../helpers/myTimeEntries";
+import { formatHoursDuration } from "../../helpers/core/myTimeEntries";
 
 type MyTimeSummaryCardsProps = {
   approvedHours: number;

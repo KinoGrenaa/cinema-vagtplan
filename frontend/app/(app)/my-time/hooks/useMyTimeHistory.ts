@@ -1,8 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
+
 import { apiFetch } from "@/app/lib/api";
-import type { TimeEntry, TimeEntryRevision } from "../helpers/myTimeTypes";
+
+import type {
+  TimeEntry,
+  TimeEntryRevision,
+} from "../helpers/core/myTimeTypes";
 
 type ShowHistoryError = (title: string, description: string) => void;
 
@@ -22,22 +27,19 @@ export function useMyTimeHistory(showError: ShowHistoryError) {
         if (!response.ok) {
           showError(
             "Kunne ikke hente historik",
-            "Der opstod en fejl, da historikken skulle hentes. Prøv igen.",
+            "Der opstod en fejl, da historikken skulle hentes.\nPrøv igen.",
           );
-
           setHistoryEntry(null);
           return;
         }
 
         const data = await response.json();
-
         setHistoryItems(Array.isArray(data) ? data : []);
       } catch {
         showError(
           "Kunne ikke hente historik",
           "Der opstod en fejl, da historikken skulle hentes. Prøv igen.",
         );
-
         setHistoryEntry(null);
       } finally {
         setHistoryLoading(false);

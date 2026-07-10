@@ -1,11 +1,14 @@
-import { formatDateTime } from "../../helpers/myTimeDate";
-import { getHours } from "../../helpers/myTimeEntries";
+import { formatDateTime } from "../../helpers/core/myTimeDate";
+import { getHours } from "../../helpers/core/myTimeEntries";
 import {
   getEntrySingleNote,
   shouldShowEntryNoteAsSingleNote,
-} from "../../helpers/myTimeNotes";
-import { getStatusClass, getStatusLabel } from "../../helpers/myTimeStatus";
-import type { TimeEntry } from "../../helpers/myTimeTypes";
+} from "../../helpers/core/myTimeNotes";
+import {
+  getStatusClass,
+  getStatusLabel,
+} from "../../helpers/core/myTimeStatus";
+import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type MyTimeEntryCardProps = {
   entry: TimeEntry;

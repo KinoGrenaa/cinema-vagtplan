@@ -1,6 +1,6 @@
 "use client";
 
-import type { TimeEntry } from "../../helpers/myTimeTypes";
+import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type MyTimeEditModalProps = {
   editingEntry: TimeEntry | null;
