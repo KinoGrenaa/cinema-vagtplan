@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { Notification } from "@/app/types/notifications";
 
-import { getCategoryLabel, groupByDate } from "../../helpers/notificationHelpers";
+import {
+  getCategoryLabel,
+  groupByDate,
+} from "../../helpers/core/notificationHelpers";
 import type {
   Message,
   NotificationCategory,
   ShiftTrade,
-} from "../../helpers/notificationTypes";
+} from "../../helpers/core/notificationTypes";
 
 type UseNotificationGroupsParams = {
   notifications: Notification[];

@@ -1,4 +1,4 @@
-import type { NotificationCategory } from "../../helpers/notificationTypes";
+import type { NotificationCategory } from "../../helpers/core/notificationTypes";
 
 type NotificationsHeaderProps = {
   totalCount: number;

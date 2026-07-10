@@ -9,8 +9,8 @@ import { useAuth } from "@/app/providers/AuthProvider";
 import {
   getErrorMessage,
   readErrorMessage,
-} from "../../helpers/notificationHelpers";
-import type { Message, ShiftTrade } from "../../helpers/notificationTypes";
+} from "../../helpers/core/notificationHelpers";
+import type { Message, ShiftTrade } from "../../helpers/core/notificationTypes";
 
 type UseNotificationsExtraDataParams = {
   showError: (title: string, description: string) => void;

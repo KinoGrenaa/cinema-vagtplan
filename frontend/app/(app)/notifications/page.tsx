@@ -15,7 +15,7 @@ import { useNotificationGroups } from "./hooks/groups/useNotificationGroups";
 import { useNotificationPushActions } from "./hooks/actions/useNotificationPushActions";
 import { useNotificationsExtraData } from "./hooks/data/useNotificationsExtraData";
 
-import type { ErrorDialogState } from "./helpers/notificationTypes";
+import type { ErrorDialogState } from "./helpers/core/notificationTypes";
 
 export default function NotificationsPage() {
   const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({

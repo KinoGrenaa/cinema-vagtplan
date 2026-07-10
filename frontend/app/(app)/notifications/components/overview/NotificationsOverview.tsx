@@ -6,14 +6,14 @@ import {
   getCategoryLabel,
   getNotificationTypeLabel,
   getUserName,
-} from "../../helpers/notificationHelpers";
+} from "../../helpers/core/notificationHelpers";
 
 import type {
   Message,
   NotificationCategory,
   NotificationGroup,
   ShiftTrade,
-} from "../../helpers/notificationTypes";
+} from "../../helpers/core/notificationTypes";
 
 type NotificationsOverviewProps = {
   activeCategory: NotificationCategory;

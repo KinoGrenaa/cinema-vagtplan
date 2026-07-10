@@ -9,7 +9,7 @@ import {
 } from "@/app/hooks/usePushNotifications";
 import { useAuth } from "@/app/providers/AuthProvider";
 
-import { getErrorMessage } from "../../helpers/notificationHelpers";
+import { getErrorMessage } from "../../helpers/core/notificationHelpers";
 
 type UseNotificationPushActionsParams = {
   showError: (title: string, description: string) => void;
