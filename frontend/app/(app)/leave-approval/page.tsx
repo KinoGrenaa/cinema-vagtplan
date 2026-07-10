@@ -1,14 +1,21 @@
 "use client";
 
 import AdminGuard from "@/app/components/AdminGuard";
+
 import InfoModal from "@/app/components/modals/InfoModal";
-import LeaveApprovalFilterModal from "./components/LeaveApprovalFilterModal";
-import LeaveApprovalHeader from "./components/LeaveApprovalHeader";
+import LeaveApprovalFilterModal from "./components/modals/LeaveApprovalFilterModal";
+
+import LeaveApprovalHeader from "./components/layout/LeaveApprovalHeader";
+
 import LeaveApprovalRequestsSection from "./components/LeaveApprovalRequestsSection";
-import LeaveApprovalSummaryCards from "./components/LeaveApprovalSummaryCards";
+
+import LeaveApprovalSummaryCards from "./components/overview/LeaveApprovalSummaryCards";
+
 import { makeDateGroupExpansionKey } from "./helpers/leaveApprovalHelpers";
+
 import { useLeaveApprovalData } from "./hooks/useLeaveApprovalData";
 import { useLeaveApprovalFilters } from "./hooks/useLeaveApprovalFilters";
+
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 
 export default function LeaveApprovalPage() {
