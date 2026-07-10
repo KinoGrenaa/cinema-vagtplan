@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
 
 import { useConfirm } from "@/app/hooks/useConfirm";
-import { useMessages } from "../../../hooks/useMessages";
+import { useMessages } from "../../../../hooks/useMessages";
+
 import {
   getErrorMessage,
   type ErrorDialogState,
-} from "../helpers/inboxMessageHelpers";
+} from "../../helpers/core/inboxMessageHelpers";
 
 export function useInboxMessagesPage() {
   const confirmDialog = useConfirm();
@@ -77,7 +78,7 @@ export function useInboxMessagesPage() {
             "Beskeden kunne ikke arkiveres",
             getErrorMessage(
               error,
-              "Der opstod en fejl, da beskeden skulle arkiveres. Prøv igen.",
+              "Der opstod en fejl, da beskeden skulle arkiveres.\nPrøv igen.",
             ),
           );
         }

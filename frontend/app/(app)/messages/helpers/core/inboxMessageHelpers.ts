@@ -1,4 +1,5 @@
-import type { Message, MessageParticipant } from "../../../types/messages";
+import type { Message, MessageParticipant } from "../../../../types/messages";
+
 import { formatDateDK, formatTimeDK } from "@/app/utils/dateTime";
 
 export type ErrorDialogState = {
@@ -29,10 +30,12 @@ export function formatDateTime(value: string) {
 
 export function getUserName(user?: MessageParticipant | null) {
   if (!user) return null;
+
   return `${user.firstName} ${user.lastName}`;
 }
 
 export function getShortBody(body: string) {
   if (!body) return "Ingen beskedtekst.";
+
   return body.length > 120 ? `${body.slice(0, 120)}...` : body;
 }

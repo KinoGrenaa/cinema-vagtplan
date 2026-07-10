@@ -3,7 +3,7 @@ import {
   getShortBody,
   getUserName,
   type InboxMessage,
-} from "../../helpers/inboxMessageHelpers";
+} from "../../helpers/core/inboxMessageHelpers";
 
 type InboxMessagesListProps = {
   messages: InboxMessage[];

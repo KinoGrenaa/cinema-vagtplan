@@ -10,7 +10,7 @@ import InboxMessagesHeader from "./components/layout/InboxMessagesHeader";
 
 import InboxMessagesList from "./components/list/InboxMessagesList";
 
-import { useInboxMessagesPage } from "./hooks/useInboxMessagesPage";
+import { useInboxMessagesPage } from "./hooks/page/useInboxMessagesPage";
 
 export default function MessagesPage() {
   const {
