@@ -10,7 +10,7 @@ import ClockEntryForm from "./components/form/ClockEntryForm";
 
 import ClockHeader from "./components/layout/ClockHeader";
 
-import { useClockPage } from "./hooks/useClockPage";
+import { useClockPage } from "./hooks/page/useClockPage";
 
 export default function ClockPage() {
   const {

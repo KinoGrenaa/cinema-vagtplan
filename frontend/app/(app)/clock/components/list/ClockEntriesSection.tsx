@@ -1,6 +1,9 @@
 import type { TimeEntry } from "../../../../../../shared/types";
 
-import { calculateEntryHours, toInputDateTime } from "../../helpers/clockHelpers";
+import {
+  calculateEntryHours,
+  toInputDateTime,
+} from "../../helpers/core/clockHelpers";
 
 type ClockEntriesSectionProps = {
   entries: TimeEntry[];

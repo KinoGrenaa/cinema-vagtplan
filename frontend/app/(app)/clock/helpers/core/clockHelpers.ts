@@ -1,4 +1,4 @@
-import type { TimeEntry } from "../../../../../shared/types";
+import type { TimeEntry } from "../../../../../../shared/types";
 
 export async function readErrorMessage(response: Response, fallback: string) {
   try {
@@ -14,7 +14,6 @@ export async function readErrorMessage(response: Response, fallback: string) {
 
 export function toInputDateTime(value: string) {
   const date = new Date(value);
-
   const offset = date.getTimezoneOffset();
 
   return new Date(date.getTime() - offset * 60 * 1000)
@@ -38,7 +37,6 @@ export function calculateTotalHours(entries: TimeEntry[]) {
     if (!entry.clockOut) return total;
 
     const start = new Date(entry.clockIn);
-
     const end = new Date(entry.clockOut);
 
     return total + (end.getTime() - start.getTime()) / 1000 / 60 / 60;

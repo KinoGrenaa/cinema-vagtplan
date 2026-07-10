@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 
-import type { CurrentUser, Shift, TimeEntry } from "../../../../../shared/types";
+import type {
+  CurrentUser,
+  Shift,
+  TimeEntry,
+} from "../../../../../../shared/types";
+
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import { getTodayLocalDate } from "@/app/utils/dateTime";
+
 import { toast } from "sonner";
 
-import { calculateTotalHours, readErrorMessage } from "../helpers/clockHelpers";
+import {
+  calculateTotalHours,
+  readErrorMessage,
+} from "../../helpers/core/clockHelpers";
 
 function isGlobalMasterUser(user: CurrentUser | null) {
   return user?.role === "MASTER" && !user.cinemaId;
@@ -15,6 +24,7 @@ function isGlobalMasterUser(user: CurrentUser | null) {
 
 export function useClockPage() {
   const infoDialog = useInfoModal();
+
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [todayShifts, setTodayShifts] = useState<Shift[]>([]);
@@ -24,49 +34,47 @@ export function useClockPage() {
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const fetchEntries = useCallback(
-    async (userId: number, showError = true) => {
-      try {
-        const response = await apiFetch(`/time-entries?userId=${userId}`);
+  const fetchEntries = useCallback(async (userId: number, showError = true) => {
+    try {
+      const response = await apiFetch(`/time-entries?userId=${userId}`);
 
-        if (!response.ok) {
-          setEntries([]);
-
-          if (showError) {
-            infoDialog.showError(
-              "Tidsregistreringer kunne ikke hentes",
-              await readErrorMessage(
-                response,
-                "Der opstod en fejl, da tidsregistreringerne skulle hentes.",
-              ),
-            );
-          }
-
-          return;
-        }
-
-        const data = await response.json();
-        setEntries(Array.isArray(data) ? data : []);
-      } catch (error) {
+      if (!response.ok) {
         setEntries([]);
 
         if (showError) {
           infoDialog.showError(
             "Tidsregistreringer kunne ikke hentes",
-            error instanceof Error
-              ? error.message
-              : "Der opstod en fejl, da tidsregistreringerne skulle hentes.",
+            await readErrorMessage(
+              response,
+              "Der opstod en fejl, da tidsregistreringerne skulle hentes.",
+            ),
           );
         }
+
+        return;
       }
-    },
-    [],
-  );
+
+      const data = await response.json();
+      setEntries(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setEntries([]);
+
+      if (showError) {
+        infoDialog.showError(
+          "Tidsregistreringer kunne ikke hentes",
+          error instanceof Error
+            ? error.message
+            : "Der opstod en fejl, da tidsregistreringerne skulle hentes.",
+        );
+      }
+    }
+  }, []);
 
   const fetchTodayShifts = useCallback(
     async (userId: number, showError = true) => {
       try {
         const today = getTodayLocalDate();
+
         const response = await apiFetch(`/shifts?date=${today}`);
 
         if (!response.ok) {
@@ -133,8 +141,9 @@ export function useClockPage() {
     }
   }, [fetchEntries, fetchTodayShifts]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+
     if (!currentUser) return;
 
     if (isGlobalMasterUser(currentUser)) {
@@ -163,7 +172,7 @@ export function useClockPage() {
         throw new Error(
           await readErrorMessage(
             response,
-            "Der opstod en fejl, da tiden skulle registreres. Prøv igen.",
+            "Der opstod en fejl, da tiden skulle registreres.\nPrøv igen.",
           ),
         );
       }
@@ -172,14 +181,16 @@ export function useClockPage() {
       setClockIn("");
       setClockOut("");
       setNote("");
+
       await fetchEntries(currentUser.id);
+
       toast.success("Tid registreret.");
     } catch (error) {
       infoDialog.showError(
         "Tiden kunne ikke registreres",
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da tiden skulle registreres. Prøv igen.",
+          : "Der opstod en fejl, da tiden skulle registreres.\nPrøv igen.",
       );
     } finally {
       setLoading(false);
@@ -187,6 +198,7 @@ export function useClockPage() {
   }
 
   const totalHours = useMemo(() => calculateTotalHours(entries), [entries]);
+
   const isGlobalMaster = isGlobalMasterUser(currentUser);
 
   return {
