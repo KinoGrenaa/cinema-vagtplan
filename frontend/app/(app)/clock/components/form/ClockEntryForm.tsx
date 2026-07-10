@@ -1,5 +1,7 @@
 import type { FormEvent } from "react";
-import type { Shift } from "../../../../../shared/types";
+
+import type { Shift } from "../../../../../../shared/types";
+
 import { formatTimeDK } from "@/app/utils/dateTime";
 
 const inputClass =
@@ -42,18 +44,16 @@ export default function ClockEntryForm({
       <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
           <label className={labelClass}>Vagt</label>
-
           <select
             className={inputClass}
             value={selectedShiftId ?? ""}
-            onChange={(e) =>
+            onChange={(event) =>
               onSelectedShiftIdChange(
-                e.target.value ? Number(e.target.value) : null,
+                event.target.value ? Number(event.target.value) : null,
               )
             }
           >
             <option value="">Ingen tilknyttet vagt</option>
-
             {todayShifts.map((shift) => (
               <option key={shift.id} value={shift.id}>
                 {formatTimeDK(shift.startTime)}
@@ -66,33 +66,30 @@ export default function ClockEntryForm({
 
         <div>
           <label className={labelClass}>Clock ind</label>
-
           <input
             type="datetime-local"
             className={inputClass}
             value={clockIn}
-            onChange={(e) => onClockInChange(e.target.value)}
+            onChange={(event) => onClockInChange(event.target.value)}
           />
         </div>
 
         <div>
           <label className={labelClass}>Clock ud</label>
-
           <input
             type="datetime-local"
             className={inputClass}
             value={clockOut}
-            onChange={(e) => onClockOutChange(e.target.value)}
+            onChange={(event) => onClockOutChange(event.target.value)}
           />
         </div>
 
         <div className="md:col-span-2">
           <label className={labelClass}>Note</label>
-
           <textarea
             className="min-h-28 w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
             value={note}
-            onChange={(e) => onNoteChange(e.target.value)}
+            onChange={(event) => onNoteChange(event.target.value)}
             placeholder="Valgfri note..."
           />
         </div>

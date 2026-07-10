@@ -4,9 +4,12 @@ import Link from "next/link";
 
 import InfoModal from "@/app/components/modals/InfoModal";
 
-import ClockEntriesSection from "./components/ClockEntriesSection";
-import ClockEntryForm from "./components/ClockEntryForm";
-import ClockHeader from "./components/ClockHeader";
+import ClockEntriesSection from "./components/list/ClockEntriesSection";
+
+import ClockEntryForm from "./components/form/ClockEntryForm";
+
+import ClockHeader from "./components/layout/ClockHeader";
+
 import { useClockPage } from "./hooks/useClockPage";
 
 export default function ClockPage() {
@@ -56,6 +59,7 @@ export default function ClockPage() {
             </div>
           </div>
         </main>
+
         <InfoModal
           open={infoDialog.open}
           title={infoDialog.title}
@@ -73,6 +77,7 @@ export default function ClockPage() {
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-6xl space-y-6">
           <ClockHeader />
+
           <ClockEntryForm
             todayShifts={todayShifts}
             selectedShiftId={selectedShiftId}
@@ -86,9 +91,11 @@ export default function ClockPage() {
             onNoteChange={setNote}
             onSubmit={handleSubmit}
           />
+
           <ClockEntriesSection entries={entries} totalHours={totalHours} />
         </div>
       </main>
+
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
