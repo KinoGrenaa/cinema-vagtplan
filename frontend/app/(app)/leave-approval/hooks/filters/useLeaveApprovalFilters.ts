@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
 import { formatDateDK } from "@/app/utils/dateTime";
+
 import {
   getActiveFilterCount,
   getLeaveDateGroupMeta,
@@ -10,13 +12,13 @@ import {
   makeDateGroupExpansionKey,
   matchesDateFilter,
   matchesStatusFilter,
-} from "../helpers/leaveApprovalHelpers";
+} from "../../helpers/leaveApprovalHelpers";
 import type {
   LeaveDateGroup,
   LeaveRequest,
   LeaveStatusFilters,
-} from "../helpers/leaveApprovalTypes";
-import { DEFAULT_STATUS_FILTERS } from "../helpers/leaveApprovalTypes";
+} from "../../helpers/leaveApprovalTypes";
+import { DEFAULT_STATUS_FILTERS } from "../../helpers/leaveApprovalTypes";
 
 export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -29,7 +31,6 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
   const [endDateFilter, setEndDateFilter] = useState("");
   const [draftStartDateFilter, setDraftStartDateFilter] = useState("");
   const [draftEndDateFilter, setDraftEndDateFilter] = useState("");
-
   const [expandedUserIds, setExpandedUserIds] = useState<number[]>([]);
   const [expandedDateGroupKeys, setExpandedDateGroupKeys] = useState<string[]>(
     [],

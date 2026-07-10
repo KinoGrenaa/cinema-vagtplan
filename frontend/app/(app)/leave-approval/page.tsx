@@ -13,8 +13,8 @@ import LeaveApprovalSummaryCards from "./components/overview/LeaveApprovalSummar
 
 import { makeDateGroupExpansionKey } from "./helpers/leaveApprovalHelpers";
 
-import { useLeaveApprovalData } from "./hooks/useLeaveApprovalData";
-import { useLeaveApprovalFilters } from "./hooks/useLeaveApprovalFilters";
+import { useLeaveApprovalData } from "./hooks/data/useLeaveApprovalData";
+import { useLeaveApprovalFilters } from "./hooks/filters/useLeaveApprovalFilters";
 
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 
