@@ -9,8 +9,8 @@ import {
   getStatusLabel,
   getStatusStyle,
   getTypeLabel,
-} from "../../helpers/staffingRequestHelpers";
-import type { StaffingRequest } from "../../helpers/staffingRequestTypes";
+} from "../../helpers/core/staffingRequestHelpers";
+import type { StaffingRequest } from "../../helpers/core/staffingRequestTypes";
 
 type StaffingRequestsListSectionProps = {
   requests: StaffingRequest[];

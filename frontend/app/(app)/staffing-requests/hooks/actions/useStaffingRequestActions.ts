@@ -1,5 +1,9 @@
 import { useCallback, useState } from "react";
-import { appendCinemaId, readErrorMessage } from "../helpers/staffingRequestHelpers";
+
+import {
+  appendCinemaId,
+  readErrorMessage,
+} from "../../helpers/core/staffingRequestHelpers";
 
 type ApiFetch = (endpoint: string, init?: RequestInit) => Promise<Response>;
 
@@ -22,14 +26,12 @@ export function useStaffingRequestActions({
     async (id: number) => {
       try {
         setProcessingId(id);
-
         const response = await apiFetch(
           appendCinemaId(`/staffing-requests/${id}/accept`, activeCinemaId),
           {
             method: "PATCH",
           },
         );
-
         if (!response.ok) {
           throw new Error(
             await readErrorMessage(
@@ -38,7 +40,6 @@ export function useStaffingRequestActions({
             ),
           );
         }
-
         await fetchRequests();
       } catch (error) {
         showError(
@@ -58,14 +59,12 @@ export function useStaffingRequestActions({
     async (id: number) => {
       try {
         setProcessingId(id);
-
         const response = await apiFetch(
           appendCinemaId(`/staffing-requests/${id}/reject`, activeCinemaId),
           {
             method: "PATCH",
           },
         );
-
         if (!response.ok) {
           throw new Error(
             await readErrorMessage(
@@ -74,7 +73,6 @@ export function useStaffingRequestActions({
             ),
           );
         }
-
         await fetchRequests();
       } catch (error) {
         showError(
@@ -94,14 +92,12 @@ export function useStaffingRequestActions({
     async (id: number) => {
       try {
         setProcessingId(id);
-
         const response = await apiFetch(
           appendCinemaId(`/staffing-requests/${id}/cancel`, activeCinemaId),
           {
             method: "PATCH",
           },
         );
-
         if (!response.ok) {
           throw new Error(
             await readErrorMessage(
@@ -110,7 +106,6 @@ export function useStaffingRequestActions({
             ),
           );
         }
-
         await fetchRequests();
       } catch (error) {
         showError(

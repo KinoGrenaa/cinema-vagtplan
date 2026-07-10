@@ -10,9 +10,9 @@ import StaffingRequestsHeader from "./components/layout/StaffingRequestsHeader";
 import StaffingRequestsMasterCinemaRequired from "./components/layout/StaffingRequestsMasterCinemaRequired";
 import StaffingRequestsListSection from "./components/list/StaffingRequestsListSection";
 import StaffingRequestsSummaryCards from "./components/overview/StaffingRequestsSummaryCards";
-import { useStaffingRequestActions } from "./hooks/useStaffingRequestActions";
-import { useStaffingRequestsData } from "./hooks/useStaffingRequestsData";
-import type { StaffingRequest } from "./helpers/staffingRequestTypes";
+import { useStaffingRequestActions } from "./hooks/actions/useStaffingRequestActions";
+import { useStaffingRequestsData } from "./hooks/data/useStaffingRequestsData";
+import type { StaffingRequest } from "./helpers/core/staffingRequestTypes";
 
 export default function StaffingRequestsPage() {
   const { apiFetch } = useApi();
@@ -89,7 +89,6 @@ export default function StaffingRequestsPage() {
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 md:p-8 dark:bg-gray-950 dark:text-gray-100">
         <div className="mx-auto max-w-6xl space-y-6">
           <StaffingRequestsHeader />
-
           {needsMasterCinemaSelection ? (
             <StaffingRequestsMasterCinemaRequired />
           ) : (
@@ -99,7 +98,6 @@ export default function StaffingRequestsPage() {
                 pendingCount={groupedRequests.pending.length}
                 completedCount={groupedRequests.completed.length}
               />
-
               <StaffingRequestsListSection
                 requests={requests}
                 visibleRequests={visibleRequests}

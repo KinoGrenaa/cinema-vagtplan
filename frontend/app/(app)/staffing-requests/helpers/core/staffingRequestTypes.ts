@@ -1,15 +1,8 @@
 export type StaffingRequestStatus =
-  | "PENDING"
-  | "ACCEPTED"
-  | "REJECTED"
-  | "EXPIRED"
-  | "CANCELLED";
+  "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED";
 
 export type StaffingRequestType =
-  | "EXTRA_SHIFT"
-  | "EMERGENCY"
-  | "REPLACEMENT"
-  | "OVERTIME";
+  "EXTRA_SHIFT" | "EMERGENCY" | "REPLACEMENT" | "OVERTIME";
 
 export type StaffingRequestUser = {
   id?: number;

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
   appendCinemaId,
   getCurrentUserId,
   getSelectedMasterCinemaId,
   groupStaffingRequests,
   readErrorMessage,
-} from "../helpers/staffingRequestHelpers";
-import type { StaffingRequest } from "../helpers/staffingRequestTypes";
+} from "../../helpers/core/staffingRequestHelpers";
+import type { StaffingRequest } from "../../helpers/core/staffingRequestTypes";
 
 type ApiFetch = (endpoint: string, init?: RequestInit) => Promise<Response>;
 
@@ -37,24 +38,18 @@ export function useStaffingRequestsData({
 
   const activeCinemaId = useMemo(() => {
     if (!user) return null;
-
     const userCinemaId = Number(user.cinemaId);
-
     if (Number.isInteger(userCinemaId) && userCinemaId > 0) {
       return userCinemaId;
     }
-
     if (user.role === "MASTER") {
       return selectedMasterCinemaId;
     }
-
     return null;
   }, [selectedMasterCinemaId, user]);
 
   const currentUserId = useMemo(() => getCurrentUserId(user), [user]);
-
   const isManager = user?.role === "MASTER" || user?.role === "ADMIN";
-
   const needsMasterCinemaSelection =
     user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
 
@@ -64,7 +59,6 @@ export function useStaffingRequestsData({
     }
 
     updateSelectedCinema();
-
     window.addEventListener("storage", updateSelectedCinema);
     window.addEventListener(
       "masterSelectedCinemaChanged",
@@ -89,11 +83,9 @@ export function useStaffingRequestsData({
 
     try {
       setLoading(true);
-
       const response = await apiFetch(
         appendCinemaId("/staffing-requests", activeCinemaId),
       );
-
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(
@@ -102,12 +94,10 @@ export function useStaffingRequestsData({
           ),
         );
       }
-
       const data = await response.json();
       setRequests(Array.isArray(data) ? data : []);
     } catch (error) {
       setRequests([]);
-
       showError(
         "Kunne ikke hente bemandingsforespørgsler",
         error instanceof Error
@@ -121,7 +111,6 @@ export function useStaffingRequestsData({
 
   useEffect(() => {
     if (!user) return;
-
     fetchRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, activeCinemaId, needsMasterCinemaSelection]);
@@ -130,7 +119,6 @@ export function useStaffingRequestsData({
     () => groupStaffingRequests(requests),
     [requests],
   );
-
   const visibleRequests = showCompletedRequests
     ? requests
     : groupedRequests.pending;
