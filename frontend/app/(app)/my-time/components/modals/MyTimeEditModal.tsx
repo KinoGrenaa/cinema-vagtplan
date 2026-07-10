@@ -1,34 +1,56 @@
 "use client";
 
-import type { TimeEntry } from "../helpers/myTimeTypes";
+import type { TimeEntry } from "../../helpers/myTimeTypes";
 
 type MyTimeEditModalProps = {
   editingEntry: TimeEntry | null;
+
   editClockIn: string;
+
   editClockOut: string;
+
   editClockInNote: string;
+
   editClockOutNote: string;
+
   savingEdit: boolean;
+
   onClockInChange: (value: string) => void;
+
   onClockOutChange: (value: string) => void;
+
   onClockInNoteChange: (value: string) => void;
+
   onClockOutNoteChange: (value: string) => void;
+
   onClose: () => void;
+
   onSave: () => void;
 };
 
 export default function MyTimeEditModal({
   editingEntry,
+
   editClockIn,
+
   editClockOut,
+
   editClockInNote,
+
   editClockOutNote,
+
   savingEdit,
+
   onClockInChange,
+
   onClockOutChange,
+
   onClockInNoteChange,
+
   onClockOutNoteChange,
+
   onClose,
+
   onSave,
 }: MyTimeEditModalProps) {
   if (!editingEntry) return null;
@@ -38,6 +60,7 @@ export default function MyTimeEditModal({
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
         <div className="mb-4">
           <h2 className="text-xl font-bold">Redigér timeregistrering</h2>
+
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Du kan kun rette timer, der ikke er godkendt endnu.
           </p>
@@ -46,6 +69,7 @@ export default function MyTimeEditModal({
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium">Mødetid</label>
+
             <input
               type="datetime-local"
               value={editClockIn}
@@ -56,6 +80,7 @@ export default function MyTimeEditModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium">Fyraften</label>
+
             <input
               type="datetime-local"
               value={editClockOut}
@@ -68,6 +93,7 @@ export default function MyTimeEditModal({
             <label className="mb-1 block text-sm font-medium">
               Mødetidsnote
             </label>
+
             <textarea
               value={editClockInNote}
               onChange={(event) => onClockInNoteChange(event.target.value)}
@@ -81,6 +107,7 @@ export default function MyTimeEditModal({
             <label className="mb-1 block text-sm font-medium">
               Fyraftensnote
             </label>
+
             <textarea
               value={editClockOutNote}
               onChange={(event) => onClockOutNoteChange(event.target.value)}

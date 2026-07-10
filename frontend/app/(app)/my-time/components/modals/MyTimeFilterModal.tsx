@@ -1,26 +1,40 @@
 import FilterModal from "@/app/components/modals/FilterModal";
-import type { MyTimeStatusFilters } from "../helpers/myTimeStatus";
+
+import type { MyTimeStatusFilters } from "../../helpers/myTimeStatus";
 
 type MyTimeFilterModalProps = {
   open: boolean;
+
   activeFilterCount: number;
+
   draftStatusFilters: MyTimeStatusFilters;
+
   onApply: () => void;
+
   onReset: () => void;
+
   onClose: () => void;
+
   onStatusFilterChange: (
     key: keyof MyTimeStatusFilters,
+
     checked: boolean,
   ) => void;
 };
 
 export default function MyTimeFilterModal({
   open,
+
   activeFilterCount,
+
   draftStatusFilters,
+
   onApply,
+
   onReset,
+
   onClose,
+
   onStatusFilterChange,
 }: MyTimeFilterModalProps) {
   return (
@@ -49,8 +63,10 @@ export default function MyTimeFilterModal({
               }
               className="mt-0.5 h-4 w-4"
             />
+
             <span>
               <span className="block font-medium">Godkendte</span>
+
               <span className="block text-xs text-gray-500 dark:text-gray-400">
                 Timer der tæller med i løngrundlaget.
               </span>
@@ -66,8 +82,10 @@ export default function MyTimeFilterModal({
               }
               className="mt-0.5 h-4 w-4"
             />
+
             <span>
               <span className="block font-medium">Afventer godkendelse</span>
+
               <span className="block text-xs text-gray-500 dark:text-gray-400">
                 Timer der endnu ikke er godkendt.
               </span>
@@ -83,8 +101,10 @@ export default function MyTimeFilterModal({
               }
               className="mt-0.5 h-4 w-4"
             />
+
             <span>
               <span className="block font-medium">Skal rettes</span>
+
               <span className="block text-xs text-gray-500 dark:text-gray-400">
                 Registreringer som administrationen har sendt retur til
                 rettelse.
@@ -101,8 +121,10 @@ export default function MyTimeFilterModal({
               }
               className="mt-0.5 h-4 w-4"
             />
+
             <span>
               <span className="block font-medium">Afviste/annullerede</span>
+
               <span className="block text-xs text-gray-500 dark:text-gray-400">
                 Registreringer der ikke indgår i løngrundlaget. Systemet skelner
                 ikke separat mellem afvist og annulleret endnu.

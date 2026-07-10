@@ -11,7 +11,7 @@ import MyTimeDayGroupsSection from "./components/list/MyTimeDayGroupsSection";
 
 import MyTimeHeader from "./components/layout/MyTimeHeader";
 
-import MyTimeModals from "./components/MyTimeModals";
+import MyTimeModals from "./components/modals/MyTimeModals";
 
 import MyTimeSummaryCards from "./components/overview/MyTimeSummaryCards";
 
