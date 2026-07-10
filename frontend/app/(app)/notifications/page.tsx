@@ -10,10 +10,10 @@ import NotificationsHeader from "./components/layout/NotificationsHeader";
 
 import NotificationsOverview from "./components/overview/NotificationsOverview";
 
-import { useNotificationGroups } from "./hooks/useNotificationGroups";
+import { useNotificationGroups } from "./hooks/groups/useNotificationGroups";
 
-import { useNotificationPushActions } from "./hooks/useNotificationPushActions";
-import { useNotificationsExtraData } from "./hooks/useNotificationsExtraData";
+import { useNotificationPushActions } from "./hooks/actions/useNotificationPushActions";
+import { useNotificationsExtraData } from "./hooks/data/useNotificationsExtraData";
 
 import type { ErrorDialogState } from "./helpers/notificationTypes";
 

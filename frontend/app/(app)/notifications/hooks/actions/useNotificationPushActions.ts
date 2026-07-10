@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import {
   disablePushNotifications,
   enablePushNotifications,
   isPushNotificationsEnabled,
 } from "@/app/hooks/usePushNotifications";
 import { useAuth } from "@/app/providers/AuthProvider";
-import { getErrorMessage } from "../helpers/notificationHelpers";
+
+import { getErrorMessage } from "../../helpers/notificationHelpers";
 
 type UseNotificationPushActionsParams = {
   showError: (title: string, description: string) => void;
@@ -17,6 +19,7 @@ export function useNotificationPushActions({
   showError,
 }: UseNotificationPushActionsParams) {
   const { user } = useAuth();
+
   const [pushMessage, setPushMessage] = useState("");
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
@@ -27,6 +30,7 @@ export function useNotificationPushActions({
     async function loadPushStatus() {
       try {
         const enabled = await isPushNotificationsEnabled();
+
         setPushEnabled(enabled);
       } catch (error) {
         showError(
@@ -54,6 +58,7 @@ export function useNotificationPushActions({
 
     try {
       setPushLoading(true);
+
       const success = await enablePushNotifications();
 
       setPushEnabled(success);
@@ -85,7 +90,9 @@ export function useNotificationPushActions({
   async function handleDisablePush() {
     try {
       setPushLoading(true);
+
       await disablePushNotifications();
+
       setPushEnabled(false);
       setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
     } catch (error) {

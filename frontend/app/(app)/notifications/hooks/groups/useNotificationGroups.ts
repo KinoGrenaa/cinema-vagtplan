@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { getCategoryLabel, groupByDate } from "../helpers/notificationHelpers";
 import type { Notification } from "@/app/types/notifications";
+
+import { getCategoryLabel, groupByDate } from "../../helpers/notificationHelpers";
 import type {
   Message,
   NotificationCategory,
   ShiftTrade,
-} from "../helpers/notificationTypes";
+} from "../../helpers/notificationTypes";
 
 type UseNotificationGroupsParams = {
   notifications: Notification[];
@@ -98,10 +99,7 @@ export function useNotificationGroups({
   }, [activeGroups]);
 
   const totalCount =
-    unreadMessages.length +
-    unreadCount +
-    directTrades.length +
-    poolTrades.length;
+    unreadMessages.length + unreadCount + directTrades.length + poolTrades.length;
 
   const categoryCounts: Record<NotificationCategory, number> = {
     system: unreadCount,

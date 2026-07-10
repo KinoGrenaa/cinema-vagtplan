@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { useApi } from "@/app/hooks/useApi";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { useAuth } from "@/app/providers/AuthProvider";
+
 import {
   getErrorMessage,
   readErrorMessage,
-} from "../helpers/notificationHelpers";
-import type { Message, ShiftTrade } from "../helpers/notificationTypes";
+} from "../../helpers/notificationHelpers";
+import type { Message, ShiftTrade } from "../../helpers/notificationTypes";
 
 type UseNotificationsExtraDataParams = {
   showError: (title: string, description: string) => void;
@@ -19,7 +21,9 @@ function getSelectedMasterCinemaId() {
     return undefined;
   }
 
-  const selectedCinemaId = window.localStorage.getItem("masterSelectedCinemaId");
+  const selectedCinemaId = window.localStorage.getItem(
+    "masterSelectedCinemaId",
+  );
 
   if (!selectedCinemaId) {
     return undefined;
@@ -69,6 +73,7 @@ export function useNotificationsExtraData({
 }: UseNotificationsExtraDataParams) {
   const { apiFetch } = useApi();
   const { user, loading: authLoading } = useAuth();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
   const [extraLoading, setExtraLoading] = useState(true);
