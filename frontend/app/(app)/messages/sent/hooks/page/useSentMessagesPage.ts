@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useConfirm } from "@/app/hooks/useConfirm";
-import { useMessages } from "../../../../hooks/useMessages";
+import { useMessages } from "../../../../../hooks/useMessages";
+
 import {
   getErrorMessage,
   groupMessagesBySentDate,
-} from "../helpers/sentMessageHelpers";
+} from "../../helpers/core/sentMessageHelpers";
 
 type ErrorDialogState = {
   open: boolean;
@@ -21,6 +22,7 @@ const initialErrorDialog: ErrorDialogState = {
 
 export function useSentMessagesPage() {
   const confirmDialog = useConfirm();
+
   const [expandedDateKeys, setExpandedDateKeys] = useState<string[]>([]);
   const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
     null,
@@ -113,7 +115,7 @@ export function useSentMessagesPage() {
             "Beskeden kunne ikke arkiveres",
             getErrorMessage(
               error,
-              "Der opstod en fejl, da beskeden skulle arkiveres. Prøv igen.",
+              "Der opstod en fejl, da beskeden skulle arkiveres.\nPrøv igen.",
             ),
           );
         }

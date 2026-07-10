@@ -3,7 +3,7 @@ import {
   getShortBody,
   getUserName,
   type MessageDateGroup,
-} from "../../helpers/sentMessageHelpers";
+} from "../../helpers/core/sentMessageHelpers";
 
 import type { Message } from "../../../../../types/messages";
 

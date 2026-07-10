@@ -3,7 +3,10 @@ import {
   formatDateDK,
   formatTimeDK,
 } from "@/app/utils/dateTime";
-import type { Message, MessageParticipant } from "../../../../types/messages";
+import type {
+  Message,
+  MessageParticipant,
+} from "../../../../../types/messages";
 
 export type MessageDateGroup = {
   dateKey: string;
@@ -31,6 +34,7 @@ export function formatDateTime(value: string) {
 
 function getTimestamp(value: string) {
   const timestamp = new Date(value).getTime();
+
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
@@ -68,8 +72,7 @@ function formatDateGroupLabel(dateKey: string) {
 
 export function groupMessagesBySentDate(messages: Message[]): MessageDateGroup[] {
   const sortedBySentDate = [...messages].sort(
-    (left, right) =>
-      getTimestamp(right.createdAt) - getTimestamp(left.createdAt),
+    (left, right) => getTimestamp(right.createdAt) - getTimestamp(left.createdAt),
   );
 
   return sortedBySentDate.reduce<MessageDateGroup[]>((groups, message) => {
@@ -93,10 +96,12 @@ export function groupMessagesBySentDate(messages: Message[]): MessageDateGroup[]
 
 export function getUserName(user?: MessageParticipant | null) {
   if (!user) return null;
+
   return `${user.firstName} ${user.lastName}`;
 }
 
 export function getShortBody(body: string) {
   if (!body) return "Ingen beskedtekst.";
+
   return body.length > 120 ? `${body.slice(0, 120)}...` : body;
 }

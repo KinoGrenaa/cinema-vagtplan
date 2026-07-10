@@ -10,7 +10,7 @@ import SentMessagesHeader from "./components/layout/SentMessagesHeader";
 
 import SentMessagesList from "./components/list/SentMessagesList";
 
-import { useSentMessagesPage } from "./hooks/useSentMessagesPage";
+import { useSentMessagesPage } from "./hooks/page/useSentMessagesPage";
 
 export default function SentMessagesPage() {
   const {
