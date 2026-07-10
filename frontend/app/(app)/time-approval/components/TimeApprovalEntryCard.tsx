@@ -1,8 +1,8 @@
 import type { TimeEntry } from "../types";
 import { formatDateTime } from "../utils";
 import DeviationPanel from "./DeviationPanel";
-import TimeApprovalEntryActions from "./TimeApprovalEntryActions";
-import TimeApprovalEntryNotes from "./TimeApprovalEntryNotes";
+import TimeApprovalEntryActions from "./entry/TimeApprovalEntryActions";
+import TimeApprovalEntryNotes from "./entry/TimeApprovalEntryNotes";
 
 type TimeApprovalEntryCardProps = {
   entry: TimeEntry;
@@ -21,7 +21,6 @@ function formatSignedMinutesAsTime(minutesValue: number) {
   const absoluteMinutes = Math.abs(minutesValue);
   const hours = Math.floor(absoluteMinutes / 60);
   const minutes = absoluteMinutes % 60;
-
   return `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(
     2,
     "0",
@@ -33,7 +32,6 @@ function getHours(entry: TimeEntry) {
 
   const start = new Date(entry.clockIn);
   const end = new Date(entry.clockOut);
-
   const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
 
   return hours.toFixed(2);
@@ -66,12 +64,10 @@ export default function TimeApprovalEntryCard({
             <h3 className="text-lg font-semibold">
               {formatDateTime(entry.clockIn)}
             </h3>
-
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {entry.shift?.workType?.name || "Manuel registrering"}
             </p>
           </div>
-
           {entry.payrollAdjustments && entry.payrollAdjustments.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {entry.payrollAdjustments.map((adjustment) => (
@@ -84,27 +80,22 @@ export default function TimeApprovalEntryCard({
               ))}
             </div>
           )}
-
           <div className="grid gap-2 text-sm">
             <div>
               <span className="font-semibold">Arbejdstype:</span>{" "}
               {entry.shift?.workType?.name || "-"}
             </div>
-
             <div>
               <span className="font-semibold">Mødt:</span>{" "}
               {formatDateTime(entry.clockIn)}
             </div>
-
             <div>
               <span className="font-semibold">Gået hjem:</span>{" "}
               {formatDateTime(entry.clockOut)}
             </div>
-
             <div>
               <span className="font-semibold">Timer:</span> {getHours(entry)}
             </div>
-
             <div className="pt-2">
               <button
                 type="button"
@@ -118,13 +109,10 @@ export default function TimeApprovalEntryCard({
                 {hasDetails ? "⚠ Vis detaljer" : "Vis detaljer"}
               </button>
             </div>
-
             {isExpanded && <DeviationPanel entry={entry} />}
-
             <TimeApprovalEntryNotes entry={entry} />
           </div>
         </div>
-
         <TimeApprovalEntryActions
           entry={entry}
           onEdit={onEdit}

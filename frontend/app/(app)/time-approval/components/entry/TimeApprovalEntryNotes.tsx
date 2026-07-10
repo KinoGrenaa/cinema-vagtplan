@@ -1,4 +1,4 @@
-import type { TimeEntry } from "../types";
+import type { TimeEntry } from "../../types";
 
 type TimeApprovalEntryNotesProps = {
   entry: TimeEntry;
@@ -29,7 +29,6 @@ export default function TimeApprovalEntryNotes({
                   {entry.clockInNote}
                 </div>
               )}
-
               {entry.clockOutNote && (
                 <div>
                   <span className="font-semibold">Fyraftensnote:</span>{" "}
@@ -38,7 +37,6 @@ export default function TimeApprovalEntryNotes({
               )}
             </>
           )}
-
           {!entry.clockInNote && !entry.clockOutNote && entry.note && (
             <div>
               <span className="font-semibold">Medarbejder note:</span>{" "}
@@ -47,7 +45,6 @@ export default function TimeApprovalEntryNotes({
           )}
         </div>
       )}
-
       {entry.adminNote && (
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
           <span className="font-semibold">Admin note:</span> {entry.adminNote}

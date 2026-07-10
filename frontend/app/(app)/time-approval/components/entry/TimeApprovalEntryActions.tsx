@@ -1,5 +1,5 @@
-import type { TimeEntry } from "../types";
-import { getStatusClass, getStatusLabel } from "../utils";
+import type { TimeEntry } from "../../types";
+import { getStatusClass, getStatusLabel } from "../../utils";
 
 type TimeApprovalEntryActionsProps = {
   entry: TimeEntry;
@@ -29,13 +29,11 @@ export default function TimeApprovalEntryActions({
       >
         {getStatusLabel(entry.status)}
       </span>
-
       {entry.deviation?.hasDeviation && (
         <span className="inline-flex rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
           {entry.shift ? "Afvigelse" : "Manuel registrering"}
         </span>
       )}
-
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => onEdit(entry)}
@@ -43,14 +41,12 @@ export default function TimeApprovalEntryActions({
         >
           Redigér
         </button>
-
         <button
           onClick={() => onOpenHistory(entry)}
           className="rounded-xl bg-gray-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
         >
           Historik
         </button>
-
         {entry.status === "PENDING" && (
           <button
             onClick={() => onApprove(entry)}
@@ -59,7 +55,6 @@ export default function TimeApprovalEntryActions({
             Godkend
           </button>
         )}
-
         {entry.status === "APPROVED" && (
           <button
             onClick={() => onUnapprove(entry.id)}
@@ -68,7 +63,6 @@ export default function TimeApprovalEntryActions({
             Fjern godkendelse
           </button>
         )}
-
         {entry.status === "PENDING" && (
           <button
             onClick={() => onSendBackForChanges(entry.id)}
@@ -77,7 +71,6 @@ export default function TimeApprovalEntryActions({
             Send retur
           </button>
         )}
-
         {entry.status !== "VOIDED" && (
           <button
             onClick={() => onVoid(entry.id)}
