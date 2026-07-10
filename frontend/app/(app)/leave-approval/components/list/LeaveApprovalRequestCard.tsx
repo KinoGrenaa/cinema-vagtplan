@@ -3,12 +3,11 @@ import {
   formatTimeDK,
   formatUtcDateDK,
 } from "@/app/utils/dateTime";
-
 import type {
   LeaveRequest,
   LeaveRequestUser,
   LeaveStatus,
-} from "../helpers/leaveApprovalTypes";
+} from "../../helpers/leaveApprovalTypes";
 
 type LeaveDisplayDateRange = {
   startDate: string;
@@ -60,8 +59,8 @@ function getFullDayDateRange(
 function formatLeavePeriod(startDateString: string, endDateString: string) {
   const start = new Date(startDateString);
   const end = new Date(endDateString);
-  const fullDayDateRange = getFullDayDateRange(start, end);
 
+  const fullDayDateRange = getFullDayDateRange(start, end);
   if (fullDayDateRange) {
     return fullDayDateRange.startDate === fullDayDateRange.endDate
       ? `${fullDayDateRange.startDate} · Hele dagen`
@@ -216,7 +215,6 @@ export default function LeaveApprovalRequestCard({
             >
               {getDetailedStatusLabel(request.status)}
             </span>
-
             <span
               className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getCreatorBadgeClass(
                 request,
@@ -229,16 +227,13 @@ export default function LeaveApprovalRequestCard({
           <div className="mt-2 text-lg font-semibold">
             Fravær for {employeeName}
           </div>
-
           <div className="mt-1 text-sm font-medium text-gray-700 dark:text-gray-200">
             {formatLeavePeriod(request.startDate, request.endDate)}
           </div>
-
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Oprettet {formatRequestCreatedAt(request.createdAt)} af{" "}
             {createdByText}
           </p>
-
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {getStatusDescription(request.status)}
           </p>

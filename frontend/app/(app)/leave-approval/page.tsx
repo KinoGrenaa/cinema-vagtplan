@@ -7,7 +7,7 @@ import LeaveApprovalFilterModal from "./components/modals/LeaveApprovalFilterMod
 
 import LeaveApprovalHeader from "./components/layout/LeaveApprovalHeader";
 
-import LeaveApprovalRequestsSection from "./components/LeaveApprovalRequestsSection";
+import LeaveApprovalRequestsSection from "./components/list/LeaveApprovalRequestsSection";
 
 import LeaveApprovalSummaryCards from "./components/overview/LeaveApprovalSummaryCards";
 
