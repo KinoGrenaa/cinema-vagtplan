@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 
-import type { TimeEntry } from "../helpers/core/myTimeTypes";
+import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type ShowError = (title: string, description: string) => void;
 

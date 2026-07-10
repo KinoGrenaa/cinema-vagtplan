@@ -3,15 +3,15 @@ import { useMemo } from "react";
 import {
   isEntryVisibleWithStatusFilters,
   isInPayrollPeriod,
-} from "../helpers/core/myTimeEntries";
+} from "../../helpers/core/myTimeEntries";
 import {
   getApprovedHours,
   getMyTimeDayGroups,
   getNeedsChangesCount,
   getPendingHours,
-} from "../helpers/core/myTimeSummary";
-import type { MyTimeStatusFilters } from "../helpers/core/myTimeStatus";
-import type { TimeEntry } from "../helpers/core/myTimeTypes";
+} from "../../helpers/core/myTimeSummary";
+import type { MyTimeStatusFilters } from "../../helpers/core/myTimeStatus";
+import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type PayrollPeriod = {
   startDate: string;

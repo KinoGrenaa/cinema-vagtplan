@@ -15,18 +15,16 @@ import MyTimeModals from "./components/modals/MyTimeModals";
 
 import MyTimeSummaryCards from "./components/overview/MyTimeSummaryCards";
 
-import { useMyTimeDayGroupsExpansion } from "./hooks/useMyTimeDayGroupsExpansion";
+import { useMyTimeEdit } from "./hooks/actions/useMyTimeEdit";
+import { useMyTimeHistory } from "./hooks/actions/useMyTimeHistory";
 
-import { useMyTimeDerivedData } from "./hooks/useMyTimeDerivedData";
-import { useMyTimeEdit } from "./hooks/useMyTimeEdit";
+import { useMyTimeEntries } from "./hooks/data/useMyTimeEntries";
+import { useMyTimePayrollPeriod } from "./hooks/data/useMyTimePayrollPeriod";
 
-import { useMyTimeEntries } from "./hooks/useMyTimeEntries";
+import { useMyTimeDerivedData } from "./hooks/derived/useMyTimeDerivedData";
 
-import { useMyTimeHistory } from "./hooks/useMyTimeHistory";
-
-import { useMyTimePayrollPeriod } from "./hooks/useMyTimePayrollPeriod";
-
-import { useMyTimeStatusFilters } from "./hooks/useMyTimeStatusFilters";
+import { useMyTimeDayGroupsExpansion } from "./hooks/state/useMyTimeDayGroupsExpansion";
+import { useMyTimeStatusFilters } from "./hooks/state/useMyTimeStatusFilters";
 
 export default function MyTimePage() {
   const { user, loading: authLoading } = useAuth();

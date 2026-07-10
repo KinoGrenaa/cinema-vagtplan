@@ -5,7 +5,7 @@ import {
   getActiveStatusFilterCount,
   getStatusFilterSummary,
   type MyTimeStatusFilters,
-} from "../helpers/core/myTimeStatus";
+} from "../../helpers/core/myTimeStatus";
 
 type UseMyTimeStatusFiltersOptions = {
   onFiltersChanged: () => void;
@@ -14,9 +14,7 @@ type UseMyTimeStatusFiltersOptions = {
 export function useMyTimeStatusFilters({
   onFiltersChanged,
 }: UseMyTimeStatusFiltersOptions) {
-  const [statusFilters, setStatusFilters] = useState(
-    DEFAULT_STATUS_FILTERS,
-  );
+  const [statusFilters, setStatusFilters] = useState(DEFAULT_STATUS_FILTERS);
   const [draftStatusFilters, setDraftStatusFilters] =
     useState(DEFAULT_STATUS_FILTERS);
   const [filterModalOpen, setFilterModalOpen] = useState(false);

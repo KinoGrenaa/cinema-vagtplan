@@ -7,7 +7,7 @@ import {
   getInitialPayrollPeriod,
   getNextPayrollPeriodReferenceDate,
   getPreviousPayrollPeriodReferenceDate,
-} from "../helpers/core/myTimePayrollPeriod";
+} from "../../helpers/core/myTimePayrollPeriod";
 
 type PayrollPeriod = {
   startDate: string;
@@ -27,9 +27,7 @@ export function useMyTimePayrollPeriod({
   onPayrollPeriodChanged,
   disabled = false,
 }: UseMyTimePayrollPeriodOptions) {
-  const [payrollPeriod, setPayrollPeriod] = useState(
-    getInitialPayrollPeriod,
-  );
+  const [payrollPeriod, setPayrollPeriod] = useState(getInitialPayrollPeriod);
   const [payrollPeriodLoading, setPayrollPeriodLoading] = useState(false);
   const onErrorRef = useRef(onError);
   const onPayrollPeriodChangedRef = useRef(onPayrollPeriodChanged);

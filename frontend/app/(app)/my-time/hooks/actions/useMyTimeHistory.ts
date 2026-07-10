@@ -7,7 +7,7 @@ import { apiFetch } from "@/app/lib/api";
 import type {
   TimeEntry,
   TimeEntryRevision,
-} from "../helpers/core/myTimeTypes";
+} from "../../helpers/core/myTimeTypes";
 
 type ShowHistoryError = (title: string, description: string) => void;
 
