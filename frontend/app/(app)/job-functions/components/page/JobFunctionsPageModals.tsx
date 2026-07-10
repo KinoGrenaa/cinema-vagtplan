@@ -1,13 +1,15 @@
 import type { ComponentProps } from "react";
 
-import JobFunctionEmployeeModal from "../employee-modal/JobFunctionEmployeeModal";
-import JobFunctionFormModal from "../form-modal/JobFunctionFormModal";
-import JobFunctionTimingRuleModal from "../timing-rule-modal/JobFunctionTimingRuleModal";
+import JobFunctionEmployeeModal from "../employees/JobFunctionEmployeeModal";
+import JobFunctionFormModal from "../form/JobFunctionFormModal";
+import JobFunctionTimingRuleModal from "../timing-rule/JobFunctionTimingRuleModal";
 
 export type JobFunctionsPageModalsProps = {
   formModalOpen: boolean;
   formModalProps: ComponentProps<typeof JobFunctionFormModal>;
-  timingRuleModalProps: ComponentProps<typeof JobFunctionTimingRuleModal> | null;
+  timingRuleModalProps:
+    | ComponentProps<typeof JobFunctionTimingRuleModal>
+    | null;
   employeeModalProps: ComponentProps<typeof JobFunctionEmployeeModal> | null;
 };
 
@@ -25,7 +27,9 @@ export default function JobFunctionsPageModals({
         <JobFunctionTimingRuleModal {...timingRuleModalProps} />
       )}
 
-      {employeeModalProps && <JobFunctionEmployeeModal {...employeeModalProps} />}
+      {employeeModalProps && (
+        <JobFunctionEmployeeModal {...employeeModalProps} />
+      )}
     </>
   );
 }
