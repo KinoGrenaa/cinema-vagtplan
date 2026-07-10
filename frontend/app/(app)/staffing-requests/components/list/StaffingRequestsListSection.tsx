@@ -9,8 +9,8 @@ import {
   getStatusLabel,
   getStatusStyle,
   getTypeLabel,
-} from "../helpers/staffingRequestHelpers";
-import type { StaffingRequest } from "../helpers/staffingRequestTypes";
+} from "../../helpers/staffingRequestHelpers";
+import type { StaffingRequest } from "../../helpers/staffingRequestTypes";
 
 type StaffingRequestsListSectionProps = {
   requests: StaffingRequest[];
@@ -60,19 +60,16 @@ export default function StaffingRequestsListSection({
       {visibleRequests.map((request) => {
         const targetUserId = request.targetUser?.id ?? null;
         const isPending = request.status === "PENDING";
-
         const canAccept =
           isPending &&
           (userRole === "EMPLOYEE" || userRole === "ADMIN") &&
           currentUserId !== null &&
           (!targetUserId || targetUserId === currentUserId);
-
         const canReject =
           isPending &&
           (userRole === "EMPLOYEE" || userRole === "ADMIN") &&
           currentUserId !== null &&
           targetUserId === currentUserId;
-
         const canCancel = isPending && isManager;
 
         return (
@@ -90,7 +87,6 @@ export default function StaffingRequestsListSection({
                   >
                     PRIORITET {request.priority}
                   </span>
-
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
                       request.status,
@@ -98,27 +94,22 @@ export default function StaffingRequestsListSection({
                   >
                     {getStatusLabel(request.status)}
                   </span>
-
                   {request.aiGenerated && (
                     <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800 dark:bg-purple-950/40 dark:text-purple-200">
                       AI
                     </span>
                   )}
                 </div>
-
                 <h2 className="mt-4 text-2xl font-bold">
                   {getRequestTitle(request)}
                 </h2>
-
                 <div className="mt-1 text-xs font-semibold text-gray-500 dark:text-gray-400">
                   Intern reference #{request.id}
                 </div>
-
                 <p className="mt-2 text-gray-700 dark:text-gray-300">
                   {request.message || getDefaultMessage(request.type)}
                 </p>
               </div>
-
               <div className="text-sm font-semibold text-gray-500 dark:text-gray-400">
                 {getTypeLabel(request.type)}
               </div>
@@ -131,7 +122,6 @@ export default function StaffingRequestsListSection({
                 </div>
                 <div>{getFullName(request.requestedByUser, "System")}</div>
               </div>
-
               <div>
                 <div className="font-semibold text-gray-500 dark:text-gray-400">
                   Målgruppe
@@ -142,14 +132,12 @@ export default function StaffingRequestsListSection({
                     : "Alle medarbejdere"}
                 </div>
               </div>
-
               <div>
                 <div className="font-semibold text-gray-500 dark:text-gray-400">
                   Oprettet
                 </div>
                 <div>{formatDateTime(request.createdAt)}</div>
               </div>
-
               <div>
                 <div className="font-semibold text-gray-500 dark:text-gray-400">
                   Vagt / behov
@@ -175,7 +163,6 @@ export default function StaffingRequestsListSection({
                     {userRole === "ADMIN" ? "Acceptér selv" : "Acceptér"}
                   </button>
                 ) : null}
-
                 {canReject ? (
                   <button
                     type="button"
@@ -186,7 +173,6 @@ export default function StaffingRequestsListSection({
                     Afvis
                   </button>
                 ) : null}
-
                 {canCancel ? (
                   <button
                     type="button"

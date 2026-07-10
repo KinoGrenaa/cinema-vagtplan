@@ -4,12 +4,10 @@ export default function StaffingRequestsMasterCinemaRequired() {
       <div className="text-sm font-medium uppercase tracking-wide">
         Biograf mangler
       </div>
-
       <p className="mt-2 text-sm">
         Vælg først en biograf i MASTER-panelet, før du administrerer
         bemandingsforespørgsler.
       </p>
-
       <a
         href="/master"
         className="mt-4 inline-flex rounded-xl bg-yellow-700 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-800"
