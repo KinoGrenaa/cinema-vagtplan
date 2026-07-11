@@ -1,18 +1,19 @@
 import { useEffect, useRef, useState } from "react";
+
 import type {
   CinemaPayrollSettings,
   PayrollAuditHistory,
   PayrollEmployee,
   PayrollPeriod,
   User,
-} from "../types";
+} from "../../types";
 import {
   fetchCinemaPayrollSettings,
   fetchPayrollAuditHistory,
   fetchPayrollPeriod,
   fetchPayrollReport,
   fetchUsers,
-} from "../services/payrollService";
+} from "../../services/payrollService";
 
 type Props = {
   startDate: string;
@@ -41,7 +42,6 @@ export function usePayrollData({
 }: Props) {
   const [cinemaSettings, setCinemaSettings] =
     useState<CinemaPayrollSettings | null>(null);
-
   const [users, setUsers] = useState<User[]>([]);
   const [report, setReport] = useState<PayrollEmployee[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -50,6 +50,7 @@ export function usePayrollData({
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [auditHistory, setAuditHistory] = useState<PayrollAuditHistory[]>([]);
   const [loading, setLoading] = useState(false);
+
   const payrollRequestIdRef = useRef(0);
 
   function isLatestPayrollRequest(requestId: number) {
@@ -94,7 +95,6 @@ export function usePayrollData({
       setUsers(data);
     } catch (error) {
       setUsers([]);
-
       onError?.(
         "Kunne ikke hente medarbejdere",
         getErrorDescription(
@@ -128,7 +128,6 @@ export function usePayrollData({
       setPendingCount(0);
       setVoidedCount(0);
       setAdjustmentCount(0);
-
       onError?.(
         "Kunne ikke hente lønrapport",
         getErrorDescription(
@@ -157,7 +156,6 @@ export function usePayrollData({
       if (!isLatestPayrollRequest(requestId)) return;
 
       setPeriod(null);
-
       onError?.(
         "Kunne ikke hente lønperiodestatus",
         getErrorDescription(
@@ -182,7 +180,6 @@ export function usePayrollData({
       if (!isLatestPayrollRequest(requestId)) return;
 
       setAuditHistory([]);
-
       onError?.(
         "Kunne ikke hente lønhistorik",
         getErrorDescription(

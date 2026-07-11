@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   lockPayrollPeriod,
   unlockPayrollPeriod,
-} from "../services/payrollService";
+} from "../../services/payrollService";
 
 type ConfirmDialog = {
   confirm: (options: {
@@ -70,7 +70,6 @@ export function usePayrollPeriodActions({
             startDate,
             endDate,
           });
-
           await refreshPayroll();
         } catch (error) {
           infoDialog.showError(
@@ -108,7 +107,6 @@ export function usePayrollPeriodActions({
           setUnlocking(true);
 
           await unlockPayrollPeriod(periodId, note);
-
           await refreshPayroll();
         } catch (error) {
           infoDialog.showError(

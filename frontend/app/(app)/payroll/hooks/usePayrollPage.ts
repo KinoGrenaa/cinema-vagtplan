@@ -10,10 +10,10 @@ import { usePayrollMasterCinema } from "./context/usePayrollMasterCinema";
 import { usePayrollAdvancedFilters } from "./ui/usePayrollAdvancedFilters";
 import { usePayrollEmployeeExpansion } from "./ui/usePayrollEmployeeExpansion";
 import { usePayrollExportModal } from "./ui/usePayrollExportModal";
-import { usePayrollData } from "./usePayrollData";
-import { usePayrollExport } from "./usePayrollExport";
+import { usePayrollData } from "./data/usePayrollData";
+import { usePayrollExport } from "./actions/usePayrollExport";
 import { usePayrollFilters } from "./usePayrollFilters";
-import { usePayrollPeriodActions } from "./usePayrollPeriodActions";
+import { usePayrollPeriodActions } from "./actions/usePayrollPeriodActions";
 import { usePayrollStats } from "./usePayrollStats";
 
 export function usePayrollPage() {

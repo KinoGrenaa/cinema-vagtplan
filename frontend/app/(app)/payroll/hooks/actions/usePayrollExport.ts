@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { toast } from "sonner";
+
 import {
   downloadPayrollExport,
   type PayrollExportType,
-} from "../services/payrollService";
+} from "../../services/payrollService";
 
 type UsePayrollExportProps = {
   startDate: string;
@@ -43,6 +44,7 @@ export function usePayrollExport({
 
       link.href = url;
       link.download = filename;
+
       document.body.appendChild(link);
       link.click();
       link.remove();
