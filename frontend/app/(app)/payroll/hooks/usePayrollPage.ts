@@ -12,9 +12,9 @@ import { usePayrollEmployeeExpansion } from "./ui/usePayrollEmployeeExpansion";
 import { usePayrollExportModal } from "./ui/usePayrollExportModal";
 import { usePayrollData } from "./data/usePayrollData";
 import { usePayrollExport } from "./actions/usePayrollExport";
-import { usePayrollFilters } from "./usePayrollFilters";
+import { usePayrollFilters } from "./filters/usePayrollFilters";
 import { usePayrollPeriodActions } from "./actions/usePayrollPeriodActions";
-import { usePayrollStats } from "./usePayrollStats";
+import { usePayrollStats } from "./derived/usePayrollStats";
 
 export function usePayrollPage() {
   const router = useRouter();

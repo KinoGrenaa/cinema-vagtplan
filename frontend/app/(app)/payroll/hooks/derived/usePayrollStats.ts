@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import type { PayrollEmployee } from "../types";
+
+import type { PayrollEmployee } from "../../types";
 
 export function usePayrollStats(report: PayrollEmployee[]) {
   const totalHours = useMemo(() => {
@@ -12,7 +13,9 @@ export function usePayrollStats(report: PayrollEmployee[]) {
         sum +
         employee.entries.reduce((entrySum, entry) => {
           const code = entry.payrollCode || "";
-          return code.includes("OVERTIME") ? entrySum + entry.hours : entrySum;
+          return code.includes("OVERTIME")
+            ? entrySum + entry.hours
+            : entrySum;
         }, 0)
       );
     }, 0);
@@ -24,7 +27,9 @@ export function usePayrollStats(report: PayrollEmployee[]) {
         sum +
         employee.entries.reduce((entrySum, entry) => {
           const code = entry.payrollCode || "";
-          return code.includes("WEEKEND") ? entrySum + entry.hours : entrySum;
+          return code.includes("WEEKEND")
+            ? entrySum + entry.hours
+            : entrySum;
         }, 0)
       );
     }, 0);
@@ -36,7 +41,9 @@ export function usePayrollStats(report: PayrollEmployee[]) {
         sum +
         employee.entries.reduce((entrySum, entry) => {
           const code = entry.payrollCode || "";
-          return code.includes("EVENING") ? entrySum + entry.hours : entrySum;
+          return code.includes("EVENING")
+            ? entrySum + entry.hours
+            : entrySum;
         }, 0)
       );
     }, 0);
@@ -125,7 +132,9 @@ export function usePayrollStats(report: PayrollEmployee[]) {
       })
       .filter(
         (employee) =>
-          employee.overtime > 0 || employee.weekend > 10 || employee.night > 5,
+          employee.overtime > 0 ||
+          employee.weekend > 10 ||
+          employee.night > 5,
       )
       .sort((a, b) => b.overtime - a.overtime);
   }, [report]);
