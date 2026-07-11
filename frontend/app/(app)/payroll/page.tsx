@@ -3,7 +3,7 @@
 import PermissionGuard from "@/app/components/PermissionGuard";
 
 import PayrollMasterCinemaRequired from "./components/layout/PayrollMasterCinemaRequired";
-import PayrollPageContent from "./components/PayrollPageContent";
+import PayrollPageContent from "./components/layout/PayrollPageContent";
 import { usePayrollPage } from "./hooks/usePayrollPage";
 
 export default function PayrollPage() {

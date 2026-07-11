@@ -1,6 +1,6 @@
 import { formatDateDK } from "@/app/utils/dateTime";
 
-import { describePayrollModel } from "../utils";
+import { describePayrollModel } from "../../utils";
 
 type PayrollHeaderUser = {
   id: number | string;
@@ -58,18 +58,15 @@ export default function PayrollHeader({
             Gennemgå timer, håndter afvigelser og klargør lønperioden til
             eksport.
           </p>
-
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
               {describePayrollModel(cinemaSettings)}
             </span>
-
             {pendingCount > 0 && (
               <span className="rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                 {pendingCount} afventer godkendelse
               </span>
             )}
-
             {adjustmentCount > 0 && (
               <span className="rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
                 {adjustmentCount} efterregulering
@@ -83,11 +80,9 @@ export default function PayrollHeader({
           <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
             Valgt lønperiode
           </div>
-
           <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
             {formatDateDK(startDate)} → {formatDateDK(endDate)}
           </div>
-
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
@@ -96,7 +91,6 @@ export default function PayrollHeader({
             >
               Forrige
             </button>
-
             <button
               type="button"
               onClick={onApplyCurrentPayrollPeriod}
@@ -104,7 +98,6 @@ export default function PayrollHeader({
             >
               Aktuel
             </button>
-
             <button
               type="button"
               onClick={onNextPayrollPeriod}
@@ -112,7 +105,6 @@ export default function PayrollHeader({
             >
               Næste
             </button>
-
             <button
               type="button"
               onClick={onToggleAdvancedFilters}
@@ -171,7 +163,6 @@ export default function PayrollHeader({
                 className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
               >
                 <option value="">Alle medarbejdere</option>
-
                 {users.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.firstName} {user.lastName}

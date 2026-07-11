@@ -1,13 +1,13 @@
-import type { usePayrollPage } from "../hooks/usePayrollPage";
+import type { usePayrollPage } from "../../hooks/usePayrollPage";
 
-import PayrollAdjustmentsSection from "./PayrollAdjustmentsSection";
-import PayrollAdvancedAnalysisSection from "./PayrollAdvancedAnalysisSection";
-import PayrollEmployeesSection from "./report/PayrollEmployeesSection";
+import PayrollModals from "../modals/PayrollModals";
+import PayrollAttentionTable from "../overview/PayrollAttentionTable";
+import PayrollPeriodStatus from "../overview/PayrollPeriodStatus";
+import PayrollSummaryCards from "../overview/PayrollSummaryCards";
+import PayrollAdjustmentsSection from "../report/PayrollAdjustmentsSection";
+import PayrollAdvancedAnalysisSection from "../report/PayrollAdvancedAnalysisSection";
+import PayrollEmployeesSection from "../report/PayrollEmployeesSection";
 import PayrollHeader from "./PayrollHeader";
-import PayrollModals from "./modals/PayrollModals";
-import PayrollAttentionTable from "./overview/PayrollAttentionTable";
-import PayrollPeriodStatus from "./overview/PayrollPeriodStatus";
-import PayrollSummaryCards from "./overview/PayrollSummaryCards";
 
 type PayrollPageState = ReturnType<typeof usePayrollPage>;
 
