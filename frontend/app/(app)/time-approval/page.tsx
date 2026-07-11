@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
@@ -13,12 +12,11 @@ import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { useAuth } from "@/app/providers/AuthProvider";
-
 import TimeApprovalFilterModal from "./components/filters/TimeApprovalFilterModal";
 import TimeApprovalContent from "./components/layout/TimeApprovalContent";
 import PayrollAdjustmentConfirmationModal from "./components/modals/PayrollAdjustmentConfirmationModal";
 import { useTimeApprovalActions } from "./hooks/useTimeApprovalActions";
-import { useTimeApprovalData } from "./hooks/useTimeApprovalData";
+import { useTimeApprovalData } from "./hooks/data/useTimeApprovalData";
 import { useTimeApprovalFilters } from "./hooks/useTimeApprovalFilters";
 import { useTimeApprovalHistory } from "./hooks/useTimeApprovalHistory";
 
