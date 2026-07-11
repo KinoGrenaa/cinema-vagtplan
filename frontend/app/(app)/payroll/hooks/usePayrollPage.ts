@@ -6,13 +6,13 @@ import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { useAuth } from "@/app/providers/AuthProvider";
 
-import { usePayrollAdvancedFilters } from "./usePayrollAdvancedFilters";
+import { usePayrollMasterCinema } from "./context/usePayrollMasterCinema";
+import { usePayrollAdvancedFilters } from "./ui/usePayrollAdvancedFilters";
+import { usePayrollEmployeeExpansion } from "./ui/usePayrollEmployeeExpansion";
+import { usePayrollExportModal } from "./ui/usePayrollExportModal";
 import { usePayrollData } from "./usePayrollData";
-import { usePayrollEmployeeExpansion } from "./usePayrollEmployeeExpansion";
 import { usePayrollExport } from "./usePayrollExport";
-import { usePayrollExportModal } from "./usePayrollExportModal";
 import { usePayrollFilters } from "./usePayrollFilters";
-import { usePayrollMasterCinema } from "./usePayrollMasterCinema";
 import { usePayrollPeriodActions } from "./usePayrollPeriodActions";
 import { usePayrollStats } from "./usePayrollStats";
 
@@ -22,8 +22,8 @@ export function usePayrollPage() {
   const inputDialog = useInputModal();
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
-  const { isMasterWithoutActiveCinema } = usePayrollMasterCinema(user);
 
+  const { isMasterWithoutActiveCinema } = usePayrollMasterCinema(user);
   const payrollDataEnabled = Boolean(user) && !isMasterWithoutActiveCinema;
 
   const {
@@ -98,15 +98,22 @@ export function usePayrollPage() {
     refreshPayroll,
   });
 
-  const { exportModalOpen, openExportModal, closeExportModal, exportPayroll } =
-    usePayrollExportModal({
-      downloadExport,
-      showError: infoDialog.showError,
-    });
+  const {
+    exportModalOpen,
+    openExportModal,
+    closeExportModal,
+    exportPayroll,
+  } = usePayrollExportModal({
+    downloadExport,
+    showError: infoDialog.showError,
+  });
+
   const { showAdvancedFilters, toggleAdvancedFilters } =
     usePayrollAdvancedFilters();
+
   const { expandedEmployeeIds, toggleEmployeeGroup } =
     usePayrollEmployeeExpansion();
+
   const { locking, lockPeriod, unlocking, unlockPeriod } =
     usePayrollPeriodActions({
       confirmDialog,

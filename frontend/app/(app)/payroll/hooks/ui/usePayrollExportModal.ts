@@ -25,7 +25,6 @@ export function usePayrollExportModal<TFormat>({
       setExportModalOpen(false);
     } catch (error) {
       setExportModalOpen(false);
-
       setTimeout(() => {
         showError(
           "Kan ikke eksportere lønperiode",
