@@ -1,4 +1,4 @@
-import { formatHours } from "../utils";
+import { formatHours } from "../../utils";
 
 type PayrollSummaryCardsProps = {
   adjustmentCount: number;

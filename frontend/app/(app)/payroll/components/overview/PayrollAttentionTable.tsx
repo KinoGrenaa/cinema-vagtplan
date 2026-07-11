@@ -1,4 +1,4 @@
-import { formatHours } from "../utils";
+import { formatHours } from "../../utils";
 
 type PayrollAttentionEmployee = {
   name: string;
@@ -22,7 +22,6 @@ export default function PayrollAttentionTable({
           <h2 className="text-2xl font-bold text-red-600">
             Registreringer der kræver opmærksomhed
           </h2>
-
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Medarbejdere med høj belastning eller overtid.
           </p>
@@ -46,30 +45,24 @@ export default function PayrollAttentionTable({
                 <th className="pb-3 pr-4">Status</th>
               </tr>
             </thead>
-
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {overtimeWarnings.map((employee) => (
                 <tr key={employee.name}>
                   <td className="py-3 pr-4 font-medium text-gray-900 dark:text-gray-100">
                     {employee.name}
                   </td>
-
                   <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
                     {formatHours(employee.totalHours)}
                   </td>
-
                   <td className="py-3 pr-4 font-bold text-red-600">
                     {formatHours(employee.overtime)}
                   </td>
-
                   <td className="py-3 pr-4 font-bold text-purple-600">
                     {formatHours(employee.weekend)}
                   </td>
-
                   <td className="py-3 pr-4 font-bold text-blue-600">
                     {formatHours(employee.night)}
                   </td>
-
                   <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
                     {employee.overtime > 0 ? (
                       <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">

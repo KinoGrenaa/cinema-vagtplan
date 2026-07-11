@@ -1,5 +1,6 @@
-import type { PayrollPeriodStatusProps } from "../types";
-import { formatDateTime, formatHours } from "../utils";
+import type { PayrollPeriodStatusProps } from "../../types";
+
+import { formatDateTime, formatHours } from "../../utils";
 import PayrollWarnings from "./PayrollWarnings";
 
 export default function PayrollPeriodStatus({
@@ -20,14 +21,12 @@ export default function PayrollPeriodStatus({
   const isOpenPeriod = periodStatus === "OPEN" || periodStatus === "UNLOCKED";
   const hasWarnings =
     pendingCount > 0 || voidedCount > 0 || adjustmentCount > 0;
-
   const statusLabel =
     periodStatus === "LOCKED"
       ? "Låst"
       : periodStatus === "EXPORTED"
         ? "Eksporteret"
         : "Åben";
-
   const statusClasses =
     periodStatus === "LOCKED"
       ? "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
@@ -43,8 +42,9 @@ export default function PayrollPeriodStatus({
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
               Status og handlinger
             </h2>
-
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses}`}>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses}`}
+            >
               {statusLabel}
             </span>
           </div>
@@ -57,7 +57,9 @@ export default function PayrollPeriodStatus({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-            {period?.lockedAt && <span>Låst: {formatDateTime(period.lockedAt)}</span>}
+            {period?.lockedAt && (
+              <span>Låst: {formatDateTime(period.lockedAt)}</span>
+            )}
             {period?.exportedAt && (
               <span>Eksporteret: {formatDateTime(period.exportedAt)}</span>
             )}

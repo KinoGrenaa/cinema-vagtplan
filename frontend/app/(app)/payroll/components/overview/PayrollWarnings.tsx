@@ -1,4 +1,4 @@
-import type { PayrollWarningsProps } from "../types";
+import type { PayrollWarningsProps } from "../../types";
 
 export default function PayrollWarnings({
   pendingCount,
@@ -17,11 +17,9 @@ export default function PayrollWarnings({
           <div className="font-semibold">
             {pendingCount} afventer godkendelse
           </div>
-
           <div className="mt-1 text-sm">
             Skal håndteres, før perioden kan eksporteres korrekt.
           </div>
-
           <button
             type="button"
             onClick={onOpenTimeApproval}
@@ -38,7 +36,6 @@ export default function PayrollWarnings({
             {adjustmentCount} efterregulering
             {adjustmentCount === 1 ? "" : "er"}
           </div>
-
           <div className="mt-1 text-sm">
             Medtages separat i denne lønperiode.
           </div>
@@ -47,8 +44,9 @@ export default function PayrollWarnings({
 
       {voidedCount > 0 && (
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-200">
-          <div className="font-semibold">{voidedCount} afvist/annulleret</div>
-
+          <div className="font-semibold">
+            {voidedCount} afvist/annulleret
+          </div>
           <div className="mt-1 text-sm">
             Indgår ikke i løngrundlaget, men bevares i historikken.
           </div>

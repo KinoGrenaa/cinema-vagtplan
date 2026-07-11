@@ -1,13 +1,13 @@
 import type { usePayrollPage } from "../hooks/usePayrollPage";
 
-import PayrollAttentionTable from "./PayrollAttentionTable";
-import PayrollPeriodStatus from "./PayrollPeriodStatus";
-import PayrollHeader from "./PayrollHeader";
-import PayrollSummaryCards from "./PayrollSummaryCards";
-import PayrollEmployeesSection from "./PayrollEmployeesSection";
 import PayrollAdjustmentsSection from "./PayrollAdjustmentsSection";
 import PayrollAdvancedAnalysisSection from "./PayrollAdvancedAnalysisSection";
-import PayrollModals from "./PayrollModals";
+import PayrollEmployeesSection from "./PayrollEmployeesSection";
+import PayrollHeader from "./PayrollHeader";
+import PayrollModals from "./modals/PayrollModals";
+import PayrollAttentionTable from "./overview/PayrollAttentionTable";
+import PayrollPeriodStatus from "./overview/PayrollPeriodStatus";
+import PayrollSummaryCards from "./overview/PayrollSummaryCards";
 
 type PayrollPageState = ReturnType<typeof usePayrollPage>;
 
@@ -74,6 +74,7 @@ export default function PayrollPageContent({
           aria-hidden="true"
           className="fixed inset-0 -z-10 bg-gray-50 dark:bg-gray-950"
         />
+
         <PayrollHeader
           adjustmentCount={adjustmentCount}
           cinemaSettings={cinemaSettings}
