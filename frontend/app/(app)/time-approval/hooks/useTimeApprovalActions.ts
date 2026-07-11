@@ -4,13 +4,17 @@ import { useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 import { toast } from "sonner";
+
 import type { TimeEntry } from "../types";
+
 import { formatDateTime, readErrorMessage } from "../utils";
+
 import {
   getPayrollConflictDetails,
   getSelectedCinemaQuery,
 } from "../helpers/timeApprovalRequests";
-import type { PayrollAdjustmentConfirmation } from "../components/PayrollAdjustmentConfirmationModal";
+
+import type { PayrollAdjustmentConfirmation } from "../components/modals/PayrollAdjustmentConfirmationModal";
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;
@@ -65,7 +69,6 @@ export function useTimeApprovalActions({
         confirmText: "OK",
         onConfirm: async () => {},
       });
-
       return;
     }
 
@@ -101,7 +104,6 @@ export function useTimeApprovalActions({
       onConfirm: async () => {
         try {
           setSavingEdit(true);
-
           const response = await apiFetch(
             `/time-entries/${editEntry.id}${getSelectedCinemaQuery()}`,
             {
@@ -112,14 +114,11 @@ export function useTimeApprovalActions({
 
           if (!response.ok) {
             if (response.status === 401) return;
-
             const message = await readErrorMessage(
               response,
               "Kunne ikke redigere timeregistrering",
             );
-
             infoDialog.showError("Kunne ikke gemme rettelsen", message);
-
             return;
           }
 
@@ -169,7 +168,6 @@ export function useTimeApprovalActions({
               details.message ||
                 "Lås lønperioden op før tidsregistreringen kan godkendes.",
             );
-
             return;
           }
 
@@ -213,14 +211,11 @@ export function useTimeApprovalActions({
     if (!payrollAdjustmentConfirmation) return;
 
     const entry = payrollAdjustmentConfirmation.entry;
-
     try {
       setConfirmingPayrollAdjustment(true);
-
       await approve(entry, {
         confirmPayrollAdjustment: true,
       });
-
       setPayrollAdjustmentConfirmation(null);
     } finally {
       setConfirmingPayrollAdjustment(false);
@@ -238,7 +233,6 @@ export function useTimeApprovalActions({
 
       if (!response.ok) {
         if (response.status === 401) return;
-
         throw new Error(
           await readErrorMessage(response, "Kunne ikke fjerne godkendelse"),
         );
@@ -269,13 +263,11 @@ export function useTimeApprovalActions({
       required: true,
       onConfirm: async (value: string) => {
         const adminNote = value.trim();
-
         if (!adminNote) {
           infoDialog.showError(
             "Besked mangler",
             "Du skal skrive en besked til medarbejderen.",
           );
-
           return;
         }
 
@@ -292,14 +284,11 @@ export function useTimeApprovalActions({
 
           if (!response.ok) {
             if (response.status === 401) return;
-
             const message = await readErrorMessage(
               response,
               "Kunne ikke sende timeregistrering retur",
             );
-
             infoDialog.showError("Kan ikke sendes retur", message);
-
             return;
           }
 
@@ -330,13 +319,11 @@ export function useTimeApprovalActions({
       required: true,
       onConfirm: async (value: string) => {
         const adminNote = value.trim();
-
         if (!adminNote) {
           infoDialog.showError(
             "Intern note mangler",
             "Du skal skrive en intern note for annulleringen.",
           );
-
           return;
         }
 
@@ -353,17 +340,14 @@ export function useTimeApprovalActions({
 
           if (!response.ok) {
             if (response.status === 401) return;
-
             const message = await readErrorMessage(
               response,
               "Kunne ikke annullere tidsregistrering",
             );
-
             infoDialog.showError(
               "Kunne ikke annullere tidsregistrering",
               message,
             );
-
             return;
           }
 
