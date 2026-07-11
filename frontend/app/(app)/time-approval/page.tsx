@@ -4,32 +4,21 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AdminGuard from "@/app/components/AdminGuard";
-
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
-
 import InputModal from "@/app/components/modals/InputModal";
-
 import TimeEntryEditModal from "@/app/components/modals/TimeEntryEditModal";
-
 import TimeEntryHistoryModal from "@/app/components/time-entries/TimeEntryHistoryModal";
-
 import { useConfirm } from "@/app/hooks/useConfirm";
-
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { useAuth } from "@/app/providers/AuthProvider";
-import TimeApprovalContent from "./components/TimeApprovalContent";
 
-import TimeApprovalFilterModal from "./components/TimeApprovalFilterModal";
-
+import TimeApprovalFilterModal from "./components/filters/TimeApprovalFilterModal";
+import TimeApprovalContent from "./components/layout/TimeApprovalContent";
 import PayrollAdjustmentConfirmationModal from "./components/PayrollAdjustmentConfirmationModal";
-
 import { useTimeApprovalActions } from "./hooks/useTimeApprovalActions";
-
 import { useTimeApprovalData } from "./hooks/useTimeApprovalData";
-
 import { useTimeApprovalFilters } from "./hooks/useTimeApprovalFilters";
 import { useTimeApprovalHistory } from "./hooks/useTimeApprovalHistory";
 
@@ -77,9 +66,7 @@ export default function TimeApprovalPage() {
     user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
 
   const inputDialog = useInputModal();
-
   const infoDialog = useInfoModal();
-
   const errorDialog = useConfirm();
 
   const { entries, loading, fetchEntries } = useTimeApprovalData({
@@ -210,6 +197,7 @@ export default function TimeApprovalPage() {
                 onSave={saveEdit}
               />
             )}
+
             <TimeApprovalFilterModal
               open={showFilterModal}
               activeFilterCount={activeFilterCount}
@@ -258,6 +246,7 @@ export default function TimeApprovalPage() {
         onCancel={() => setPayrollAdjustmentConfirmation(null)}
         onConfirm={confirmPayrollAdjustmentApproval}
       />
+
       <ConfirmModal
         open={errorDialog.open}
         title={errorDialog.title}
