@@ -6,7 +6,7 @@ import { apiFetch } from "@/app/lib/api";
 
 import type { TimeEntry } from "../../types";
 import { readErrorMessage } from "../../utils";
-import { getSelectedCinemaQuery } from "../../helpers/timeApprovalRequests";
+import { getSelectedCinemaQuery } from "../../helpers/core/timeApprovalRequests";
 
 type TimeEntryRevision = {
   id: number;

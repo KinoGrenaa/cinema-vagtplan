@@ -1,7 +1,7 @@
 import type {
   PayrollApprovalConflict,
   PayrollPeriodInfo,
-} from "../components/modals/PayrollAdjustmentConfirmationModal";
+} from "../../components/modals/PayrollAdjustmentConfirmationModal";
 
 export function getSelectedCinemaQuery() {
   const selectedCinemaId =

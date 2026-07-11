@@ -1,4 +1,4 @@
-import type { TimeEntry } from "../types";
+import type { TimeEntry } from "../../types";
 
 export type TimeApprovalFilters = {
   employeeSearch: string;
@@ -22,9 +22,11 @@ export function getVisibleEntries(
     if (!entry.clockIn || !entry.clockOut) return false;
 
     if (entry.status === "PENDING" && !filters.showPending) return false;
+
     if (entry.status === "NEEDS_CHANGES" && !filters.showNeedsChanges) {
       return false;
     }
+
     if (entry.status === "APPROVED" && !filters.showApproved) return false;
     if (entry.status === "VOIDED" && !filters.showVoided) return false;
 
@@ -36,6 +38,7 @@ export function getVisibleEntries(
     if (filters.onlyWithDeviations && !entry.deviation?.hasDeviation) {
       return false;
     }
+
     if (filters.onlyWithNotes && !hasEntryNote(entry)) return false;
 
     const entryDate = getEntryLocalDate(entry);
@@ -103,7 +106,6 @@ export function getGroupedEntries(visibleEntries: TimeEntry[]) {
           entries: [entry],
         });
       }
-
       return groups;
     }, new Map<string, { user: TimeEntry["user"]; entries: TimeEntry[] }>()),
   )
@@ -128,7 +130,6 @@ export function getGroupedEntries(visibleEntries: TimeEntry[]) {
     .sort((a, b) => {
       const nameA = `${a.user.firstName} ${a.user.lastName}`.toLowerCase();
       const nameB = `${b.user.firstName} ${b.user.lastName}`.toLowerCase();
-
       return nameA.localeCompare(nameB, "da-DK");
     });
 }

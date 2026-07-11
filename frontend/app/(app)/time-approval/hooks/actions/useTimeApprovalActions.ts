@@ -12,7 +12,7 @@ import { formatDateTime, readErrorMessage } from "../../utils";
 import {
   getPayrollConflictDetails,
   getSelectedCinemaQuery,
-} from "../../helpers/timeApprovalRequests";
+} from "../../helpers/core/timeApprovalRequests";
 
 import type { PayrollAdjustmentConfirmation } from "../../components/modals/PayrollAdjustmentConfirmationModal";
 

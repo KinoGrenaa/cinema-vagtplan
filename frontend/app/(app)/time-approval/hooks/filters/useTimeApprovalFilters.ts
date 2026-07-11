@@ -8,7 +8,7 @@ import {
   getGroupedEntries,
   getTimeApprovalStatusCounts,
   getVisibleEntries,
-} from "../../helpers/timeApprovalFilters";
+} from "../../helpers/core/timeApprovalFilters";
 
 export function useTimeApprovalFilters(entries: TimeEntry[]) {
   const [showFilterModal, setShowFilterModal] = useState(false);
