@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 
-import type { TimeEntry } from "../types";
+import type { TimeEntry } from "../../types";
 import {
   getActiveFilterCount,
   getGroupedEntries,
   getTimeApprovalStatusCounts,
   getVisibleEntries,
-} from "../helpers/timeApprovalFilters";
+} from "../../helpers/timeApprovalFilters";
 
 export function useTimeApprovalFilters(entries: TimeEntry[]) {
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -57,10 +57,8 @@ export function useTimeApprovalFilters(entries: TimeEntry[]) {
   };
 
   const visibleEntries = getVisibleEntries(entries, filters);
-
   const { pendingCount, approvedCount, needsChangesCount, voidedCount } =
     getTimeApprovalStatusCounts(entries);
-
   const activeFilterCount = getActiveFilterCount(filters);
 
   function resetFilters() {

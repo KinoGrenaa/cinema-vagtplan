@@ -3,34 +3,28 @@
 import { useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
-import type { TimeEntry } from "../types";
-import { readErrorMessage } from "../utils";
-import { getSelectedCinemaQuery } from "../helpers/timeApprovalRequests";
+
+import type { TimeEntry } from "../../types";
+import { readErrorMessage } from "../../utils";
+import { getSelectedCinemaQuery } from "../../helpers/timeApprovalRequests";
 
 type TimeEntryRevision = {
   id: number;
   action: string;
   reason?: string | null;
   createdAt: string;
-
   previousStatus?: string | null;
   newStatus?: string | null;
-
   previousClockIn?: string | null;
   newClockIn?: string | null;
-
   previousClockOut?: string | null;
   newClockOut?: string | null;
-
   previousClockInNote?: string | null;
   newClockInNote?: string | null;
-
   previousClockOutNote?: string | null;
   newClockOutNote?: string | null;
-
   previousAdminNote?: string | null;
   newAdminNote?: string | null;
-
   changedByUser?: {
     id: number;
     firstName: string;
@@ -76,14 +70,12 @@ export function useTimeApprovalHistory({
       }
 
       const data = await response.json();
-
       setHistoryItems(Array.isArray(data) ? data : []);
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke hente historik",
         error instanceof Error ? error.message : "Kunne ikke hente historik",
       );
-
       setHistoryItems([]);
     } finally {
       setHistoryLoading(false);

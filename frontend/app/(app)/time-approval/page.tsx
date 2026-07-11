@@ -17,8 +17,8 @@ import TimeApprovalContent from "./components/layout/TimeApprovalContent";
 import PayrollAdjustmentConfirmationModal from "./components/modals/PayrollAdjustmentConfirmationModal";
 import { useTimeApprovalActions } from "./hooks/actions/useTimeApprovalActions";
 import { useTimeApprovalData } from "./hooks/data/useTimeApprovalData";
-import { useTimeApprovalFilters } from "./hooks/useTimeApprovalFilters";
-import { useTimeApprovalHistory } from "./hooks/useTimeApprovalHistory";
+import { useTimeApprovalFilters } from "./hooks/filters/useTimeApprovalFilters";
+import { useTimeApprovalHistory } from "./hooks/data/useTimeApprovalHistory";
 
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
 
