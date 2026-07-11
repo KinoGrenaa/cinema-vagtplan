@@ -16,7 +16,7 @@ import { useAuth } from "@/app/providers/AuthProvider";
 
 import TimeApprovalFilterModal from "./components/filters/TimeApprovalFilterModal";
 import TimeApprovalContent from "./components/layout/TimeApprovalContent";
-import PayrollAdjustmentConfirmationModal from "./components/PayrollAdjustmentConfirmationModal";
+import PayrollAdjustmentConfirmationModal from "./components/modals/PayrollAdjustmentConfirmationModal";
 import { useTimeApprovalActions } from "./hooks/useTimeApprovalActions";
 import { useTimeApprovalData } from "./hooks/useTimeApprovalData";
 import { useTimeApprovalFilters } from "./hooks/useTimeApprovalFilters";
