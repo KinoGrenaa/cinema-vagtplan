@@ -1,4 +1,4 @@
-import type { PayrollType } from "../helpers/workTypeTypes";
+import type { PayrollType } from "../../helpers/workTypeTypes";
 
 type WorkTypeFormSectionProps = {
   name: string;
@@ -39,7 +39,6 @@ export default function WorkTypeFormSection({
 
         <label className="flex items-center gap-3 rounded-xl border p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
           <span>Farve</span>
-
           <input
             type="color"
             value={color}
@@ -55,7 +54,6 @@ export default function WorkTypeFormSection({
           disabled={disabled}
         >
           <option value="">Ingen lønart</option>
-
           {payrollTypes.map((type) => (
             <option key={type.id} value={type.id}>
               {type.name} ({type.payrollCode})

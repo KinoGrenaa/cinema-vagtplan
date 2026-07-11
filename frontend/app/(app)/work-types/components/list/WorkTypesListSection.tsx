@@ -1,4 +1,4 @@
-import type { WorkType } from "../helpers/workTypeTypes";
+import type { WorkType } from "../../helpers/workTypeTypes";
 
 type WorkTypesListSectionProps = {
   workTypes: WorkType[];
@@ -90,7 +90,9 @@ export default function WorkTypesListSection({
                     {workType.isActive ? (
                       <span className="font-semibold text-green-600">Aktiv</span>
                     ) : (
-                      <span className="font-semibold text-gray-500">Arkiveret</span>
+                      <span className="font-semibold text-gray-500">
+                        Arkiveret
+                      </span>
                     )}
                   </td>
 

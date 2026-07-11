@@ -3,14 +3,13 @@
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
-
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 
-import WorkTypeFormSection from "./components/WorkTypeFormSection";
-import WorkTypesHeader from "./components/WorkTypesHeader";
-import WorkTypesListSection from "./components/WorkTypesListSection";
-import WorkTypesMasterCinemaRequired from "./components/WorkTypesMasterCinemaRequired";
+import WorkTypeFormSection from "./components/form/WorkTypeFormSection";
+import WorkTypesHeader from "./components/layout/WorkTypesHeader";
+import WorkTypesMasterCinemaRequired from "./components/layout/WorkTypesMasterCinemaRequired";
+import WorkTypesListSection from "./components/list/WorkTypesListSection";
 import { useWorkTypeActions } from "./hooks/useWorkTypeActions";
 import { useWorkTypesData } from "./hooks/useWorkTypesData";
 
