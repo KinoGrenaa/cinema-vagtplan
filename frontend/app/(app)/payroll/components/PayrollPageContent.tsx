@@ -2,7 +2,7 @@ import type { usePayrollPage } from "../hooks/usePayrollPage";
 
 import PayrollAdjustmentsSection from "./PayrollAdjustmentsSection";
 import PayrollAdvancedAnalysisSection from "./PayrollAdvancedAnalysisSection";
-import PayrollEmployeesSection from "./PayrollEmployeesSection";
+import PayrollEmployeesSection from "./report/PayrollEmployeesSection";
 import PayrollHeader from "./PayrollHeader";
 import PayrollModals from "./modals/PayrollModals";
 import PayrollAttentionTable from "./overview/PayrollAttentionTable";

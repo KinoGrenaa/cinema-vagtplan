@@ -3,9 +3,11 @@
 import type { ComponentProps } from "react";
 
 import PayrollEmployeeSummaryTable from "./PayrollEmployeeSummaryTable";
-import { formatDateTime, formatHours } from "../utils";
+import { formatDateTime, formatHours } from "../../utils";
 
-type PayrollReport = ComponentProps<typeof PayrollEmployeeSummaryTable>["report"];
+type PayrollReport = ComponentProps<
+  typeof PayrollEmployeeSummaryTable
+>["report"];
 
 type PayrollEmployeesSectionProps = {
   expandedEmployeeIds: number[];
@@ -32,7 +34,6 @@ export default function PayrollEmployeesSection({
             medarbejder.
           </p>
         </div>
-
         <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
           {report.length} medarbejder{report.length === 1 ? "" : "e"}
         </div>
@@ -95,7 +96,6 @@ export default function PayrollEmployeesSection({
                           {formatHours(employee.totalHours)}
                         </div>
                       </div>
-
                       <div className="rounded-full border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-600 dark:text-gray-200">
                         {isExpanded ? "Skjul" : "Vis"}
                       </div>
@@ -118,7 +118,6 @@ export default function PayrollEmployeesSection({
                             <th className="p-2">Låst</th>
                           </tr>
                         </thead>
-
                         <tbody>
                           {employee.entries.map((entry, index) => (
                             <tr

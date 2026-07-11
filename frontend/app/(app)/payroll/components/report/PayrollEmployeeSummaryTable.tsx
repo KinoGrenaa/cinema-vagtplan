@@ -1,5 +1,6 @@
-import type { PayrollEmployee } from "../types";
-import { formatHours } from "../utils";
+import type { PayrollEmployee } from "../../types";
+
+import { formatHours } from "../../utils";
 
 type PayrollEmployeeSummaryTableProps = {
   report: PayrollEmployee[];
@@ -23,40 +24,34 @@ export default function PayrollEmployeeSummaryTable({
             <th className="pb-3 pr-4">Efterreguleringer</th>
           </tr>
         </thead>
-
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
           {report.map((employee) => {
             const total = employee.entries.reduce(
               (sum, entry) => sum + entry.hours,
               0,
             );
-
             const overtime = employee.entries.reduce((sum, entry) => {
               const code = entry.payrollCode || "";
               return code.includes("OVERTIME") ? sum + entry.hours : sum;
             }, 0);
-
             const weekend = employee.entries.reduce((sum, entry) => {
               const code = entry.payrollCode || "";
               return code.includes("WEEKEND") ? sum + entry.hours : sum;
             }, 0);
-
             const evening = employee.entries.reduce((sum, entry) => {
               const code = entry.payrollCode || "";
               return code.includes("EVENING") ? sum + entry.hours : sum;
             }, 0);
-
             const night = employee.entries.reduce((sum, entry) => {
               const code = entry.payrollCode || "";
               return code.includes("NIGHT") ? sum + entry.hours : sum;
             }, 0);
-
             const adjustmentMinutes =
               employee.payrollAdjustments?.reduce(
-                (sum, adjustment) => sum + Math.round(adjustment.hours * 60),
+                (sum, adjustment) =>
+                  sum + Math.round(adjustment.hours * 60),
                 0,
               ) ?? 0;
-
             const adjustmentHours = adjustmentMinutes / 60;
 
             return (
@@ -64,27 +59,21 @@ export default function PayrollEmployeeSummaryTable({
                 <td className="py-3 pr-4 font-medium text-gray-900 dark:text-gray-100">
                   {employee.name}
                 </td>
-
                 <td className="py-3 pr-4 text-gray-900 dark:text-gray-100">
                   {formatHours(total)}
                 </td>
-
                 <td className="py-3 pr-4 font-medium text-red-600">
                   {formatHours(overtime)}
                 </td>
-
                 <td className="py-3 pr-4 font-medium text-purple-600">
                   {formatHours(weekend)}
                 </td>
-
                 <td className="py-3 pr-4 font-medium text-orange-600">
                   {formatHours(evening)}
                 </td>
-
                 <td className="py-3 pr-4 font-medium text-blue-600">
                   {formatHours(night)}
                 </td>
-
                 <td className="py-3 pr-4">
                   {(employee.deviationCount || 0) > 0 ? (
                     <span className="font-medium text-amber-700 dark:text-amber-300">
