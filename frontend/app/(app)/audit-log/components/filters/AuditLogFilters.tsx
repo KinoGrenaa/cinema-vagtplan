@@ -1,6 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-
-import { getEntityTypeLabel } from "../helpers/auditLogHelpers";
+import { getEntityTypeLabel } from "../../helpers/auditLogHelpers";
 
 type AuditLogFiltersProps = {
   search: string;
@@ -23,7 +22,6 @@ export default function AuditLogFilters({
         <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
           Søg
         </label>
-
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -36,14 +34,12 @@ export default function AuditLogFilters({
         <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
           Type
         </label>
-
         <select
           value={entityFilter}
           onChange={(event) => setEntityFilter(event.target.value)}
           className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
         >
           <option value="ALL">Alle typer</option>
-
           {entityTypes.map((entityType) => (
             <option key={entityType} value={entityType}>
               {getEntityTypeLabel(entityType)}

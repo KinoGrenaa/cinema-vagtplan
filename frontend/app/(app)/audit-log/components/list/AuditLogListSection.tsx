@@ -5,8 +5,8 @@ import {
   getEntityTypeLabel,
   getPerformedBy,
   getSubjectName,
-} from "../helpers/auditLogHelpers";
-import type { AuditLog, AuditLogGroup } from "../helpers/auditLogTypes";
+} from "../../helpers/auditLogHelpers";
+import type { AuditLog, AuditLogGroup } from "../../helpers/auditLogTypes";
 
 type AuditLogListSectionProps = {
   logs: AuditLog[];
@@ -49,7 +49,6 @@ export default function AuditLogListSection({
                 <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {group.dateLabel}
                 </div>
-
                 <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   {group.logs.length} handlinger
                 </div>
@@ -76,7 +75,6 @@ export default function AuditLogListSection({
                         <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                           {getActionLabel(log.action)}
                         </span>
-
                         <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                           {getEntityTypeLabel(log.entityType)}
                         </span>
@@ -125,7 +123,6 @@ export default function AuditLogListSection({
                         <summary className="w-fit cursor-pointer select-none rounded-lg px-0 py-1 hover:text-gray-800 dark:hover:text-gray-300">
                           Vis tekniske detaljer
                         </summary>
-
                         <div className="mt-2 w-fit space-y-1 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-950">
                           <div>Handling: {log.action}</div>
                           <div>Type: {log.entityType}</div>

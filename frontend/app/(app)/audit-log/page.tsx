@@ -4,16 +4,16 @@ import PermissionGuard from "@/app/components/PermissionGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useAuth } from "@/app/providers/AuthProvider";
-
-import AuditLogFilters from "./components/AuditLogFilters";
-import AuditLogHeader from "./components/AuditLogHeader";
-import AuditLogListSection from "./components/AuditLogListSection";
-import AuditLogMasterCinemaRequired from "./components/AuditLogMasterCinemaRequired";
+import AuditLogFilters from "./components/filters/AuditLogFilters";
+import AuditLogHeader from "./components/layout/AuditLogHeader";
+import AuditLogMasterCinemaRequired from "./components/layout/AuditLogMasterCinemaRequired";
+import AuditLogListSection from "./components/list/AuditLogListSection";
 import { useAuditLogData } from "./hooks/useAuditLogData";
 
 export default function AuditLogPage() {
   const { isMaster, user } = useAuth();
   const errorDialog = useInfoModal();
+
   const {
     logs,
     loading,
@@ -40,7 +40,6 @@ export default function AuditLogPage() {
           <div className="min-h-screen bg-gray-50 p-6 text-gray-600 dark:bg-gray-950 dark:text-gray-300">
             Indlæser ændringshistorik...
           </div>
-
           <InfoModal
             open={errorDialog.open}
             title={errorDialog.title}
@@ -59,7 +58,6 @@ export default function AuditLogPage() {
       <PermissionGuard permission="canManageUsers">
         <div className="min-h-screen bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
           <AuditLogMasterCinemaRequired />
-
           <InfoModal
             open={errorDialog.open}
             title={errorDialog.title}
@@ -77,7 +75,6 @@ export default function AuditLogPage() {
     <PermissionGuard permission="canManageUsers">
       <div className="min-h-screen bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
         <AuditLogHeader />
-
         <AuditLogFilters
           search={search}
           setSearch={setSearch}
@@ -85,7 +82,6 @@ export default function AuditLogPage() {
           setEntityFilter={setEntityFilter}
           entityTypes={entityTypes}
         />
-
         <AuditLogListSection
           logs={logs}
           visibleLogs={visibleLogs}
@@ -94,7 +90,6 @@ export default function AuditLogPage() {
           isMaster={isMaster}
           toggleDateGroup={toggleDateGroup}
         />
-
         <InfoModal
           open={errorDialog.open}
           title={errorDialog.title}
