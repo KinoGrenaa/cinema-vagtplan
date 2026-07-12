@@ -4,7 +4,7 @@ import AiStaffingHeatmap from "../../components/dashboard/ai/AiStaffingHeatmap";
 import AiLearningAnalytics from "../../components/dashboard/ai/AiLearningAnalytics";
 import AiPatternInsights from "../../components/dashboard/ai/AiPatternInsights";
 import AiOperationsCommandCenter from "../../components/dashboard/ai/AiOperationsCommandCenter";
-import OperationsStatus from "../../components/dashboard/OperationsStatus";
+import OperationsStatus from "../../components/dashboard/operations/OperationsStatus";
 import { useDashboard } from "../../hooks/useDashboard";
 import DashboardHeader from "./components/layout/DashboardHeader";
 import DashboardOverviewSections from "./components/overview/DashboardOverviewSections";
