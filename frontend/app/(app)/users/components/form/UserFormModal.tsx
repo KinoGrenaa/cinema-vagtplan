@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import type {
   EmploymentType,
   User,
   UserFormData,
   UserRole,
-} from "../helpers/userTypes";
+} from "../../helpers/userTypes";
 
 export function UserModal({
   title,
@@ -29,7 +30,6 @@ export function UserModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
         <h2 className="mb-4 text-2xl font-bold">{title}</h2>
-
         <div className="grid gap-4 md:grid-cols-2">
           <Input
             label="Fornavn"
@@ -80,6 +80,7 @@ export function UserModal({
                 preventBrowserAutofill={preventCreateAutofill}
                 onChange={(value) => setUser({ ...user, password: value })}
               />
+
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Adgangskode skal være mindst 8 tegn.
               </p>
@@ -265,7 +266,6 @@ function PermissionFields({
   return (
     <div className="mt-6 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
       <h3 className="mb-3 font-semibold">Rettigheder</h3>
-
       <div className="grid gap-3 md:grid-cols-2">
         {permissions.map((permission) => (
           <label key={permission.key} className="flex items-center gap-2">

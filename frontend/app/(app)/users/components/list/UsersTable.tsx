@@ -3,8 +3,8 @@
 import {
   getEmploymentTypeLabel,
   getRoleLabel,
-} from "../helpers/userHelpers";
-import type { User } from "../helpers/userTypes";
+} from "../../helpers/userHelpers";
+import type { User } from "../../helpers/userTypes";
 
 type UsersTableProps = {
   visibleUsers: User[];

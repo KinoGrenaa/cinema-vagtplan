@@ -11,12 +11,12 @@ import { useConfirm } from "@/app/hooks/useConfirm";
 
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 
-import { EditUserModal, UserModal } from "./components/UserFormModal";
+import { EditUserModal, UserModal } from "./components/form/UserFormModal";
 
 import UsersHeader from "./components/layout/UsersHeader";
 
 import UsersMasterCinemaRequired from "./components/layout/UsersMasterCinemaRequired";
-import UsersTable from "./components/UsersTable";
+import UsersTable from "./components/list/UsersTable";
 
 import { useUserFormActions } from "./hooks/useUserFormActions";
 
