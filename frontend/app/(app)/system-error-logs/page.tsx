@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
@@ -10,6 +9,10 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { apiFetch } from "@/app/lib/api";
 import { useAuth } from "@/app/providers/AuthProvider";
+
+import SystemErrorLogsAccessState from "./components/layout/SystemErrorLogsAccessState";
+import SystemErrorLogsHeader from "./components/layout/SystemErrorLogsHeader";
+import SystemErrorLogSummaryCards from "./components/overview/SystemErrorLogSummaryCards";
 
 import {
   actionLabels,
@@ -331,76 +334,22 @@ export default function SystemErrorLogsPage() {
   }
 
   if (authLoading) {
-    return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          Kontrollerer adgang...
-        </div>
-      </main>
-    );
+    return <SystemErrorLogsAccessState variant="loading" />;
   }
 
   if (!isMaster) {
-    return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 shadow-sm dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-          <h1 className="text-2xl font-bold">Ingen adgang</h1>
-          <p className="mt-2">Denne side er kun for globale MASTER-brugere.</p>
-        </div>
-      </main>
-    );
+    return <SystemErrorLogsAccessState variant="forbidden" />;
   }
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-wide text-purple-700 dark:text-purple-300">
-                MASTER-værktøj
-              </p>
-              <h1 className="mt-1 text-3xl font-bold">Systemfejllog</h1>
-              <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
-                Se backend-fejl på tværs af systemet, filtrer efter status,
-                niveau og biograf, og markér fejl som set, løst eller ignoreret.
-              </p>
-            </div>
+        <SystemErrorLogsHeader
+          refreshing={loadingLogs || loadingRetentionSummary}
+          onRefresh={refreshPage}
+        />
 
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/master"
-                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-              >
-                Tilbage til MASTER
-              </Link>
-              <button
-                type="button"
-                onClick={refreshPage}
-                disabled={loadingLogs || loadingRetentionSummary}
-                className="rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-purple-500 dark:hover:bg-purple-400"
-              >
-                {loadingLogs || loadingRetentionSummary
-                  ? "Opdaterer..."
-                  : "Opdater liste"}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-3 md:grid-cols-4">
-          {summaryCards.map((card) => (
-            <div
-              key={card.label}
-              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-            >
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {card.label}
-              </p>
-              <p className="mt-1 text-3xl font-bold">{card.value}</p>
-            </div>
-          ))}
-        </section>
+        <SystemErrorLogSummaryCards cards={summaryCards} />
 
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-wrap items-start justify-between gap-4">
