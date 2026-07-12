@@ -14,22 +14,15 @@ import SystemErrorLogsAccessState from "./components/layout/SystemErrorLogsAcces
 import SystemErrorLogsHeader from "./components/layout/SystemErrorLogsHeader";
 import SystemErrorLogSummaryCards from "./components/overview/SystemErrorLogSummaryCards";
 
+import SystemErrorLogFilters from "./components/filters/SystemErrorLogFilters";
+import SystemErrorLogList from "./components/list/SystemErrorLogList";
+import SystemErrorLogRetentionSection from "./components/retention/SystemErrorLogRetentionSection";
+
 import {
   actionLabels,
   activeStatuses,
-  severityLabels,
-  severityOptions,
-  statusLabels,
-  statusOptions,
 } from "./helpers/core/systemErrorLogConstants";
 import {
-  formatCinema,
-  formatDateTime,
-  formatResolvedBy,
-  formatUser,
-  getQuickFilterButtonClass,
-  getSeverityBadgeClass,
-  getStatusBadgeClass,
   readErrorMessage,
 } from "./helpers/core/systemErrorLogHelpers";
 import type {
@@ -351,401 +344,35 @@ export default function SystemErrorLogsPage() {
 
         <SystemErrorLogSummaryCards cards={summaryCards} />
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-wide text-purple-700 dark:text-purple-300">
-                Opbevaring
-              </p>
-              <h2 className="mt-1 text-xl font-bold">Opbevaring af systemfejl</h2>
-              <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
-                Viser den aktuelle opbevaringspolitik og hvor mange logposter der ville
-                være kandidater til oprydning. Denne visning sletter ikke logposter.
-              </p>
-            </div>
+        <SystemErrorLogRetentionSection
+          retentionSummary={retentionSummary}
+          loading={loadingRetentionSummary}
+          cleaning={cleaningRetention}
+          onRefresh={() => void fetchRetentionSummary()}
+          onCleanup={requestRetentionCleanup}
+        />
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => void fetchRetentionSummary()}
-                disabled={loadingRetentionSummary || cleaningRetention}
-                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-              >
-                {loadingRetentionSummary ? "Opdaterer..." : "Opdater opbevaring"}
-              </button>
+        <SystemErrorLogFilters
+          statusFilter={statusFilter}
+          severityFilter={severityFilter}
+          cinemaIdFilter={cinemaIdFilter}
+          onStatusFilterChange={setStatusFilter}
+          onSeverityFilterChange={setSeverityFilter}
+          onCinemaIdFilterChange={setCinemaIdFilter}
+          onShowActive={showActiveErrors}
+          onShowNew={showNewErrors}
+          onShowCritical={showCriticalErrors}
+          onShowAll={showAllErrors}
+          onReset={resetFilters}
+        />
 
-              <button
-                type="button"
-                onClick={requestRetentionCleanup}
-                disabled={
-                  loadingRetentionSummary ||
-                  cleaningRetention ||
-                  !retentionSummary ||
-                  retentionSummary.summary.eligibleForCleanupCount <= 0
-                }
-                className="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-600 dark:hover:bg-red-500"
-              >
-                {cleaningRetention ? "Rydder..." : "Ryd gamle logposter"}
-              </button>
-            </div>
-          </div>
-
-          {loadingRetentionSummary && !retentionSummary ? (
-            <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Indlæser opbevaringsoversigt...
-            </p>
-          ) : !retentionSummary ? (
-            <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-              Opbevaringsoversigt kunne ikke hentes endnu.
-            </p>
-          ) : (
-            <div className="mt-4 space-y-4">
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Kan ryddes nu
-                  </p>
-                  <p className="mt-1 text-3xl font-bold text-amber-700 dark:text-amber-300">
-                    {retentionSummary.summary.eligibleForCleanupCount}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Beholdes
-                  </p>
-                  <p className="mt-1 text-3xl font-bold">
-                    {retentionSummary.summary.keepCount}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    I alt
-                  </p>
-                  <p className="mt-1 text-3xl font-bold">
-                    {retentionSummary.summary.totalCount}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 text-sm text-gray-600 dark:text-gray-400 md:grid-cols-2">
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                    Politik
-                  </h3>
-                  <ul className="mt-2 list-disc space-y-1 pl-5">
-                    {retentionSummary.policy.description.map((description) => (
-                      <li key={description}>{description}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                    Vurdering
-                  </h3>
-                  <p>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      Vurderet:
-                    </span>{" "}
-                    {formatDateTime(retentionSummary.policy.evaluatedAt)}
-                  </p>
-                  <p>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      Eldste log:
-                    </span>{" "}
-                    {formatDateTime(retentionSummary.summary.oldestCreatedAt)}
-                  </p>
-                  <p>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      Nyeste log:
-                    </span>{" "}
-                    {formatDateTime(retentionSummary.summary.newestCreatedAt)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-3 text-sm md:grid-cols-3">
-                <div className="rounded-xl bg-gray-50 p-3 text-gray-700 dark:bg-gray-950 dark:text-gray-300">
-                  Aktive kandidater: {retentionSummary.summary.activeEligibleCount}
-                </div>
-                <div className="rounded-xl bg-gray-50 p-3 text-gray-700 dark:bg-gray-950 dark:text-gray-300">
-                  Afsluttede kandidater:{" "}
-                  {retentionSummary.summary.resolvedEligibleCount}
-                </div>
-                <div className="rounded-xl bg-gray-50 p-3 text-gray-700 dark:bg-gray-950 dark:text-gray-300">
-                  Kritiske kandidater:{" "}
-                  {retentionSummary.summary.criticalEligibleCount}
-                </div>
-              </div>
-
-              {retentionSummary.summary.eligibleForCleanupCount > 0 && (
-                <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                  Oprydning sletter kun de logposter, der er ældre end den viste
-                  opbevaringspolitik. Handlingen kan ikke fortrydes.
-                </p>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="mb-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={showActiveErrors}
-              className={getQuickFilterButtonClass(
-                statusFilter === "ACTIVE" && severityFilter === "",
-              )}
-            >
-              Aktive
-            </button>
-            <button
-              type="button"
-              onClick={showNewErrors}
-              className={getQuickFilterButtonClass(
-                statusFilter === "NEW" && severityFilter === "",
-              )}
-            >
-              Nye
-            </button>
-            <button
-              type="button"
-              onClick={showCriticalErrors}
-              className={getQuickFilterButtonClass(
-                statusFilter === "ACTIVE" && severityFilter === "CRITICAL",
-              )}
-            >
-              Kritiske
-            </button>
-            <button
-              type="button"
-              onClick={showAllErrors}
-              className={getQuickFilterButtonClass(
-                statusFilter === "" && severityFilter === "",
-              )}
-            >
-              Alle
-            </button>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-[220px_220px_1fr_auto]">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as StatusFilter)
-                }
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
-              >
-                {statusOptions.map((option) => (
-                  <option key={option.label} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Niveau
-              </label>
-              <select
-                value={severityFilter}
-                onChange={(event) =>
-                  setSeverityFilter(event.target.value as SeverityFilter)
-                }
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
-              >
-                {severityOptions.map((option) => (
-                  <option key={option.label} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Biograf-ID
-              </label>
-              <input
-                value={cinemaIdFilter}
-                onChange={(event) =>
-                  setCinemaIdFilter(event.target.value.replace(/\D/g, ""))
-                }
-                inputMode="numeric"
-                placeholder="Fx 1"
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
-              />
-            </div>
-
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-              >
-                Nulstil filter
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          {loadingLogs ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-              Indlæser systemfejl...
-            </div>
-          ) : visibleLogs.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-              Ingen systemfejl matcher de valgte filtre.
-            </div>
-          ) : (
-            visibleLogs.map((log) => (
-              <article
-                key={log.id}
-                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getSeverityBadgeClass(
-                          log.severity,
-                        )}`}
-                      >
-                        {severityLabels[log.severity]}
-                      </span>
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
-                          log.status,
-                        )}`}
-                      >
-                        {statusLabels[log.status]}
-                      </span>
-                      {log.statusCode && (
-                        <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-                          HTTP {log.statusCode}
-                        </span>
-                      )}
-                    </div>
-
-                    <h2 className="mt-3 break-words text-lg font-semibold">
-                      {log.message}
-                    </h2>
-
-                    <div className="mt-3 grid gap-2 text-sm text-gray-600 dark:text-gray-400 md:grid-cols-2">
-                      <p>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
-                          Tidspunkt:
-                        </span>{" "}
-                        {formatDateTime(log.createdAt)}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
-                          Kilde:
-                        </span>{" "}
-                        {log.source}
-                      </p>
-                      <p className="break-words">
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
-                          Path:
-                        </span>{" "}
-                        {[log.method, log.path ?? log.action ?? "-"]
-                          .filter(Boolean)
-                          .join(" ")}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
-                          Bruger:
-                        </span>{" "}
-                        {formatUser(log)}
-                      </p>
-                      <p>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
-                          Biograf:
-                        </span>{" "}
-                        {formatCinema(log)}
-                      </p>
-                      {log.resolvedAt && (
-                        <p>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">
-                            Afsluttet:
-                          </span>{" "}
-                          {formatDateTime(log.resolvedAt)}
-                        </p>
-                      )}
-                      {formatResolvedBy(log) && (
-                        <p>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">
-                            Afsluttet af:
-                          </span>{" "}
-                          {formatResolvedBy(log)}
-                        </p>
-                      )}
-                      {log.correlationId && (
-                        <p className="break-words">
-                          <span className="font-medium text-gray-800 dark:text-gray-200">
-                            Correlation:
-                          </span>{" "}
-                          {log.correlationId}
-                        </p>
-                      )}
-                    </div>
-
-                    {log.technicalMessage && (
-                      <p className="mt-3 break-words rounded-xl bg-gray-50 p-3 text-sm text-gray-700 dark:bg-gray-950 dark:text-gray-300">
-                        <span className="font-medium">Teknisk:</span>{" "}
-                        {log.technicalMessage}
-                      </p>
-                    )}
-
-                    {log.resolutionNote && (
-                      <p className="mt-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">
-                        <span className="font-medium">Note:</span>{" "}
-                        {log.resolutionNote}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => void updateStatus(log.id, "seen")}
-                      disabled={updatingLogId === log.id || log.status !== "NEW"}
-                      className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-                    >
-                      Markér set
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => requestResolutionNote(log, "resolve")}
-                      disabled={
-                        updatingLogId === log.id || log.status === "RESOLVED"
-                      }
-                      className="rounded-xl bg-green-700 px-3 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-green-600 dark:hover:bg-green-500"
-                    >
-                      Løst
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => requestResolutionNote(log, "ignore")}
-                      disabled={
-                        updatingLogId === log.id || log.status === "IGNORED"
-                      }
-                      className="rounded-xl bg-gray-800 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-600"
-                    >
-                      Ignorer
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))
-          )}
-        </section>
+        <SystemErrorLogList
+          logs={visibleLogs}
+          loading={loadingLogs}
+          updatingLogId={updatingLogId}
+          onUpdateStatus={updateStatus}
+          onRequestResolutionNote={requestResolutionNote}
+        />
       </div>
 
       <InfoModal
