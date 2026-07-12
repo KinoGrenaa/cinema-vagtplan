@@ -4,8 +4,8 @@ import InfoModal from "@/app/components/modals/InfoModal";
 
 import MasterCinemasListSection from "./components/MasterCinemasListSection";
 import MasterCreateCinemaSection from "./components/MasterCreateCinemaSection";
-import MasterHeader from "./components/MasterHeader";
-import MasterSummaryCards from "./components/MasterSummaryCards";
+import MasterHeader from "./components/layout/MasterHeader";
+import MasterSummaryCards from "./components/overview/MasterSummaryCards";
 import MasterSystemErrorSummaryCard from "./components/MasterSystemErrorSummaryCard";
 import { useMasterPanel } from "./hooks/useMasterPanel";
 
@@ -60,7 +60,10 @@ export default function MasterPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <MasterHeader onRefresh={fetchCinemas} />
 
-        <MasterSummaryCards cinemas={cinemas} selectedCinema={selectedCinema} />
+        <MasterSummaryCards
+          cinemas={cinemas}
+          selectedCinema={selectedCinema}
+        />
 
         <MasterSystemErrorSummaryCard />
 
