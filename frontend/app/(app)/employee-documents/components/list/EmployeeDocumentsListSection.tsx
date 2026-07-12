@@ -1,5 +1,6 @@
-import { getDocumentUrl } from "../helpers/employeeDocumentHelpers";
-import type { EmployeeDocument } from "../helpers/employeeDocumentTypes";
+import { getDocumentUrl } from "../../helpers/employeeDocumentHelpers";
+
+import type { EmployeeDocument } from "../../helpers/employeeDocumentTypes";
 
 type EmployeeDocumentsListSectionProps = {
   documents: EmployeeDocument[];
@@ -15,7 +16,6 @@ export default function EmployeeDocumentsListSection({
   return (
     <section className="rounded-2xl bg-white p-6 shadow dark:bg-gray-900">
       <h2 className="mb-4 text-2xl font-bold">Dokumenter</h2>
-
       {loading ? (
         <p className="text-gray-600 dark:text-gray-300">
           Indlæser dokumenter...
@@ -40,7 +40,6 @@ export default function EmployeeDocumentsListSection({
                   {new Date(document.createdAt).toLocaleDateString("da-DK")}
                 </div>
               </div>
-
               <div className="flex gap-2">
                 <a
                   href={getDocumentUrl(document.fileUrl)}

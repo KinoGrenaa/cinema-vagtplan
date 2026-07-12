@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
-import type { User } from "../helpers/employeeDocumentTypes";
+
+import type { User } from "../../helpers/employeeDocumentTypes";
 
 type EmployeeDocumentUploadFormProps = {
   users: User[];
@@ -47,7 +48,6 @@ export default function EmployeeDocumentUploadForm({
             disabled={needsMasterCinemaSelection || users.length === 0}
           >
             <option value="">Vælg medarbejder</option>
-
             {users.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.firstName} {user.lastName}
@@ -55,7 +55,6 @@ export default function EmployeeDocumentUploadForm({
             ))}
           </select>
         </label>
-
         <label className="block">
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
             Titel
@@ -68,12 +67,10 @@ export default function EmployeeDocumentUploadForm({
             disabled={needsMasterCinemaSelection}
           />
         </label>
-
         <div className="block md:col-span-2">
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
             Fil
           </span>
-
           <div className="mt-2 flex flex-col gap-2 rounded-xl border border-gray-300 bg-white p-3 dark:border-gray-700 dark:bg-gray-950 sm:flex-row sm:items-center">
             <label
               htmlFor="employee-document-file"
@@ -85,11 +82,9 @@ export default function EmployeeDocumentUploadForm({
             >
               Vælg fil
             </label>
-
             <span className="text-sm text-gray-600 dark:text-gray-300">
               {file ? file.name : "Ingen fil valgt"}
             </span>
-
             <input
               key={file ? "file-selected" : "file-empty"}
               id="employee-document-file"
@@ -100,7 +95,6 @@ export default function EmployeeDocumentUploadForm({
             />
           </div>
         </div>
-
         <button
           type="submit"
           disabled={uploading || needsMasterCinemaSelection || !selectedUserId}

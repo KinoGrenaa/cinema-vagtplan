@@ -5,17 +5,16 @@ import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-import EmployeeDocumentsHeader from "./components/EmployeeDocumentsHeader";
-import EmployeeDocumentsListSection from "./components/EmployeeDocumentsListSection";
-import EmployeeDocumentsMasterCinemaRequired from "./components/EmployeeDocumentsMasterCinemaRequired";
-import EmployeeDocumentUploadForm from "./components/EmployeeDocumentUploadForm";
+import EmployeeDocumentsHeader from "./components/layout/EmployeeDocumentsHeader";
+import EmployeeDocumentsListSection from "./components/list/EmployeeDocumentsListSection";
+import EmployeeDocumentsMasterCinemaRequired from "./components/layout/EmployeeDocumentsMasterCinemaRequired";
+import EmployeeDocumentUploadForm from "./components/form/EmployeeDocumentUploadForm";
 import { useEmployeeDocumentActions } from "./hooks/useEmployeeDocumentActions";
 import { useEmployeeDocumentsData } from "./hooks/useEmployeeDocumentsData";
 
 export default function EmployeeDocumentsPage() {
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
-
   const {
     users,
     documents,
@@ -26,7 +25,6 @@ export default function EmployeeDocumentsPage() {
     needsMasterCinemaSelection,
     fetchDocuments,
   } = useEmployeeDocumentsData({ infoDialog });
-
   const {
     title,
     setTitle,
@@ -49,9 +47,7 @@ export default function EmployeeDocumentsPage() {
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 md:p-8 dark:bg-gray-950 dark:text-gray-100">
         <div className="mx-auto max-w-5xl space-y-6">
           <EmployeeDocumentsHeader />
-
           {needsMasterCinemaSelection && <EmployeeDocumentsMasterCinemaRequired />}
-
           <EmployeeDocumentUploadForm
             users={users}
             selectedUserId={selectedUserId}
@@ -64,7 +60,6 @@ export default function EmployeeDocumentsPage() {
             needsMasterCinemaSelection={needsMasterCinemaSelection}
             onSubmit={handleUpload}
           />
-
           <EmployeeDocumentsListSection
             documents={documents}
             loading={loading}
@@ -72,7 +67,6 @@ export default function EmployeeDocumentsPage() {
           />
         </div>
       </main>
-
       <ConfirmModal
         open={confirmDialog.open}
         title={confirmDialog.title}
@@ -84,7 +78,6 @@ export default function EmployeeDocumentsPage() {
         onConfirm={confirmDialog.handleConfirm}
         onCancel={confirmDialog.handleCancel}
       />
-
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
