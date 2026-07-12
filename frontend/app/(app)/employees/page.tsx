@@ -2,11 +2,13 @@
 
 import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
-
-import { EmployeesEmptyState, EmployeesMasterCinemaPlaceholder } from "./components/EmployeesEmptyState";
-import EmployeesHeader from "./components/EmployeesHeader";
-import EmployeesMasterCinemaNotice from "./components/EmployeesMasterCinemaNotice";
-import EmployeesTable from "./components/EmployeesTable";
+import EmployeesHeader from "./components/layout/EmployeesHeader";
+import EmployeesMasterCinemaNotice from "./components/layout/EmployeesMasterCinemaNotice";
+import EmployeesTable from "./components/list/EmployeesTable";
+import {
+  EmployeesEmptyState,
+  EmployeesMasterCinemaPlaceholder,
+} from "./components/states/EmployeesEmptyState";
 import { useEmployeesPage } from "./hooks/useEmployeesPage";
 
 export default function EmployeesPage() {
@@ -33,18 +35,22 @@ export default function EmployeesPage() {
               </div>
             )}
 
-            {!needsMasterCinemaSelection && !loading && users.length > 0 && (
-              <EmployeesTable
-                users={users}
-                onPermissionChange={updatePermission}
-              />
-            )}
+            {!needsMasterCinemaSelection &&
+              !loading &&
+              users.length > 0 && (
+                <EmployeesTable
+                  users={users}
+                  onPermissionChange={updatePermission}
+                />
+              )}
 
-            {!needsMasterCinemaSelection && !loading && users.length === 0 && (
-              <EmployeesEmptyState />
-            )}
+            {!needsMasterCinemaSelection &&
+              !loading &&
+              users.length === 0 && <EmployeesEmptyState />}
 
-            {needsMasterCinemaSelection && <EmployeesMasterCinemaPlaceholder />}
+            {needsMasterCinemaSelection && (
+              <EmployeesMasterCinemaPlaceholder />
+            )}
           </section>
         </div>
       </main>

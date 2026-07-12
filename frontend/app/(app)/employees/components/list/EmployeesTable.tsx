@@ -2,8 +2,8 @@ import {
   getRoleBadge,
   getRoleLabel,
   permissionLabels,
-} from "../helpers/employeeHelpers";
-import type { PermissionKey, User } from "../helpers/employeeTypes";
+} from "../../helpers/employeeHelpers";
+import type { PermissionKey, User } from "../../helpers/employeeTypes";
 
 type EmployeesTableProps = {
   users: User[];
@@ -78,7 +78,9 @@ export default function EmployeesTable({
                         <input
                           type="checkbox"
                           disabled={permissionsDisabled}
-                          checked={permissionsDisabled || !!user[permission.key]}
+                          checked={
+                            permissionsDisabled || !!user[permission.key]
+                          }
                           onChange={(event) =>
                             onPermissionChange(
                               user.id,
@@ -87,7 +89,6 @@ export default function EmployeesTable({
                             )
                           }
                         />
-
                         {permission.label}
                       </label>
                     ))}
