@@ -7,7 +7,7 @@ import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-import DayPeriodsMasterCinemaRequired from "./components/DayPeriodsMasterCinemaRequired";
+import DayPeriodsMasterCinemaRequired from "./components/layout/DayPeriodsMasterCinemaRequired";
 import {
   appendCinemaId,
   formatMinute,
@@ -16,8 +16,8 @@ import {
   minuteToTime,
   readErrorMessage,
   timeToMinute,
-} from "./helpers/dayPeriodHelpers";
-import type { CurrentUser, DayPeriod } from "./helpers/dayPeriodTypes";
+} from "./helpers/core/dayPeriodHelpers";
+import type { CurrentUser, DayPeriod } from "./helpers/core/dayPeriodTypes";
 
 type FormState = {
   name: string;
