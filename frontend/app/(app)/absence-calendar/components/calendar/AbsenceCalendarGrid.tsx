@@ -2,8 +2,8 @@ import { formatDateDK } from "@/app/utils/dateTime";
 import {
   getStatusStyle,
   requestIsOnDate,
-} from "../helpers/absenceCalendarHelpers";
-import type { LeaveRequest } from "../helpers/absenceCalendarTypes";
+} from "../../helpers/absenceCalendarHelpers";
+import type { LeaveRequest } from "../../helpers/absenceCalendarTypes";
 
 type AbsenceCalendarGridProps = {
   daysInMonth: string[];
@@ -42,9 +42,7 @@ export default function AbsenceCalendarGrid({
                     <div className="font-bold">
                       {request.user.firstName} {request.user.lastName}
                     </div>
-
                     <div>{request.status}</div>
-
                     {request.reason && (
                       <div className="mt-1 opacity-80">{request.reason}</div>
                     )}

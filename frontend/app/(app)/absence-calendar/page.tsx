@@ -2,16 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-
 import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { dateToLocalMonthString } from "@/app/utils/dateTime";
-
-import AbsenceCalendarGrid from "./components/AbsenceCalendarGrid";
-import AbsenceCalendarHeader from "./components/AbsenceCalendarHeader";
+import AbsenceCalendarGrid from "./components/calendar/AbsenceCalendarGrid";
+import AbsenceCalendarHeader from "./components/layout/AbsenceCalendarHeader";
 import { readErrorMessage } from "./helpers/absenceCalendarHelpers";
 import type { LeaveRequest } from "./helpers/absenceCalendarTypes";
 
@@ -19,12 +17,10 @@ function getSelectedMasterCinemaId() {
   if (typeof window === "undefined") {
     return null;
   }
-
   const value = window.localStorage.getItem("masterSelectedCinemaId");
   if (!value) {
     return null;
   }
-
   const parsedId = Number(value);
   return Number.isInteger(parsedId) && parsedId > 0 ? String(parsedId) : null;
 }
@@ -75,7 +71,6 @@ export default function AbsenceCalendarPage() {
 
     try {
       const response = await apiFetch(endpoint);
-
       if (!response.ok) {
         setRequests([]);
         showErrorRef.current(
@@ -105,7 +100,6 @@ export default function AbsenceCalendarPage() {
     if (!user) {
       return;
     }
-
     fetchRequests();
   }, [fetchRequests, user]);
 
