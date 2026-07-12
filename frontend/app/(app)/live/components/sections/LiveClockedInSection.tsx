@@ -1,7 +1,7 @@
 import { formatTimeDK } from "@/app/utils/dateTime";
 
-import { getUserName } from "../../helpers/liveHelpers";
-import type { TimeEntry, User } from "../../helpers/liveTypes";
+import { getUserName } from "../../helpers/core/liveHelpers";
+import type { TimeEntry, User } from "../../helpers/core/liveTypes";
 
 type LiveClockedInSectionProps = {
   timeEntries: TimeEntry[];

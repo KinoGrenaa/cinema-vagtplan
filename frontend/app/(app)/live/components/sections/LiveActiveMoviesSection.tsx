@@ -1,4 +1,4 @@
-import type { MovieShowing } from "../../helpers/liveTypes";
+import type { MovieShowing } from "../../helpers/core/liveTypes";
 
 type LiveActiveMoviesSectionProps = {
   activeMovies: MovieShowing[];

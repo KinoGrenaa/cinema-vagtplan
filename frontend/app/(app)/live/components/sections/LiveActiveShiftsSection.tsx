@@ -1,6 +1,6 @@
 import { formatTimeDK } from "@/app/utils/dateTime";
 
-import type { Shift } from "../../helpers/liveTypes";
+import type { Shift } from "../../helpers/core/liveTypes";
 
 type LiveActiveShiftsSectionProps = {
   activeShifts: Shift[];

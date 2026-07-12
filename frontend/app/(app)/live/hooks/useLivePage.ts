@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { io } from "socket.io-client";
 
 import { useInfoModal } from "@/app/hooks/useInfoModal";
@@ -6,8 +7,13 @@ import { apiFetch } from "@/app/lib/api";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { getTodayLocalDate } from "@/app/utils/dateTime";
 
-import { isMovieActive, isShiftActive } from "../helpers/liveHelpers";
-import type { MovieShowing, Shift, TimeEntry, User } from "../helpers/liveTypes";
+import { isMovieActive, isShiftActive } from "../helpers/core/liveHelpers";
+import type {
+  MovieShowing,
+  Shift,
+  TimeEntry,
+  User,
+} from "../helpers/core/liveTypes";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
 const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
@@ -22,6 +28,7 @@ function getStoredMasterCinemaId() {
 
 async function readOptionalJson<T>(response: Response) {
   const text = await response.text();
+
   if (!text.trim()) {
     return null;
   }
@@ -38,12 +45,15 @@ export function useLivePage() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [movies, setMovies] = useState<MovieShowing[]>([]);
-  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<string | null>(
-    () => getStoredMasterCinemaId(),
-  );
+  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
+    string | null
+  >(() => getStoredMasterCinemaId());
+
   const today = getTodayLocalDate();
   const isGlobalMaster = user?.role === "MASTER" && !user.cinemaId;
-  const needsMasterCinemaSelection = Boolean(isGlobalMaster && !selectedMasterCinemaId);
+  const needsMasterCinemaSelection = Boolean(
+    isGlobalMaster && !selectedMasterCinemaId,
+  );
 
   useEffect(() => {
     showErrorRef.current = infoDialog.showError;
@@ -54,11 +64,17 @@ export function useLivePage() {
       setSelectedMasterCinemaId(getStoredMasterCinemaId());
     }
 
-    window.addEventListener("masterSelectedCinemaChanged", handleMasterCinemaChange);
+    window.addEventListener(
+      "masterSelectedCinemaChanged",
+      handleMasterCinemaChange,
+    );
     window.addEventListener("storage", handleMasterCinemaChange);
 
     return () => {
-      window.removeEventListener("masterSelectedCinemaChanged", handleMasterCinemaChange);
+      window.removeEventListener(
+        "masterSelectedCinemaChanged",
+        handleMasterCinemaChange,
+      );
       window.removeEventListener("storage", handleMasterCinemaChange);
     };
   }, []);
@@ -81,6 +97,7 @@ export function useLivePage() {
       const masterCinemaQuery = selectedMasterCinemaId
         ? `cinemaId=${encodeURIComponent(selectedMasterCinemaId)}`
         : "";
+
       const dateAndCinemaQuery = masterCinemaQuery
         ? `date=${today}&${masterCinemaQuery}`
         : `date=${today}`;
@@ -99,6 +116,7 @@ export function useLivePage() {
         const usersData: User[] = await usersRes.json();
         const shiftsData: Shift[] = await shiftsRes.json();
         const moviesData: MovieShowing[] = await moviesRes.json();
+
         const safeUsers = Array.isArray(usersData) ? usersData : [];
 
         setUsers(safeUsers);
@@ -108,9 +126,12 @@ export function useLivePage() {
         const allEntries: TimeEntry[] = [];
 
         for (const userItem of safeUsers) {
-          const res = await apiFetch(`/time-entries/open?userId=${userItem.id}`);
+          const res = await apiFetch(
+            `/time-entries/open?userId=${userItem.id}`,
+          );
 
           if (!res.ok) continue;
+
           const entry = await readOptionalJson<TimeEntry>(res);
 
           if (entry) {
@@ -140,7 +161,13 @@ export function useLivePage() {
         }
       }
     },
-    [authLoading, needsMasterCinemaSelection, selectedMasterCinemaId, today, user],
+    [
+      authLoading,
+      needsMasterCinemaSelection,
+      selectedMasterCinemaId,
+      today,
+      user,
+    ],
   );
 
   useEffect(() => {
@@ -151,6 +178,7 @@ export function useLivePage() {
     }
 
     const interval = setInterval(() => fetchData(false), 30000);
+
     return () => clearInterval(interval);
   }, [authLoading, fetchData, needsMasterCinemaSelection]);
 
