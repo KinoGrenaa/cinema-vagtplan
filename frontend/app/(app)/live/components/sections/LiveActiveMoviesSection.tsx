@@ -1,4 +1,4 @@
-import type { MovieShowing } from "../helpers/liveTypes";
+import type { MovieShowing } from "../../helpers/liveTypes";
 
 type LiveActiveMoviesSectionProps = {
   activeMovies: MovieShowing[];
@@ -11,7 +11,6 @@ export function LiveActiveMoviesSection({
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-2xl font-bold">Film lige nu</h2>
-
         <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-semibold text-white">
           {activeMovies.length}
         </span>
@@ -24,11 +23,9 @@ export function LiveActiveMoviesSection({
             className="rounded-2xl border border-gray-200 bg-gray-50 p-4 transition-colors dark:border-gray-800 dark:bg-gray-950"
           >
             <div className="font-bold">{movie.title}</div>
-
             <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
               {movie.hall}
             </div>
-
             <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
               {movie.soldSeats} solgt · {movie.freeSeats} ledige
             </div>
