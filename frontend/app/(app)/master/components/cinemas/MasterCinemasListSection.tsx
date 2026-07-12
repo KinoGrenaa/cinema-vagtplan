@@ -1,5 +1,5 @@
-import { formatDateDK } from "../helpers/masterHelpers";
-import type { Cinema } from "../helpers/masterTypes";
+import { formatDateDK } from "../../helpers/masterHelpers";
+import type { Cinema } from "../../helpers/masterTypes";
 
 type MasterCinemasListSectionProps = {
   cinemas: Cinema[];
@@ -92,6 +92,7 @@ export default function MasterCinemasListSection({
                             </span>
                           )}
                         </div>
+
                         <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
                           <span>ID: {cinema.id}</span>
                           <span>Oprettet: {formatDateDK(cinema.createdAt)}</span>

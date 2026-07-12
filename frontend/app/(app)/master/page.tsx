@@ -2,8 +2,8 @@
 
 import InfoModal from "@/app/components/modals/InfoModal";
 
-import MasterCinemasListSection from "./components/MasterCinemasListSection";
-import MasterCreateCinemaSection from "./components/MasterCreateCinemaSection";
+import MasterCinemasListSection from "./components/cinemas/MasterCinemasListSection";
+import MasterCreateCinemaSection from "./components/cinemas/MasterCreateCinemaSection";
 import MasterHeader from "./components/layout/MasterHeader";
 import MasterSummaryCards from "./components/overview/MasterSummaryCards";
 import MasterSystemErrorSummaryCard from "./components/MasterSystemErrorSummaryCard";
