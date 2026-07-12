@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-
-import { getErrorMessage, readErrorMessage } from "../helpers/payrollTypeHelpers";
-import type { PayrollType } from "../helpers/payrollTypeTypes";
+import {
+  getErrorMessage,
+  readErrorMessage,
+} from "../helpers/core/payrollTypeHelpers";
+import type { PayrollType } from "../helpers/core/payrollTypeTypes";
 
 export function usePayrollTypesPage() {
   const [payrollTypes, setPayrollTypes] = useState<PayrollType[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
   const [name, setName] = useState("");
   const [payrollCode, setPayrollCode] = useState("");
   const [exportCode, setExportCode] = useState("");
@@ -30,20 +30,16 @@ export function usePayrollTypesPage() {
   async function fetchPayrollTypes() {
     try {
       setLoading(true);
-
       const response = await apiFetch("/payroll-types");
-
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(response, "Kunne ikke hente lønarter"),
         );
       }
-
       const data = await response.json();
       setPayrollTypes(Array.isArray(data) ? data : []);
     } catch (error) {
       setPayrollTypes([]);
-
       infoDialog.showError(
         "Kunne ikke hente lønarter",
         getErrorMessage(error, "Lønarterne kunne ikke hentes. Prøv igen."),
@@ -57,7 +53,6 @@ export function usePayrollTypesPage() {
     try {
       setSaving(true);
       setMessage("");
-
       const response = await apiFetch("/payroll-types", {
         method: "POST",
         body: JSON.stringify({
@@ -69,22 +64,18 @@ export function usePayrollTypesPage() {
           isDefault,
         }),
       });
-
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(response, "Kunne ikke oprette lønart"),
         );
       }
-
       setName("");
       setPayrollCode("");
       setExportCode("");
       setDescription("");
       setColor("#2563eb");
       setIsDefault(false);
-
       await fetchPayrollTypes();
-
       setMessage("Lønart oprettet.");
     } catch (error) {
       infoDialog.showError(
@@ -104,13 +95,11 @@ export function usePayrollTypesPage() {
           isActive: !payrollType.isActive,
         }),
       });
-
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(response, "Kunne ikke opdatere lønart"),
         );
       }
-
       await fetchPayrollTypes();
     } catch (error) {
       infoDialog.showError(
@@ -128,13 +117,11 @@ export function usePayrollTypesPage() {
           isDefault: true,
         }),
       });
-
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(response, "Kunne ikke vælge standard lønart"),
         );
       }
-
       await fetchPayrollTypes();
     } catch (error) {
       infoDialog.showError(
@@ -156,15 +143,12 @@ export function usePayrollTypesPage() {
           const response = await apiFetch(`/payroll-types/${id}`, {
             method: "DELETE",
           });
-
           if (!response.ok) {
             throw new Error(
               await readErrorMessage(response, "Kunne ikke slette lønart"),
             );
           }
-
           await fetchPayrollTypes();
-
           toast.success("Lønart slettet");
         } catch (error) {
           infoDialog.showError(

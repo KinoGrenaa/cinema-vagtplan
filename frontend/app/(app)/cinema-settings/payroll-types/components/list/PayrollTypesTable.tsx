@@ -1,4 +1,4 @@
-import type { PayrollType } from "../../helpers/payrollTypeTypes";
+import type { PayrollType } from "../../helpers/core/payrollTypeTypes";
 
 type PayrollTypesTableProps = {
   payrollTypes: PayrollType[];
