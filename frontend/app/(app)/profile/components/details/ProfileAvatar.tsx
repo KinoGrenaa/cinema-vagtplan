@@ -1,4 +1,4 @@
-import type { User } from "../helpers/profileTypes";
+import type { User } from "../../helpers/profileTypes";
 
 type ProfileAvatarProps = {
   apiUrl: string;

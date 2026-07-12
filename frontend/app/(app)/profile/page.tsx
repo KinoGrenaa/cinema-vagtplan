@@ -1,7 +1,7 @@
 "use client";
 
 import InfoModal from "@/app/components/modals/InfoModal";
-import ProfileDetailsSection from "./components/ProfileDetailsSection";
+import ProfileDetailsSection from "./components/details/ProfileDetailsSection";
 import ProfileEditForm from "./components/ProfileEditForm";
 import ProfileHeader from "./components/ProfileHeader";
 import ProfileMessage from "./components/ProfileMessage";

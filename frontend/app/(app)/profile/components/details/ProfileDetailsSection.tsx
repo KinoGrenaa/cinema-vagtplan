@@ -1,5 +1,5 @@
-import { formatDate } from "../helpers/profileHelpers";
-import type { User } from "../helpers/profileTypes";
+import { formatDate } from "../../helpers/profileHelpers";
+import type { User } from "../../helpers/profileTypes";
 import ProfileAvatar from "./ProfileAvatar";
 import ProfileInfo from "./ProfileInfo";
 
