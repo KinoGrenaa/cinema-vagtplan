@@ -1,7 +1,9 @@
 "use client";
 
 import { type Dispatch, type SetStateAction, useState } from "react";
+
 import { apiFetch } from "@/app/lib/api";
+
 import {
   getActiveCinemaId,
   getEditableUser,
@@ -9,13 +11,13 @@ import {
   getStoredCurrentUser,
   getStoredMasterCinemaId,
   normalizeUser,
-} from "../helpers/userHelpers";
+} from "../../helpers/userHelpers";
 import {
   emptyUser,
   type CurrentUser,
   type User,
   type UserFormData,
-} from "../helpers/userTypes";
+} from "../../helpers/userTypes";
 
 type UseUserFormActionsOptions = {
   currentUser: CurrentUser | null;
@@ -104,7 +106,6 @@ export function useUserFormActions({
       const createdUser = await response.json();
 
       setUsers((prev) => [...prev, normalizeUser(createdUser)]);
-
       setShowCreate(false);
       resetNewUser();
     } catch (error) {
@@ -132,7 +133,8 @@ export function useUserFormActions({
           canManageUsers: editingUser.canManageUsers || false,
           canManagePayroll: editingUser.canManagePayroll || false,
           canManageLeaveRequests: editingUser.canManageLeaveRequests || false,
-          canManageCinemaSettings: editingUser.canManageCinemaSettings || false,
+          canManageCinemaSettings:
+            editingUser.canManageCinemaSettings || false,
           canSendBroadcastMessages:
             editingUser.canSendBroadcastMessages || false,
         }),

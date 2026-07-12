@@ -1,9 +1,11 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+
 import { apiFetch } from "@/app/lib/api";
-import { getErrorMessage } from "../helpers/userHelpers";
-import type { User } from "../helpers/userTypes";
+
+import { getErrorMessage } from "../../helpers/userHelpers";
+import type { User } from "../../helpers/userTypes";
 
 type ConfirmOptions = {
   title: string;

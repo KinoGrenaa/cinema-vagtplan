@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { apiFetch } from "@/app/lib/api";
+
 import {
   buildUsersEndpoint,
   getErrorMessage,
@@ -9,8 +11,8 @@ import {
   getStoredMasterCinemaId,
   getStoredMasterCinemaName,
   normalizeUsers,
-} from "../helpers/userHelpers";
-import type { CurrentUser, User } from "../helpers/userTypes";
+} from "../../helpers/userHelpers";
+import type { CurrentUser, User } from "../../helpers/userTypes";
 
 type UseUsersDataOptions = {
   showError: (title: string, description: string) => void;

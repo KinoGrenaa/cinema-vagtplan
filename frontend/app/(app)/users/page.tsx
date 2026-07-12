@@ -18,11 +18,11 @@ import UsersHeader from "./components/layout/UsersHeader";
 import UsersMasterCinemaRequired from "./components/layout/UsersMasterCinemaRequired";
 import UsersTable from "./components/list/UsersTable";
 
-import { useUserFormActions } from "./hooks/useUserFormActions";
+import { useUserFormActions } from "./hooks/actions/useUserFormActions";
 
-import { useUserStatusActions } from "./hooks/useUserStatusActions";
+import { useUserStatusActions } from "./hooks/actions/useUserStatusActions";
 
-import { useUsersData } from "./hooks/useUsersData";
+import { useUsersData } from "./hooks/data/useUsersData";
 
 export default function UsersPage() {
   const confirmDialog = useConfirm();
