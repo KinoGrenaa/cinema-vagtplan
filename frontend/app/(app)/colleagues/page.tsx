@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-
 import InfoModal from "@/app/components/modals/InfoModal";
-
-import { ColleaguesHeader } from "./components/ColleaguesHeader";
-import { ColleaguesList } from "./components/ColleaguesList";
+import { ColleaguesHeader } from "./components/layout/ColleaguesHeader";
+import { ColleaguesList } from "./components/list/ColleaguesList";
 import { useColleaguesPage } from "./hooks/useColleaguesPage";
 
 function ColleaguesMasterCinemaRequired() {
@@ -19,7 +17,8 @@ function ColleaguesMasterCinemaRequired() {
           Vælg en biograf for at se kollegaer
         </h1>
         <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
-          Kollegaoversigten viser medarbejdere for en konkret biograf. Som MASTER skal du vælge en aktiv biograf først.
+          Kollegaoversigten viser medarbejdere for en konkret biograf. Som
+          MASTER skal du vælge en aktiv biograf først.
         </p>
         <Link
           href="/master"
@@ -47,6 +46,7 @@ export default function ColleaguesPage() {
           <ColleaguesList users={users} />
         </div>
       </main>
+
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}

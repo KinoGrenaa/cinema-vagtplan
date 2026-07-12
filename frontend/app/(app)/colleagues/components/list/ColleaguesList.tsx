@@ -1,4 +1,4 @@
-import type { User } from "../helpers/colleagueHelpers";
+import type { User } from "../../helpers/colleagueHelpers";
 
 type ColleaguesListProps = {
   users: User[];
