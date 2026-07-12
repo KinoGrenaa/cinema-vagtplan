@@ -1,4 +1,5 @@
 import type { FormEventHandler } from "react";
+
 import ProfileInput from "./ProfileInput";
 
 type ProfileEditFormProps = {
@@ -58,6 +59,7 @@ export default function ProfileEditForm({
             value={email}
             onChange={onEmailChange}
           />
+
           <ProfileInput
             label="Ny adgangskode"
             type="password"
@@ -66,6 +68,7 @@ export default function ProfileEditForm({
             placeholder="Lad feltet være tomt for at beholde adgangskoden"
             helpText="Adgangskode skal være mindst 8 tegn."
           />
+
           <ProfileInput
             label="Mobil"
             value={phone}
@@ -76,12 +79,19 @@ export default function ProfileEditForm({
             placeholder="8 cifre"
             helpText="Mobilnummer skal bestå af præcis 8 cifre."
           />
+
           <ProfileInput
             label="Nødtelefon"
             value={emergencyPhone}
             onChange={onEmergencyPhoneChange}
           />
-          <ProfileInput label="Adresse" value={address} onChange={onAddressChange} />
+
+          <ProfileInput
+            label="Adresse"
+            value={address}
+            onChange={onAddressChange}
+          />
+
           <ProfileInput
             label="Fødselsdato"
             type="date"
@@ -109,7 +119,6 @@ export default function ProfileEditForm({
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];
-
                 if (file) {
                   onUploadProfileImage(file);
                 }

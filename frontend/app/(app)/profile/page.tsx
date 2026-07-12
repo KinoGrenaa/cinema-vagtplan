@@ -2,9 +2,9 @@
 
 import InfoModal from "@/app/components/modals/InfoModal";
 import ProfileDetailsSection from "./components/details/ProfileDetailsSection";
-import ProfileEditForm from "./components/ProfileEditForm";
-import ProfileHeader from "./components/ProfileHeader";
-import ProfileMessage from "./components/ProfileMessage";
+import ProfileEditForm from "./components/form/ProfileEditForm";
+import ProfileHeader from "./components/layout/ProfileHeader";
+import ProfileMessage from "./components/feedback/ProfileMessage";
 import { useProfilePage } from "./hooks/useProfilePage";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
