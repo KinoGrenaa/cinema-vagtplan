@@ -6,7 +6,7 @@ import MasterCinemasListSection from "./components/cinemas/MasterCinemasListSect
 import MasterCreateCinemaSection from "./components/cinemas/MasterCreateCinemaSection";
 import MasterHeader from "./components/layout/MasterHeader";
 import MasterSummaryCards from "./components/overview/MasterSummaryCards";
-import MasterSystemErrorSummaryCard from "./components/MasterSystemErrorSummaryCard";
+import MasterSystemErrorSummaryCard from "./components/overview/MasterSystemErrorSummaryCard";
 import { useMasterPanel } from "./hooks/useMasterPanel";
 
 export default function MasterPage() {

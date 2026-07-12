@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/app/lib/api";
 
 type SystemErrorSeverity = "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+
 type SystemErrorStatus = "NEW" | "SEEN" | "RESOLVED" | "IGNORED";
 
 type SystemErrorLogSummaryItem = {
@@ -71,6 +72,7 @@ export default function MasterSystemErrorSummaryCard() {
       }
 
       const data = (await response.json()) as SystemErrorLogSummaryItem[];
+
       setLogs(Array.isArray(data) ? data : []);
     } catch (fetchError) {
       setLogs([]);
@@ -125,6 +127,7 @@ export default function MasterSystemErrorSummaryCard() {
           >
             {loading ? "Opdaterer..." : "Opdater"}
           </button>
+
           <Link
             href="/system-error-logs"
             className="rounded-xl bg-purple-700 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-800 dark:bg-purple-500 dark:hover:bg-purple-400"
