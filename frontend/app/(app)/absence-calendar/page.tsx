@@ -10,8 +10,8 @@ import { useAuth } from "@/app/providers/AuthProvider";
 import { dateToLocalMonthString } from "@/app/utils/dateTime";
 import AbsenceCalendarGrid from "./components/calendar/AbsenceCalendarGrid";
 import AbsenceCalendarHeader from "./components/layout/AbsenceCalendarHeader";
-import { readErrorMessage } from "./helpers/absenceCalendarHelpers";
-import type { LeaveRequest } from "./helpers/absenceCalendarTypes";
+import { readErrorMessage } from "./helpers/core/absenceCalendarHelpers";
+import type { LeaveRequest } from "./helpers/core/absenceCalendarTypes";
 
 function getSelectedMasterCinemaId() {
   if (typeof window === "undefined") {

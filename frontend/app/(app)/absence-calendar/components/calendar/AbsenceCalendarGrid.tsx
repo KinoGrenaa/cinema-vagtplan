@@ -2,8 +2,8 @@ import { formatDateDK } from "@/app/utils/dateTime";
 import {
   getStatusStyle,
   requestIsOnDate,
-} from "../../helpers/absenceCalendarHelpers";
-import type { LeaveRequest } from "../../helpers/absenceCalendarTypes";
+} from "../../helpers/core/absenceCalendarHelpers";
+import type { LeaveRequest } from "../../helpers/core/absenceCalendarTypes";
 
 type AbsenceCalendarGridProps = {
   daysInMonth: string[];

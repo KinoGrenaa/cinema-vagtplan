@@ -3,7 +3,6 @@ import type { LeaveRequest } from "./absenceCalendarTypes";
 export async function readErrorMessage(response: Response, fallback: string) {
   try {
     const data = await response.json();
-
     if (typeof data?.message === "string") {
       return data.message;
     }
@@ -14,9 +13,7 @@ export async function readErrorMessage(response: Response, fallback: string) {
 
 export function requestIsOnDate(request: LeaveRequest, date: string) {
   const current = new Date(`${date}T12:00:00`);
-
   const start = new Date(request.startDate);
-
   const end = new Date(request.endDate);
 
   return current >= start && current <= end;
