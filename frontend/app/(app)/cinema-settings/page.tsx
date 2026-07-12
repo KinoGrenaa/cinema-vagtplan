@@ -5,10 +5,11 @@ import InfoModal from "@/app/components/modals/InfoModal";
 
 import CinemaSettingsBrandingSection from "./components/CinemaSettingsBrandingSection";
 import CinemaSettingsFeatureTogglesSection from "./components/CinemaSettingsFeatureTogglesSection";
-import CinemaSettingsHeaderSection from "./components/CinemaSettingsHeaderSection";
-import CinemaSettingsLoadingState from "./components/CinemaSettingsLoadingState";
-import CinemaSettingsMasterRequired from "./components/CinemaSettingsMasterRequired";
+import CinemaSettingsHeaderSection from "./components/layout/CinemaSettingsHeaderSection";
+import CinemaSettingsLoadingState from "./components/layout/CinemaSettingsLoadingState";
+import CinemaSettingsMasterRequired from "./components/layout/CinemaSettingsMasterRequired";
 import CinemaSettingsPayrollSection from "./components/CinemaSettingsPayrollSection";
+
 import { calculatePeriodExample } from "./helpers/cinemaSettingsHelpers";
 import { useCinemaSettingsData } from "./hooks/useCinemaSettingsData";
 
@@ -37,7 +38,6 @@ export default function CinemaSettingsPage() {
     return (
       <AdminGuard>
         <CinemaSettingsMasterRequired />
-
         <InfoModal
           open={infoDialog.open}
           title={infoDialog.title}
