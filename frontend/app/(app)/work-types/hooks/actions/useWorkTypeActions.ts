@@ -2,7 +2,10 @@ import { useCallback, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
-import { appendCinemaId, readErrorMessage } from "../helpers/workTypeHelpers";
+import {
+  appendCinemaId,
+  readErrorMessage,
+} from "../../helpers/core/workTypeHelpers";
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;
@@ -75,7 +78,6 @@ export function useWorkTypeActions({
       setName("");
       setColor("#2563eb");
       setPayrollTypeId("");
-
       await refreshWorkTypes();
     } catch (error) {
       infoDialog.showError(
@@ -117,7 +119,10 @@ export function useWorkTypeActions({
 
             if (!response.ok) {
               throw new Error(
-                await readErrorMessage(response, "Kunne ikke arkivere vagttype"),
+                await readErrorMessage(
+                  response,
+                  "Kunne ikke arkivere vagttype",
+                ),
               );
             }
 

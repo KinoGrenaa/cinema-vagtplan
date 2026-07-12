@@ -1,4 +1,4 @@
-import type { PayrollType } from "../../helpers/workTypeTypes";
+import type { PayrollType } from "../../helpers/core/workTypeTypes";
 
 type WorkTypeFormSectionProps = {
   name: string;

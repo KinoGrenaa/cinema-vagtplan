@@ -10,7 +10,6 @@ export function getCurrentUserFromToken(): CurrentUser | null {
   try {
     const payload = token.split(".")[1];
     const decoded = JSON.parse(atob(payload));
-
     return decoded;
   } catch {
     return null;
@@ -35,7 +34,6 @@ export function appendCinemaId(path: string, cinemaId: number | null) {
   }
 
   const separator = path.includes("?") ? "&" : "?";
-
   return `${path}${separator}cinemaId=${cinemaId}`;
 }
 

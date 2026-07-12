@@ -1,4 +1,4 @@
-import type { WorkType } from "../../helpers/workTypeTypes";
+import type { WorkType } from "../../helpers/core/workTypeTypes";
 
 type WorkTypesListSectionProps = {
   workTypes: WorkType[];

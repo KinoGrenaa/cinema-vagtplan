@@ -7,8 +7,12 @@ import {
   getCurrentUserFromToken,
   getSelectedMasterCinemaId,
   readErrorMessage,
-} from "../helpers/workTypeHelpers";
-import type { CurrentUser, PayrollType, WorkType } from "../helpers/workTypeTypes";
+} from "../../helpers/core/workTypeHelpers";
+import type {
+  CurrentUser,
+  PayrollType,
+  WorkType,
+} from "../../helpers/core/workTypeTypes";
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;
@@ -19,10 +23,8 @@ export function useWorkTypesData(infoDialog: InfoDialog) {
   const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
     number | null
   >(null);
-
   const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
   const [payrollTypes, setPayrollTypes] = useState<PayrollType[]>([]);
-
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -84,11 +86,9 @@ export function useWorkTypesData(infoDialog: InfoDialog) {
       }
 
       const data = await response.json();
-
       setWorkTypes(Array.isArray(data) ? data : []);
     } catch (error) {
       setWorkTypes([]);
-
       infoDialog.showError(
         "Kunne ikke hente vagttyper",
         error instanceof Error
@@ -113,11 +113,9 @@ export function useWorkTypesData(infoDialog: InfoDialog) {
       }
 
       const data = await response.json();
-
       setPayrollTypes(Array.isArray(data) ? data : []);
     } catch (error) {
       setPayrollTypes([]);
-
       infoDialog.showError(
         "Kunne ikke hente lønarter",
         error instanceof Error

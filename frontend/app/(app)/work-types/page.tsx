@@ -10,8 +10,8 @@ import WorkTypeFormSection from "./components/form/WorkTypeFormSection";
 import WorkTypesHeader from "./components/layout/WorkTypesHeader";
 import WorkTypesMasterCinemaRequired from "./components/layout/WorkTypesMasterCinemaRequired";
 import WorkTypesListSection from "./components/list/WorkTypesListSection";
-import { useWorkTypeActions } from "./hooks/useWorkTypeActions";
-import { useWorkTypesData } from "./hooks/useWorkTypesData";
+import { useWorkTypeActions } from "./hooks/actions/useWorkTypeActions";
+import { useWorkTypesData } from "./hooks/data/useWorkTypesData";
 
 export default function WorkTypesPage() {
   const confirmDialog = useConfirm();
