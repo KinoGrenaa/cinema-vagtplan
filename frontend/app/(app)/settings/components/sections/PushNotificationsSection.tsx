@@ -65,10 +65,8 @@ export default function PushNotificationsSection({
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
       <div className="mb-6 flex items-center gap-3">
         <Bell className="h-6 w-6" />
-
         <div>
           <h2 className="text-2xl font-bold">Push-notifikationer</h2>
-
           <p className="text-gray-500 dark:text-gray-400">
             Modtag beskeder om vagter og systemopdateringer direkte på din
             enhed.
@@ -79,10 +77,8 @@ export default function PushNotificationsSection({
       <div className={`mb-6 rounded-2xl border p-4 ${pushStatus.className}`}>
         <div className="flex items-center gap-4">
           {pushStatus.icon}
-
           <div>
             <div className="font-bold">{pushStatus.title}</div>
-
             <div className="text-sm text-gray-600 dark:text-gray-300">
               {pushStatus.text}
             </div>
@@ -129,6 +125,7 @@ export default function PushNotificationsSection({
           browserens indstillinger.
         </div>
       )}
+
       {isMasterWithoutOwnCinema && (
         <div className="mt-5 rounded-xl border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-900 dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-100">
           MASTER-brugere er globale og er ikke tilknyttet en konkret biograf.

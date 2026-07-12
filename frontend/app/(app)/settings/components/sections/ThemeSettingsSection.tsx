@@ -20,7 +20,6 @@ export default function ThemeSettingsSection({
 
         <div>
           <h2 className="text-2xl font-bold">Tema</h2>
-
           <p className="text-gray-500 dark:text-gray-400">
             Vælg mellem lyst og mørkt tema.
           </p>

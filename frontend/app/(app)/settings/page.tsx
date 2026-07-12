@@ -1,10 +1,9 @@
 "use client";
 
 import InfoModal from "@/app/components/modals/InfoModal";
-
-import PushNotificationsSection from "./components/PushNotificationsSection";
-import SettingsHeader from "./components/SettingsHeader";
-import ThemeSettingsSection from "./components/ThemeSettingsSection";
+import PushNotificationsSection from "./components/sections/PushNotificationsSection";
+import SettingsHeader from "./components/layout/SettingsHeader";
+import ThemeSettingsSection from "./components/sections/ThemeSettingsSection";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 
 export default function SettingsPage() {
@@ -34,9 +33,7 @@ export default function SettingsPage() {
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-4xl space-y-6">
         <SettingsHeader />
-
         <ThemeSettingsSection theme={theme} setTheme={setTheme} />
-
         <PushNotificationsSection
           permission={permission}
           pushEnabled={pushEnabled}
