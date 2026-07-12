@@ -11,13 +11,13 @@ import {
   getStoredCurrentUser,
   getStoredMasterCinemaId,
   normalizeUser,
-} from "../../helpers/userHelpers";
+} from "../../helpers/core/userHelpers";
 import {
   emptyUser,
   type CurrentUser,
   type User,
   type UserFormData,
-} from "../../helpers/userTypes";
+} from "../../helpers/core/userTypes";
 
 type UseUserFormActionsOptions = {
   currentUser: CurrentUser | null;

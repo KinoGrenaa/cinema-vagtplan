@@ -5,12 +5,14 @@ const MASTER_SELECTED_CINEMA_NAME_KEY = "masterSelectedCinemaName";
 
 export function getEmploymentTypeLabel(employmentType?: EmploymentType) {
   if (employmentType === "SALARIED") return "Fastlønnet";
+
   return "Timelønnet";
 }
 
 export function getRoleLabel(role: User["role"]) {
   if (role === "MASTER") return "Master";
   if (role === "ADMIN") return "Admin";
+
   return "Medarbejder";
 }
 

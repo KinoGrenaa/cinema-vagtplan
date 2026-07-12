@@ -11,8 +11,8 @@ import {
   getStoredMasterCinemaId,
   getStoredMasterCinemaName,
   normalizeUsers,
-} from "../../helpers/userHelpers";
-import type { CurrentUser, User } from "../../helpers/userTypes";
+} from "../../helpers/core/userHelpers";
+import type { CurrentUser, User } from "../../helpers/core/userTypes";
 
 type UseUsersDataOptions = {
   showError: (title: string, description: string) => void;

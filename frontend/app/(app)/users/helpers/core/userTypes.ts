@@ -1,4 +1,5 @@
 export type UserRole = "MASTER" | "ADMIN" | "EMPLOYEE";
+
 export type EmploymentType = "HOURLY" | "SALARIED";
 
 export type CurrentUser = {

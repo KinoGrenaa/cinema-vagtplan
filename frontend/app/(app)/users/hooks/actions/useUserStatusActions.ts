@@ -4,8 +4,8 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
-import { getErrorMessage } from "../../helpers/userHelpers";
-import type { User } from "../../helpers/userTypes";
+import { getErrorMessage } from "../../helpers/core/userHelpers";
+import type { User } from "../../helpers/core/userTypes";
 
 type ConfirmOptions = {
   title: string;

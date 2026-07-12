@@ -7,7 +7,7 @@ import type {
   User,
   UserFormData,
   UserRole,
-} from "../../helpers/userTypes";
+} from "../../helpers/core/userTypes";
 
 export function UserModal({
   title,
