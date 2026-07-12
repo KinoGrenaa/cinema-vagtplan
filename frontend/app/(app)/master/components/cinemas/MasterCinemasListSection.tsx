@@ -1,5 +1,5 @@
-import { formatDateDK } from "../../helpers/masterHelpers";
-import type { Cinema } from "../../helpers/masterTypes";
+import { formatDateDK } from "../../helpers/core/masterHelpers";
+import type { Cinema } from "../../helpers/core/masterTypes";
 
 type MasterCinemasListSectionProps = {
   cinemas: Cinema[];

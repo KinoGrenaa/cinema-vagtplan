@@ -1,4 +1,4 @@
-import type { Cinema } from "../../helpers/masterTypes";
+import type { Cinema } from "../../helpers/core/masterTypes";
 
 type MasterSummaryCardsProps = {
   cinemas: Cinema[];

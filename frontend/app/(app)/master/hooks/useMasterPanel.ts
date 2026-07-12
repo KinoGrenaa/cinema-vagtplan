@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
+
 import {
   MASTER_SELECTED_CINEMA_ID_KEY,
   MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
@@ -10,11 +12,12 @@ import {
   notifyMasterSelectedCinemaChanged,
   readErrorMessage,
   sortCinemas,
-} from "../helpers/masterHelpers";
-import type { Cinema, CurrentUser } from "../helpers/masterTypes";
+} from "../helpers/core/masterHelpers";
+import type { Cinema, CurrentUser } from "../helpers/core/masterTypes";
 
 export function useMasterPanel() {
   const infoDialog = useInfoModal();
+
   const [checkedAccess, setCheckedAccess] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
@@ -83,6 +86,7 @@ export function useMasterPanel() {
 
       const data = (await response.json()) as Cinema[];
       const nextCinemas = sortCinemas(Array.isArray(data) ? data : []);
+
       setCinemas(nextCinemas);
 
       const savedCinemaId = Number(
@@ -112,7 +116,10 @@ export function useMasterPanel() {
     localStorage.setItem(MASTER_SELECTED_CINEMA_NAME_KEY, cinema.name);
 
     if (cinema.logoUrl) {
-      localStorage.setItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY, cinema.logoUrl);
+      localStorage.setItem(
+        MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
+        cinema.logoUrl,
+      );
     } else {
       localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
     }
@@ -126,6 +133,7 @@ export function useMasterPanel() {
     localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
     localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
     localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
+
     setSelectedCinemaId(null);
     notifyMasterSelectedCinemaChanged();
   }
@@ -157,6 +165,7 @@ export function useMasterPanel() {
       }
 
       const createdCinema = (await response.json()) as Cinema;
+
       setCinemas((current) => sortCinemas([...current, createdCinema]));
       setNewCinemaName("");
       saveSelectedCinema(createdCinema);

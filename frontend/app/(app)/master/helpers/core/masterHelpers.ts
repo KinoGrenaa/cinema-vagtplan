@@ -9,7 +9,10 @@ export function notifyMasterSelectedCinemaChanged() {
   window.dispatchEvent(new Event("masterSelectedCinemaChanged"));
 }
 
-export async function readErrorMessage(response: Response, fallback: string) {
+export async function readErrorMessage(
+  response: Response,
+  fallback: string,
+) {
   try {
     const data = await response.json();
 
