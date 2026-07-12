@@ -38,7 +38,6 @@ export function PayrollTypeCreateForm({
   return (
     <section className="rounded-2xl bg-white p-6 shadow">
       <h2 className="mb-4 text-2xl font-bold">Opret lønart</h2>
-
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <input
           type="text"
@@ -47,7 +46,6 @@ export function PayrollTypeCreateForm({
           onChange={(event) => setName(event.target.value)}
           className="rounded-xl border p-3"
         />
-
         <input
           type="text"
           placeholder="Lønkode"
@@ -55,7 +53,6 @@ export function PayrollTypeCreateForm({
           onChange={(event) => setPayrollCode(event.target.value)}
           className="rounded-xl border p-3"
         />
-
         <input
           type="text"
           placeholder="Eksportkode"
@@ -63,7 +60,6 @@ export function PayrollTypeCreateForm({
           onChange={(event) => setExportCode(event.target.value)}
           className="rounded-xl border p-3"
         />
-
         <input
           type="text"
           placeholder="Beskrivelse"
@@ -71,7 +67,6 @@ export function PayrollTypeCreateForm({
           onChange={(event) => setDescription(event.target.value)}
           className="rounded-xl border p-3"
         />
-
         <label className="flex items-center gap-3 rounded-xl border p-3">
           <span className="text-sm font-medium">Farve</span>
           <input
@@ -81,7 +76,6 @@ export function PayrollTypeCreateForm({
             className="h-10 w-16"
           />
         </label>
-
         <label className="flex items-center gap-3 rounded-xl border p-3">
           <input
             type="checkbox"
@@ -91,7 +85,6 @@ export function PayrollTypeCreateForm({
           <span>Standard lønart</span>
         </label>
       </div>
-
       <button
         onClick={onCreate}
         disabled={saving || !name || !payrollCode}
@@ -99,7 +92,6 @@ export function PayrollTypeCreateForm({
       >
         {saving ? "Gemmer..." : "Opret lønart"}
       </button>
-
       {message && (
         <div className="mt-4 rounded-xl bg-gray-100 p-4 text-sm">
           {message}

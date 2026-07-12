@@ -1,4 +1,4 @@
-import type { PayrollType } from "../helpers/payrollTypeTypes";
+import type { PayrollType } from "../../helpers/payrollTypeTypes";
 
 type PayrollTypesTableProps = {
   payrollTypes: PayrollType[];
@@ -23,7 +23,6 @@ export function PayrollTypesTable({
           {payrollTypes.length} lønarter
         </div>
       </div>
-
       {loading ? (
         <div>Indlæser...</div>
       ) : payrollTypes.length === 0 ? (
@@ -44,7 +43,6 @@ export function PayrollTypesTable({
                 <th className="p-3">Handlinger</th>
               </tr>
             </thead>
-
             <tbody>
               {payrollTypes.map((payrollType) => (
                 <tr key={payrollType.id} className="border-b">
@@ -56,11 +54,9 @@ export function PayrollTypesTable({
                       }}
                     />
                   </td>
-
                   <td className="p-3 font-semibold">
                     <div className="flex items-center gap-2">
                       {payrollType.name}
-
                       {payrollType.isDefault && (
                         <span className="rounded bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
                           STANDARD
@@ -68,15 +64,11 @@ export function PayrollTypesTable({
                       )}
                     </div>
                   </td>
-
                   <td className="p-3">{payrollType.payrollCode}</td>
-
                   <td className="p-3">{payrollType.exportCode || "-"}</td>
-
                   <td className="p-3">
                     {payrollType.description || "-"}
                   </td>
-
                   <td className="p-3">
                     {payrollType.isActive ? (
                       <span className="rounded bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
@@ -88,7 +80,6 @@ export function PayrollTypesTable({
                       </span>
                     )}
                   </td>
-
                   <td className="p-3">
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -97,7 +88,6 @@ export function PayrollTypesTable({
                       >
                         {payrollType.isActive ? "Deaktiver" : "Aktiver"}
                       </button>
-
                       {!payrollType.isDefault && (
                         <button
                           onClick={() => onSetDefault(payrollType)}
@@ -106,7 +96,6 @@ export function PayrollTypesTable({
                           Sæt som standard
                         </button>
                       )}
-
                       <button
                         onClick={() => onRemovePayrollType(payrollType.id)}
                         className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"

@@ -3,10 +3,9 @@
 import AdminGuard from "@/app/components/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
-
-import { PayrollTypeCreateForm } from "./components/PayrollTypeCreateForm";
-import { PayrollTypesHeader } from "./components/PayrollTypesHeader";
-import { PayrollTypesTable } from "./components/PayrollTypesTable";
+import { PayrollTypeCreateForm } from "./components/form/PayrollTypeCreateForm";
+import { PayrollTypesHeader } from "./components/layout/PayrollTypesHeader";
+import { PayrollTypesTable } from "./components/list/PayrollTypesTable";
 import { usePayrollTypesPage } from "./hooks/usePayrollTypesPage";
 
 export default function PayrollTypesPage() {
@@ -40,7 +39,6 @@ export default function PayrollTypesPage() {
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 md:p-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <PayrollTypesHeader />
-
           <PayrollTypeCreateForm
             name={name}
             setName={setName}
@@ -58,7 +56,6 @@ export default function PayrollTypesPage() {
             message={message}
             onCreate={createPayrollType}
           />
-
           <PayrollTypesTable
             payrollTypes={payrollTypes}
             loading={loading}
@@ -68,7 +65,6 @@ export default function PayrollTypesPage() {
           />
         </div>
       </main>
-
       <ConfirmModal
         open={confirmDialog.open}
         title={confirmDialog.title}
@@ -80,7 +76,6 @@ export default function PayrollTypesPage() {
         onConfirm={confirmDialog.handleConfirm}
         onCancel={confirmDialog.handleCancel}
       />
-
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
