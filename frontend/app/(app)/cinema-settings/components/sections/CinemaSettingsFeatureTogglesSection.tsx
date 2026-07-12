@@ -1,4 +1,4 @@
-import type { Cinema } from "../../helpers/cinemaSettingsTypes";
+import type { Cinema } from "../../helpers/core/cinemaSettingsTypes";
 
 type CinemaSettingsFeatureTogglesSectionProps = {
   cinema: Cinema;

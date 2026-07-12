@@ -1,20 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
+
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 
 import {
   CINEMA_DEFAULTS,
   MASTER_SELECTED_CINEMA_ID_KEY,
-} from "../helpers/cinemaSettingsTypes";
-import type { Cinema, CurrentUser } from "../helpers/cinemaSettingsTypes";
+} from "../../helpers/core/cinemaSettingsTypes";
+import type {
+  Cinema,
+  CurrentUser,
+} from "../../helpers/core/cinemaSettingsTypes";
+
 import {
   readErrorMessage,
   syncMasterSelectedCinemaStorage,
-} from "../helpers/cinemaSettingsHelpers";
+} from "../../helpers/core/cinemaSettingsHelpers";
 
 export function useCinemaSettingsData() {
   const infoDialog = useInfoModal();
-
   const [cinema, setCinema] = useState<Cinema | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -26,7 +30,6 @@ export function useCinemaSettingsData() {
       setMessage("");
 
       const savedUser = localStorage.getItem("user");
-
       if (!savedUser) {
         setCinema(null);
         return;
@@ -57,7 +60,6 @@ export function useCinemaSettingsData() {
       }
 
       const response = await apiFetch(`/cinemas/${cinemaId}`);
-
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(
@@ -68,7 +70,6 @@ export function useCinemaSettingsData() {
       }
 
       const data = await response.json();
-
       const nextCinema = {
         ...CINEMA_DEFAULTS,
         ...data,
@@ -81,7 +82,6 @@ export function useCinemaSettingsData() {
         error instanceof Error
           ? error.message
           : "Kunne ikke hente biografindstillinger.";
-
       setMessage("");
       setCinema(null);
       infoDialog.showError("Indstillinger kunne ikke hentes", description);
@@ -105,21 +105,15 @@ export function useCinemaSettingsData() {
           allowShiftTradePool: updatedCinema.allowShiftTradePool,
           allowShiftTradeDirect: updatedCinema.allowShiftTradeDirect,
           aiEnabled: updatedCinema.aiEnabled,
-
           payrollRulesEnabled: updatedCinema.payrollRulesEnabled,
-
           clockInDeviationToleranceMinutes:
             updatedCinema.clockInDeviationToleranceMinutes,
-
           clockOutDeviationToleranceMinutes:
             updatedCinema.clockOutDeviationToleranceMinutes,
-
           requireNoteForClockInDeviation:
             updatedCinema.requireNoteForClockInDeviation,
-
           requireNoteForClockOutDeviation:
             updatedCinema.requireNoteForClockOutDeviation,
-
           requireNoteForManualEntry: updatedCinema.requireNoteForManualEntry,
           payrollOvertimeEnabled: updatedCinema.payrollOvertimeEnabled,
           plannedOvertimeEnabled: updatedCinema.plannedOvertimeEnabled,
@@ -127,7 +121,6 @@ export function useCinemaSettingsData() {
           weeklyOvertimeEnabled: updatedCinema.weeklyOvertimeEnabled,
           dailyOvertimeThreshold: updatedCinema.dailyOvertimeThreshold,
           weeklyOvertimeThreshold: updatedCinema.weeklyOvertimeThreshold,
-
           payrollPeriodModel: updatedCinema.payrollPeriodModel,
           payrollPeriodStartDay: updatedCinema.payrollPeriodStartDay,
           payrollPeriodEndDay: updatedCinema.payrollPeriodEndDay,
@@ -144,7 +137,6 @@ export function useCinemaSettingsData() {
       }
 
       const savedCinema = await response.json();
-
       const nextCinema = {
         ...CINEMA_DEFAULTS,
         ...savedCinema,
@@ -152,14 +144,12 @@ export function useCinemaSettingsData() {
 
       setCinema(nextCinema);
       syncMasterSelectedCinemaStorage(nextCinema);
-
       setMessage("Biografindstillinger gemt.");
     } catch (error) {
       const description =
         error instanceof Error
           ? error.message
           : "Kunne ikke gemme indstillinger.";
-
       setMessage("");
       infoDialog.showError("Indstillinger kunne ikke gemmes", description);
     } finally {
@@ -173,7 +163,6 @@ export function useCinemaSettingsData() {
     }
 
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-
     if (!allowedTypes.includes(file.type)) {
       infoDialog.showError(
         "Logo kunne ikke uploades",

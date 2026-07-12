@@ -1,4 +1,5 @@
 import type { Cinema, CurrentUser } from "./cinemaSettingsTypes";
+
 import {
   MASTER_SELECTED_CINEMA_ID_KEY,
   MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
@@ -9,7 +10,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export function clampDay(value: number) {
   if (Number.isNaN(value)) return 1;
-
   return Math.min(31, Math.max(1, value));
 }
 
@@ -17,18 +17,15 @@ export function toIsoDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-
   return `${year}-${month}-${day}`;
 }
 
 export async function readErrorMessage(response: Response, fallback: string) {
   try {
     const data = await response.json();
-
     if (Array.isArray(data.message)) {
       return data.message.join("\n");
     }
-
     return data.message || fallback;
   } catch {
     return fallback;
@@ -41,21 +38,17 @@ function notifyMasterSelectedCinemaChanged() {
 
 export function getLogoSrc(logoUrl?: string | null) {
   if (!logoUrl) return "";
-
   if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
     return logoUrl;
   }
-
   if (logoUrl.startsWith("/")) {
     return `${API_URL}${logoUrl}`;
   }
-
   return `${API_URL}/${logoUrl}`;
 }
 
 export function syncMasterSelectedCinemaStorage(cinema: Cinema) {
   const savedUser = localStorage.getItem("user");
-
   if (!savedUser) {
     return;
   }
@@ -75,13 +68,11 @@ export function syncMasterSelectedCinemaStorage(cinema: Cinema) {
     }
 
     localStorage.setItem(MASTER_SELECTED_CINEMA_NAME_KEY, cinema.name);
-
     if (cinema.logoUrl) {
       localStorage.setItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY, cinema.logoUrl);
     } else {
       localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
     }
-
     notifyMasterSelectedCinemaChanged();
   } catch {}
 }
@@ -121,7 +112,6 @@ export function calculatePeriodExample(cinema: Cinema) {
     }
 
     const anchor = new Date(`${cinema.payrollPeriodAnchorDate}T00:00:00`);
-
     if (Number.isNaN(anchor.getTime())) {
       return {
         text: "Anchor-datoen er ugyldig.",
@@ -131,11 +121,9 @@ export function calculatePeriodExample(cinema: Cinema) {
     }
 
     const start = new Date(anchor);
-
     while (start <= today) {
       start.setDate(start.getDate() + 14);
     }
-
     start.setDate(start.getDate() - 14);
 
     const end = new Date(start);
@@ -169,7 +157,6 @@ export function calculatePeriodExample(cinema: Cinema) {
     }
 
     const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
-
     let warning: string | null = null;
 
     if (startDay === endDay) {

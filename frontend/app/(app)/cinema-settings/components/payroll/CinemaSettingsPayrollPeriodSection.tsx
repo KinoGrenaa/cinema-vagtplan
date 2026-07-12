@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { clampDay, toIsoDate } from "../../helpers/cinemaSettingsHelpers";
-import type { Cinema } from "../../helpers/cinemaSettingsTypes";
+import { clampDay, toIsoDate } from "../../helpers/core/cinemaSettingsHelpers";
+import type { Cinema } from "../../helpers/core/cinemaSettingsTypes";
 
 type PayrollPeriodExample = {
   text: string;
@@ -26,8 +26,8 @@ export default function CinemaSettingsPayrollPeriodSection({
       <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
         <h3 className="text-lg font-bold">Lønperiode</h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Vælg hvordan biografens lønperioder beregnes. Indstillingen
-          bruges senere på /my-time og /payroll.
+          Vælg hvordan biografens lønperioder beregnes. Indstillingen bruges
+          senere på /my-time og /payroll.
         </p>
 
         <div className="mt-5 grid gap-4 md:grid-cols-3">
@@ -61,8 +61,7 @@ export default function CinemaSettingsPayrollPeriodSection({
                 updateCinemaSettings({
                   ...cinema,
                   payrollPeriodModel: "FIXED_DAY_TO_DAY",
-                  payrollPeriodStartDay:
-                    cinema.payrollPeriodStartDay || 21,
+                  payrollPeriodStartDay: cinema.payrollPeriodStartDay || 21,
                   payrollPeriodEndDay: cinema.payrollPeriodEndDay || 20,
                 })
               }
@@ -84,8 +83,7 @@ export default function CinemaSettingsPayrollPeriodSection({
                   ...cinema,
                   payrollPeriodModel: "BIWEEKLY",
                   payrollPeriodAnchorDate:
-                    cinema.payrollPeriodAnchorDate ||
-                    toIsoDate(new Date()),
+                    cinema.payrollPeriodAnchorDate || toIsoDate(new Date()),
                 })
               }
               className="mr-2"
@@ -140,9 +138,7 @@ export default function CinemaSettingsPayrollPeriodSection({
                 onBlur={() =>
                   updateCinemaSettings({
                     ...cinema,
-                    payrollPeriodEndDay: clampDay(
-                      cinema.payrollPeriodEndDay,
-                    ),
+                    payrollPeriodEndDay: clampDay(cinema.payrollPeriodEndDay),
                   })
                 }
                 className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950"
@@ -194,9 +190,7 @@ export default function CinemaSettingsPayrollPeriodSection({
             <input
               type="radio"
               name="payrollPayoutRule"
-              checked={
-                cinema.payrollPayoutRule === "LAST_WEEKDAY_OF_MONTH"
-              }
+              checked={cinema.payrollPayoutRule === "LAST_WEEKDAY_OF_MONTH"}
               onChange={() =>
                 updateCinemaSettings({
                   ...cinema,
@@ -206,9 +200,7 @@ export default function CinemaSettingsPayrollPeriodSection({
               }
               className="mr-2"
             />
-            <span className="font-semibold">
-              Sidste hverdag i måneden
-            </span>
+            <span className="font-semibold">Sidste hverdag i måneden</span>
           </label>
 
           <label className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">

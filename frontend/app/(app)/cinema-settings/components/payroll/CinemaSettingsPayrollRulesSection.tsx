@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { Cinema } from "../../helpers/cinemaSettingsTypes";
+import type { Cinema } from "../../helpers/core/cinemaSettingsTypes";
 
 type CinemaSettingsPayrollRulesSectionProps = {
   cinema: Cinema;
@@ -26,9 +26,7 @@ export default function CinemaSettingsPayrollRulesSection({
         </div>
 
         <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-          <h3 className="mb-4 text-lg font-semibold">
-            Afvigelsestolerance
-          </h3>
+          <h3 className="mb-4 text-lg font-semibold">Afvigelsestolerance</h3>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
