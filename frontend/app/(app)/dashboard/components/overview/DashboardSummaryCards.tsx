@@ -1,4 +1,4 @@
-import { formatHours } from "../helpers/dashboardHelpers";
+import { formatHours } from "../../helpers/dashboardHelpers";
 
 type DashboardSummaryCardsProps = {
   todayPlannedHours: number;
@@ -19,7 +19,6 @@ export default function DashboardSummaryCards({
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Planlagte timer i dag
         </div>
-
         <div className="mt-2 text-3xl font-bold">
           {formatHours(todayPlannedHours)}
         </div>
@@ -29,7 +28,6 @@ export default function DashboardSummaryCards({
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Mine registrerede timer
         </div>
-
         <div className="mt-2 text-3xl font-bold">
           {formatHours(myRegisteredHours)}
         </div>
@@ -39,7 +37,6 @@ export default function DashboardSummaryCards({
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Åbne vagtbytter
         </div>
-
         <div className="mt-2 text-3xl font-bold">{openShiftTrades}</div>
       </div>
 
@@ -47,7 +44,6 @@ export default function DashboardSummaryCards({
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Afventer fridage
         </div>
-
         <div className="mt-2 text-3xl font-bold">{pendingLeaveRequests}</div>
       </div>
     </section>
