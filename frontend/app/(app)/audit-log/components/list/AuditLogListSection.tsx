@@ -5,8 +5,8 @@ import {
   getEntityTypeLabel,
   getPerformedBy,
   getSubjectName,
-} from "../../helpers/auditLogHelpers";
-import type { AuditLog, AuditLogGroup } from "../../helpers/auditLogTypes";
+} from "../../helpers/core/auditLogHelpers";
+import type { AuditLog, AuditLogGroup } from "../../helpers/core/auditLogTypes";
 
 type AuditLogListSectionProps = {
   logs: AuditLog[];

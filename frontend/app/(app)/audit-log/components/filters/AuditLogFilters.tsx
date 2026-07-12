@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { getEntityTypeLabel } from "../../helpers/auditLogHelpers";
+import { getEntityTypeLabel } from "../../helpers/core/auditLogHelpers";
 
 type AuditLogFiltersProps = {
   search: string;

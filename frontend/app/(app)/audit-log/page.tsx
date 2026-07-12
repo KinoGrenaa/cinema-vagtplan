@@ -8,7 +8,7 @@ import AuditLogFilters from "./components/filters/AuditLogFilters";
 import AuditLogHeader from "./components/layout/AuditLogHeader";
 import AuditLogMasterCinemaRequired from "./components/layout/AuditLogMasterCinemaRequired";
 import AuditLogListSection from "./components/list/AuditLogListSection";
-import { useAuditLogData } from "./hooks/useAuditLogData";
+import { useAuditLogData } from "./hooks/data/useAuditLogData";
 
 export default function AuditLogPage() {
   const { isMaster, user } = useAuth();

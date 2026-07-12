@@ -12,10 +12,8 @@ export type AuditLog = {
   entityId?: number | null;
   description?: string | null;
   createdAt: string;
-
   user?: AuditUser | null;
   subjectUser?: AuditUser | null;
-
   cinema?: {
     name: string;
   } | null;

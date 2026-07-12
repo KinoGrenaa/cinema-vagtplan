@@ -3,14 +3,12 @@ import {
   formatDateDK,
   formatTimeDK,
 } from "@/app/utils/dateTime";
-
 import type { AuditLog, AuditLogGroup, AuditUser } from "./auditLogTypes";
 
 const actionLabels: Record<string, string> = {
   CREATE_SHIFT: "Vagt oprettet",
   UPDATE_SHIFT: "Vagt rettet",
   DELETE_SHIFT: "Vagt slettet",
-
   SUBMIT_MANUAL_TIME_ENTRY: "Manuel tidsregistrering indsendt",
   CLOCK_IN: "Mødt ind",
   CLOCK_OUT: "Gået hjem",
@@ -21,12 +19,10 @@ const actionLabels: Record<string, string> = {
   UPDATE_OWN_TIME_ENTRY: "Egen tidsregistrering rettet",
   UPDATE_TIME_ENTRY_FIELD: "Tidsregistrering ændret",
   UPDATE_TIME_ENTRY: "Tidsregistrering rettet",
-
   CREATE_USER: "Medarbejder oprettet",
   UPDATE_USER: "Medarbejder rettet",
   DEACTIVATE_USER: "Medarbejder deaktiveret",
   REACTIVATE_USER: "Medarbejder genaktiveret",
-
   LOCK_PAYROLL_PERIOD: "Lønperiode låst",
   UNLOCK_PAYROLL_PERIOD: "Lønperiode genåbnet",
 };
@@ -92,7 +88,6 @@ function extractSubjectFromDescription(description?: string | null) {
 
   for (const pattern of patterns) {
     const match = description.match(pattern);
-
     if (match?.[1]) {
       return match[1].trim();
     }
@@ -103,7 +98,6 @@ function extractSubjectFromDescription(description?: string | null) {
 
 function getLogDateKey(createdAt: string) {
   const date = new Date(createdAt);
-
   if (Number.isNaN(date.getTime())) {
     return "ukendt";
   }
@@ -117,7 +111,6 @@ function formatDateGroupLabel(dateKey: string) {
   }
 
   const [year, month, day] = dateKey.split("-").map(Number);
-
   if (!year || !month || !day) {
     return "Ukendt dato";
   }
@@ -135,7 +128,6 @@ function formatDateGroupLabel(dateKey: string) {
 
 export function formatDateTime(value: string) {
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) {
     return "Ukendt tidspunkt";
   }
@@ -145,7 +137,6 @@ export function formatDateTime(value: string) {
 
 export function formatTime(value: string) {
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) {
     return "Ukendt tidspunkt";
   }
@@ -178,7 +169,6 @@ export function groupLogsByDate(logs: AuditLog[]): AuditLogGroup[] {
       dateLabel: formatDateGroupLabel(dateKey),
       logs: [log],
     });
-
     return groups;
   }, []);
 }
@@ -186,7 +176,6 @@ export function groupLogsByDate(logs: AuditLog[]): AuditLogGroup[] {
 export async function readErrorMessage(response: Response, fallback: string) {
   try {
     const data = await response.json();
-
     if (typeof data?.message === "string") {
       return data.message;
     }

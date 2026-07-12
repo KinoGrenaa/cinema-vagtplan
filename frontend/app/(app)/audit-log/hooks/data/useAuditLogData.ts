@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
 import { apiFetch } from "@/app/lib/api";
-
 import {
   getActionLabel,
   getEntityTypeLabel,
@@ -9,8 +7,8 @@ import {
   getSubjectName,
   groupLogsByDate,
   readErrorMessage,
-} from "../helpers/auditLogHelpers";
-import type { AuditLog } from "../helpers/auditLogTypes";
+} from "../../helpers/core/auditLogHelpers";
+import type { AuditLog } from "../../helpers/core/auditLogTypes";
 
 type AuditLogUserContext = {
   role?: string;
@@ -48,7 +46,6 @@ export function useAuditLogData({
     }
 
     updateSelectedMasterCinema();
-
     window.addEventListener(
       "masterSelectedCinemaChanged",
       updateSelectedMasterCinema,
@@ -83,14 +80,12 @@ export function useAuditLogData({
 
     try {
       setLoading(true);
-
       const endpoint =
         user.role === "MASTER" && !user.cinemaId && selectedMasterCinemaId
           ? `/audit-logs?cinemaId=${encodeURIComponent(selectedMasterCinemaId)}`
           : "/audit-logs";
 
       const response = await apiFetch(endpoint);
-
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(
@@ -101,7 +96,6 @@ export function useAuditLogData({
       }
 
       const data = await response.json();
-
       setLogs(Array.isArray(data) ? data : []);
     } catch (error) {
       showError(
@@ -159,7 +153,6 @@ export function useAuditLogData({
   useEffect(() => {
     setExpandedDateKeys((current) => {
       const validKeys = groupedLogs.map((group) => group.dateKey);
-
       if (validKeys.length === 0) {
         return [];
       }
@@ -171,7 +164,6 @@ export function useAuditLogData({
       const nextKeys = currentValidKeys.includes(latestDateKey)
         ? currentValidKeys
         : [latestDateKey, ...currentValidKeys];
-
       const isUnchanged =
         nextKeys.length === current.length &&
         nextKeys.every((dateKey, index) => dateKey === current[index]);
