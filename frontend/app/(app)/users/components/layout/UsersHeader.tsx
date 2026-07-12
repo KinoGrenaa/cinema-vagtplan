@@ -19,7 +19,6 @@ export default function UsersHeader({
     <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div>
         <h1 className="text-3xl font-bold">Brugere</h1>
-
         <label className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
           <input
             type="checkbox"

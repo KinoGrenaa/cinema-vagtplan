@@ -2,22 +2,35 @@
 
 import { useState } from "react";
 import PermissionGuard from "@/app/components/PermissionGuard";
+
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
+
 import InfoModal from "@/app/components/modals/InfoModal";
+
 import { useConfirm } from "@/app/hooks/useConfirm";
+
 import { useInfoModal } from "@/app/hooks/useInfoModal";
+
 import { EditUserModal, UserModal } from "./components/UserFormModal";
-import UsersHeader from "./components/UsersHeader";
-import UsersMasterCinemaRequired from "./components/UsersMasterCinemaRequired";
+
+import UsersHeader from "./components/layout/UsersHeader";
+
+import UsersMasterCinemaRequired from "./components/layout/UsersMasterCinemaRequired";
 import UsersTable from "./components/UsersTable";
+
 import { useUserFormActions } from "./hooks/useUserFormActions";
+
 import { useUserStatusActions } from "./hooks/useUserStatusActions";
+
 import { useUsersData } from "./hooks/useUsersData";
 
 export default function UsersPage() {
   const confirmDialog = useConfirm();
+
   const infoDialog = useInfoModal();
+
   const [showInactive, setShowInactive] = useState(false);
+
   const { users, setUsers, currentUser, selectedMasterCinemaId, loading } =
     useUsersData({
       showError: (title, description) => {
@@ -82,7 +95,6 @@ export default function UsersPage() {
           needsMasterCinemaSelection={needsMasterCinemaSelection}
           onCreateClick={openCreateUserModal}
         />
-
         {needsMasterCinemaSelection && <UsersMasterCinemaRequired />}
 
         {showCreate && (
