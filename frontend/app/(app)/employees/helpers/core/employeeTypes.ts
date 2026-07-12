@@ -5,7 +5,6 @@ export type User = {
   email: string;
   role: string;
   cinemaId?: number | null;
-
   canManageSchedule?: boolean;
   canManageUsers?: boolean;
   canManagePayroll?: boolean;

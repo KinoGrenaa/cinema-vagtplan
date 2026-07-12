@@ -14,6 +14,7 @@ export const permissionLabels: { key: PermissionKey; label: string }[] = [
 export function getRoleLabel(role: string) {
   if (role === "MASTER") return "Master";
   if (role === "ADMIN") return "Administrator";
+
   return "Medarbejder";
 }
 
@@ -65,10 +66,14 @@ export function appendCinemaId(endpoint: string, cinemaId: number | null) {
   if (!cinemaId) return endpoint;
 
   const separator = endpoint.includes("?") ? "&" : "?";
+
   return `${endpoint}${separator}cinemaId=${cinemaId}`;
 }
 
-export async function readErrorMessage(response: Response, fallback: string) {
+export async function readErrorMessage(
+  response: Response,
+  fallback: string,
+) {
   try {
     const data = await response.json();
 

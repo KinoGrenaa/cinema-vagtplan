@@ -2,8 +2,8 @@ import {
   getRoleBadge,
   getRoleLabel,
   permissionLabels,
-} from "../../helpers/employeeHelpers";
-import type { PermissionKey, User } from "../../helpers/employeeTypes";
+} from "../../helpers/core/employeeHelpers";
+import type { PermissionKey, User } from "../../helpers/core/employeeTypes";
 
 type EmployeesTableProps = {
   users: User[];

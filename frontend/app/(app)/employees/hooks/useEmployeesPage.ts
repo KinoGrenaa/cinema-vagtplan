@@ -8,15 +8,18 @@ import {
   getSelectedMasterCinemaId,
   getStoredUser,
   readErrorMessage,
-} from "../helpers/employeeHelpers";
-import type { PermissionKey, StoredUser, User } from "../helpers/employeeTypes";
+} from "../helpers/core/employeeHelpers";
+import type {
+  PermissionKey,
+  StoredUser,
+  User,
+} from "../helpers/core/employeeTypes";
 
 export function useEmployeesPage() {
   const infoDialog = useInfoModal();
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
     number | null
@@ -73,7 +76,6 @@ export function useEmployeesPage() {
       }
 
       const data = await response.json();
-
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       setUsers([]);
@@ -119,8 +121,10 @@ export function useEmployeesPage() {
             canManageUsers: user.canManageUsers ?? false,
             canManagePayroll: user.canManagePayroll ?? false,
             canManageLeaveRequests: user.canManageLeaveRequests ?? false,
-            canManageCinemaSettings: user.canManageCinemaSettings ?? false,
-            canSendBroadcastMessages: user.canSendBroadcastMessages ?? false,
+            canManageCinemaSettings:
+              user.canManageCinemaSettings ?? false,
+            canSendBroadcastMessages:
+              user.canSendBroadcastMessages ?? false,
             [permission]: value,
           }),
         },
