@@ -3,8 +3,8 @@
 import AdminGuard from "@/app/components/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 
-import CinemaSettingsBrandingSection from "./components/CinemaSettingsBrandingSection";
-import CinemaSettingsFeatureTogglesSection from "./components/CinemaSettingsFeatureTogglesSection";
+import CinemaSettingsBrandingSection from "./components/sections/CinemaSettingsBrandingSection";
+import CinemaSettingsFeatureTogglesSection from "./components/sections/CinemaSettingsFeatureTogglesSection";
 import CinemaSettingsHeaderSection from "./components/layout/CinemaSettingsHeaderSection";
 import CinemaSettingsLoadingState from "./components/layout/CinemaSettingsLoadingState";
 import CinemaSettingsMasterRequired from "./components/layout/CinemaSettingsMasterRequired";

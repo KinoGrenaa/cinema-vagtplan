@@ -1,5 +1,6 @@
-import type { Cinema } from "../helpers/cinemaSettingsTypes";
-import { getLogoSrc } from "../helpers/cinemaSettingsHelpers";
+import type { Cinema } from "../../helpers/cinemaSettingsTypes";
+
+import { getLogoSrc } from "../../helpers/cinemaSettingsHelpers";
 
 type CinemaSettingsBrandingSectionProps = {
   cinema: Cinema;
@@ -17,12 +18,10 @@ export default function CinemaSettingsBrandingSection({
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <h2 className="text-2xl font-bold">Branding</h2>
-
       <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
         Upload biografens logo. Logoet vises for MASTER, når biografen er valgt
         som aktiv biograf.
       </p>
-
       <div className="mt-6 flex flex-col gap-5 md:flex-row md:items-center">
         <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
           {cinema.logoUrl ? (
@@ -37,7 +36,6 @@ export default function CinemaSettingsBrandingSection({
             </span>
           )}
         </div>
-
         <div className="space-y-3">
           <label className="inline-flex cursor-pointer rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800">
             Upload logo
@@ -53,7 +51,6 @@ export default function CinemaSettingsBrandingSection({
               }}
             />
           </label>
-
           {cinema.logoUrl ? (
             <button
               type="button"
@@ -64,7 +61,6 @@ export default function CinemaSettingsBrandingSection({
               Fjern logo
             </button>
           ) : null}
-
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Tilladte filtyper: JPG, PNG og WEBP. Maks. 2 MB.
           </p>
