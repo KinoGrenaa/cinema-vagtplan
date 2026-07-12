@@ -6,6 +6,7 @@ import CinemaSettingsPayrollRulesSection from "./CinemaSettingsPayrollRulesSecti
 type PayrollRulesProps = ComponentProps<
   typeof CinemaSettingsPayrollRulesSection
 >;
+
 type PayrollPeriodProps = ComponentProps<
   typeof CinemaSettingsPayrollPeriodSection
 >;

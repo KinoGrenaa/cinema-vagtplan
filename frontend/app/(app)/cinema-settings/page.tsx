@@ -8,7 +8,7 @@ import CinemaSettingsFeatureTogglesSection from "./components/sections/CinemaSet
 import CinemaSettingsHeaderSection from "./components/layout/CinemaSettingsHeaderSection";
 import CinemaSettingsLoadingState from "./components/layout/CinemaSettingsLoadingState";
 import CinemaSettingsMasterRequired from "./components/layout/CinemaSettingsMasterRequired";
-import CinemaSettingsPayrollSection from "./components/CinemaSettingsPayrollSection";
+import CinemaSettingsPayrollSection from "./components/payroll/CinemaSettingsPayrollSection";
 
 import { calculatePeriodExample } from "./helpers/cinemaSettingsHelpers";
 import { useCinemaSettingsData } from "./hooks/useCinemaSettingsData";

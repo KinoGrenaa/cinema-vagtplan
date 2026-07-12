@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { clampDay, toIsoDate } from "../helpers/cinemaSettingsHelpers";
-import type { Cinema } from "../helpers/cinemaSettingsTypes";
+import { clampDay, toIsoDate } from "../../helpers/cinemaSettingsHelpers";
+import type { Cinema } from "../../helpers/cinemaSettingsTypes";
 
 type PayrollPeriodExample = {
   text: string;
@@ -25,7 +25,6 @@ export default function CinemaSettingsPayrollPeriodSection({
     <>
       <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
         <h3 className="text-lg font-bold">Lønperiode</h3>
-
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Vælg hvordan biografens lønperioder beregnes. Indstillingen
           bruges senere på /my-time og /payroll.
@@ -186,7 +185,6 @@ export default function CinemaSettingsPayrollPeriodSection({
 
       <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
         <h3 className="text-lg font-bold">Udbetaling</h3>
-
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Vælg hvordan udbetalingsdatoen beregnes.
         </p>

@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type { Cinema } from "../helpers/cinemaSettingsTypes";
+import type { Cinema } from "../../helpers/cinemaSettingsTypes";
 
 type CinemaSettingsPayrollRulesSectionProps = {
   cinema: Cinema;
@@ -20,7 +20,6 @@ export default function CinemaSettingsPayrollRulesSection({
       <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
         <div>
           <div className="font-semibold">Brug avancerede lønregler</div>
-
           <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Splitter automatisk timer i weekend, aften og nat.
           </div>
@@ -36,7 +35,6 @@ export default function CinemaSettingsPayrollRulesSection({
               <label className="mb-1 block text-sm font-medium">
                 Mødetid (minutter)
               </label>
-
               <input
                 type="number"
                 min={0}
@@ -61,7 +59,6 @@ export default function CinemaSettingsPayrollRulesSection({
               <label className="mb-1 block text-sm font-medium">
                 Fyraften (minutter)
               </label>
-
               <input
                 type="number"
                 min={0}
@@ -109,7 +106,6 @@ export default function CinemaSettingsPayrollRulesSection({
       <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
         <div>
           <div className="font-semibold">Brug overarbejdsregler</div>
-
           <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Aktiverer overtime regler i løneksport.
           </div>
@@ -136,11 +132,9 @@ export default function CinemaSettingsPayrollRulesSection({
       <div className="grid gap-4 md:grid-cols-3">
         <label className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
           <div className="font-semibold">Planned overtime</div>
-
           <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Over planlagt vagt.
           </div>
-
           <input
             type="checkbox"
             checked={cinema.plannedOvertimeEnabled}
@@ -156,11 +150,9 @@ export default function CinemaSettingsPayrollRulesSection({
 
         <label className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
           <div className="font-semibold">Daily overtime</div>
-
           <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Mere end X timer pr dag.
           </div>
-
           <input
             type="checkbox"
             checked={cinema.dailyOvertimeEnabled}
@@ -176,11 +168,9 @@ export default function CinemaSettingsPayrollRulesSection({
 
         <label className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
           <div className="font-semibold">Weekly overtime</div>
-
           <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Mere end X timer pr uge.
           </div>
-
           <input
             type="checkbox"
             checked={cinema.weeklyOvertimeEnabled}
@@ -198,7 +188,6 @@ export default function CinemaSettingsPayrollRulesSection({
       <div className="grid gap-4 md:grid-cols-2">
         <label className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
           <div className="font-semibold">Daglig overtime grænse</div>
-
           <input
             type="number"
             min={0}
@@ -217,7 +206,6 @@ export default function CinemaSettingsPayrollRulesSection({
 
         <label className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
           <div className="font-semibold">Ugentlig overtime grænse</div>
-
           <input
             type="number"
             min={0}
