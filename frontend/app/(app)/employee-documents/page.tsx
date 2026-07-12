@@ -9,8 +9,8 @@ import EmployeeDocumentsHeader from "./components/layout/EmployeeDocumentsHeader
 import EmployeeDocumentsListSection from "./components/list/EmployeeDocumentsListSection";
 import EmployeeDocumentsMasterCinemaRequired from "./components/layout/EmployeeDocumentsMasterCinemaRequired";
 import EmployeeDocumentUploadForm from "./components/form/EmployeeDocumentUploadForm";
-import { useEmployeeDocumentActions } from "./hooks/useEmployeeDocumentActions";
-import { useEmployeeDocumentsData } from "./hooks/useEmployeeDocumentsData";
+import { useEmployeeDocumentActions } from "./hooks/actions/useEmployeeDocumentActions";
+import { useEmployeeDocumentsData } from "./hooks/data/useEmployeeDocumentsData";
 
 export default function EmployeeDocumentsPage() {
   const confirmDialog = useConfirm();

@@ -1,6 +1,6 @@
-import { getDocumentUrl } from "../../helpers/employeeDocumentHelpers";
+import { getDocumentUrl } from "../../helpers/core/employeeDocumentHelpers";
 
-import type { EmployeeDocument } from "../../helpers/employeeDocumentTypes";
+import type { EmployeeDocument } from "../../helpers/core/employeeDocumentTypes";
 
 type EmployeeDocumentsListSectionProps = {
   documents: EmployeeDocument[];

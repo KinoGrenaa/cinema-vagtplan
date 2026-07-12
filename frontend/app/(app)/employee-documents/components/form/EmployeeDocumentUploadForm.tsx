@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 
-import type { User } from "../../helpers/employeeDocumentTypes";
+import type { User } from "../../helpers/core/employeeDocumentTypes";
 
 type EmployeeDocumentUploadFormProps = {
   users: User[];

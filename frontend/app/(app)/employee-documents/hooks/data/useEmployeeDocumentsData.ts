@@ -8,12 +8,12 @@ import {
   getErrorMessage,
   getSelectedMasterCinemaId,
   readErrorMessage,
-} from "../helpers/employeeDocumentHelpers";
+} from "../../helpers/core/employeeDocumentHelpers";
 import type {
   CurrentUser,
   EmployeeDocument,
   User,
-} from "../helpers/employeeDocumentTypes";
+} from "../../helpers/core/employeeDocumentTypes";
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;
@@ -57,7 +57,6 @@ export function useEmployeeDocumentsData({
     }
 
     updateUserContext();
-
     window.addEventListener("storage", updateUserContext);
     window.addEventListener("masterSelectedCinemaChanged", updateUserContext);
 
@@ -73,7 +72,6 @@ export function useEmployeeDocumentsData({
   async function fetchDocuments(userId: number, cinemaId: number | null) {
     try {
       setLoading(true);
-
       const response = await apiFetch(
         appendCinemaId(`/employee-documents/user/${userId}`, cinemaId),
       );
@@ -88,7 +86,6 @@ export function useEmployeeDocumentsData({
       setDocuments(Array.isArray(data) ? data : []);
     } catch (error) {
       setDocuments([]);
-
       infoDialog.showError(
         "Kunne ikke hente dokumenter",
         getErrorMessage(error, "Dokumenterne kunne ikke hentes. Prøv igen."),
@@ -112,7 +109,6 @@ export function useEmployeeDocumentsData({
 
     try {
       setLoading(true);
-
       const response = await apiFetch(appendCinemaId("/users", cinemaId));
 
       if (!response.ok) {
@@ -123,9 +119,7 @@ export function useEmployeeDocumentsData({
 
       const data = await response.json();
       const nextUsers = Array.isArray(data) ? data : [];
-
       setUsers(nextUsers);
-
       setSelectedUserId(null);
       setDocuments([]);
       setLoading(false);
@@ -134,7 +128,6 @@ export function useEmployeeDocumentsData({
       setSelectedUserId(null);
       setDocuments([]);
       setLoading(false);
-
       infoDialog.showError(
         "Kunne ikke hente medarbejdere",
         getErrorMessage(error, "Medarbejderne kunne ikke hentes. Prøv igen."),
@@ -144,13 +137,11 @@ export function useEmployeeDocumentsData({
 
   useEffect(() => {
     if (!currentUser) return;
-
     fetchUsers(activeCinemaId, needsMasterCinemaSelection);
   }, [currentUser, activeCinemaId, needsMasterCinemaSelection]);
 
   useEffect(() => {
     if (!selectedUserId || needsMasterCinemaSelection) return;
-
     fetchDocuments(selectedUserId, activeCinemaId);
   }, [activeCinemaId, needsMasterCinemaSelection, selectedUserId]);
 

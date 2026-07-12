@@ -7,7 +7,7 @@ import {
   appendCinemaId,
   getErrorMessage,
   readErrorMessage,
-} from "../helpers/employeeDocumentHelpers";
+} from "../../helpers/core/employeeDocumentHelpers";
 
 type ConfirmDialog = {
   confirm: (input: {
@@ -82,7 +82,6 @@ export function useEmployeeDocumentActions({
 
     try {
       setUploading(true);
-
       const formData = new FormData();
       formData.append("file", file);
       formData.append("title", title.trim());

@@ -31,7 +31,6 @@ export function getCurrentUserFromStorage() {
   if (typeof window === "undefined") return null;
 
   const savedUser = localStorage.getItem("user");
-
   if (!savedUser) return null;
 
   try {
@@ -45,7 +44,6 @@ export function getSelectedMasterCinemaId() {
   if (typeof window === "undefined") return null;
 
   const cinemaId = Number(localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY));
-
   if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
     return null;
   }
