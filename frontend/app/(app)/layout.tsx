@@ -1,5 +1,5 @@
 import AppMenu from "../components/AppMenu";
-import ActiveCinemaIndicator from "../components/ActiveCinemaIndicator";
+import ActiveCinemaIndicator from "../components/cinema/ActiveCinemaIndicator";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
