@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useApi } from "./useApi";
-import type { Shift, User, WorkType } from "../../../shared/types";
+import { useApi } from "@/app/hooks/useApi";
+import type { Shift, User, WorkType } from "../../../../../../shared/types";
 import { toast } from "sonner";
 
 export type MovieShowing = {

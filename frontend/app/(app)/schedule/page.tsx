@@ -13,7 +13,7 @@ import { useScheduleShiftForm } from "./hooks/state/useScheduleShiftForm";
 import { useScheduleShiftTimelineActions } from "./hooks/actions/useScheduleShiftTimelineActions";
 import { useScheduleStaffingRequest } from "./hooks/actions/useScheduleStaffingRequest";
 import { useScheduleTimeRegistration } from "./hooks/actions/useScheduleTimeRegistration";
-import { useSchedule } from "../../hooks/useSchedule";
+import { useSchedule } from "./hooks/data/useSchedule";
 import AiScheduleFeatures from "./components/ai/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import type { Shift } from "../../../../../../shared/types";
-import type { useSchedule } from "../../../../hooks/useSchedule";
+import type { useSchedule } from "../data/useSchedule";
 import type { useConfirm } from "@/app/hooks/useConfirm";
 import type { useInfoModal } from "@/app/hooks/useInfoModal";
 import { localDateTimeToISOString, toInputDateTime } from "@/app/utils/dateTime";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useApi } from "./useApi";
-import { useAuth } from "../providers/AuthProvider";
+import { useApi } from "@/app/hooks/useApi";
+import { useAuth } from "@/app/providers/AuthProvider";
 import { localDateTimeToISOString } from "@/app/utils/dateTime";
 
 import type {
@@ -10,7 +10,7 @@ import type {
   User,
   WorkType,
   LeaveRequest,
-} from "../../../shared/types";
+} from "../../../../../../shared/types";
 
 type MovieShowing = {
   id: number;

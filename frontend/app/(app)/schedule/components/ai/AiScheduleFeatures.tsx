@@ -6,7 +6,7 @@ import {
   useScheduleAi,
   type MovieShowing,
   type UseScheduleAiInput,
-} from "../../../../hooks/useScheduleAi";
+} from "../../hooks/ai/useScheduleAi";
 import type { Shift, User, WorkType } from "../../../../../../shared/types";
 
 type AiScheduleData = ReturnType<typeof useScheduleAi>;

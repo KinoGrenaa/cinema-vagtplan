@@ -1,7 +1,7 @@
 "use client";
 
 import type { Shift } from "../../../../../../shared/types";
-import type { useSchedule } from "../../../../hooks/useSchedule";
+import type { useSchedule } from "../data/useSchedule";
 import type { useInfoModal } from "@/app/hooks/useInfoModal";
 import { getShiftUserId } from "../../helpers/text/scheduleShiftText";
 import {
