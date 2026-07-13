@@ -2,18 +2,13 @@
 
 import InfoModal from "@/app/components/modals/InfoModal";
 
+import LeaveRequestFormModal from "./components/form/LeaveRequestFormModal";
+import LeaveRequestsHeader from "./components/layout/LeaveRequestsHeader";
+import LeaveRequestsMasterNotice from "./components/layout/LeaveRequestsMasterNotice";
+import LeaveRequestsSuccessMessage from "./components/layout/LeaveRequestsSuccessMessage";
+import LeaveRequestsListSection from "./components/list/LeaveRequestsListSection";
 import LeaveRequestsCancelModal from "./components/modals/LeaveRequestsCancelModal";
 import LeaveRequestsFilterModal from "./components/modals/LeaveRequestsFilterModal";
-import LeaveRequestFormModal from "./components/form/LeaveRequestFormModal";
-
-import LeaveRequestsHeader from "./components/layout/LeaveRequestsHeader";
-
-import LeaveRequestsListSection from "./components/list/LeaveRequestsListSection";
-
-import LeaveRequestsMasterNotice from "./components/layout/LeaveRequestsMasterNotice";
-
-import LeaveRequestsSuccessMessage from "./components/layout/LeaveRequestsSuccessMessage";
-
 import LeaveRequestsSummaryCards from "./components/overview/LeaveRequestsSummaryCards";
 import { useLeaveRequestsPage } from "./hooks/page/useLeaveRequestsPage";
 
@@ -26,7 +21,6 @@ export default function LeaveRequestsPage() {
     form,
     infoDialog,
     isMasterWithoutOwnCinema,
-    requests,
   } = useLeaveRequestsPage();
 
   return (
@@ -53,7 +47,7 @@ export default function LeaveRequestsPage() {
           expandedGroupKeys={filters.expandedGroupKeys}
           filterSummary={filters.filterSummary}
           groupedRequests={filters.groupedRequests}
-          totalRequestCount={requests.length}
+          totalRequestCount={filters.dateFilteredRequestCount}
           visibleRequestCount={filters.visibleRequests.length}
           onSelectCancelRequest={cancel.setRequestToCancel}
           onToggleGroup={filters.toggleGroup}

@@ -29,21 +29,26 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
   const [draftFilterEndDate, setDraftFilterEndDate] = useState("");
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<string[]>([]);
 
-  const visibleRequests = useMemo(() => {
-    return requests.filter(
-      (request) =>
-        isRequestVisibleByStatus(request, statusFilters) &&
-        requestOverlapsDateFilter(request, filterStartDate, filterEndDate),
+  const requestsInDateRange = useMemo(() => {
+    return requests.filter((request) =>
+      requestOverlapsDateFilter(request, filterStartDate, filterEndDate),
     );
-  }, [filterEndDate, filterStartDate, requests, statusFilters]);
+  }, [filterEndDate, filterStartDate, requests]);
 
-  const statusCounts = useMemo(() => countLeaveStatuses(requests), [requests]);
+  const visibleRequests = useMemo(() => {
+    return requestsInDateRange.filter((request) =>
+      isRequestVisibleByStatus(request, statusFilters),
+    );
+  }, [requestsInDateRange, statusFilters]);
 
+  const statusCounts = useMemo(
+    () => countLeaveStatuses(requestsInDateRange),
+    [requestsInDateRange],
+  );
   const activeFilterCount = useMemo(
     () => getActiveFilterCount(statusFilters, filterStartDate, filterEndDate),
     [filterEndDate, filterStartDate, statusFilters],
   );
-
   const filterSummary = useMemo(
     () => getFilterSummary(statusFilters, filterStartDate, filterEndDate),
     [filterEndDate, filterStartDate, statusFilters],
@@ -63,8 +68,7 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
         key,
         requests: groupRequests.sort(
           (a, b) =>
-            new Date(a.startDate).getTime() -
-            new Date(b.startDate).getTime(),
+            new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
         ),
       }))
       .sort(
@@ -137,6 +141,7 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
 
   return {
     activeFilterCount,
+    dateFilteredRequestCount: requestsInDateRange.length,
     draftFilterEndDate,
     draftFilterStartDate,
     draftStatusFilters,
