@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import type { Shift } from "../../../../shared/types";
+import type { Shift } from "../../../../../../shared/types";
 
 type EmergencyReplacement = {
   name: string;

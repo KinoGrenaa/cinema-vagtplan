@@ -1,5 +1,5 @@
 import type { Shift, User } from "../../../../../../shared/types";
-import AiSuggestionsPanel from "../../../../components/schedule/AiSuggestionsPanel";
+import AiSuggestionsPanel from "../ai/AiSuggestionsPanel";
 import ShiftTimeline from "../../../../components/schedule/ShiftTimeline";
 import type { useScheduleAi } from "../../../../hooks/useScheduleAi";
 import { ScheduleDateNavigation } from "../layout/ScheduleHeader";
