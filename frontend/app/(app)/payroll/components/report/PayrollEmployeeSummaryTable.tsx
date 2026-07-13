@@ -1,10 +1,21 @@
 import type { PayrollEmployee } from "../../types";
-
 import { formatHours } from "../../utils";
 
 type PayrollEmployeeSummaryTableProps = {
   report: PayrollEmployee[];
 };
+
+function getAdjustmentClassName(adjustmentMinutes: number) {
+  if (adjustmentMinutes > 0) {
+    return "font-medium text-green-700 dark:text-green-300";
+  }
+
+  if (adjustmentMinutes < 0) {
+    return "font-medium text-red-700 dark:text-red-300";
+  }
+
+  return "font-medium text-blue-700 dark:text-blue-300";
+}
 
 export default function PayrollEmployeeSummaryTable({
   report,
@@ -24,6 +35,7 @@ export default function PayrollEmployeeSummaryTable({
             <th className="pb-3 pr-4">Efterreguleringer</th>
           </tr>
         </thead>
+
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
           {report.map((employee) => {
             const total = employee.entries.reduce(
@@ -46,6 +58,10 @@ export default function PayrollEmployeeSummaryTable({
               const code = entry.payrollCode || "";
               return code.includes("NIGHT") ? sum + entry.hours : sum;
             }, 0);
+            const adjustmentCount = Math.max(
+              employee.payrollAdjustments?.length ?? 0,
+              employee.adjustmentCount ?? 0,
+            );
             const adjustmentMinutes =
               employee.payrollAdjustments?.reduce(
                 (sum, adjustment) =>
@@ -86,15 +102,9 @@ export default function PayrollEmployeeSummaryTable({
                   )}
                 </td>
                 <td className="py-3 pr-4">
-                  {adjustmentMinutes !== 0 ? (
-                    <span
-                      className={
-                        adjustmentMinutes > 0
-                          ? "font-medium text-green-700 dark:text-green-300"
-                          : "font-medium text-red-700 dark:text-red-300"
-                      }
-                    >
-                      {adjustmentMinutes > 0 ? "+" : ""}
+                  {adjustmentCount > 0 ? (
+                    <span className={getAdjustmentClassName(adjustmentMinutes)}>
+                      {adjustmentCount} stk. · {adjustmentMinutes > 0 ? "+" : ""}
                       {formatHours(adjustmentHours)}
                     </span>
                   ) : (

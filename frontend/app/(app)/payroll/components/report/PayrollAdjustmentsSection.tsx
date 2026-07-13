@@ -1,18 +1,12 @@
+import { formatDateDK } from "@/app/utils/dateTime";
+
+import type { PayrollAdjustment, PayrollEmployee } from "../../types";
 import { formatDateTime } from "../../utils";
 
-type PayrollAdjustment = {
-  id: number | string;
-  hours: number;
-  reason: string;
-  exportedHours: number;
-  adjustedHours: number;
-  createdAt?: string | null;
-};
-
-type PayrollAdjustmentEmployee = {
-  userId: number;
-  name: string;
-  email: string;
+type PayrollAdjustmentEmployee = Pick<
+  PayrollEmployee,
+  "userId" | "name" | "email"
+> & {
   payrollAdjustments: PayrollAdjustment[];
 };
 
@@ -25,6 +19,7 @@ function formatSignedHoursAsTime(hoursValue: number) {
   const absoluteMinutes = Math.round(Math.abs(hoursValue) * 60);
   const hours = Math.floor(absoluteMinutes / 60);
   const minutes = absoluteMinutes % 60;
+
   return `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(
     2,
     "0",
@@ -35,6 +30,7 @@ function formatHoursAsTime(hoursValue: number) {
   const absoluteMinutes = Math.round(Math.abs(hoursValue) * 60);
   const hours = Math.floor(absoluteMinutes / 60);
   const minutes = absoluteMinutes % 60;
+
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
     2,
     "0",
@@ -52,6 +48,12 @@ function formatAdjustmentReason(reason: string) {
     default:
       return "Efterregulering";
   }
+}
+
+function formatOriginalPayrollPeriod(adjustment: PayrollAdjustment) {
+  return `${formatDateDK(adjustment.originalPayrollPeriodStartDate)}–${formatDateDK(
+    adjustment.originalPayrollPeriodEndDate,
+  )}`;
 }
 
 export default function PayrollAdjustmentsSection({
@@ -97,8 +99,7 @@ export default function PayrollAdjustmentsSection({
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        Efterregulering{" "}
-                        {formatSignedHoursAsTime(adjustment.hours)}
+                        Efterregulering {formatSignedHoursAsTime(adjustment.hours)}
                       </div>
                       <div className="mt-1 text-sm text-gray-700 dark:text-gray-300">
                         {formatAdjustmentReason(adjustment.reason)}
@@ -106,6 +107,9 @@ export default function PayrollAdjustmentsSection({
                       <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                         Fra {formatHoursAsTime(adjustment.exportedHours)} til{" "}
                         {formatHoursAsTime(adjustment.adjustedHours)}
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Oprindelig lønperiode: {formatOriginalPayrollPeriod(adjustment)}
                       </div>
                     </div>
 
