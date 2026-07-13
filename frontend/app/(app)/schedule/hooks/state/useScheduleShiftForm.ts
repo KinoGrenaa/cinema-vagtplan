@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
 import type { Shift } from "../../../../../../shared/types";
 import type { useSchedule } from "../data/useSchedule";
 import type { useConfirm } from "@/app/hooks/useConfirm";
 import type { useInfoModal } from "@/app/hooks/useInfoModal";
-import { localDateTimeToISOString, toInputDateTime } from "@/app/utils/dateTime";
+import {
+  localDateTimeToISOString,
+  toInputDateTime,
+} from "@/app/utils/dateTime";
 import {
   getShiftConfirmText,
   getShiftUserId,
@@ -46,7 +48,9 @@ export function useScheduleShiftForm({
 }: UseScheduleShiftFormParams) {
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [showShiftFormModal, setShowShiftFormModal] = useState(false);
-  const [startTime, setStartTime] = useState(`${selectedDate}T14:00`);
+  const [startTime, setStartTime] = useState(
+    `${selectedDate}T14:00`,
+  );
   const [endTime, setEndTime] = useState(`${selectedDate}T22:00`);
   const [note, setNote] = useState("");
   const [userId, setUserId] = useState(0);
@@ -72,10 +76,10 @@ export function useScheduleShiftForm({
     }
   }, [workTypeId, workTypes]);
 
-  function clearForm() {
+  function clearForm(presetWorkTypeId = 0) {
     setSelectedShift(null);
     setUserId(0);
-    setWorkTypeId(0);
+    setWorkTypeId(presetWorkTypeId);
     setStartTime(`${selectedDate}T14:00`);
     setEndTime(`${selectedDate}T22:00`);
     setNote("");
@@ -88,13 +92,13 @@ export function useScheduleShiftForm({
     setShowShiftFormModal(false);
   }
 
-  function openCreateShiftModal() {
+  function openCreateShiftModal(presetWorkTypeId = 0) {
     if (needsMasterCinemaSelection) {
       showMissingActiveCinemaMessage();
       return;
     }
 
-    clearForm();
+    clearForm(presetWorkTypeId);
     setShowShiftFormModal(true);
   }
 
@@ -107,7 +111,7 @@ export function useScheduleShiftForm({
     setShowShiftFormModal(false);
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
     const body = {
@@ -133,13 +137,15 @@ export function useScheduleShiftForm({
           : "Vagten kunne ikke oprettes",
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da vagten skulle gemmes. Prøv igen.",
+          : "Der opstod en fejl, da vagten skulle gemmes.\nPrøv igen.",
       );
     }
   }
 
   function handleDelete() {
-    if (!selectedShift) return;
+    if (!selectedShift) {
+      return;
+    }
 
     const shiftToDelete = selectedShift;
 
@@ -161,7 +167,7 @@ export function useScheduleShiftForm({
             "Vagten kunne ikke slettes",
             error instanceof Error
               ? error.message
-              : "Der opstod en fejl, da vagten skulle slettes. Prøv igen.",
+              : "Der opstod en fejl, da vagten skulle slettes.\nPrøv igen.",
           );
         }
       },
@@ -179,7 +185,9 @@ export function useScheduleShiftForm({
   }
 
   function handleOfferTrade() {
-    if (!selectedShift) return;
+    if (!selectedShift) {
+      return;
+    }
 
     if (!getShiftUserId(selectedShift)) {
       infoDialog.showError(
@@ -206,7 +214,7 @@ export function useScheduleShiftForm({
             "Vagten kunne ikke sendes i byttepuljen",
             error instanceof Error
               ? error.message
-              : "Der opstod en fejl, da vagten skulle sendes i byttepuljen. Prøv igen.",
+              : "Der opstod en fejl, da vagten skulle sendes i byttepuljen.\nPrøv igen.",
           );
         }
       },
