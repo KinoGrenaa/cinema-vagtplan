@@ -92,6 +92,18 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
     return getActiveFilterCount(statusFilters, startDateFilter, endDateFilter);
   }, [endDateFilter, startDateFilter, statusFilters]);
 
+  const hasCustomFilters = useMemo(() => {
+    return (
+      statusFilters.pending !== DEFAULT_STATUS_FILTERS.pending ||
+      statusFilters.expired !== DEFAULT_STATUS_FILTERS.expired ||
+      statusFilters.approved !== DEFAULT_STATUS_FILTERS.approved ||
+      statusFilters.rejected !== DEFAULT_STATUS_FILTERS.rejected ||
+      statusFilters.cancelled !== DEFAULT_STATUS_FILTERS.cancelled ||
+      Boolean(startDateFilter) ||
+      Boolean(endDateFilter)
+    );
+  }, [endDateFilter, startDateFilter, statusFilters]);
+
   const statusFilterSummary = useMemo(() => {
     return getStatusFilterSummary(statusFilters);
   }, [statusFilters]);
@@ -194,6 +206,7 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
     visibleRequests,
     groupedRequests,
     activeFilterCount,
+    hasCustomFilters,
     statusFilterSummary,
     dateFilterSummary,
     openFilterModal,

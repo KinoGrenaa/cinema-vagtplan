@@ -1,21 +1,14 @@
 "use client";
 
 import AdminGuard from "@/app/components/access/AdminGuard";
-
 import InfoModal from "@/app/components/modals/InfoModal";
 import LeaveApprovalFilterModal from "./components/modals/LeaveApprovalFilterModal";
-
 import LeaveApprovalHeader from "./components/layout/LeaveApprovalHeader";
-
 import LeaveApprovalRequestsSection from "./components/list/LeaveApprovalRequestsSection";
-
 import LeaveApprovalSummaryCards from "./components/overview/LeaveApprovalSummaryCards";
-
 import { makeDateGroupExpansionKey } from "./helpers/core/leaveApprovalHelpers";
-
 import { useLeaveApprovalData } from "./hooks/data/useLeaveApprovalData";
 import { useLeaveApprovalFilters } from "./hooks/filters/useLeaveApprovalFilters";
-
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 
 export default function LeaveApprovalPage() {
@@ -39,6 +32,7 @@ export default function LeaveApprovalPage() {
     visibleRequests,
     groupedRequests,
     activeFilterCount,
+    hasCustomFilters,
     statusFilterSummary,
     dateFilterSummary,
     openFilterModal,
@@ -62,8 +56,10 @@ export default function LeaveApprovalPage() {
             dateFilterSummary={dateFilterSummary}
             pendingCount={statusCounts.PENDING}
             activeFilterCount={activeFilterCount}
+            hasCustomFilters={hasCustomFilters}
             onShowOnlyPending={showOnlyPending}
             onOpenFilterModal={openFilterModal}
+            onResetFilter={resetFilter}
           />
 
           {needsMasterCinemaSelection && (
