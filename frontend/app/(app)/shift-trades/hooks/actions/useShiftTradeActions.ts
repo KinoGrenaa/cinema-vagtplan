@@ -1,5 +1,6 @@
-import { useCallback } from "react";
+"use client";
 
+import { useCallback } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
 import {
@@ -8,7 +9,10 @@ import {
 } from "../../helpers/core/shiftTradeHelpers";
 import type { ShiftTrade } from "../../helpers/core/shiftTradeTypes";
 
-type ApiFetch = (input: string, init?: RequestInit) => Promise<Response>;
+type ApiFetch = (
+  input: string,
+  init?: RequestInit,
+) => Promise<Response>;
 
 type ShiftTradeUser = {
   id: number;
@@ -38,6 +42,24 @@ type UseShiftTradeActionsArgs = {
   setMessage: Dispatch<SetStateAction<string>>;
 };
 
+function getApprovedLeaveWarning(trade: ShiftTrade) {
+  const conflict = trade.approvedLeaveConflict;
+
+  if (!conflict) {
+    return "";
+  }
+
+  return `
+
+ADVARSEL: Du har godkendt fravær, der overlapper vagten.
+Fravær: ${formatShiftDate(conflict.startDate)} · ${formatShiftTime(
+    conflict.startDate,
+    conflict.endDate,
+  )}
+
+Du kan stadig acceptere vagten, men dit godkendte fravær ændres ikke automatisk.`;
+}
+
 export function useShiftTradeActions({
   apiFetch,
   user,
@@ -48,34 +70,50 @@ export function useShiftTradeActions({
 }: UseShiftTradeActionsArgs) {
   const acceptTrade = useCallback(
     (trade: ShiftTrade) => {
-      if (!user) return;
+      if (!user) {
+        return;
+      }
 
       const offeredBy = `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`;
       const shiftInfo = `${trade.shift.workType.name} - ${formatShiftDate(
         trade.shift.startTime,
-      )} kl. ${formatShiftTime(trade.shift.startTime, trade.shift.endTime)}`;
+      )} kl. ${formatShiftTime(
+        trade.shift.startTime,
+        trade.shift.endTime,
+      )}`;
+      const approvedLeaveWarning =
+        getApprovedLeaveWarning(trade);
 
       confirmModal.confirm({
-        title: "Acceptér vagt",
+        title: trade.approvedLeaveConflict
+          ? "Acceptér vagt trods fravær"
+          : "Acceptér vagt",
         description: `Er du sikker på, at du vil acceptere denne vagt fra ${offeredBy}?
-${shiftInfo}`,
-        confirmText: "Acceptér",
+
+${shiftInfo}${approvedLeaveWarning}`,
+        confirmText: trade.approvedLeaveConflict
+          ? "Acceptér trods fravær"
+          : "Acceptér",
         cancelText: "Annuller",
         confirmVariant: "success",
         onConfirm: async () => {
-          const response = await apiFetch(`/shift-trades/${trade.id}/accept`, {
-            method: "PATCH",
-            body: JSON.stringify({
-              acceptedByUserId: user.id,
-            }),
-          });
+          const response = await apiFetch(
+            `/shift-trades/${trade.id}/accept`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({
+                acceptedByUserId: user.id,
+              }),
+            },
+          );
 
           const data = await response.json().catch(() => null);
 
           if (!response.ok) {
             infoDialog.showError(
               "Kunne ikke acceptere vagt",
-              data?.message || "Vagten kunne ikke accepteres. Prøv igen.",
+              data?.message ||
+                "Vagten kunne ikke accepteres. Prøv igen.",
             );
             return;
           }
@@ -85,33 +123,48 @@ ${shiftInfo}`,
         },
       });
     },
-    [apiFetch, confirmModal, fetchTrades, infoDialog, setMessage, user],
+    [
+      apiFetch,
+      confirmModal,
+      fetchTrades,
+      infoDialog,
+      setMessage,
+      user,
+    ],
   );
 
   const rejectTrade = useCallback(
     (trade: ShiftTrade) => {
       const shiftInfo = `${trade.shift.workType.name} - ${formatShiftDate(
         trade.shift.startTime,
-      )} kl. ${formatShiftTime(trade.shift.startTime, trade.shift.endTime)}`;
+      )} kl. ${formatShiftTime(
+        trade.shift.startTime,
+        trade.shift.endTime,
+      )}`;
 
       confirmModal.confirm({
         title: "Afvis vagt",
         description: `Er du sikker på, at du vil afvise denne vagt?
+
 ${shiftInfo}`,
         confirmText: "Afvis",
         cancelText: "Annuller",
         confirmVariant: "danger",
         onConfirm: async () => {
-          const response = await apiFetch(`/shift-trades/${trade.id}/reject`, {
-            method: "PATCH",
-          });
+          const response = await apiFetch(
+            `/shift-trades/${trade.id}/reject`,
+            {
+              method: "PATCH",
+            },
+          );
 
           const data = await response.json().catch(() => null);
 
           if (!response.ok) {
             infoDialog.showError(
               "Kunne ikke afvise vagt",
-              data?.message || "Vagten kunne ikke afvises. Prøv igen.",
+              data?.message ||
+                "Vagten kunne ikke afvises. Prøv igen.",
             );
             return;
           }
@@ -121,7 +174,13 @@ ${shiftInfo}`,
         },
       });
     },
-    [apiFetch, confirmModal, fetchTrades, infoDialog, setMessage],
+    [
+      apiFetch,
+      confirmModal,
+      fetchTrades,
+      infoDialog,
+      setMessage,
+    ],
   );
 
   return { acceptTrade, rejectTrade };

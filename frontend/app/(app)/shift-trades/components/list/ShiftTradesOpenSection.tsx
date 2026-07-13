@@ -1,5 +1,4 @@
 import type { ShiftTrade } from "../../helpers/core/shiftTradeTypes";
-
 import TradeCard from "./TradeCard";
 
 type ShiftTradesOpenSectionProps = {
@@ -24,24 +23,42 @@ export default function ShiftTradesOpenSection({
       <h2 className="mb-4 text-2xl font-bold">
         {title} ({trades.length})
       </h2>
+
       <div className="space-y-4">
-        {trades.map((trade) => (
-          <TradeCard
-            key={trade.id}
-            trade={trade}
-            onAccept={() => onAccept(trade)}
-            onReject={onReject ? () => onReject(trade) : undefined}
-            actionLabel="Accepter vagt"
-            acceptDisabled={hasShiftConflict(trade)}
-            acceptTooltip={
-              hasShiftConflict(trade)
-                ? "Du har allerede en vagt i dette tidsrum"
-                : undefined
-            }
-          />
-        ))}
+        {trades.map((trade) => {
+          const shiftConflict = hasShiftConflict(trade);
+          const hasApprovedLeaveConflict =
+            Boolean(trade.approvedLeaveConflict);
+
+          return (
+            <TradeCard
+              key={trade.id}
+              trade={trade}
+              onAccept={() => onAccept(trade)}
+              onReject={
+                onReject ? () => onReject(trade) : undefined
+              }
+              actionLabel={
+                hasApprovedLeaveConflict
+                  ? "Accepter trods fravær"
+                  : "Accepter vagt"
+              }
+              acceptDisabled={shiftConflict}
+              acceptTooltip={
+                shiftConflict
+                  ? "Du har allerede en vagt i dette tidsrum"
+                  : hasApprovedLeaveConflict
+                    ? "Dit godkendte fravær ændres ikke automatisk"
+                    : undefined
+              }
+            />
+          );
+        })}
+
         {trades.length === 0 && (
-          <div className="text-gray-500 dark:text-gray-400">{emptyText}</div>
+          <div className="text-gray-500 dark:text-gray-400">
+            {emptyText}
+          </div>
         )}
       </div>
     </section>
