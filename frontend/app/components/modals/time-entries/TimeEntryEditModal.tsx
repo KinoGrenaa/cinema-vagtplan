@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import BaseModal from "../../modals/BaseModal";
+import BaseModal from "../BaseModal";
 
 type Props = {
   open: boolean;

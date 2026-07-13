@@ -1,6 +1,6 @@
 "use client";
 
-import BaseModal from "../../modals/BaseModal";
+import BaseModal from "../BaseModal";
 
 type TimeEntryStatus = string;
 type TimeEntryRevisionAction = string;
