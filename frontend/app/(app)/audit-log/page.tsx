@@ -1,6 +1,6 @@
 "use client";
 
-import PermissionGuard from "@/app/components/PermissionGuard";
+import PermissionGuard from "@/app/components/access/PermissionGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useAuth } from "@/app/providers/AuthProvider";

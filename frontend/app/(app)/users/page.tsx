@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PermissionGuard from "@/app/components/PermissionGuard";
+import PermissionGuard from "@/app/components/access/PermissionGuard";
 
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 

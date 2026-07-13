@@ -1,6 +1,6 @@
 "use client";
 
-import AdminGuard from "@/app/components/AdminGuard";
+import AdminGuard from "@/app/components/access/AdminGuard";
 import ScheduleTemplatesPageContent from "./components/layout/ScheduleTemplatesPageContent";
 import ScheduleTemplatesPageModals from "./components/layout/ScheduleTemplatesPageModals";
 import { useScheduleTemplatePageController } from "./hooks/controllers/useScheduleTemplatePageController";

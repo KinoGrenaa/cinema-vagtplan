@@ -1,4 +1,4 @@
-import PermissionGuard from "@/app/components/PermissionGuard";
+import PermissionGuard from "@/app/components/access/PermissionGuard";
 
 type PayrollMasterCinemaRequiredProps = {
   onChooseCinema: () => void;

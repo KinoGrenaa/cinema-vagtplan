@@ -1,6 +1,6 @@
 "use client";
 
-import PermissionGuard from "@/app/components/PermissionGuard";
+import PermissionGuard from "@/app/components/access/PermissionGuard";
 
 import PayrollMasterCinemaRequired from "./components/layout/PayrollMasterCinemaRequired";
 import PayrollPageContent from "./components/layout/PayrollPageContent";

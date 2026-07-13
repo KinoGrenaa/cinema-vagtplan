@@ -1,6 +1,6 @@
 "use client";
 
-import AdminGuard from "@/app/components/AdminGuard";
+import AdminGuard from "@/app/components/access/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 

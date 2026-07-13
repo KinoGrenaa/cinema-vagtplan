@@ -1,6 +1,6 @@
 "use client";
 
-import AdminGuard from "@/app/components/AdminGuard";
+import AdminGuard from "@/app/components/access/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import EmployeesHeader from "./components/layout/EmployeesHeader";
 import EmployeesMasterCinemaNotice from "./components/layout/EmployeesMasterCinemaNotice";
