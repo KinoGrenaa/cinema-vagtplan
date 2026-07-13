@@ -16,6 +16,7 @@ import {
 import type {
   LeaveDateGroup,
   LeaveRequest,
+  LeaveStatus,
   LeaveStatusFilters,
 } from "../../helpers/core/leaveApprovalTypes";
 import { DEFAULT_STATUS_FILTERS } from "../../helpers/core/leaveApprovalTypes";
@@ -35,14 +36,33 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
     [],
   );
 
+  const dateFilteredRequests = useMemo(() => {
+    return requests.filter((request) =>
+      matchesDateFilter(request, startDateFilter, endDateFilter),
+    );
+  }, [endDateFilter, requests, startDateFilter]);
+
+  const dateRangeStatusCounts = useMemo(() => {
+    return dateFilteredRequests.reduce(
+      (counts, request) => ({
+        ...counts,
+        [request.status]: counts[request.status] + 1,
+      }),
+      {
+        PENDING: 0,
+        EXPIRED: 0,
+        APPROVED: 0,
+        REJECTED: 0,
+        CANCELLED: 0,
+      } satisfies Record<LeaveStatus, number>,
+    );
+  }, [dateFilteredRequests]);
+
   const visibleRequests = useMemo(() => {
-    return requests.filter((request) => {
-      return (
-        matchesStatusFilter(request, statusFilters) &&
-        matchesDateFilter(request, startDateFilter, endDateFilter)
-      );
-    });
-  }, [endDateFilter, requests, startDateFilter, statusFilters]);
+    return dateFilteredRequests.filter((request) =>
+      matchesStatusFilter(request, statusFilters),
+    );
+  }, [dateFilteredRequests, statusFilters]);
 
   const groupedRequests = useMemo(() => {
     const groups = new Map<number, LeaveRequest[]>();
@@ -63,6 +83,7 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
         for (const request of sortedRequests) {
           const meta = getLeaveDateGroupMeta(request);
           const existing = dateGroups.get(meta.key);
+
           if (existing) {
             dateGroups.set(meta.key, {
               ...existing,
@@ -114,12 +135,15 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
         endDateFilter,
       )}`;
     }
+
     if (startDateFilter) {
       return `Fra ${formatDateDK(startDateFilter)}`;
     }
+
     if (endDateFilter) {
       return `Til ${formatDateDK(endDateFilter)}`;
     }
+
     return "Alle datoer";
   }, [endDateFilter, startDateFilter]);
 
@@ -187,6 +211,7 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
 
   function toggleDateGroup(userId: number, dateKey: string) {
     const expansionKey = makeDateGroupExpansionKey(userId, dateKey);
+
     setExpandedDateGroupKeys((current) =>
       current.includes(expansionKey)
         ? current.filter((key) => key !== expansionKey)
@@ -205,6 +230,7 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
     expandedDateGroupKeys,
     visibleRequests,
     groupedRequests,
+    dateRangeStatusCounts,
     activeFilterCount,
     hasCustomFilters,
     statusFilterSummary,
