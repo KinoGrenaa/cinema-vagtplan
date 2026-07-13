@@ -9,28 +9,29 @@ import AuditLogHeader from "./components/layout/AuditLogHeader";
 import AuditLogMasterCinemaRequired from "./components/layout/AuditLogMasterCinemaRequired";
 import AuditLogListSection from "./components/list/AuditLogListSection";
 import { useAuditLogData } from "./hooks/data/useAuditLogData";
+import { useAuditLogView } from "./hooks/derived/useAuditLogView";
 
 export default function AuditLogPage() {
   const { isMaster, user } = useAuth();
   const errorDialog = useInfoModal();
 
+  const { logs, loading, needsMasterCinemaSelection } = useAuditLogData({
+    user,
+    showError: errorDialog.showError,
+  });
   const {
-    logs,
-    loading,
     search,
     setSearch,
     entityFilter,
     setEntityFilter,
     expandedDateKeys,
-    needsMasterCinemaSelection,
     entityTypes,
     visibleLogs,
     groupedLogs,
     toggleDateGroup,
-  } = useAuditLogData({
+  } = useAuditLogView({
     isMaster,
-    user,
-    showError: errorDialog.showError,
+    logs,
   });
 
   if (loading) {
