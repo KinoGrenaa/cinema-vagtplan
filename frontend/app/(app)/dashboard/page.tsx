@@ -1,9 +1,9 @@
 "use client";
 
-import AiStaffingHeatmap from "../../components/dashboard/ai/AiStaffingHeatmap";
-import AiLearningAnalytics from "../../components/dashboard/ai/AiLearningAnalytics";
-import AiPatternInsights from "../../components/dashboard/ai/AiPatternInsights";
-import AiOperationsCommandCenter from "../../components/dashboard/ai/AiOperationsCommandCenter";
+import AiStaffingHeatmap from "./components/ai/AiStaffingHeatmap";
+import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
+import AiPatternInsights from "./components/ai/AiPatternInsights";
+import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import OperationsStatus from "../../components/dashboard/operations/OperationsStatus";
 import { useDashboard } from "../../hooks/useDashboard";
 import DashboardHeader from "./components/layout/DashboardHeader";
