@@ -5,15 +5,28 @@ import {
   statusOptions,
 } from "../../helpers/core/systemErrorLogConstants";
 import { getQuickFilterButtonClass } from "../../helpers/core/systemErrorLogHelpers";
-import type { SeverityFilter, StatusFilter } from "../../types";
+import type {
+  SeverityFilter,
+  StatusFilter,
+} from "../../types";
 
 type SystemErrorLogFiltersProps = {
   statusFilter: StatusFilter;
   severityFilter: SeverityFilter;
   cinemaIdFilter: string;
-  onStatusFilterChange: Dispatch<SetStateAction<StatusFilter>>;
-  onSeverityFilterChange: Dispatch<SetStateAction<SeverityFilter>>;
-  onCinemaIdFilterChange: Dispatch<SetStateAction<string>>;
+  correlationIdFilter: string;
+  onStatusFilterChange: Dispatch<
+    SetStateAction<StatusFilter>
+  >;
+  onSeverityFilterChange: Dispatch<
+    SetStateAction<SeverityFilter>
+  >;
+  onCinemaIdFilterChange: Dispatch<
+    SetStateAction<string>
+  >;
+  onCorrelationIdFilterChange: Dispatch<
+    SetStateAction<string>
+  >;
   onShowActive: () => void;
   onShowNew: () => void;
   onShowCritical: () => void;
@@ -25,9 +38,11 @@ export default function SystemErrorLogFilters({
   statusFilter,
   severityFilter,
   cinemaIdFilter,
+  correlationIdFilter,
   onStatusFilterChange,
   onSeverityFilterChange,
   onCinemaIdFilterChange,
+  onCorrelationIdFilterChange,
   onShowActive,
   onShowNew,
   onShowCritical,
@@ -59,7 +74,8 @@ export default function SystemErrorLogFilters({
           type="button"
           onClick={onShowCritical}
           className={getQuickFilterButtonClass(
-            statusFilter === "ACTIVE" && severityFilter === "CRITICAL",
+            statusFilter === "ACTIVE" &&
+              severityFilter === "CRITICAL",
           )}
         >
           Kritiske
@@ -75,7 +91,7 @@ export default function SystemErrorLogFilters({
         </button>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[220px_220px_1fr_auto]">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[220px_220px_180px_1fr_auto]">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Status
@@ -83,7 +99,9 @@ export default function SystemErrorLogFilters({
           <select
             value={statusFilter}
             onChange={(event) =>
-              onStatusFilterChange(event.target.value as StatusFilter)
+              onStatusFilterChange(
+                event.target.value as StatusFilter,
+              )
             }
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
           >
@@ -102,7 +120,9 @@ export default function SystemErrorLogFilters({
           <select
             value={severityFilter}
             onChange={(event) =>
-              onSeverityFilterChange(event.target.value as SeverityFilter)
+              onSeverityFilterChange(
+                event.target.value as SeverityFilter,
+              )
             }
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
           >
@@ -121,10 +141,26 @@ export default function SystemErrorLogFilters({
           <input
             value={cinemaIdFilter}
             onChange={(event) =>
-              onCinemaIdFilterChange(event.target.value.replace(/\D/g, ""))
+              onCinemaIdFilterChange(
+                event.target.value.replace(/\D/g, ""),
+              )
             }
             inputMode="numeric"
             placeholder="Fx 1"
+            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Correlation-id
+          </label>
+          <input
+            value={correlationIdFilter}
+            onChange={(event) =>
+              onCorrelationIdFilterChange(event.target.value)
+            }
+            placeholder="Indsæt hele eller dele af id"
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
           />
         </div>

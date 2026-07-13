@@ -31,6 +31,8 @@ export default function SystemErrorLogsPage() {
     setSeverityFilter,
     cinemaIdFilter,
     setCinemaIdFilter,
+    correlationIdFilter,
+    setCorrelationIdFilter,
     visibleLogs,
     summaryCards,
     refreshPage,
@@ -76,9 +78,13 @@ export default function SystemErrorLogsPage() {
           statusFilter={statusFilter}
           severityFilter={severityFilter}
           cinemaIdFilter={cinemaIdFilter}
+          correlationIdFilter={correlationIdFilter}
           onStatusFilterChange={setStatusFilter}
           onSeverityFilterChange={setSeverityFilter}
           onCinemaIdFilterChange={setCinemaIdFilter}
+          onCorrelationIdFilterChange={
+            setCorrelationIdFilter
+          }
           onShowActive={showActiveErrors}
           onShowNew={showNewErrors}
           onShowCritical={showCriticalErrors}

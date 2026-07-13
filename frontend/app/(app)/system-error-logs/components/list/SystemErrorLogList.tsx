@@ -10,7 +10,10 @@ import {
   getSeverityBadgeClass,
   getStatusBadgeClass,
 } from "../../helpers/core/systemErrorLogHelpers";
-import type { LogAction, SystemErrorLog } from "../../types";
+import type {
+  LogAction,
+  SystemErrorLog,
+} from "../../types";
 
 type SystemErrorLogListProps = {
   logs: SystemErrorLog[];
@@ -26,6 +29,14 @@ type SystemErrorLogListProps = {
     action: Extract<LogAction, "resolve" | "ignore">,
   ) => void;
 };
+
+async function copyCorrelationId(correlationId: string) {
+  if (!navigator.clipboard?.writeText) {
+    return;
+  }
+
+  await navigator.clipboard.writeText(correlationId);
+}
 
 export default function SystemErrorLogList({
   logs,
@@ -95,7 +106,10 @@ export default function SystemErrorLogList({
                     <span className="font-medium text-gray-800 dark:text-gray-200">
                       Path:
                     </span>{" "}
-                    {[log.method, log.path ?? log.action ?? "-"]
+                    {[
+                      log.method,
+                      log.path ?? log.action ?? "-",
+                    ]
                       .filter(Boolean)
                       .join(" ")}
                   </p>
@@ -128,12 +142,26 @@ export default function SystemErrorLogList({
                     </p>
                   )}
                   {log.correlationId && (
-                    <p className="break-words">
-                      <span className="font-medium text-gray-800 dark:text-gray-200">
-                        Correlation:
-                      </span>{" "}
-                      {log.correlationId}
-                    </p>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p className="min-w-0 break-all">
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                          Correlation:
+                        </span>{" "}
+                        {log.correlationId}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void copyCorrelationId(
+                            log.correlationId as string,
+                          )
+                        }
+                        title="Kopiér correlation-id"
+                        className="shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-800"
+                      >
+                        Kopiér
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -155,17 +183,25 @@ export default function SystemErrorLogList({
               <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
                 <button
                   type="button"
-                  onClick={() => void onUpdateStatus(log.id, "seen")}
-                  disabled={updatingLogId === log.id || log.status !== "NEW"}
+                  onClick={() =>
+                    void onUpdateStatus(log.id, "seen")
+                  }
+                  disabled={
+                    updatingLogId === log.id ||
+                    log.status !== "NEW"
+                  }
                   className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
                 >
                   Markér set
                 </button>
                 <button
                   type="button"
-                  onClick={() => onRequestResolutionNote(log, "resolve")}
+                  onClick={() =>
+                    onRequestResolutionNote(log, "resolve")
+                  }
                   disabled={
-                    updatingLogId === log.id || log.status === "RESOLVED"
+                    updatingLogId === log.id ||
+                    log.status === "RESOLVED"
                   }
                   className="rounded-xl bg-green-700 px-3 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-green-600 dark:hover:bg-green-500"
                 >
@@ -173,9 +209,12 @@ export default function SystemErrorLogList({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onRequestResolutionNote(log, "ignore")}
+                  onClick={() =>
+                    onRequestResolutionNote(log, "ignore")
+                  }
                   disabled={
-                    updatingLogId === log.id || log.status === "IGNORED"
+                    updatingLogId === log.id ||
+                    log.status === "IGNORED"
                   }
                   className="rounded-xl bg-gray-800 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-600"
                 >

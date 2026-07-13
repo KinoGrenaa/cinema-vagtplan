@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
@@ -29,10 +35,15 @@ export function useSystemErrorLogsData({
   const [retentionSummary, setRetentionSummary] =
     useState<SystemErrorLogRetentionSummary | null>(null);
   const [loadingLogs, setLoadingLogs] = useState(false);
-  const [loadingRetentionSummary, setLoadingRetentionSummary] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ACTIVE");
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("");
+  const [loadingRetentionSummary, setLoadingRetentionSummary] =
+    useState(false);
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilter>("ACTIVE");
+  const [severityFilter, setSeverityFilter] =
+    useState<SeverityFilter>("");
   const [cinemaIdFilter, setCinemaIdFilter] = useState("");
+  const [correlationIdFilter, setCorrelationIdFilter] =
+    useState("");
 
   useEffect(() => {
     showErrorRef.current = showError;
@@ -59,7 +70,9 @@ export function useSystemErrorLogsData({
         params.set("cinemaId", cinemaId);
       }
 
-      const response = await apiFetch(`/system-error-logs?${params.toString()}`);
+      const response = await apiFetch(
+        `/system-error-logs?${params.toString()}`,
+      );
 
       if (!response.ok) {
         const message = await readErrorMessage(
@@ -67,7 +80,10 @@ export function useSystemErrorLogsData({
           "Systemfejlloggen kunne ikke hentes.",
         );
 
-        showErrorRef.current("Kunne ikke hente systemfejl", message);
+        showErrorRef.current(
+          "Kunne ikke hente systemfejl",
+          message,
+        );
         return;
       }
 
@@ -87,7 +103,9 @@ export function useSystemErrorLogsData({
     setLoadingRetentionSummary(true);
 
     try {
-      const response = await apiFetch("/system-error-logs/retention-summary");
+      const response = await apiFetch(
+        "/system-error-logs/retention-summary",
+      );
 
       if (!response.ok) {
         const message = await readErrorMessage(
@@ -95,7 +113,10 @@ export function useSystemErrorLogsData({
           "Opbevaringsoversigt kunne ikke hentes.",
         );
 
-        showErrorRef.current("Kunne ikke hente opbevaring", message);
+        showErrorRef.current(
+          "Kunne ikke hente opbevaring",
+          message,
+        );
         return;
       }
 
@@ -119,33 +140,55 @@ export function useSystemErrorLogsData({
 
     void fetchLogs();
     void fetchRetentionSummary();
-  }, [authLoading, fetchLogs, fetchRetentionSummary, isMaster]);
+  }, [
+    authLoading,
+    fetchLogs,
+    fetchRetentionSummary,
+    isMaster,
+  ]);
 
   const visibleLogs = useMemo(() => {
-    if (statusFilter !== "ACTIVE") {
-      return logs;
+    const statusFilteredLogs =
+      statusFilter === "ACTIVE"
+        ? logs.filter((log) =>
+            activeStatuses.includes(log.status),
+          )
+        : logs;
+    const correlationId =
+      correlationIdFilter.trim().toLowerCase();
+
+    if (!correlationId) {
+      return statusFilteredLogs;
     }
 
-    return logs.filter((log) => activeStatuses.includes(log.status));
-  }, [logs, statusFilter]);
+    return statusFilteredLogs.filter((log) =>
+      log.correlationId?.toLowerCase().includes(correlationId),
+    );
+  }, [correlationIdFilter, logs, statusFilter]);
 
   const summaryCards = useMemo(
     () => [
       {
         label: "Nye",
-        value: visibleLogs.filter((log) => log.status === "NEW").length,
+        value: visibleLogs.filter((log) => log.status === "NEW")
+          .length,
       },
       {
         label: "Set",
-        value: visibleLogs.filter((log) => log.status === "SEEN").length,
+        value: visibleLogs.filter((log) => log.status === "SEEN")
+          .length,
       },
       {
         label: "Løst",
-        value: visibleLogs.filter((log) => log.status === "RESOLVED").length,
+        value: visibleLogs.filter(
+          (log) => log.status === "RESOLVED",
+        ).length,
       },
       {
         label: "Ignoreret",
-        value: visibleLogs.filter((log) => log.status === "IGNORED").length,
+        value: visibleLogs.filter(
+          (log) => log.status === "IGNORED",
+        ).length,
       },
     ],
     [visibleLogs],
@@ -180,6 +223,7 @@ export function useSystemErrorLogsData({
     setStatusFilter("ACTIVE");
     setSeverityFilter("");
     setCinemaIdFilter("");
+    setCorrelationIdFilter("");
   }
 
   return {
@@ -192,6 +236,8 @@ export function useSystemErrorLogsData({
     setSeverityFilter,
     cinemaIdFilter,
     setCinemaIdFilter,
+    correlationIdFilter,
+    setCorrelationIdFilter,
     visibleLogs,
     summaryCards,
     fetchLogs,
