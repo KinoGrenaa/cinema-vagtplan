@@ -17,6 +17,7 @@ import {
   findRequiredUser,
   validateRoleCinema,
 } from './user-service-data-helpers';
+import { syncPrimaryUserCinemaMembership } from './user-cinema-membership-sync';
 
 export type UpdateUserInput = {
   email?: string;
@@ -64,7 +65,10 @@ export async function updateUserFlow(
   if (currentUser) {
     ensureCanModifyTargetUser(currentUser, user);
 
-    if (currentUser.role !== 'MASTER' && data.role === 'MASTER') {
+    if (
+      currentUser.role !== 'MASTER' &&
+      data.role === 'MASTER'
+    ) {
       throw new ForbiddenException(
         'Kun master kan oprette eller tildele master-rolle',
       );
@@ -86,17 +90,32 @@ export async function updateUserFlow(
     nextRole,
     nextRole === 'MASTER' ? null : user.cinemaId,
   );
-
-  const updateData = buildUserUpdateData(data, nextRole, nextCinemaId);
+  const updateData = buildUserUpdateData(
+    data,
+    nextRole,
+    nextCinemaId,
+  );
 
   if (data.password && data.password.trim() !== '') {
     updateData.password = await bcrypt.hash(data.password, 10);
   }
 
-  const updatedUser = await prisma.user.update({
-    where: { id },
-    data: updateData,
-  });
+  const updatedUser = await prisma.$transaction(
+    async (transaction) => {
+      const nextUser = await transaction.user.update({
+        where: { id },
+        data: updateData,
+      });
+
+      await syncPrimaryUserCinemaMembership(transaction, {
+        userId: nextUser.id,
+        cinemaId: nextUser.cinemaId,
+        isActive: nextUser.isActive,
+      });
+
+      return nextUser;
+    },
+  );
 
   await auditLogsService.create({
     action: 'UPDATE_USER',
@@ -145,8 +164,6 @@ export async function updateThemeFlow(
 ) {
   return prisma.user.update({
     where: { id },
-    data: {
-      theme,
-    },
+    data: { theme },
   });
 }

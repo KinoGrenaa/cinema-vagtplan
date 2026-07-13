@@ -15,6 +15,7 @@ import {
   getCreatePermissionData,
   validateRoleCinema,
 } from './user-service-data-helpers';
+import { syncPrimaryUserCinemaMembership } from './user-cinema-membership-sync';
 
 export type CreateUserInput = {
   email: string;
@@ -42,16 +43,26 @@ export async function createUserFlow(
   const role = data.role || 'EMPLOYEE';
 
   if (currentUser) {
-    ensureSameCinemaOrMaster(currentUser, data.cinemaId ?? null);
+    ensureSameCinemaOrMaster(
+      currentUser,
+      data.cinemaId ?? null,
+    );
 
-    if (currentUser.role !== 'MASTER' && role === 'MASTER') {
+    if (
+      currentUser.role !== 'MASTER' &&
+      role === 'MASTER'
+    ) {
       throw new ForbiddenException(
         'Kun master kan oprette eller tildele master-rolle',
       );
     }
   }
 
-  const cinemaId = await validateRoleCinema(prisma, role, data.cinemaId);
+  const cinemaId = await validateRoleCinema(
+    prisma,
+    role,
+    data.cinemaId,
+  );
 
   await ensureUniqueUserEmail(
     prisma,
@@ -61,21 +72,34 @@ export async function createUserFlow(
 
   const hashedPassword = await bcrypt.hash(data.password, 10);
 
-  const createdUser = await prisma.user.create({
-    data: {
-      email: data.email,
-      password: hashedPassword,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phone: data.phone,
-      role,
-      employmentType: data.employmentType || 'HOURLY',
-      cinemaId,
-      ...getCreatePermissionData(role, data),
-      isActive: true,
-      deactivatedAt: null,
+  const createdUser = await prisma.$transaction(
+    async (transaction) => {
+      const user = await transaction.user.create({
+        data: {
+          email: data.email,
+          password: hashedPassword,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          role,
+          employmentType:
+            data.employmentType || 'HOURLY',
+          cinemaId,
+          ...getCreatePermissionData(role, data),
+          isActive: true,
+          deactivatedAt: null,
+        },
+      });
+
+      await syncPrimaryUserCinemaMembership(transaction, {
+        userId: user.id,
+        cinemaId: user.cinemaId,
+        isActive: user.isActive,
+      });
+
+      return user;
     },
-  });
+  );
 
   await auditLogsService.create({
     action: 'CREATE_USER',
