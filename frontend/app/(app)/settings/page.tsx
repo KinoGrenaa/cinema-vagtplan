@@ -1,8 +1,10 @@
 "use client";
 
 import InfoModal from "@/app/components/modals/InfoModal";
-import PushNotificationsSection from "./components/sections/PushNotificationsSection";
+
 import SettingsHeader from "./components/layout/SettingsHeader";
+import CinemaMembershipsSection from "./components/sections/CinemaMembershipsSection";
+import PushNotificationsSection from "./components/sections/PushNotificationsSection";
 import ThemeSettingsSection from "./components/sections/ThemeSettingsSection";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 
@@ -15,6 +17,9 @@ export default function SettingsPage() {
     pushEnabled,
     pushLoading,
     pushMessage,
+    cinemaMemberships,
+    cinemaMembershipsLoading,
+    cinemaMembershipsError,
     isMasterWithoutOwnCinema,
     enableNotifications,
     disableNotifications,
@@ -33,7 +38,18 @@ export default function SettingsPage() {
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-4xl space-y-6">
         <SettingsHeader />
-        <ThemeSettingsSection theme={theme} setTheme={setTheme} />
+
+        <CinemaMembershipsSection
+          memberships={cinemaMemberships}
+          loading={cinemaMembershipsLoading}
+          error={cinemaMembershipsError}
+        />
+
+        <ThemeSettingsSection
+          theme={theme}
+          setTheme={setTheme}
+        />
+
         <PushNotificationsSection
           permission={permission}
           pushEnabled={pushEnabled}

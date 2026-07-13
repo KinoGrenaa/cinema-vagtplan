@@ -2,26 +2,36 @@
 
 import { useEffect, useState } from "react";
 
-import { useTheme } from "@/app/providers/ThemeProvider";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import {
   disablePushNotifications,
   enablePushNotifications,
   isPushNotificationsEnabled,
 } from "@/app/hooks/usePushNotifications";
+import { apiFetch } from "@/app/lib/api";
+import { useTheme } from "@/app/providers/ThemeProvider";
 
-import type { CurrentUser } from "../helpers/settingsTypes";
+import type {
+  CinemaMembership,
+  CurrentUser,
+} from "../helpers/settingsTypes";
 
 export function useSettingsPage() {
   const infoDialog = useInfoModal();
-
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [currentUser, setCurrentUser] =
+    useState<CurrentUser | null>(null);
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
   const [pushLoading, setPushLoading] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushMessage, setPushMessage] = useState("");
-
+  const [cinemaMemberships, setCinemaMemberships] = useState<
+    CinemaMembership[]
+  >([]);
+  const [cinemaMembershipsLoading, setCinemaMembershipsLoading] =
+    useState(true);
+  const [cinemaMembershipsError, setCinemaMembershipsError] =
+    useState("");
   const { theme, setTheme } = useTheme();
 
   const isMasterWithoutOwnCinema =
@@ -31,7 +41,11 @@ export function useSettingsPage() {
     const savedUser = localStorage.getItem("user");
 
     if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
+      try {
+        setCurrentUser(JSON.parse(savedUser));
+      } catch {
+        setCurrentUser(null);
+      }
     }
 
     if ("Notification" in window) {
@@ -43,14 +57,48 @@ export function useSettingsPage() {
       setPushEnabled(enabled);
     }
 
-    loadPushStatus();
+    async function loadCinemaMemberships() {
+      try {
+        setCinemaMembershipsLoading(true);
+        setCinemaMembershipsError("");
+
+        const response = await apiFetch(
+          "/users/me/cinema-memberships",
+        );
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(
+            typeof payload?.message === "string"
+              ? payload.message
+              : "Biograftilknytninger kunne ikke hentes.",
+          );
+        }
+
+        setCinemaMemberships(
+          Array.isArray(payload) ? payload : [],
+        );
+      } catch (error) {
+        setCinemaMemberships([]);
+        setCinemaMembershipsError(
+          error instanceof Error
+            ? error.message
+            : "Biograftilknytninger kunne ikke hentes.",
+        );
+      } finally {
+        setCinemaMembershipsLoading(false);
+      }
+    }
+
+    void loadPushStatus();
+    void loadCinemaMemberships();
   }, []);
 
   async function enableNotifications() {
     if (isMasterWithoutOwnCinema) {
       infoDialog.showError(
         "Push-notifikationer er ikke tilgængelige for MASTER",
-        "MASTER-brugere er ikke tilknyttet en konkret biograf. Push-notifikationer kan aktiveres for almindelige biografbrugere.",
+        "MASTER-brugere er ikke tilknyttet en konkret biograf.\nPush-notifikationer kan aktiveres for almindelige biografbrugere.",
       );
       return;
     }
@@ -66,7 +114,6 @@ export function useSettingsPage() {
       }
 
       setPushEnabled(success);
-
       setPushMessage(
         success
           ? "Push-notifikationer er aktiveret på denne browser."
@@ -89,8 +136,9 @@ export function useSettingsPage() {
       }
 
       setPushEnabled(false);
-
-      setPushMessage("Push-notifikationer er deaktiveret på denne browser.");
+      setPushMessage(
+        "Push-notifikationer er deaktiveret på denne browser.",
+      );
     } finally {
       setPushLoading(false);
     }
@@ -104,7 +152,12 @@ export function useSettingsPage() {
     pushEnabled,
     pushLoading,
     pushMessage,
-    isMasterWithoutOwnCinema: Boolean(isMasterWithoutOwnCinema),
+    cinemaMemberships,
+    cinemaMembershipsLoading,
+    cinemaMembershipsError,
+    isMasterWithoutOwnCinema: Boolean(
+      isMasterWithoutOwnCinema,
+    ),
     enableNotifications,
     disableNotifications,
     infoDialog,
