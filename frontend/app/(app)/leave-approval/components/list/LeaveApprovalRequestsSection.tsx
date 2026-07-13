@@ -1,40 +1,16 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
+
+import type {
+  GroupedLeaveRequests,
+  LeaveRequest,
+  LeaveStatus,
+} from "../../helpers/core/leaveApprovalTypes";
 import LeaveApprovalRequestCard from "./LeaveApprovalRequestCard";
-
-type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
-
-type LeaveRequest = {
-  id: number;
-  startDate: string;
-  endDate: string;
-  reason?: string | null;
-  status: LeaveStatus;
-  createdAt?: string;
-  user: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
-};
-
-type LeaveDateGroup = {
-  key: string;
-  title: string;
-  sortTime: number;
-  requests: LeaveRequest[];
-};
-
-type LeaveUserGroup = {
-  userId: number;
-  userName: string;
-  requests: LeaveRequest[];
-  dateGroups: LeaveDateGroup[];
-};
 
 type LeaveApprovalRequestsSectionProps = {
   requests: LeaveRequest[];
   visibleRequests: LeaveRequest[];
-  groupedRequests: LeaveUserGroup[];
+  groupedRequests: GroupedLeaveRequests[];
   statusFilterSummary: string;
   dateFilterSummary: string;
   expandedUserIds: number[];
@@ -48,15 +24,15 @@ function getStatusBadge(status: LeaveStatus) {
   if (status === "APPROVED") {
     return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
   }
-
   if (status === "REJECTED") {
     return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
   }
-
   if (status === "CANCELLED") {
     return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
   }
-
+  if (status === "EXPIRED") {
+    return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
+  }
   return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
 }
 
@@ -71,13 +47,13 @@ function getStatusCountsForRequests(requests: LeaveRequest[]) {
       APPROVED: 0,
       REJECTED: 0,
       CANCELLED: 0,
+      EXPIRED: 0,
     } satisfies Record<LeaveStatus, number>,
   );
 }
 
 function getStatusSummaryParts(requests: LeaveRequest[]) {
   const counts = getStatusCountsForRequests(requests);
-
   return [
     { label: "Afventer", count: counts.PENDING, status: "PENDING" as const },
     { label: "Godkendt", count: counts.APPROVED, status: "APPROVED" as const },
@@ -87,6 +63,7 @@ function getStatusSummaryParts(requests: LeaveRequest[]) {
       count: counts.CANCELLED,
       status: "CANCELLED" as const,
     },
+    { label: "Udløbet", count: counts.EXPIRED, status: "EXPIRED" as const },
   ].filter((item) => item.count > 0);
 }
 
@@ -111,7 +88,6 @@ export default function LeaveApprovalRequestsSection({
             Viser {visibleRequests.length} af {requests.length} ansøgninger.
           </p>
         </div>
-
         <div className="text-sm text-gray-500 dark:text-gray-400">
           {statusFilterSummary} · {dateFilterSummary}
         </div>
@@ -120,7 +96,6 @@ export default function LeaveApprovalRequestsSection({
       {groupedRequests.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 p-8 text-center dark:border-gray-800">
           <h3 className="text-xl font-bold">Ingen fraværsansøgninger</h3>
-
           <p className="mt-2 text-gray-500 dark:text-gray-400">
             Ingen ansøgninger matcher det valgte filter.
           </p>
@@ -129,6 +104,7 @@ export default function LeaveApprovalRequestsSection({
         <div className="space-y-3">
           {groupedRequests.map((group) => {
             const isExpanded = expandedUserIds.includes(group.userId);
+            const groupStatusSummary = getStatusSummaryParts(group.requests);
 
             return (
               <div
@@ -149,41 +125,13 @@ export default function LeaveApprovalRequestsSection({
                       )}
                       {group.userName}
                     </div>
-
                     <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       {group.requests.length} ansøgning
                       {group.requests.length === 1 ? "" : "er"}
                     </div>
                   </div>
-
                   <div className="text-right text-sm text-gray-500 dark:text-gray-400">
-                    {[
-                      {
-                        label: "Afventer",
-                        count: group.requests.filter(
-                          (request) => request.status === "PENDING",
-                        ).length,
-                      },
-                      {
-                        label: "Godkendt",
-                        count: group.requests.filter(
-                          (request) => request.status === "APPROVED",
-                        ).length,
-                      },
-                      {
-                        label: "Afvist",
-                        count: group.requests.filter(
-                          (request) => request.status === "REJECTED",
-                        ).length,
-                      },
-                      {
-                        label: "Annulleret",
-                        count: group.requests.filter(
-                          (request) => request.status === "CANCELLED",
-                        ).length,
-                      },
-                    ]
-                      .filter((item) => item.count > 0)
+                    {groupStatusSummary
                       .map((item) => `${item.label}: ${item.count}`)
                       .join(" · ")}
                   </div>
@@ -221,7 +169,6 @@ export default function LeaveApprovalRequestsSection({
                                 )}
                                 {dateGroup.title}
                               </div>
-
                               <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                 {dateGroup.requests.length} ansøgning
                                 {dateGroup.requests.length === 1 ? "" : "er"}

@@ -22,11 +22,10 @@ import { DEFAULT_STATUS_FILTERS } from "../../helpers/core/leaveApprovalTypes";
 
 export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [statusFilters, setStatusFilters] = useState<LeaveStatusFilters>(
+  const [statusFilters, setStatusFilters] = useState(DEFAULT_STATUS_FILTERS);
+  const [draftStatusFilters, setDraftStatusFilters] = useState(
     DEFAULT_STATUS_FILTERS,
   );
-  const [draftStatusFilters, setDraftStatusFilters] =
-    useState<LeaveStatusFilters>(DEFAULT_STATUS_FILTERS);
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [draftStartDateFilter, setDraftStartDateFilter] = useState("");
@@ -59,13 +58,11 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
           (a, b) =>
             new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
         );
-
         const dateGroups = new Map<string, LeaveDateGroup>();
 
         for (const request of sortedRequests) {
           const meta = getLeaveDateGroupMeta(request);
           const existing = dateGroups.get(meta.key);
-
           if (existing) {
             dateGroups.set(meta.key, {
               ...existing,
@@ -105,15 +102,12 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
         endDateFilter,
       )}`;
     }
-
     if (startDateFilter) {
       return `Fra ${formatDateDK(startDateFilter)}`;
     }
-
     if (endDateFilter) {
       return `Til ${formatDateDK(endDateFilter)}`;
     }
-
     return "Alle datoer";
   }, [endDateFilter, startDateFilter]);
 
@@ -162,6 +156,7 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
   function showOnlyPending() {
     setStatusFilters({
       pending: true,
+      expired: false,
       approved: false,
       rejected: false,
       cancelled: false,
@@ -180,7 +175,6 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
 
   function toggleDateGroup(userId: number, dateKey: string) {
     const expansionKey = makeDateGroupExpansionKey(userId, dateKey);
-
     setExpandedDateGroupKeys((current) =>
       current.includes(expansionKey)
         ? current.filter((key) => key !== expansionKey)

@@ -71,7 +71,6 @@ export function useLeaveApprovalData(infoDialog: InfoDialog) {
 
       try {
         setLoading(true);
-
         const response = await apiFetch(
           appendActiveCinemaId("/leave-requests?includeAll=true"),
         );
@@ -89,7 +88,6 @@ export function useLeaveApprovalData(infoDialog: InfoDialog) {
         setRequests(Array.isArray(data) ? data : []);
       } catch (error) {
         setRequests([]);
-
         if (showError) {
           infoDialog.showError(
             "Fraværsansøgninger kunne ikke hentes",
@@ -116,7 +114,6 @@ export function useLeaveApprovalData(infoDialog: InfoDialog) {
     }
 
     syncActiveCinemaContext();
-
     window.addEventListener(
       "masterSelectedCinemaChanged",
       syncActiveCinemaContext,
@@ -148,6 +145,7 @@ export function useLeaveApprovalData(infoDialog: InfoDialog) {
       }),
       {
         PENDING: 0,
+        EXPIRED: 0,
         APPROVED: 0,
         REJECTED: 0,
         CANCELLED: 0,

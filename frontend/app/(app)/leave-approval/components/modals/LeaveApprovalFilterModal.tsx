@@ -2,12 +2,7 @@
 
 import FilterModal from "@/app/components/modals/FilterModal";
 
-type LeaveStatusFilters = {
-  pending: boolean;
-  approved: boolean;
-  rejected: boolean;
-  cancelled: boolean;
-};
+import type { LeaveStatusFilters } from "../../helpers/core/leaveApprovalTypes";
 
 type LeaveApprovalFilterModalProps = {
   open: boolean;
@@ -15,7 +10,10 @@ type LeaveApprovalFilterModalProps = {
   draftStatusFilters: LeaveStatusFilters;
   draftStartDateFilter: string;
   draftEndDateFilter: string;
-  onStatusFilterChange: (key: keyof LeaveStatusFilters, checked: boolean) => void;
+  onStatusFilterChange: (
+    key: keyof LeaveStatusFilters,
+    checked: boolean,
+  ) => void;
   onStartDateFilterChange: (value: string) => void;
   onEndDateFilterChange: (value: string) => void;
   onApply: () => void;
@@ -52,7 +50,6 @@ export default function LeaveApprovalFilterModal({
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             Status
           </h3>
-
           <div className="mt-3 space-y-3">
             <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
               <input
@@ -70,7 +67,22 @@ export default function LeaveApprovalFilterModal({
                 </span>
               </span>
             </label>
-
+            <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+              <input
+                type="checkbox"
+                checked={draftStatusFilters.expired}
+                onChange={(event) =>
+                  onStatusFilterChange("expired", event.target.checked)
+                }
+                className="mt-0.5 h-4 w-4"
+              />
+              <span>
+                <span className="block font-medium">Udløbne</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  Ansøgninger der ikke blev behandlet, før fraværet begyndte.
+                </span>
+              </span>
+            </label>
             <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
               <input
                 type="checkbox"
@@ -87,7 +99,6 @@ export default function LeaveApprovalFilterModal({
                 </span>
               </span>
             </label>
-
             <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
               <input
                 type="checkbox"
@@ -104,7 +115,6 @@ export default function LeaveApprovalFilterModal({
                 </span>
               </span>
             </label>
-
             <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
               <input
                 type="checkbox"
@@ -128,7 +138,6 @@ export default function LeaveApprovalFilterModal({
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             Periode
           </h3>
-
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="font-medium">Fra dato</span>
@@ -141,7 +150,6 @@ export default function LeaveApprovalFilterModal({
                 className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
               />
             </label>
-
             <label className="block text-sm">
               <span className="font-medium">Til dato</span>
               <input
@@ -152,7 +160,6 @@ export default function LeaveApprovalFilterModal({
               />
             </label>
           </div>
-
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             Datofilteret viser ansøgninger, der overlapper den valgte periode.
           </p>

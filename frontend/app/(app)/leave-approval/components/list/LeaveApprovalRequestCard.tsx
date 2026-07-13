@@ -3,6 +3,7 @@ import {
   formatTimeDK,
   formatUtcDateDK,
 } from "@/app/utils/dateTime";
+
 import type {
   LeaveRequest,
   LeaveRequestUser,
@@ -59,8 +60,8 @@ function getFullDayDateRange(
 function formatLeavePeriod(startDateString: string, endDateString: string) {
   const start = new Date(startDateString);
   const end = new Date(endDateString);
-
   const fullDayDateRange = getFullDayDateRange(start, end);
+
   if (fullDayDateRange) {
     return fullDayDateRange.startDate === fullDayDateRange.endDate
       ? `${fullDayDateRange.startDate} · Hele dagen`
@@ -81,15 +82,15 @@ function getStatusBadge(status: LeaveStatus) {
   if (status === "APPROVED") {
     return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
   }
-
   if (status === "REJECTED") {
     return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
   }
-
   if (status === "CANCELLED") {
     return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
   }
-
+  if (status === "EXPIRED") {
+    return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
+  }
   return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
 }
 
@@ -97,7 +98,7 @@ function getStatusLabel(status: LeaveStatus) {
   if (status === "APPROVED") return "Godkendt";
   if (status === "REJECTED") return "Afvist";
   if (status === "CANCELLED") return "Annulleret";
-
+  if (status === "EXPIRED") return "Udløbet";
   return "Afventer";
 }
 
@@ -105,7 +106,7 @@ function getDetailedStatusLabel(status: LeaveStatus) {
   if (status === "APPROVED") return "Godkendt fravær";
   if (status === "REJECTED") return "Afvist ansøgning";
   if (status === "CANCELLED") return "Annulleret ansøgning";
-
+  if (status === "EXPIRED") return "Udløbet ansøgning";
   return "Afventer behandling";
 }
 
@@ -113,40 +114,37 @@ function getStatusDescription(status: LeaveStatus) {
   if (status === "APPROVED") {
     return "Fraværet er godkendt og bør tages højde for i vagtplanen.";
   }
-
   if (status === "REJECTED") {
     return "Ansøgningen er afvist og kræver ikke yderligere handling.";
   }
-
   if (status === "CANCELLED") {
     return "Ansøgningen er annulleret og kræver ikke yderligere handling.";
   }
-
+  if (status === "EXPIRED") {
+    return "Ansøgningen blev ikke behandlet, før fraværsperioden begyndte.";
+  }
   return "Ansøgningen afventer godkendelse eller afvisning.";
 }
 
 function getNoActionLabel(status: LeaveStatus) {
   if (status === "REJECTED") return "Afvist · ingen yderligere handlinger";
   if (status === "CANCELLED") return "Annulleret · ingen yderligere handlinger";
-
+  if (status === "EXPIRED") return "Udløbet · ingen yderligere handlinger";
   return "Ingen handlinger";
 }
 
 function getCancelActionLabel(status: LeaveStatus) {
   if (status === "APPROVED") return "Annullér fravær";
-
   return "Annullér ansøgning";
 }
 
 function formatLeaveReason(reason?: string | null) {
   const trimmedReason = reason?.trim();
-
   return trimmedReason ? trimmedReason : "Ingen årsag angivet";
 }
 
 function formatRequestCreatedAt(createdAt?: string) {
   if (!createdAt) return "Ukendt";
-
   return `${formatDateDK(createdAt)} kl. ${formatTimeDK(createdAt)}`;
 }
 
@@ -156,7 +154,6 @@ function formatUserName(user?: LeaveRequestUser | null) {
   }
 
   const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
-
   return name || `Bruger #${user.id}`;
 }
 
@@ -172,7 +169,6 @@ function formatCreatedBy(request: LeaveRequest) {
   }
 
   const creatorName = formatUserName(request.createdByUser);
-
   if (!isCreatedByAnotherUser(request)) {
     return `${creatorName} (egen ansøgning)`;
   }
@@ -223,7 +219,6 @@ export default function LeaveApprovalRequestCard({
               {getCreatorBadgeLabel(request)}
             </span>
           </div>
-
           <div className="mt-2 text-lg font-semibold">
             Fravær for {employeeName}
           </div>
@@ -258,7 +253,6 @@ export default function LeaveApprovalRequestCard({
               </button>
             </>
           )}
-
           {(request.status === "PENDING" || request.status === "APPROVED") && (
             <button
               type="button"
@@ -268,8 +262,9 @@ export default function LeaveApprovalRequestCard({
               {getCancelActionLabel(request.status)}
             </button>
           )}
-
-          {(request.status === "REJECTED" || request.status === "CANCELLED") && (
+          {(request.status === "REJECTED" ||
+            request.status === "CANCELLED" ||
+            request.status === "EXPIRED") && (
             <span className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
               {getNoActionLabel(request.status)}
             </span>
@@ -286,7 +281,6 @@ export default function LeaveApprovalRequestCard({
             {employeeName}
           </div>
         </div>
-
         <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950/50">
           <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
             Fraværsperiode
@@ -295,7 +289,6 @@ export default function LeaveApprovalRequestCard({
             {formatLeavePeriod(request.startDate, request.endDate)}
           </div>
         </div>
-
         <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950/50">
           <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
             Årsag
@@ -304,17 +297,17 @@ export default function LeaveApprovalRequestCard({
             {formatLeaveReason(request.reason)}
           </div>
         </div>
-
         <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-950/50">
           <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
             Status
           </div>
-          <div className="mt-1 font-medium">{getStatusLabel(request.status)}</div>
+          <div className="mt-1 font-medium">
+            {getStatusLabel(request.status)}
+          </div>
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Oprettet {formatRequestCreatedAt(request.createdAt)}
           </div>
         </div>
-
         <div className="rounded-xl bg-blue-50 p-3 dark:bg-blue-950/30">
           <div className="text-xs font-semibold uppercase text-blue-700 dark:text-blue-300">
             Oprettet af

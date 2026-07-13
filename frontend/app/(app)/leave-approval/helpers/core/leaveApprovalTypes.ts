@@ -1,4 +1,5 @@
-export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type LeaveStatus =
+  "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "EXPIRED";
 
 export type LeaveRequestUser = {
   id: number;
@@ -28,6 +29,7 @@ export type LeaveDateGroup = {
   sortTime: number;
   requests: LeaveRequest[];
 };
+
 export type GroupedLeaveRequests = {
   userId: number;
   userName: string;
@@ -37,6 +39,7 @@ export type GroupedLeaveRequests = {
 
 export type LeaveStatusFilters = {
   pending: boolean;
+  expired: boolean;
   approved: boolean;
   rejected: boolean;
   cancelled: boolean;
@@ -44,6 +47,7 @@ export type LeaveStatusFilters = {
 
 export const DEFAULT_STATUS_FILTERS: LeaveStatusFilters = {
   pending: true,
+  expired: false,
   approved: false,
   rejected: false,
   cancelled: false,

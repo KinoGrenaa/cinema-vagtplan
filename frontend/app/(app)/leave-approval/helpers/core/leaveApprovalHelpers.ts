@@ -1,4 +1,5 @@
 import { formatDateDK, formatUtcDateDK } from "@/app/utils/dateTime";
+
 import type {
   LeaveDisplayDateRange,
   LeaveRequest,
@@ -49,13 +50,11 @@ export function getLocalDateKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-
   return `${year}-${month}-${day}`;
 }
 
 export function getDateKeyFromDanishDate(date: string) {
   const [day, month, year] = date.split(".");
-
   if (!day || !month || !year) {
     return date;
   }
@@ -73,9 +72,7 @@ export function formatDateGroupTitle(key: string, fallbackDate: string) {
     return fallbackDate;
   }
 
-  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(
-    1,
-  )} ${fallbackDate}`;
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${fallbackDate}`;
 }
 
 export function getLeaveDateGroupMeta(request: LeaveRequest) {
@@ -102,7 +99,6 @@ export function getLeaveDateGroupMeta(request: LeaveRequest) {
 
   const key = getLocalDateKey(start);
   const displayDate = formatDateDK(start);
-
   return {
     key,
     title: formatDateGroupTitle(key, displayDate),
@@ -120,12 +116,11 @@ export function getUserName(request: LeaveRequest) {
 
 export function getStatusFilterSummary(filters: LeaveStatusFilters) {
   const labels = [];
-
   if (filters.pending) labels.push("Afventer");
+  if (filters.expired) labels.push("Udløbne");
   if (filters.approved) labels.push("Godkendte");
   if (filters.rejected) labels.push("Afviste");
   if (filters.cancelled) labels.push("Annullerede");
-
   return labels.length > 0 ? labels.join(", ") : "Ingen statusser valgt";
 }
 
@@ -146,26 +141,22 @@ export function matchesStatusFilter(
   filters: LeaveStatusFilters,
 ) {
   if (request.status === "PENDING") return filters.pending;
+  if (request.status === "EXPIRED") return filters.expired;
   if (request.status === "APPROVED") return filters.approved;
   if (request.status === "REJECTED") return filters.rejected;
   if (request.status === "CANCELLED") return filters.cancelled;
-
   return false;
 }
 
 export function getDateFilterStart(value: string) {
   if (!value) return null;
-
   const date = new Date(`${value}T00:00:00`);
-
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
 export function getDateFilterEnd(value: string) {
   if (!value) return null;
-
   const date = new Date(`${value}T23:59:59.999`);
-
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -200,11 +191,9 @@ export function matchesDateFilter(
 export async function readErrorMessage(response: Response, fallback: string) {
   try {
     const data = await response.json();
-
     if (Array.isArray(data.message)) {
       return data.message.join("\n");
     }
-
     return data.message || fallback;
   } catch {
     return fallback;
@@ -213,18 +202,15 @@ export async function readErrorMessage(response: Response, fallback: string) {
 
 export function getStoredUser() {
   const savedUser = window.localStorage.getItem("user");
-
   if (!savedUser) {
     return null;
   }
 
   try {
     const parsedUser = JSON.parse(savedUser) as StoredUser;
-
     if (!parsedUser || typeof parsedUser !== "object") {
       return null;
     }
-
     return parsedUser;
   } catch {
     return null;
@@ -235,17 +221,14 @@ export function getSelectedMasterCinemaId() {
   const cinemaId = Number(
     window.localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
   );
-
   if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
     return null;
   }
-
   return cinemaId;
 }
 
 export function appendCinemaId(endpoint: string, cinemaId: number | null) {
   if (!cinemaId) return endpoint;
-
   const separator = endpoint.includes("?") ? "&" : "?";
   return `${endpoint}${separator}cinemaId=${cinemaId}`;
 }

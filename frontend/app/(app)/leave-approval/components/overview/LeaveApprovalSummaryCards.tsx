@@ -1,5 +1,6 @@
 type LeaveApprovalStatusCounts = {
   PENDING: number;
+  EXPIRED: number;
   APPROVED: number;
   REJECTED: number;
   CANCELLED: number;
@@ -13,7 +14,7 @@ export default function LeaveApprovalSummaryCards({
   statusCounts,
 }: LeaveApprovalSummaryCardsProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <div
         className={`rounded-2xl border p-5 shadow-sm transition-colors ${
           statusCounts.PENDING > 0
@@ -21,25 +22,26 @@ export default function LeaveApprovalSummaryCards({
             : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
         }`}
       >
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Afventer
-        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">Afventer</div>
         <div className="mt-1 text-2xl font-bold">{statusCounts.PENDING}</div>
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Kræver behandling.
         </div>
       </div>
-
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Godkendt
+        <div className="text-sm text-gray-500 dark:text-gray-400">Udløbet</div>
+        <div className="mt-1 text-2xl font-bold">{statusCounts.EXPIRED}</div>
+        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Ikke behandlet i tide.
         </div>
+      </div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="text-sm text-gray-500 dark:text-gray-400">Godkendt</div>
         <div className="mt-1 text-2xl font-bold">{statusCounts.APPROVED}</div>
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Allerede godkendt.
         </div>
       </div>
-
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="text-sm text-gray-500 dark:text-gray-400">Afvist</div>
         <div className="mt-1 text-2xl font-bold">{statusCounts.REJECTED}</div>
@@ -47,7 +49,6 @@ export default function LeaveApprovalSummaryCards({
           Afviste ansøgninger.
         </div>
       </div>
-
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Annulleret
