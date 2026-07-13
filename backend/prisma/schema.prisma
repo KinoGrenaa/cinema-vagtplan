@@ -134,6 +134,7 @@ model Cinema {
   leaveRequests                     LeaveRequest[]
   shiftTrades                       ShiftTrade[]
   users                             User[]
+  userCinemaMemberships             UserCinemaMembership[]
   workTypes                         WorkType[]
   dayPeriods                        DayPeriod[]
   jobFunctions                      JobFunction[]
@@ -191,6 +192,7 @@ model User {
   canSendBroadcastMessages    Boolean                      @default(false)
   cinemaId                    Int?
   cinema                      Cinema?                      @relation(fields: [cinemaId], references: [id])
+  cinemaMemberships           UserCinemaMembership[]
   shifts                      Shift[]
   leaveRequests               LeaveRequest[]
   createdLeaveRequests        LeaveRequest[]               @relation("LeaveRequestCreatedBy")
@@ -216,6 +218,23 @@ model User {
   staffingAiProfile           StaffingAiProfile?
   createdShiftPlanningDrafts  ShiftPlanningDraft[]         @relation("ShiftPlanningDraftCreatedBy")
   shiftPlanningDraftItems     ShiftPlanningDraftItem[]
+}
+
+
+model UserCinemaMembership {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cinemaId  Int
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, cinemaId])
+  @@index([userId])
+  @@index([cinemaId])
+  @@index([isActive])
 }
 
 model WorkType {
