@@ -1,7 +1,6 @@
 "use client";
 
 import type { ComponentProps } from "react";
-
 import MovieProgram from "../movie-program/MovieProgram";
 import { SchedulePageHeader } from "./ScheduleHeader";
 import ScheduleLeaveOverview from "../leave/ScheduleLeaveOverview";
@@ -75,6 +74,7 @@ export default function ScheduleMainContent({
         ai={ai}
         shifts={shifts}
         users={users}
+        leaveRequests={leaveRequests}
         selectedDate={selectedDate}
         canManageShifts={canManageShifts}
         needsMasterCinemaSelection={needsMasterCinemaSelection}
@@ -91,7 +91,10 @@ export default function ScheduleMainContent({
       />
 
       {!needsMasterCinemaSelection && (
-        <MovieProgram movieShowings={movieShowings} selectedDate={selectedDate} />
+        <MovieProgram
+          movieShowings={movieShowings}
+          selectedDate={selectedDate}
+        />
       )}
     </div>
   );

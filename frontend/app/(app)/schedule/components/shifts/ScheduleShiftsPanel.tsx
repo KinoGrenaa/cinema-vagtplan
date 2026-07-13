@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Shift, User } from "../../../../../../shared/types";
+import type { LeaveRequest, Shift, User } from "../../../../../../shared/types";
 import AiSuggestionsPanel from "../ai/AiSuggestionsPanel";
 import ShiftTimeline from "./ShiftTimeline";
 import type { useScheduleAi } from "../../hooks/ai/useScheduleAi";
@@ -13,10 +13,147 @@ import {
 
 type AiScheduleData = ReturnType<typeof useScheduleAi>;
 
+type ScheduleLeaveRequest = LeaveRequest & {
+  userId?: number | null;
+  user?: {
+    id?: number | null;
+    firstName?: string;
+    lastName?: string;
+  } | null;
+};
+
+type ScheduleShift = Shift & {
+  userId?: number | null;
+  user?: {
+    id?: number | null;
+    firstName?: string;
+    lastName?: string;
+  } | null;
+  workType?: {
+    name?: string;
+  } | null;
+};
+
+type ScheduleLeaveConflict = {
+  shiftId: number;
+  employeeName: string;
+  workTypeName: string;
+  shiftStartTime: string;
+  shiftEndTime: string;
+  leaveStartTime: string;
+  leaveEndTime: string;
+};
+
+function getLeaveUserId(request: ScheduleLeaveRequest) {
+  return request.userId ?? request.user?.id ?? null;
+}
+
+function getShiftUserId(shift: ScheduleShift) {
+  return shift.userId ?? shift.user?.id ?? null;
+}
+
+function periodsOverlap(
+  firstStart: string,
+  firstEnd: string,
+  secondStart: string,
+  secondEnd: string,
+) {
+  const firstStartTime = new Date(firstStart).getTime();
+  const firstEndTime = new Date(firstEnd).getTime();
+  const secondStartTime = new Date(secondStart).getTime();
+  const secondEndTime = new Date(secondEnd).getTime();
+
+  if (
+    [firstStartTime, firstEndTime, secondStartTime, secondEndTime].some(
+      Number.isNaN,
+    )
+  ) {
+    return false;
+  }
+
+  return firstStartTime < secondEndTime && firstEndTime > secondStartTime;
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("da-DK", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getEmployeeName(shift: ScheduleShift, users: User[], userId: number) {
+  const shiftName = `${shift.user?.firstName ?? ""} ${
+    shift.user?.lastName ?? ""
+  }`.trim();
+
+  if (shiftName) {
+    return shiftName;
+  }
+
+  const user = users.find((item) => item.id === userId);
+  const userName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
+
+  return userName || `Medarbejder #${userId}`;
+}
+
+function getWorkTypeName(shift: ScheduleShift) {
+  return shift.workType?.name ?? "Vagt";
+}
+
+function getApprovedLeaveConflicts(
+  shifts: Shift[],
+  leaveRequests: LeaveRequest[],
+  users: User[],
+): ScheduleLeaveConflict[] {
+  const approvedLeaveRequests = leaveRequests.filter(
+    (request) => request.status === "APPROVED",
+  ) as ScheduleLeaveRequest[];
+
+  return shifts.flatMap((shift) => {
+    const scheduleShift = shift as ScheduleShift;
+    const userId = getShiftUserId(scheduleShift);
+
+    if (!userId) {
+      return [];
+    }
+
+    const leaveRequest = approvedLeaveRequests.find(
+      (request) =>
+        getLeaveUserId(request) === userId &&
+        periodsOverlap(
+          shift.startTime,
+          shift.endTime,
+          request.startDate,
+          request.endDate,
+        ),
+    );
+
+    if (!leaveRequest) {
+      return [];
+    }
+
+    return [
+      {
+        shiftId: shift.id,
+        employeeName: getEmployeeName(scheduleShift, users, userId),
+        workTypeName: getWorkTypeName(scheduleShift),
+        shiftStartTime: shift.startTime,
+        shiftEndTime: shift.endTime,
+        leaveStartTime: leaveRequest.startDate,
+        leaveEndTime: leaveRequest.endDate,
+      },
+    ];
+  });
+}
+
 type ScheduleShiftsPanelProps = {
   ai: AiScheduleData | null;
   shifts: Shift[];
   users: User[];
+  leaveRequests: LeaveRequest[];
   selectedDate: string;
   canManageShifts: boolean;
   needsMasterCinemaSelection: boolean;
@@ -46,18 +183,16 @@ type ScheduleShiftsPanelProps = {
 };
 
 function getWorkTypeId(jobFunction: ScheduleJobFunction) {
-  const workTypeId =
-    jobFunction.workTypeId ?? jobFunction.workType?.id ?? null;
+  const workTypeId = jobFunction.workTypeId ?? jobFunction.workType?.id ?? null;
 
-  return typeof workTypeId === "number" && workTypeId > 0
-    ? workTypeId
-    : null;
+  return typeof workTypeId === "number" && workTypeId > 0 ? workTypeId : null;
 }
 
 export default function ScheduleShiftsPanel({
   ai,
   shifts,
   users,
+  leaveRequests,
   selectedDate,
   canManageShifts,
   needsMasterCinemaSelection,
@@ -76,11 +211,13 @@ export default function ScheduleShiftsPanel({
     jobFunctions,
     loading: jobFunctionsLoading,
     error: jobFunctionsError,
-  } = useScheduleJobFunctions(
-    canManageShifts && !needsMasterCinemaSelection,
+  } = useScheduleJobFunctions(canManageShifts && !needsMasterCinemaSelection);
+  const [selectedJobFunctionId, setSelectedJobFunctionId] = useState(0);
+
+  const approvedLeaveConflicts = useMemo(
+    () => getApprovedLeaveConflicts(shifts, leaveRequests, users),
+    [leaveRequests, shifts, users],
   );
-  const [selectedJobFunctionId, setSelectedJobFunctionId] =
-    useState(0);
 
   const availableJobFunctions = useMemo(
     () =>
@@ -97,8 +234,7 @@ export default function ScheduleShiftsPanel({
     () =>
       jobFunctions.filter(
         (jobFunction) =>
-          jobFunction.isActive &&
-          getWorkTypeId(jobFunction) === null,
+          jobFunction.isActive && getWorkTypeId(jobFunction) === null,
       ).length,
     [jobFunctions],
   );
@@ -107,25 +243,20 @@ export default function ScheduleShiftsPanel({
     if (
       selectedJobFunctionId > 0 &&
       availableJobFunctions.some(
-        (jobFunction) =>
-          jobFunction.id === selectedJobFunctionId,
+        (jobFunction) => jobFunction.id === selectedJobFunctionId,
       )
     ) {
       return;
     }
 
-    setSelectedJobFunctionId(
-      availableJobFunctions[0]?.id ?? 0,
-    );
+    setSelectedJobFunctionId(availableJobFunctions[0]?.id ?? 0);
   }, [availableJobFunctions, selectedJobFunctionId]);
 
   function handleAddJobFunction() {
     const jobFunction = availableJobFunctions.find(
       (item) => item.id === selectedJobFunctionId,
     );
-    const workTypeId = jobFunction
-      ? getWorkTypeId(jobFunction)
-      : null;
+    const workTypeId = jobFunction ? getWorkTypeId(jobFunction) : null;
 
     if (!workTypeId) {
       return;
@@ -175,9 +306,8 @@ export default function ScheduleShiftsPanel({
                 Tilføj jobfunktion
               </p>
               <p className="mt-1 text-xs text-blue-800 dark:text-blue-200">
-                Åbner en untildelt vagt med jobfunktionens
-                løntype forudvalgt. Tidspunktet kan justeres,
-                før vagten oprettes.
+                Åbner en untildelt vagt med jobfunktionens løntype forudvalgt.
+                Tidspunktet kan justeres, før vagten oprettes.
               </p>
             </div>
 
@@ -185,33 +315,22 @@ export default function ScheduleShiftsPanel({
               <select
                 value={selectedJobFunctionId}
                 onChange={(event) =>
-                  setSelectedJobFunctionId(
-                    Number(event.target.value),
-                  )
+                  setSelectedJobFunctionId(Number(event.target.value))
                 }
                 disabled={
-                  jobFunctionsLoading ||
-                  availableJobFunctions.length === 0
+                  jobFunctionsLoading || availableJobFunctions.length === 0
                 }
                 className="min-w-56 rounded-xl border border-blue-300 bg-white px-3 py-2 text-sm text-gray-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-800 dark:bg-gray-950 dark:text-white"
                 aria-label="Vælg jobfunktion"
               >
                 {jobFunctionsLoading && (
-                  <option value={0}>
-                    Henter jobfunktioner...
-                  </option>
+                  <option value={0}>Henter jobfunktioner...</option>
                 )}
-                {!jobFunctionsLoading &&
-                  availableJobFunctions.length === 0 && (
-                    <option value={0}>
-                      Ingen jobfunktioner kan tilføjes
-                    </option>
-                  )}
+                {!jobFunctionsLoading && availableJobFunctions.length === 0 && (
+                  <option value={0}>Ingen jobfunktioner kan tilføjes</option>
+                )}
                 {availableJobFunctions.map((jobFunction) => (
-                  <option
-                    key={jobFunction.id}
-                    value={jobFunction.id}
-                  >
+                  <option key={jobFunction.id} value={jobFunction.id}>
                     {jobFunction.name}
                   </option>
                 ))}
@@ -220,10 +339,7 @@ export default function ScheduleShiftsPanel({
               <button
                 type="button"
                 onClick={handleAddJobFunction}
-                disabled={
-                  jobFunctionsLoading ||
-                  selectedJobFunctionId <= 0
-                }
+                disabled={jobFunctionsLoading || selectedJobFunctionId <= 0}
                 className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500"
               >
                 Tilføj på tidslinjen
@@ -241,10 +357,59 @@ export default function ScheduleShiftsPanel({
 
           {jobFunctionsError && (
             <p className="mt-3 text-xs font-medium text-red-700 dark:text-red-300">
-              Jobfunktionerne kunne ikke hentes:{" "}
-              {jobFunctionsError}
+              Jobfunktionerne kunne ikke hentes: {jobFunctionsError}
             </p>
           )}
+        </div>
+      )}
+
+      {canManageShifts && approvedLeaveConflicts.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/35">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-bold text-amber-950 dark:text-amber-100">
+              Vagter med godkendt fravær
+            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-200">
+              Disse vagter er bevidste undtagelser eller kræver opfølgning.
+              Godkendt fravær ændres ikke automatisk.
+            </p>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {approvedLeaveConflicts.map((conflict) => (
+              <button
+                key={conflict.shiftId}
+                type="button"
+                onClick={() => {
+                  const shift = shifts.find(
+                    (item) => item.id === conflict.shiftId,
+                  );
+
+                  if (shift) {
+                    onSelectShift(shift);
+                  }
+                }}
+                className="block w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-left text-sm transition hover:bg-amber-100 dark:border-amber-900 dark:bg-gray-950 dark:hover:bg-amber-950/50"
+              >
+                <span className="font-bold text-gray-950 dark:text-white">
+                  {conflict.employeeName}
+                </span>
+                <span className="text-gray-700 dark:text-gray-300">
+                  {" · "}
+                  {conflict.workTypeName}
+                  {" · "}
+                  {formatDateTime(conflict.shiftStartTime)}
+                  {" – "}
+                  {formatDateTime(conflict.shiftEndTime)}
+                </span>
+                <span className="mt-1 block text-xs font-semibold text-amber-800 dark:text-amber-200">
+                  Fravær: {formatDateTime(conflict.leaveStartTime)}
+                  {" – "}
+                  {formatDateTime(conflict.leaveEndTime)}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -258,36 +423,18 @@ export default function ScheduleShiftsPanel({
           creatingAiShift={ai.creatingAiShift}
           liveStaffingAlerts={ai.liveStaffingAlerts}
           emergencyAiActions={ai.emergencyAiActions}
-          autoCreatingEmergencyShift={
-            ai.autoCreatingEmergencyShift
-          }
-          autoStaffingNotifications={
-            ai.autoStaffingNotifications
-          }
-          suggestedEmergencyReplacements={
-            ai.suggestedEmergencyReplacements
-          }
-          sendingEmergencyRequest={
-            ai.sendingEmergencyRequest
-          }
+          autoCreatingEmergencyShift={ai.autoCreatingEmergencyShift}
+          autoStaffingNotifications={ai.autoStaffingNotifications}
+          suggestedEmergencyReplacements={ai.suggestedEmergencyReplacements}
+          sendingEmergencyRequest={ai.sendingEmergencyRequest}
           autoEscalationQueue={ai.autoEscalationQueue}
-          sendingRealStaffingMessage={
-            ai.sendingRealStaffingMessage
-          }
+          sendingRealStaffingMessage={ai.sendingRealStaffingMessage}
           staffingLoopStatus={ai.staffingLoopStatus}
-          autonomousStaffingStatus={
-            ai.autonomousStaffingStatus
-          }
-          createAiSuggestedShift={
-            ai.createAiSuggestedShift
-          }
-          autoCreateEmergencyShift={
-            ai.autoCreateEmergencyShift
-          }
+          autonomousStaffingStatus={ai.autonomousStaffingStatus}
+          createAiSuggestedShift={ai.createAiSuggestedShift}
+          autoCreateEmergencyShift={ai.autoCreateEmergencyShift}
           startAutoEscalation={ai.startAutoEscalation}
-          sendRealStaffingMessage={
-            ai.sendRealStaffingMessage
-          }
+          sendRealStaffingMessage={ai.sendRealStaffingMessage}
         />
       )}
 
@@ -295,18 +442,10 @@ export default function ScheduleShiftsPanel({
         shifts={shifts}
         users={users}
         selectedDate={selectedDate}
-        onSelectShift={
-          canManageShifts ? onSelectShift : () => {}
-        }
-        onMoveShift={
-          canManageShifts ? onMoveShift : () => {}
-        }
-        onChangeShiftUser={
-          canManageShifts ? onChangeShiftUser : () => {}
-        }
-        onResizeShift={
-          canManageShifts ? onResizeShift : () => {}
-        }
+        onSelectShift={canManageShifts ? onSelectShift : () => {}}
+        onMoveShift={canManageShifts ? onMoveShift : () => {}}
+        onChangeShiftUser={canManageShifts ? onChangeShiftUser : () => {}}
+        onResizeShift={canManageShifts ? onResizeShift : () => {}}
       />
     </section>
   );
