@@ -31,7 +31,8 @@ export default function MasterCinemasListSection({
       <div className="border-b border-gray-200 p-6 dark:border-gray-800">
         <h2 className="text-xl font-bold">Biografer</h2>
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Vælg hvilken biograf MASTER-panelet skal arbejde videre med.
+          Vælg hvilken biograf MASTER-panelet skal arbejde videre
+          med.
         </p>
       </div>
 
@@ -44,6 +45,12 @@ export default function MasterCinemasListSection({
           {cinemas.map((cinema) => {
             const isSelected = selectedCinemaId === cinema.id;
             const isEditing = editingCinemaId === cinema.id;
+            const activeUserCount =
+              cinema.activeUserCount ?? 0;
+            const totalUserCount = cinema._count?.users ?? 0;
+            const inactiveUserCount =
+              cinema.inactiveUserCount ??
+              Math.max(0, totalUserCount - activeUserCount);
 
             return (
               <div
@@ -61,14 +68,20 @@ export default function MasterCinemasListSection({
                         <input
                           value={editingCinemaName}
                           onChange={(event) =>
-                            onEditingCinemaNameChange(event.target.value)
+                            onEditingCinemaNameChange(
+                              event.target.value,
+                            )
                           }
                           className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-950"
                         />
                         <button
                           type="button"
-                          onClick={() => onSaveCinemaName(cinema)}
-                          disabled={savingCinemaId === cinema.id}
+                          onClick={() =>
+                            onSaveCinemaName(cinema)
+                          }
+                          disabled={
+                            savingCinemaId === cinema.id
+                          }
                           className="rounded-xl bg-green-700 px-4 py-3 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Gem
@@ -76,7 +89,9 @@ export default function MasterCinemasListSection({
                         <button
                           type="button"
                           onClick={onCancelEditingCinema}
-                          disabled={savingCinemaId === cinema.id}
+                          disabled={
+                            savingCinemaId === cinema.id
+                          }
                           className="rounded-xl border border-gray-300 px-4 py-3 font-semibold hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
                         >
                           Annuller
@@ -85,7 +100,9 @@ export default function MasterCinemasListSection({
                     ) : (
                       <>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-bold">{cinema.name}</h3>
+                          <h3 className="text-lg font-bold">
+                            {cinema.name}
+                          </h3>
                           {isSelected && (
                             <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-900 dark:text-purple-100">
                               Valgt
@@ -93,13 +110,30 @@ export default function MasterCinemasListSection({
                           )}
                         </div>
 
-                        <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 dark:bg-green-950/40 dark:text-green-200">
+                            Aktive brugere: {activeUserCount}
+                          </span>
+                          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                            Deaktiverede: {inactiveUserCount}
+                          </span>
+                          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+                            Brugere i alt: {totalUserCount}
+                          </span>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
                           <span>ID: {cinema.id}</span>
-                          <span>Oprettet: {formatDateDK(cinema.createdAt)}</span>
-                          <span>Brugere: {cinema._count?.users ?? 0}</span>
-                          <span>Vagter: {cinema._count?.shifts ?? 0}</span>
                           <span>
-                            Jobfunktioner: {cinema._count?.workTypes ?? 0}
+                            Oprettet:{" "}
+                            {formatDateDK(cinema.createdAt)}
+                          </span>
+                          <span>
+                            Vagter: {cinema._count?.shifts ?? 0}
+                          </span>
+                          <span>
+                            Jobfunktioner:{" "}
+                            {cinema._count?.workTypes ?? 0}
                           </span>
                         </div>
                       </>
@@ -110,7 +144,9 @@ export default function MasterCinemasListSection({
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => onSaveSelectedCinema(cinema)}
+                        onClick={() =>
+                          onSaveSelectedCinema(cinema)
+                        }
                         className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                           isSelected
                             ? "bg-purple-700 text-white hover:bg-purple-800"
@@ -121,7 +157,9 @@ export default function MasterCinemasListSection({
                       </button>
                       <button
                         type="button"
-                        onClick={() => onStartEditingCinema(cinema)}
+                        onClick={() =>
+                          onStartEditingCinema(cinema)
+                        }
                         className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
                       >
                         Rediger navn

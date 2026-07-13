@@ -11,6 +11,8 @@ export type Cinema = {
   name: string;
   logoUrl?: string | null;
   createdAt?: string;
+  activeUserCount?: number;
+  inactiveUserCount?: number;
   _count?: {
     users?: number;
     shifts?: number;

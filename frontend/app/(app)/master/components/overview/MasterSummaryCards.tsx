@@ -9,13 +9,32 @@ export default function MasterSummaryCards({
   cinemas,
   selectedCinema,
 }: MasterSummaryCardsProps) {
+  const activeUserCount = cinemas.reduce(
+    (sum, cinema) => sum + (cinema.activeUserCount ?? 0),
+    0,
+  );
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-3">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Biografer
         </div>
-        <div className="mt-2 text-3xl font-bold">{cinemas.length}</div>
+        <div className="mt-2 text-3xl font-bold">
+          {cinemas.length}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Aktive brugere
+        </div>
+        <div className="mt-2 text-3xl font-bold">
+          {activeUserCount}
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Samlet på tværs af alle biografer.
+        </p>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
