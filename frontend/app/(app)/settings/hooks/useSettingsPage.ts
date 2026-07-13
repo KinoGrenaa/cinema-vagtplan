@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useTheme } from "@/app/components/ThemeProvider";
+import { useTheme } from "@/app/providers/ThemeProvider";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import {
   disablePushNotifications,
