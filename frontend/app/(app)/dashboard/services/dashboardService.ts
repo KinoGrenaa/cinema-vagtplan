@@ -1,11 +1,11 @@
-import { apiFetch } from "../lib/api";
+import { apiFetch } from "@/app/lib/api";
 import type {
   LeaveRequest,
   MovieShowing,
   Shift,
   ShiftTrade,
   TimeEntry,
-} from "../types/dashboard";
+} from "../types";
 
 type DashboardOverview = {
   shifts: Shift[];

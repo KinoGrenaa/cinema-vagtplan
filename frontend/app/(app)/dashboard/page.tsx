@@ -5,7 +5,7 @@ import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiPatternInsights from "./components/ai/AiPatternInsights";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import OperationsStatus from "./components/operations/OperationsStatus";
-import { useDashboard } from "../../hooks/useDashboard";
+import { useDashboard } from "./hooks/useDashboard";
 import DashboardHeader from "./components/layout/DashboardHeader";
 import DashboardOverviewSections from "./components/overview/DashboardOverviewSections";
 import DashboardSummaryCards from "./components/overview/DashboardSummaryCards";

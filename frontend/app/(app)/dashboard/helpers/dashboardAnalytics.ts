@@ -3,7 +3,7 @@ import type {
   Shift,
   StaffingHealth,
   TimeEntry,
-} from "../types/dashboard";
+} from "../types";
 
 export function calculatePlannedHours(shifts: Shift[]) {
   return shifts.reduce((total, shift) => {

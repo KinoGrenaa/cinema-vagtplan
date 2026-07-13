@@ -2,7 +2,7 @@
 
 import { getTodayLocalDate } from "@/app/utils/dateTime";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchDashboardOverview } from "../services/dashboard.service";
+import { fetchDashboardOverview } from "../services/dashboardService";
 import type {
   CurrentUser,
   LeaveRequest,
@@ -10,7 +10,7 @@ import type {
   Shift,
   ShiftTrade,
   TimeEntry,
-} from "../types/dashboard";
+} from "../types";
 import {
   calculateAiLearningAnalytics,
   calculateAiPatternInsights,
@@ -24,7 +24,7 @@ import {
   calculateSoldSeats,
   calculateStaffingHeatmap,
   calculateStaffingWarnings,
-} from "../utils/dashboardAnalytics";
+} from "../helpers/dashboardAnalytics";
 
 type UseDashboardInput = {
   onError?: (message: string) => void;
