@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
 
-import { PrismaService } from '../prisma/prisma.service';
-import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
-import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
+import { createLeaveRequestFlow } from './helpers/leave-request-create-flow';
 import {
   AuthUser,
   LeaveStatus,
   requireUserId,
   resolveLeaveCinemaId,
 } from './helpers/leave-request-service-helpers';
-import { createLeaveRequestFlow } from './helpers/leave-request-create-flow';
 import { updateLeaveRequestStatusFlow } from './helpers/leave-request-status-flow';
+import { LeaveRequestExpiryService } from './leave-request-expiry.service';
 
 @Injectable()
 export class LeaveRequestsService {
@@ -20,9 +21,10 @@ export class LeaveRequestsService {
     private absenceImpactEngineService: AbsenceImpactEngineService,
     private realtimeGateway: RealtimeGateway,
     private notificationsService: NotificationsService,
+    private leaveRequestExpiryService: LeaveRequestExpiryService,
   ) {}
 
-  findAll(
+  async findAll(
     user: AuthUser,
     selectedCinemaId?: number | null,
     includeAll = false,
@@ -31,6 +33,10 @@ export class LeaveRequestsService {
     const cinemaId = resolveLeaveCinemaId(user, selectedCinemaId);
     const canViewAll =
       includeAll && (user.role === 'ADMIN' || user.role === 'MASTER');
+
+    await this.leaveRequestExpiryService.expirePendingLeaveRequests({
+      cinemaId,
+    });
 
     return this.prisma.leaveRequest.findMany({
       where: {

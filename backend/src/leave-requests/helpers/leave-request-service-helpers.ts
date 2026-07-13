@@ -1,4 +1,7 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 export type AuthUser = {
   sub?: number;
@@ -36,6 +39,76 @@ type ShiftWithWorkType = {
   } | null;
 };
 
+const COPENHAGEN_TIME_ZONE = 'Europe/Copenhagen';
+
+const copenhagenDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: COPENHAGEN_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const copenhagenDateTimeFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: COPENHAGEN_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+function getDateTimePart(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+) {
+  const value = Number(parts.find((part) => part.type === type)?.value);
+
+  if (!Number.isInteger(value)) {
+    throw new Error(`Kunne ikke beregne dansk datogrænse: ${type}`);
+  }
+
+  return value;
+}
+
+function getCopenhagenOffsetMilliseconds(date: Date) {
+  const parts = copenhagenDateTimeFormatter.formatToParts(date);
+
+  const formattedAsUtc = Date.UTC(
+    getDateTimePart(parts, 'year'),
+    getDateTimePart(parts, 'month') - 1,
+    getDateTimePart(parts, 'day'),
+    getDateTimePart(parts, 'hour'),
+    getDateTimePart(parts, 'minute'),
+    getDateTimePart(parts, 'second'),
+  );
+
+  const dateWithoutMilliseconds = Math.floor(date.getTime() / 1000) * 1000;
+
+  return formattedAsUtc - dateWithoutMilliseconds;
+}
+
+export function getCopenhagenTomorrowStart(referenceDate = new Date()) {
+  const parts = copenhagenDateFormatter.formatToParts(referenceDate);
+
+  const tomorrowUtcGuess = new Date(
+    Date.UTC(
+      getDateTimePart(parts, 'year'),
+      getDateTimePart(parts, 'month') - 1,
+      getDateTimePart(parts, 'day') + 1,
+      0,
+      0,
+      0,
+    ),
+  );
+
+  const offsetMilliseconds =
+    getCopenhagenOffsetMilliseconds(tomorrowUtcGuess);
+
+  return new Date(tomorrowUtcGuess.getTime() - offsetMilliseconds);
+}
+
 export function getUserId(user: AuthUser) {
   return user.sub ?? user.id;
 }
@@ -50,40 +123,41 @@ export function requireUserId(user: AuthUser) {
   return userId;
 }
 
-function getTomorrowStart() {
-  const tomorrow = new Date();
-
-  tomorrow.setHours(0, 0, 0, 0);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  return tomorrow;
-}
-
 export function resolveLeaveCinemaId(
   user: AuthUser,
   selectedCinemaId?: number | null,
 ) {
   if (user.role === 'MASTER') {
     if (!selectedCinemaId) {
-      throw new BadRequestException('Vælg en biograf, før du henter fravær.');
+      throw new BadRequestException(
+        'Vælg en biograf, før du henter fravær.',
+      );
     }
 
     return selectedCinemaId;
   }
 
   if (!user.cinemaId) {
-    throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
+    throw new ForbiddenException(
+      'Din bruger er ikke tilknyttet en biograf',
+    );
   }
 
   return user.cinemaId;
 }
 
-export function validateLeaveRequestDates(startDate: Date, endDate: Date) {
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+export function validateLeaveRequestDates(
+  startDate: Date,
+  endDate: Date,
+) {
+  if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+  ) {
     throw new BadRequestException('Ugyldig dato eller tid.');
   }
 
-  if (startDate < getTomorrowStart()) {
+  if (startDate < getCopenhagenTomorrowStart()) {
     throw new BadRequestException(
       'Du kan ikke anmode om fri i dag eller tilbage i tiden.',
     );
@@ -96,29 +170,29 @@ export function validateLeaveRequestDates(startDate: Date, endDate: Date) {
   }
 }
 
-export function createOverlappingShiftException(shift: ShiftWithWorkType) {
+export function createOverlappingShiftException(
+  shift: ShiftWithWorkType,
+) {
   const shiftDate = shift.startTime.toLocaleDateString('da-DK', {
-    timeZone: 'Europe/Copenhagen',
+    timeZone: COPENHAGEN_TIME_ZONE,
   });
-
   const shiftStart = shift.startTime.toLocaleTimeString('da-DK', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Copenhagen',
+    timeZone: COPENHAGEN_TIME_ZONE,
   });
-
   const shiftEnd = shift.endTime.toLocaleTimeString('da-DK', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'Europe/Copenhagen',
+    timeZone: COPENHAGEN_TIME_ZONE,
   });
-
   const workTypeName = shift.workType?.name
     ? `${shift.workType.name}-vagt`
     : 'vagt';
 
   return new BadRequestException(
-    `Du har en ${workTypeName} den ${shiftDate} kl. ${shiftStart}-${shiftEnd}. Byt vagten først, eller kontakt din planlægger, før du søger fravær.`,
+    `Du har en ${workTypeName} den ${shiftDate} kl. ${shiftStart}-${shiftEnd}. ` +
+      'Byt vagten først, eller kontakt din planlægger, før du søger fravær.',
   );
 }
 
@@ -128,6 +202,12 @@ export function ensureLeaveStatusChangeAllowed(params: {
   isAdmin: boolean;
   status: LeaveStatus;
 }) {
+  if (params.existing.status === 'EXPIRED') {
+    throw new BadRequestException(
+      'Denne fraværsansøgning er udløbet og kan ikke ændres.',
+    );
+  }
+
   const isOwner = params.existing.userId === params.actorUserId;
 
   if (params.status === 'CANCELLED') {

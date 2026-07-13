@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { StaffingAiModule } from '../staffing-ai/staffing-ai.module';
+
+import { NotificationsModule } from '../notifications/notifications.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { StaffingAiModule } from '../staffing-ai/staffing-ai.module';
+import { LeaveRequestExpiryService } from './leave-request-expiry.service';
 import { LeaveRequestsController } from './leave-requests.controller';
 import { LeaveRequestsService } from './leave-requests.service';
-import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -12,14 +14,11 @@ import { NotificationsModule } from '../notifications/notifications.module';
       secret: 'super-secret-key-change-later',
       signOptions: { expiresIn: '7d' },
     }),
-
     StaffingAiModule,
     RealtimeModule,
     NotificationsModule,
   ],
-
   controllers: [LeaveRequestsController],
-
-  providers: [LeaveRequestsService],
+  providers: [LeaveRequestsService, LeaveRequestExpiryService],
 })
 export class LeaveRequestsModule {}
