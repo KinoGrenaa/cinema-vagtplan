@@ -1,10 +1,16 @@
-export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type LeaveStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "CANCELLED"
+  | "EXPIRED";
 
 export type LeaveStatusFilters = {
   pending: boolean;
   approved: boolean;
   rejected: boolean;
   cancelled: boolean;
+  expired: boolean;
 };
 
 export type LeaveStatusCounts = {
@@ -12,6 +18,7 @@ export type LeaveStatusCounts = {
   approved: number;
   rejected: number;
   cancelled: number;
+  expired: number;
 };
 
 export const DEFAULT_STATUS_FILTERS: LeaveStatusFilters = {
@@ -19,6 +26,7 @@ export const DEFAULT_STATUS_FILTERS: LeaveStatusFilters = {
   approved: false,
   rejected: false,
   cancelled: false,
+  expired: false,
 };
 
 export type LeaveRequest = {

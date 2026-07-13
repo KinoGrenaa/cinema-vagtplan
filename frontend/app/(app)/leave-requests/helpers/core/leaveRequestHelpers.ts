@@ -3,6 +3,7 @@ import {
   formatTimeDK,
   formatUtcDateDK,
 } from "@/app/utils/dateTime";
+
 import type {
   LeaveRequest,
   LeaveStatus,
@@ -15,7 +16,9 @@ type LeaveDisplayDateRange = {
   endDate: string;
 };
 
-function getAllDayDateRange(request: LeaveRequest): LeaveDisplayDateRange | null {
+function getAllDayDateRange(
+  request: LeaveRequest,
+): LeaveDisplayDateRange | null {
   const start = new Date(request.startDate);
   const end = new Date(request.endDate);
 
@@ -73,7 +76,6 @@ export function getPeriodText(request: LeaveRequest) {
 
 export function getGroupKey(request: LeaveRequest) {
   const allDayDateRange = getAllDayDateRange(request);
-
   return allDayDateRange?.startDate ?? formatDateDK(request.startDate);
 }
 
@@ -84,6 +86,10 @@ export function getStatusBadge(status: LeaveStatus) {
 
   if (status === "REJECTED") {
     return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
+  }
+
+  if (status === "EXPIRED") {
+    return "bg-slate-100 text-slate-800 dark:bg-slate-900/60 dark:text-slate-200";
   }
 
   if (status === "CANCELLED") {
@@ -102,6 +108,10 @@ export function getStatusLabel(status: LeaveStatus) {
     return "Afvist";
   }
 
+  if (status === "EXPIRED") {
+    return "Udløbet";
+  }
+
   if (status === "CANCELLED") {
     return "Annulleret";
   }
@@ -116,6 +126,10 @@ export function getStatusDescription(status: LeaveStatus) {
 
   if (status === "REJECTED") {
     return "Afvist ansøgning";
+  }
+
+  if (status === "EXPIRED") {
+    return "Udløbet uden behandling";
   }
 
   if (status === "CANCELLED") {
@@ -168,14 +182,16 @@ export function requestOverlapsDateFilter(
   return true;
 }
 
-export function countLeaveStatuses(requests: LeaveRequest[]): LeaveStatusCounts {
-  return requests.reduce<LeaveStatusCounts>(
+export function countLeaveStatuses(
+  requests: LeaveRequest[],
+): LeaveStatusCounts {
+  return requests.reduce(
     (counts, request) => {
       if (request.status === "PENDING") counts.pending += 1;
       if (request.status === "APPROVED") counts.approved += 1;
       if (request.status === "REJECTED") counts.rejected += 1;
       if (request.status === "CANCELLED") counts.cancelled += 1;
-
+      if (request.status === "EXPIRED") counts.expired += 1;
       return counts;
     },
     {
@@ -183,6 +199,7 @@ export function countLeaveStatuses(requests: LeaveRequest[]): LeaveStatusCounts 
       approved: 0,
       rejected: 0,
       cancelled: 0,
+      expired: 0,
     },
   );
 }
@@ -195,6 +212,7 @@ export function getStatusSummaryParts(requests: LeaveRequest[]) {
     counts.approved > 0 ? `Godkendt: ${counts.approved}` : null,
     counts.rejected > 0 ? `Afvist: ${counts.rejected}` : null,
     counts.cancelled > 0 ? `Annulleret: ${counts.cancelled}` : null,
+    counts.expired > 0 ? `Udløbet: ${counts.expired}` : null,
   ].filter(Boolean);
 }
 
@@ -206,7 +224,7 @@ export function isRequestVisibleByStatus(
   if (request.status === "APPROVED") return filters.approved;
   if (request.status === "REJECTED") return filters.rejected;
   if (request.status === "CANCELLED") return filters.cancelled;
-
+  if (request.status === "EXPIRED") return filters.expired;
   return false;
 }
 
@@ -233,9 +251,12 @@ export function getFilterSummary(
   if (filters.approved) statusLabels.push("Godkendte");
   if (filters.rejected) statusLabels.push("Afviste");
   if (filters.cancelled) statusLabels.push("Annullerede");
+  if (filters.expired) statusLabels.push("Udløbne");
 
   const parts = [
-    statusLabels.length > 0 ? statusLabels.join(", ") : "Ingen statusser valgt",
+    statusLabels.length > 0
+      ? statusLabels.join(", ")
+      : "Ingen statusser valgt",
   ];
 
   if (fromDate) {
@@ -249,7 +270,10 @@ export function getFilterSummary(
   return parts.join(" · ");
 }
 
-export async function readErrorMessage(response: Response, fallback: string) {
+export async function readErrorMessage(
+  response: Response,
+  fallback: string,
+) {
   try {
     const data = await response.json();
 

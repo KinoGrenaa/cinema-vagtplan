@@ -58,6 +58,7 @@ export default function LeaveRequestsListSection({
         <div className="space-y-3">
           {groupedRequests.map((group) => {
             const isExpanded = expandedGroupKeys.includes(group.key);
+
             return (
               <div
                 key={group.key}
@@ -82,6 +83,7 @@ export default function LeaveRequestsListSection({
                       {group.requests.length === 1 ? "" : "er"}
                     </div>
                   </div>
+
                   <div className="flex flex-wrap justify-end gap-2">
                     {getStatusSummaryParts(group.requests).map((part) => (
                       <span
@@ -115,7 +117,13 @@ export default function LeaveRequestsListSection({
                                 {getStatusDescription(request.status)}
                               </span>
                             </div>
+                            {request.status === "EXPIRED" && (
+                              <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
+                                Ansøgningen blev ikke behandlet, før fraværsperioden begyndte.
+                              </p>
+                            )}
                           </div>
+
                           {(request.status === "PENDING" ||
                             request.status === "APPROVED") &&
                             request.user.id === currentUserId && (
@@ -136,6 +144,7 @@ export default function LeaveRequestsListSection({
                             </div>
                             <div className="mt-1">{getPeriodText(request)}</div>
                           </div>
+
                           <div>
                             <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                               Årsag
@@ -144,6 +153,7 @@ export default function LeaveRequestsListSection({
                               {getEmptyReasonText(request.reason)}
                             </div>
                           </div>
+
                           <div>
                             <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                               Status

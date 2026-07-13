@@ -63,7 +63,8 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
         key,
         requests: groupRequests.sort(
           (a, b) =>
-            new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+            new Date(a.startDate).getTime() -
+            new Date(b.startDate).getTime(),
         ),
       }))
       .sort(
@@ -119,6 +120,7 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
       approved: false,
       rejected: false,
       cancelled: false,
+      expired: false,
     });
     setFilterStartDate("");
     setFilterEndDate("");

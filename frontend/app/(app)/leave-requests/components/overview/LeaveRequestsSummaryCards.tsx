@@ -10,7 +10,7 @@ export default function LeaveRequestsSummaryCards({
   onShowPendingOnly,
 }: LeaveRequestsSummaryCardsProps) {
   return (
-    <section className="grid gap-4 md:grid-cols-4">
+    <section className="grid gap-4 md:grid-cols-5">
       <div
         className={`rounded-2xl border p-5 shadow-sm transition-colors ${
           statusCounts.pending > 0
@@ -35,6 +35,7 @@ export default function LeaveRequestsSummaryCards({
           </button>
         )}
       </div>
+
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Godkendte
@@ -44,6 +45,7 @@ export default function LeaveRequestsSummaryCards({
           Fravær der er godkendt.
         </div>
       </div>
+
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="text-sm text-gray-500 dark:text-gray-400">Afviste</div>
         <div className="mt-1 text-3xl font-bold">{statusCounts.rejected}</div>
@@ -51,6 +53,7 @@ export default function LeaveRequestsSummaryCards({
           Ansøgninger der er afvist.
         </div>
       </div>
+
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Annullerede
@@ -58,6 +61,14 @@ export default function LeaveRequestsSummaryCards({
         <div className="mt-1 text-3xl font-bold">{statusCounts.cancelled}</div>
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           Ansøgninger du eller administrationen har annulleret.
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/30">
+        <div className="text-sm text-slate-600 dark:text-slate-300">Udløbet</div>
+        <div className="mt-1 text-3xl font-bold">{statusCounts.expired}</div>
+        <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+          Ansøgninger der ikke blev behandlet inden fraværets start.
         </div>
       </div>
     </section>
