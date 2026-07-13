@@ -1,6 +1,6 @@
 import type { Cinema } from "../../helpers/core/cinemaSettingsTypes";
 
-import { getLogoSrc } from "../../helpers/core/cinemaSettingsHelpers";
+import { getLogoSrc } from "../../helpers/core/cinemaSettingsBrandingHelpers";
 
 type CinemaSettingsBrandingSectionProps = {
   cinema: Cinema;

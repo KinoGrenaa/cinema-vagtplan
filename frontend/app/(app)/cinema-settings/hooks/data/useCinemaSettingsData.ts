@@ -12,10 +12,8 @@ import type {
   CurrentUser,
 } from "../../helpers/core/cinemaSettingsTypes";
 
-import {
-  readErrorMessage,
-  syncMasterSelectedCinemaStorage,
-} from "../../helpers/core/cinemaSettingsHelpers";
+import { syncMasterSelectedCinemaStorage } from "../../helpers/core/cinemaSettingsBrandingHelpers";
+import { readErrorMessage } from "../../helpers/core/cinemaSettingsRequestHelpers";
 
 export function useCinemaSettingsData() {
   const infoDialog = useInfoModal();

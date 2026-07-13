@@ -10,7 +10,7 @@ import CinemaSettingsLoadingState from "./components/layout/CinemaSettingsLoadin
 import CinemaSettingsMasterRequired from "./components/layout/CinemaSettingsMasterRequired";
 import CinemaSettingsPayrollSection from "./components/payroll/CinemaSettingsPayrollSection";
 
-import { calculatePeriodExample } from "./helpers/core/cinemaSettingsHelpers";
+import { calculatePeriodExample } from "./helpers/core/cinemaSettingsDateHelpers";
 import { useCinemaSettingsData } from "./hooks/data/useCinemaSettingsData";
 
 export default function CinemaSettingsPage() {

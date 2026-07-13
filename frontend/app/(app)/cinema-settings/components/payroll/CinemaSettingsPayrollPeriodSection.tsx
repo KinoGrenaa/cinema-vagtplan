@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import { clampDay, toIsoDate } from "../../helpers/core/cinemaSettingsHelpers";
+import { clampDay, toIsoDate } from "../../helpers/core/cinemaSettingsDateHelpers";
 import type { Cinema } from "../../helpers/core/cinemaSettingsTypes";
 
 type PayrollPeriodExample = {
