@@ -1,7 +1,4 @@
-import {
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class UpdateTimeEntryDto {
   @IsString()
@@ -13,4 +10,8 @@ export class UpdateTimeEntryDto {
 
   @IsString()
   adminNote: string;
+
+  @IsOptional()
+  @IsBoolean()
+  confirmPayrollAdjustment?: boolean;
 }
