@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
-import {
-  AuthUser,
-  EmploymentType,
-  UserRole,
-} from './helpers/user-service-helpers';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   createUserFlow,
   CreateUserInput,
 } from './helpers/user-create-flow';
+import { findUserCinemaMemberships } from './helpers/user-cinema-membership-read';
 import {
   findAllUsers,
   findUserByEmail,
@@ -17,16 +14,21 @@ import {
   findUserOwnProfile,
 } from './helpers/user-read-flow';
 import {
+  AuthUser,
+  EmploymentType,
+  UserRole,
+} from './helpers/user-service-helpers';
+import {
+  deactivateUserFlow,
+  reactivateUserFlow,
+} from './helpers/user-status-flow';
+import {
   updateOwnProfileFlow,
   UpdateOwnProfileInput,
   updateThemeFlow,
   updateUserFlow,
   UpdateUserInput,
 } from './helpers/user-update-flow';
-import {
-  deactivateUserFlow,
-  reactivateUserFlow,
-} from './helpers/user-status-flow';
 
 @Injectable()
 export class UsersService {
@@ -35,8 +37,15 @@ export class UsersService {
     private auditLogsService: AuditLogsService,
   ) {}
 
-  async findAll(currentUser: AuthUser, selectedCinemaId?: number) {
-    return findAllUsers(this.prisma, currentUser, selectedCinemaId);
+  async findAll(
+    currentUser: AuthUser,
+    selectedCinemaId?: number,
+  ) {
+    return findAllUsers(
+      this.prisma,
+      currentUser,
+      selectedCinemaId,
+    );
   }
 
   async findByEmail(email: string) {
@@ -44,14 +53,24 @@ export class UsersService {
   }
 
   async findByEmailIncludingInactive(email: string) {
-    return findUserByEmailIncludingInactive(this.prisma, email);
+    return findUserByEmailIncludingInactive(
+      this.prisma,
+      email,
+    );
   }
 
   async findOwnProfile(id: number) {
     return findUserOwnProfile(this.prisma, id);
   }
 
-  async createUser(data: CreateUserInput, currentUser?: AuthUser) {
+  async findOwnCinemaMemberships(id: number) {
+    return findUserCinemaMemberships(this.prisma, id);
+  }
+
+  async createUser(
+    data: CreateUserInput,
+    currentUser?: AuthUser,
+  ) {
     return createUserFlow(
       this.prisma,
       this.auditLogsService,
@@ -83,7 +102,10 @@ export class UsersService {
     );
   }
 
-  async reactivateUser(id: number, currentUser?: AuthUser) {
+  async reactivateUser(
+    id: number,
+    currentUser?: AuthUser,
+  ) {
     return reactivateUserFlow(
       this.prisma,
       this.auditLogsService,
@@ -92,7 +114,10 @@ export class UsersService {
     );
   }
 
-  async updateOwnProfile(id: number, data: UpdateOwnProfileInput) {
+  async updateOwnProfile(
+    id: number,
+    data: UpdateOwnProfileInput,
+  ) {
     return updateOwnProfileFlow(this.prisma, id, data);
   }
 

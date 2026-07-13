@@ -7,24 +7,23 @@ import {
   Get,
   Param,
   Patch,
-  Query,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 
-import { UsersService } from './users.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UsersService } from './users.service';
 
 export type AuthUser = {
   sub?: number;
@@ -38,8 +37,14 @@ export type AuthUser = {
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
-  private validateUserRoleAccess(currentUser: AuthUser, targetRole?: string) {
-    if (currentUser.role !== 'MASTER' && targetRole === 'MASTER') {
+  private validateUserRoleAccess(
+    currentUser: AuthUser,
+    targetRole?: string,
+  ) {
+    if (
+      currentUser.role !== 'MASTER' &&
+      targetRole === 'MASTER'
+    ) {
       throw new ForbiddenException(
         'Kun master kan oprette eller tildele master-rolle',
       );
@@ -48,21 +53,32 @@ export class UsersController {
 
   @UseGuards(JwtGuard)
   @Get()
-  getAllUsers(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
+  getAllUsers(
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
     const currentUser = req.user as AuthUser;
     let selectedCinemaId: number | undefined;
 
     if (cinemaId) {
       const parsedCinemaId = Number(cinemaId);
 
-      if (!Number.isInteger(parsedCinemaId) || parsedCinemaId <= 0) {
-        throw new BadRequestException('Biograf skal være et gyldigt ID');
+      if (
+        !Number.isInteger(parsedCinemaId) ||
+        parsedCinemaId <= 0
+      ) {
+        throw new BadRequestException(
+          'Biograf skal være et gyldigt ID',
+        );
       }
 
       selectedCinemaId = parsedCinemaId;
     }
 
-    return this.usersService.findAll(currentUser, selectedCinemaId);
+    return this.usersService.findAll(
+      currentUser,
+      selectedCinemaId,
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -71,16 +87,39 @@ export class UsersController {
     const currentUserId = req.user?.sub ?? req.user?.id;
 
     if (!currentUserId) {
-      throw new ForbiddenException('Brugeren kunne ikke identificeres');
+      throw new ForbiddenException(
+        'Brugeren kunne ikke identificeres',
+      );
     }
 
-    return this.usersService.findOwnProfile(Number(currentUserId));
+    return this.usersService.findOwnProfile(
+      Number(currentUserId),
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Get('me/cinema-memberships')
+  getOwnCinemaMemberships(@Req() req: any) {
+    const currentUserId = req.user?.sub ?? req.user?.id;
+
+    if (!currentUserId) {
+      throw new ForbiddenException(
+        'Brugeren kunne ikke identificeres',
+      );
+    }
+
+    return this.usersService.findOwnCinemaMemberships(
+      Number(currentUserId),
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Post()
-  createUser(@Body() body: CreateUserDto, @Req() req: any) {
+  createUser(
+    @Body() body: CreateUserDto,
+    @Req() req: any,
+  ) {
     const currentUser = req.user as AuthUser;
 
     this.validateUserRoleAccess(currentUser, body.role);
@@ -110,25 +149,41 @@ export class UsersController {
 
     this.validateUserRoleAccess(currentUser, body.role);
 
-    return this.usersService.updateUser(Number(id), body, currentUser);
+    return this.usersService.updateUser(
+      Number(id),
+      body,
+      currentUser,
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Delete(':id')
-  deleteUser(@Param('id') id: string, @Req() req: any) {
+  deleteUser(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
     const currentUser = req.user as AuthUser;
 
-    return this.usersService.deleteUser(Number(id), currentUser);
+    return this.usersService.deleteUser(
+      Number(id),
+      currentUser,
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Patch(':id/reactivate')
-  reactivateUser(@Param('id') id: string, @Req() req: any) {
+  reactivateUser(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
     const currentUser = req.user as AuthUser;
 
-    return this.usersService.reactivateUser(Number(id), currentUser);
+    return this.usersService.reactivateUser(
+      Number(id),
+      currentUser,
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -151,10 +206,15 @@ export class UsersController {
     const currentUserId = req.user?.sub ?? req.user?.id;
 
     if (Number(currentUserId) !== Number(id)) {
-      throw new ForbiddenException('Du kan kun redigere din egen profil');
+      throw new ForbiddenException(
+        'Du kan kun redigere din egen profil',
+      );
     }
 
-    return this.usersService.updateOwnProfile(Number(id), body);
+    return this.usersService.updateOwnProfile(
+      Number(id),
+      body,
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -164,19 +224,32 @@ export class UsersController {
       storage: diskStorage({
         destination: './uploads/profile-images',
         filename: (_, file, callback) => {
-          const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          callback(null, `${uniqueName}${extname(file.originalname)}`);
+          const uniqueName =
+            Date.now() +
+            '-' +
+            Math.round(Math.random() * 1e9);
+
+          callback(
+            null,
+            `${uniqueName}${extname(file.originalname)}`,
+          );
         },
       }),
       limits: {
         fileSize: 2 * 1024 * 1024,
       },
       fileFilter: (_, file, callback) => {
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const allowedTypes = [
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+        ];
 
         if (!allowedTypes.includes(file.mimetype)) {
           return callback(
-            new BadRequestException('Kun JPG, PNG og WEBP er tilladt'),
+            new BadRequestException(
+              'Kun JPG, PNG og WEBP er tilladt',
+            ),
             false,
           );
         }
@@ -217,9 +290,14 @@ export class UsersController {
     const currentUserId = req.user?.sub ?? req.user?.id;
 
     if (Number(currentUserId) !== Number(id)) {
-      throw new ForbiddenException('Du kan kun ændre tema for din egen bruger');
+      throw new ForbiddenException(
+        'Du kan kun ændre tema for din egen bruger',
+      );
     }
 
-    return this.usersService.updateTheme(Number(id), body.theme);
+    return this.usersService.updateTheme(
+      Number(id),
+      body.theme,
+    );
   }
 }
