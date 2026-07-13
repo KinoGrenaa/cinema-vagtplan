@@ -21,6 +21,9 @@ export default function TradeCard({
   acceptDisabled,
   acceptTooltip,
 }: TradeCardProps) {
+  const approvedLeaveConflict =
+    trade.approvedLeaveConflict ?? null;
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-950">
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -31,14 +34,24 @@ export default function TradeCard({
           Åben
         </span>
       </div>
-      <h3 className="text-xl font-bold">{trade.shift.workType.name}</h3>
+
+      <h3 className="text-xl font-bold">
+        {trade.shift.workType.name}
+      </h3>
+
       <div className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-300">
         <div>{formatShiftDate(trade.shift.startTime)}</div>
-        <div>{formatShiftTime(trade.shift.startTime, trade.shift.endTime)}</div>
+        <div>
+          {formatShiftTime(
+            trade.shift.startTime,
+            trade.shift.endTime,
+          )}
+        </div>
         <div>
           Udbydes af: {trade.offeredByUser.firstName}{" "}
           {trade.offeredByUser.lastName}
         </div>
+
         {trade.targetUser && (
           <div>
             Tilbudt til: {trade.targetUser.firstName}{" "}
@@ -46,11 +59,34 @@ export default function TradeCard({
           </div>
         )}
       </div>
+
+      {approvedLeaveConflict && (
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100">
+          <div className="font-bold">
+            Godkendt fravær overlapper vagten
+          </div>
+          <p className="mt-1">
+            Du kan stadig acceptere vagten, men dit godkendte
+            fravær ændres ikke automatisk.
+          </p>
+          <p className="mt-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+            Fravær:{" "}
+            {formatShiftDate(approvedLeaveConflict.startDate)}
+            {" · "}
+            {formatShiftTime(
+              approvedLeaveConflict.startDate,
+              approvedLeaveConflict.endDate,
+            )}
+          </p>
+        </div>
+      )}
+
       {trade.message && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
           Besked: {trade.message}
         </div>
       )}
+
       <div className="mt-4 flex flex-wrap gap-3">
         <button
           type="button"
@@ -65,6 +101,7 @@ export default function TradeCard({
         >
           {actionLabel}
         </button>
+
         {onReject && (
           <button
             type="button"

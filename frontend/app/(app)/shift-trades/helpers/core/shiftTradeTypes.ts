@@ -4,6 +4,12 @@ export type User = {
   lastName: string;
 };
 
+export type ApprovedLeaveConflict = {
+  id: number;
+  startDate: string;
+  endDate: string;
+};
+
 export type ShiftTrade = {
   id: number;
   status: "OPEN" | "ACCEPTED" | "REJECTED" | "CANCELLED";
@@ -15,6 +21,7 @@ export type ShiftTrade = {
   offeredByUser: User;
   targetUser?: User | null;
   acceptedByUser?: User | null;
+  approvedLeaveConflict?: ApprovedLeaveConflict | null;
   shift: {
     id: number;
     startTime: string;
