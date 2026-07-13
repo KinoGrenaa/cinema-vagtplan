@@ -23,6 +23,7 @@ enum LeaveStatus {
   APPROVED
   REJECTED
   CANCELLED
+  EXPIRED
 }
 
 enum ShiftTradeStatus {
