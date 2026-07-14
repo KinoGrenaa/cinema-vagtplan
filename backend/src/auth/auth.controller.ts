@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  Get,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -12,10 +14,23 @@ import { JwtGuard } from './jwt/jwt.guard';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SwitchCinemaDto } from './dto/switch-cinema.dto';
+import { UpdateDefaultCinemaDto } from './dto/update-default-cinema.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
+
+  private getCurrentUserId(req: any) {
+    const userId = req.user?.sub ?? req.user?.id;
+
+    if (!userId) {
+      throw new ForbiddenException(
+        'Brugeren kunne ikke identificeres',
+      );
+    }
+
+    return Number(userId);
+  }
 
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('login')
@@ -32,16 +47,28 @@ export class AuthController {
     @Req() req: any,
     @Body() body: SwitchCinemaDto,
   ) {
-    const userId = req.user?.sub ?? req.user?.id;
-
-    if (!userId) {
-      throw new ForbiddenException(
-        'Brugeren kunne ikke identificeres',
-      );
-    }
-
     return this.authService.switchCinema(
-      Number(userId),
+      this.getCurrentUserId(req),
+      body.cinemaId,
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Get('default-cinema-options')
+  getDefaultCinemaOptions(@Req() req: any) {
+    return this.authService.getDefaultCinemaOptions(
+      this.getCurrentUserId(req),
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch('default-cinema')
+  updateDefaultCinema(
+    @Req() req: any,
+    @Body() body: UpdateDefaultCinemaDto,
+  ) {
+    return this.authService.updateDefaultCinema(
+      this.getCurrentUserId(req),
       body.cinemaId,
     );
   }
