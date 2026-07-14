@@ -133,7 +133,8 @@ model Cinema {
   movieShowings                     MovieShowing[]
   leaveRequests                     LeaveRequest[]
   shiftTrades                       ShiftTrade[]
-  users                             User[]
+  users                             User[]                @relation("UserPrimaryCinema")
+  defaultCinemaUsers                User[]                @relation("UserDefaultCinema")
   userCinemaMemberships             UserCinemaMembership[]
   workTypes                         WorkType[]
   dayPeriods                        DayPeriod[]
@@ -191,7 +192,9 @@ model User {
   canManageCinemaSettings     Boolean                      @default(false)
   canSendBroadcastMessages    Boolean                      @default(false)
   cinemaId                    Int?
-  cinema                      Cinema?                      @relation(fields: [cinemaId], references: [id])
+  cinema                      Cinema?                      @relation("UserPrimaryCinema", fields: [cinemaId], references: [id])
+  defaultCinemaId             Int?
+  defaultCinema               Cinema?                      @relation("UserDefaultCinema", fields: [defaultCinemaId], references: [id], onDelete: SetNull)
   cinemaMemberships           UserCinemaMembership[]
   shifts                      Shift[]
   leaveRequests               LeaveRequest[]
@@ -218,6 +221,8 @@ model User {
   staffingAiProfile           StaffingAiProfile?
   createdShiftPlanningDrafts  ShiftPlanningDraft[]         @relation("ShiftPlanningDraftCreatedBy")
   shiftPlanningDraftItems     ShiftPlanningDraftItem[]
+
+  @@index([defaultCinemaId])
 }
 
 
