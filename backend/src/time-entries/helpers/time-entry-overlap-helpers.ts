@@ -13,30 +13,34 @@ export async function ensureNoOverlappingManualTimeEntry(
   prisma: PrismaService,
   range: TimeEntryRange,
 ) {
-  const overlappingTimeEntry = await prisma.timeEntry.findFirst({
-    where: {
-      userId: range.userId,
-      cinemaId: range.cinemaId,
-      status: {
-        not: 'VOIDED',
-      },
-      clockOut: {
-        not: null,
-      },
-      AND: [
-        {
-          clockIn: {
-            lt: range.clockOut,
-          },
+  const overlappingTimeEntry =
+    await prisma.timeEntry.findFirst({
+      where: {
+        userId: range.userId,
+        status: {
+          not: 'VOIDED',
         },
-        {
-          clockOut: {
-            gt: range.clockIn,
+        AND: [
+          {
+            clockIn: {
+              lt: range.clockOut,
+            },
           },
-        },
-      ],
-    },
-  });
+          {
+            OR: [
+              {
+                clockOut: {
+                  gt: range.clockIn,
+                },
+              },
+              {
+                clockOut: null,
+              },
+            ],
+          },
+        ],
+      },
+    });
 
   if (overlappingTimeEntry) {
     throw new BadRequestException(
@@ -52,25 +56,18 @@ export async function ensureNoOverlappingManualShift(
   const overlappingShift = await prisma.shift.findFirst({
     where: {
       userId: range.userId,
-      cinemaId: range.cinemaId,
-      AND: [
-        {
-          startTime: {
-            lt: range.clockOut,
-          },
-        },
-        {
-          endTime: {
-            gt: range.clockIn,
-          },
-        },
-      ],
+      startTime: {
+        lt: range.clockOut,
+      },
+      endTime: {
+        gt: range.clockIn,
+      },
     },
   });
 
   if (overlappingShift) {
     throw new BadRequestException(
-      'Du har allerede en planlagt vagt i dette tidsrum. Registrer tid på vagten i stedet.',
+      'Du har allerede en planlagt vagt i dette tidsrum.\nRegistrer tid på vagten i stedet.',
     );
   }
 }

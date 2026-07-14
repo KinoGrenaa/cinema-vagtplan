@@ -1,24 +1,24 @@
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
-import { withTimeEntryDeviation } from './time-entry-deviation';
 import { ensureTimeEntryEditable } from './time-entry-access';
+import {
+  ensureClockOutAfterClockIn,
+  parseOptionalTimeEntryDate,
+} from './time-entry-date-helpers';
+import { withTimeEntryDeviation } from './time-entry-deviation';
 import { getTimeEntryResponseInclude } from './time-entry-includes';
 import {
   recordClockInTimeEntryCreated,
   recordClockOutTimeEntryAudit,
 } from './time-entry-mutation-records';
-import { findTimeEntryWithCinemaShiftOrThrow } from './time-entry-query-helpers';
-import { findOpenTimeEntry } from './time-entry-read-helpers';
-import { notifyTimeEntryUpdated } from './time-entry-response';
-import {
-  ensureClockOutAfterClockIn,
-  parseOptionalTimeEntryDate,
-} from './time-entry-date-helpers';
 import {
   buildCombinedClockOutNote,
   getTrimmedOptionalNote,
 } from './time-entry-note-helpers';
+import { findTimeEntryWithCinemaShiftOrThrow } from './time-entry-query-helpers';
+import { findOpenTimeEntry } from './time-entry-read-helpers';
+import { notifyTimeEntryUpdated } from './time-entry-response';
 import {
   ensureNoExistingEntryForShift,
   resolveClockInShift,
@@ -43,19 +43,25 @@ export async function clockInTimeEntry(params: {
   auditLogsService: AuditLogsService;
   data: ClockInData;
 }) {
-  const { prisma, realtimeGateway, auditLogsService, data } = params;
+  const {
+    prisma,
+    realtimeGateway,
+    auditLogsService,
+    data,
+  } = params;
 
   const openEntry = await findOpenTimeEntry(prisma, {
     userId: data.userId,
-    cinemaId: data.cinemaId,
   });
 
   if (openEntry) {
     return withTimeEntryDeviation(openEntry);
   }
 
-  const clockIn = parseOptionalTimeEntryDate(data.clockIn, 'Ugyldig mødetid');
-
+  const clockIn = parseOptionalTimeEntryDate(
+    data.clockIn,
+    'Ugyldig mødetid',
+  );
   const shift = await resolveClockInShift(prisma, {
     shiftId: data.shiftId,
     userId: data.userId,
@@ -67,7 +73,8 @@ export async function clockInTimeEntry(params: {
     shiftId: shift?.id,
     userId: data.userId,
     cinemaId: data.cinemaId,
-    message: 'Der findes allerede en tidsregistrering for denne vagt',
+    message:
+      'Der findes allerede en tidsregistrering for denne vagt',
   });
 
   const note = getTrimmedOptionalNote(data.note);
@@ -77,7 +84,8 @@ export async function clockInTimeEntry(params: {
       userId: data.userId,
       cinemaId: data.cinemaId,
       shiftId: shift?.id || null,
-      payrollTypeId: shift?.workType?.payrollTypeId || null,
+      payrollTypeId:
+        shift?.workType?.payrollTypeId || null,
       clockIn,
       note,
       clockInNote: note,
@@ -94,7 +102,10 @@ export async function clockInTimeEntry(params: {
     changedByUserId: data.userId,
   });
 
-  return notifyTimeEntryUpdated(realtimeGateway, entry);
+  return notifyTimeEntryUpdated(
+    realtimeGateway,
+    entry,
+  );
 }
 
 export async function clockOutTimeEntry(params: {
@@ -104,9 +115,19 @@ export async function clockOutTimeEntry(params: {
   id: number;
   data?: ClockOutData;
 }) {
-  const { prisma, realtimeGateway, auditLogsService, id, data } = params;
+  const {
+    prisma,
+    realtimeGateway,
+    auditLogsService,
+    id,
+    data,
+  } = params;
 
-  const existingEntry = await findTimeEntryWithCinemaShiftOrThrow(prisma, id);
+  const existingEntry =
+    await findTimeEntryWithCinemaShiftOrThrow(
+      prisma,
+      id,
+    );
 
   ensureTimeEntryEditable(existingEntry);
 
@@ -115,16 +136,23 @@ export async function clockOutTimeEntry(params: {
     'Ugyldig fyraften',
   );
 
-  ensureClockOutAfterClockIn(existingEntry.clockIn, clockOut);
+  ensureClockOutAfterClockIn(
+    existingEntry.clockIn,
+    clockOut,
+  );
 
-  const clockOutNote = getTrimmedOptionalNote(data?.note);
+  const clockOutNote = getTrimmedOptionalNote(
+    data?.note,
+  );
   const combinedNote = buildCombinedClockOutNote(
     existingEntry.note,
     clockOutNote,
   );
 
   const entry = await prisma.timeEntry.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       clockOut,
       note: combinedNote || null,
@@ -138,5 +166,8 @@ export async function clockOutTimeEntry(params: {
     entry,
   });
 
-  return notifyTimeEntryUpdated(realtimeGateway, entry);
+  return notifyTimeEntryUpdated(
+    realtimeGateway,
+    entry,
+  );
 }

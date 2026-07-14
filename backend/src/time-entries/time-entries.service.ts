@@ -1,23 +1,36 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../realtime/realtime.gateway';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PayrollService } from '../payroll/payroll.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { approveTimeEntryFlow } from './helpers/time-entry-approve-flow';
+import {
+  ensureTimeEntryTargetUserAccess,
+  getTimeEntryActorUserId,
+  resolveTimeEntryActorCinemaId,
+} from './helpers/time-entry-cinema-access';
+import {
+  clockInTimeEntry,
+  clockOutTimeEntry,
+} from './helpers/time-entry-clock-flow';
+import { submitManualTimeEntry } from './helpers/time-entry-manual-entry-flow';
 import {
   findAllVisibleTimeEntries,
   findOpenTimeEntry,
   findTimeEntriesForUser,
 } from './helpers/time-entry-read-helpers';
-import { clockInTimeEntry, clockOutTimeEntry } from './helpers/time-entry-clock-flow';
-import { submitManualTimeEntry } from './helpers/time-entry-manual-entry-flow';
 import { findRevisionsForTimeEntry } from './helpers/time-entry-revision-flow';
+import { rejectTimeEntryFlow } from './helpers/time-entry-reject-flow';
+import { unapproveTimeEntryFlow } from './helpers/time-entry-unapprove-flow';
 import {
   updateAdminTimeEntry,
   updateOwnTimeEntry,
 } from './helpers/time-entry-update-flow';
-import { approveTimeEntryFlow } from './helpers/time-entry-approve-flow';
-import { rejectTimeEntryFlow } from './helpers/time-entry-reject-flow';
-import { unapproveTimeEntryFlow } from './helpers/time-entry-unapprove-flow';
 import { voidTimeEntryFlow } from './helpers/time-entry-void-flow';
 
 @Injectable()
@@ -29,22 +42,36 @@ export class TimeEntriesService {
     private readonly payrollService: PayrollService,
   ) {}
 
-  findForUser(
+  async findForUser(
     userId: number,
     user: any,
     selectedCinemaId?: number | null,
   ) {
+    const target = await this.resolveTimeEntryTarget(user, {
+      requestedUserId: userId,
+      requestedCinemaId: selectedCinemaId ?? undefined,
+    });
+
     return findTimeEntriesForUser(this.prisma, {
-      userId,
+      userId: target.userId,
       user,
-      selectedCinemaId,
+      selectedCinemaId: target.cinemaId,
     });
   }
 
-  findAll(user: any, selectedCinemaId?: number | null) {
-    return findAllVisibleTimeEntries(this.prisma, {
+  async findAll(
+    user: any,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
       user,
       selectedCinemaId,
+    );
+
+    return findAllVisibleTimeEntries(this.prisma, {
+      user,
+      selectedCinemaId: cinemaId,
     });
   }
 
@@ -140,12 +167,18 @@ export class TimeEntriesService {
     });
   }
 
-  approveEntry(
+  async approveEntry(
     id: number,
     user: any,
     selectedCinemaId?: number | null,
     confirmPayrollAdjustment = false,
   ) {
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+      selectedCinemaId,
+    );
+
     return approveTimeEntryFlow({
       prisma: this.prisma,
       payrollService: this.payrollService,
@@ -153,32 +186,44 @@ export class TimeEntriesService {
       auditLogsService: this.auditLogsService,
       id,
       user,
-      selectedCinemaId,
+      selectedCinemaId: cinemaId,
       confirmPayrollAdjustment,
     });
   }
 
-  unapproveEntry(
+  async unapproveEntry(
     id: number,
     user: any,
     selectedCinemaId?: number | null,
   ) {
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+      selectedCinemaId,
+    );
+
     return unapproveTimeEntryFlow({
       prisma: this.prisma,
       realtimeGateway: this.realtimeGateway,
       auditLogsService: this.auditLogsService,
       id,
       user,
-      selectedCinemaId,
+      selectedCinemaId: cinemaId,
     });
   }
 
-  rejectEntry(
+  async rejectEntry(
     id: number,
     adminNote: string | undefined,
     user: any,
     selectedCinemaId?: number | null,
   ) {
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+      selectedCinemaId,
+    );
+
     return rejectTimeEntryFlow({
       prisma: this.prisma,
       realtimeGateway: this.realtimeGateway,
@@ -186,16 +231,22 @@ export class TimeEntriesService {
       id,
       adminNote,
       user,
-      selectedCinemaId,
+      selectedCinemaId: cinemaId,
     });
   }
 
-  voidEntry(
+  async voidEntry(
     id: number,
     adminNote: string | undefined,
     user: any,
     selectedCinemaId?: number | null,
   ) {
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+      selectedCinemaId,
+    );
+
     return voidTimeEntryFlow({
       prisma: this.prisma,
       payrollService: this.payrollService,
@@ -204,7 +255,7 @@ export class TimeEntriesService {
       id,
       adminNote,
       user,
-      selectedCinemaId,
+      selectedCinemaId: cinemaId,
     });
   }
 
@@ -229,7 +280,7 @@ export class TimeEntriesService {
     });
   }
 
-  updateEntry(
+  async updateEntry(
     user: any,
     id: number,
     data: {
@@ -241,6 +292,12 @@ export class TimeEntriesService {
     },
     selectedCinemaId?: number | null,
   ) {
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+      selectedCinemaId,
+    );
+
     return updateAdminTimeEntry({
       prisma: this.prisma,
       payrollService: this.payrollService,
@@ -249,22 +306,29 @@ export class TimeEntriesService {
       user,
       id,
       data,
-      selectedCinemaId,
+      selectedCinemaId: cinemaId,
     });
   }
 
-  findRevisionsForEntry(
+  async findRevisionsForEntry(
     user: any,
     id: number,
     selectedCinemaId?: number | null,
   ) {
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+      selectedCinemaId,
+    );
+
     return findRevisionsForTimeEntry({
       prisma: this.prisma,
       user,
       id,
-      selectedCinemaId,
+      selectedCinemaId: cinemaId,
     });
   }
+
   private async resolveTimeEntryTarget(
     user: any,
     options?: {
@@ -272,144 +336,111 @@ export class TimeEntriesService {
       requestedCinemaId?: number;
     },
   ) {
-    const actorUserId = this.getAuthenticatedUserId(user);
-    const requestedUserId = this.getFiniteNumber(options?.requestedUserId);
-    const requestedCinemaId = this.getFiniteNumber(options?.requestedCinemaId);
+    const actorUserId = getTimeEntryActorUserId(user);
+    const requestedUserId = this.getFiniteNumber(
+      options?.requestedUserId,
+    );
     const targetUserId =
       this.canActForOtherUsers(user) && requestedUserId
         ? requestedUserId
         : actorUserId;
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+      options?.requestedCinemaId,
+    );
 
-    if (targetUserId === actorUserId) {
-      if (this.isMasterUser(user)) {
-        if (!requestedCinemaId) {
-          throw new ForbiddenException('MASTER skal vælge en biograf.');
-        }
-
-        return {
-          userId: actorUserId,
-          cinemaId: requestedCinemaId,
-        };
-      }
-
-      const ownCinemaId = this.getAuthenticatedCinemaId(user);
-
-      if (requestedCinemaId && requestedCinemaId !== ownCinemaId) {
-        throw new ForbiddenException('Du har ikke adgang til denne biograf.');
-      }
-
-      return {
-        userId: actorUserId,
-        cinemaId: ownCinemaId,
-      };
+    if (
+      targetUserId !== actorUserId &&
+      !this.canActForOtherUsers(user)
+    ) {
+      throw new ForbiddenException(
+        'Du har ikke adgang til denne tidsregistrering.',
+      );
     }
 
-    if (!this.canActForOtherUsers(user)) {
-      throw new ForbiddenException('Du har ikke adgang til denne tidsregistrering.');
+    if (
+      targetUserId !== actorUserId ||
+      !this.isMasterUser(user)
+    ) {
+      await ensureTimeEntryTargetUserAccess(
+        this.prisma,
+        targetUserId,
+        cinemaId,
+      );
     }
 
-    const targetUser = await this.prisma.user.findUnique({
-      where: { id: targetUserId },
+    return {
+      userId: targetUserId,
+      cinemaId,
+    };
+  }
+
+  private async ensureClockOutAccess(
+    user: any,
+    id: number,
+  ) {
+    const timeEntry = await this.prisma.timeEntry.findUnique({
+      where: {
+        id,
+      },
       select: {
-        id: true,
+        userId: true,
         cinemaId: true,
       },
     });
 
-    if (!targetUser?.cinemaId) {
-      throw new NotFoundException('Bruger ikke fundet.');
-    }
-
-    if (!this.isMasterUser(user)) {
-      const actorCinemaId = this.getAuthenticatedCinemaId(user);
-
-      if (targetUser.cinemaId !== actorCinemaId) {
-        throw new ForbiddenException('Du har ikke adgang til denne bruger.');
-      }
-    }
-
-    if (requestedCinemaId && requestedCinemaId !== targetUser.cinemaId) {
-      throw new ForbiddenException('Du har ikke adgang til denne biograf.');
-    }
-
-    return {
-      userId: targetUser.id,
-      cinemaId: targetUser.cinemaId,
-    };
-  }
-
-  private async ensureClockOutAccess(user: any, id: number) {
-    const timeEntry = await this.prisma.timeEntry.findUnique({
-      where: { id },
-      select: {
-        userId: true,
-        user: {
-          select: {
-            cinemaId: true,
-          },
-        },
-      },
-    });
-
     if (!timeEntry) {
-      throw new NotFoundException('Tidsregistrering ikke fundet.');
+      throw new NotFoundException(
+        'Tidsregistrering ikke fundet.',
+      );
     }
 
-    const actorUserId = this.getAuthenticatedUserId(user);
+    const actorUserId = getTimeEntryActorUserId(user);
 
     if (timeEntry.userId === actorUserId) {
       return;
     }
 
     if (!this.canActForOtherUsers(user)) {
-      throw new ForbiddenException('Du har ikke adgang til denne tidsregistrering.');
+      throw new ForbiddenException(
+        'Du har ikke adgang til denne tidsregistrering.',
+      );
     }
 
     if (this.isMasterUser(user)) {
       return;
     }
 
-    const actorCinemaId = this.getAuthenticatedCinemaId(user);
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+    );
 
-    if (timeEntry.user.cinemaId !== actorCinemaId) {
-      throw new ForbiddenException('Du har ikke adgang til denne tidsregistrering.');
+    if (timeEntry.cinemaId !== cinemaId) {
+      throw new ForbiddenException(
+        'Du har ikke adgang til denne tidsregistrering.',
+      );
     }
   }
 
   private canActForOtherUsers(user: any) {
-    return user?.role === 'ADMIN' || user?.role === 'MASTER';
+    return (
+      user?.role === 'ADMIN' ||
+      user?.role === 'MASTER'
+    );
   }
 
   private isMasterUser(user: any) {
     return user?.role === 'MASTER';
   }
 
-  private getAuthenticatedUserId(user: any) {
-    const userId = this.getFiniteNumber(user?.sub);
-
-    if (!userId) {
-      throw new ForbiddenException('Ugyldig bruger.');
-    }
-
-    return userId;
-  }
-
-  private getAuthenticatedCinemaId(user: any) {
-    const cinemaId = this.getFiniteNumber(user?.cinemaId);
-
-    if (!cinemaId) {
-      throw new ForbiddenException('Brugeren er ikke tilknyttet en biograf.');
-    }
-
-    return cinemaId;
-  }
-
   private getFiniteNumber(value: unknown) {
     const numberValue = Number(value);
 
-    return Number.isFinite(numberValue) && numberValue > 0
+    return Number.isInteger(numberValue) &&
+      numberValue > 0
       ? numberValue
       : undefined;
   }
-
 }
