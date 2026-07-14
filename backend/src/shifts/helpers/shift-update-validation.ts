@@ -1,4 +1,7 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -8,6 +11,7 @@ import {
   validateShiftTimes,
 } from './shift-service-helpers';
 import { checkShiftConflicts } from './shift-conflict-checks';
+import { ensureShiftUserHasCinemaAccess } from './shift-user-access';
 
 export async function getShiftUpdateContext({
   prisma,
@@ -32,7 +36,9 @@ export async function getShiftUpdateContext({
   });
 
   if (!oldShift) {
-    throw new NotFoundException('Vagten blev ikke fundet');
+    throw new NotFoundException(
+      'Vagten blev ikke fundet',
+    );
   }
 
   const cinemaId = oldShift.cinemaId;
@@ -46,20 +52,17 @@ export async function getShiftUpdateContext({
   });
 
   if (!workType) {
-    throw new ForbiddenException('Vagttypen findes ikke i denne biograf');
+    throw new ForbiddenException(
+      'Vagttypen findes ikke i denne biograf',
+    );
   }
 
   if (assignedUserId) {
-    const shiftUser = await prisma.user.findFirst({
-      where: {
-        id: assignedUserId,
-        cinemaId,
-      },
-    });
-
-    if (!shiftUser) {
-      throw new ForbiddenException('Medarbejderen findes ikke i denne biograf');
-    }
+    await ensureShiftUserHasCinemaAccess(
+      prisma,
+      assignedUserId,
+      cinemaId,
+    );
   }
 
   const startTime = new Date(data.startTime);

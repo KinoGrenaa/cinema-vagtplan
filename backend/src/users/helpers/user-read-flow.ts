@@ -1,8 +1,51 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser } from './user-service-helpers';
 import { ensureCinemaExists } from './user-service-data-helpers';
+
+async function findCinemaUsers(
+  prisma: PrismaService,
+  cinemaId: number,
+  canManageAllAccounts: boolean,
+) {
+  const users = await prisma.user.findMany({
+    where: {
+      role: {
+        not: 'MASTER',
+      },
+      OR: [
+        {
+          cinemaId,
+        },
+        {
+          cinemaMemberships: {
+            some: {
+              cinemaId,
+              isActive: true,
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      cinema: true,
+    },
+    orderBy: {
+      firstName: 'asc',
+    },
+  });
+
+  return users.map((user) => ({
+    ...user,
+    isHomeCinema: user.cinemaId === cinemaId,
+    canManageAccount:
+      canManageAllAccounts || user.cinemaId === cinemaId,
+  }));
+}
 
 export async function findAllUsers(
   prisma: PrismaService,
@@ -12,14 +55,15 @@ export async function findAllUsers(
   if (currentUser.role === 'MASTER') {
     if (selectedCinemaId) {
       await ensureCinemaExists(prisma, selectedCinemaId);
+
+      return findCinemaUsers(
+        prisma,
+        selectedCinemaId,
+        true,
+      );
     }
 
     return prisma.user.findMany({
-      where: selectedCinemaId
-        ? {
-            cinemaId: selectedCinemaId,
-          }
-        : {},
       include: {
         cinema: true,
       },
@@ -30,25 +74,22 @@ export async function findAllUsers(
   }
 
   if (!currentUser.cinemaId) {
-    throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
+    throw new ForbiddenException(
+      'Din bruger er ikke tilknyttet en biograf',
+    );
   }
 
-  const cinemaId = currentUser.cinemaId;
-
-  return prisma.user.findMany({
-    where: {
-      cinemaId,
-    },
-    include: {
-      cinema: true,
-    },
-    orderBy: {
-      firstName: 'asc',
-    },
-  });
+  return findCinemaUsers(
+    prisma,
+    currentUser.cinemaId,
+    false,
+  );
 }
 
-export async function findUserByEmail(prisma: PrismaService, email: string) {
+export async function findUserByEmail(
+  prisma: PrismaService,
+  email: string,
+) {
   return prisma.user.findFirst({
     where: {
       email,
@@ -68,9 +109,14 @@ export async function findUserByEmailIncludingInactive(
   });
 }
 
-export async function findUserOwnProfile(prisma: PrismaService, id: number) {
+export async function findUserOwnProfile(
+  prisma: PrismaService,
+  id: number,
+) {
   const user = await prisma.user.findUnique({
-    where: { id },
+    where: {
+      id,
+    },
     select: {
       id: true,
       email: true,
@@ -79,6 +125,7 @@ export async function findUserOwnProfile(prisma: PrismaService, id: number) {
       phone: true,
       role: true,
       cinemaId: true,
+      defaultCinemaId: true,
       profileImage: true,
       address: true,
       birthDate: true,
@@ -88,7 +135,9 @@ export async function findUserOwnProfile(prisma: PrismaService, id: number) {
   });
 
   if (!user) {
-    throw new NotFoundException('Bruger blev ikke fundet');
+    throw new NotFoundException(
+      'Bruger blev ikke fundet',
+    );
   }
 
   return user;

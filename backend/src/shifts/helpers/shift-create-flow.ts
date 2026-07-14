@@ -12,6 +12,7 @@ import {
   validateShiftTimes,
 } from './shift-service-helpers';
 import { checkShiftConflicts } from './shift-conflict-checks';
+import { ensureShiftUserHasCinemaAccess } from './shift-user-access';
 
 export async function createShiftFlow({
   prisma,
@@ -26,11 +27,17 @@ export async function createShiftFlow({
   realtimeGateway: RealtimeGateway;
   pushService: PushService;
   auditLogsService: AuditLogsService;
-  formatShiftTime: (startTime: Date, endTime: Date) => string;
+  formatShiftTime: (
+    startTime: Date,
+    endTime: Date,
+  ) => string;
   user: AuthUser;
   data: ShiftWriteData;
 }) {
-  const cinemaId = resolveShiftCinemaId(user, data.cinemaId);
+  const cinemaId = resolveShiftCinemaId(
+    user,
+    data.cinemaId,
+  );
   const assignedUserId = data.userId ?? null;
 
   const workType = await prisma.workType.findFirst({
@@ -41,20 +48,17 @@ export async function createShiftFlow({
   });
 
   if (!workType) {
-    throw new ForbiddenException('Vagttypen findes ikke i denne biograf');
+    throw new ForbiddenException(
+      'Vagttypen findes ikke i denne biograf',
+    );
   }
 
   if (assignedUserId) {
-    const shiftUser = await prisma.user.findFirst({
-      where: {
-        id: assignedUserId,
-        cinemaId,
-      },
-    });
-
-    if (!shiftUser) {
-      throw new ForbiddenException('Medarbejderen findes ikke i denne biograf');
-    }
+    await ensureShiftUserHasCinemaAccess(
+      prisma,
+      assignedUserId,
+      cinemaId,
+    );
   }
 
   const startTime = new Date(data.startTime);
@@ -90,19 +94,29 @@ export async function createShiftFlow({
     action: 'CREATE_SHIFT',
     entityType: 'Shift',
     entityId: shift.id,
-    description: `Oprettede vagt til ${getShiftUserLabel(shift)}: ${
-      shift.workType.name
-    } - ${formatShiftTime(shift.startTime, shift.endTime)}`,
+    description: `Oprettede vagt til ${getShiftUserLabel(
+      shift,
+    )}: ${shift.workType.name} - ${formatShiftTime(
+      shift.startTime,
+      shift.endTime,
+    )}`,
     userId: user.sub,
     cinemaId: shift.cinemaId,
   });
 
-  realtimeGateway.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
+  realtimeGateway.notifyCinema(
+    shift.cinemaId,
+    'shiftsUpdated',
+    shift,
+  );
 
   if (assignedUserId) {
     await pushService.sendToUser(assignedUserId, {
       title: 'Ny vagt',
-      body: `${shift.workType.name} - ${formatShiftTime(startTime, endTime)}`,
+      body: `${shift.workType.name} - ${formatShiftTime(
+        startTime,
+        endTime,
+      )}`,
       url: '/my-shifts',
     });
   }

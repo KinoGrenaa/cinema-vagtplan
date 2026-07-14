@@ -1,6 +1,11 @@
-export type UserRole = "MASTER" | "ADMIN" | "EMPLOYEE";
+export type UserRole =
+  | "MASTER"
+  | "ADMIN"
+  | "EMPLOYEE";
 
-export type EmploymentType = "HOURLY" | "SALARIED";
+export type EmploymentType =
+  | "HOURLY"
+  | "SALARIED";
 
 export type CurrentUser = {
   id?: number;
@@ -26,6 +31,8 @@ export type User = {
   canManageCinemaSettings?: boolean;
   canSendBroadcastMessages?: boolean;
   cinemaId?: number | null;
+  isHomeCinema?: boolean;
+  canManageAccount?: boolean;
   cinema?: {
     id: number;
     name: string;

@@ -53,90 +53,121 @@ export default function UsersTable({
               </td>
             </tr>
           ) : (
-            visibleUsers.map((user) => (
-              <tr
-                key={user.id}
-                className={`border-t border-gray-200 dark:border-gray-800 ${
-                  user.isActive === false
-                    ? "bg-gray-50 dark:bg-gray-950"
-                    : ""
-                }`}
-              >
-                <td className="p-4 font-medium">
-                  <div>
-                    {user.firstName} {user.lastName}
-                  </div>
-                  {canManageCinemaMemberships && (
-                    <div className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400">
-                      Bruger-ID {user.id}
-                    </div>
-                  )}
-                </td>
-                <td className="p-4">{user.email}</td>
-                <td className="p-4">{user.phone || "-"}</td>
-                <td className="p-4">
-                  {getRoleLabel(user.role)}
-                </td>
-                <td className="p-4">
-                  {getEmploymentTypeLabel(
-                    user.employmentType,
-                  )}
-                </td>
-                <td className="p-4">
-                  {user.isActive === false ? (
-                    <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                      Deaktiveret
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
-                      Aktiv
-                    </span>
-                  )}
-                </td>
-                <td className="p-4 text-right">
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onEdit(user)}
-                      className="rounded-lg bg-gray-200 px-3 py-2 text-sm text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Rediger
-                    </button>
+            visibleUsers.map((user) => {
+              const canManageAccount =
+                user.canManageAccount !== false;
 
-                    {canManageCinemaMemberships &&
-                      user.role !== "MASTER" && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onManageCinemaMemberships(user)
-                          }
-                          className="rounded-lg bg-purple-700 px-3 py-2 text-sm text-white hover:bg-purple-800"
-                        >
-                          Biograftilknytninger
-                        </button>
+              return (
+                <tr
+                  key={user.id}
+                  className={`border-t border-gray-200 dark:border-gray-800 ${
+                    user.isActive === false
+                      ? "bg-gray-50 dark:bg-gray-950"
+                      : ""
+                  }`}
+                >
+                  <td className="p-4 font-medium">
+                    <div>
+                      {user.firstName} {user.lastName}
+                    </div>
+
+                    {canManageCinemaMemberships && (
+                      <div className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                        Bruger-ID {user.id}
+                      </div>
+                    )}
+
+                    {!user.isHomeCinema && (
+                      <div className="mt-1 text-xs font-normal text-purple-700 dark:text-purple-300">
+                        Tilknyttet denne biograf
+                        {user.cinema?.name
+                          ? ` · Hjemmebiograf: ${user.cinema.name}`
+                          : ""}
+                      </div>
+                    )}
+                  </td>
+
+                  <td className="p-4">{user.email}</td>
+                  <td className="p-4">
+                    {user.phone || "-"}
+                  </td>
+                  <td className="p-4">
+                    {getRoleLabel(user.role)}
+                  </td>
+                  <td className="p-4">
+                    {getEmploymentTypeLabel(
+                      user.employmentType,
+                    )}
+                  </td>
+                  <td className="p-4">
+                    {user.isActive === false ? (
+                      <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                        Deaktiveret
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-300">
+                        Aktiv
+                      </span>
+                    )}
+                  </td>
+
+                  <td className="p-4 text-right">
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {canManageAccount ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => onEdit(user)}
+                            className="rounded-lg bg-gray-200 px-3 py-2 text-sm text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                          >
+                            Rediger
+                          </button>
+
+                          {user.isActive === false ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onReactivate(user)
+                              }
+                              className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+                            >
+                              Genaktivér
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onDeactivate(user)
+                              }
+                              className="rounded-lg bg-orange-600 px-3 py-2 text-sm text-white hover:bg-orange-700"
+                            >
+                              Deaktivér
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <span className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                          Administreres af hjemmebiografen
+                        </span>
                       )}
 
-                    {user.isActive === false ? (
-                      <button
-                        type="button"
-                        onClick={() => onReactivate(user)}
-                        className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-                      >
-                        Genaktivér
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onDeactivate(user)}
-                        className="rounded-lg bg-orange-600 px-3 py-2 text-sm text-white hover:bg-orange-700"
-                      >
-                        Deaktivér
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))
+                      {canManageCinemaMemberships &&
+                        user.role !== "MASTER" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onManageCinemaMemberships(user)
+                            }
+                            className="rounded-lg bg-purple-700 px-3 py-2 text-sm text-white hover:bg-purple-800"
+                          >
+                            Biograftilknytninger
+                          </button>
+                        )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>
