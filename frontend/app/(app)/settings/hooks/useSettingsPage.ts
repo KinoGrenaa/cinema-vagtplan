@@ -14,6 +14,20 @@ import { useTheme } from "@/app/providers/ThemeProvider";
 
 import type { CinemaMembership } from "../helpers/settingsTypes";
 
+export type DefaultCinemaOptions = {
+  role: "MASTER" | "ADMIN" | "EMPLOYEE";
+  homeCinemaId: number | null;
+  defaultCinemaId: number | null;
+  allowNoDefault: boolean;
+  cinemas: Array<{
+    id: number;
+    name: string;
+    logoUrl?: string | null;
+    isDefault: boolean;
+    isHomeCinema: boolean;
+  }>;
+};
+
 type SwitchCinemaResponse = {
   access_token?: string;
   user?: {
@@ -23,8 +37,26 @@ type SwitchCinemaResponse = {
     lastName: string;
     role: "MASTER" | "ADMIN" | "EMPLOYEE";
     cinemaId: number | null;
+    defaultCinemaId?: number | null;
   };
 };
+
+async function readErrorMessage(
+  response: Response,
+  fallback: string,
+) {
+  const payload = await response.json().catch(() => null);
+
+  if (typeof payload?.message === "string") {
+    return payload.message;
+  }
+
+  if (Array.isArray(payload?.message)) {
+    return payload.message.join("\n");
+  }
+
+  return fallback;
+}
 
 export function useSettingsPage() {
   const infoDialog = useInfoModal();
@@ -44,6 +76,20 @@ export function useSettingsPage() {
   const [switchingCinemaId, setSwitchingCinemaId] = useState<
     number | null
   >(null);
+  const [defaultCinemaOptions, setDefaultCinemaOptions] =
+    useState<DefaultCinemaOptions | null>(null);
+  const [
+    selectedDefaultCinemaId,
+    setSelectedDefaultCinemaId,
+  ] = useState<number | null>(null);
+  const [defaultCinemaLoading, setDefaultCinemaLoading] =
+    useState(true);
+  const [defaultCinemaSaving, setDefaultCinemaSaving] =
+    useState(false);
+  const [defaultCinemaError, setDefaultCinemaError] =
+    useState("");
+  const [defaultCinemaMessage, setDefaultCinemaMessage] =
+    useState("");
   const { theme, setTheme } = useTheme();
 
   const isMasterWithoutOwnCinema =
@@ -67,9 +113,62 @@ export function useSettingsPage() {
       return;
     }
 
+    const activeUser = currentUser;
     let cancelled = false;
 
+    async function loadDefaultCinemaOptions() {
+      try {
+        setDefaultCinemaLoading(true);
+        setDefaultCinemaError("");
+        setDefaultCinemaMessage("");
+
+        const response = await apiFetch(
+          "/auth/default-cinema-options",
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(
+              response,
+              "Standardbiografen kunne ikke hentes.",
+            ),
+          );
+        }
+
+        const payload =
+          (await response.json()) as DefaultCinemaOptions;
+
+        if (!cancelled) {
+          setDefaultCinemaOptions(payload);
+          setSelectedDefaultCinemaId(
+            payload.defaultCinemaId,
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setDefaultCinemaOptions(null);
+          setSelectedDefaultCinemaId(null);
+          setDefaultCinemaError(
+            error instanceof Error
+              ? error.message
+              : "Standardbiografen kunne ikke hentes.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setDefaultCinemaLoading(false);
+        }
+      }
+    }
+
     async function loadCinemaMemberships() {
+      if (activeUser.role === "MASTER") {
+        setCinemaMemberships([]);
+        setCinemaMembershipsError("");
+        setCinemaMembershipsLoading(false);
+        return;
+      }
+
       try {
         setCinemaMembershipsLoading(true);
         setCinemaMembershipsError("");
@@ -77,15 +176,17 @@ export function useSettingsPage() {
         const response = await apiFetch(
           "/users/me/cinema-memberships",
         );
-        const payload = await response.json().catch(() => null);
 
         if (!response.ok) {
           throw new Error(
-            typeof payload?.message === "string"
-              ? payload.message
-              : "Biograftilknytninger kunne ikke hentes.",
+            await readErrorMessage(
+              response,
+              "Biograftilknytninger kunne ikke hentes.",
+            ),
           );
         }
+
+        const payload = await response.json();
 
         if (!cancelled) {
           setCinemaMemberships(
@@ -108,12 +209,63 @@ export function useSettingsPage() {
       }
     }
 
+    void loadDefaultCinemaOptions();
     void loadCinemaMemberships();
 
     return () => {
       cancelled = true;
     };
   }, [currentUser]);
+
+  async function saveDefaultCinema() {
+    if (!currentUser || !defaultCinemaOptions) {
+      return;
+    }
+
+    try {
+      setDefaultCinemaSaving(true);
+      setDefaultCinemaError("");
+      setDefaultCinemaMessage("");
+
+      const response = await apiFetch(
+        "/auth/default-cinema",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            cinemaId: selectedDefaultCinemaId,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Standardbiografen kunne ikke gemmes.",
+          ),
+        );
+      }
+
+      const payload =
+        (await response.json()) as DefaultCinemaOptions;
+
+      setDefaultCinemaOptions(payload);
+      setSelectedDefaultCinemaId(payload.defaultCinemaId);
+      setDefaultCinemaMessage(
+        payload.defaultCinemaId === null
+          ? "Standardbiografen er fjernet. Næste login starter uden aktiv biograf."
+          : "Standardbiografen er gemt og bruges ved næste login.",
+      );
+    } catch (error) {
+      setDefaultCinemaError(
+        error instanceof Error
+          ? error.message
+          : "Standardbiografen kunne ikke gemmes.",
+      );
+    } finally {
+      setDefaultCinemaSaving(false);
+    }
+  }
 
   async function switchCinema(cinemaId: number) {
     if (!currentUser || currentUser.role === "MASTER") {
@@ -131,18 +283,18 @@ export function useSettingsPage() {
         method: "POST",
         body: JSON.stringify({ cinemaId }),
       });
-      const payload =
-        (await response.json().catch(() => null)) as
-          | SwitchCinemaResponse
-          | null;
 
       if (!response.ok) {
         throw new Error(
-          typeof (payload as any)?.message === "string"
-            ? (payload as any).message
-            : "Biografen kunne ikke vælges.",
+          await readErrorMessage(
+            response,
+            "Biografen kunne ikke vælges.",
+          ),
         );
       }
+
+      const payload =
+        (await response.json()) as SwitchCinemaResponse;
 
       if (!payload?.access_token || !payload.user) {
         throw new Error(
@@ -225,9 +377,17 @@ export function useSettingsPage() {
     cinemaMembershipsLoading,
     cinemaMembershipsError,
     switchingCinemaId,
+    defaultCinemaOptions,
+    selectedDefaultCinemaId,
+    setSelectedDefaultCinemaId,
+    defaultCinemaLoading,
+    defaultCinemaSaving,
+    defaultCinemaError,
+    defaultCinemaMessage,
     isMasterWithoutOwnCinema: Boolean(
       isMasterWithoutOwnCinema,
     ),
+    saveDefaultCinema,
     switchCinema,
     enableNotifications,
     disableNotifications,

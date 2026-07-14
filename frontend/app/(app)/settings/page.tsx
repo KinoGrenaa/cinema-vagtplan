@@ -4,6 +4,7 @@ import InfoModal from "@/app/components/modals/InfoModal";
 
 import SettingsHeader from "./components/layout/SettingsHeader";
 import CinemaMembershipsSection from "./components/sections/CinemaMembershipsSection";
+import DefaultCinemaSection from "./components/sections/DefaultCinemaSection";
 import PushNotificationsSection from "./components/sections/PushNotificationsSection";
 import ThemeSettingsSection from "./components/sections/ThemeSettingsSection";
 import { useSettingsPage } from "./hooks/useSettingsPage";
@@ -21,7 +22,15 @@ export default function SettingsPage() {
     cinemaMembershipsLoading,
     cinemaMembershipsError,
     switchingCinemaId,
+    defaultCinemaOptions,
+    selectedDefaultCinemaId,
+    setSelectedDefaultCinemaId,
+    defaultCinemaLoading,
+    defaultCinemaSaving,
+    defaultCinemaError,
+    defaultCinemaMessage,
     isMasterWithoutOwnCinema,
+    saveDefaultCinema,
     switchCinema,
     enableNotifications,
     disableNotifications,
@@ -41,14 +50,29 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-4xl space-y-6">
         <SettingsHeader />
 
-        <CinemaMembershipsSection
-          memberships={cinemaMemberships}
-          currentCinemaId={currentUser.cinemaId}
-          loading={cinemaMembershipsLoading}
-          switchingCinemaId={switchingCinemaId}
-          error={cinemaMembershipsError}
-          onSwitchCinema={switchCinema}
+        <DefaultCinemaSection
+          options={defaultCinemaOptions}
+          selectedCinemaId={selectedDefaultCinemaId}
+          loading={defaultCinemaLoading}
+          saving={defaultCinemaSaving}
+          error={defaultCinemaError}
+          message={defaultCinemaMessage}
+          onSelectedCinemaIdChange={
+            setSelectedDefaultCinemaId
+          }
+          onSave={saveDefaultCinema}
         />
+
+        {currentUser.role !== "MASTER" && (
+          <CinemaMembershipsSection
+            memberships={cinemaMemberships}
+            currentCinemaId={currentUser.cinemaId}
+            loading={cinemaMembershipsLoading}
+            switchingCinemaId={switchingCinemaId}
+            error={cinemaMembershipsError}
+            onSwitchCinema={switchCinema}
+          />
+        )}
 
         <ThemeSettingsSection
           theme={theme}

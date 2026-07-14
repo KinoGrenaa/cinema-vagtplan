@@ -1,11 +1,58 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import InfoModal from "./components/modals/InfoModal";
 import { useInfoModal } from "./hooks/useInfoModal";
 import { useAuth } from "./providers/AuthProvider";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+
+const MASTER_SELECTED_CINEMA_ID_KEY =
+  "masterSelectedCinemaId";
+const MASTER_SELECTED_CINEMA_NAME_KEY =
+  "masterSelectedCinemaName";
+const MASTER_SELECTED_CINEMA_LOGO_URL_KEY =
+  "masterSelectedCinemaLogoUrl";
+
+type LoginDefaultCinema = {
+  id: number;
+  name: string;
+  logoUrl?: string | null;
+};
+
+function applyMasterDefaultCinema(
+  role: string,
+  defaultCinema?: LoginDefaultCinema | null,
+) {
+  if (role !== "MASTER" || !defaultCinema) {
+    return;
+  }
+
+  localStorage.setItem(
+    MASTER_SELECTED_CINEMA_ID_KEY,
+    String(defaultCinema.id),
+  );
+  localStorage.setItem(
+    MASTER_SELECTED_CINEMA_NAME_KEY,
+    defaultCinema.name,
+  );
+
+  if (defaultCinema.logoUrl) {
+    localStorage.setItem(
+      MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
+      defaultCinema.logoUrl,
+    );
+  } else {
+    localStorage.removeItem(
+      MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
+    );
+  }
+
+  window.dispatchEvent(
+    new Event("masterSelectedCinemaChanged"),
+  );
+}
 
 async function readLoginError(response: Response) {
   let serverMessage = "";
@@ -23,7 +70,6 @@ async function readLoginError(response: Response) {
   }
 
   const normalizedMessage = serverMessage.toLowerCase();
-
   const isWrongCredentials =
     response.status === 400 ||
     response.status === 401 ||
@@ -54,8 +100,10 @@ export default function HomePage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
-  const { login, loading: authLoading, token, user } = useAuth();
+  const { login, loading: authLoading, token, user } =
+    useAuth();
   const infoDialog = useInfoModal();
+
   const isAuthenticated = Boolean(token && user);
 
   useEffect(() => {
@@ -102,6 +150,10 @@ export default function HomePage() {
       }
 
       login(data.access_token, data.user);
+      applyMasterDefaultCinema(
+        data.user.role,
+        data.defaultCinema,
+      );
 
       window.location.href = "/dashboard";
     } catch {
@@ -124,22 +176,30 @@ export default function HomePage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block mb-1 font-medium">Email</label>
+              <label className="block mb-1 font-medium">
+                Email
+              </label>
               <input
                 type="email"
                 className="w-full border rounded-lg px-4 py-2"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
               />
             </div>
 
             <div>
-              <label className="block mb-1 font-medium">Password</label>
+              <label className="block mb-1 font-medium">
+                Password
+              </label>
               <input
                 type="password"
                 className="w-full border rounded-lg px-4 py-2"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) =>
+                  setPassword(event.target.value)
+                }
               />
             </div>
 
