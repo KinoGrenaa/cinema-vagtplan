@@ -20,7 +20,9 @@ export default function SettingsPage() {
     cinemaMemberships,
     cinemaMembershipsLoading,
     cinemaMembershipsError,
+    switchingCinemaId,
     isMasterWithoutOwnCinema,
+    switchCinema,
     enableNotifications,
     disableNotifications,
     infoDialog,
@@ -41,8 +43,11 @@ export default function SettingsPage() {
 
         <CinemaMembershipsSection
           memberships={cinemaMemberships}
+          currentCinemaId={currentUser.cinemaId}
           loading={cinemaMembershipsLoading}
+          switchingCinemaId={switchingCinemaId}
           error={cinemaMembershipsError}
+          onSwitchCinema={switchCinema}
         />
 
         <ThemeSettingsSection

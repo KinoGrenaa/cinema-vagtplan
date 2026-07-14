@@ -9,17 +9,26 @@ import {
   isPushNotificationsEnabled,
 } from "@/app/hooks/usePushNotifications";
 import { apiFetch } from "@/app/lib/api";
+import { useAuth } from "@/app/providers/AuthProvider";
 import { useTheme } from "@/app/providers/ThemeProvider";
 
-import type {
-  CinemaMembership,
-  CurrentUser,
-} from "../helpers/settingsTypes";
+import type { CinemaMembership } from "../helpers/settingsTypes";
+
+type SwitchCinemaResponse = {
+  access_token?: string;
+  user?: {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: "MASTER" | "ADMIN" | "EMPLOYEE";
+    cinemaId: number | null;
+  };
+};
 
 export function useSettingsPage() {
   const infoDialog = useInfoModal();
-  const [currentUser, setCurrentUser] =
-    useState<CurrentUser | null>(null);
+  const { user: currentUser, login } = useAuth();
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
   const [pushLoading, setPushLoading] = useState(false);
@@ -32,22 +41,15 @@ export function useSettingsPage() {
     useState(true);
   const [cinemaMembershipsError, setCinemaMembershipsError] =
     useState("");
+  const [switchingCinemaId, setSwitchingCinemaId] = useState<
+    number | null
+  >(null);
   const { theme, setTheme } = useTheme();
 
   const isMasterWithoutOwnCinema =
     currentUser?.role === "MASTER" && !currentUser.cinemaId;
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      try {
-        setCurrentUser(JSON.parse(savedUser));
-      } catch {
-        setCurrentUser(null);
-      }
-    }
-
     if ("Notification" in window) {
       setPermission(Notification.permission);
     }
@@ -56,6 +58,16 @@ export function useSettingsPage() {
       const enabled = await isPushNotificationsEnabled();
       setPushEnabled(enabled);
     }
+
+    void loadPushStatus();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+
+    let cancelled = false;
 
     async function loadCinemaMemberships() {
       try {
@@ -75,24 +87,81 @@ export function useSettingsPage() {
           );
         }
 
-        setCinemaMemberships(
-          Array.isArray(payload) ? payload : [],
-        );
+        if (!cancelled) {
+          setCinemaMemberships(
+            Array.isArray(payload) ? payload : [],
+          );
+        }
       } catch (error) {
-        setCinemaMemberships([]);
-        setCinemaMembershipsError(
-          error instanceof Error
-            ? error.message
-            : "Biograftilknytninger kunne ikke hentes.",
-        );
+        if (!cancelled) {
+          setCinemaMemberships([]);
+          setCinemaMembershipsError(
+            error instanceof Error
+              ? error.message
+              : "Biograftilknytninger kunne ikke hentes.",
+          );
+        }
       } finally {
-        setCinemaMembershipsLoading(false);
+        if (!cancelled) {
+          setCinemaMembershipsLoading(false);
+        }
       }
     }
 
-    void loadPushStatus();
     void loadCinemaMemberships();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
+
+  async function switchCinema(cinemaId: number) {
+    if (!currentUser || currentUser.role === "MASTER") {
+      return;
+    }
+
+    if (currentUser.cinemaId === cinemaId) {
+      return;
+    }
+
+    try {
+      setSwitchingCinemaId(cinemaId);
+
+      const response = await apiFetch("/auth/switch-cinema", {
+        method: "POST",
+        body: JSON.stringify({ cinemaId }),
+      });
+      const payload =
+        (await response.json().catch(() => null)) as
+          | SwitchCinemaResponse
+          | null;
+
+      if (!response.ok) {
+        throw new Error(
+          typeof (payload as any)?.message === "string"
+            ? (payload as any).message
+            : "Biografen kunne ikke vælges.",
+        );
+      }
+
+      if (!payload?.access_token || !payload.user) {
+        throw new Error(
+          "Serveren returnerede ikke en gyldig session.",
+        );
+      }
+
+      login(payload.access_token, payload.user);
+      window.location.reload();
+    } catch (error) {
+      infoDialog.showError(
+        "Biografen kunne ikke vælges",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl under biografskiftet.",
+      );
+      setSwitchingCinemaId(null);
+    }
+  }
 
   async function enableNotifications() {
     if (isMasterWithoutOwnCinema) {
@@ -155,9 +224,11 @@ export function useSettingsPage() {
     cinemaMemberships,
     cinemaMembershipsLoading,
     cinemaMembershipsError,
+    switchingCinemaId,
     isMasterWithoutOwnCinema: Boolean(
       isMasterWithoutOwnCinema,
     ),
+    switchCinema,
     enableNotifications,
     disableNotifications,
     infoDialog,
