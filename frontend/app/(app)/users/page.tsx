@@ -1,42 +1,48 @@
 "use client";
 
 import { useState } from "react";
+
 import PermissionGuard from "@/app/components/access/PermissionGuard";
-
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
-
 import InfoModal from "@/app/components/modals/InfoModal";
-
 import { useConfirm } from "@/app/hooks/useConfirm";
-
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 
-import { EditUserModal, UserModal } from "./components/form/UserFormModal";
-
+import MasterUserFormModal from "./components/form/MasterUserFormModal";
+import UserCinemaMembershipModal from "./components/form/UserCinemaMembershipModal";
+import {
+  EditUserModal,
+  UserModal,
+} from "./components/form/UserFormModal";
 import UsersHeader from "./components/layout/UsersHeader";
-
 import UsersMasterCinemaRequired from "./components/layout/UsersMasterCinemaRequired";
+import MasterUsersSection from "./components/list/MasterUsersSection";
 import UsersTable from "./components/list/UsersTable";
-
+import { useMasterUserActions } from "./hooks/actions/useMasterUserActions";
+import { useUserCinemaMembershipActions } from "./hooks/actions/useUserCinemaMembershipActions";
 import { useUserFormActions } from "./hooks/actions/useUserFormActions";
-
 import { useUserStatusActions } from "./hooks/actions/useUserStatusActions";
-
 import { useUsersData } from "./hooks/data/useUsersData";
 
 export default function UsersPage() {
   const confirmDialog = useConfirm();
-
   const infoDialog = useInfoModal();
-
   const [showInactive, setShowInactive] = useState(false);
 
-  const { users, setUsers, currentUser, selectedMasterCinemaId, loading } =
-    useUsersData({
-      showError: (title, description) => {
-        infoDialog.showError(title, description);
-      },
-    });
+  const {
+    users,
+    setUsers,
+    masterUsers,
+    setMasterUsers,
+    currentUser,
+    selectedMasterCinemaId,
+    loading,
+    loadingMasterUsers,
+  } = useUsersData({
+    showError: (title, description) => {
+      infoDialog.showError(title, description);
+    },
+  });
 
   const needsMasterCinemaSelection =
     currentUser?.role === "MASTER" &&
@@ -64,8 +70,24 @@ export default function UsersPage() {
     },
   });
 
-  const { deactivateUser, reactivateUser } = useUserStatusActions({
-    setUsers,
+  const { deactivateUser, reactivateUser } =
+    useUserStatusActions({
+      setUsers,
+      confirm: confirmDialog.confirm,
+      showError: (title, description) => {
+        infoDialog.showError(title, description);
+      },
+    });
+
+  const cinemaMembershipActions =
+    useUserCinemaMembershipActions({
+      showError: (title, description) => {
+        infoDialog.showError(title, description);
+      },
+    });
+
+  const masterUserActions = useMasterUserActions({
+    setMasterUsers,
     confirm: confirmDialog.confirm,
     showError: (title, description) => {
       infoDialog.showError(title, description);
@@ -75,6 +97,9 @@ export default function UsersPage() {
   const visibleUsers = showInactive
     ? users
     : users.filter((user) => user.isActive !== false);
+
+  const currentUserId =
+    currentUser?.id ?? currentUser?.sub ?? null;
 
   if (loading) {
     return (
@@ -92,10 +117,15 @@ export default function UsersPage() {
         <UsersHeader
           showInactive={showInactive}
           setShowInactive={setShowInactive}
-          needsMasterCinemaSelection={needsMasterCinemaSelection}
+          needsMasterCinemaSelection={
+            needsMasterCinemaSelection
+          }
           onCreateClick={openCreateUserModal}
         />
-        {needsMasterCinemaSelection && <UsersMasterCinemaRequired />}
+
+        {needsMasterCinemaSelection && (
+          <UsersMasterCinemaRequired />
+        )}
 
         {showCreate && (
           <UserModal
@@ -119,13 +149,66 @@ export default function UsersPage() {
           />
         )}
 
+        {masterUserActions.mode && (
+          <MasterUserFormModal
+            mode={masterUserActions.mode}
+            form={masterUserActions.form}
+            saving={masterUserActions.saving}
+            onChange={masterUserActions.setForm}
+            onClose={masterUserActions.closeModal}
+            onSave={masterUserActions.save}
+          />
+        )}
+
+        <UserCinemaMembershipModal
+          user={cinemaMembershipActions.selectedUser}
+          cinemas={cinemaMembershipActions.cinemas}
+          selectedCinemaIds={
+            cinemaMembershipActions.selectedCinemaIds
+          }
+          primaryCinemaId={
+            cinemaMembershipActions.primaryCinemaId
+          }
+          loading={cinemaMembershipActions.loading}
+          saving={cinemaMembershipActions.saving}
+          error={cinemaMembershipActions.error}
+          onToggleCinema={
+            cinemaMembershipActions.toggleCinema
+          }
+          onClose={
+            cinemaMembershipActions.closeMembershipModal
+          }
+          onSave={cinemaMembershipActions.saveMemberships}
+        />
+
         <UsersTable
           visibleUsers={visibleUsers}
-          needsMasterCinemaSelection={needsMasterCinemaSelection}
+          needsMasterCinemaSelection={
+            needsMasterCinemaSelection
+          }
+          canManageCinemaMemberships={
+            currentUser?.role === "MASTER"
+          }
           onEdit={openEditUserModal}
+          onManageCinemaMemberships={
+            cinemaMembershipActions.openMembershipModal
+          }
           onDeactivate={deactivateUser}
           onReactivate={reactivateUser}
         />
+
+        {currentUser?.role === "MASTER" && (
+          <MasterUsersSection
+            users={masterUsers}
+            loading={loadingMasterUsers}
+            currentUserId={currentUserId}
+            showInactive={showInactive}
+            onCreate={masterUserActions.openCreate}
+            onEdit={masterUserActions.openEdit}
+            onDeactivate={masterUserActions.deactivate}
+            onReactivate={masterUserActions.reactivate}
+          />
+        )}
 
         <ConfirmModal
           open={confirmDialog.open}

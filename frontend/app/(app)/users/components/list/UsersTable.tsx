@@ -9,7 +9,9 @@ import type { User } from "../../helpers/core/userTypes";
 type UsersTableProps = {
   visibleUsers: User[];
   needsMasterCinemaSelection: boolean;
+  canManageCinemaMemberships: boolean;
   onEdit: (user: User) => void;
+  onManageCinemaMemberships: (user: User) => void;
   onDeactivate: (user: User) => void;
   onReactivate: (user: User) => void;
 };
@@ -17,7 +19,9 @@ type UsersTableProps = {
 export default function UsersTable({
   visibleUsers,
   needsMasterCinemaSelection,
+  canManageCinemaMemberships,
   onEdit,
+  onManageCinemaMemberships,
   onDeactivate,
   onReactivate,
 }: UsersTableProps) {
@@ -53,17 +57,30 @@ export default function UsersTable({
               <tr
                 key={user.id}
                 className={`border-t border-gray-200 dark:border-gray-800 ${
-                  user.isActive === false ? "bg-gray-50 dark:bg-gray-950" : ""
+                  user.isActive === false
+                    ? "bg-gray-50 dark:bg-gray-950"
+                    : ""
                 }`}
               >
                 <td className="p-4 font-medium">
-                  {user.firstName} {user.lastName}
+                  <div>
+                    {user.firstName} {user.lastName}
+                  </div>
+                  {canManageCinemaMemberships && (
+                    <div className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                      Bruger-ID {user.id}
+                    </div>
+                  )}
                 </td>
                 <td className="p-4">{user.email}</td>
                 <td className="p-4">{user.phone || "-"}</td>
-                <td className="p-4">{getRoleLabel(user.role)}</td>
                 <td className="p-4">
-                  {getEmploymentTypeLabel(user.employmentType)}
+                  {getRoleLabel(user.role)}
+                </td>
+                <td className="p-4">
+                  {getEmploymentTypeLabel(
+                    user.employmentType,
+                  )}
                 </td>
                 <td className="p-4">
                   {user.isActive === false ? (
@@ -76,31 +93,47 @@ export default function UsersTable({
                     </span>
                   )}
                 </td>
-                <td className="space-x-2 p-4 text-right">
-                  <button
-                    onClick={() => {
-                      onEdit(user);
-                    }}
-                    className="rounded-lg bg-gray-200 px-3 py-2 text-sm text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-                  >
-                    Rediger
-                  </button>
+                <td className="p-4 text-right">
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(user)}
+                      className="rounded-lg bg-gray-200 px-3 py-2 text-sm text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Rediger
+                    </button>
 
-                  {user.isActive === false ? (
-                    <button
-                      onClick={() => onReactivate(user)}
-                      className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-                    >
-                      Genaktivér
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onDeactivate(user)}
-                      className="rounded-lg bg-orange-600 px-3 py-2 text-sm text-white hover:bg-orange-700"
-                    >
-                      Deaktivér
-                    </button>
-                  )}
+                    {canManageCinemaMemberships &&
+                      user.role !== "MASTER" && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onManageCinemaMemberships(user)
+                          }
+                          className="rounded-lg bg-purple-700 px-3 py-2 text-sm text-white hover:bg-purple-800"
+                        >
+                          Biograftilknytninger
+                        </button>
+                      )}
+
+                    {user.isActive === false ? (
+                      <button
+                        type="button"
+                        onClick={() => onReactivate(user)}
+                        className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+                      >
+                        Genaktivér
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onDeactivate(user)}
+                        className="rounded-lg bg-orange-600 px-3 py-2 text-sm text-white hover:bg-orange-700"
+                      >
+                        Deaktivér
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))
