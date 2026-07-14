@@ -11,6 +11,7 @@ type ManagedMembershipResponse = {
   user: {
     id: number;
     cinemaId: number | null;
+    defaultCinemaId: number | null;
   };
   memberships: Array<{
     cinemaId: number;
@@ -51,6 +52,8 @@ export function useUserCinemaMembershipActions({
     useState<number[]>([]);
   const [primaryCinemaId, setPrimaryCinemaId] =
     useState<number | null>(null);
+  const [defaultCinemaId, setDefaultCinemaId] =
+    useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -62,6 +65,7 @@ export function useUserCinemaMembershipActions({
     setCinemas([]);
     setSelectedCinemaIds([]);
     setPrimaryCinemaId(user.cinemaId ?? null);
+    setDefaultCinemaId(null);
 
     try {
       const [cinemasResponse, membershipsResponse] =
@@ -131,6 +135,9 @@ export function useUserCinemaMembershipActions({
 
       setCinemas(nextCinemas);
       setPrimaryCinemaId(nextPrimaryCinemaId);
+      setDefaultCinemaId(
+        membershipsPayload.user.defaultCinemaId ?? null,
+      );
       setSelectedCinemaIds(
         Array.from(new Set(nextSelectedCinemaIds)),
       );
@@ -150,6 +157,7 @@ export function useUserCinemaMembershipActions({
     setCinemas([]);
     setSelectedCinemaIds([]);
     setPrimaryCinemaId(null);
+    setDefaultCinemaId(null);
     setError("");
   }
 
@@ -218,6 +226,7 @@ export function useUserCinemaMembershipActions({
     cinemas,
     selectedCinemaIds,
     primaryCinemaId,
+    defaultCinemaId,
     loading,
     saving,
     error,

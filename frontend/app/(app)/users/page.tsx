@@ -169,6 +169,9 @@ export default function UsersPage() {
           primaryCinemaId={
             cinemaMembershipActions.primaryCinemaId
           }
+          defaultCinemaId={
+            cinemaMembershipActions.defaultCinemaId
+          }
           loading={cinemaMembershipActions.loading}
           saving={cinemaMembershipActions.saving}
           error={cinemaMembershipActions.error}

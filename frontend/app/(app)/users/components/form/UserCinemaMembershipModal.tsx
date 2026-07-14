@@ -13,6 +13,7 @@ type UserCinemaMembershipModalProps = {
   cinemas: UserCinemaOption[];
   selectedCinemaIds: number[];
   primaryCinemaId: number | null;
+  defaultCinemaId: number | null;
   loading: boolean;
   saving: boolean;
   error: string;
@@ -26,6 +27,7 @@ export default function UserCinemaMembershipModal({
   cinemas,
   selectedCinemaIds,
   primaryCinemaId,
+  defaultCinemaId,
   loading,
   saving,
   error,
@@ -69,6 +71,7 @@ export default function UserCinemaMembershipModal({
             <div className="mt-4 space-y-3">
               {cinemas.map((cinema) => {
                 const isPrimary = cinema.id === primaryCinemaId;
+                const isDefault = cinema.id === defaultCinemaId;
                 const isSelected = selectedCinemaIds.includes(
                   cinema.id,
                 );
@@ -98,6 +101,11 @@ export default function UserCinemaMembershipModal({
                         {isPrimary && (
                           <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-100">
                             Hjemmebiograf
+                          </span>
+                        )}
+                        {isDefault && (
+                          <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800 dark:bg-green-950/40 dark:text-green-200">
+                            Standardbiograf
                           </span>
                         )}
                       </div>

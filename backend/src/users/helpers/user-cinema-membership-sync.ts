@@ -1,4 +1,7 @@
 type UserCinemaMembershipClient = {
+  user: {
+    updateMany: (args: any) => Promise<unknown>;
+  };
   userCinemaMembership: {
     upsert: (args: any) => Promise<unknown>;
     updateMany: (args: any) => Promise<unknown>;
@@ -49,4 +52,16 @@ export async function syncPrimaryUserCinemaMembership(
       isActive,
     },
   });
+
+  if (isActive) {
+    await prisma.user.updateMany({
+      where: {
+        id: userId,
+        defaultCinemaId: null,
+      },
+      data: {
+        defaultCinemaId: cinemaId,
+      },
+    });
+  }
 }
