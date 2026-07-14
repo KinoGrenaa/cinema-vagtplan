@@ -46,7 +46,7 @@ export async function findUserCinemaMemberships(
     .map((membership) => ({
       id: membership.id,
       cinemaId: membership.cinemaId,
-      isPrimary: membership.cinemaId === user.cinemaId,
+      isHomeCinema: membership.cinemaId === user.cinemaId,
       createdAt: membership.createdAt,
       cinema: membership.cinema,
     }))

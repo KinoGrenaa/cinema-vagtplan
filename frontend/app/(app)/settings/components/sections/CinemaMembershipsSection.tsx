@@ -107,9 +107,9 @@ export default function CinemaMembershipsSection({
                         </span>
                       )}
 
-                      {membership.isPrimary && (
+                      {membership.isHomeCinema && (
                         <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-                          Standardbiograf
+                          Hjemmebiograf
                         </span>
                       )}
                     </div>
