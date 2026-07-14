@@ -8,13 +8,43 @@ export async function getLeaveManagers(
 ) {
   return prisma.user.findMany({
     where: {
-      cinemaId,
       isActive: true,
-      ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
-      OR: [
-        { role: 'ADMIN' },
-        { role: 'MASTER' },
-        { canManageLeaveRequests: true },
+      role: {
+        not: 'MASTER',
+      },
+      ...(excludeUserId
+        ? {
+            id: {
+              not: excludeUserId,
+            },
+          }
+        : {}),
+      AND: [
+        {
+          OR: [
+            {
+              role: 'ADMIN',
+            },
+            {
+              canManageLeaveRequests: true,
+            },
+          ],
+        },
+        {
+          OR: [
+            {
+              cinemaId,
+            },
+            {
+              cinemaMemberships: {
+                some: {
+                  cinemaId,
+                  isActive: true,
+                },
+              },
+            },
+          ],
+        },
       ],
     },
     select: {
@@ -23,7 +53,10 @@ export async function getLeaveManagers(
   });
 }
 
-export async function getActorName(prisma: PrismaService, userId: number) {
+export async function getActorName(
+  prisma: PrismaService,
+  userId: number,
+) {
   const actor = await prisma.user.findUnique({
     where: {
       id: userId,

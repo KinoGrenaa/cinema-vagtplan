@@ -4,6 +4,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { AbsenceImpactEngineService } from '../staffing-ai/absence-impact-engine.service';
+import { ensureLeaveActorCinemaAccess } from './helpers/leave-request-cinema-access';
 import { createLeaveRequestFlow } from './helpers/leave-request-create-flow';
 import {
   AuthUser,
@@ -30,13 +31,26 @@ export class LeaveRequestsService {
     includeAll = false,
   ) {
     const userId = requireUserId(user);
-    const cinemaId = resolveLeaveCinemaId(user, selectedCinemaId);
+    const cinemaId = resolveLeaveCinemaId(
+      user,
+      selectedCinemaId,
+    );
     const canViewAll =
-      includeAll && (user.role === 'ADMIN' || user.role === 'MASTER');
+      includeAll &&
+      (user.role === 'ADMIN' ||
+        user.role === 'MASTER');
 
-    await this.leaveRequestExpiryService.expirePendingLeaveRequests({
+    await ensureLeaveActorCinemaAccess(
+      this.prisma,
+      user,
       cinemaId,
-    });
+    );
+
+    await this.leaveRequestExpiryService.expirePendingLeaveRequests(
+      {
+        cinemaId,
+      },
+    );
 
     return this.prisma.leaveRequest.findMany({
       where: {
@@ -65,7 +79,8 @@ export class LeaveRequestsService {
   ) {
     return createLeaveRequestFlow({
       prisma: this.prisma,
-      absenceImpactEngineService: this.absenceImpactEngineService,
+      absenceImpactEngineService:
+        this.absenceImpactEngineService,
       realtimeGateway: this.realtimeGateway,
       notificationsService: this.notificationsService,
       user,
@@ -81,7 +96,8 @@ export class LeaveRequestsService {
   ) {
     return updateLeaveRequestStatusFlow({
       prisma: this.prisma,
-      absenceImpactEngineService: this.absenceImpactEngineService,
+      absenceImpactEngineService:
+        this.absenceImpactEngineService,
       realtimeGateway: this.realtimeGateway,
       notificationsService: this.notificationsService,
       user,
