@@ -1,15 +1,29 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
+
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { CreateMessageDto } from '../dto/create-message.dto';
-import { messageInclude, notifyMessagesUpdated } from './message-shared';
+import {
+  getActiveMessageReceiverWhere,
+} from './message-cinema-access';
+import {
+  messageInclude,
+  notifyMessagesUpdated,
+} from './message-shared';
 
 export type CreateMessageInput = CreateMessageDto & {
   cinemaId: number;
   senderId: number;
+  senderRole: string;
+  senderCanSendBroadcastMessages?: boolean | null;
 };
 
-function parseOptionalReceiverId(value: number | null | undefined) {
+function parseOptionalReceiverId(
+  value: number | null | undefined,
+) {
   if (value === undefined || value === null) {
     return null;
   }
@@ -17,7 +31,9 @@ function parseOptionalReceiverId(value: number | null | undefined) {
   const parsedId = Number(value);
 
   if (!Number.isInteger(parsedId) || parsedId <= 0) {
-    throw new BadRequestException('Modtager skal være et gyldigt ID');
+    throw new BadRequestException(
+      'Modtager skal være et gyldigt ID',
+    );
   }
 
   return parsedId;
@@ -28,30 +44,13 @@ export async function createMessage(
   realtime: RealtimeGateway,
   data: CreateMessageInput,
 ) {
-  const sender = await prisma.user.findFirst({
-    where: {
-      id: data.senderId,
-      cinemaId: data.cinemaId,
-      isActive: true,
-    },
-    select: {
-      id: true,
-      role: true,
-      canSendBroadcastMessages: true,
-    },
-  });
-
-  if (!sender) {
-    throw new ForbiddenException('Du har ikke adgang til at sende beskeder.');
-  }
-
   const isBroadcast = data.isBroadcast === true;
 
   if (
     isBroadcast &&
-    sender.role !== 'ADMIN' &&
-    sender.role !== 'MASTER' &&
-    !sender.canSendBroadcastMessages
+    data.senderRole !== 'ADMIN' &&
+    data.senderRole !== 'MASTER' &&
+    !data.senderCanSendBroadcastMessages
   ) {
     throw new ForbiddenException(
       'Du har ikke adgang til at sende beskeder til alle.',
@@ -63,17 +62,20 @@ export async function createMessage(
     : parseOptionalReceiverId(data.receiverId);
 
   if (!isBroadcast && !receiverId) {
-    throw new BadRequestException('Vælg en modtager eller send til alle.');
+    throw new BadRequestException(
+      'Vælg en modtager eller send til alle.',
+    );
   }
 
   if (receiverId) {
     const receiver = await prisma.user.findFirst({
-      where: {
-        id: receiverId,
-        cinemaId: data.cinemaId,
-        isActive: true,
+      where: getActiveMessageReceiverWhere(
+        receiverId,
+        data.cinemaId,
+      ),
+      select: {
+        id: true,
       },
-      select: { id: true },
     });
 
     if (!receiver) {
@@ -88,7 +90,7 @@ export async function createMessage(
       subject: data.subject,
       body: data.body,
       cinemaId: data.cinemaId,
-      senderId: sender.id,
+      senderId: data.senderId,
       receiverId,
       isBroadcast,
     },

@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
   createMessage,
-  CreateMessageInput,
 } from './helpers/message-create-flow';
+import {
+  MessageActor,
+  resolveMessageActorContext,
+} from './helpers/message-cinema-access';
 import {
   findArchivedMessagesForUser,
   findMessagesForUser,
@@ -17,6 +21,7 @@ import {
   recallMessageForUser,
   unarchiveMessageForUser,
 } from './helpers/message-status-flow';
+import { CreateMessageDto } from './dto/create-message.dto';
 
 @Injectable()
 export class MessagesService {
@@ -25,63 +30,176 @@ export class MessagesService {
     private realtime: RealtimeGateway,
   ) {}
 
-  async create(data: CreateMessageInput) {
-    return createMessage(this.prisma, this.realtime, data);
+  async create(
+    actor: MessageActor,
+    data: CreateMessageDto,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
+    return createMessage(
+      this.prisma,
+      this.realtime,
+      {
+        ...data,
+        cinemaId: context.cinemaId,
+        senderId: context.userId,
+        senderRole: context.role,
+        senderCanSendBroadcastMessages:
+          context.canSendBroadcastMessages,
+      },
+    );
   }
 
-  async findAllForUser(userId: number, cinemaId: number) {
-    return findMessagesForUser(this.prisma, userId, cinemaId);
+  async findAllForUser(
+    actor: MessageActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
+    return findMessagesForUser(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
+    );
   }
 
-  async findSentForUser(userId: number, cinemaId: number) {
-    return findSentMessagesForUser(this.prisma, userId, cinemaId);
+  async findSentForUser(
+    actor: MessageActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
+    return findSentMessagesForUser(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
+    );
   }
 
-  async findArchivedForUser(userId: number, cinemaId: number) {
-    return findArchivedMessagesForUser(this.prisma, userId, cinemaId);
+  async findArchivedForUser(
+    actor: MessageActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
+    return findArchivedMessagesForUser(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
+    );
   }
 
-  async markAsRead(id: number, userId: number, cinemaId: number) {
+  async markAsRead(
+    id: number,
+    actor: MessageActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
     return markMessageAsRead(
       this.prisma,
       this.realtime,
       id,
-      userId,
-      cinemaId,
+      context.userId,
+      context.cinemaId,
     );
   }
 
-  async getUnreadCount(userId: number, cinemaId?: number) {
-    return getUnreadMessageCount(this.prisma, userId, cinemaId);
+  async getUnreadCount(
+    actor: MessageActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
+    return getUnreadMessageCount(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
+    );
   }
 
-  async archiveMessage(id: number, userId: number, cinemaId: number) {
+  async archiveMessage(
+    id: number,
+    actor: MessageActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
     return archiveMessageForUser(
       this.prisma,
       this.realtime,
       id,
-      userId,
-      cinemaId,
+      context.userId,
+      context.cinemaId,
     );
   }
 
-  async unarchiveMessage(id: number, userId: number, cinemaId: number) {
+  async unarchiveMessage(
+    id: number,
+    actor: MessageActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
     return unarchiveMessageForUser(
       this.prisma,
       this.realtime,
       id,
-      userId,
-      cinemaId,
+      context.userId,
+      context.cinemaId,
     );
   }
 
-  async recallMessage(id: number, userId: number, cinemaId: number) {
+  async recallMessage(
+    id: number,
+    actor: MessageActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context = await resolveMessageActorContext(
+      this.prisma,
+      actor,
+      selectedCinemaId,
+    );
+
     return recallMessageForUser(
       this.prisma,
       this.realtime,
       id,
-      userId,
-      cinemaId,
+      context.userId,
+      context.cinemaId,
     );
   }
 }
