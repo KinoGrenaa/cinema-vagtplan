@@ -25,7 +25,19 @@ function applyMasterDefaultCinema(
   role: string,
   defaultCinema?: LoginDefaultCinema | null,
 ) {
-  if (role !== "MASTER" || !defaultCinema) {
+  if (role !== "MASTER") {
+    return;
+  }
+
+  if (!defaultCinema) {
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
+    localStorage.removeItem(
+      MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
+    );
+    window.dispatchEvent(
+      new Event("masterSelectedCinemaChanged"),
+    );
     return;
   }
 
