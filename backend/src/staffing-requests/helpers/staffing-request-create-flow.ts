@@ -10,6 +10,7 @@ import {
   staffingRequestInclude,
 } from './staffing-request-helpers';
 import {
+  ensureStaffingRequestActorAccess,
   ensureStaffingRequestTargetUserExists,
   resolveStaffingRequestShift,
   resolveStaffingRequestWorkTypeId,
@@ -37,7 +38,16 @@ export async function createStaffingRequest({
     );
   }
 
-  const cinemaId = resolveStaffingCinemaId(user, dto.cinemaId);
+  const cinemaId = resolveStaffingCinemaId(
+    user,
+    dto.cinemaId,
+  );
+
+  await ensureStaffingRequestActorAccess({
+    prisma,
+    user,
+    cinemaId,
+  });
 
   await ensureStaffingRequestTargetUserExists({
     prisma,
@@ -56,12 +66,13 @@ export async function createStaffingRequest({
     shift,
   });
 
-  const requestedWorkTypeId = await resolveStaffingRequestWorkTypeId({
-    prisma,
-    cinemaId,
-    dto,
-    shift,
-  });
+  const requestedWorkTypeId =
+    await resolveStaffingRequestWorkTypeId({
+      prisma,
+      cinemaId,
+      dto,
+      shift,
+    });
 
   shift = await createUnassignedStaffingShiftIfNeeded({
     prisma,
@@ -86,13 +97,22 @@ export async function createStaffingRequest({
       priority: dto.priority ?? 1,
       message: dto.message,
       aiGenerated: dto.aiGenerated ?? false,
-      expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+      expiresAt: dto.expiresAt
+        ? new Date(dto.expiresAt)
+        : undefined,
     },
     include: staffingRequestInclude,
   });
 
-  await createNotificationForStaffingRequest(prisma, request.id);
-  emitStaffingRequestsUpdate(realtimeGateway, request.cinemaId);
+  await createNotificationForStaffingRequest(
+    prisma,
+    request.id,
+  );
+
+  emitStaffingRequestsUpdate(
+    realtimeGateway,
+    request.cinemaId,
+  );
 
   return request;
 }
@@ -101,7 +121,9 @@ function emitStaffingRequestsUpdate(
   realtimeGateway: RealtimeGateway,
   cinemaId: number,
 ) {
-  realtimeGateway.server.to(`cinema-${cinemaId}`).emit('staffingRequestsUpdated', {
-    cinemaId,
-  });
+  realtimeGateway.server
+    .to(`cinema-${cinemaId}`)
+    .emit('staffingRequestsUpdated', {
+      cinemaId,
+    });
 }

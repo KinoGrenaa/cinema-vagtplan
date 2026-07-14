@@ -1,6 +1,10 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
+import { checkShiftConflicts } from '../../shifts/helpers/shift-conflict-checks';
 
 type StaffingRequestAcceptCandidate = {
   cinemaId: number;
@@ -30,17 +34,24 @@ export async function assertNoStaffingRequestAcceptConflicts(
     : null;
 
   if (request.shiftId && !requestShift) {
-    throw new NotFoundException('Vagt blev ikke fundet');
+    throw new NotFoundException(
+      'Vagt blev ikke fundet',
+    );
   }
 
-  if (requestShift?.userId && requestShift.userId !== userId) {
+  if (
+    requestShift?.userId &&
+    requestShift.userId !== userId
+  ) {
     throw new BadRequestException(
       'Vagten er allerede tildelt en anden medarbejder.',
     );
   }
 
-  const startTime = requestShift?.startTime ?? request.requestStartTime;
-  const endTime = requestShift?.endTime ?? request.requestEndTime;
+  const startTime =
+    requestShift?.startTime ?? request.requestStartTime;
+  const endTime =
+    requestShift?.endTime ?? request.requestEndTime;
 
   if (!startTime || !endTime) {
     throw new BadRequestException(
@@ -48,28 +59,11 @@ export async function assertNoStaffingRequestAcceptConflicts(
     );
   }
 
-  const overlappingShift = await prisma.shift.findFirst({
-    where: {
-      cinemaId: request.cinemaId,
-      userId,
-      id: requestShift
-        ? {
-            not: requestShift.id,
-          }
-        : undefined,
-      startTime: {
-        lt: endTime,
-      },
-      endTime: {
-        gt: startTime,
-      },
-    },
-    select: {
-      id: true,
-    },
+  await checkShiftConflicts(prisma, {
+    cinemaId: request.cinemaId,
+    userId,
+    startTime,
+    endTime,
+    ignoreShiftId: requestShift?.id,
   });
-
-  if (overlappingShift) {
-    throw new BadRequestException('Du har allerede en vagt i det tidsrum.');
-  }
 }

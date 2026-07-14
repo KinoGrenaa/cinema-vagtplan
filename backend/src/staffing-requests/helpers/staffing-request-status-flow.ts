@@ -2,12 +2,16 @@ import { StaffingRequestStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
-import { AuthUser, staffingRequestInclude } from './staffing-request-helpers';
+import {
+  AuthUser,
+  staffingRequestInclude,
+} from './staffing-request-helpers';
 import {
   assertNoStaffingRequestAcceptConflicts,
   assignAcceptedStaffingRequestShift,
   cancelOtherPendingStaffingRequestsForShift,
 } from './staffing-request-acceptance-shift';
+import { ensureStaffingRequestActorAccess } from './staffing-request-create-lookups';
 import { emitStaffingRequestsUpdate } from './staffing-request-realtime';
 import {
   assertCanAcceptStaffingRequest,
@@ -25,13 +29,15 @@ type StaffingRequestActionParams = {
   selectedCinemaId?: number | null;
 };
 
-export async function acceptStaffingRequest({
+async function findAccessibleStaffingRequest({
   prisma,
-  realtimeGateway,
   user,
   id,
   selectedCinemaId,
-}: StaffingRequestActionParams) {
+}: Omit<
+  StaffingRequestActionParams,
+  'realtimeGateway'
+>) {
   const request = await findStaffingRequestForUser(
     prisma,
     user,
@@ -39,10 +45,37 @@ export async function acceptStaffingRequest({
     selectedCinemaId,
   );
 
+  await ensureStaffingRequestActorAccess({
+    prisma,
+    user,
+    cinemaId: request.cinemaId,
+  });
+
+  return request;
+}
+
+export async function acceptStaffingRequest({
+  prisma,
+  realtimeGateway,
+  user,
+  id,
+  selectedCinemaId,
+}: StaffingRequestActionParams) {
+  const request = await findAccessibleStaffingRequest({
+    prisma,
+    user,
+    id,
+    selectedCinemaId,
+  });
+
   assertPendingStaffingRequest(request);
   assertCanAcceptStaffingRequest(user, request);
 
-  await assertNoStaffingRequestAcceptConflicts(prisma, request, user.sub);
+  await assertNoStaffingRequestAcceptConflicts(
+    prisma,
+    request,
+    user.sub,
+  );
 
   const updated = await prisma.staffingRequest.update({
     where: {
@@ -63,9 +96,15 @@ export async function acceptStaffingRequest({
     acceptedByEmail: user.email,
   });
 
-  await cancelOtherPendingStaffingRequestsForShift(prisma, updated);
+  await cancelOtherPendingStaffingRequestsForShift(
+    prisma,
+    updated,
+  );
 
-  emitStaffingRequestsUpdate(realtimeGateway, updated.cinemaId);
+  emitStaffingRequestsUpdate(
+    realtimeGateway,
+    updated.cinemaId,
+  );
 
   return prisma.staffingRequest.findUnique({
     where: {
@@ -82,12 +121,12 @@ export async function rejectStaffingRequest({
   id,
   selectedCinemaId,
 }: StaffingRequestActionParams) {
-  const request = await findStaffingRequestForUser(
+  const request = await findAccessibleStaffingRequest({
     prisma,
     user,
     id,
     selectedCinemaId,
-  );
+  });
 
   assertPendingStaffingRequest(request);
   assertCanRejectStaffingRequest(user, request);
@@ -103,7 +142,10 @@ export async function rejectStaffingRequest({
     include: staffingRequestInclude,
   });
 
-  emitStaffingRequestsUpdate(realtimeGateway, updated.cinemaId);
+  emitStaffingRequestsUpdate(
+    realtimeGateway,
+    updated.cinemaId,
+  );
 
   return updated;
 }
@@ -117,14 +159,17 @@ export async function cancelStaffingRequest({
 }: StaffingRequestActionParams) {
   assertCanCancelStaffingRequest(user);
 
-  const request = await findStaffingRequestForUser(
+  const request = await findAccessibleStaffingRequest({
     prisma,
     user,
     id,
     selectedCinemaId,
-  );
+  });
 
-  assertPendingStaffingRequest(request, 'Kun åbne forespørgsler kan annulleres');
+  assertPendingStaffingRequest(
+    request,
+    'Kun åbne forespørgsler kan annulleres',
+  );
 
   const updated = await prisma.staffingRequest.update({
     where: {
@@ -136,7 +181,10 @@ export async function cancelStaffingRequest({
     include: staffingRequestInclude,
   });
 
-  emitStaffingRequestsUpdate(realtimeGateway, updated.cinemaId);
+  emitStaffingRequestsUpdate(
+    realtimeGateway,
+    updated.cinemaId,
+  );
 
   return updated;
 }

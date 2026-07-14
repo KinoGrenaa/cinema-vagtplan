@@ -14,13 +14,15 @@ export async function createNotificationForStaffingRequest(
     },
   });
 
-  if (!request) return;
+  if (!request) {
+    return;
+  }
 
   const notification = {
     title: 'Ny bemandingsforespørgsel',
     message:
       request.message ||
-      'Der er brug for ekstra bemanding. Kan du tage en vagt?',
+      'Der er brug for ekstra bemanding.\nKan du tage en vagt?',
     type: 'STAFFING_REQUEST',
     linkUrl: '/staffing-requests',
   };
@@ -39,18 +41,32 @@ export async function createNotificationForStaffingRequest(
 
   const staffUsers = await prisma.user.findMany({
     where: {
-      cinemaId: request.cinemaId,
       role: {
         in: ['ADMIN', 'EMPLOYEE'],
       },
       isActive: true,
+      OR: [
+        {
+          cinemaId: request.cinemaId,
+        },
+        {
+          cinemaMemberships: {
+            some: {
+              cinemaId: request.cinemaId,
+              isActive: true,
+            },
+          },
+        },
+      ],
     },
     select: {
       id: true,
     },
   });
 
-  if (staffUsers.length === 0) return;
+  if (staffUsers.length === 0) {
+    return;
+  }
 
   await prisma.notification.createMany({
     data: staffUsers.map((staffUser) => ({

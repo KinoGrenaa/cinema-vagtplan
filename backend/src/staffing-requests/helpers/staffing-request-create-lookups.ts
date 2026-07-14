@@ -1,7 +1,14 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateStaffingRequestInput } from './staffing-request-helpers';
+import {
+  AuthUser,
+  CreateStaffingRequestInput,
+} from './staffing-request-helpers';
 
 export type StaffingRequestShift = {
   id: number;
@@ -34,22 +41,85 @@ type ResolveStaffingRequestWorkTypeIdParams = {
   shift: StaffingRequestShift | null;
 };
 
+function getActiveCinemaUserFilter(
+  userId: number,
+  cinemaId: number,
+) {
+  return {
+    id: userId,
+    isActive: true,
+    role: {
+      not: 'MASTER' as const,
+    },
+    OR: [
+      {
+        cinemaId,
+      },
+      {
+        cinemaMemberships: {
+          some: {
+            cinemaId,
+            isActive: true,
+          },
+        },
+      },
+    ],
+  };
+}
+
+export async function ensureStaffingRequestActorAccess({
+  prisma,
+  user,
+  cinemaId,
+}: {
+  prisma: PrismaService;
+  user: AuthUser;
+  cinemaId: number;
+}) {
+  if (user.role === 'MASTER') {
+    return;
+  }
+
+  const actor = await prisma.user.findFirst({
+    where: getActiveCinemaUserFilter(
+      user.sub,
+      cinemaId,
+    ),
+    select: {
+      id: true,
+    },
+  });
+
+  if (!actor) {
+    throw new ForbiddenException(
+      'Du er ikke aktivt tilknyttet denne biograf',
+    );
+  }
+}
+
 export async function ensureStaffingRequestTargetUserExists({
   prisma,
   cinemaId,
   targetUserId,
 }: EnsureStaffingRequestTargetUserExistsParams) {
-  if (!targetUserId) return;
+  if (!targetUserId) {
+    return;
+  }
 
   const targetUser = await prisma.user.findFirst({
-    where: {
-      id: targetUserId,
+    where: getActiveCinemaUserFilter(
+      targetUserId,
       cinemaId,
+    ),
+    select: {
+      id: true,
     },
   });
 
   if (!targetUser) {
-    throw new NotFoundException('Medarbejder blev ikke fundet');
+    throw new NotFoundException(
+      'Medarbejderen blev ikke fundet i den aktive biograf',
+    );
   }
 }
 
@@ -72,7 +142,9 @@ export async function resolveStaffingRequestShift({
     : null;
 
   if (shiftId && !shift) {
-    throw new NotFoundException('Vagt blev ikke fundet');
+    throw new NotFoundException(
+      'Vagt blev ikke fundet',
+    );
   }
 
   return shift;
@@ -84,10 +156,13 @@ export async function resolveStaffingRequestWorkTypeId({
   dto,
   shift,
 }: ResolveStaffingRequestWorkTypeIdParams): Promise<number> {
-  const requestedWorkTypeId = shift?.workTypeId ?? dto.workTypeId ?? null;
+  const requestedWorkTypeId =
+    shift?.workTypeId ?? dto.workTypeId ?? null;
 
   if (!requestedWorkTypeId) {
-    throw new BadRequestException('Vælg jobfunktion for bemandingsbehovet.');
+    throw new BadRequestException(
+      'Vælg jobfunktion for bemandingsbehovet.',
+    );
   }
 
   const workType = await prisma.workType.findFirst({
@@ -98,7 +173,9 @@ export async function resolveStaffingRequestWorkTypeId({
   });
 
   if (!workType) {
-    throw new NotFoundException('Jobfunktionen blev ikke fundet');
+    throw new NotFoundException(
+      'Jobfunktionen blev ikke fundet',
+    );
   }
 
   return requestedWorkTypeId;
