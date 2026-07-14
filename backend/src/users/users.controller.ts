@@ -22,6 +22,7 @@ import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserCinemaMembershipsDto } from './dto/update-user-cinema-memberships.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
@@ -110,6 +111,30 @@ export class UsersController {
 
     return this.usersService.findOwnCinemaMemberships(
       Number(currentUserId),
+    );
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('MASTER')
+  @Get(':id/cinema-memberships')
+  getUserCinemaMemberships(@Param('id') id: string) {
+    return this.usersService.findManagedCinemaMemberships(
+      Number(id),
+    );
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('MASTER')
+  @Patch(':id/cinema-memberships')
+  updateUserCinemaMemberships(
+    @Param('id') id: string,
+    @Body() body: UpdateUserCinemaMembershipsDto,
+    @Req() req: any,
+  ) {
+    return this.usersService.updateManagedCinemaMemberships(
+      Number(id),
+      body.cinemaIds,
+      req.user as AuthUser,
     );
   }
 

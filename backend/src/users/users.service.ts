@@ -8,6 +8,10 @@ import {
 } from './helpers/user-create-flow';
 import { findUserCinemaMemberships } from './helpers/user-cinema-membership-read';
 import {
+  findManagedUserCinemaMemberships,
+  updateManagedUserCinemaMemberships,
+} from './helpers/user-cinema-membership-management';
+import {
   findAllUsers,
   findUserByEmail,
   findUserByEmailIncludingInactive,
@@ -65,6 +69,27 @@ export class UsersService {
 
   async findOwnCinemaMemberships(id: number) {
     return findUserCinemaMemberships(this.prisma, id);
+  }
+
+  async findManagedCinemaMemberships(id: number) {
+    return findManagedUserCinemaMemberships(
+      this.prisma,
+      id,
+    );
+  }
+
+  async updateManagedCinemaMemberships(
+    id: number,
+    cinemaIds: number[],
+    currentUser: AuthUser,
+  ) {
+    return updateManagedUserCinemaMemberships(
+      this.prisma,
+      this.auditLogsService,
+      id,
+      cinemaIds,
+      currentUser,
+    );
   }
 
   async createUser(
