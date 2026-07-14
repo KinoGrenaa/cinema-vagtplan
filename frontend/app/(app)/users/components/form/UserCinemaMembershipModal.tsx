@@ -54,7 +54,7 @@ export default function UserCinemaMembershipModal({
         <div className="max-h-[65vh] overflow-y-auto p-6">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Vælg de biografer, brugeren må skifte imellem.
-            Standardbiografen kan ikke fjernes her.
+            Hjemmebiografen kan ikke fjernes her.
           </p>
 
           {loading ? (
@@ -97,7 +97,7 @@ export default function UserCinemaMembershipModal({
                         </span>
                         {isPrimary && (
                           <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-100">
-                            Standardbiograf
+                            Hjemmebiograf
                           </span>
                         )}
                       </div>

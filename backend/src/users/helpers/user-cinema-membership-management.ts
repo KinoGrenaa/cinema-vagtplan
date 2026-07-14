@@ -24,6 +24,7 @@ async function findMembershipTarget(
       lastName: true,
       role: true,
       cinemaId: true,
+      defaultCinemaId: true,
       isActive: true,
       cinemaMemberships: {
         where: {
@@ -62,6 +63,7 @@ function formatManagedMemberships(
       lastName: user.lastName,
       role: user.role,
       cinemaId: user.cinemaId,
+      defaultCinemaId: user.defaultCinemaId,
       isActive: user.isActive,
     },
     memberships: user.cinemaMemberships
@@ -112,7 +114,7 @@ export async function updateManagedUserCinemaMemberships(
 
   if (!user.cinemaId) {
     throw new BadRequestException(
-      'Brugeren mangler en standardbiograf',
+      'Brugeren mangler en hjemmebiograf',
     );
   }
 
@@ -122,7 +124,7 @@ export async function updateManagedUserCinemaMemberships(
 
   if (!normalizedCinemaIds.includes(user.cinemaId)) {
     throw new BadRequestException(
-      'Brugerens standardbiograf skal forblive et aktivt medlemskab',
+      'Brugerens hjemmebiograf skal forblive et aktivt medlemskab',
     );
   }
 
@@ -143,6 +145,10 @@ export async function updateManagedUserCinemaMemberships(
       'En eller flere valgte biografer findes ikke',
     );
   }
+
+  const shouldResetDefaultCinema =
+    user.defaultCinemaId !== null &&
+    !normalizedCinemaIds.includes(user.defaultCinemaId);
 
   await prisma.$transaction(async (transaction) => {
     await transaction.userCinemaMembership.updateMany({
@@ -176,6 +182,17 @@ export async function updateManagedUserCinemaMemberships(
         },
       });
     }
+
+    if (shouldResetDefaultCinema) {
+      await transaction.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          defaultCinemaId: user.cinemaId,
+        },
+      });
+    }
   });
 
   await auditLogsService.create({
@@ -187,7 +204,11 @@ export async function updateManagedUserCinemaMemberships(
       .sort((first, second) =>
         first.localeCompare(second, 'da'),
       )
-      .join(', ')}`,
+      .join(', ')}${
+      shouldResetDefaultCinema
+        ? '. Standardbiograf blev nulstillet til hjemmebiografen.'
+        : ''
+    }`,
     userId: getActorUserId(currentUser),
     cinemaId: user.cinemaId,
   });
