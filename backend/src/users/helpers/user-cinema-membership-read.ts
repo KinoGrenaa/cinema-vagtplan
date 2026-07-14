@@ -35,7 +35,9 @@ export async function findUserCinemaMemberships(
   });
 
   if (!user) {
-    throw new NotFoundException('Bruger blev ikke fundet');
+    throw new NotFoundException(
+      'Bruger blev ikke fundet',
+    );
   }
 
   if (!user.isActive) {
@@ -46,13 +48,16 @@ export async function findUserCinemaMemberships(
     .map((membership) => ({
       id: membership.id,
       cinemaId: membership.cinemaId,
-      isHomeCinema: membership.cinemaId === user.cinemaId,
+      isHomeCinema:
+        membership.cinemaId === user.cinemaId,
       createdAt: membership.createdAt,
       cinema: membership.cinema,
     }))
     .sort((first, second) => {
-      if (first.isPrimary !== second.isPrimary) {
-        return first.isPrimary ? -1 : 1;
+      if (
+        first.isHomeCinema !== second.isHomeCinema
+      ) {
+        return first.isHomeCinema ? -1 : 1;
       }
 
       return first.cinema.name.localeCompare(

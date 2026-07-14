@@ -204,7 +204,7 @@ export class ShiftTradesService {
     );
   }
 
-  acceptTrade(id: number, acceptedByUserId: number) {
+  acceptTrade(id: number, actor: any) {
     return acceptShiftTrade(
       {
         prisma: this.prisma,
@@ -213,11 +213,11 @@ export class ShiftTradesService {
         push: this.push,
       },
       id,
-      acceptedByUserId,
+      actor,
     );
   }
 
-  rejectTrade(id: number, rejectedByUserId: number) {
+  rejectTrade(id: number, actor: any) {
     return rejectShiftTrade(
       {
         prisma: this.prisma,
@@ -226,7 +226,7 @@ export class ShiftTradesService {
         push: this.push,
       },
       id,
-      rejectedByUserId,
+      actor,
     );
   }
 

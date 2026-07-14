@@ -1,4 +1,7 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ShiftTradeType } from '@prisma/client';
 
 import { NotificationsService } from '../../notifications/notifications.service';
@@ -14,6 +17,32 @@ type ShiftTradeCreateFlowDeps = {
   push: PushService;
 };
 
+function getActiveCinemaUserFilter(
+  userId: number,
+  cinemaId: number,
+) {
+  return {
+    id: userId,
+    isActive: true,
+    role: {
+      not: 'MASTER' as const,
+    },
+    OR: [
+      {
+        cinemaId,
+      },
+      {
+        cinemaMemberships: {
+          some: {
+            cinemaId,
+            isActive: true,
+          },
+        },
+      },
+    ],
+  };
+}
+
 export async function createShiftTrade(
   deps: ShiftTradeCreateFlowDeps,
   data: {
@@ -25,7 +54,12 @@ export async function createShiftTrade(
     message?: string;
   },
 ) {
-  const { prisma, realtime, notifications, push } = deps;
+  const {
+    prisma,
+    realtime,
+    notifications,
+    push,
+  } = deps;
 
   const cinema = await prisma.cinema.findUnique({
     where: {
@@ -34,16 +68,42 @@ export async function createShiftTrade(
   });
 
   if (!cinema) {
-    throw new NotFoundException('Biograf blev ikke fundet');
+    throw new NotFoundException(
+      'Biograf blev ikke fundet',
+    );
   }
 
-  if (data.type === ShiftTradeType.POOL && !cinema.allowShiftTradePool) {
-    throw new ForbiddenException('Vagtpulje er deaktiveret for denne biograf');
+  if (
+    data.type === ShiftTradeType.POOL &&
+    !cinema.allowShiftTradePool
+  ) {
+    throw new ForbiddenException(
+      'Vagtpulje er deaktiveret for denne biograf',
+    );
   }
 
-  if (data.type === ShiftTradeType.DIRECT && !cinema.allowShiftTradeDirect) {
+  if (
+    data.type === ShiftTradeType.DIRECT &&
+    !cinema.allowShiftTradeDirect
+  ) {
     throw new ForbiddenException(
       'Direkte vagtbytte er deaktiveret for denne biograf',
+    );
+  }
+
+  const offeredByUser = await prisma.user.findFirst({
+    where: getActiveCinemaUserFilter(
+      data.offeredByUserId,
+      data.cinemaId,
+    ),
+    select: {
+      id: true,
+    },
+  });
+
+  if (!offeredByUser) {
+    throw new ForbiddenException(
+      'Du er ikke aktivt tilknyttet denne biograf',
     );
   }
 
@@ -55,23 +115,32 @@ export async function createShiftTrade(
   });
 
   if (!shift) {
-    throw new NotFoundException('Vagten blev ikke fundet i denne biograf');
+    throw new NotFoundException(
+      'Vagten blev ikke fundet i denne biograf',
+    );
   }
 
   if (shift.userId !== data.offeredByUserId) {
-    throw new ForbiddenException('Du kan kun bytte dine egne vagter');
+    throw new ForbiddenException(
+      'Du kan kun bytte dine egne vagter',
+    );
   }
 
   if (data.targetUserId) {
     const targetUser = await prisma.user.findFirst({
-      where: {
-        id: data.targetUserId,
-        cinemaId: data.cinemaId,
+      where: getActiveCinemaUserFilter(
+        data.targetUserId,
+        data.cinemaId,
+      ),
+      select: {
+        id: true,
       },
     });
 
     if (!targetUser) {
-      throw new ForbiddenException('Modtageren findes ikke i denne biograf');
+      throw new ForbiddenException(
+        'Modtageren er ikke aktivt tilknyttet denne biograf',
+      );
     }
   }
 
@@ -87,10 +156,18 @@ export async function createShiftTrade(
     include: shiftTradeInclude,
   });
 
-  realtime.notifyCinema(trade.cinemaId, 'shiftTradesUpdated', trade);
+  realtime.notifyCinema(
+    trade.cinemaId,
+    'shiftTradesUpdated',
+    trade,
+  );
 
   if (trade.type === ShiftTradeType.DIRECT) {
-    realtime.notifyCinema(trade.cinemaId, 'newDirectShiftTrade', trade);
+    realtime.notifyCinema(
+      trade.cinemaId,
+      'newDirectShiftTrade',
+      trade,
+    );
 
     if (trade.targetUserId) {
       await notifications.create({

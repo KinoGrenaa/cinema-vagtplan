@@ -17,7 +17,6 @@ export async function checkShiftConflicts(
 
   const overlappingShift = await prisma.shift.findFirst({
     where: {
-      cinemaId: data.cinemaId,
       userId: data.userId,
       id: data.ignoreShiftId
         ? {

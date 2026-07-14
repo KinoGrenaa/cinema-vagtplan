@@ -1,4 +1,5 @@
 import { ShiftTradeStatus } from '@prisma/client';
+
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
@@ -6,7 +7,8 @@ import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
   ensureAcceptedShiftHasNoConflicts,
   findAcceptableShiftTrade,
-  findAcceptedByUserCinemaId,
+  resolveShiftTradeActorContext,
+  ShiftTradeActor,
 } from './shift-trade-accept-validation';
 import { shiftTradeInclude } from './shift-trade-service-helpers';
 
@@ -20,34 +22,42 @@ type ShiftTradeAcceptFlowDeps = {
 export async function acceptShiftTrade(
   deps: ShiftTradeAcceptFlowDeps,
   id: number,
-  acceptedByUserId: number,
+  actor: ShiftTradeActor,
 ) {
-  const { prisma, realtime, notifications, push } = deps;
+  const {
+    prisma,
+    realtime,
+    notifications,
+    push,
+  } = deps;
 
-  const acceptedByUserCinemaId =
-    await findAcceptedByUserCinemaId(
+  const { userId, cinemaId } =
+    await resolveShiftTradeActorContext(
       prisma,
-      acceptedByUserId,
+      actor,
     );
+
   const trade = await findAcceptableShiftTrade(
     prisma,
     id,
-    acceptedByUserCinemaId,
-    acceptedByUserId,
+    cinemaId,
+    userId,
   );
 
   await ensureAcceptedShiftHasNoConflicts(
     prisma,
     trade,
-    acceptedByUserId,
+    userId,
   );
 
   await prisma.$transaction([
     prisma.shiftTrade.update({
-      where: { id },
+      where: {
+        id,
+      },
       data: {
         status: ShiftTradeStatus.ACCEPTED,
-        acceptedByUserId,
+        acceptedByUserId: userId,
       },
     }),
     prisma.shift.update({
@@ -55,15 +65,18 @@ export async function acceptShiftTrade(
         id: trade.shiftId,
       },
       data: {
-        userId: acceptedByUserId,
+        userId,
       },
     }),
   ]);
 
-  const updatedTrade = await prisma.shiftTrade.findUnique({
-    where: { id },
-    include: shiftTradeInclude,
-  });
+  const updatedTrade =
+    await prisma.shiftTrade.findUnique({
+      where: {
+        id,
+      },
+      include: shiftTradeInclude,
+    });
 
   if (updatedTrade) {
     realtime.notifyCinema(
@@ -93,10 +106,14 @@ export async function acceptShiftTrade(
     url: '/my-shifts',
   });
 
-  realtime.notifyCinema(trade.cinemaId, 'shiftsUpdated', {
-    shiftId: trade.shiftId,
-    acceptedByUserId,
-  });
+  realtime.notifyCinema(
+    trade.cinemaId,
+    'shiftsUpdated',
+    {
+      shiftId: trade.shiftId,
+      acceptedByUserId: userId,
+    },
+  );
 
   return updatedTrade;
 }

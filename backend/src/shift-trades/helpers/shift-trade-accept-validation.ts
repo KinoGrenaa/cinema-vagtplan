@@ -1,63 +1,133 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { ShiftTradeStatus, ShiftTradeType } from '@prisma/client';
+import {
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  ShiftTradeStatus,
+  ShiftTradeType,
+} from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 
-export async function findAcceptedByUserCinemaId(
+export type ShiftTradeActor = {
+  sub?: number;
+  id?: number;
+  role?: string;
+  cinemaId?: number | null;
+};
+
+export async function resolveShiftTradeActorContext(
   prisma: PrismaService,
-  acceptedByUserId: number,
+  actor: ShiftTradeActor,
 ) {
-  const acceptedByUser = await prisma.user.findUnique({
-    where: {
-      id: acceptedByUserId,
-    },
-  });
+  const userId = Number(actor?.sub ?? actor?.id);
+  const cinemaId = Number(actor?.cinemaId);
 
-  if (!acceptedByUser) {
-    throw new NotFoundException('Bruger blev ikke fundet');
-  }
-
-  const acceptedByUserCinemaId = acceptedByUser.cinemaId;
-
-  if (acceptedByUserCinemaId === null) {
+  if (!Number.isInteger(userId) || userId <= 0) {
     throw new ForbiddenException(
-      'Brugeren er ikke tilknyttet en biograf og kan ikke acceptere vagtbytter',
+      'Brugeren kunne ikke identificeres',
     );
   }
 
-  return acceptedByUserCinemaId;
+  if (actor?.role === 'MASTER') {
+    throw new ForbiddenException(
+      'MASTER kan ikke acceptere eller afvise personlige vagtbytter',
+    );
+  }
+
+  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+    throw new ForbiddenException(
+      'Vælg en aktiv biograf før du håndterer vagtbytter',
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+    select: {
+      id: true,
+      isActive: true,
+      cinemaId: true,
+      cinemaMemberships: {
+        where: {
+          cinemaId,
+          isActive: true,
+        },
+        select: {
+          id: true,
+        },
+        take: 1,
+      },
+    },
+  });
+
+  if (!user) {
+    throw new NotFoundException(
+      'Bruger blev ikke fundet',
+    );
+  }
+
+  if (!user.isActive) {
+    throw new ForbiddenException(
+      'Brugeren er deaktiveret',
+    );
+  }
+
+  const hasCinemaAccess =
+    user.cinemaId === cinemaId ||
+    user.cinemaMemberships.length > 0;
+
+  if (!hasCinemaAccess) {
+    throw new ForbiddenException(
+      'Brugeren er ikke aktivt tilknyttet denne biograf',
+    );
+  }
+
+  return {
+    userId,
+    cinemaId,
+  };
 }
 
 export async function findAcceptableShiftTrade(
   prisma: PrismaService,
   id: number,
-  acceptedByUserCinemaId: number,
-  acceptedByUserId: number,
+  actorCinemaId: number,
+  actorUserId: number,
 ) {
   const trade = await prisma.shiftTrade.findFirst({
     where: {
       id,
-      cinemaId: acceptedByUserCinemaId,
+      cinemaId: actorCinemaId,
     },
   });
 
   if (!trade) {
-    throw new NotFoundException('Vagtbytte blev ikke fundet');
+    throw new NotFoundException(
+      'Vagtbytte blev ikke fundet',
+    );
   }
 
   if (trade.status !== ShiftTradeStatus.OPEN) {
-    throw new ForbiddenException('Vagtbyttet er ikke længere åbent');
+    throw new ForbiddenException(
+      'Vagtbyttet er ikke længere åbent',
+    );
   }
 
-  if (trade.offeredByUserId === acceptedByUserId) {
-    throw new ForbiddenException('Du kan ikke acceptere din egen vagt');
+  if (trade.offeredByUserId === actorUserId) {
+    throw new ForbiddenException(
+      'Du kan ikke acceptere din egen vagt',
+    );
   }
 
   if (
     trade.type === ShiftTradeType.DIRECT &&
-    trade.targetUserId !== acceptedByUserId
+    trade.targetUserId !== actorUserId
   ) {
-    throw new ForbiddenException('Denne vagt er ikke sendt til dig');
+    throw new ForbiddenException(
+      'Denne vagt er ikke sendt til dig',
+    );
   }
 
   return trade;
@@ -79,12 +149,13 @@ export async function ensureAcceptedShiftHasNoConflicts(
   });
 
   if (!shift) {
-    throw new NotFoundException('Vagten blev ikke fundet');
+    throw new NotFoundException(
+      'Vagten blev ikke fundet',
+    );
   }
 
   const conflictingShift = await prisma.shift.findFirst({
     where: {
-      cinemaId: trade.cinemaId,
       userId: acceptedByUserId,
       id: {
         not: trade.shiftId,
@@ -99,6 +170,8 @@ export async function ensureAcceptedShiftHasNoConflicts(
   });
 
   if (conflictingShift) {
-    throw new ForbiddenException('Du har allerede en vagt i dette tidsrum');
+    throw new ForbiddenException(
+      'Du har allerede en vagt i dette tidsrum',
+    );
   }
 }
