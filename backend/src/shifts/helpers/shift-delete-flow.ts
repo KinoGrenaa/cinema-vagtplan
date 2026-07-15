@@ -24,7 +24,10 @@ export async function deleteShiftFlow({
   realtimeGateway: RealtimeGateway;
   pushService: PushService;
   auditLogsService: AuditLogsService;
-  formatShiftTime: (startTime: Date, endTime: Date) => string;
+  formatShiftTime: (
+    startTime: Date,
+    endTime: Date,
+  ) => string;
   user: AuthUser;
   id: number;
   selectedCinemaId?: number | null;
@@ -32,7 +35,10 @@ export async function deleteShiftFlow({
   const shiftToDelete = await prisma.shift.findFirst({
     where: {
       id,
-      ...getShiftCinemaFilter(user, selectedCinemaId),
+      ...getShiftCinemaFilter(
+        user,
+        selectedCinemaId,
+      ),
     },
     include: {
       workType: true,
@@ -41,7 +47,9 @@ export async function deleteShiftFlow({
   });
 
   if (!shiftToDelete) {
-    throw new NotFoundException('Vagten blev ikke fundet');
+    throw new NotFoundException(
+      'Vagten blev ikke fundet',
+    );
   }
 
   const shift = await prisma.shift.delete({
@@ -64,17 +72,25 @@ export async function deleteShiftFlow({
     cinemaId: shiftToDelete.cinemaId,
   });
 
-  realtimeGateway.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
+  realtimeGateway.notifyCinema(
+    shift.cinemaId,
+    'shiftsUpdated',
+    shift,
+  );
 
   if (shiftToDelete.userId) {
-    await pushService.sendToUser(shiftToDelete.userId, {
-      title: 'Vagt slettet',
-      body: `${shiftToDelete.workType.name} - ${formatShiftTime(
-        shiftToDelete.startTime,
-        shiftToDelete.endTime,
-      )}`,
-      url: '/my-shifts',
-    });
+    await pushService.sendToUserInCinema(
+      shiftToDelete.userId,
+      shiftToDelete.cinemaId,
+      {
+        title: 'Vagt slettet',
+        body: `${shiftToDelete.workType.name} - ${formatShiftTime(
+          shiftToDelete.startTime,
+          shiftToDelete.endTime,
+        )}`,
+        url: '/my-shifts',
+      },
+    );
   }
 
   return shift;

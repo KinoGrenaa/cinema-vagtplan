@@ -17,33 +17,70 @@ export class PushService {
     this.pushEnabled = configureWebPush();
   }
 
-  async saveSubscription(data: SavePushSubscriptionInput) {
+  async saveSubscription(
+    data: SavePushSubscriptionInput,
+  ) {
     return savePushSubscription(this.prisma, data);
   }
 
-  async sendToUser(userId: number, payload: PushPayload) {
+  async sendToUser(
+    userId: number,
+    payload: PushPayload,
+  ) {
+    return this.sendToSubscriptions(
+      {
+        userId,
+      },
+      payload,
+    );
+  }
+
+  async sendToUserInCinema(
+    userId: number,
+    cinemaId: number,
+    payload: PushPayload,
+  ) {
+    return this.sendToSubscriptions(
+      {
+        userId,
+        cinemaId,
+      },
+      payload,
+    );
+  }
+
+  private async sendToSubscriptions(
+    where: {
+      userId: number;
+      cinemaId?: number;
+    },
+    payload: PushPayload,
+  ) {
     if (!this.pushEnabled) {
       return {
         sent: 0,
         skipped: true,
-        reason: 'Push notifications are disabled because VAPID keys are missing',
+        reason:
+          'Push notifications are disabled because VAPID keys are missing',
       };
     }
 
-    const subscriptions = await this.prisma.pushSubscription.findMany({
-      where: {
-        userId,
-      },
-    });
+    const subscriptions =
+      await this.prisma.pushSubscription.findMany({
+        where,
+      });
 
-    await sendPushNotificationsToSubscriptions(subscriptions, payload, (endpoint) =>
-      this.prisma.pushSubscription
-        .delete({
-          where: {
-            endpoint,
-          },
-        })
-        .catch(() => null),
+    await sendPushNotificationsToSubscriptions(
+      subscriptions,
+      payload,
+      (endpoint) =>
+        this.prisma.pushSubscription
+          .delete({
+            where: {
+              endpoint,
+            },
+          })
+          .catch(() => null),
     );
 
     return {
@@ -51,7 +88,9 @@ export class PushService {
     };
   }
 
-  async deleteSubscriptionsForUser(userId: number) {
+  async deleteSubscriptionsForUser(
+    userId: number,
+  ) {
     return this.prisma.pushSubscription.deleteMany({
       where: {
         userId,

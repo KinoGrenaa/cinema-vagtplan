@@ -111,14 +111,18 @@ export async function createShiftFlow({
   );
 
   if (assignedUserId) {
-    await pushService.sendToUser(assignedUserId, {
-      title: 'Ny vagt',
-      body: `${shift.workType.name} - ${formatShiftTime(
-        startTime,
-        endTime,
-      )}`,
-      url: '/my-shifts',
-    });
+    await pushService.sendToUserInCinema(
+      assignedUserId,
+      shift.cinemaId,
+      {
+        title: 'Ny vagt',
+        body: `${shift.workType.name} - ${formatShiftTime(
+          startTime,
+          endTime,
+        )}`,
+        url: '/my-shifts',
+      },
+    );
   }
 
   return shift;

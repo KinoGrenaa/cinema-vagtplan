@@ -23,18 +23,25 @@ export async function updateShiftFlow({
   realtimeGateway: RealtimeGateway;
   pushService: PushService;
   auditLogsService: AuditLogsService;
-  formatShiftTime: (startTime: Date, endTime: Date) => string;
+  formatShiftTime: (
+    startTime: Date,
+    endTime: Date,
+  ) => string;
   user: AuthUser;
   id: number;
   data: ShiftWriteData;
 }) {
-  const { oldShift, assignedUserId, startTime, endTime } =
-    await getShiftUpdateContext({
-      prisma,
-      user,
-      id,
-      data,
-    });
+  const {
+    oldShift,
+    assignedUserId,
+    startTime,
+    endTime,
+  } = await getShiftUpdateContext({
+    prisma,
+    user,
+    id,
+    data,
+  });
 
   const shift = await prisma.shift.update({
     where: {
@@ -62,29 +69,55 @@ export async function updateShiftFlow({
       oldShift.endTime,
     )} til ${getShiftUserLabel(shift)}: ${
       shift.workType.name
-    } - ${formatShiftTime(shift.startTime, shift.endTime)}`,
+    } - ${formatShiftTime(
+      shift.startTime,
+      shift.endTime,
+    )}`,
     userId: user.sub,
     cinemaId: shift.cinemaId,
   });
 
-  realtimeGateway.notifyCinema(shift.cinemaId, 'shiftsUpdated', shift);
+  realtimeGateway.notifyCinema(
+    shift.cinemaId,
+    'shiftsUpdated',
+    shift,
+  );
 
   if (assignedUserId) {
-    await pushService.sendToUser(assignedUserId, {
-      title: oldShift.userId === assignedUserId ? 'Vagt ændret' : 'Vagt tildelt',
-      body: `${shift.workType.name} - ${formatShiftTime(startTime, endTime)}`,
-      url: '/my-shifts',
-    });
+    await pushService.sendToUserInCinema(
+      assignedUserId,
+      shift.cinemaId,
+      {
+        title:
+          oldShift.userId === assignedUserId
+            ? 'Vagt ændret'
+            : 'Vagt tildelt',
+        body: `${shift.workType.name} - ${formatShiftTime(
+          startTime,
+          endTime,
+        )}`,
+        url: '/my-shifts',
+      },
+    );
   }
 
-  if (oldShift.userId && oldShift.userId !== assignedUserId) {
-    await pushService.sendToUser(oldShift.userId, {
-      title: assignedUserId ? 'Vagt fjernet' : 'Vagt ikke længere tildelt',
-      body: assignedUserId
-        ? 'En vagt er blevet flyttet til en anden medarbejder.'
-        : 'En vagt er blevet fjernet fra din vagtplan.',
-      url: '/my-shifts',
-    });
+  if (
+    oldShift.userId &&
+    oldShift.userId !== assignedUserId
+  ) {
+    await pushService.sendToUserInCinema(
+      oldShift.userId,
+      shift.cinemaId,
+      {
+        title: assignedUserId
+          ? 'Vagt fjernet'
+          : 'Vagt ikke længere tildelt',
+        body: assignedUserId
+          ? 'En vagt er blevet flyttet til en anden medarbejder.'
+          : 'En vagt er blevet fjernet fra din vagtplan.',
+        url: '/my-shifts',
+      },
+    );
   }
 
   return shift;
