@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Post,
   Req,
   UseGuards,
@@ -13,7 +14,10 @@ import { PushSubscriptionsService } from './push-subscriptions.service';
 function getRequiredCinemaId(req: any) {
   const cinemaId = Number(req.user?.cinemaId);
 
-  if (!Number.isFinite(cinemaId) || cinemaId <= 0) {
+  if (
+    !Number.isInteger(cinemaId) ||
+    cinemaId <= 0
+  ) {
     throw new BadRequestException(
       'Vælg en biograf, før du aktiverer push-notifikationer.',
     );
@@ -24,17 +28,37 @@ function getRequiredCinemaId(req: any) {
 
 @Controller('push-subscriptions')
 export class PushSubscriptionsController {
-  constructor(private pushSubscriptionsService: PushSubscriptionsService) {}
+  constructor(
+    private pushSubscriptionsService: PushSubscriptionsService,
+  ) {}
 
   @UseGuards(JwtGuard)
   @Post()
-  async create(@Req() req: any, @Body() body: any) {
+  create(
+    @Req() req: any,
+    @Body() body: any,
+  ) {
     return this.pushSubscriptionsService.create(
       {
         id: req.user.sub,
+        role: req.user.role,
         cinemaId: getRequiredCinemaId(req),
       },
       body,
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Delete()
+  delete(
+    @Req() req: any,
+    @Body() body: any,
+  ) {
+    return this.pushSubscriptionsService.deleteByEndpoint(
+      {
+        id: req.user.sub,
+      },
+      body?.endpoint,
     );
   }
 }
