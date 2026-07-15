@@ -179,11 +179,15 @@ export async function createShiftTrade(
         linkUrl: '/my-shifts',
       });
 
-      await push.sendToUser(trade.targetUserId, {
-        title: 'Ny direkte vagt',
-        body: 'Du har fået tilbudt en vagt direkte',
-        url: '/my-shifts',
-      });
+      await push.sendToUserInCinema(
+        trade.targetUserId,
+        trade.cinemaId,
+        {
+          title: 'Ny direkte vagt',
+          body: 'Du har fået tilbudt en vagt direkte',
+          url: '/my-shifts',
+        },
+      );
     }
   }
 

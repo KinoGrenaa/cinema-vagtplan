@@ -115,11 +115,15 @@ export async function rejectShiftTrade(
       linkUrl: '/my-shifts',
     });
 
-    await push.sendToUser(trade.offeredByUserId, {
-      title: 'Vagt afvist',
-      body: 'Din tilbudte vagt blev afvist',
-      url: '/my-shifts',
-    });
+    await push.sendToUserInCinema(
+      trade.offeredByUserId,
+      trade.cinemaId,
+      {
+        title: 'Vagt afvist',
+        body: 'Din tilbudte vagt blev afvist',
+        url: '/my-shifts',
+      },
+    );
   }
 
   return trade;

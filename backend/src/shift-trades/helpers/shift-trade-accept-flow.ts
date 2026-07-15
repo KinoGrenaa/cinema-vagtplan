@@ -100,11 +100,15 @@ export async function acceptShiftTrade(
     linkUrl: '/my-shifts',
   });
 
-  await push.sendToUser(trade.offeredByUserId, {
-    title: 'Vagt accepteret',
-    body: 'Din tilbudte vagt blev accepteret',
-    url: '/my-shifts',
-  });
+  await push.sendToUserInCinema(
+    trade.offeredByUserId,
+    trade.cinemaId,
+    {
+      title: 'Vagt accepteret',
+      body: 'Din tilbudte vagt blev accepteret',
+      url: '/my-shifts',
+    },
+  );
 
   realtime.notifyCinema(
     trade.cinemaId,
