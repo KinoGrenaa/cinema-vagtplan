@@ -1,7 +1,12 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-
+import {
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { calculatePayrollPeriodForDate } from './payroll-periods';
+import {
+  calculatePayrollPeriodForDate,
+  getPeriodDates,
+} from './payroll-periods';
 import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
@@ -13,8 +18,10 @@ export async function resolvePayrollPeriodForDate(
   referenceDate: string,
   selectedCinemaId?: number | null,
 ) {
-  const cinemaId = getPayrollCinemaFilter(user, selectedCinemaId).cinemaId;
-
+  const cinemaId = getPayrollCinemaFilter(
+    user,
+    selectedCinemaId,
+  ).cinemaId;
   const reference = new Date(`${referenceDate}T00:00:00.000Z`);
 
   if (Number.isNaN(reference.getTime())) {
@@ -40,24 +47,25 @@ export async function findPayrollPeriodEntityForDate(
   referenceDate: Date,
 ) {
   const cinema = await prisma.cinema.findUnique({
-    where: { id: cinemaId },
+    where: {
+      id: cinemaId,
+    },
   });
 
   if (!cinema) {
     throw new NotFoundException('Biograf blev ikke fundet');
   }
 
-  const { startDate, endDate } = calculatePayrollPeriodForDate(
-    cinema,
-    referenceDate,
-  );
+  const { startDate, endDate } =
+    calculatePayrollPeriodForDate(cinema, referenceDate);
+  const periodDates = getPeriodDates(startDate, endDate);
 
   return prisma.payrollPeriod.findUnique({
     where: {
       cinemaId_startDate_endDate: {
         cinemaId,
-        startDate: new Date(`${startDate}T00:00:00`),
-        endDate: new Date(`${endDate}T23:59:59`),
+        startDate: periodDates.start,
+        endDate: periodDates.end,
       },
     },
   });
@@ -67,7 +75,11 @@ export async function findCurrentPayrollPeriodEntity(
   prisma: PrismaService,
   cinemaId: number,
 ) {
-  return findPayrollPeriodEntityForDate(prisma, cinemaId, new Date());
+  return findPayrollPeriodEntityForDate(
+    prisma,
+    cinemaId,
+    new Date(),
+  );
 }
 
 export async function getPayrollRulesEnabled(
@@ -75,8 +87,10 @@ export async function getPayrollRulesEnabled(
   user: PayrollAuthUser,
   selectedCinemaId?: number | null,
 ): Promise<boolean> {
-  const cinemaId = getPayrollCinemaFilter(user, selectedCinemaId).cinemaId;
-
+  const cinemaId = getPayrollCinemaFilter(
+    user,
+    selectedCinemaId,
+  ).cinemaId;
   const cinema = await prisma.cinema.findUnique({
     where: {
       id: cinemaId,

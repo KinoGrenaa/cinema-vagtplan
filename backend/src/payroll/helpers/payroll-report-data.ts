@@ -1,5 +1,6 @@
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  getPayrollPeriodTimeRange,
   getPayrollReferenceDateFilters,
   getPeriodDates,
 } from './payroll-periods';
@@ -24,7 +25,11 @@ export async function buildPayrollReportData(
   selectedCinemaId?: number | null,
 ) {
   ensurePayrollAccess(user);
-  const { start, end } = getPeriodDates(startDate, endDate);
+  const periodDates = getPeriodDates(startDate, endDate);
+  const timeRange = getPayrollPeriodTimeRange(
+    startDate,
+    endDate,
+  );
   const cinemaFilter = getPayrollCinemaFilter(
     user,
     selectedCinemaId,
@@ -38,12 +43,15 @@ export async function buildPayrollReportData(
       },
       status: 'APPROVED',
       OR: [
-        ...getPayrollReferenceDateFilters(start, end),
+        ...getPayrollReferenceDateFilters(
+          timeRange.start,
+          timeRange.endExclusive,
+        ),
         {
           isPayrollAdjustment: true,
           adjustmentPayrollPeriod: {
-            startDate: start,
-            endDate: end,
+            startDate: periodDates.start,
+            endDate: periodDates.end,
           },
         },
       ],
@@ -79,7 +87,7 @@ export async function buildPayrollReportData(
             settlementPayrollPeriodId: null,
             originalPayrollPeriod: {
               endDate: {
-                lt: start,
+                lt: periodDates.start,
               },
             },
           },
@@ -88,8 +96,8 @@ export async function buildPayrollReportData(
               in: ['PENDING', 'INCLUDED'],
             },
             settlementPayrollPeriod: {
-              startDate: start,
-              endDate: end,
+              startDate: periodDates.start,
+              endDate: periodDates.end,
             },
           },
         ],
@@ -121,7 +129,10 @@ export async function buildPayrollReportData(
     where: {
       ...cinemaFilter,
       ...(userId ? { userId: Number(userId) } : {}),
-      OR: getPayrollReferenceDateFilters(start, end),
+      OR: getPayrollReferenceDateFilters(
+        timeRange.start,
+        timeRange.endExclusive,
+      ),
       clockOut: {
         not: null,
       },
@@ -134,7 +145,10 @@ export async function buildPayrollReportData(
     where: {
       ...cinemaFilter,
       ...(userId ? { userId: Number(userId) } : {}),
-      OR: getPayrollReferenceDateFilters(start, end),
+      OR: getPayrollReferenceDateFilters(
+        timeRange.start,
+        timeRange.endExclusive,
+      ),
       clockOut: {
         not: null,
       },

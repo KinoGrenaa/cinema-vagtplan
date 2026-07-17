@@ -6,6 +6,7 @@ import {
 } from './payroll-access';
 import { includePendingPayrollAdjustmentsInPeriod } from './payroll-adjustment-export';
 import {
+  getPayrollPeriodTimeRange,
   getPayrollReferenceDateFilters,
   getPeriodDates,
 } from './payroll-periods';
@@ -23,12 +24,18 @@ export async function ensurePayrollEntriesApproved(
   userId?: string,
   selectedCinemaId?: number | null,
 ) {
-  const { start, end } = getPeriodDates(startDate, endDate);
+  const timeRange = getPayrollPeriodTimeRange(
+    startDate,
+    endDate,
+  );
   const unresolvedEntries = await prisma.timeEntry.findMany({
     where: {
       ...getPayrollCinemaFilter(user, selectedCinemaId),
       ...(userId ? { userId: Number(userId) } : {}),
-      OR: getPayrollReferenceDateFilters(start, end),
+      OR: getPayrollReferenceDateFilters(
+        timeRange.start,
+        timeRange.endExclusive,
+      ),
       clockOut: {
         not: null,
       },
@@ -70,7 +77,11 @@ export async function markPayrollPeriodAsExported(
 ) {
   if (userId) return;
 
-  const { start, end } = getPeriodDates(startDate, endDate);
+  const periodDates = getPeriodDates(startDate, endDate);
+  const timeRange = getPayrollPeriodTimeRange(
+    startDate,
+    endDate,
+  );
   const cinemaId = getPayrollCinemaFilter(
     user,
     selectedCinemaId,
@@ -81,8 +92,8 @@ export async function markPayrollPeriodAsExported(
     const existingPeriod = await tx.payrollPeriod.findFirst({
       where: {
         cinemaId,
-        startDate: start,
-        endDate: end,
+        startDate: periodDates.start,
+        endDate: periodDates.end,
       },
     });
     const period = existingPeriod
@@ -105,8 +116,8 @@ export async function markPayrollPeriodAsExported(
       : await tx.payrollPeriod.create({
           data: {
             cinemaId,
-            startDate: start,
-            endDate: end,
+            startDate: periodDates.start,
+            endDate: periodDates.end,
             status: 'EXPORTED',
             lockedAt: now,
             lockedByUserId: user.sub,
@@ -126,7 +137,10 @@ export async function markPayrollPeriodAsExported(
     const entries = await tx.timeEntry.findMany({
       where: {
         cinemaId,
-        OR: getPayrollReferenceDateFilters(start, end),
+        OR: getPayrollReferenceDateFilters(
+          timeRange.start,
+          timeRange.endExclusive,
+        ),
         clockOut: {
           not: null,
         },
@@ -170,7 +184,7 @@ export async function markPayrollPeriodAsExported(
     await includePendingPayrollAdjustmentsInPeriod(tx, {
       cinemaId,
       payrollPeriodId: period.id,
-      periodStart: start,
+      periodStart: periodDates.start,
       includedAt: now,
       changedByUserId: user.sub,
     });

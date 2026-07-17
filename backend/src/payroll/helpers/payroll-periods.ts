@@ -1,6 +1,8 @@
 type PayrollReferenceEntry = {
   clockIn: Date;
-  shift?: { startTime: Date } | null;
+  shift?: {
+    startTime: Date;
+  } | null;
 };
 
 type PayrollPeriodCinema = {
@@ -10,10 +12,164 @@ type PayrollPeriodCinema = {
   payrollPeriodEndDay?: number | null;
 };
 
-export function getPeriodDates(startDate: string, endDate: string) {
+const COPENHAGEN_TIME_ZONE = 'Europe/Copenhagen';
+
+const copenhagenDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: COPENHAGEN_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const copenhagenDateTimeFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: COPENHAGEN_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+type DateParts = {
+  year: number;
+  month: number;
+  day: number;
+};
+
+function getDateTimePart(
+  parts: Intl.DateTimeFormatPart[],
+  type: Intl.DateTimeFormatPartTypes,
+) {
+  const value = Number(parts.find((part) => part.type === type)?.value);
+
+  if (!Number.isInteger(value)) {
+    throw new Error(`Kunne ikke beregne dansk lønperiodegrænse: ${type}`);
+  }
+
+  return value;
+}
+
+function parseDateString(dateString: string): DateParts {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+
+  if (!match) {
+    throw new Error('Ugyldig lønperiodedato');
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    throw new Error('Ugyldig lønperiodedato');
+  }
+
   return {
-    start: new Date(`${startDate}T00:00:00.000Z`),
-    end: new Date(`${endDate}T23:59:59.999Z`),
+    year,
+    month,
+    day,
+  };
+}
+
+function getCopenhagenOffsetMilliseconds(date: Date) {
+  const parts = copenhagenDateTimeFormatter.formatToParts(date);
+  const formattedAsUtc = Date.UTC(
+    getDateTimePart(parts, 'year'),
+    getDateTimePart(parts, 'month') - 1,
+    getDateTimePart(parts, 'day'),
+    getDateTimePart(parts, 'hour'),
+    getDateTimePart(parts, 'minute'),
+    getDateTimePart(parts, 'second'),
+  );
+  const dateWithoutMilliseconds =
+    Math.floor(date.getTime() / 1000) * 1000;
+
+  return formattedAsUtc - dateWithoutMilliseconds;
+}
+
+function getCopenhagenDayStart(parts: DateParts) {
+  const utcGuess = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day),
+  );
+  const offsetMilliseconds =
+    getCopenhagenOffsetMilliseconds(utcGuess);
+
+  return new Date(utcGuess.getTime() - offsetMilliseconds);
+}
+
+function addCalendarDays(parts: DateParts, days: number): DateParts {
+  const date = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day + days),
+  );
+
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+}
+
+/**
+ * Database keys remain UTC calendar-date markers.
+ * Do not use these values as the actual Copenhagen time boundaries.
+ */
+export function getPeriodDates(
+  startDate: string,
+  endDate: string,
+) {
+  const startParts = parseDateString(startDate);
+  const endParts = parseDateString(endDate);
+
+  return {
+    start: new Date(
+      Date.UTC(
+        startParts.year,
+        startParts.month - 1,
+        startParts.day,
+        0,
+        0,
+        0,
+        0,
+      ),
+    ),
+    end: new Date(
+      Date.UTC(
+        endParts.year,
+        endParts.month - 1,
+        endParts.day,
+        23,
+        59,
+        59,
+        999,
+      ),
+    ),
+  };
+}
+
+/**
+ * Actual instants used for shift/time-entry filtering.
+ * The end is exclusive so adjacent payroll periods cannot overlap.
+ */
+export function getPayrollPeriodTimeRange(
+  startDate: string,
+  endDate: string,
+) {
+  const startParts = parseDateString(startDate);
+  const endExclusiveParts = addCalendarDays(
+    parseDateString(endDate),
+    1,
+  );
+
+  return {
+    start: getCopenhagenDayStart(startParts),
+    endExclusive: getCopenhagenDayStart(endExclusiveParts),
   };
 }
 
@@ -26,13 +182,7 @@ function dateToDateString(date: Date) {
 }
 
 export function dateToCopenhagenDateString(date: Date) {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Copenhagen',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-
+  const parts = copenhagenDateFormatter.formatToParts(date);
   const year = parts.find((part) => part.type === 'year')?.value;
   const month = parts.find((part) => part.type === 'month')?.value;
   const day = parts.find((part) => part.type === 'day')?.value;
@@ -44,18 +194,23 @@ export function dateToCopenhagenDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export function getPayrollReferenceDate(entry: PayrollReferenceEntry) {
+export function getPayrollReferenceDate(
+  entry: PayrollReferenceEntry,
+) {
   return entry.shift?.startTime ?? entry.clockIn;
 }
 
-export function getPayrollReferenceDateFilters(start: Date, end: Date) {
+export function getPayrollReferenceDateFilters(
+  start: Date,
+  endExclusive: Date,
+) {
   return [
     {
       shift: {
         is: {
           startTime: {
             gte: start,
-            lte: end,
+            lt: endExclusive,
           },
         },
       },
@@ -64,13 +219,17 @@ export function getPayrollReferenceDateFilters(start: Date, end: Date) {
       shiftId: null,
       clockIn: {
         gte: start,
-        lte: end,
+        lt: endExclusive,
       },
     },
   ];
 }
 
-function createUtcDate(year: number, month: number, day: number) {
+function createUtcDate(
+  year: number,
+  month: number,
+  day: number,
+) {
   return new Date(Date.UTC(year, month, day));
 }
 
@@ -87,7 +246,10 @@ function getDaysInMonth(year: number, month: number) {
 }
 
 function clampDay(year: number, month: number, day: number) {
-  return Math.min(Math.max(day, 1), getDaysInMonth(year, month));
+  return Math.min(
+    Math.max(day, 1),
+    getDaysInMonth(year, month),
+  );
 }
 
 export function calculatePayrollPeriodForDate(
@@ -95,11 +257,13 @@ export function calculatePayrollPeriodForDate(
   referenceDate: Date,
 ) {
   const model = cinema.payrollPeriodModel || 'CALENDAR_MONTH';
-
+  const referenceParts = parseDateString(
+    dateToCopenhagenDateString(referenceDate),
+  );
   const reference = createUtcDate(
-    referenceDate.getUTCFullYear(),
-    referenceDate.getUTCMonth(),
-    referenceDate.getUTCDate(),
+    referenceParts.year,
+    referenceParts.month - 1,
+    referenceParts.day,
   );
 
   if (model === 'CALENDAR_MONTH') {
@@ -108,7 +272,6 @@ export function calculatePayrollPeriodForDate(
       reference.getUTCMonth(),
       1,
     );
-
     const end = createUtcDate(
       reference.getUTCFullYear(),
       reference.getUTCMonth() + 1,
@@ -133,13 +296,13 @@ export function calculatePayrollPeriodForDate(
           reference.getUTCMonth(),
           1,
         );
-
-    const msPerDay = 24 * 60 * 60 * 1000;
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
     const daysSinceAnchor = Math.floor(
-      (reference.getTime() - anchor.getTime()) / msPerDay,
+      (reference.getTime() - anchor.getTime()) /
+        millisecondsPerDay,
     );
-
-    const cycleOffset = Math.floor(daysSinceAnchor / 14) * 14;
+    const cycleOffset =
+      Math.floor(daysSinceAnchor / 14) * 14;
     const start = addDays(anchor, cycleOffset);
     const end = addDays(start, 13);
 
@@ -151,20 +314,26 @@ export function calculatePayrollPeriodForDate(
 
   const startDay = cinema.payrollPeriodStartDay || 1;
   const endDay = cinema.payrollPeriodEndDay || 31;
-
   const referenceDay = reference.getUTCDate();
 
   if (startDay <= endDay) {
     const start = createUtcDate(
       reference.getUTCFullYear(),
       reference.getUTCMonth(),
-      clampDay(reference.getUTCFullYear(), reference.getUTCMonth(), startDay),
+      clampDay(
+        reference.getUTCFullYear(),
+        reference.getUTCMonth(),
+        startDay,
+      ),
     );
-
     const end = createUtcDate(
       reference.getUTCFullYear(),
       reference.getUTCMonth(),
-      clampDay(reference.getUTCFullYear(), reference.getUTCMonth(), endDay),
+      clampDay(
+        reference.getUTCFullYear(),
+        reference.getUTCMonth(),
+        endDay,
+      ),
     );
 
     return {
@@ -175,29 +344,33 @@ export function calculatePayrollPeriodForDate(
 
   const startMonthOffset = referenceDay >= startDay ? 0 : -1;
   const endMonthOffset = referenceDay >= startDay ? 1 : 0;
-
   const startMonth = createUtcDate(
     reference.getUTCFullYear(),
     reference.getUTCMonth() + startMonthOffset,
     1,
   );
-
   const endMonth = createUtcDate(
     reference.getUTCFullYear(),
     reference.getUTCMonth() + endMonthOffset,
     1,
   );
-
   const start = createUtcDate(
     startMonth.getUTCFullYear(),
     startMonth.getUTCMonth(),
-    clampDay(startMonth.getUTCFullYear(), startMonth.getUTCMonth(), startDay),
+    clampDay(
+      startMonth.getUTCFullYear(),
+      startMonth.getUTCMonth(),
+      startDay,
+    ),
   );
-
   const end = createUtcDate(
     endMonth.getUTCFullYear(),
     endMonth.getUTCMonth(),
-    clampDay(endMonth.getUTCFullYear(), endMonth.getUTCMonth(), endDay),
+    clampDay(
+      endMonth.getUTCFullYear(),
+      endMonth.getUTCMonth(),
+      endDay,
+    ),
   );
 
   return {
