@@ -15,26 +15,26 @@ import { buildPayrollUnicontaCsvExport } from './payroll-uniconta-export';
 import { buildPayrollXlsxExport } from './payroll-xlsx-export';
 import { getPayrollRulesEnabled } from './payroll-period-queries';
 
-async function buildExportReport(
-  prisma: PrismaService,
-  user: PayrollAuthUser,
-  startDate: string,
-  endDate: string,
-  userId?: string,
-  selectedCinemaId?: number | null,
-) {
+type PayrollExportParams = {
+  prisma: PrismaService;
+  user: PayrollAuthUser;
+  startDate: string;
+  endDate: string;
+  userId?: string;
+  selectedCinemaId?: number | null;
+};
+
+async function preparePayrollExportReport({
+  prisma,
+  user,
+  startDate,
+  endDate,
+  userId,
+  selectedCinemaId,
+}: PayrollExportParams) {
   ensurePayrollExportAccess(user);
 
   await ensurePayrollEntriesApproved(
-    prisma,
-    user,
-    startDate,
-    endDate,
-    userId,
-    selectedCinemaId,
-  );
-
-  await markPayrollPeriodAsExported(
     prisma,
     user,
     startDate,
@@ -53,6 +53,24 @@ async function buildExportReport(
   );
 }
 
+async function finalizePayrollExport({
+  prisma,
+  user,
+  startDate,
+  endDate,
+  userId,
+  selectedCinemaId,
+}: PayrollExportParams) {
+  await markPayrollPeriodAsExported(
+    prisma,
+    user,
+    startDate,
+    endDate,
+    userId,
+    selectedCinemaId,
+  );
+}
+
 export async function exportPayrollCsvFlow(
   prisma: PrismaService,
   user: PayrollAuthUser,
@@ -61,16 +79,20 @@ export async function exportPayrollCsvFlow(
   userId?: string,
   selectedCinemaId?: number | null,
 ) {
-  const report = await buildExportReport(
+  const params = {
     prisma,
     user,
     startDate,
     endDate,
     userId,
     selectedCinemaId,
-  );
+  };
+  const report = await preparePayrollExportReport(params);
+  const csv = buildPayrollCsvExport(report);
 
-  return buildPayrollCsvExport(report);
+  await finalizePayrollExport(params);
+
+  return csv;
 }
 
 export async function exportPayrollUnicontaCsvFlow(
@@ -82,24 +104,29 @@ export async function exportPayrollUnicontaCsvFlow(
   userId?: string,
   selectedCinemaId?: number | null,
 ) {
-  const report = await buildExportReport(
+  const params = {
     prisma,
     user,
     startDate,
     endDate,
     userId,
     selectedCinemaId,
-  );
-
+  };
+  const report = await preparePayrollExportReport(params);
   const usePayrollRules = await getPayrollRulesEnabled(
     prisma,
     user,
     selectedCinemaId,
   );
-
-  return buildPayrollUnicontaCsvExport(report, usePayrollRules, (entry) =>
-    payrollRulesService.calculateSegments(entry),
+  const csv = buildPayrollUnicontaCsvExport(
+    report,
+    usePayrollRules,
+    (entry) => payrollRulesService.calculateSegments(entry),
   );
+
+  await finalizePayrollExport(params);
+
+  return csv;
 }
 
 export async function exportPayrollXlsxFlow(
@@ -110,16 +137,20 @@ export async function exportPayrollXlsxFlow(
   userId?: string,
   selectedCinemaId?: number | null,
 ) {
-  const report = await buildExportReport(
+  const params = {
     prisma,
     user,
     startDate,
     endDate,
     userId,
     selectedCinemaId,
-  );
+  };
+  const report = await preparePayrollExportReport(params);
+  const buffer = await buildPayrollXlsxExport(report);
 
-  return buildPayrollXlsxExport(report);
+  await finalizePayrollExport(params);
+
+  return buffer;
 }
 
 export async function exportPayrollPdfFlow(
@@ -130,14 +161,22 @@ export async function exportPayrollPdfFlow(
   userId?: string,
   selectedCinemaId?: number | null,
 ): Promise<Buffer> {
-  const report = await buildExportReport(
+  const params = {
     prisma,
     user,
     startDate,
     endDate,
     userId,
     selectedCinemaId,
+  };
+  const report = await preparePayrollExportReport(params);
+  const buffer = await buildPayrollPdfExport(
+    report,
+    startDate,
+    endDate,
   );
 
-  return buildPayrollPdfExport(report, startDate, endDate);
+  await finalizePayrollExport(params);
+
+  return buffer;
 }
