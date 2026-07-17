@@ -1,5 +1,23 @@
 import { PrismaService } from '../../prisma/prisma.service';
 
+export function buildAcceptedStaffingRequestAdminFilter(cinemaId: number) {
+  return {
+    role: 'ADMIN' as const,
+    isActive: true,
+    OR: [
+      { cinemaId },
+      {
+        cinemaMemberships: {
+          some: {
+            cinemaId,
+            isActive: true,
+          },
+        },
+      },
+    ],
+  };
+}
+
 export async function createStaffingRequestAcceptedNotifications(
   prisma: PrismaService,
   cinemaId: number,
@@ -7,14 +25,8 @@ export async function createStaffingRequestAcceptedNotifications(
   acceptedByEmail: string,
 ) {
   const admins = await prisma.user.findMany({
-    where: {
-      cinemaId,
-      role: 'ADMIN',
-      isActive: true,
-    },
-    select: {
-      id: true,
-    },
+    where: buildAcceptedStaffingRequestAdminFilter(cinemaId),
+    select: { id: true },
   });
 
   if (admins.length === 0) return;
