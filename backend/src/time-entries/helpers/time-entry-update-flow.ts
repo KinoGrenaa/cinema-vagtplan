@@ -1,5 +1,4 @@
 import { ConflictException } from '@nestjs/common';
-
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PayrollService } from '../../payroll/payroll.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -8,6 +7,7 @@ import {
   ensureTimeEntryEditable,
   ensureUserCanAccessTimeEntry,
 } from './time-entry-access';
+import { getTimeEntryEditPayrollContext } from './time-entry-edit-payroll-context';
 import { createEditAfterExportPayrollAdjustmentIfNeeded } from './time-entry-exported-payroll-adjustments';
 import { getTimeEntryResponseInclude } from './time-entry-includes';
 import {
@@ -38,37 +38,6 @@ type AdminTimeEntryUpdateData = {
   confirmPayrollAdjustment?: boolean;
 };
 
-async function getExportedPayrollEditContext({
-  prisma,
-  payrollService,
-  existingEntry,
-}: {
-  prisma: PrismaService;
-  payrollService: PayrollService;
-  existingEntry: any;
-}) {
-  const originalPayrollPeriod = existingEntry.payrollPeriodId
-    ? await prisma.payrollPeriod.findUnique({
-        where: { id: existingEntry.payrollPeriodId },
-      })
-    : await payrollService.getPayrollPeriodEntityForDate(
-        existingEntry.cinemaId,
-        existingEntry.clockIn,
-      );
-
-  if (originalPayrollPeriod?.status !== 'EXPORTED') {
-    return null;
-  }
-
-  const adjustmentPayrollPeriod =
-    await payrollService.getCurrentPayrollPeriodEntity(existingEntry.cinemaId);
-
-  return {
-    originalPayrollPeriod,
-    adjustmentPayrollPeriod,
-  };
-}
-
 export async function updateOwnTimeEntry(params: {
   prisma: PrismaService;
   payrollService: PayrollService;
@@ -87,12 +56,12 @@ export async function updateOwnTimeEntry(params: {
     id,
     data,
   } = params;
-  const existingEntry = await findTimeEntryWithUserCinemaShiftOrThrow(
-    prisma,
-    id,
-  );
+  const existingEntry =
+    await findTimeEntryWithUserCinemaShiftOrThrow(prisma, id);
+
   ensureOwnTimeEntryCanBeUpdated(user, existingEntry);
   ensureTimeEntryEditable(existingEntry, user);
+
   const {
     newClockIn,
     newClockOut,
@@ -100,8 +69,11 @@ export async function updateOwnTimeEntry(params: {
     newClockOutNote,
     changes,
   } = getOwnTimeEntryUpdateContext(existingEntry, data);
+
   const entry = await prisma.timeEntry.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       clockIn: newClockIn,
       clockOut: newClockOut,
@@ -111,6 +83,7 @@ export async function updateOwnTimeEntry(params: {
     },
     include: getTimeEntryResponseInclude(),
   });
+
   await createEditAfterExportPayrollAdjustmentIfNeeded({
     prisma,
     payrollService,
@@ -119,6 +92,7 @@ export async function updateOwnTimeEntry(params: {
     reason: 'Tidsregistrering rettet af medarbejderen',
     changedByUserId: user.sub,
   });
+
   await recordOwnTimeEntryUpdated({
     prisma,
     auditLogsService,
@@ -127,6 +101,7 @@ export async function updateOwnTimeEntry(params: {
     user,
     changes,
   });
+
   return notifyTimeEntryUpdated(realtimeGateway, entry);
 }
 
@@ -150,22 +125,31 @@ export async function updateAdminTimeEntry(params: {
     data,
     selectedCinemaId,
   } = params;
-  const existingEntry = await findTimeEntryWithUserCinemaShiftOrThrow(
-    prisma,
-    id,
+  const existingEntry =
+    await findTimeEntryWithUserCinemaShiftOrThrow(prisma, id);
+
+  ensureUserCanAccessTimeEntry(
+    user,
+    existingEntry,
+    selectedCinemaId,
   );
-  ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
   ensureTimeEntryEditable(existingEntry, user);
 
-  const exportedPayrollContext = await getExportedPayrollEditContext({
-    prisma,
-    payrollService,
-    existingEntry,
-  });
+  const exportedPayrollContext =
+    await getTimeEntryEditPayrollContext({
+      prisma,
+      payrollService,
+      existingEntry,
+    });
 
-  if (exportedPayrollContext && !data.confirmPayrollAdjustment) {
-    const { originalPayrollPeriod, adjustmentPayrollPeriod } =
-      exportedPayrollContext;
+  if (
+    exportedPayrollContext &&
+    !data.confirmPayrollAdjustment
+  ) {
+    const {
+      originalPayrollPeriod,
+      adjustmentPayrollPeriod,
+    } = exportedPayrollContext;
 
     throw new ConflictException({
       code: 'PAYROLL_PERIOD_EXPORTED',
@@ -194,19 +178,25 @@ export async function updateAdminTimeEntry(params: {
     nextClockOutNote,
     changes,
   } = getAdminTimeEntryUpdateContext(existingEntry, data);
+
   const entry = await prisma.timeEntry.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       clockIn: nextClockIn,
       clockOut: nextClockOut,
       clockInNote: nextClockInNote,
       clockOutNote: nextClockOutNote,
       adminNote:
-        data.adminNote === undefined ? existingEntry.adminNote : data.adminNote,
+        data.adminNote === undefined
+          ? existingEntry.adminNote
+          : data.adminNote,
       status: existingEntry.status,
     },
     include: getTimeEntryResponseInclude(),
   });
+
   await createEditAfterExportPayrollAdjustmentIfNeeded({
     prisma,
     payrollService,
@@ -214,8 +204,8 @@ export async function updateAdminTimeEntry(params: {
     entry,
     reason: data.adminNote ?? '',
     changedByUserId: user?.sub ?? null,
-    useLinkedPayrollPeriod: true,
   });
+
   await recordAdminTimeEntryUpdated({
     prisma,
     auditLogsService,
@@ -225,5 +215,6 @@ export async function updateAdminTimeEntry(params: {
     changes,
     adminNote: data.adminNote,
   });
+
   return notifyTimeEntryUpdated(realtimeGateway, entry);
 }

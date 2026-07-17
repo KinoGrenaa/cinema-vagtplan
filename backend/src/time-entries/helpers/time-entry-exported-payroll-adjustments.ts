@@ -1,6 +1,10 @@
 import { PayrollService } from '../../payroll/payroll.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { formatSignedDuration, getEntryMinutes } from './time-entry-deviation';
+import {
+  formatSignedDuration,
+  getEntryMinutes,
+} from './time-entry-deviation';
+import { getTimeEntryEditPayrollContext } from './time-entry-edit-payroll-context';
 import { createOrUpdateTimeEntryPayrollAdjustment } from './time-entry-payroll-adjustments';
 
 type ExportedPayrollAdjustmentContext = {
@@ -16,16 +20,15 @@ async function getOriginalPayrollPeriod({
   prisma,
   payrollService,
   existingEntry,
-  useLinkedPayrollPeriod = false,
 }: Pick<
   ExportedPayrollAdjustmentContext,
   'prisma' | 'payrollService' | 'existingEntry'
-> & {
-  useLinkedPayrollPeriod?: boolean;
-}) {
-  if (useLinkedPayrollPeriod && existingEntry.payrollPeriodId) {
+>) {
+  if (existingEntry.payrollPeriodId) {
     return prisma.payrollPeriod.findUnique({
-      where: { id: existingEntry.payrollPeriodId },
+      where: {
+        id: existingEntry.payrollPeriodId,
+      },
     });
   }
 
@@ -42,40 +45,39 @@ export async function createEditAfterExportPayrollAdjustmentIfNeeded({
   entry,
   reason,
   changedByUserId,
-  useLinkedPayrollPeriod = false,
-}: ExportedPayrollAdjustmentContext & {
-  useLinkedPayrollPeriod?: boolean;
-}) {
-  const payrollPeriod = await getOriginalPayrollPeriod({
+}: ExportedPayrollAdjustmentContext) {
+  const payrollContext = await getTimeEntryEditPayrollContext({
     prisma,
     payrollService,
     existingEntry,
-    useLinkedPayrollPeriod,
   });
 
-  if (payrollPeriod?.status !== 'EXPORTED') {
-    return;
+  if (!payrollContext) {
+    return null;
   }
 
-  const adjustmentPayrollPeriod =
-    await payrollService.getCurrentPayrollPeriodEntity(existingEntry.cinemaId);
-  const exportedMinutes = getEntryMinutes(existingEntry);
   const adjustedMinutes = getEntryMinutes(entry);
 
-  await createOrUpdateTimeEntryPayrollAdjustment(prisma, {
+  return createOrUpdateTimeEntryPayrollAdjustment(prisma, {
     timeEntry: entry,
-    originalPayrollPeriodId: payrollPeriod.id,
-    settlementPayrollPeriodId: adjustmentPayrollPeriod?.id ?? null,
+    originalPayrollPeriodId:
+      payrollContext.originalPayrollPeriod.id,
+    settlementPayrollPeriodId:
+      payrollContext.adjustmentPayrollPeriod?.id ?? null,
     type: 'EDIT_AFTER_EXPORT',
-    exportedMinutes,
+    exportedMinutes: payrollContext.exportedMinutes,
     adjustedMinutes,
-    reason: `Tidsregistrering rettet efter eksport. Tidligere registreret: ${formatSignedDuration(
-      exportedMinutes,
-    ).replace('+', '')}. Ny registrering: ${formatSignedDuration(
-      adjustedMinutes,
-    ).replace('+', '')}. Efterregulering: ${formatSignedDuration(
-      adjustedMinutes - exportedMinutes,
-    )}. Årsag: ${reason}`,
+    reason:
+      'Tidsregistrering rettet efter eksport. ' +
+      `Tidligere registreret: ${formatSignedDuration(
+        payrollContext.exportedMinutes,
+      ).replace('+', '')}. ` +
+      `Ny registrering: ${formatSignedDuration(
+        adjustedMinutes,
+      ).replace('+', '')}. ` +
+      `Efterregulering: ${formatSignedDuration(
+        adjustedMinutes - payrollContext.exportedMinutes,
+      )}. Årsag: ${reason}`,
     changedByUserId,
   });
 }
@@ -99,19 +101,24 @@ export async function createVoidAfterExportPayrollAdjustmentIfNeeded({
   }
 
   const adjustmentPayrollPeriod =
-    await payrollService.getCurrentPayrollPeriodEntity(existingEntry.cinemaId);
+    await payrollService.getCurrentPayrollPeriodEntity(
+      existingEntry.cinemaId,
+    );
   const exportedMinutes = getEntryMinutes(existingEntry);
 
   await createOrUpdateTimeEntryPayrollAdjustment(prisma, {
     timeEntry: entry,
     originalPayrollPeriodId: payrollPeriod.id,
-    settlementPayrollPeriodId: adjustmentPayrollPeriod?.id ?? null,
+    settlementPayrollPeriodId:
+      adjustmentPayrollPeriod?.id ?? null,
     type: 'EDIT_AFTER_EXPORT',
     exportedMinutes,
     adjustedMinutes: 0,
-    reason: `Tidsregistrering annulleret efter eksport. Efterregulering: ${formatSignedDuration(
-      -exportedMinutes,
-    )}. Årsag: ${reason}`,
+    reason:
+      'Tidsregistrering annulleret efter eksport. ' +
+      `Efterregulering: ${formatSignedDuration(
+        -exportedMinutes,
+      )}. Årsag: ${reason}`,
     changedByUserId,
   });
 }
