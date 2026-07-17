@@ -37,6 +37,12 @@ export type PayrollAdjustmentConfirmation =
       entryId: number;
       details: PayrollApprovalConflict;
       action: "UNAPPROVE";
+    }
+  | {
+      entryId: number;
+      adminNote: string;
+      details: PayrollApprovalConflict;
+      action: "VOID";
     };
 
 type PayrollAdjustmentConfirmationModalProps = {
@@ -64,30 +70,39 @@ export default function PayrollAdjustmentConfirmationModal({
 
   const isEdit = confirmation.action === "EDIT";
   const isUnapprove = confirmation.action === "UNAPPROVE";
+  const isVoid = confirmation.action === "VOID";
 
-  const description = isUnapprove
-    ? "Denne tidsregistrering er allerede med i en eksporteret lønperiode."
-    : isEdit
+  const description = isVoid
+    ? "Denne godkendte tidsregistrering er allerede med i en eksporteret lønperiode."
+    : isUnapprove
       ? "Denne tidsregistrering er allerede med i en eksporteret lønperiode."
-      : "Denne tidsregistrering tilhører en lønperiode, der allerede er eksporteret.";
+      : isEdit
+        ? "Denne tidsregistrering er allerede med i en eksporteret lønperiode."
+        : "Denne tidsregistrering tilhører en lønperiode, der allerede er eksporteret.";
 
-  const consequence = isUnapprove
-    ? "Hvis du fortsætter, fjernes godkendelsen, og de eksporterede timer modregnes som en efterregulering."
-    : isEdit
-      ? "Hvis du fortsætter, gemmes rettelsen og oprettes som en efterregulering."
-      : "Hvis du fortsætter, bliver registreringen markeret som efterregulering.";
+  const consequence = isVoid
+    ? "Hvis du fortsætter, afvises registreringen, og de eksporterede timer modregnes som en efterregulering."
+    : isUnapprove
+      ? "Hvis du fortsætter, fjernes godkendelsen, og de eksporterede timer modregnes som en efterregulering."
+      : isEdit
+        ? "Hvis du fortsætter, gemmes rettelsen og oprettes som en efterregulering."
+        : "Hvis du fortsætter, bliver registreringen markeret som efterregulering.";
 
   const confirmText = loading
-    ? isUnapprove
-      ? "Fjerner godkendelse..."
-      : isEdit
-        ? "Gemmer..."
-        : "Godkender..."
-    : isUnapprove
-      ? "Fjern godkendelse og opret modregning"
-      : isEdit
-        ? "Gem rettelse som efterregulering"
-        : "Godkend som efterregulering";
+    ? isVoid
+      ? "Afviser..."
+      : isUnapprove
+        ? "Fjerner godkendelse..."
+        : isEdit
+          ? "Gemmer..."
+          : "Godkender..."
+    : isVoid
+      ? "Afvis og opret modregning"
+      : isUnapprove
+        ? "Fjern godkendelse og opret modregning"
+        : isEdit
+          ? "Gem rettelse som efterregulering"
+          : "Godkend som efterregulering";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -138,7 +153,7 @@ export default function PayrollAdjustmentConfirmationModal({
             onClick={() => void onConfirm()}
             disabled={loading}
             className={
-              isUnapprove
+              isUnapprove || isVoid
                 ? "rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
                 : "rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
             }

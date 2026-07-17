@@ -203,7 +203,10 @@ export class TimeEntriesController {
   voidEntry(
     @Req() req,
     @Param('id') id: string,
-    @Body() body: RejectTimeEntryDto,
+    @Body()
+    body: RejectTimeEntryDto & {
+      confirmPayrollAdjustment?: boolean;
+    },
     @Query('cinemaId') cinemaId?: string,
   ) {
     const selectedCinemaId = this.parseOptionalId(
@@ -216,6 +219,7 @@ export class TimeEntriesController {
       body.adminNote,
       req.user,
       selectedCinemaId,
+      body.confirmPayrollAdjustment ?? false,
     );
   }
 

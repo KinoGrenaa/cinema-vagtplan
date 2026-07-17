@@ -339,6 +339,18 @@ export function useTimeApprovalActions({
         return;
       }
 
+      if (confirmation.action === "VOID") {
+        const voided = await submitVoid(
+          confirmation.entryId,
+          confirmation.adminNote,
+          true,
+        );
+        if (voided) {
+          setPayrollAdjustmentConfirmation(null);
+        }
+        return;
+      }
+
       const approved = await approve(confirmation.entry, {
         confirmPayrollAdjustment: true,
       });
@@ -407,6 +419,70 @@ export function useTimeApprovalActions({
     });
   }
 
+  async function submitVoid(
+    id: number,
+    adminNote: string,
+    confirmPayrollAdjustment: boolean,
+  ) {
+    try {
+      const response = await apiFetch(
+        `/time-entries/${id}/void${getSelectedCinemaQuery()}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            adminNote,
+            confirmPayrollAdjustment,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        if (response.status === 401) return false;
+
+        if (response.status === 409) {
+          const payload = await response.json().catch(() => null);
+          const details = getPayrollConflictDetails(payload);
+
+          if (details.code === "PAYROLL_PERIOD_EXPORTED") {
+            setPayrollAdjustmentConfirmation({
+              entryId: id,
+              adminNote,
+              details,
+              action: "VOID",
+            });
+            return false;
+          }
+        }
+
+        const message = await readErrorMessage(
+          response,
+          "Kunne ikke annullere tidsregistrering",
+        );
+        infoDialog.showError(
+          "Kunne ikke annullere tidsregistrering",
+          message,
+        );
+        return false;
+      }
+
+      await fetchEntries();
+      toast.success(
+        confirmPayrollAdjustment
+          ? "Tidsregistrering afvist og modregning oprettet"
+          : "Tidsregistrering annulleret",
+      );
+      return true;
+    } catch (error) {
+      infoDialog.showError(
+        "Kunne ikke annullere tidsregistrering",
+        error instanceof Error && error.message
+          ? error.message
+          : "Der opstod en fejl, da tidsregistreringen skulle annulleres. Prøv igen.",
+      );
+      return false;
+    }
+  }
+
   function voidEntry(id: number) {
     inputDialog.prompt({
       title: "Afvis registrering",
@@ -428,44 +504,11 @@ export function useTimeApprovalActions({
           return;
         }
 
-        try {
-          const response = await apiFetch(
-            `/time-entries/${id}/void${getSelectedCinemaQuery()}`,
-            {
-              method: "PATCH",
-              body: JSON.stringify({
-                adminNote,
-              }),
-            },
-          );
-
-          if (!response.ok) {
-            if (response.status === 401) return;
-
-            const message = await readErrorMessage(
-              response,
-              "Kunne ikke annullere tidsregistrering",
-            );
-            infoDialog.showError(
-              "Kunne ikke annullere tidsregistrering",
-              message,
-            );
-            return;
-          }
-
-          await fetchEntries();
-          toast.success("Tidsregistrering annulleret");
-        } catch (error) {
-          infoDialog.showError(
-            "Kunne ikke annullere tidsregistrering",
-            error instanceof Error && error.message
-              ? error.message
-              : "Der opstod en fejl, da tidsregistreringen skulle annulleres. Prøv igen.",
-          );
-        }
+        await submitVoid(id, adminNote, false);
       },
     });
   }
+
 
   return {
     editEntry,

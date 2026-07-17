@@ -239,6 +239,7 @@ export class TimeEntriesService {
     adminNote: string | undefined,
     user: any,
     selectedCinemaId?: number | null,
+    confirmPayrollAdjustment = false,
   ) {
     const cinemaId = await resolveTimeEntryActorCinemaId(
       this.prisma,
@@ -255,6 +256,7 @@ export class TimeEntriesService {
       adminNote,
       user,
       selectedCinemaId: cinemaId,
+      confirmPayrollAdjustment,
     });
   }
 

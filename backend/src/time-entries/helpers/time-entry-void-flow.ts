@@ -3,7 +3,6 @@ import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PayrollService } from '../../payroll/payroll.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
-import { createVoidAfterExportPayrollAdjustmentIfNeeded } from './time-entry-exported-payroll-adjustments';
 import { getTimeEntryResponseInclude } from './time-entry-includes';
 import { notifyTimeEntryUpdated } from './time-entry-response';
 import {
@@ -12,6 +11,10 @@ import {
   getRequiredStatusActionNote,
   recordVoidTimeEntryStatusChange,
 } from './time-entry-status-action-helpers';
+import {
+  createVoidPayrollAdjustmentIfNeeded,
+  getVoidPayrollContext,
+} from './time-entry-void-payroll';
 
 export async function voidTimeEntryFlow({
   prisma,
@@ -22,6 +25,7 @@ export async function voidTimeEntryFlow({
   adminNote,
   user,
   selectedCinemaId,
+  confirmPayrollAdjustment,
 }: {
   prisma: PrismaService;
   payrollService: PayrollService;
@@ -31,13 +35,13 @@ export async function voidTimeEntryFlow({
   adminNote: string | undefined;
   user: any;
   selectedCinemaId?: number | null;
+  confirmPayrollAdjustment: boolean;
 }) {
   const changedByUserId = getChangedByUserId(user);
   const trimmedAdminNote = getRequiredStatusActionNote(
     adminNote,
     'Admin-begrundelse er påkrævet ved annullering af tidsregistrering',
   );
-
   const existingEntry = await findEditableStatusActionEntry({
     prisma,
     id,
@@ -51,8 +55,17 @@ export async function voidTimeEntryFlow({
     );
   }
 
+  const payrollContext = await getVoidPayrollContext({
+    prisma,
+    payrollService,
+    existingEntry,
+    confirmPayrollAdjustment,
+  });
+
   const entry = await prisma.timeEntry.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       status: 'VOIDED',
       adminNote: trimmedAdminNote,
@@ -60,11 +73,11 @@ export async function voidTimeEntryFlow({
     include: getTimeEntryResponseInclude(),
   });
 
-  await createVoidAfterExportPayrollAdjustmentIfNeeded({
+  await createVoidPayrollAdjustmentIfNeeded({
     prisma,
-    payrollService,
     existingEntry,
     entry,
+    payrollContext,
     reason: trimmedAdminNote,
     changedByUserId: changedByUserId ?? null,
   });
