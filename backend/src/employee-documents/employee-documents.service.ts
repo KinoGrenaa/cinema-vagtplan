@@ -5,9 +5,12 @@ import {
 } from '@nestjs/common';
 import { existsSync } from 'fs';
 import { basename, resolve, sep } from 'path';
-
 import { PrismaService } from '../prisma/prisma.service';
-import type { AuthUser } from './helpers/employee-document-access';
+
+import {
+  type AuthUser,
+  resolveEmployeeDocumentCinemaId,
+} from './helpers/employee-document-access';
 import {
   createEmployeeDocument,
   type CreateEmployeeDocumentData,
@@ -72,7 +75,6 @@ export class EmployeeDocumentsService {
 
   async create(user: AuthUser, data: CreateEmployeeDocumentData) {
     const document = await createEmployeeDocument(this.prisma, user, data);
-
     return this.withProtectedFileUrl(document);
   }
 
@@ -81,23 +83,17 @@ export class EmployeeDocumentsService {
     id: number,
     selectedCinemaId?: number | null,
   ): Promise<EmployeeDocumentDownload> {
-    const document = await this.prisma.employeeDocument.findUnique({
-      where: { id },
+    const cinemaId = resolveEmployeeDocumentCinemaId(user, selectedCinemaId);
+    const document = await this.prisma.employeeDocument.findFirst({
+      where: {
+        id,
+        cinemaId,
+        ...(user.role === 'EMPLOYEE' ? { userId: user.sub } : {}),
+      },
     });
 
     if (!document) {
       throw new NotFoundException('Dokumentet blev ikke fundet');
-    }
-
-    const allowedDocuments = await findEmployeeDocumentsForUser(
-      this.prisma,
-      user,
-      document.userId,
-      selectedCinemaId,
-    );
-
-    if (!allowedDocuments.some((allowedDocument) => allowedDocument.id === id)) {
-      throw new ForbiddenException('Du har ikke adgang til dokumentet');
     }
 
     const filePath = this.getStoredEmployeeDocumentFilePath(document.fileUrl);

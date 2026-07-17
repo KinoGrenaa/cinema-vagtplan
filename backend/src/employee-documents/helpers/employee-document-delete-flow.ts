@@ -1,6 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-
 import type { PrismaService } from '../../prisma/prisma.service';
+
 import {
   type AuthUser,
   resolveEmployeeDocumentCinemaId,
@@ -17,9 +17,7 @@ export async function deleteEmployeeDocument(
   const document = await prisma.employeeDocument.findFirst({
     where: {
       id,
-      user: {
-        cinemaId,
-      },
+      cinemaId,
     },
   });
 

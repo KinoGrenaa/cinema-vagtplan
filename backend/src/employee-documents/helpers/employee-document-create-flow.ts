@@ -1,6 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-
 import type { PrismaService } from '../../prisma/prisma.service';
+
 import {
   type AuthUser,
   resolveEmployeeDocumentCinemaId,
@@ -31,7 +31,20 @@ export async function createEmployeeDocument(
   const targetUser = await prisma.user.findFirst({
     where: {
       id: data.userId,
-      cinemaId,
+      OR: [
+        { cinemaId },
+        {
+          cinemaMemberships: {
+            some: {
+              cinemaId,
+              isActive: true,
+            },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
     },
   });
 
@@ -41,6 +54,7 @@ export async function createEmployeeDocument(
 
   return prisma.employeeDocument.create({
     data: {
+      cinemaId,
       userId: data.userId,
       title: data.title,
       fileUrl: data.fileUrl,

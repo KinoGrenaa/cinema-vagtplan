@@ -1,4 +1,5 @@
 import type { PrismaService } from '../../prisma/prisma.service';
+
 import {
   type AuthUser,
   resolveEmployeeDocumentCinemaId,
@@ -15,10 +16,8 @@ export function findEmployeeDocumentsForUser(
 
   return prisma.employeeDocument.findMany({
     where: {
+      cinemaId,
       userId: targetUserId,
-      user: {
-        cinemaId,
-      },
     },
     orderBy: {
       createdAt: 'desc',

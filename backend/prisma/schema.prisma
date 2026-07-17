@@ -151,6 +151,7 @@ model Cinema {
   timeEntries                       TimeEntry[]
   notifications                     Notification[]
   pushSubscriptions                 PushSubscription[]
+  employeeDocuments                 EmployeeDocument[]
   auditLogs                         AuditLog[]
   payrollPeriods                    PayrollPeriod[]
   payrollTypes                      PayrollType[]
@@ -670,6 +671,10 @@ model EmployeeDocument {
   createdAt DateTime @default(now())
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
+  cinemaId  Int
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id])
+
+  @@index([cinemaId, userId])
 }
 
 model Notification {
