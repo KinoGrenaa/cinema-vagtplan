@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { StaffingRequestsService } from '../staffing-requests/staffing-requests.service';
+import { findAiRequestActorForCinema } from './staffing-ai-cinema-access';
 import { PredictiveStaffingService } from './predictive-staffing.service';
 
 @Injectable()
@@ -17,7 +19,6 @@ export class StaffingMonitorService {
   @Cron('*/5 * * * *')
   async checkForStaffingProblems() {
     const aiMonitorEnabled = process.env.ENABLE_AI_MONITOR === 'true';
-
     if (!aiMonitorEnabled) {
       return;
     }
@@ -66,20 +67,12 @@ export class StaffingMonitorService {
           },
         });
 
-      const admin = await this.prisma.user.findFirst({
-        where: {
-          cinemaId: cinema.id,
-          role: {
-            in: ['MASTER', 'ADMIN'],
-          },
-          isActive: true,
-        },
-        orderBy: {
-          id: 'asc',
-        },
-      });
+      const requestActor = await findAiRequestActorForCinema(
+        this.prisma,
+        cinema.id,
+      );
 
-      if (!admin) {
+      if (!requestActor) {
         continue;
       }
 
@@ -98,16 +91,15 @@ export class StaffingMonitorService {
 
           await this.staffingRequestsService.createAiEmergencyRequests({
             cinemaId: cinema.id,
-            requestedByUserId: admin.id,
+            requestedByUserId: requestActor.id,
             startTime: now,
             endTime: next12Hours,
             message:
-              `🤖 Predictive AI staffing alert.\n\n` +
+              ` Predictive AI staffing alert.\n\n` +
               `Pressure level: ${prediction.level}\n\n` +
               prediction.reasoning.join('\n'),
             limit: prediction.level === 'CRITICAL' ? 8 : 5,
           });
-
           continue;
         }
       }
@@ -128,27 +120,23 @@ export class StaffingMonitorService {
 
       for (const shift of cinema.shifts) {
         const hourKey = new Date(shift.startTime).toISOString();
-
         if (!groupedHours.has(hourKey)) {
           groupedHours.set(hourKey, {
             shifts: 0,
             movieShowings: 0,
           });
         }
-
         groupedHours.get(hourKey)!.shifts += 1;
       }
 
       for (const movie of cinema.movieShowings) {
         const hourKey = new Date(movie.startTime).toISOString();
-
         if (!groupedHours.has(hourKey)) {
           groupedHours.set(hourKey, {
             shifts: 0,
             movieShowings: 0,
           });
         }
-
         groupedHours.get(hourKey)!.movieShowings += 1;
       }
 
@@ -157,7 +145,6 @@ export class StaffingMonitorService {
 
         if (data.shifts < requiredStaff) {
           const startTime = new Date(hour);
-
           const endTime = new Date(startTime);
           endTime.setHours(endTime.getHours() + 2);
 
@@ -188,13 +175,12 @@ export class StaffingMonitorService {
         }
 
         this.logger.warn(`AI staffing issue detected in cinema ${cinema.id}`);
-
         await this.staffingRequestsService.createAiEmergencyRequests({
           cinemaId: cinema.id,
-          requestedByUserId: admin.id,
+          requestedByUserId: requestActor.id,
           startTime: issue.startTime,
           endTime: issue.endTime,
-          message: `🚨 AI detected understaffing.\n\n${issue.reason}`,
+          message: ` AI detected understaffing.\n\n${issue.reason}`,
           limit: 5,
         });
       }
