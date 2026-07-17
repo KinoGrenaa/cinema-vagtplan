@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+
 import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
 
 @Controller('shift-planning-drafts')
@@ -84,36 +85,6 @@ export class ShiftPlanningDraftsController {
     return this.shiftPlanningDraftsService.deleteDraft(
       req.user,
       this.parseRequiredId(id, 'Forhåndsvisning skal være et gyldigt ID.'),
-      cinemaId,
-    );
-  }
-
-  @UseGuards(JwtGuard)
-  @Get(':id/publication-preview')
-  publicationPreview(
-    @Req() req,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
-  ) {
-    return this.shiftPlanningDraftsService.publicationPreview(
-      req.user,
-      this.parseRequiredId(id, 'Forhåndsvisning skal være et gyldigt ID.'),
-      cinemaId,
-    );
-  }
-
-  @UseGuards(JwtGuard)
-  @Post(':id/publish')
-  publishDraft(
-    @Req() req,
-    @Param('id') id: string,
-    @Body() body,
-    @Query('cinemaId') cinemaId?: string,
-  ) {
-    return this.shiftPlanningDraftsService.publishDraft(
-      req.user,
-      this.parseRequiredId(id, 'Forhåndsvisning skal være et gyldigt ID.'),
-      body,
       cinemaId,
     );
   }
