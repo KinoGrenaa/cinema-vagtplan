@@ -6,7 +6,11 @@ export default function PayrollWarnings({
   adjustmentCount,
   onOpenTimeApproval,
 }: PayrollWarningsProps) {
-  if (pendingCount <= 0 && voidedCount <= 0 && adjustmentCount <= 0) {
+  if (
+    pendingCount <= 0 &&
+    voidedCount <= 0 &&
+    adjustmentCount <= 0
+  ) {
     return null;
   }
 
@@ -15,10 +19,11 @@ export default function PayrollWarnings({
       {pendingCount > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
           <div className="font-semibold">
-            {pendingCount} afventer godkendelse
+            {pendingCount} kræver handling før eksport
           </div>
           <div className="mt-1 text-sm">
-            Skal håndteres, før perioden kan eksporteres korrekt.
+            Afventer godkendelse eller er sendt retur til
+            rettelse.
           </div>
           <button
             type="button"
@@ -48,7 +53,8 @@ export default function PayrollWarnings({
             {voidedCount} afvist/annulleret
           </div>
           <div className="mt-1 text-sm">
-            Indgår ikke i løngrundlaget, men bevares i historikken.
+            Indgår ikke i løngrundlaget, men bevares i
+            historikken.
           </div>
         </div>
       )}

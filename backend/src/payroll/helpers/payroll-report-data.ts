@@ -10,6 +10,11 @@ import {
 } from './payroll-access';
 import { buildPayrollReportResult } from './payroll-report';
 
+const unresolvedTimeEntryStatuses = [
+  'PENDING',
+  'NEEDS_CHANGES',
+] as const;
+
 export async function buildPayrollReportData(
   prisma: PrismaService,
   user: PayrollAuthUser,
@@ -19,11 +24,11 @@ export async function buildPayrollReportData(
   selectedCinemaId?: number | null,
 ) {
   ensurePayrollAccess(user);
-
   const { start, end } = getPeriodDates(startDate, endDate);
-
-  const cinemaFilter = getPayrollCinemaFilter(user, selectedCinemaId);
-
+  const cinemaFilter = getPayrollCinemaFilter(
+    user,
+    selectedCinemaId,
+  );
   const entries = await prisma.timeEntry.findMany({
     where: {
       ...cinemaFilter,
@@ -63,43 +68,42 @@ export async function buildPayrollReportData(
       clockIn: 'asc',
     },
   });
-
-  const payrollAdjustments = await prisma.payrollAdjustment.findMany({
-    where: {
-      ...cinemaFilter,
-      ...(userId ? { userId: Number(userId) } : {}),
-      status: 'PENDING',
-      settlementPayrollPeriodId: null,
-      originalPayrollPeriod: {
-        endDate: {
-          lt: start,
+  const payrollAdjustments =
+    await prisma.payrollAdjustment.findMany({
+      where: {
+        ...cinemaFilter,
+        ...(userId ? { userId: Number(userId) } : {}),
+        status: 'PENDING',
+        settlementPayrollPeriodId: null,
+        originalPayrollPeriod: {
+          endDate: {
+            lt: start,
+          },
         },
       },
-    },
-    include: {
-      user: true,
-      payrollType: true,
-      originalPayrollPeriod: true,
-      settlementPayrollPeriod: true,
-      timeEntry: {
-        include: {
-          shift: {
-            include: {
-              workType: {
-                include: {
-                  payrollType: true,
+      include: {
+        user: true,
+        payrollType: true,
+        originalPayrollPeriod: true,
+        settlementPayrollPeriod: true,
+        timeEntry: {
+          include: {
+            shift: {
+              include: {
+                workType: {
+                  include: {
+                    payrollType: true,
+                  },
                 },
               },
             },
           },
         },
       },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  });
-
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
   const pendingCount = await prisma.timeEntry.count({
     where: {
       ...cinemaFilter,
@@ -108,10 +112,11 @@ export async function buildPayrollReportData(
       clockOut: {
         not: null,
       },
-      status: 'PENDING',
+      status: {
+        in: [...unresolvedTimeEntryStatuses],
+      },
     },
   });
-
   const voidedCount = await prisma.timeEntry.count({
     where: {
       ...cinemaFilter,

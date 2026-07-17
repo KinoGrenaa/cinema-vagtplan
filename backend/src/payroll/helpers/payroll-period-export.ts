@@ -9,6 +9,11 @@ import {
   getPeriodDates,
 } from './payroll-periods';
 
+const unresolvedTimeEntryStatuses = [
+  'PENDING',
+  'NEEDS_CHANGES',
+] as const;
+
 export async function ensurePayrollEntriesApproved(
   prisma: PrismaService,
   user: PayrollAuthUser,
@@ -18,8 +23,7 @@ export async function ensurePayrollEntriesApproved(
   selectedCinemaId?: number | null,
 ) {
   const { start, end } = getPeriodDates(startDate, endDate);
-
-  const unapprovedEntries = await prisma.timeEntry.findMany({
+  const unresolvedEntries = await prisma.timeEntry.findMany({
     where: {
       ...getPayrollCinemaFilter(user, selectedCinemaId),
       ...(userId ? { userId: Number(userId) } : {}),
@@ -27,21 +31,30 @@ export async function ensurePayrollEntriesApproved(
       clockOut: {
         not: null,
       },
-      status: 'PENDING',
+      status: {
+        in: [...unresolvedTimeEntryStatuses],
+      },
     },
     include: {
       user: true,
     },
   });
 
-  if (unapprovedEntries.length > 0) {
-    const names = unapprovedEntries
-      .map((entry) => `${entry.user.firstName} ${entry.user.lastName}`)
-      .filter((name, index, arr) => arr.indexOf(name) === index)
+  if (unresolvedEntries.length > 0) {
+    const names = unresolvedEntries
+      .map(
+        (entry) =>
+          `${entry.user.firstName} ${entry.user.lastName}`,
+      )
+      .filter(
+        (name, index, allNames) =>
+          allNames.indexOf(name) === index,
+      )
       .join(', ');
 
     throw new BadRequestException(
-      `Kan ikke eksportere. Der findes ${unapprovedEntries.length} afventende tidsregistreringer i perioden: ${names}`,
+      `Kan ikke eksportere.
+Der findes ${unresolvedEntries.length} tidsregistreringer, som afventer godkendelse eller er sendt retur til rettelse: ${names}`,
     );
   }
 }
@@ -57,9 +70,11 @@ export async function markPayrollPeriodAsExported(
   if (userId) return;
 
   const { start, end } = getPeriodDates(startDate, endDate);
-  const cinemaId = getPayrollCinemaFilter(user, selectedCinemaId).cinemaId;
+  const cinemaId = getPayrollCinemaFilter(
+    user,
+    selectedCinemaId,
+  ).cinemaId;
   const now = new Date();
-
   const existingPeriod = await prisma.payrollPeriod.findFirst({
     where: {
       cinemaId,
@@ -67,14 +82,16 @@ export async function markPayrollPeriodAsExported(
       endDate: end,
     },
   });
-
   const period = existingPeriod
     ? await prisma.payrollPeriod.update({
-        where: { id: existingPeriod.id },
+        where: {
+          id: existingPeriod.id,
+        },
         data: {
           status: 'EXPORTED',
           lockedAt: existingPeriod.lockedAt || now,
-          lockedByUserId: existingPeriod.lockedByUserId || user.sub,
+          lockedByUserId:
+            existingPeriod.lockedByUserId || user.sub,
           exportedAt: now,
           exportedByUserId: user.sub,
           unlockedAt: null,
@@ -102,7 +119,6 @@ export async function markPayrollPeriodAsExported(
       isActive: true,
     },
   });
-
   const entries = await prisma.timeEntry.findMany({
     where: {
       cinemaId,
@@ -133,7 +149,9 @@ export async function markPayrollPeriodAsExported(
       defaultPayrollType;
 
     await prisma.timeEntry.update({
-      where: { id: entry.id },
+      where: {
+        id: entry.id,
+      },
       data: {
         payrollPeriodId: period.id,
         payrollLocked: true,

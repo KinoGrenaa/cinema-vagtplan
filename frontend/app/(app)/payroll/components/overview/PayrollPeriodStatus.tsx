@@ -1,5 +1,4 @@
 import type { PayrollPeriodStatusProps } from "../../types";
-
 import { formatDateTime, formatHours } from "../../utils";
 import PayrollWarnings from "./PayrollWarnings";
 
@@ -18,9 +17,13 @@ export default function PayrollPeriodStatus({
   onOpenTimeApproval,
 }: PayrollPeriodStatusProps) {
   const periodStatus = period?.status ?? "OPEN";
-  const isOpenPeriod = periodStatus === "OPEN" || periodStatus === "UNLOCKED";
+  const isOpenPeriod =
+    periodStatus === "OPEN" || periodStatus === "UNLOCKED";
   const hasWarnings =
-    pendingCount > 0 || voidedCount > 0 || adjustmentCount > 0;
+    pendingCount > 0 ||
+    voidedCount > 0 ||
+    adjustmentCount > 0;
+  const exportBlocked = pendingCount > 0;
   const statusLabel =
     periodStatus === "LOCKED"
       ? "Låst"
@@ -58,13 +61,21 @@ export default function PayrollPeriodStatus({
 
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
             {period?.lockedAt && (
-              <span>Låst: {formatDateTime(period.lockedAt)}</span>
+              <span>
+                Låst: {formatDateTime(period.lockedAt)}
+              </span>
             )}
             {period?.exportedAt && (
-              <span>Eksporteret: {formatDateTime(period.exportedAt)}</span>
+              <span>
+                Eksporteret:{" "}
+                {formatDateTime(period.exportedAt)}
+              </span>
             )}
             {period?.unlockedAt && (
-              <span>Genåbnet: {formatDateTime(period.unlockedAt)}</span>
+              <span>
+                Genåbnet:{" "}
+                {formatDateTime(period.unlockedAt)}
+              </span>
             )}
           </div>
         </div>
@@ -81,22 +92,30 @@ export default function PayrollPeriodStatus({
             </button>
           )}
 
-          {(periodStatus === "LOCKED" || periodStatus === "EXPORTED") && (
+          {(periodStatus === "LOCKED" ||
+            periodStatus === "EXPORTED") && (
             <button
               type="button"
               onClick={onUnlockPeriod}
               disabled={unlocking}
               className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950"
             >
-              {unlocking ? "Genåbner..." : "Genåbn lønperiode"}
+              {unlocking
+                ? "Genåbner..."
+                : "Genåbn lønperiode"}
             </button>
           )}
 
           <button
             type="button"
             onClick={onOpenExportModal}
-            disabled={exporting}
-            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
+            disabled={exporting || exportBlocked}
+            title={
+              exportBlocked
+                ? "Håndtér tidsregistreringerne, før perioden eksporteres."
+                : undefined
+            }
+            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {exporting ? "Eksporterer..." : "Eksportér"}
           </button>
