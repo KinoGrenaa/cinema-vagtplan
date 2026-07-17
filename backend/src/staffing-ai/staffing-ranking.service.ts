@@ -1,15 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { Role } from '@prisma/client';
-
+import {
+  Role,
+  StaffingRequestStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { getActiveCinemaUserWhere } from './staffing-ai-cinema-access';
+import {
+  calculateCinemaRequestRates,
+  getActiveCinemaUserWhere,
+} from './staffing-ai-cinema-access';
 import { StaffingScore } from './types/staffing-score.type';
 
 @Injectable()
 export class StaffingRankingService {
   constructor(private prisma: PrismaService) {}
 
-  async rankEmployeesForEmergency(cinemaId: number): Promise<StaffingScore[]> {
+  async rankEmployeesForEmergency(
+    cinemaId: number,
+  ): Promise<StaffingScore[]> {
     const users = await this.prisma.user.findMany({
       where: getActiveCinemaUserWhere({
         cinemaId,
@@ -17,17 +24,32 @@ export class StaffingRankingService {
       }),
       include: {
         staffingAiProfile: true,
-        shifts: true,
-        timeEntries: true,
+        targetedStaffingRequests: {
+          where: {
+            cinemaId,
+            status: {
+              in: [
+                StaffingRequestStatus.ACCEPTED,
+                StaffingRequestStatus.REJECTED,
+              ],
+            },
+          },
+          select: {
+            status: true,
+            type: true,
+          },
+        },
       },
     });
 
     const rankedUsers = users.map((user) => {
       const fatigueScore = user.staffingAiProfile?.fatigueScore ?? 0;
       const overtimeScore = user.staffingAiProfile?.overtimeScore ?? 0;
-      const acceptanceScore = user.staffingAiProfile?.acceptanceRate ?? 0;
-      const emergencyScore =
-        user.staffingAiProfile?.emergencyAcceptanceRate ?? 0;
+      const requestRates = calculateCinemaRequestRates(
+        user.targetedStaffingRequests,
+      );
+      const acceptanceScore = requestRates.acceptanceRate;
+      const emergencyScore = requestRates.emergencyAcceptanceRate;
       const availabilityScore = 100;
       const totalScore =
         availabilityScore +

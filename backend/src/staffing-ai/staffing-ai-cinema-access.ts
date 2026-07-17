@@ -1,6 +1,10 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
-
+import {
+  Prisma,
+  Role,
+  StaffingRequestStatus,
+  StaffingRequestType,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export function getActiveCinemaUserWhere(params: {
@@ -25,6 +29,49 @@ export function getActiveCinemaUserWhere(params: {
         },
       },
     ],
+  };
+}
+
+type StaffingRequestDecision = {
+  status: StaffingRequestStatus;
+  type: StaffingRequestType;
+};
+
+export function calculateCinemaRequestRates(
+  requests: StaffingRequestDecision[],
+) {
+  const decidedRequests = requests.filter(
+    (request) =>
+      request.status === StaffingRequestStatus.ACCEPTED ||
+      request.status === StaffingRequestStatus.REJECTED,
+  );
+  const acceptedRequests = decidedRequests.filter(
+    (request) => request.status === StaffingRequestStatus.ACCEPTED,
+  ).length;
+  const rejectedRequests = decidedRequests.length - acceptedRequests;
+  const emergencyRequests = decidedRequests.filter(
+    (request) => request.type === StaffingRequestType.EMERGENCY,
+  );
+  const acceptedEmergencyRequests = emergencyRequests.filter(
+    (request) => request.status === StaffingRequestStatus.ACCEPTED,
+  ).length;
+
+  return {
+    totalRequests: decidedRequests.length,
+    acceptedRequests,
+    rejectedRequests,
+    acceptanceRate:
+      decidedRequests.length === 0
+        ? 0
+        : acceptedRequests / decidedRequests.length,
+    rejectionRate:
+      decidedRequests.length === 0
+        ? 0
+        : rejectedRequests / decidedRequests.length,
+    emergencyAcceptanceRate:
+      emergencyRequests.length === 0
+        ? 0
+        : acceptedEmergencyRequests / emergencyRequests.length,
   };
 }
 

@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { AvailabilityEngineService } from './availability-engine.service';
 import { FatigueEngineService } from './fatigue-engine.service';
 import { StaffingRankingService } from './staffing-ranking.service';
@@ -7,49 +6,40 @@ import { StaffingScore } from './types/staffing-score.type';
 
 function getRequiredPositiveId(value: unknown, message: string) {
   const id = Number(value);
-
   if (!Number.isInteger(id) || id <= 0) {
     throw new BadRequestException(message);
   }
-
   return id;
 }
 
 function getRequiredDate(value: unknown, message: string) {
   const date = value instanceof Date ? value : new Date(value as string);
-
   if (Number.isNaN(date.getTime())) {
     throw new BadRequestException(message);
   }
-
   return date;
 }
 
 function getValidatedDateRange(startTime: unknown, endTime: unknown) {
   const start = getRequiredDate(startTime, 'Starttid skal være en gyldig dato');
   const end = getRequiredDate(endTime, 'Sluttid skal være en gyldig dato');
-
   if (end.getTime() <= start.getTime()) {
     throw new BadRequestException('Sluttid skal være efter starttid');
   }
-
   return { start, end };
 }
 
 function getSafeLimit(value: unknown) {
   const limit = Number(value);
-
   if (!Number.isInteger(limit) || limit <= 0) {
     throw new BadRequestException('Antal kandidater skal være et positivt heltal');
   }
-
   return Math.min(limit, 20);
 }
 
 @Injectable()
 export class StaffingAiService {
   constructor(
-    private prisma: PrismaService,
     private availabilityEngine: AvailabilityEngineService,
     private fatigueEngine: FatigueEngineService,
     private staffingRanking: StaffingRankingService,
@@ -65,7 +55,6 @@ export class StaffingAiService {
       'Biograf skal være et gyldigt ID',
     );
     const { start, end } = getValidatedDateRange(startTime, endTime);
-
     const rankedEmployees = await this.staffingRanking.rankEmployeesForEmergency(
       validatedCinemaId,
     );
@@ -73,6 +62,7 @@ export class StaffingAiService {
 
     for (const employee of rankedEmployees) {
       const availability = await this.availabilityEngine.getAvailabilityScore(
+        validatedCinemaId,
         employee.userId,
         start,
         end,
@@ -80,13 +70,8 @@ export class StaffingAiService {
       const fatigue = await this.fatigueEngine.calculateFatigueScore(
         employee.userId,
       );
-      const profile = await this.prisma.staffingAiProfile.findUnique({
-        where: {
-          userId: employee.userId,
-        },
-      });
-      const acceptanceScore = profile?.acceptanceRate ?? 0;
-      const emergencyScore = profile?.emergencyAcceptanceRate ?? 0;
+      const acceptanceScore = employee.acceptanceScore;
+      const emergencyScore = employee.emergencyScore;
       const totalScore =
         availability.score +
         acceptanceScore * 40 +
@@ -123,7 +108,6 @@ export class StaffingAiService {
       startTime,
       endTime,
     );
-
     return rankedEmployees[0] ?? null;
   }
 
@@ -139,7 +123,6 @@ export class StaffingAiService {
       startTime,
       endTime,
     );
-
     return rankedEmployees.slice(0, safeLimit);
   }
 }

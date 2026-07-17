@@ -1,8 +1,12 @@
 import { ForbiddenException } from '@nestjs/common';
-import { Role } from '@prisma/client';
-
+import {
+  Role,
+  StaffingRequestStatus,
+  StaffingRequestType,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  calculateCinemaRequestRates,
   ensureAiRequestActorAccess,
   findAiRequestActorForCinema,
   getActiveCinemaUserWhere,
@@ -42,6 +46,36 @@ describe('staffing AI cinema access', () => {
           },
         },
       ],
+    });
+  });
+
+  it('calculates request rates from the current cinema data only', () => {
+    expect(
+      calculateCinemaRequestRates([
+        {
+          status: StaffingRequestStatus.ACCEPTED,
+          type: StaffingRequestType.EMERGENCY,
+        },
+        {
+          status: StaffingRequestStatus.REJECTED,
+          type: StaffingRequestType.EMERGENCY,
+        },
+        {
+          status: StaffingRequestStatus.ACCEPTED,
+          type: StaffingRequestType.EXTRA_SHIFT,
+        },
+        {
+          status: StaffingRequestStatus.PENDING,
+          type: StaffingRequestType.EMERGENCY,
+        },
+      ]),
+    ).toEqual({
+      totalRequests: 3,
+      acceptedRequests: 2,
+      rejectedRequests: 1,
+      acceptanceRate: 2 / 3,
+      rejectionRate: 1 / 3,
+      emergencyAcceptanceRate: 1 / 2,
     });
   });
 

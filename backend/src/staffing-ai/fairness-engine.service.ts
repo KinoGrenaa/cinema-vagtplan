@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { getActiveCinemaUserWhere } from './staffing-ai-cinema-access';
 
 type EmployeeFairnessScore = {
   userId: number;
@@ -23,13 +25,14 @@ export class FairnessEngineService {
     endDate: Date;
   }) {
     const users = await this.prisma.user.findMany({
-      where: {
+      where: getActiveCinemaUserWhere({
         cinemaId: params.cinemaId,
-        role: 'EMPLOYEE',
-      },
+        role: Role.EMPLOYEE,
+      }),
       include: {
         shifts: {
           where: {
+            cinemaId: params.cinemaId,
             startTime: {
               gte: params.startDate,
               lte: params.endDate,
@@ -42,7 +45,6 @@ export class FairnessEngineService {
 
     const employeeScores: EmployeeFairnessScore[] = users.map((user) => {
       const reasoning: string[] = [];
-
       let totalHours = 0;
       let weekendShifts = 0;
       let eveningShifts = 0;
@@ -51,11 +53,9 @@ export class FairnessEngineService {
       for (const shift of user.shifts) {
         const start = new Date(shift.startTime);
         const end = new Date(shift.endTime);
-
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-
+        const hours =
+          (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         totalHours += hours;
-
         const day = start.getDay();
         const startHour = start.getHours();
         const endHour = end.getHours();
@@ -63,47 +63,39 @@ export class FairnessEngineService {
         if (day === 0 || day === 5 || day === 6) {
           weekendShifts += 1;
         }
-
         if (startHour >= 17) {
           eveningShifts += 1;
         }
-
         if (endHour >= 23 || endHour <= 5) {
           lateShifts += 1;
         }
       }
 
       let dissatisfactionRisk = 0;
-
       if (weekendShifts >= 4) {
         dissatisfactionRisk += 25;
         reasoning.push(`${weekendShifts} weekendvagter`);
       }
-
       if (eveningShifts >= 5) {
         dissatisfactionRisk += 20;
         reasoning.push(`${eveningShifts} aftenvagter`);
       }
-
       if (lateShifts >= 3) {
         dissatisfactionRisk += 25;
         reasoning.push(`${lateShifts} sene vagter`);
       }
-
       if (totalHours >= 120) {
         dissatisfactionRisk += 30;
         reasoning.push(`${totalHours.toFixed(1)} timer i perioden`);
       }
 
       const profileFatigue = user.staffingAiProfile?.fatigueScore ?? 0;
-
       if (profileFatigue >= 60) {
         dissatisfactionRisk += 20;
         reasoning.push(`Høj fatigue score: ${profileFatigue}`);
       }
 
       const fairnessScore = Math.max(0, 100 - dissatisfactionRisk);
-
       return {
         userId: user.id,
         employeeName: `${user.firstName} ${user.lastName}`,
@@ -124,14 +116,12 @@ export class FairnessEngineService {
             (sum, employee) => sum + employee.fairnessScore,
             0,
           ) / employeeScores.length;
-
     const fairnessWarnings = employeeScores
       .filter((employee) => employee.dissatisfactionRisk >= 50)
       .map(
         (employee) =>
           `${employee.employeeName} har høj dissatisfaction-risk (${employee.dissatisfactionRisk})`,
       );
-
     const recommendations: string[] = [];
 
     if (averageFairness < 70) {
@@ -139,7 +129,6 @@ export class FairnessEngineService {
         'Fordelingen af vagter bør balanceres bedre mellem medarbejderne.',
       );
     }
-
     if (fairnessWarnings.length > 0) {
       recommendations.push(
         'Reducer weekend-, aften- eller sene vagter for belastede medarbejdere.',

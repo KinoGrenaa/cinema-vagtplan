@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FairnessEngineService } from './fairness-engine.service';
 import { FatigueEngineService } from './fatigue-engine.service';
 import { PreferenceEngineService } from './preference-engine.service';
 import { RetentionEngineService } from './retention-engine.service';
+import { getActiveCinemaUserWhere } from './staffing-ai-cinema-access';
 
 @Injectable()
 export class AbsenceImpactEngineService {
@@ -23,7 +25,6 @@ export class AbsenceImpactEngineService {
     endDate: Date;
   }) {
     const { userId, cinemaId, startDate, endDate } = params;
-
     const shiftsImpacted = await this.prisma.shift.findMany({
       where: {
         cinemaId,
@@ -41,10 +42,8 @@ export class AbsenceImpactEngineService {
         startTime: 'asc',
       },
     });
-
     const impactedDays = this.calculateDayCount(startDate, endDate);
     const replacementSuggestions: any[] = [];
-
     let staffingRiskScore = 0;
 
     for (const shift of shiftsImpacted) {
@@ -53,7 +52,6 @@ export class AbsenceImpactEngineService {
         shiftId: shift.id,
         excludedUserId: userId,
       });
-
       replacementSuggestions.push({
         shiftId: shift.id,
         shiftStart: shift.startTime,
@@ -92,9 +90,11 @@ export class AbsenceImpactEngineService {
     excludedUserId?: number;
   }) {
     const { cinemaId, shiftId, excludedUserId } = params;
-
-    const shift = await this.prisma.shift.findUnique({
-      where: { id: shiftId },
+    const shift = await this.prisma.shift.findFirst({
+      where: {
+        id: shiftId,
+        cinemaId,
+      },
       include: {
         workType: true,
       },
@@ -107,11 +107,9 @@ export class AbsenceImpactEngineService {
     const analysisStartDate = new Date(
       shift.startTime.getTime() - 90 * 24 * 60 * 60 * 1000,
     );
-
     const analysisEndDate = new Date(
       shift.endTime.getTime() + 14 * 24 * 60 * 60 * 1000,
     );
-
     const [fairnessAnalysis, preferenceAnalysis, retentionAnalysis] =
       await Promise.all([
         this.fairnessEngine.analyzeFairness({
@@ -119,32 +117,32 @@ export class AbsenceImpactEngineService {
           startDate: analysisStartDate,
           endDate: analysisEndDate,
         }),
-
         this.preferenceEngine.analyzeEmployeePreferences({
           cinemaId,
           startDate: analysisStartDate,
           endDate: analysisEndDate,
         }),
-
         this.retentionEngine.analyzeRetentionRisk({
           cinemaId,
           startDate: analysisStartDate,
           endDate: analysisEndDate,
         }),
       ]);
-
     const users = await this.prisma.user.findMany({
       where: {
-        cinemaId,
-        role: 'EMPLOYEE',
-        id: excludedUserId
+        ...getActiveCinemaUserWhere({
+          cinemaId,
+          role: Role.EMPLOYEE,
+        }),
+        ...(excludedUserId
           ? {
-              not: excludedUserId,
+              id: {
+                not: excludedUserId,
+              },
             }
-          : undefined,
+          : {}),
       },
     });
-
     const candidates: any[] = [];
 
     for (const user of users) {
@@ -167,37 +165,28 @@ export class AbsenceImpactEngineService {
       const fairness = fairnessAnalysis.employeeScores.find(
         (item) => item.userId === user.id,
       );
-
       const preferences = preferenceAnalysis.find(
         (item) => item.userId === user.id,
       );
-
       const retention = retentionAnalysis.find(
         (item) => item.userId === user.id,
       );
-
       const fatigue = await this.fatigueEngine.calculateFatigueScore(user.id);
-
       const retentionRiskScore =
         (retention?.burnoutRisk ?? 0) +
         (retention?.churnRisk ?? 0) +
         (retention?.dissatisfactionRisk ?? 0) +
         (retention?.workloadStressScore ?? 0);
-
       const preferenceMatch =
         !!shift.workType?.name &&
         (preferences?.preferredWorkTypes ?? []).includes(shift.workType.name);
-
       let score = 100;
-
       score -= (100 - (fairness?.fairnessScore ?? 100)) * 0.2;
       score -= fatigue.fatigueScore * 0.3;
       score -= retentionRiskScore * 0.2;
-
       if (preferenceMatch) {
         score += 15;
       }
-
       if (fatigue.overtimeScore > 70) {
         score -= 25;
       }
@@ -222,7 +211,6 @@ export class AbsenceImpactEngineService {
 
   private calculateDayCount(startDate: Date, endDate: Date) {
     const diff = endDate.getTime() - startDate.getTime();
-
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   }
 
@@ -230,7 +218,6 @@ export class AbsenceImpactEngineService {
     if (riskScore >= 80) return 'CRITICAL';
     if (riskScore >= 50) return 'HIGH';
     if (riskScore >= 25) return 'MEDIUM';
-
     return 'LOW';
   }
 
@@ -240,19 +227,15 @@ export class AbsenceImpactEngineService {
     impactedDays: number;
   }) {
     const warnings: string[] = [];
-
     if (params.staffingRiskScore >= 80) {
       warnings.push('Kritisk bemandingsrisiko i perioden.');
     }
-
     if (params.impactedShiftCount >= 5) {
       warnings.push('Mange vagter bliver påvirket.');
     }
-
     if (params.impactedDays >= 7) {
       warnings.push('Lang fraværsperiode kan påvirke driftstabilitet.');
     }
-
     return warnings;
   }
 }
