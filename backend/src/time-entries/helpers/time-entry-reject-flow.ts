@@ -2,6 +2,7 @@ import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { getTimeEntryResponseInclude } from './time-entry-includes';
+import { ensureTimeEntryCanBeSentBack } from './time-entry-reject-status';
 import { notifyTimeEntryUpdated } from './time-entry-response';
 import {
   findEditableStatusActionEntry,
@@ -32,7 +33,6 @@ export async function rejectTimeEntryFlow({
     adminNote,
     'Admin-begrundelse er påkrævet ved send retur til rettelse',
   );
-
   const existingEntry = await findEditableStatusActionEntry({
     prisma,
     id,
@@ -40,8 +40,12 @@ export async function rejectTimeEntryFlow({
     selectedCinemaId,
   });
 
+  ensureTimeEntryCanBeSentBack(existingEntry);
+
   const entry = await prisma.timeEntry.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       status: 'NEEDS_CHANGES',
       adminNote: trimmedAdminNote,
