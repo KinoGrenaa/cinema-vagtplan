@@ -73,13 +73,26 @@ export async function buildPayrollReportData(
       where: {
         ...cinemaFilter,
         ...(userId ? { userId: Number(userId) } : {}),
-        status: 'PENDING',
-        settlementPayrollPeriodId: null,
-        originalPayrollPeriod: {
-          endDate: {
-            lt: start,
+        OR: [
+          {
+            status: 'PENDING',
+            settlementPayrollPeriodId: null,
+            originalPayrollPeriod: {
+              endDate: {
+                lt: start,
+              },
+            },
           },
-        },
+          {
+            status: {
+              in: ['PENDING', 'INCLUDED'],
+            },
+            settlementPayrollPeriod: {
+              startDate: start,
+              endDate: end,
+            },
+          },
+        ],
       },
       include: {
         user: true,

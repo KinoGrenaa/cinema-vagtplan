@@ -4,6 +4,7 @@ import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
 } from './payroll-access';
+import { includePendingPayrollAdjustmentsInPeriod } from './payroll-adjustment-export';
 import {
   getPayrollReferenceDateFilters,
   getPeriodDates,
@@ -75,91 +76,105 @@ export async function markPayrollPeriodAsExported(
     selectedCinemaId,
   ).cinemaId;
   const now = new Date();
-  const existingPeriod = await prisma.payrollPeriod.findFirst({
-    where: {
-      cinemaId,
-      startDate: start,
-      endDate: end,
-    },
-  });
-  const period = existingPeriod
-    ? await prisma.payrollPeriod.update({
+
+  return prisma.$transaction(async (tx) => {
+    const existingPeriod = await tx.payrollPeriod.findFirst({
+      where: {
+        cinemaId,
+        startDate: start,
+        endDate: end,
+      },
+    });
+    const period = existingPeriod
+      ? await tx.payrollPeriod.update({
+          where: {
+            id: existingPeriod.id,
+          },
+          data: {
+            status: 'EXPORTED',
+            lockedAt: existingPeriod.lockedAt || now,
+            lockedByUserId:
+              existingPeriod.lockedByUserId || user.sub,
+            exportedAt: now,
+            exportedByUserId: user.sub,
+            unlockedAt: null,
+            unlockedByUserId: null,
+            unlockNote: null,
+          },
+        })
+      : await tx.payrollPeriod.create({
+          data: {
+            cinemaId,
+            startDate: start,
+            endDate: end,
+            status: 'EXPORTED',
+            lockedAt: now,
+            lockedByUserId: user.sub,
+            exportedAt: now,
+            exportedByUserId: user.sub,
+          },
+        });
+
+    const defaultPayrollType =
+      await tx.payrollType.findFirst({
         where: {
-          id: existingPeriod.id,
-        },
-        data: {
-          status: 'EXPORTED',
-          lockedAt: existingPeriod.lockedAt || now,
-          lockedByUserId:
-            existingPeriod.lockedByUserId || user.sub,
-          exportedAt: now,
-          exportedByUserId: user.sub,
-          unlockedAt: null,
-          unlockedByUserId: null,
-          unlockNote: null,
-        },
-      })
-    : await prisma.payrollPeriod.create({
-        data: {
           cinemaId,
-          startDate: start,
-          endDate: end,
-          status: 'EXPORTED',
-          lockedAt: now,
-          lockedByUserId: user.sub,
-          exportedAt: now,
-          exportedByUserId: user.sub,
+          isDefault: true,
+          isActive: true,
         },
       });
-
-  const defaultPayrollType = await prisma.payrollType.findFirst({
-    where: {
-      cinemaId,
-      isDefault: true,
-      isActive: true,
-    },
-  });
-  const entries = await prisma.timeEntry.findMany({
-    where: {
-      cinemaId,
-      OR: getPayrollReferenceDateFilters(start, end),
-      clockOut: {
-        not: null,
+    const entries = await tx.timeEntry.findMany({
+      where: {
+        cinemaId,
+        OR: getPayrollReferenceDateFilters(start, end),
+        clockOut: {
+          not: null,
+        },
+        status: 'APPROVED',
       },
-      status: 'APPROVED',
-    },
-    include: {
-      payrollType: true,
-      shift: {
-        include: {
-          workType: {
-            include: {
-              payrollType: true,
+      include: {
+        payrollType: true,
+        shift: {
+          include: {
+            workType: {
+              include: {
+                payrollType: true,
+              },
             },
           },
         },
       },
-    },
-  });
-
-  for (const entry of entries) {
-    const payrollType =
-      entry.payrollType ||
-      entry.shift?.workType?.payrollType ||
-      defaultPayrollType;
-
-    await prisma.timeEntry.update({
-      where: {
-        id: entry.id,
-      },
-      data: {
-        payrollPeriodId: period.id,
-        payrollLocked: true,
-        payrollUnlockedByMaster: false,
-        payrollUnlockedAt: null,
-        payrollLockNote: null,
-        payrollTypeId: payrollType?.id || null,
-      },
     });
-  }
+
+    for (const entry of entries) {
+      const payrollType =
+        entry.payrollType ||
+        entry.shift?.workType?.payrollType ||
+        defaultPayrollType;
+
+      await tx.timeEntry.update({
+        where: {
+          id: entry.id,
+        },
+        data: {
+          payrollPeriodId: period.id,
+          payrollLocked: true,
+          payrollUnlockedByMaster: false,
+          payrollUnlockedAt: null,
+          payrollLockNote: null,
+          payrollTypeId: payrollType?.id || null,
+        },
+      });
+    }
+
+    await includePendingPayrollAdjustmentsInPeriod(tx, {
+      cinemaId,
+      payrollPeriodId: period.id,
+      periodStart: start,
+      includedAt: now,
+      changedByUserId: user.sub,
+    });
+
+    return period;
+  });
 }
