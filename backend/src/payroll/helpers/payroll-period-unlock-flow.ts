@@ -1,5 +1,4 @@
 import { NotFoundException } from '@nestjs/common';
-
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   ensurePayrollAccess,
@@ -7,6 +6,11 @@ import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
 } from './payroll-access';
+import {
+  ensurePayrollPeriodCanBeUnlocked,
+  ensurePayrollTimeEntryCanBeUnlocked,
+  getRequiredPayrollUnlockNote,
+} from './payroll-period-unlock-validation';
 
 export async function unlockPayrollPeriod(
   prisma: PrismaService,
@@ -17,28 +21,39 @@ export async function unlockPayrollPeriod(
 ) {
   ensurePayrollAccess(user);
   ensurePayrollAdminOrMaster(user);
+  const unlockNote = getRequiredPayrollUnlockNote(note);
 
   const period = await prisma.payrollPeriod.findUnique({
-    where: { id: periodId },
+    where: {
+      id: periodId,
+    },
   });
 
   if (!period) {
     throw new NotFoundException('Lønperioden blev ikke fundet');
   }
 
-  const cinemaId = getPayrollCinemaFilter(user, selectedCinemaId).cinemaId;
+  const cinemaId = getPayrollCinemaFilter(
+    user,
+    selectedCinemaId,
+  ).cinemaId;
 
   if (period.cinemaId !== cinemaId) {
     throw new NotFoundException('Lønperioden blev ikke fundet');
   }
 
+  ensurePayrollPeriodCanBeUnlocked(period.status);
+
+  const now = new Date();
   const updatedPeriod = await prisma.payrollPeriod.update({
-    where: { id: periodId },
+    where: {
+      id: periodId,
+    },
     data: {
       status: 'UNLOCKED',
-      unlockedAt: new Date(),
+      unlockedAt: now,
       unlockedByUserId: user.sub,
-      unlockNote: note || null,
+      unlockNote,
     },
   });
 
@@ -50,8 +65,8 @@ export async function unlockPayrollPeriod(
     data: {
       payrollLocked: false,
       payrollUnlockedByMaster: true,
-      payrollUnlockedAt: new Date(),
-      payrollLockNote: note || null,
+      payrollUnlockedAt: now,
+      payrollLockNote: unlockNote,
     },
   });
 
@@ -67,28 +82,42 @@ export async function unlockPayrollTimeEntry(
 ) {
   ensurePayrollAccess(user);
   ensurePayrollAdminOrMaster(user);
+  const unlockNote = getRequiredPayrollUnlockNote(note);
 
   const entry = await prisma.timeEntry.findUnique({
-    where: { id: timeEntryId },
+    where: {
+      id: timeEntryId,
+    },
   });
 
   if (!entry) {
-    throw new NotFoundException('Tidsregistreringen blev ikke fundet');
+    throw new NotFoundException(
+      'Tidsregistreringen blev ikke fundet',
+    );
   }
 
-  const cinemaId = getPayrollCinemaFilter(user, selectedCinemaId).cinemaId;
+  const cinemaId = getPayrollCinemaFilter(
+    user,
+    selectedCinemaId,
+  ).cinemaId;
 
   if (entry.cinemaId !== cinemaId) {
-    throw new NotFoundException('Tidsregistreringen blev ikke fundet');
+    throw new NotFoundException(
+      'Tidsregistreringen blev ikke fundet',
+    );
   }
 
+  ensurePayrollTimeEntryCanBeUnlocked(entry.payrollLocked);
+
   return prisma.timeEntry.update({
-    where: { id: timeEntryId },
+    where: {
+      id: timeEntryId,
+    },
     data: {
       payrollLocked: false,
       payrollUnlockedByMaster: true,
       payrollUnlockedAt: new Date(),
-      payrollLockNote: note || null,
+      payrollLockNote: unlockNote,
     },
   });
 }
