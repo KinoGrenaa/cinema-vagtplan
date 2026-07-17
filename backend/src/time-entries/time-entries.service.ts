@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PayrollService } from '../payroll/payroll.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -59,10 +58,7 @@ export class TimeEntriesService {
     });
   }
 
-  async findAll(
-    user: any,
-    selectedCinemaId?: number | null,
-  ) {
+  async findAll(user: any, selectedCinemaId?: number | null) {
     const cinemaId = await resolveTimeEntryActorCinemaId(
       this.prisma,
       user,
@@ -195,6 +191,7 @@ export class TimeEntriesService {
     id: number,
     user: any,
     selectedCinemaId?: number | null,
+    confirmPayrollAdjustment = false,
   ) {
     const cinemaId = await resolveTimeEntryActorCinemaId(
       this.prisma,
@@ -204,11 +201,13 @@ export class TimeEntriesService {
 
     return unapproveTimeEntryFlow({
       prisma: this.prisma,
+      payrollService: this.payrollService,
       realtimeGateway: this.realtimeGateway,
       auditLogsService: this.auditLogsService,
       id,
       user,
       selectedCinemaId: cinemaId,
+      confirmPayrollAdjustment,
     });
   }
 
@@ -289,6 +288,7 @@ export class TimeEntriesService {
       clockInNote?: string | null;
       clockOutNote?: string | null;
       adminNote?: string | null;
+      confirmPayrollAdjustment?: boolean;
     },
     selectedCinemaId?: number | null,
   ) {
@@ -337,9 +337,7 @@ export class TimeEntriesService {
     },
   ) {
     const actorUserId = getTimeEntryActorUserId(user);
-    const requestedUserId = this.getFiniteNumber(
-      options?.requestedUserId,
-    );
+    const requestedUserId = this.getFiniteNumber(options?.requestedUserId);
     const targetUserId =
       this.canActForOtherUsers(user) && requestedUserId
         ? requestedUserId
@@ -359,10 +357,7 @@ export class TimeEntriesService {
       );
     }
 
-    if (
-      targetUserId !== actorUserId ||
-      !this.isMasterUser(user)
-    ) {
+    if (targetUserId !== actorUserId || !this.isMasterUser(user)) {
       await ensureTimeEntryTargetUserAccess(
         this.prisma,
         targetUserId,
@@ -376,10 +371,7 @@ export class TimeEntriesService {
     };
   }
 
-  private async ensureClockOutAccess(
-    user: any,
-    id: number,
-  ) {
+  private async ensureClockOutAccess(user: any, id: number) {
     const timeEntry = await this.prisma.timeEntry.findUnique({
       where: {
         id,
@@ -391,13 +383,10 @@ export class TimeEntriesService {
     });
 
     if (!timeEntry) {
-      throw new NotFoundException(
-        'Tidsregistrering ikke fundet.',
-      );
+      throw new NotFoundException('Tidsregistrering ikke fundet.');
     }
 
     const actorUserId = getTimeEntryActorUserId(user);
-
     if (timeEntry.userId === actorUserId) {
       return;
     }
@@ -425,10 +414,7 @@ export class TimeEntriesService {
   }
 
   private canActForOtherUsers(user: any) {
-    return (
-      user?.role === 'ADMIN' ||
-      user?.role === 'MASTER'
-    );
+    return user?.role === 'ADMIN' || user?.role === 'MASTER';
   }
 
   private isMasterUser(user: any) {
@@ -437,9 +423,7 @@ export class TimeEntriesService {
 
   private getFiniteNumber(value: unknown) {
     const numberValue = Number(value);
-
-    return Number.isInteger(numberValue) &&
-      numberValue > 0
+    return Number.isInteger(numberValue) && numberValue > 0
       ? numberValue
       : undefined;
   }

@@ -10,12 +10,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-
 import { TimeEntriesService } from './time-entries.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
-
 import { ManualTimeEntryDto } from './dto/manual-time-entry.dto';
 import { UpdateTimeEntryDto } from './dto/update-time-entry.dto';
 import { RejectTimeEntryDto } from './dto/reject-time-entry.dto';
@@ -34,7 +32,6 @@ export class TimeEntriesController {
 
   private parseRequiredId(value: string, message: string) {
     const parsedId = Number(value);
-
     if (!Number.isInteger(parsedId) || parsedId <= 0) {
       throw new BadRequestException(message);
     }
@@ -160,6 +157,10 @@ export class TimeEntriesController {
     @Req() req,
     @Param('id') id: string,
     @Query('cinemaId') cinemaId?: string,
+    @Body()
+    body?: {
+      confirmPayrollAdjustment?: boolean;
+    },
   ) {
     const selectedCinemaId = this.parseOptionalId(
       cinemaId,
@@ -170,6 +171,7 @@ export class TimeEntriesController {
       this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       req.user,
       selectedCinemaId,
+      body?.confirmPayrollAdjustment ?? false,
     );
   }
 

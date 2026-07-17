@@ -21,12 +21,23 @@ export type PayrollAdjustmentEditData = {
   adminNote: string;
 };
 
-export type PayrollAdjustmentConfirmation = {
-  entry: TimeEntry;
-  details: PayrollApprovalConflict;
-  action: "APPROVE" | "EDIT";
-  editData?: PayrollAdjustmentEditData;
-};
+export type PayrollAdjustmentConfirmation =
+  | {
+      entry: TimeEntry;
+      details: PayrollApprovalConflict;
+      action: "APPROVE";
+    }
+  | {
+      entry: TimeEntry;
+      details: PayrollApprovalConflict;
+      action: "EDIT";
+      editData: PayrollAdjustmentEditData;
+    }
+  | {
+      entryId: number;
+      details: PayrollApprovalConflict;
+      action: "UNAPPROVE";
+    };
 
 type PayrollAdjustmentConfirmationModalProps = {
   confirmation: PayrollAdjustmentConfirmation | null;
@@ -37,6 +48,7 @@ type PayrollAdjustmentConfirmationModalProps = {
 
 function formatPayrollPeriod(period?: PayrollPeriodInfo | null) {
   if (!period) return "-";
+
   return `${formatDateTime(period.startDate)} – ${formatDateTime(
     period.endDate,
   )}`;
@@ -51,72 +63,87 @@ export default function PayrollAdjustmentConfirmationModal({
   if (!confirmation) return null;
 
   const isEdit = confirmation.action === "EDIT";
+  const isUnapprove = confirmation.action === "UNAPPROVE";
+
+  const description = isUnapprove
+    ? "Denne tidsregistrering er allerede med i en eksporteret lønperiode."
+    : isEdit
+      ? "Denne tidsregistrering er allerede med i en eksporteret lønperiode."
+      : "Denne tidsregistrering tilhører en lønperiode, der allerede er eksporteret.";
+
+  const consequence = isUnapprove
+    ? "Hvis du fortsætter, fjernes godkendelsen, og de eksporterede timer modregnes som en efterregulering."
+    : isEdit
+      ? "Hvis du fortsætter, gemmes rettelsen og oprettes som en efterregulering."
+      : "Hvis du fortsætter, bliver registreringen markeret som efterregulering.";
+
+  const confirmText = loading
+    ? isUnapprove
+      ? "Fjerner godkendelse..."
+      : isEdit
+        ? "Gemmer..."
+        : "Godkender..."
+    : isUnapprove
+      ? "Fjern godkendelse og opret modregning"
+      : isEdit
+        ? "Gem rettelse som efterregulering"
+        : "Godkend som efterregulering";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <h2 className="text-xl font-semibold text-slate-900">
           Lønperioden er allerede eksporteret
         </h2>
 
-        <p className="mt-3 text-sm text-gray-700 dark:text-gray-300">
-          {isEdit
-            ? "Denne tidsregistrering er allerede med i en eksporteret lønperiode."
-            : "Denne tidsregistrering tilhører en lønperiode, der allerede er eksporteret."}
-        </p>
+        <p className="mt-3 text-sm text-slate-600">{description}</p>
 
-        <div className="mt-5 space-y-4 rounded-xl bg-amber-50 p-4 text-sm dark:bg-amber-950/30">
+        <div className="mt-5 space-y-3 rounded-xl bg-slate-50 p-4">
           <div>
-            <div className="font-semibold text-amber-950 dark:text-amber-100">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Oprindelig lønperiode
-            </div>
-            <div className="mt-1 text-amber-900 dark:text-amber-200">
+            </p>
+            <p className="mt-1 text-sm font-medium text-slate-900">
               {formatPayrollPeriod(
                 confirmation.details.originalPayrollPeriod,
               )}
-            </div>
+            </p>
           </div>
 
           <div>
-            <div className="font-semibold text-amber-950 dark:text-amber-100">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Efterreguleres i lønperioden
-            </div>
-            <div className="mt-1 text-amber-900 dark:text-amber-200">
+            </p>
+            <p className="mt-1 text-sm font-medium text-slate-900">
               {formatPayrollPeriod(
                 confirmation.details.adjustmentPayrollPeriod,
               )}
-            </div>
+            </p>
           </div>
         </div>
 
-        <p className="mt-4 text-sm text-gray-700 dark:text-gray-300">
-          {isEdit
-            ? "Hvis du fortsætter, gemmes rettelsen og oprettes som en efterregulering."
-            : "Hvis du fortsætter, bliver registreringen markeret som efterregulering."}
-        </p>
+        <p className="mt-5 text-sm text-slate-700">{consequence}</p>
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
-            disabled={loading}
             onClick={onCancel}
-            className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            disabled={loading}
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
           >
             Annuller
           </button>
           <button
             type="button"
-            disabled={loading}
             onClick={() => void onConfirm()}
-            className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
+            disabled={loading}
+            className={
+              isUnapprove
+                ? "rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+                : "rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
+            }
           >
-            {loading
-              ? isEdit
-                ? "Gemmer..."
-                : "Godkender..."
-              : isEdit
-                ? "Gem rettelse som efterregulering"
-                : "Godkend som efterregulering"}
+            {confirmText}
           </button>
         </div>
       </div>

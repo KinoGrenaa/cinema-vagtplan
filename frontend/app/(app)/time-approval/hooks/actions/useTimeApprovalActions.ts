@@ -44,10 +44,14 @@ export function useTimeApprovalActions({
 }: UseTimeApprovalActionsOptions) {
   const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [payrollAdjustmentConfirmation, setPayrollAdjustmentConfirmation] =
-    useState<PayrollAdjustmentConfirmation | null>(null);
-  const [confirmingPayrollAdjustment, setConfirmingPayrollAdjustment] =
-    useState(false);
+  const [
+    payrollAdjustmentConfirmation,
+    setPayrollAdjustmentConfirmation,
+  ] = useState<PayrollAdjustmentConfirmation | null>(null);
+  const [
+    confirmingPayrollAdjustment,
+    setConfirmingPayrollAdjustment,
+  ] = useState(false);
 
   async function submitEdit(
     data: SaveEditData,
@@ -178,7 +182,9 @@ export function useTimeApprovalActions({
 
   async function approve(
     entry: TimeEntry,
-    options?: { confirmPayrollAdjustment?: boolean },
+    options?: {
+      confirmPayrollAdjustment?: boolean;
+    },
   ) {
     try {
       const response = await apiFetch(
@@ -246,6 +252,67 @@ export function useTimeApprovalActions({
     }
   }
 
+  async function unapprove(
+    id: number,
+    options?: {
+      confirmPayrollAdjustment?: boolean;
+    },
+  ) {
+    try {
+      const response = await apiFetch(
+        `/time-entries/${id}/unapprove${getSelectedCinemaQuery()}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            confirmPayrollAdjustment:
+              options?.confirmPayrollAdjustment ?? false,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        if (response.status === 401) return false;
+
+        if (response.status === 409) {
+          const payload = await response.json().catch(() => null);
+          const details = getPayrollConflictDetails(payload);
+
+          if (details.code === "PAYROLL_PERIOD_EXPORTED") {
+            setPayrollAdjustmentConfirmation({
+              entryId: id,
+              details,
+              action: "UNAPPROVE",
+            });
+            return false;
+          }
+        }
+
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Kunne ikke fjerne godkendelse",
+          ),
+        );
+      }
+
+      await fetchEntries();
+      toast.success(
+        options?.confirmPayrollAdjustment
+          ? "Godkendelse fjernet og modregning oprettet"
+          : "Godkendelse fjernet",
+      );
+      return true;
+    } catch (error) {
+      infoDialog.showError(
+        "Kunne ikke fjerne godkendelse",
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke fjerne godkendelse",
+      );
+      return false;
+    }
+  }
+
   async function confirmPayrollAdjustmentApproval() {
     if (!payrollAdjustmentConfirmation) return;
 
@@ -255,9 +322,18 @@ export function useTimeApprovalActions({
       setConfirmingPayrollAdjustment(true);
 
       if (confirmation.action === "EDIT") {
-        if (!confirmation.editData) return;
         const updated = await submitEdit(confirmation.editData, true);
         if (updated) {
+          setPayrollAdjustmentConfirmation(null);
+        }
+        return;
+      }
+
+      if (confirmation.action === "UNAPPROVE") {
+        const unapproved = await unapprove(confirmation.entryId, {
+          confirmPayrollAdjustment: true,
+        });
+        if (unapproved) {
           setPayrollAdjustmentConfirmation(null);
         }
         return;
@@ -271,30 +347,6 @@ export function useTimeApprovalActions({
       }
     } finally {
       setConfirmingPayrollAdjustment(false);
-    }
-  }
-
-  async function unapprove(id: number) {
-    try {
-      const response = await apiFetch(
-        `/time-entries/${id}/unapprove${getSelectedCinemaQuery()}`,
-        { method: "PATCH" },
-      );
-      if (!response.ok) {
-        if (response.status === 401) return;
-        throw new Error(
-          await readErrorMessage(response, "Kunne ikke fjerne godkendelse"),
-        );
-      }
-      await fetchEntries();
-      toast.success("Godkendelse fjernet");
-    } catch (error) {
-      infoDialog.showError(
-        "Kunne ikke fjerne godkendelse",
-        error instanceof Error
-          ? error.message
-          : "Kunne ikke fjerne godkendelse",
-      );
     }
   }
 
@@ -324,11 +376,15 @@ export function useTimeApprovalActions({
             `/time-entries/${id}/reject${getSelectedCinemaQuery()}`,
             {
               method: "PATCH",
-              body: JSON.stringify({ adminNote }),
+              body: JSON.stringify({
+                adminNote,
+              }),
             },
           );
+
           if (!response.ok) {
             if (response.status === 401) return;
+
             const message = await readErrorMessage(
               response,
               "Kunne ikke sende timeregistrering retur",
@@ -336,6 +392,7 @@ export function useTimeApprovalActions({
             infoDialog.showError("Kan ikke sendes retur", message);
             return;
           }
+
           await fetchEntries();
           toast.success("Timeregistrering sendt retur til rettelse");
         } catch (error) {
@@ -376,11 +433,15 @@ export function useTimeApprovalActions({
             `/time-entries/${id}/void${getSelectedCinemaQuery()}`,
             {
               method: "PATCH",
-              body: JSON.stringify({ adminNote }),
+              body: JSON.stringify({
+                adminNote,
+              }),
             },
           );
+
           if (!response.ok) {
             if (response.status === 401) return;
+
             const message = await readErrorMessage(
               response,
               "Kunne ikke annullere tidsregistrering",
@@ -391,6 +452,7 @@ export function useTimeApprovalActions({
             );
             return;
           }
+
           await fetchEntries();
           toast.success("Tidsregistrering annulleret");
         } catch (error) {
