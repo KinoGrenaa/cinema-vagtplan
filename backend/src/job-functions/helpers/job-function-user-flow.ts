@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+
 import type { PrismaService } from '../../prisma/prisma.service';
 import type {
   AuthUser,
@@ -21,7 +22,6 @@ export async function findJobFunctionUsers(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureJobFunctionAdmin(user);
-
   const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
   await findJobFunctionForCinema(prisma, jobFunctionId, cinemaId);
 
@@ -47,7 +47,6 @@ export async function assignUserJobFunction(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureJobFunctionAdmin(user);
-
   const cinemaId = getRequiredJobFunctionCinemaId(
     user,
     selectedCinemaId ?? data.cinemaId,
@@ -58,19 +57,27 @@ export async function assignUserJobFunction(
     data.userId,
     'Medarbejder skal være et gyldigt ID.',
   );
-
   const employee = await prisma.user.findFirst({
     where: {
       id: userId,
-      cinemaId,
       isActive: true,
       role: { not: 'MASTER' },
+      OR: [
+        { cinemaId },
+        {
+          cinemaMemberships: {
+            some: {
+              cinemaId,
+              isActive: true,
+            },
+          },
+        },
+      ],
     },
     select: {
       id: true,
     },
   });
-
   if (!employee) {
     throw new BadRequestException(
       'Medarbejderen findes ikke for den valgte biograf.',
@@ -84,7 +91,6 @@ export async function assignUserJobFunction(
       jobFunctionId,
     },
   });
-
   if (existing) {
     throw new BadRequestException(
       'Medarbejderen har allerede denne jobfunktion.',
@@ -110,7 +116,6 @@ export async function removeUserJobFunction(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureJobFunctionAdmin(user);
-
   const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
   await findJobFunctionForCinema(prisma, jobFunctionId, cinemaId);
 
@@ -121,7 +126,6 @@ export async function removeUserJobFunction(
       jobFunctionId,
     },
   });
-
   if (!existing) {
     throw new NotFoundException('Medarbejderen har ikke denne jobfunktion.');
   }

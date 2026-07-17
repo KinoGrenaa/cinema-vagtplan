@@ -1,10 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
+
 import { validateShiftTimes } from './shift-service-helpers';
 
+type ShiftConflictPrismaClient = Pick<
+  PrismaService,
+  'shift' | 'leaveRequest'
+>;
+
 export async function checkShiftConflicts(
-  prisma: PrismaService,
+  prisma: ShiftConflictPrismaClient,
   data: {
     startTime: Date;
     endTime: Date;

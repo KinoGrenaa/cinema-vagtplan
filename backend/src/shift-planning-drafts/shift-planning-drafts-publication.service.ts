@@ -5,8 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { checkShiftConflicts } from '../shifts/helpers/shift-conflict-checks';
+import { ensureShiftUserHasCinemaAccess } from '../shifts/helpers/shift-user-access';
+
 import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
 
 type AuthUser = {
@@ -14,6 +18,14 @@ type AuthUser = {
   id?: number;
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
   cinemaId?: number | null;
+};
+
+type PublicationDraftRow = {
+  id: number | bigint;
+  cinemaId: number | bigint;
+  year: number | bigint;
+  month: number | bigint;
+  status: string;
 };
 
 type PublicationPreviewItemRow = {
@@ -61,6 +73,11 @@ type InsertedShiftRow = {
 
 type ExistingPublishedDraftShiftRow = {
   id: number | bigint;
+};
+
+type LockedDraftRow = {
+  id: number | bigint;
+  status: string;
 };
 
 const PUBLISH_CONFIRMATION_TEXT = 'PUBLICER_KLADDE';
@@ -312,13 +329,17 @@ function getUniqueDateKeysFromPublicationItems(
     new Set(
       items
         .map((item) => item.dateKey)
-        .filter((dateKey): dateKey is string => /^\d{4}-\d{2}-\d{2}$/.test(dateKey)),
+        .filter((dateKey): dateKey is string =>
+          /^\d{4}-\d{2}-\d{2}$/.test(dateKey),
+        ),
     ),
   );
 }
 
 function getDateRangeForDateKey(dateKey: string) {
-  const [year, month, day] = dateKey.split('-').map((part) => Number(part));
+  const [year, month, day] = dateKey
+    .split('-')
+    .map((part) => Number(part));
 
   if (
     !Number.isInteger(year) ||
@@ -340,21 +361,26 @@ async function assertNoExistingPublishedDraftShifts(
   draftId: number,
 ) {
   const sourceMarker = buildDraftSourceMarker(draftId);
-  const existingRows = await tx.$queryRaw<ExistingPublishedDraftShiftRow[]>(Prisma.sql`
-    SELECT s.id
-    FROM "Shift" s
-    WHERE s."cinemaId" = ${cinemaId}
-      AND s."note" IS NOT NULL
-      AND s."note" LIKE ${`${sourceMarker}%`}
-    ORDER BY s.id ASC
-    LIMIT 25
-  `);
+  const existingRows = await tx.$queryRaw<ExistingPublishedDraftShiftRow[]>(
+    Prisma.sql`
+      SELECT s.id
+      FROM "Shift" s
+      WHERE s."cinemaId" = ${cinemaId}
+        AND s."note" IS NOT NULL
+        AND s."note" LIKE ${`${sourceMarker}%`}
+      ORDER BY s.id ASC
+      LIMIT 25
+    `,
+  );
 
   if (existingRows.length === 0) {
     return;
   }
 
-  const existingShiftIds = existingRows.map((row) => toRequiredNumber(row.id));
+  const existingShiftIds = existingRows.map((row) =>
+    toRequiredNumber(row.id),
+  );
+
   throw new BadRequestException(
     `Planlægningskladden ser allerede ud til at være publiceret. Fundne vagter: ${existingShiftIds.join(', ')}.`,
   );
@@ -371,21 +397,21 @@ async function refreshMonthPlanCountsForDateKeys(
     await tx.$executeRaw(Prisma.sql`
       UPDATE "MonthPlanDay"
       SET "plannedShiftCount" = (
-            SELECT CAST(COUNT(*) AS INTEGER)
-            FROM "Shift" s
-            WHERE s."cinemaId" = ${cinemaId}
-              AND s."startTime" >= ${start}
-              AND s."startTime" < ${end}
-          ),
-          "unassignedShiftCount" = (
-            SELECT CAST(COUNT(*) AS INTEGER)
-            FROM "Shift" s
-            WHERE s."cinemaId" = ${cinemaId}
-              AND s."startTime" >= ${start}
-              AND s."startTime" < ${end}
-              AND s."userId" IS NULL
-          ),
-          "updatedAt" = CURRENT_TIMESTAMP
+        SELECT CAST(COUNT(*) AS INTEGER)
+        FROM "Shift" s
+        WHERE s."cinemaId" = ${cinemaId}
+          AND s."startTime" >= ${start}
+          AND s."startTime" < ${end}
+      ),
+      "unassignedShiftCount" = (
+        SELECT CAST(COUNT(*) AS INTEGER)
+        FROM "Shift" s
+        WHERE s."cinemaId" = ${cinemaId}
+          AND s."startTime" >= ${start}
+          AND s."startTime" < ${end}
+          AND s."userId" IS NULL
+      ),
+      "updatedAt" = CURRENT_TIMESTAMP
       WHERE "cinemaId" = ${cinemaId}
         AND "date" >= ${start}
         AND "date" < ${end}
@@ -406,16 +432,19 @@ export class ShiftPlanningDraftPublicationService {
     draftId: number,
     cinemaIdValue?: string,
   ) {
-    const selectedCinemaId = user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
+    const selectedCinemaId =
+      user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
     const cinemaId = resolveCinemaId(user, selectedCinemaId);
 
-    const draftRows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-      SELECT d.*
-      FROM "ShiftPlanningDraft" d
-      WHERE d.id = ${draftId}
-        AND d."cinemaId" = ${cinemaId}
-      LIMIT 1
-    `);
+    const draftRows = await this.prisma.$queryRaw<PublicationDraftRow[]>(
+      Prisma.sql`
+        SELECT d.*
+        FROM "ShiftPlanningDraft" d
+        WHERE d.id = ${draftId}
+          AND d."cinemaId" = ${cinemaId}
+        LIMIT 1
+      `,
+    );
 
     if (draftRows.length === 0) {
       throw new NotFoundException('Planlægningskladden findes ikke.');
@@ -457,15 +486,23 @@ export class ShiftPlanningDraftPublicationService {
         LEFT JOIN "User" u ON u.id = i."userId"
         WHERE i."draftId" = ${draftId}
           AND i."cinemaId" = ${cinemaId}
-        ORDER BY i.date ASC, i."plannedStartMinute" ASC NULLS LAST, i.id ASC
+        ORDER BY
+          i.date ASC,
+          i."plannedStartMinute" ASC NULLS LAST,
+          i.id ASC
       `,
     );
 
     const previewItems = itemRows.map((row) => normalizePreviewItem(row));
-    const publishableItems = previewItems.filter((item) => item.canBecomeShift);
-    const blockedItems = previewItems.filter((item) => !item.canBecomeShift);
+    const publishableItems = previewItems.filter(
+      (item) => item.canBecomeShift,
+    );
+    const blockedItems = previewItems.filter(
+      (item) => !item.canBecomeShift,
+    );
     const hasValidationProblems =
-      validation.summary.errorCount > 0 || validation.summary.warningCount > 0;
+      validation.summary.errorCount > 0 ||
+      validation.summary.warningCount > 0;
     const hasDraftItems = previewItems.length > 0;
     const isDraftStatus = draftRows[0].status === 'DRAFT';
     const canPublishLater =
@@ -473,11 +510,12 @@ export class ShiftPlanningDraftPublicationService {
       hasDraftItems &&
       !hasValidationProblems &&
       blockedItems.length === 0;
-
     const blockingReasons: string[] = [];
 
     if (!isDraftStatus) {
-      blockingReasons.push('Kun kladder med status DRAFT kan senere publiceres.');
+      blockingReasons.push(
+        'Kun kladder med status DRAFT kan senere publiceres.',
+      );
     }
 
     if (!hasDraftItems) {
@@ -493,7 +531,9 @@ export class ShiftPlanningDraftPublicationService {
     }
 
     if (blockedItems.length > 0) {
-      blockingReasons.push('En eller flere kladdeposter mangler nødvendige data.');
+      blockingReasons.push(
+        'En eller flere kladdeposter mangler nødvendige data.',
+      );
     }
 
     return {
@@ -527,21 +567,26 @@ export class ShiftPlanningDraftPublicationService {
     cinemaIdValue?: string,
     body?: unknown,
   ) {
-    const selectedCinemaId = user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
+    const selectedCinemaId =
+      user.role === 'MASTER' ? cinemaIdValue : user.cinemaId;
     const cinemaId = resolveCinemaId(user, selectedCinemaId);
     const { workTypeId, note } = parsePublishBody(body);
     const actorUserId = getActorUserId(user);
 
-    const workTypeRows = await this.prisma.$queryRaw<WorkTypeRow[]>(Prisma.sql`
-      SELECT wt.id, wt.name, wt."isActive", wt."archivedAt"
-      FROM "WorkType" wt
-      WHERE wt.id = ${workTypeId}
-        AND wt."cinemaId" = ${cinemaId}
-      LIMIT 1
-    `);
+    const workTypeRows = await this.prisma.$queryRaw<WorkTypeRow[]>(
+      Prisma.sql`
+        SELECT wt.id, wt.name, wt."isActive", wt."archivedAt"
+        FROM "WorkType" wt
+        WHERE wt.id = ${workTypeId}
+          AND wt."cinemaId" = ${cinemaId}
+        LIMIT 1
+      `,
+    );
 
     if (workTypeRows.length === 0) {
-      throw new BadRequestException('Den valgte arbejdstype findes ikke i biografen.');
+      throw new BadRequestException(
+        'Den valgte arbejdstype findes ikke i biografen.',
+      );
     }
 
     const workType = workTypeRows[0];
@@ -570,13 +615,16 @@ export class ShiftPlanningDraftPublicationService {
     );
 
     if (publishableItems.length === 0) {
-      throw new BadRequestException('Kladden indeholder ingen poster, der kan publiceres.');
+      throw new BadRequestException(
+        'Kladden indeholder ingen poster, der kan publiceres.',
+      );
     }
 
-    const affectedDateKeys = getUniqueDateKeysFromPublicationItems(publishableItems);
+    const affectedDateKeys =
+      getUniqueDateKeysFromPublicationItems(publishableItems);
 
     const createdShiftIds = await this.prisma.$transaction(async (tx) => {
-      const lockedDraftRows = await tx.$queryRaw<any[]>(Prisma.sql`
+      const lockedDraftRows = await tx.$queryRaw<LockedDraftRow[]>(Prisma.sql`
         SELECT d.id, d.status
         FROM "ShiftPlanningDraft" d
         WHERE d.id = ${draftId}
@@ -589,7 +637,9 @@ export class ShiftPlanningDraftPublicationService {
       }
 
       if (lockedDraftRows[0].status !== 'DRAFT') {
-        throw new BadRequestException('Planlægningskladden er allerede behandlet.');
+        throw new BadRequestException(
+          'Planlægningskladden er allerede behandlet.',
+        );
       }
 
       await assertNoExistingPublishedDraftShifts(tx, cinemaId, draftId);
@@ -598,7 +648,23 @@ export class ShiftPlanningDraftPublicationService {
 
       for (const item of publishableItems) {
         if (!item.startTime || !item.endTime) {
-          throw new BadRequestException('En kladdepost mangler mødetid eller fyraften.');
+          throw new BadRequestException(
+            'En kladdepost mangler mødetid eller fyraften.',
+          );
+        }
+
+        if (item.userId) {
+          await ensureShiftUserHasCinemaAccess(
+            tx,
+            item.userId,
+            cinemaId,
+          );
+          await checkShiftConflicts(tx, {
+            startTime: item.startTime,
+            endTime: item.endTime,
+            userId: item.userId,
+            cinemaId,
+          });
         }
 
         const shiftNote = buildShiftNote(
@@ -637,12 +703,16 @@ export class ShiftPlanningDraftPublicationService {
         publishableItems.map((item) => item.draftItemId),
       );
 
-      await refreshMonthPlanCountsForDateKeys(tx, cinemaId, affectedDateKeys);
+      await refreshMonthPlanCountsForDateKeys(
+        tx,
+        cinemaId,
+        affectedDateKeys,
+      );
 
       await tx.$executeRaw(Prisma.sql`
         UPDATE "ShiftPlanningDraftItem"
         SET status = 'PUBLISHED',
-            "updatedAt" = CURRENT_TIMESTAMP
+          "updatedAt" = CURRENT_TIMESTAMP
         WHERE id IN (${draftItemIds})
           AND "draftId" = ${draftId}
           AND "cinemaId" = ${cinemaId}
@@ -651,7 +721,7 @@ export class ShiftPlanningDraftPublicationService {
       await tx.$executeRaw(Prisma.sql`
         UPDATE "ShiftPlanningDraft"
         SET status = 'PUBLISHED',
-            "updatedAt" = CURRENT_TIMESTAMP
+          "updatedAt" = CURRENT_TIMESTAMP
         WHERE id = ${draftId}
           AND "cinemaId" = ${cinemaId}
       `);
@@ -698,16 +768,20 @@ export class ShiftPlanningDraftPublicationService {
       affectedDateKeys,
     });
 
-    this.realtimeGateway.notifyCinema(cinemaId, 'shiftPlanningDraftPublished', {
+    this.realtimeGateway.notifyCinema(
       cinemaId,
-      draftId,
-      year: preview.year,
-      month: preview.month,
-      createdShiftCount: createdShiftIds.length,
-      createdShiftIds,
-      affectedDateKeys,
-      publishedAt,
-    });
+      'shiftPlanningDraftPublished',
+      {
+        cinemaId,
+        draftId,
+        year: preview.year,
+        month: preview.month,
+        createdShiftCount: createdShiftIds.length,
+        createdShiftIds,
+        affectedDateKeys,
+        publishedAt,
+      },
+    );
 
     return {
       draftId,

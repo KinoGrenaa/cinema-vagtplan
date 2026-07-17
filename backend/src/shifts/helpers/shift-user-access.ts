@@ -4,10 +4,16 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
+
 import { AuthUser } from './shift-service-helpers';
 
+type ShiftUserAccessPrismaClient = Pick<
+  PrismaService,
+  'user' | 'cinema'
+>;
+
 export async function ensureShiftActorHasCinemaAccess(
-  prisma: PrismaService,
+  prisma: ShiftUserAccessPrismaClient,
   user: AuthUser,
   cinemaId: number,
 ) {
@@ -74,7 +80,7 @@ export async function ensureShiftActorHasCinemaAccess(
 }
 
 export async function ensureShiftUserHasCinemaAccess(
-  prisma: PrismaService,
+  prisma: ShiftUserAccessPrismaClient,
   userId: number,
   cinemaId: number,
 ) {

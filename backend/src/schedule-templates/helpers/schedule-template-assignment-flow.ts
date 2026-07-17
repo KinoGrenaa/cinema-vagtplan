@@ -1,9 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
+
 import type { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
   CinemaContextValue,
-  ensureAssignableUserForJobFunction,
   ensureScheduleTemplateAdmin,
   findScheduleTemplateForCinema,
   findScheduleTemplateJobFunctionForCinema,
@@ -34,16 +34,49 @@ export async function addScheduleTemplateAssignment(
     templateId,
     cinemaId,
   );
+
   const userId = parseRequiredPositiveId(
     data?.userId,
     'Medarbejder skal være et gyldigt ID.',
   );
-  await ensureAssignableUserForJobFunction(
-    prisma,
-    userId,
-    templateJobFunction.jobFunctionId,
-    cinemaId,
-  );
+  const employee = await prisma.user.findFirst({
+    where: {
+      id: userId,
+      isActive: true,
+      role: { not: 'MASTER' },
+      OR: [
+        { cinemaId },
+        {
+          cinemaMemberships: {
+            some: {
+              cinemaId,
+              isActive: true,
+            },
+          },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  if (!employee) {
+    throw new BadRequestException(
+      'Medarbejderen findes ikke for den valgte biograf.',
+    );
+  }
+
+  const eligibility = await prisma.userJobFunction.findFirst({
+    where: {
+      userId,
+      jobFunctionId: templateJobFunction.jobFunctionId,
+      cinemaId,
+    },
+    select: { id: true },
+  });
+  if (!eligibility) {
+    throw new BadRequestException(
+      'Medarbejderen har ikke denne jobfunktion.',
+    );
+  }
 
   const duplicate = await prisma.scheduleTemplateAssignment.findFirst({
     where: {
@@ -52,7 +85,6 @@ export async function addScheduleTemplateAssignment(
     },
     select: { id: true },
   });
-
   if (duplicate) {
     throw new BadRequestException(
       'Medarbejderen er allerede standardmedarbejder på denne linje.',
@@ -60,7 +92,6 @@ export async function addScheduleTemplateAssignment(
   }
 
   const sortOrder = parseOptionalSortOrder(data?.sortOrder) ?? 0;
-
   await prisma.scheduleTemplateAssignment.create({
     data: {
       cinemaId,
@@ -102,7 +133,6 @@ export async function removeScheduleTemplateAssignment(
     },
     select: { id: true },
   });
-
   if (!assignment) {
     throw new BadRequestException(
       'Standardmedarbejderen findes ikke på denne skabelonlinje.',
