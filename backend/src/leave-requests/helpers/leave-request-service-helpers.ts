@@ -64,17 +64,14 @@ function getDateTimePart(
   type: Intl.DateTimeFormatPartTypes,
 ) {
   const value = Number(parts.find((part) => part.type === type)?.value);
-
   if (!Number.isInteger(value)) {
     throw new Error(`Kunne ikke beregne dansk datogrænse: ${type}`);
   }
-
   return value;
 }
 
 function getCopenhagenOffsetMilliseconds(date: Date) {
   const parts = copenhagenDateTimeFormatter.formatToParts(date);
-
   const formattedAsUtc = Date.UTC(
     getDateTimePart(parts, 'year'),
     getDateTimePart(parts, 'month') - 1,
@@ -83,30 +80,39 @@ function getCopenhagenOffsetMilliseconds(date: Date) {
     getDateTimePart(parts, 'minute'),
     getDateTimePart(parts, 'second'),
   );
-
   const dateWithoutMilliseconds = Math.floor(date.getTime() / 1000) * 1000;
-
   return formattedAsUtc - dateWithoutMilliseconds;
 }
 
-export function getCopenhagenTomorrowStart(referenceDate = new Date()) {
+function getCopenhagenDayStart(
+  referenceDate: Date,
+  dayOffset: number,
+) {
   const parts = copenhagenDateFormatter.formatToParts(referenceDate);
-
-  const tomorrowUtcGuess = new Date(
+  const localMidnightUtcGuess = new Date(
     Date.UTC(
       getDateTimePart(parts, 'year'),
       getDateTimePart(parts, 'month') - 1,
-      getDateTimePart(parts, 'day') + 1,
+      getDateTimePart(parts, 'day') + dayOffset,
       0,
       0,
       0,
     ),
   );
-
   const offsetMilliseconds =
-    getCopenhagenOffsetMilliseconds(tomorrowUtcGuess);
+    getCopenhagenOffsetMilliseconds(localMidnightUtcGuess);
 
-  return new Date(tomorrowUtcGuess.getTime() - offsetMilliseconds);
+  return new Date(
+    localMidnightUtcGuess.getTime() - offsetMilliseconds,
+  );
+}
+
+export function getCopenhagenTodayStart(referenceDate = new Date()) {
+  return getCopenhagenDayStart(referenceDate, 0);
+}
+
+export function getCopenhagenTomorrowStart(referenceDate = new Date()) {
+  return getCopenhagenDayStart(referenceDate, 1);
 }
 
 export function getUserId(user: AuthUser) {
@@ -115,11 +121,9 @@ export function getUserId(user: AuthUser) {
 
 export function requireUserId(user: AuthUser) {
   const userId = getUserId(user);
-
   if (!userId) {
     throw new ForbiddenException('Brugeren kunne ikke identificeres.');
   }
-
   return userId;
 }
 
@@ -133,7 +137,6 @@ export function resolveLeaveCinemaId(
         'Vælg en biograf, før du henter fravær.',
       );
     }
-
     return selectedCinemaId;
   }
 

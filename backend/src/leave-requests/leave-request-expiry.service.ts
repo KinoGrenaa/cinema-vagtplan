@@ -1,9 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { getCopenhagenTomorrowStart } from './helpers/leave-request-service-helpers';
+import { getCopenhagenTodayStart } from './helpers/leave-request-service-helpers';
 import { notifyLeaveRequestsUpdated } from './helpers/leave-request-processing-helpers';
 
 type ExpirePendingLeaveRequestsOptions = {
@@ -24,7 +23,7 @@ export class LeaveRequestExpiryService {
   async expirePendingLeaveRequests(
     options: ExpirePendingLeaveRequestsOptions = {},
   ) {
-    const expiresBefore = getCopenhagenTomorrowStart(
+    const expiresBefore = getCopenhagenTodayStart(
       options.referenceDate,
     );
 
