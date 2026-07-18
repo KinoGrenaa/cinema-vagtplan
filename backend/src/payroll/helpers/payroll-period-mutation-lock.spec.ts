@@ -1,6 +1,7 @@
 import {
   acquirePayrollPeriodMutationLockForDate,
   acquirePayrollPeriodMutationLockForPeriod,
+  acquirePayrollPeriodMutationLocksForDates,
   getPayrollPeriodAdvisoryLockKey,
 } from './payroll-period-mutation-lock';
 
@@ -77,6 +78,107 @@ describe('payroll period mutation lock', () => {
       payrollPeriod,
       startDate: '2026-07-21',
       endDate: '2026-08-20',
+    });
+  });
+
+  it('låser flere perioder i stigende rækkefølge og genbruger samme lås', async () => {
+    const prisma = {
+      cinema: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 2,
+          payrollPeriodModel: 'FIXED_DAY_TO_DAY',
+          payrollPeriodStartDay: 21,
+          payrollPeriodEndDay: 20,
+        }),
+      },
+      payrollPeriod: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: 11,
+            status: 'OPEN',
+          })
+          .mockResolvedValueOnce({
+            id: 12,
+            status: 'LOCKED',
+          }),
+      },
+      $queryRaw: jest.fn().mockResolvedValue([
+        {
+          pg_advisory_xact_lock: null,
+        },
+      ]),
+    };
+    const laterReference = new Date(
+      '2026-08-05T12:00:00.000Z',
+    );
+    const earlierReference = new Date(
+      '2026-07-05T12:00:00.000Z',
+    );
+
+    const result =
+      await acquirePayrollPeriodMutationLocksForDates(
+        prisma as never,
+        {
+          cinemaId: 2,
+          referenceDates: [
+            laterReference,
+            earlierReference,
+            laterReference,
+          ],
+        },
+      );
+
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(
+      prisma.payrollPeriod.findUnique,
+    ).toHaveBeenCalledTimes(2);
+
+    const firstSql =
+      prisma.$queryRaw.mock.calls[0][0];
+    const secondSql =
+      prisma.$queryRaw.mock.calls[1][0];
+
+    expect(firstSql.values[1]).toBe(
+      getPayrollPeriodAdvisoryLockKey(
+        2,
+        new Date('2026-06-21T00:00:00.000Z'),
+      ).periodKey,
+    );
+    expect(secondSql.values[1]).toBe(
+      getPayrollPeriodAdvisoryLockKey(
+        2,
+        new Date('2026-07-21T00:00:00.000Z'),
+      ).periodKey,
+    );
+
+    expect(result).toHaveLength(3);
+    expect(result[0]).toMatchObject({
+      referenceDate: laterReference,
+      startDate: '2026-07-21',
+      endDate: '2026-08-20',
+      payrollPeriod: {
+        id: 12,
+        status: 'LOCKED',
+      },
+    });
+    expect(result[1]).toMatchObject({
+      referenceDate: earlierReference,
+      startDate: '2026-06-21',
+      endDate: '2026-07-20',
+      payrollPeriod: {
+        id: 11,
+        status: 'OPEN',
+      },
+    });
+    expect(result[2]).toMatchObject({
+      referenceDate: laterReference,
+      startDate: '2026-07-21',
+      endDate: '2026-08-20',
+      payrollPeriod: {
+        id: 12,
+        status: 'LOCKED',
+      },
     });
   });
 

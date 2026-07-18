@@ -10,6 +10,17 @@ type PayrollPeriodMutationClient = Pick<
   '$queryRaw' | 'cinema' | 'payrollPeriod'
 >;
 
+export type PayrollPeriodMutationDateLock = {
+  referenceDate: Date;
+  startDate: string;
+  endDate: string;
+  periodDates: {
+    start: Date;
+    end: Date;
+  };
+  payrollPeriod: any | null;
+};
+
 export function getPayrollPeriodAdvisoryLockKey(
   cinemaId: number,
   periodStart: Date,
@@ -65,13 +76,13 @@ export async function acquirePayrollPeriodMutationLockForPeriod(
   return periodDates;
 }
 
-export async function acquirePayrollPeriodMutationLockForDate(
+export async function acquirePayrollPeriodMutationLocksForDates(
   prisma: PayrollPeriodMutationClient,
   params: {
     cinemaId: number;
-    referenceDate: Date;
+    referenceDates: Date[];
   },
-) {
+): Promise<PayrollPeriodMutationDateLock[]> {
   const cinema = await prisma.cinema.findUnique({
     where: {
       id: params.cinemaId,
@@ -84,37 +95,94 @@ export async function acquirePayrollPeriodMutationLockForDate(
     );
   }
 
-  const { startDate, endDate } =
-    calculatePayrollPeriodForDate(
-      cinema,
-      params.referenceDate,
+  const resolvedTargets = params.referenceDates.map(
+    (referenceDate) => {
+      const { startDate, endDate } =
+        calculatePayrollPeriodForDate(
+          cinema,
+          referenceDate,
+        );
+
+      return {
+        referenceDate,
+        startDate,
+        endDate,
+        periodDates: getPeriodDates(
+          startDate,
+          endDate,
+        ),
+      };
+    },
+  );
+
+  const uniqueTargets = Array.from(
+    new Map(
+      resolvedTargets.map((target) => [
+        target.periodDates.start.getTime(),
+        target,
+      ]),
+    ).values(),
+  ).sort(
+    (left, right) =>
+      left.periodDates.start.getTime() -
+      right.periodDates.start.getTime(),
+  );
+
+  for (const target of uniqueTargets) {
+    await acquirePayrollPeriodAdvisoryLock(
+      prisma,
+      params.cinemaId,
+      target.periodDates.start,
     );
-  const periodDates = getPeriodDates(
-    startDate,
-    endDate,
-  );
+  }
 
-  await acquirePayrollPeriodAdvisoryLock(
-    prisma,
-    params.cinemaId,
-    periodDates.start,
-  );
+  const payrollPeriodsByStart = new Map<
+    number,
+    any | null
+  >();
 
-  const payrollPeriod =
-    await prisma.payrollPeriod.findUnique({
-      where: {
-        cinemaId_startDate_endDate: {
-          cinemaId: params.cinemaId,
-          startDate: periodDates.start,
-          endDate: periodDates.end,
+  for (const target of uniqueTargets) {
+    const payrollPeriod =
+      await prisma.payrollPeriod.findUnique({
+        where: {
+          cinemaId_startDate_endDate: {
+            cinemaId: params.cinemaId,
+            startDate: target.periodDates.start,
+            endDate: target.periodDates.end,
+          },
         },
-      },
-    });
+      });
 
-  return {
-    payrollPeriod,
-    startDate,
-    endDate,
-    periodDates,
-  };
+    payrollPeriodsByStart.set(
+      target.periodDates.start.getTime(),
+      payrollPeriod,
+    );
+  }
+
+  return resolvedTargets.map((target) => ({
+    ...target,
+    payrollPeriod:
+      payrollPeriodsByStart.get(
+        target.periodDates.start.getTime(),
+      ) ?? null,
+  }));
+}
+
+export async function acquirePayrollPeriodMutationLockForDate(
+  prisma: PayrollPeriodMutationClient,
+  params: {
+    cinemaId: number;
+    referenceDate: Date;
+  },
+) {
+  const [lockedPeriod] =
+    await acquirePayrollPeriodMutationLocksForDates(
+      prisma,
+      {
+        cinemaId: params.cinemaId,
+        referenceDates: [params.referenceDate],
+      },
+    );
+
+  return lockedPeriod;
 }
