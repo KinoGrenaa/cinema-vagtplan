@@ -7,7 +7,9 @@ import {
   ensureClockOutAfterClockIn,
   parseOptionalTimeEntryDate,
 } from './time-entry-date-helpers';
-import { withTimeEntryDeviation } from './time-entry-deviation';
+import {
+  withTimeEntryDeviation,
+} from './time-entry-deviation';
 import { getTimeEntryResponseInclude } from './time-entry-includes';
 import {
   recordClockInTimeEntryCreated,
@@ -50,68 +52,103 @@ export async function clockInTimeEntry(params: {
     auditLogsService,
     data,
   } = params;
-  const openEntry = await findOpenTimeEntry(prisma, {
-    userId: data.userId,
-  });
-
-  if (openEntry) {
-    return withTimeEntryDeviation(openEntry);
-  }
-
   const clockIn = parseOptionalTimeEntryDate(
     data.clockIn,
     'Ugyldig mødetid',
   );
-  const shift = await resolveClockInShift(prisma, {
-    shiftId: data.shiftId,
-    userId: data.userId,
-    cinemaId: data.cinemaId,
-    clockIn,
-  });
 
-  await ensureTimeEntryCreationPeriodWritable(
-    prisma,
-    {
-      cinemaId: data.cinemaId,
-      referenceDate: shift?.startTime ?? clockIn,
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const txPrisma =
+        tx as unknown as PrismaService;
+      const openEntry = await findOpenTimeEntry(
+        txPrisma,
+        {
+          userId: data.userId,
+        },
+      );
+
+      if (openEntry) {
+        return {
+          kind: 'OPEN' as const,
+          openEntry,
+        };
+      }
+
+      const shift = await resolveClockInShift(
+        txPrisma,
+        {
+          shiftId: data.shiftId,
+          userId: data.userId,
+          cinemaId: data.cinemaId,
+          clockIn,
+        },
+      );
+
+      await ensureTimeEntryCreationPeriodWritable(
+        tx,
+        {
+          cinemaId: data.cinemaId,
+          referenceDate:
+            shift?.startTime ?? clockIn,
+        },
+      );
+
+      await ensureNoExistingEntryForShift(
+        txPrisma,
+        {
+          shiftId: shift?.id,
+          userId: data.userId,
+          cinemaId: data.cinemaId,
+          message:
+            'Der findes allerede en tidsregistrering for denne vagt',
+        },
+      );
+
+      const note = getTrimmedOptionalNote(
+        data.note,
+      );
+      const entry = await tx.timeEntry.create({
+        data: {
+          userId: data.userId,
+          cinemaId: data.cinemaId,
+          shiftId: shift?.id || null,
+          payrollTypeId:
+            shift?.workType?.payrollTypeId ||
+            null,
+          clockIn,
+          note,
+          clockInNote: note,
+          status: 'PENDING',
+        },
+        include: getTimeEntryResponseInclude(),
+      });
+
+      return {
+        kind: 'CREATED' as const,
+        entry,
+        shift,
+      };
     },
   );
 
-  await ensureNoExistingEntryForShift(prisma, {
-    shiftId: shift?.id,
-    userId: data.userId,
-    cinemaId: data.cinemaId,
-    message:
-      'Der findes allerede en tidsregistrering for denne vagt',
-  });
-
-  const note = getTrimmedOptionalNote(data.note);
-  const entry = await prisma.timeEntry.create({
-    data: {
-      userId: data.userId,
-      cinemaId: data.cinemaId,
-      shiftId: shift?.id || null,
-      payrollTypeId:
-        shift?.workType?.payrollTypeId || null,
-      clockIn,
-      note,
-      clockInNote: note,
-      status: 'PENDING',
-    },
-    include: getTimeEntryResponseInclude(),
-  });
+  if (result.kind === 'OPEN') {
+    return withTimeEntryDeviation(
+      result.openEntry,
+    );
+  }
 
   await recordClockInTimeEntryCreated({
     prisma,
     auditLogsService,
-    entry,
-    shift,
+    entry: result.entry,
+    shift: result.shift,
     changedByUserId: data.userId,
   });
 
   return notifyTimeEntryUpdated(
     realtimeGateway,
-    entry,
+    result.entry,
   );
 }
 

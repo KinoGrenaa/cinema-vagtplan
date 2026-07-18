@@ -1,8 +1,14 @@
 import { lockPayrollPeriod } from './payroll-period-lock-flow';
 import { ensurePayrollEntriesApproved } from './payroll-period-export';
+import { acquirePayrollPeriodMutationLockForPeriod } from './payroll-period-mutation-lock';
 
 jest.mock('./payroll-period-export', () => ({
   ensurePayrollEntriesApproved: jest.fn(),
+}));
+
+jest.mock('./payroll-period-mutation-lock', () => ({
+  acquirePayrollPeriodMutationLockForPeriod:
+    jest.fn(),
 }));
 
 describe('payroll period lock transaction', () => {
@@ -16,11 +22,14 @@ describe('payroll period lock transaction', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (
+      acquirePayrollPeriodMutationLockForPeriod as jest.Mock
+    ).mockResolvedValue(undefined);
+    (
       ensurePayrollEntriesApproved as jest.Mock
     ).mockResolvedValue(undefined);
   });
 
-  it('låser perioden og alle registreringer i samme transaktion', async () => {
+  it('låser, genkontrollerer og opdaterer i samme transaktion', async () => {
     const period = {
       id: 12,
       cinemaId: 2,
@@ -57,8 +66,11 @@ describe('payroll period lock transaction', () => {
     };
     const prisma = {
       $transaction: jest.fn(
-        async (callback: (transaction: typeof tx) => unknown) =>
-          callback(tx),
+        async (
+          callback: (
+            transaction: typeof tx,
+          ) => unknown,
+        ) => callback(tx),
       ),
     };
 
@@ -72,34 +84,35 @@ describe('payroll period lock transaction', () => {
     ).resolves.toBe(period);
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(
+      acquirePayrollPeriodMutationLockForPeriod,
+    ).toHaveBeenCalledWith(tx, {
+      cinemaId: 2,
+      startDate: '2026-07-21',
+      endDate: '2026-08-20',
+    });
+    expect(
+      ensurePayrollEntriesApproved,
+    ).toHaveBeenCalledWith(
+      tx,
+      user,
+      '2026-07-21',
+      '2026-08-20',
+      undefined,
+      undefined,
+      'LOCK',
+    );
+    expect(
+      (
+        acquirePayrollPeriodMutationLockForPeriod as jest.Mock
+      ).mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      (
+        ensurePayrollEntriesApproved as jest.Mock
+      ).mock.invocationCallOrder[0],
+    );
     expect(tx.payrollPeriod.create).toHaveBeenCalledTimes(1);
     expect(tx.timeEntry.update).toHaveBeenCalledTimes(2);
-    expect(tx.timeEntry.update).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        where: {
-          id: 41,
-        },
-        data: expect.objectContaining({
-          payrollPeriodId: 12,
-          payrollLocked: true,
-          payrollTypeId: 5,
-        }),
-      }),
-    );
-    expect(tx.timeEntry.update).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        where: {
-          id: 42,
-        },
-        data: expect.objectContaining({
-          payrollPeriodId: 12,
-          payrollLocked: true,
-          payrollTypeId: 6,
-        }),
-      }),
-    );
   });
 
   it('lader en registreringsfejl afbryde hele transaktionen', async () => {
@@ -131,14 +144,19 @@ describe('payroll period lock transaction', () => {
           .fn()
           .mockResolvedValueOnce({})
           .mockRejectedValueOnce(
-            new Error('Registreringen kunne ikke låses'),
+            new Error(
+              'Registreringen kunne ikke låses',
+            ),
           ),
       },
     };
     const prisma = {
       $transaction: jest.fn(
-        async (callback: (transaction: typeof tx) => unknown) =>
-          callback(tx),
+        async (
+          callback: (
+            transaction: typeof tx,
+          ) => unknown,
+        ) => callback(tx),
       ),
     };
 

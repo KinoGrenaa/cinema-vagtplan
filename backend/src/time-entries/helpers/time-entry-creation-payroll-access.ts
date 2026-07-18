@@ -1,19 +1,18 @@
 import { BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { findPayrollPeriodEntityForDate } from '../../payroll/helpers/payroll-period-queries';
+import { Prisma } from '@prisma/client';
+import { acquirePayrollPeriodMutationLockForDate } from '../../payroll/helpers/payroll-period-mutation-lock';
 
 export async function ensureTimeEntryCreationPeriodWritable(
-  prisma: PrismaService,
+  prisma: Prisma.TransactionClient,
   params: {
     cinemaId: number;
     referenceDate: Date;
   },
 ) {
-  const payrollPeriod =
-    await findPayrollPeriodEntityForDate(
+  const { payrollPeriod } =
+    await acquirePayrollPeriodMutationLockForDate(
       prisma,
-      params.cinemaId,
-      params.referenceDate,
+      params,
     );
 
   if (payrollPeriod?.status !== 'LOCKED') {

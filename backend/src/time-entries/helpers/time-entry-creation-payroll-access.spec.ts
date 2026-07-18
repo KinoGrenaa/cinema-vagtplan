@@ -1,10 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
-import { findPayrollPeriodEntityForDate } from '../../payroll/helpers/payroll-period-queries';
+import { acquirePayrollPeriodMutationLockForDate } from '../../payroll/helpers/payroll-period-mutation-lock';
 import { ensureTimeEntryCreationPeriodWritable } from './time-entry-creation-payroll-access';
 
-jest.mock('../../payroll/helpers/payroll-period-queries', () => ({
-  findPayrollPeriodEntityForDate: jest.fn(),
-}));
+jest.mock(
+  '../../payroll/helpers/payroll-period-mutation-lock',
+  () => ({
+    acquirePayrollPeriodMutationLockForDate:
+      jest.fn(),
+  }),
+);
 
 describe('time entry creation payroll access', () => {
   const prisma = {};
@@ -18,8 +22,10 @@ describe('time entry creation payroll access', () => {
 
   it('tillader oprettelse, når der ikke findes en lønperiode endnu', async () => {
     (
-      findPayrollPeriodEntityForDate as jest.Mock
-    ).mockResolvedValue(null);
+      acquirePayrollPeriodMutationLockForDate as jest.Mock
+    ).mockResolvedValue({
+      payrollPeriod: null,
+    });
 
     await expect(
       ensureTimeEntryCreationPeriodWritable(
@@ -40,8 +46,10 @@ describe('time entry creation payroll access', () => {
         status,
       };
       (
-        findPayrollPeriodEntityForDate as jest.Mock
-      ).mockResolvedValue(period);
+        acquirePayrollPeriodMutationLockForDate as jest.Mock
+      ).mockResolvedValue({
+        payrollPeriod: period,
+      });
 
       await expect(
         ensureTimeEntryCreationPeriodWritable(
@@ -57,10 +65,12 @@ describe('time entry creation payroll access', () => {
 
   it('blokerer oprettelse i en LOCKED periode', async () => {
     (
-      findPayrollPeriodEntityForDate as jest.Mock
+      acquirePayrollPeriodMutationLockForDate as jest.Mock
     ).mockResolvedValue({
-      id: 12,
-      status: 'LOCKED',
+      payrollPeriod: {
+        id: 12,
+        status: 'LOCKED',
+      },
     });
 
     await expect(
@@ -84,8 +94,10 @@ describe('time entry creation payroll access', () => {
       status: 'EXPORTED',
     };
     (
-      findPayrollPeriodEntityForDate as jest.Mock
-    ).mockResolvedValue(period);
+      acquirePayrollPeriodMutationLockForDate as jest.Mock
+    ).mockResolvedValue({
+      payrollPeriod: period,
+    });
 
     await expect(
       ensureTimeEntryCreationPeriodWritable(
@@ -98,10 +110,12 @@ describe('time entry creation payroll access', () => {
     ).resolves.toBe(period);
   });
 
-  it('slår perioden op med biograf og lønreference', async () => {
+  it('låser perioden med biograf og lønreference', async () => {
     (
-      findPayrollPeriodEntityForDate as jest.Mock
-    ).mockResolvedValue(null);
+      acquirePayrollPeriodMutationLockForDate as jest.Mock
+    ).mockResolvedValue({
+      payrollPeriod: null,
+    });
 
     await ensureTimeEntryCreationPeriodWritable(
       prisma as never,
@@ -112,11 +126,13 @@ describe('time entry creation payroll access', () => {
     );
 
     expect(
-      findPayrollPeriodEntityForDate,
+      acquirePayrollPeriodMutationLockForDate,
     ).toHaveBeenCalledWith(
       prisma,
-      4,
-      referenceDate,
+      {
+        cinemaId: 4,
+        referenceDate,
+      },
     );
   });
 });

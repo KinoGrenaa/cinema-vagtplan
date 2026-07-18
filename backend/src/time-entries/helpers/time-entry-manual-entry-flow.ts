@@ -56,93 +56,117 @@ export async function submitManualTimeEntry(params: {
 
   ensureClockOutAfterClockIn(clockIn, clockOut);
 
-  await ensureNoOverlappingManualTimeEntry(prisma, {
-    userId: data.userId,
-    cinemaId: data.cinemaId,
-    clockIn,
-    clockOut,
-  });
-  await ensureNoOverlappingManualShift(prisma, {
-    userId: data.userId,
-    cinemaId: data.cinemaId,
-    clockIn,
-    clockOut,
-  });
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const txPrisma =
+        tx as unknown as PrismaService;
+      const shift = await findManualEntryShift(
+        txPrisma,
+        {
+          shiftId: data.shiftId,
+          cinemaId: data.cinemaId,
+        },
+      );
 
-  const shift = await findManualEntryShift(prisma, {
-    shiftId: data.shiftId,
-    cinemaId: data.cinemaId,
-  });
-
-  ensureShiftBelongsToUser(
-    shift,
-    data.userId,
-    'Du kan kun indsende timer for dine egne vagter',
-  );
-
-  await ensureTimeEntryCreationPeriodWritable(
-    prisma,
-    {
-      cinemaId: data.cinemaId,
-      referenceDate: shift?.startTime ?? clockIn,
-    },
-  );
-
-  const { clockInNote, clockOutNote } =
-    getManualEntryNotes(data);
-
-  if (shift) {
-    const deviation = analyzeTimeEntryDeviation(
-      {
-        clockIn,
-        clockOut,
+      ensureShiftBelongsToUser(
         shift,
-      },
-      shift.cinema,
-    );
+        data.userId,
+        'Du kan kun indsende timer for dine egne vagter',
+      );
 
-    ensureManualEntryDeviationNotes({
-      deviation,
-      clockInNote,
-      clockOutNote,
-    });
+      await ensureTimeEntryCreationPeriodWritable(
+        tx,
+        {
+          cinemaId: data.cinemaId,
+          referenceDate:
+            shift?.startTime ?? clockIn,
+        },
+      );
 
-    await ensureNoExistingEntryForShift(prisma, {
-      shiftId: shift.id,
-      userId: data.userId,
-      cinemaId: data.cinemaId,
-      message:
-        'Der er allerede indsendt timer for denne vagt',
-    });
-  }
+      await ensureNoOverlappingManualTimeEntry(
+        txPrisma,
+        {
+          userId: data.userId,
+          cinemaId: data.cinemaId,
+          clockIn,
+          clockOut,
+        },
+      );
+      await ensureNoOverlappingManualShift(
+        txPrisma,
+        {
+          userId: data.userId,
+          cinemaId: data.cinemaId,
+          clockIn,
+          clockOut,
+        },
+      );
 
-  const entry = await prisma.timeEntry.create({
-    data: {
-      userId: data.userId,
-      cinemaId: data.cinemaId,
-      shiftId: shift?.id || null,
-      payrollTypeId:
-        shift?.workType?.payrollTypeId || null,
-      clockIn,
-      clockOut,
-      note: data.note ?? null,
-      clockInNote,
-      clockOutNote,
-      status: 'PENDING',
+      const { clockInNote, clockOutNote } =
+        getManualEntryNotes(data);
+
+      if (shift) {
+        const deviation = analyzeTimeEntryDeviation(
+          {
+            clockIn,
+            clockOut,
+            shift,
+          },
+          shift.cinema,
+        );
+
+        ensureManualEntryDeviationNotes({
+          deviation,
+          clockInNote,
+          clockOutNote,
+        });
+
+        await ensureNoExistingEntryForShift(
+          txPrisma,
+          {
+            shiftId: shift.id,
+            userId: data.userId,
+            cinemaId: data.cinemaId,
+            message:
+              'Der er allerede indsendt timer for denne vagt',
+          },
+        );
+      }
+
+      const entry = await tx.timeEntry.create({
+        data: {
+          userId: data.userId,
+          cinemaId: data.cinemaId,
+          shiftId: shift?.id || null,
+          payrollTypeId:
+            shift?.workType?.payrollTypeId || null,
+          clockIn,
+          clockOut,
+          note: data.note ?? null,
+          clockInNote,
+          clockOutNote,
+          status: 'PENDING',
+        },
+        include: getTimeEntryResponseInclude(),
+      });
+
+      return {
+        entry,
+        shift,
+      };
     },
-    include: getTimeEntryResponseInclude(),
-  });
+  );
 
   await recordManualTimeEntrySubmitted({
     prisma,
     auditLogsService,
-    entry,
-    shift,
+    entry: result.entry,
+    shift: result.shift,
     changedByUserId: data.userId,
   });
 
   return notifyTimeEntryUpdated(
     realtimeGateway,
-    entry,
+    result.entry,
   );
 }

@@ -14,6 +14,7 @@ import {
   type PayrollAuthUser,
 } from './payroll-access';
 import { ensurePayrollEntriesApproved } from './payroll-period-export';
+import { acquirePayrollPeriodMutationLockForPeriod } from './payroll-period-mutation-lock';
 
 export async function lockPayrollPeriod(
   prisma: PrismaService,
@@ -34,17 +35,10 @@ export async function lockPayrollPeriod(
     );
   }
 
-  await ensurePayrollEntriesApproved(
-    prisma,
-    user,
+  const periodDates = getPeriodDates(
     startDate,
     endDate,
-    undefined,
-    selectedCinemaId,
-    'LOCK',
   );
-
-  const periodDates = getPeriodDates(startDate, endDate);
   const timeRange = getPayrollPeriodTimeRange(
     startDate,
     endDate,
@@ -56,13 +50,33 @@ export async function lockPayrollPeriod(
   const now = new Date();
 
   return prisma.$transaction(async (tx) => {
-    const existingPeriod = await tx.payrollPeriod.findFirst({
-      where: {
+    await acquirePayrollPeriodMutationLockForPeriod(
+      tx,
+      {
         cinemaId,
-        startDate: periodDates.start,
-        endDate: periodDates.end,
+        startDate,
+        endDate,
       },
-    });
+    );
+
+    await ensurePayrollEntriesApproved(
+      tx as unknown as PrismaService,
+      user,
+      startDate,
+      endDate,
+      undefined,
+      selectedCinemaId,
+      'LOCK',
+    );
+
+    const existingPeriod =
+      await tx.payrollPeriod.findFirst({
+        where: {
+          cinemaId,
+          startDate: periodDates.start,
+          endDate: periodDates.end,
+        },
+      });
 
     if (
       existingPeriod?.status === 'LOCKED' ||
