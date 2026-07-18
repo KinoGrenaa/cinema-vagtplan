@@ -6,6 +6,7 @@ import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
 } from './payroll-access';
+import { reopenIncludedPayrollAdjustmentsForPeriod } from './payroll-adjustment-reopening';
 import {
   ensurePayrollPeriodCanBeUnlocked,
   ensurePayrollTimeEntryCanBeUnlocked,
@@ -22,55 +23,61 @@ export async function unlockPayrollPeriod(
   ensurePayrollAccess(user);
   ensurePayrollAdminOrMaster(user);
   const unlockNote = getRequiredPayrollUnlockNote(note);
-
-  const period = await prisma.payrollPeriod.findUnique({
-    where: {
-      id: periodId,
-    },
-  });
-
-  if (!period) {
-    throw new NotFoundException('Lønperioden blev ikke fundet');
-  }
-
   const cinemaId = getPayrollCinemaFilter(
     user,
     selectedCinemaId,
   ).cinemaId;
-
-  if (period.cinemaId !== cinemaId) {
-    throw new NotFoundException('Lønperioden blev ikke fundet');
-  }
-
-  ensurePayrollPeriodCanBeUnlocked(period.status);
-
   const now = new Date();
-  const updatedPeriod = await prisma.payrollPeriod.update({
-    where: {
-      id: periodId,
-    },
-    data: {
-      status: 'UNLOCKED',
-      unlockedAt: now,
-      unlockedByUserId: user.sub,
-      unlockNote,
-    },
-  });
 
-  await prisma.timeEntry.updateMany({
-    where: {
-      payrollPeriodId: periodId,
+  return prisma.$transaction(async (tx) => {
+    const period = await tx.payrollPeriod.findUnique({
+      where: {
+        id: periodId,
+      },
+    });
+
+    if (!period || period.cinemaId !== cinemaId) {
+      throw new NotFoundException(
+        'Lønperioden blev ikke fundet',
+      );
+    }
+
+    ensurePayrollPeriodCanBeUnlocked(period.status);
+
+    const updatedPeriod = await tx.payrollPeriod.update({
+      where: {
+        id: periodId,
+      },
+      data: {
+        status: 'UNLOCKED',
+        unlockedAt: now,
+        unlockedByUserId: user.sub,
+        unlockNote,
+      },
+    });
+
+    await tx.timeEntry.updateMany({
+      where: {
+        payrollPeriodId: periodId,
+        cinemaId,
+      },
+      data: {
+        payrollLocked: false,
+        payrollUnlockedByMaster: true,
+        payrollUnlockedAt: now,
+        payrollLockNote: unlockNote,
+      },
+    });
+
+    await reopenIncludedPayrollAdjustmentsForPeriod(tx, {
       cinemaId,
-    },
-    data: {
-      payrollLocked: false,
-      payrollUnlockedByMaster: true,
-      payrollUnlockedAt: now,
-      payrollLockNote: unlockNote,
-    },
-  });
+      payrollPeriodId: periodId,
+      changedByUserId: user.sub,
+      note: unlockNote,
+    });
 
-  return updatedPeriod;
+    return updatedPeriod;
+  });
 }
 
 export async function unlockPayrollTimeEntry(
