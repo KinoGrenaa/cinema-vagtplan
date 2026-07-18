@@ -19,7 +19,7 @@ export default function PayrollWarnings({
       {pendingCount > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
           <div className="font-semibold">
-            {pendingCount} kræver handling før eksport
+            {pendingCount} kræver handling før låsning og eksport
           </div>
           <div className="mt-1 text-sm">
             Afventer godkendelse eller er sendt retur til

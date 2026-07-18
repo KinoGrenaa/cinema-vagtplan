@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { ensurePayrollEntriesApproved } from './payroll-period-export';
+import { lockPayrollPeriod } from './payroll-period-lock-flow';
 import { buildPayrollReportData } from './payroll-report-data';
 
 describe('payroll unresolved time entries', () => {
@@ -10,25 +11,31 @@ describe('payroll unresolved time entries', () => {
     canManagePayroll: true,
   };
 
+  function createUnresolvedEntries() {
+    return [
+      {
+        status: 'PENDING',
+        user: {
+          firstName: 'Anna',
+          lastName: 'Andersen',
+        },
+      },
+      {
+        status: 'NEEDS_CHANGES',
+        user: {
+          firstName: 'Bent',
+          lastName: 'Bentsen',
+        },
+      },
+    ];
+  }
+
   it('blokerer eksport ved PENDING og NEEDS_CHANGES', async () => {
     const prisma = {
       timeEntry: {
-        findMany: jest.fn().mockResolvedValue([
-          {
-            status: 'PENDING',
-            user: {
-              firstName: 'Anna',
-              lastName: 'Andersen',
-            },
-          },
-          {
-            status: 'NEEDS_CHANGES',
-            user: {
-              firstName: 'Bent',
-              lastName: 'Bentsen',
-            },
-          },
-        ]),
+        findMany: jest.fn().mockResolvedValue(
+          createUnresolvedEntries(),
+        ),
       },
     };
 
@@ -62,10 +69,47 @@ describe('payroll unresolved time entries', () => {
     ).rejects.toMatchObject({
       response: {
         message: expect.stringContaining(
-          'afventer godkendelse eller er sendt retur til rettelse',
+          'Kan ikke eksportere',
         ),
       },
     });
+  });
+
+  it('blokerer låsning før periodens registreringer ændres', async () => {
+    const prisma = {
+      timeEntry: {
+        findMany: jest.fn().mockResolvedValue(
+          createUnresolvedEntries(),
+        ),
+      },
+      payrollPeriod: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+        create: jest.fn(),
+      },
+      payrollType: {
+        findFirst: jest.fn(),
+      },
+    };
+
+    await expect(
+      lockPayrollPeriod(
+        prisma as never,
+        user as never,
+        '2026-06-21',
+        '2026-07-20',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        message: expect.stringContaining(
+          'Kan ikke låse lønperioden',
+        ),
+      },
+    });
+
+    expect(prisma.payrollPeriod.findFirst).not.toHaveBeenCalled();
+    expect(prisma.payrollPeriod.update).not.toHaveBeenCalled();
+    expect(prisma.payrollPeriod.create).not.toHaveBeenCalled();
   });
 
   it('tæller begge uløste statuser i payrollrapporten', async () => {

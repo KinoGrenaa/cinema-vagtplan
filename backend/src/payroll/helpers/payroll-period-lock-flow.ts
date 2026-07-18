@@ -13,6 +13,7 @@ import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
 } from './payroll-access';
+import { ensurePayrollEntriesApproved } from './payroll-period-export';
 
 export async function lockPayrollPeriod(
   prisma: PrismaService,
@@ -32,6 +33,16 @@ export async function lockPayrollPeriod(
       'Du har ikke adgang til at låse lønperioder',
     );
   }
+
+  await ensurePayrollEntriesApproved(
+    prisma,
+    user,
+    startDate,
+    endDate,
+    undefined,
+    selectedCinemaId,
+    'LOCK',
+  );
 
   const periodDates = getPeriodDates(startDate, endDate);
   const timeRange = getPayrollPeriodTimeRange(

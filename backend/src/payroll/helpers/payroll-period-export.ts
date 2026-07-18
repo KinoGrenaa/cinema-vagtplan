@@ -16,6 +16,8 @@ const unresolvedTimeEntryStatuses = [
   'NEEDS_CHANGES',
 ] as const;
 
+type PayrollResolutionOperation = 'EXPORT' | 'LOCK';
+
 export async function ensurePayrollEntriesApproved(
   prisma: PrismaService,
   user: PayrollAuthUser,
@@ -23,6 +25,7 @@ export async function ensurePayrollEntriesApproved(
   endDate: string,
   userId?: string,
   selectedCinemaId?: number | null,
+  operation: PayrollResolutionOperation = 'EXPORT',
 ) {
   const timeRange = getPayrollPeriodTimeRange(
     startDate,
@@ -59,9 +62,13 @@ export async function ensurePayrollEntriesApproved(
           allNames.indexOf(name) === index,
       )
       .join(', ');
+    const action =
+      operation === 'LOCK'
+        ? 'låse lønperioden'
+        : 'eksportere';
 
     throw new BadRequestException(
-      `Kan ikke eksportere.
+      `Kan ikke ${action}.
 Der findes ${unresolvedEntries.length} tidsregistreringer, som afventer godkendelse eller er sendt retur til rettelse: ${names}`,
     );
   }

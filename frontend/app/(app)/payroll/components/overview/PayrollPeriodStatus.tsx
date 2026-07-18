@@ -23,7 +23,7 @@ export default function PayrollPeriodStatus({
     pendingCount > 0 ||
     voidedCount > 0 ||
     adjustmentCount > 0;
-  const exportBlocked = pendingCount > 0;
+  const unresolvedBlocked = pendingCount > 0;
   const statusLabel =
     periodStatus === "LOCKED"
       ? "Låst"
@@ -85,8 +85,13 @@ export default function PayrollPeriodStatus({
             <button
               type="button"
               onClick={onLockPeriod}
-              disabled={locking}
-              className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+              disabled={locking || unresolvedBlocked}
+              title={
+                unresolvedBlocked
+                  ? "Håndtér tidsregistreringerne, før perioden låses."
+                  : undefined
+              }
+              className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {locking ? "Låser..." : "Lås lønperiode"}
             </button>
@@ -109,9 +114,9 @@ export default function PayrollPeriodStatus({
           <button
             type="button"
             onClick={onOpenExportModal}
-            disabled={exporting || exportBlocked}
+            disabled={exporting || unresolvedBlocked}
             title={
-              exportBlocked
+              unresolvedBlocked
                 ? "Håndtér tidsregistreringerne, før perioden eksporteres."
                 : undefined
             }
