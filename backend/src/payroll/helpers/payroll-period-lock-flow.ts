@@ -53,104 +53,108 @@ export async function lockPayrollPeriod(
     user,
     selectedCinemaId,
   ).cinemaId;
-  const existingPeriod = await prisma.payrollPeriod.findFirst({
-    where: {
-      cinemaId,
-      startDate: periodDates.start,
-      endDate: periodDates.end,
-    },
-  });
+  const now = new Date();
 
-  if (
-    existingPeriod?.status === 'LOCKED' ||
-    existingPeriod?.status === 'EXPORTED'
-  ) {
-    throw new BadRequestException(
-      'Lønperioden er allerede låst',
-    );
-  }
-
-  const entries = await prisma.timeEntry.findMany({
-    where: {
-      cinemaId,
-      OR: getPayrollReferenceDateFilters(
-        timeRange.start,
-        timeRange.endExclusive,
-      ),
-      clockOut: {
-        not: null,
+  return prisma.$transaction(async (tx) => {
+    const existingPeriod = await tx.payrollPeriod.findFirst({
+      where: {
+        cinemaId,
+        startDate: periodDates.start,
+        endDate: periodDates.end,
       },
-    },
-    include: {
-      payrollType: true,
-      shift: {
-        include: {
-          workType: {
-            include: {
-              payrollType: true,
+    });
+
+    if (
+      existingPeriod?.status === 'LOCKED' ||
+      existingPeriod?.status === 'EXPORTED'
+    ) {
+      throw new BadRequestException(
+        'Lønperioden er allerede låst',
+      );
+    }
+
+    const entries = await tx.timeEntry.findMany({
+      where: {
+        cinemaId,
+        OR: getPayrollReferenceDateFilters(
+          timeRange.start,
+          timeRange.endExclusive,
+        ),
+        clockOut: {
+          not: null,
+        },
+      },
+      include: {
+        payrollType: true,
+        shift: {
+          include: {
+            workType: {
+              include: {
+                payrollType: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  const period = existingPeriod
-    ? await prisma.payrollPeriod.update({
+    const defaultPayrollType =
+      await tx.payrollType.findFirst({
         where: {
-          id: existingPeriod.id,
-        },
-        data: {
-          status: 'LOCKED',
-          lockedAt: new Date(),
-          lockedByUserId: user.sub,
-          exportedAt: null,
-          exportedByUserId: null,
-          unlockedAt: null,
-          unlockedByUserId: null,
-          unlockNote: null,
-        },
-      })
-    : await prisma.payrollPeriod.create({
-        data: {
           cinemaId,
-          startDate: periodDates.start,
-          endDate: periodDates.end,
-          status: 'LOCKED',
-          lockedAt: new Date(),
-          lockedByUserId: user.sub,
+          isDefault: true,
+          isActive: true,
         },
       });
 
-  const defaultPayrollType =
-    await prisma.payrollType.findFirst({
-      where: {
-        cinemaId,
-        isDefault: true,
-        isActive: true,
-      },
-    });
+    const period = existingPeriod
+      ? await tx.payrollPeriod.update({
+          where: {
+            id: existingPeriod.id,
+          },
+          data: {
+            status: 'LOCKED',
+            lockedAt: now,
+            lockedByUserId: user.sub,
+            exportedAt: null,
+            exportedByUserId: null,
+            unlockedAt: null,
+            unlockedByUserId: null,
+            unlockNote: null,
+          },
+        })
+      : await tx.payrollPeriod.create({
+          data: {
+            cinemaId,
+            startDate: periodDates.start,
+            endDate: periodDates.end,
+            status: 'LOCKED',
+            lockedAt: now,
+            lockedByUserId: user.sub,
+          },
+        });
 
-  for (const entry of entries) {
-    const payrollType =
-      entry.payrollType ||
-      entry.shift?.workType?.payrollType ||
-      defaultPayrollType;
+    for (const entry of entries) {
+      const payrollType =
+        entry.payrollType ||
+        entry.shift?.workType?.payrollType ||
+        defaultPayrollType;
 
-    await prisma.timeEntry.update({
-      where: {
-        id: entry.id,
-      },
-      data: {
-        payrollPeriodId: period.id,
-        payrollLocked: true,
-        payrollUnlockedByMaster: false,
-        payrollUnlockedAt: null,
-        payrollLockNote: null,
-        payrollTypeId: payrollType?.id || null,
-      },
-    });
-  }
+      await tx.timeEntry.update({
+        where: {
+          id: entry.id,
+        },
+        data: {
+          payrollPeriodId: period.id,
+          payrollLocked: true,
+          payrollUnlockedByMaster: false,
+          payrollUnlockedAt: null,
+          payrollLockNote: null,
+          payrollTypeId: payrollType?.id || null,
+        },
+      });
+    }
 
-  return period;
+    return period;
+  });
 }
