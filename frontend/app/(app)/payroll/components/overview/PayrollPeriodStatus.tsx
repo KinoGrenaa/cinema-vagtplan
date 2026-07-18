@@ -24,6 +24,15 @@ export default function PayrollPeriodStatus({
     voidedCount > 0 ||
     adjustmentCount > 0;
   const unresolvedBlocked = pendingCount > 0;
+  const exportAllowed =
+    periodStatus === "LOCKED" && !unresolvedBlocked;
+  const exportDisabledReason = unresolvedBlocked
+    ? "Håndtér tidsregistreringerne, før perioden eksporteres."
+    : periodStatus === "EXPORTED"
+      ? "Perioden er allerede eksporteret. Genåbn og lås perioden igen for at oprette en ny eksport."
+      : periodStatus !== "LOCKED"
+        ? "Lås lønperioden, før den eksporteres."
+        : undefined;
   const statusLabel =
     periodStatus === "LOCKED"
       ? "Låst"
@@ -114,12 +123,8 @@ export default function PayrollPeriodStatus({
           <button
             type="button"
             onClick={onOpenExportModal}
-            disabled={exporting || unresolvedBlocked}
-            title={
-              unresolvedBlocked
-                ? "Håndtér tidsregistreringerne, før perioden eksporteres."
-                : undefined
-            }
+            disabled={exporting || !exportAllowed}
+            title={exportDisabledReason}
             className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {exporting ? "Eksporterer..." : "Eksportér"}

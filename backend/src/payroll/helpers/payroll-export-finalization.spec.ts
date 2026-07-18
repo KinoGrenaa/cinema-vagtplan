@@ -4,7 +4,11 @@ import {
   exportPayrollUnicontaCsvFlow,
   exportPayrollXlsxFlow,
 } from './payroll-export-flow';
-import { ensurePayrollEntriesApproved, markPayrollPeriodAsExported } from './payroll-period-export';
+import { getPayrollExportLockSnapshot } from './payroll-export-readiness';
+import {
+  ensurePayrollEntriesApproved,
+  markPayrollPeriodAsExported,
+} from './payroll-period-export';
 import { buildPayrollCsvExport } from './payroll-csv-export';
 import { buildPayrollPdfExport } from './payroll-pdf-export';
 import { buildPayrollReportData } from './payroll-report-data';
@@ -14,6 +18,10 @@ import { getPayrollRulesEnabled } from './payroll-period-queries';
 
 jest.mock('./payroll-access', () => ({
   ensurePayrollExportAccess: jest.fn(),
+}));
+
+jest.mock('./payroll-export-readiness', () => ({
+  getPayrollExportLockSnapshot: jest.fn(),
 }));
 
 jest.mock('./payroll-period-export', () => ({
@@ -56,6 +64,19 @@ describe('payroll export finalization', () => {
   const report = {
     employees: [],
   };
+  const lockSnapshot = {
+    periodId: 12,
+    cinemaId: 2,
+    startDateTime: new Date(
+      '2026-07-21T00:00:00.000Z',
+    ).getTime(),
+    endDateTime: new Date(
+      '2026-08-20T23:59:59.999Z',
+    ).getTime(),
+    lockedAtTime: new Date(
+      '2026-08-21T08:00:00.000Z',
+    ).getTime(),
+  };
   const params = [
     prisma,
     user,
@@ -67,25 +88,47 @@ describe('payroll export finalization', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (ensurePayrollEntriesApproved as jest.Mock).mockResolvedValue(undefined);
-    (buildPayrollReportData as jest.Mock).mockResolvedValue(report);
-    (markPayrollPeriodAsExported as jest.Mock).mockResolvedValue({
+    (
+      getPayrollExportLockSnapshot as jest.Mock
+    ).mockResolvedValue(lockSnapshot);
+    (
+      ensurePayrollEntriesApproved as jest.Mock
+    ).mockResolvedValue(undefined);
+    (buildPayrollReportData as jest.Mock).mockResolvedValue(
+      report,
+    );
+    (
+      markPayrollPeriodAsExported as jest.Mock
+    ).mockResolvedValue({
       id: 12,
     });
-    (getPayrollRulesEnabled as jest.Mock).mockResolvedValue(false);
+    (
+      getPayrollRulesEnabled as jest.Mock
+    ).mockResolvedValue(false);
   });
 
   it('markerer først perioden efter CSV-filen er bygget', async () => {
-    (buildPayrollCsvExport as jest.Mock).mockReturnValue('csv-data');
+    (buildPayrollCsvExport as jest.Mock).mockReturnValue(
+      'csv-data',
+    );
 
     await expect(
       exportPayrollCsvFlow(...params),
     ).resolves.toBe('csv-data');
 
     expect(buildPayrollCsvExport).toHaveBeenCalledWith(report);
-    expect(markPayrollPeriodAsExported).toHaveBeenCalledTimes(1);
+    expect(markPayrollPeriodAsExported).toHaveBeenCalledWith(
+      prisma,
+      user,
+      '2026-07-21',
+      '2026-08-20',
+      undefined,
+      undefined,
+      lockSnapshot,
+    );
     expect(
-      (buildPayrollCsvExport as jest.Mock).mock.invocationCallOrder[0],
+      (buildPayrollCsvExport as jest.Mock).mock
+        .invocationCallOrder[0],
     ).toBeLessThan(
       (markPayrollPeriodAsExported as jest.Mock).mock
         .invocationCallOrder[0],
@@ -93,9 +136,11 @@ describe('payroll export finalization', () => {
   });
 
   it('markerer ikke perioden, når CSV-genereringen fejler', async () => {
-    (buildPayrollCsvExport as jest.Mock).mockImplementation(() => {
-      throw new Error('CSV kunne ikke bygges');
-    });
+    (buildPayrollCsvExport as jest.Mock).mockImplementation(
+      () => {
+        throw new Error('CSV kunne ikke bygges');
+      },
+    );
 
     await expect(
       exportPayrollCsvFlow(...params),
@@ -129,11 +174,11 @@ describe('payroll export finalization', () => {
   });
 
   it('markerer ikke perioden, når Uniconta-genereringen fejler', async () => {
-    (buildPayrollUnicontaCsvExport as jest.Mock).mockImplementation(
-      () => {
-        throw new Error('Uniconta kunne ikke bygges');
-      },
-    );
+    (
+      buildPayrollUnicontaCsvExport as jest.Mock
+    ).mockImplementation(() => {
+      throw new Error('Uniconta kunne ikke bygges');
+    });
 
     await expect(
       exportPayrollUnicontaCsvFlow(
@@ -152,14 +197,17 @@ describe('payroll export finalization', () => {
 
   it('markerer perioden efter en vellykket asynkron XLSX-generering', async () => {
     const buffer = Buffer.from('xlsx-data');
-    (buildPayrollXlsxExport as jest.Mock).mockResolvedValue(buffer);
+    (buildPayrollXlsxExport as jest.Mock).mockResolvedValue(
+      buffer,
+    );
 
     await expect(
       exportPayrollXlsxFlow(...params),
     ).resolves.toBe(buffer);
 
     expect(
-      (buildPayrollXlsxExport as jest.Mock).mock.invocationCallOrder[0],
+      (buildPayrollXlsxExport as jest.Mock).mock
+        .invocationCallOrder[0],
     ).toBeLessThan(
       (markPayrollPeriodAsExported as jest.Mock).mock
         .invocationCallOrder[0],

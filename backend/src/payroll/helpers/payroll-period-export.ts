@@ -1,10 +1,16 @@
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
 } from './payroll-access';
 import { includePendingPayrollAdjustmentsInPeriod } from './payroll-adjustment-export';
+import {
+  ensurePayrollExportLockUnchanged,
+  type PayrollExportLockSnapshot,
+} from './payroll-export-readiness';
 import {
   getPayrollPeriodTimeRange,
   getPayrollReferenceDateFilters,
@@ -81,8 +87,17 @@ export async function markPayrollPeriodAsExported(
   endDate: string,
   userId?: string,
   selectedCinemaId?: number | null,
+  lockSnapshot?: PayrollExportLockSnapshot | null,
 ) {
-  if (userId) return;
+  if (userId) {
+    return;
+  }
+
+  if (!lockSnapshot) {
+    throw new BadRequestException(
+      'Lås lønperioden, før den eksporteres.',
+    );
+  }
 
   const periodDates = getPeriodDates(startDate, endDate);
   const timeRange = getPayrollPeriodTimeRange(
@@ -96,42 +111,30 @@ export async function markPayrollPeriodAsExported(
   const now = new Date();
 
   return prisma.$transaction(async (tx) => {
-    const existingPeriod = await tx.payrollPeriod.findFirst({
+    const existingPeriod = await tx.payrollPeriod.findUnique({
       where: {
-        cinemaId,
-        startDate: periodDates.start,
-        endDate: periodDates.end,
+        id: lockSnapshot.periodId,
       },
     });
-    const period = existingPeriod
-      ? await tx.payrollPeriod.update({
-          where: {
-            id: existingPeriod.id,
-          },
-          data: {
-            status: 'EXPORTED',
-            lockedAt: existingPeriod.lockedAt || now,
-            lockedByUserId:
-              existingPeriod.lockedByUserId || user.sub,
-            exportedAt: now,
-            exportedByUserId: user.sub,
-            unlockedAt: null,
-            unlockedByUserId: null,
-            unlockNote: null,
-          },
-        })
-      : await tx.payrollPeriod.create({
-          data: {
-            cinemaId,
-            startDate: periodDates.start,
-            endDate: periodDates.end,
-            status: 'EXPORTED',
-            lockedAt: now,
-            lockedByUserId: user.sub,
-            exportedAt: now,
-            exportedByUserId: user.sub,
-          },
-        });
+
+    ensurePayrollExportLockUnchanged(
+      existingPeriod,
+      lockSnapshot,
+    );
+
+    const period = await tx.payrollPeriod.update({
+      where: {
+        id: existingPeriod!.id,
+      },
+      data: {
+        status: 'EXPORTED',
+        exportedAt: now,
+        exportedByUserId: user.sub,
+        unlockedAt: null,
+        unlockedByUserId: null,
+        unlockNote: null,
+      },
+    });
 
     const defaultPayrollType =
       await tx.payrollType.findFirst({

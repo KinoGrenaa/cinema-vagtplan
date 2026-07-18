@@ -5,6 +5,10 @@ import {
   type PayrollAuthUser,
 } from './payroll-access';
 import {
+  getPayrollExportLockSnapshot,
+  type PayrollExportLockSnapshot,
+} from './payroll-export-readiness';
+import {
   ensurePayrollEntriesApproved,
   markPayrollPeriodAsExported,
 } from './payroll-period-export';
@@ -24,6 +28,11 @@ type PayrollExportParams = {
   selectedCinemaId?: number | null;
 };
 
+type PreparedPayrollExport = {
+  report: Awaited<ReturnType<typeof buildPayrollReportData>>;
+  lockSnapshot: PayrollExportLockSnapshot | null;
+};
+
 async function preparePayrollExportReport({
   prisma,
   user,
@@ -31,8 +40,17 @@ async function preparePayrollExportReport({
   endDate,
   userId,
   selectedCinemaId,
-}: PayrollExportParams) {
+}: PayrollExportParams): Promise<PreparedPayrollExport> {
   ensurePayrollExportAccess(user);
+
+  const lockSnapshot = await getPayrollExportLockSnapshot(
+    prisma,
+    user,
+    startDate,
+    endDate,
+    userId,
+    selectedCinemaId,
+  );
 
   await ensurePayrollEntriesApproved(
     prisma,
@@ -43,7 +61,7 @@ async function preparePayrollExportReport({
     selectedCinemaId,
   );
 
-  return buildPayrollReportData(
+  const report = await buildPayrollReportData(
     prisma,
     user,
     startDate,
@@ -51,6 +69,11 @@ async function preparePayrollExportReport({
     userId,
     selectedCinemaId,
   );
+
+  return {
+    report,
+    lockSnapshot,
+  };
 }
 
 async function finalizePayrollExport({
@@ -60,7 +83,10 @@ async function finalizePayrollExport({
   endDate,
   userId,
   selectedCinemaId,
-}: PayrollExportParams) {
+  lockSnapshot,
+}: PayrollExportParams & {
+  lockSnapshot: PayrollExportLockSnapshot | null;
+}) {
   await markPayrollPeriodAsExported(
     prisma,
     user,
@@ -68,6 +94,7 @@ async function finalizePayrollExport({
     endDate,
     userId,
     selectedCinemaId,
+    lockSnapshot,
   );
 }
 
@@ -87,10 +114,13 @@ export async function exportPayrollCsvFlow(
     userId,
     selectedCinemaId,
   };
-  const report = await preparePayrollExportReport(params);
-  const csv = buildPayrollCsvExport(report);
+  const prepared = await preparePayrollExportReport(params);
+  const csv = buildPayrollCsvExport(prepared.report);
 
-  await finalizePayrollExport(params);
+  await finalizePayrollExport({
+    ...params,
+    lockSnapshot: prepared.lockSnapshot,
+  });
 
   return csv;
 }
@@ -112,19 +142,22 @@ export async function exportPayrollUnicontaCsvFlow(
     userId,
     selectedCinemaId,
   };
-  const report = await preparePayrollExportReport(params);
+  const prepared = await preparePayrollExportReport(params);
   const usePayrollRules = await getPayrollRulesEnabled(
     prisma,
     user,
     selectedCinemaId,
   );
   const csv = buildPayrollUnicontaCsvExport(
-    report,
+    prepared.report,
     usePayrollRules,
     (entry) => payrollRulesService.calculateSegments(entry),
   );
 
-  await finalizePayrollExport(params);
+  await finalizePayrollExport({
+    ...params,
+    lockSnapshot: prepared.lockSnapshot,
+  });
 
   return csv;
 }
@@ -145,10 +178,13 @@ export async function exportPayrollXlsxFlow(
     userId,
     selectedCinemaId,
   };
-  const report = await preparePayrollExportReport(params);
-  const buffer = await buildPayrollXlsxExport(report);
+  const prepared = await preparePayrollExportReport(params);
+  const buffer = await buildPayrollXlsxExport(prepared.report);
 
-  await finalizePayrollExport(params);
+  await finalizePayrollExport({
+    ...params,
+    lockSnapshot: prepared.lockSnapshot,
+  });
 
   return buffer;
 }
@@ -169,14 +205,17 @@ export async function exportPayrollPdfFlow(
     userId,
     selectedCinemaId,
   };
-  const report = await preparePayrollExportReport(params);
+  const prepared = await preparePayrollExportReport(params);
   const buffer = await buildPayrollPdfExport(
-    report,
+    prepared.report,
     startDate,
     endDate,
   );
 
-  await finalizePayrollExport(params);
+  await finalizePayrollExport({
+    ...params,
+    lockSnapshot: prepared.lockSnapshot,
+  });
 
   return buffer;
 }
