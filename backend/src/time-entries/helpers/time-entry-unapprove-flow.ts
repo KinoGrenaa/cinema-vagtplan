@@ -2,13 +2,13 @@ import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PayrollService } from '../../payroll/payroll.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
-import { getTimeEntryResponseInclude } from './time-entry-includes';
 import {
-  createUnapprovePayrollAdjustmentIfNeeded,
   getUnapprovePayrollContext,
-  getUnapproveTimeEntryUpdateData,
 } from './time-entry-unapprove-payroll';
 import { notifyTimeEntryUpdated } from './time-entry-response';
+import {
+  unapproveTimeEntryWithPayrollTransaction,
+} from './time-entry-status-payroll-transaction';
 import {
   ensureTimeEntryCanBeUnapproved,
   findEditableStatusActionEntry,
@@ -35,38 +35,35 @@ export async function unapproveTimeEntryFlow({
   selectedCinemaId?: number | null;
   confirmPayrollAdjustment: boolean;
 }) {
-  const changedByUserId = getChangedByUserId(user);
-  const existingEntry = await findEditableStatusActionEntry({
-    prisma,
-    id,
-    user,
-    selectedCinemaId,
-  });
+  const changedByUserId =
+    getChangedByUserId(user);
+  const existingEntry =
+    await findEditableStatusActionEntry({
+      prisma,
+      id,
+      user,
+      selectedCinemaId,
+    });
 
   ensureTimeEntryCanBeUnapproved(existingEntry);
 
-  const payrollContext = await getUnapprovePayrollContext({
-    prisma,
-    payrollService,
-    existingEntry,
-    confirmPayrollAdjustment,
-  });
+  const payrollContext =
+    await getUnapprovePayrollContext({
+      prisma,
+      payrollService,
+      existingEntry,
+      confirmPayrollAdjustment,
+    });
 
-  const entry = await prisma.timeEntry.update({
-    where: {
+  const entry =
+    await unapproveTimeEntryWithPayrollTransaction({
+      prisma,
       id,
-    },
-    data: getUnapproveTimeEntryUpdateData(payrollContext),
-    include: getTimeEntryResponseInclude(),
-  });
-
-  await createUnapprovePayrollAdjustmentIfNeeded({
-    prisma,
-    existingEntry,
-    entry,
-    payrollContext,
-    changedByUserId,
-  });
+      existingEntry,
+      payrollContext,
+      changedByUserId:
+        changedByUserId ?? null,
+    });
 
   await recordUnapproveTimeEntryStatusChange({
     prisma,
@@ -76,5 +73,8 @@ export async function unapproveTimeEntryFlow({
     changedByUserId,
   });
 
-  return notifyTimeEntryUpdated(realtimeGateway, entry);
+  return notifyTimeEntryUpdated(
+    realtimeGateway,
+    entry,
+  );
 }
