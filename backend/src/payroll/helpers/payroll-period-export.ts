@@ -45,9 +45,6 @@ export async function ensurePayrollEntriesApproved(
         timeRange.start,
         timeRange.endExclusive,
       ),
-      clockOut: {
-        not: null,
-      },
       status: {
         in: [...unresolvedTimeEntryStatuses],
       },
@@ -75,7 +72,7 @@ export async function ensurePayrollEntriesApproved(
 
     throw new BadRequestException(
       `Kan ikke ${action}.
-Der findes ${unresolvedEntries.length} tidsregistreringer, som afventer godkendelse eller er sendt retur til rettelse: ${names}`,
+Der findes ${unresolvedEntries.length} tidsregistreringer, som stadig er åbne, afventer godkendelse eller er sendt retur til rettelse: ${names}`,
     );
   }
 }

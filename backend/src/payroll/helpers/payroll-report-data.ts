@@ -133,9 +133,6 @@ export async function buildPayrollReportData(
         timeRange.start,
         timeRange.endExclusive,
       ),
-      clockOut: {
-        not: null,
-      },
       status: {
         in: [...unresolvedTimeEntryStatuses],
       },

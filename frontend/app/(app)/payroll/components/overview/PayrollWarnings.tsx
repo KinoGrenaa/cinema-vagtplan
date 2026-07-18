@@ -22,8 +22,8 @@ export default function PayrollWarnings({
             {pendingCount} kræver handling før låsning og eksport
           </div>
           <div className="mt-1 text-sm">
-            Afventer godkendelse eller er sendt retur til
-            rettelse.
+            Er stadig åbne, afventer godkendelse eller er sendt
+            retur til rettelse.
           </div>
           <button
             type="button"

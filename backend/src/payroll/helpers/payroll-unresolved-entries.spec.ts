@@ -15,22 +15,32 @@ describe('payroll unresolved time entries', () => {
     return [
       {
         status: 'PENDING',
+        clockOut: null,
         user: {
           firstName: 'Anna',
           lastName: 'Andersen',
         },
       },
       {
-        status: 'NEEDS_CHANGES',
+        status: 'PENDING',
+        clockOut: new Date('2026-07-10T20:00:00.000Z'),
         user: {
           firstName: 'Bent',
           lastName: 'Bentsen',
         },
       },
+      {
+        status: 'NEEDS_CHANGES',
+        clockOut: new Date('2026-07-11T20:00:00.000Z'),
+        user: {
+          firstName: 'Clara',
+          lastName: 'Christensen',
+        },
+      },
     ];
   }
 
-  it('blokerer eksport ved PENDING og NEEDS_CHANGES', async () => {
+  it('blokerer eksport ved åbne, PENDING og NEEDS_CHANGES registreringer', async () => {
     const prisma = {
       timeEntry: {
         findMany: jest.fn().mockResolvedValue(
@@ -48,16 +58,18 @@ describe('payroll unresolved time entries', () => {
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(prisma.timeEntry.findMany).toHaveBeenCalledWith(
+    const where =
+      prisma.timeEntry.findMany.mock.calls[0][0].where;
+
+    expect(where).toEqual(
       expect.objectContaining({
-        where: expect.objectContaining({
-          cinemaId: 2,
-          status: {
-            in: ['PENDING', 'NEEDS_CHANGES'],
-          },
-        }),
+        cinemaId: 2,
+        status: {
+          in: ['PENDING', 'NEEDS_CHANGES'],
+        },
       }),
     );
+    expect(where.clockOut).toBeUndefined();
 
     await expect(
       ensurePayrollEntriesApproved(
@@ -69,7 +81,7 @@ describe('payroll unresolved time entries', () => {
     ).rejects.toMatchObject({
       response: {
         message: expect.stringContaining(
-          'Kan ikke eksportere',
+          'stadig er åbne, afventer godkendelse eller er sendt retur til rettelse',
         ),
       },
     });
@@ -112,7 +124,7 @@ describe('payroll unresolved time entries', () => {
     expect(prisma.payrollPeriod.create).not.toHaveBeenCalled();
   });
 
-  it('tæller begge uløste statuser i payrollrapporten', async () => {
+  it('tæller åbne og øvrige uløste statuser i payrollrapporten', async () => {
     const prisma = {
       timeEntry: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -133,17 +145,18 @@ describe('payroll unresolved time entries', () => {
       '2026-07-20',
     );
 
-    expect(prisma.timeEntry.count).toHaveBeenNthCalledWith(
-      1,
+    const unresolvedWhere =
+      prisma.timeEntry.count.mock.calls[0][0].where;
+
+    expect(unresolvedWhere).toEqual(
       expect.objectContaining({
-        where: expect.objectContaining({
-          cinemaId: 2,
-          status: {
-            in: ['PENDING', 'NEEDS_CHANGES'],
-          },
-        }),
+        cinemaId: 2,
+        status: {
+          in: ['PENDING', 'NEEDS_CHANGES'],
+        },
       }),
     );
+    expect(unresolvedWhere.clockOut).toBeUndefined();
     expect(result.pendingCount).toBe(3);
   });
 });
