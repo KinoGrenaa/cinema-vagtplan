@@ -1,5 +1,7 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
-
+import {
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PayrollService } from '../../payroll/payroll.service';
 import { analyzeTimeEntryDeviation } from './time-entry-deviation';
 import { ensureApprovalDeviationNotes } from './time-entry-deviation-notes';
@@ -19,35 +21,40 @@ export async function getApprovalPayrollContext({
   existingEntry: any;
   confirmPayrollAdjustment: boolean;
 }): Promise<ApprovalPayrollContext> {
-  const payrollPeriod = await payrollService.getPayrollPeriodEntityForDate(
-    existingEntry.cinemaId,
-    existingEntry.clockIn,
-  );
+  const payrollPeriod =
+    await payrollService.getPayrollPeriodEntityForDate(
+      existingEntry.cinemaId,
+      existingEntry.clockIn,
+    );
 
   if (payrollPeriod?.status === 'LOCKED') {
     throw new ConflictException({
       code: 'PAYROLL_PERIOD_LOCKED',
       title: 'Lønperioden er låst',
-      message: 'Lås lønperioden op før tidsregistreringen kan godkendes.',
+      message:
+        'Lås lønperioden op før tidsregistreringen kan godkendes.',
     });
   }
 
-  if (payrollPeriod?.status === 'EXPORTED' && !confirmPayrollAdjustment) {
+  if (
+    payrollPeriod?.status === 'EXPORTED' &&
+    !confirmPayrollAdjustment
+  ) {
     const adjustmentPayrollPeriod =
-      await payrollService.getCurrentPayrollPeriodEntity(existingEntry.cinemaId);
+      await payrollService.getCurrentPayrollPeriodEntity(
+        existingEntry.cinemaId,
+      );
 
     throw new ConflictException({
       code: 'PAYROLL_PERIOD_EXPORTED',
       title: 'Lønperioden er allerede eksporteret',
       message:
         'Denne tidsregistrering tilhører en lønperiode, der allerede er eksporteret.',
-
       originalPayrollPeriod: {
         id: payrollPeriod.id,
         startDate: payrollPeriod.startDate,
         endDate: payrollPeriod.endDate,
       },
-
       adjustmentPayrollPeriod: adjustmentPayrollPeriod
         ? {
             id: adjustmentPayrollPeriod.id,
@@ -61,11 +68,16 @@ export async function getApprovalPayrollContext({
   let adjustmentPayrollPeriodId: number | null = null;
   let adjustmentPayrollPeriod: any = null;
 
-  if (payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment) {
+  if (
+    payrollPeriod?.status === 'EXPORTED' &&
+    confirmPayrollAdjustment
+  ) {
     adjustmentPayrollPeriod =
-      await payrollService.getCurrentPayrollPeriodEntity(existingEntry.cinemaId);
-
-    adjustmentPayrollPeriodId = adjustmentPayrollPeriod?.id ?? null;
+      await payrollService.getCurrentPayrollPeriodEntity(
+        existingEntry.cinemaId,
+      );
+    adjustmentPayrollPeriodId =
+      adjustmentPayrollPeriod?.id ?? null;
   }
 
   return {
@@ -75,7 +87,15 @@ export async function getApprovalPayrollContext({
   };
 }
 
-export function ensureTimeEntryCanBeApproved(existingEntry: any) {
+export function ensureTimeEntryCanBeApproved(
+  existingEntry: any,
+) {
+  if (existingEntry.status === 'APPROVED') {
+    throw new BadRequestException(
+      'Tidsregistreringen er allerede godkendt',
+    );
+  }
+
   if (existingEntry.status === 'VOIDED') {
     throw new BadRequestException(
       'En annulleret tidsregistrering kan ikke godkendes',
@@ -109,19 +129,19 @@ export function getApprovalPayrollUpdateData({
   confirmPayrollAdjustment: boolean;
 }) {
   const shouldCreateAdjustment =
-    payrollPeriod?.status === 'EXPORTED' && confirmPayrollAdjustment;
+    payrollPeriod?.status === 'EXPORTED' &&
+    confirmPayrollAdjustment;
 
   return {
     status: 'APPROVED' as const,
-
-    payrollPeriodId: shouldCreateAdjustment ? null : payrollPeriod?.id,
-
+    payrollPeriodId: shouldCreateAdjustment
+      ? null
+      : payrollPeriod?.id,
     isPayrollAdjustment: shouldCreateAdjustment,
-
-    originalPayrollPeriodId: shouldCreateAdjustment ? payrollPeriod.id : null,
-
+    originalPayrollPeriodId: shouldCreateAdjustment
+      ? payrollPeriod.id
+      : null,
     adjustmentPayrollPeriodId,
-
     payrollAdjustmentReason: shouldCreateAdjustment
       ? 'Godkendt som efterregulering, fordi lønperioden allerede var eksporteret.'
       : null,

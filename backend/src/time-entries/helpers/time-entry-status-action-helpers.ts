@@ -1,6 +1,11 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-
-import { ensureTimeEntryEditable, ensureUserCanAccessTimeEntry } from './time-entry-access';
+import {
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  ensureTimeEntryEditable,
+  ensureUserCanAccessTimeEntry,
+} from './time-entry-access';
 import { getTimeEntryWithUserCinemaInclude } from './time-entry-includes';
 import { getRequiredTrimmedNote } from './time-entry-note-helpers';
 
@@ -26,25 +31,42 @@ export async function findEditableStatusActionEntry({
   user: any;
   selectedCinemaId?: number | null;
 }) {
-  const existingEntry = await prisma.timeEntry.findUnique({
-    where: { id },
-    include: getTimeEntryWithUserCinemaInclude(),
-  });
+  const existingEntry =
+    await prisma.timeEntry.findUnique({
+      where: {
+        id,
+      },
+      include: getTimeEntryWithUserCinemaInclude(),
+    });
 
   if (!existingEntry) {
-    throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    throw new NotFoundException(
+      'Tidsregistrering blev ikke fundet',
+    );
   }
 
-  ensureUserCanAccessTimeEntry(user, existingEntry, selectedCinemaId);
+  ensureUserCanAccessTimeEntry(
+    user,
+    existingEntry,
+    selectedCinemaId,
+  );
   ensureTimeEntryEditable(existingEntry, user);
 
   return existingEntry;
 }
 
-export function ensureTimeEntryCanBeUnapproved(existingEntry: any) {
+export function ensureTimeEntryCanBeUnapproved(
+  existingEntry: any,
+) {
   if (existingEntry.status === 'VOIDED') {
     throw new BadRequestException(
       'En annulleret tidsregistrering kan ikke genåbnes',
+    );
+  }
+
+  if (existingEntry.status !== 'APPROVED') {
+    throw new BadRequestException(
+      'Kun en godkendt tidsregistrering kan få fjernet godkendelsen',
     );
   }
 }
