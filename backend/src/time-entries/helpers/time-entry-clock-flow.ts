@@ -2,6 +2,7 @@ import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { ensureTimeEntryEditable } from './time-entry-access';
+import { ensureTimeEntryCreationPeriodWritable } from './time-entry-creation-payroll-access';
 import {
   ensureClockOutAfterClockIn,
   parseOptionalTimeEntryDate,
@@ -49,7 +50,6 @@ export async function clockInTimeEntry(params: {
     auditLogsService,
     data,
   } = params;
-
   const openEntry = await findOpenTimeEntry(prisma, {
     userId: data.userId,
   });
@@ -69,6 +69,14 @@ export async function clockInTimeEntry(params: {
     clockIn,
   });
 
+  await ensureTimeEntryCreationPeriodWritable(
+    prisma,
+    {
+      cinemaId: data.cinemaId,
+      referenceDate: shift?.startTime ?? clockIn,
+    },
+  );
+
   await ensureNoExistingEntryForShift(prisma, {
     shiftId: shift?.id,
     userId: data.userId,
@@ -78,7 +86,6 @@ export async function clockInTimeEntry(params: {
   });
 
   const note = getTrimmedOptionalNote(data.note);
-
   const entry = await prisma.timeEntry.create({
     data: {
       userId: data.userId,
@@ -122,7 +129,6 @@ export async function clockOutTimeEntry(params: {
     id,
     data,
   } = params;
-
   const existingEntry =
     await findTimeEntryWithCinemaShiftOrThrow(
       prisma,

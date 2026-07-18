@@ -1,6 +1,7 @@
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
+import { ensureTimeEntryCreationPeriodWritable } from './time-entry-creation-payroll-access';
 import { analyzeTimeEntryDeviation } from './time-entry-deviation';
 import { ensureManualEntryDeviationNotes } from './time-entry-deviation-notes';
 import { getTimeEntryResponseInclude } from './time-entry-includes';
@@ -38,8 +39,12 @@ export async function submitManualTimeEntry(params: {
   auditLogsService: AuditLogsService;
   data: SubmitManualEntryData;
 }) {
-  const { prisma, realtimeGateway, auditLogsService, data } = params;
-
+  const {
+    prisma,
+    realtimeGateway,
+    auditLogsService,
+    data,
+  } = params;
   const clockIn = parseRequiredTimeEntryDate(
     data.clockIn,
     'Ugyldig mødetid eller fyraften',
@@ -57,7 +62,6 @@ export async function submitManualTimeEntry(params: {
     clockIn,
     clockOut,
   });
-
   await ensureNoOverlappingManualShift(prisma, {
     userId: data.userId,
     cinemaId: data.cinemaId,
@@ -76,7 +80,16 @@ export async function submitManualTimeEntry(params: {
     'Du kan kun indsende timer for dine egne vagter',
   );
 
-  const { clockInNote, clockOutNote } = getManualEntryNotes(data);
+  await ensureTimeEntryCreationPeriodWritable(
+    prisma,
+    {
+      cinemaId: data.cinemaId,
+      referenceDate: shift?.startTime ?? clockIn,
+    },
+  );
+
+  const { clockInNote, clockOutNote } =
+    getManualEntryNotes(data);
 
   if (shift) {
     const deviation = analyzeTimeEntryDeviation(
@@ -98,7 +111,8 @@ export async function submitManualTimeEntry(params: {
       shiftId: shift.id,
       userId: data.userId,
       cinemaId: data.cinemaId,
-      message: 'Der er allerede indsendt timer for denne vagt',
+      message:
+        'Der er allerede indsendt timer for denne vagt',
     });
   }
 
@@ -107,7 +121,8 @@ export async function submitManualTimeEntry(params: {
       userId: data.userId,
       cinemaId: data.cinemaId,
       shiftId: shift?.id || null,
-      payrollTypeId: shift?.workType?.payrollTypeId || null,
+      payrollTypeId:
+        shift?.workType?.payrollTypeId || null,
       clockIn,
       clockOut,
       note: data.note ?? null,
@@ -126,5 +141,8 @@ export async function submitManualTimeEntry(params: {
     changedByUserId: data.userId,
   });
 
-  return notifyTimeEntryUpdated(realtimeGateway, entry);
+  return notifyTimeEntryUpdated(
+    realtimeGateway,
+    entry,
+  );
 }
