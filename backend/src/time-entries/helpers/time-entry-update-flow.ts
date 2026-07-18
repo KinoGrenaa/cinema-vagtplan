@@ -121,6 +121,17 @@ export async function updateOwnTimeEntry(params: {
         include: getTimeEntryResponseInclude(),
       });
 
+      await createEditAfterExportPayrollAdjustmentIfNeeded({
+        prisma:
+          tx as unknown as PrismaService,
+        payrollService,
+        existingEntry,
+        entry,
+        reason:
+          'Tidsregistrering rettet af medarbejderen',
+        changedByUserId: user.sub,
+      });
+
       return {
         existingEntry,
         entry,
@@ -128,16 +139,6 @@ export async function updateOwnTimeEntry(params: {
       };
     },
   );
-
-  await createEditAfterExportPayrollAdjustmentIfNeeded({
-    prisma,
-    payrollService,
-    existingEntry: result.existingEntry,
-    entry: result.entry,
-    reason:
-      'Tidsregistrering rettet af medarbejderen',
-    changedByUserId: user.sub,
-  });
 
   await recordOwnTimeEntryUpdated({
     prisma,
@@ -288,6 +289,17 @@ export async function updateAdminTimeEntry(params: {
         include: getTimeEntryResponseInclude(),
       });
 
+      await createEditAfterExportPayrollAdjustmentIfNeeded({
+        prisma:
+          tx as unknown as PrismaService,
+        payrollService,
+        existingEntry,
+        entry,
+        reason: data.adminNote ?? '',
+        changedByUserId:
+          user?.sub ?? null,
+      });
+
       return {
         existingEntry,
         entry,
@@ -295,15 +307,6 @@ export async function updateAdminTimeEntry(params: {
       };
     },
   );
-
-  await createEditAfterExportPayrollAdjustmentIfNeeded({
-    prisma,
-    payrollService,
-    existingEntry: result.existingEntry,
-    entry: result.entry,
-    reason: data.adminNote ?? '',
-    changedByUserId: user?.sub ?? null,
-  });
 
   await recordAdminTimeEntryUpdated({
     prisma,
