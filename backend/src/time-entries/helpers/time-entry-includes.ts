@@ -1,5 +1,10 @@
 import { getCinemaDeviationSelect } from './time-entry-deviation';
 
+const payrollPeriodStatusSelect = {
+  id: true,
+  status: true,
+} as const;
+
 export function getTimeEntryResponseInclude() {
   return {
     user: true,
@@ -55,6 +60,9 @@ export function getTimeEntryWithUserCinemaInclude() {
     user: true,
     cinema: {
       select: getCinemaDeviationSelect(),
+    },
+    payrollPeriod: {
+      select: payrollPeriodStatusSelect,
     },
   } as const;
 }

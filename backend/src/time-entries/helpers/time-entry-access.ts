@@ -1,4 +1,7 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 
 export function getTimeEntryCinemaFilter(
   user: any,
@@ -9,8 +12,13 @@ export function getTimeEntryCinemaFilter(
   }
 
   if (user.role === 'MASTER') {
-    if (!selectedCinemaId || !Number.isFinite(selectedCinemaId)) {
-      throw new BadRequestException('Vælg en aktiv biograf først.');
+    if (
+      !selectedCinemaId ||
+      !Number.isFinite(selectedCinemaId)
+    ) {
+      throw new BadRequestException(
+        'Vælg en aktiv biograf først.',
+      );
     }
 
     return {
@@ -19,7 +27,9 @@ export function getTimeEntryCinemaFilter(
   }
 
   if (!user.cinemaId) {
-    throw new BadRequestException('Brugeren er ikke tilknyttet en biograf.');
+    throw new BadRequestException(
+      'Brugeren er ikke tilknyttet en biograf.',
+    );
   }
 
   return {
@@ -29,23 +39,47 @@ export function getTimeEntryCinemaFilter(
 
 export function ensureUserCanAccessTimeEntry(
   user: any,
-  entry: { cinemaId: number },
+  entry: {
+    cinemaId: number;
+  },
   selectedCinemaId?: number | null,
 ) {
-  const cinemaFilter = getTimeEntryCinemaFilter(user, selectedCinemaId);
+  const cinemaFilter = getTimeEntryCinemaFilter(
+    user,
+    selectedCinemaId,
+  );
 
   if (entry.cinemaId !== cinemaFilter.cinemaId) {
-    throw new NotFoundException('Tidsregistrering blev ikke fundet');
+    throw new NotFoundException(
+      'Tidsregistrering blev ikke fundet',
+    );
   }
 }
 
-export function ensureTimeEntryEditable(entry: any, user?: any) {
+export function ensureTimeEntryEditable(
+  entry: any,
+  user?: any,
+) {
   if (!entry.payrollLocked) {
     return;
   }
 
-  if (user?.role === 'MASTER' || user?.role === 'ADMIN') {
+  const payrollPeriodStatus =
+    entry.payrollPeriod?.status ?? null;
+  const isPayrollAdministrator =
+    user?.role === 'MASTER' || user?.role === 'ADMIN';
+
+  if (
+    payrollPeriodStatus === 'EXPORTED' &&
+    isPayrollAdministrator
+  ) {
     return;
+  }
+
+  if (payrollPeriodStatus === 'LOCKED') {
+    throw new BadRequestException(
+      'Lønperioden er låst. Genåbn lønperioden, før tidsregistreringen ændres.',
+    );
   }
 
   throw new BadRequestException(
