@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { unlink } from 'fs/promises';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CinemasService } from './cinemas.service';
@@ -97,12 +98,23 @@ export class CinemasController {
     }
   }
 
+  private async removeUploadedLogo(file?: Express.Multer.File) {
+    if (!file?.path) {
+      return;
+    }
+
+    try {
+      await unlink(file.path);
+    } catch {
+      // Upload-fejlen må ikke skjules af en efterfølgende oprydningsfejl.
+    }
+  }
+
   @UseGuards(JwtGuard)
   @Get()
   findAll(@Req() req: any) {
     const user = req.user as AuthUser;
     this.ensureMaster(user);
-
     return this.cinemasService.findAll();
   }
 
@@ -111,7 +123,6 @@ export class CinemasController {
   create(@Body() body: CreateCinemaBody, @Req() req: any) {
     const user = req.user as AuthUser;
     this.ensureMaster(user);
-
     return this.cinemasService.create({ name: body.name });
   }
 
@@ -138,7 +149,8 @@ export class CinemasController {
       storage: diskStorage({
         destination: './uploads/cinema-logos',
         filename: (_, file, callback) => {
-          const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueName =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           callback(null, `${uniqueName}${extname(file.originalname)}`);
         },
       }),
@@ -163,24 +175,28 @@ export class CinemasController {
       },
     }),
   )
-  uploadLogo(
+  async uploadLogo(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
   ) {
-    const user = req.user as AuthUser;
-    const cinemaId = this.parseCinemaId(id);
+    try {
+      const user = req.user as AuthUser;
+      const cinemaId = this.parseCinemaId(id);
+      this.ensureCanManageCinema(user, cinemaId);
 
-    this.ensureCanManageCinema(user, cinemaId);
+      if (!file) {
+        throw new BadRequestException('Ingen fil uploadet');
+      }
 
-    if (!file) {
-      throw new BadRequestException('Ingen fil uploadet');
+      return await this.cinemasService.updateLogo(
+        cinemaId,
+        `/uploads/cinema-logos/${file.filename}`,
+      );
+    } catch (error) {
+      await this.removeUploadedLogo(file);
+      throw error;
     }
-
-    return this.cinemasService.updateLogo(
-      cinemaId,
-      `/uploads/cinema-logos/${file.filename}`,
-    );
   }
 
   @UseGuards(JwtGuard)
@@ -188,9 +204,7 @@ export class CinemasController {
   deleteLogo(@Param('id') id: string, @Req() req: any) {
     const user = req.user as AuthUser;
     const cinemaId = this.parseCinemaId(id);
-
     this.ensureCanManageCinema(user, cinemaId);
-
     return this.cinemasService.updateLogo(cinemaId, null);
   }
 
@@ -203,7 +217,6 @@ export class CinemasController {
   ) {
     const user = req.user as AuthUser;
     const cinemaId = this.parseCinemaId(id);
-
     this.ensureCanManageCinema(user, cinemaId);
 
     if (body.name !== undefined && user.role !== 'MASTER') {
