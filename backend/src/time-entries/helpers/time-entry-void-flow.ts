@@ -10,6 +10,7 @@ import {
   getRequiredStatusActionNote,
   recordVoidTimeEntryStatusChange,
 } from './time-entry-status-action-helpers';
+import { withLockedTimeEntryStatusMutation } from './time-entry-status-mutation-lock';
 import {
   voidTimeEntryWithPayrollTransaction,
 } from './time-entry-status-payroll-transaction';
@@ -45,7 +46,7 @@ export async function voidTimeEntryFlow({
       adminNote,
       'Admin-begrundelse er påkrævet ved annullering af tidsregistrering',
     );
-  const existingEntry =
+  const initialEntry =
     await findEditableStatusActionEntry({
       prisma,
       id,
@@ -53,42 +54,63 @@ export async function voidTimeEntryFlow({
       selectedCinemaId,
     });
 
-  if (existingEntry.status === 'VOIDED') {
-    throw new BadRequestException(
-      'Tidsregistreringen er allerede annulleret',
-    );
-  }
-
-  const payrollContext =
-    await getVoidPayrollContext({
+  const result =
+    await withLockedTimeEntryStatusMutation({
       prisma,
-      payrollService,
-      existingEntry,
-      confirmPayrollAdjustment,
-    });
+      initialEntry,
+      user,
+      selectedCinemaId,
+      mutate: async (
+        tx,
+        existingEntry,
+      ) => {
+        if (
+          existingEntry.status === 'VOIDED'
+        ) {
+          throw new BadRequestException(
+            'Tidsregistreringen er allerede annulleret',
+          );
+        }
 
-  const entry =
-    await voidTimeEntryWithPayrollTransaction({
-      prisma,
-      id,
-      existingEntry,
-      payrollContext,
-      reason: trimmedAdminNote,
-      changedByUserId:
-        changedByUserId ?? null,
+        const payrollContext =
+          await getVoidPayrollContext({
+            prisma:
+              tx as unknown as PrismaService,
+            payrollService,
+            existingEntry,
+            confirmPayrollAdjustment,
+          });
+
+        const entry =
+          await voidTimeEntryWithPayrollTransaction({
+            prisma,
+            transactionClient: tx,
+            id,
+            existingEntry,
+            payrollContext,
+            reason: trimmedAdminNote,
+            changedByUserId:
+              changedByUserId ?? null,
+          });
+
+        return {
+          existingEntry,
+          entry,
+        };
+      },
     });
 
   await recordVoidTimeEntryStatusChange({
     prisma,
     auditLogsService,
-    existingEntry,
-    entry,
+    existingEntry: result.existingEntry,
+    entry: result.entry,
     changedByUserId,
     reason: trimmedAdminNote,
   });
 
   return notifyTimeEntryUpdated(
     realtimeGateway,
-    entry,
+    result.entry,
   );
 }

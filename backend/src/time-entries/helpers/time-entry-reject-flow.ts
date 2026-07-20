@@ -10,6 +10,7 @@ import {
   getRequiredStatusActionNote,
   recordRejectTimeEntryStatusChange,
 } from './time-entry-status-action-helpers';
+import { withLockedTimeEntryStatusMutation } from './time-entry-status-mutation-lock';
 
 export async function rejectTimeEntryFlow({
   prisma,
@@ -28,39 +29,66 @@ export async function rejectTimeEntryFlow({
   user: any;
   selectedCinemaId?: number | null;
 }) {
-  const changedByUserId = getChangedByUserId(user);
-  const trimmedAdminNote = getRequiredStatusActionNote(
-    adminNote,
-    'Admin-begrundelse er påkrævet ved send retur til rettelse',
-  );
-  const existingEntry = await findEditableStatusActionEntry({
-    prisma,
-    id,
-    user,
-    selectedCinemaId,
-  });
-
-  ensureTimeEntryCanBeSentBack(existingEntry);
-
-  const entry = await prisma.timeEntry.update({
-    where: {
+  const changedByUserId =
+    getChangedByUserId(user);
+  const trimmedAdminNote =
+    getRequiredStatusActionNote(
+      adminNote,
+      'Admin-begrundelse er påkrævet ved send retur til rettelse',
+    );
+  const initialEntry =
+    await findEditableStatusActionEntry({
+      prisma,
       id,
-    },
-    data: {
-      status: 'NEEDS_CHANGES',
-      adminNote: trimmedAdminNote,
-    },
-    include: getTimeEntryResponseInclude(),
-  });
+      user,
+      selectedCinemaId,
+    });
+
+  const result =
+    await withLockedTimeEntryStatusMutation({
+      prisma,
+      initialEntry,
+      user,
+      selectedCinemaId,
+      mutate: async (
+        tx,
+        existingEntry,
+      ) => {
+        ensureTimeEntryCanBeSentBack(
+          existingEntry,
+        );
+
+        const entry =
+          await tx.timeEntry.update({
+            where: {
+              id,
+            },
+            data: {
+              status: 'NEEDS_CHANGES',
+              adminNote: trimmedAdminNote,
+            },
+            include:
+              getTimeEntryResponseInclude(),
+          });
+
+        return {
+          existingEntry,
+          entry,
+        };
+      },
+    });
 
   await recordRejectTimeEntryStatusChange({
     prisma,
     auditLogsService,
-    existingEntry,
-    entry,
+    existingEntry: result.existingEntry,
+    entry: result.entry,
     changedByUserId,
     reason: trimmedAdminNote,
   });
 
-  return notifyTimeEntryUpdated(realtimeGateway, entry);
+  return notifyTimeEntryUpdated(
+    realtimeGateway,
+    result.entry,
+  );
 }

@@ -15,6 +15,7 @@ import {
   getChangedByUserId,
   recordUnapproveTimeEntryStatusChange,
 } from './time-entry-status-action-helpers';
+import { withLockedTimeEntryStatusMutation } from './time-entry-status-mutation-lock';
 
 export async function unapproveTimeEntryFlow({
   prisma,
@@ -37,7 +38,7 @@ export async function unapproveTimeEntryFlow({
 }) {
   const changedByUserId =
     getChangedByUserId(user);
-  const existingEntry =
+  const initialEntry =
     await findEditableStatusActionEntry({
       prisma,
       id,
@@ -45,36 +46,57 @@ export async function unapproveTimeEntryFlow({
       selectedCinemaId,
     });
 
-  ensureTimeEntryCanBeUnapproved(existingEntry);
-
-  const payrollContext =
-    await getUnapprovePayrollContext({
+  const result =
+    await withLockedTimeEntryStatusMutation({
       prisma,
-      payrollService,
-      existingEntry,
-      confirmPayrollAdjustment,
-    });
+      initialEntry,
+      user,
+      selectedCinemaId,
+      mutate: async (
+        tx,
+        existingEntry,
+      ) => {
+        ensureTimeEntryCanBeUnapproved(
+          existingEntry,
+        );
 
-  const entry =
-    await unapproveTimeEntryWithPayrollTransaction({
-      prisma,
-      id,
-      existingEntry,
-      payrollContext,
-      changedByUserId:
-        changedByUserId ?? null,
+        const payrollContext =
+          await getUnapprovePayrollContext({
+            prisma:
+              tx as unknown as PrismaService,
+            payrollService,
+            existingEntry,
+            confirmPayrollAdjustment,
+          });
+
+        const entry =
+          await unapproveTimeEntryWithPayrollTransaction({
+            prisma,
+            transactionClient: tx,
+            id,
+            existingEntry,
+            payrollContext,
+            changedByUserId:
+              changedByUserId ?? null,
+          });
+
+        return {
+          existingEntry,
+          entry,
+        };
+      },
     });
 
   await recordUnapproveTimeEntryStatusChange({
     prisma,
     auditLogsService,
-    existingEntry,
-    entry,
+    existingEntry: result.existingEntry,
+    entry: result.entry,
     changedByUserId,
   });
 
   return notifyTimeEntryUpdated(
     realtimeGateway,
-    entry,
+    result.entry,
   );
 }

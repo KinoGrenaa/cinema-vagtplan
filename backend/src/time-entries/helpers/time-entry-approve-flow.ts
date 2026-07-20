@@ -3,7 +3,6 @@ import { PayrollService } from '../../payroll/payroll.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
-  ensureTimeEntryEditable,
   ensureUserCanAccessTimeEntry,
 } from './time-entry-access';
 import { approveTimeEntryWithPayrollTransaction } from './time-entry-approve-payroll-transaction';
@@ -17,6 +16,7 @@ import {
   getChangedByUserId,
   recordApproveTimeEntryStatusChange,
 } from './time-entry-status-action-helpers';
+import { withLockedTimeEntryStatusMutation } from './time-entry-status-mutation-lock';
 
 export async function approveTimeEntryFlow({
   prisma,
@@ -39,7 +39,7 @@ export async function approveTimeEntryFlow({
 }) {
   const changedByUserId =
     getChangedByUserId(user);
-  const existingEntry =
+  const initialEntry =
     await findTimeEntryWithUserCinemaShiftOrThrow(
       prisma,
       id,
@@ -47,40 +47,59 @@ export async function approveTimeEntryFlow({
 
   ensureUserCanAccessTimeEntry(
     user,
-    existingEntry,
+    initialEntry,
     selectedCinemaId,
   );
 
-  const approvalPayrollContext =
-    await getApprovalPayrollContext({
-      payrollService,
-      existingEntry,
-      confirmPayrollAdjustment,
-    });
-
-  ensureTimeEntryEditable(existingEntry, user);
-  ensureTimeEntryCanBeApproved(existingEntry);
-
-  const entry =
-    await approveTimeEntryWithPayrollTransaction({
+  const result =
+    await withLockedTimeEntryStatusMutation({
       prisma,
-      id,
-      approvalPayrollContext,
-      confirmPayrollAdjustment,
-      changedByUserId:
-        changedByUserId ?? null,
+      initialEntry,
+      user,
+      selectedCinemaId,
+      mutate: async (
+        tx,
+        existingEntry,
+      ) => {
+        ensureTimeEntryCanBeApproved(
+          existingEntry,
+        );
+
+        const approvalPayrollContext =
+          await getApprovalPayrollContext({
+            payrollService,
+            existingEntry,
+            confirmPayrollAdjustment,
+          });
+
+        const entry =
+          await approveTimeEntryWithPayrollTransaction({
+            prisma,
+            transactionClient: tx,
+            id,
+            approvalPayrollContext,
+            confirmPayrollAdjustment,
+            changedByUserId:
+              changedByUserId ?? null,
+          });
+
+        return {
+          existingEntry,
+          entry,
+        };
+      },
     });
 
   await recordApproveTimeEntryStatusChange({
     prisma,
     auditLogsService,
-    existingEntry,
-    entry,
+    existingEntry: result.existingEntry,
+    entry: result.entry,
     changedByUserId,
   });
 
   return notifyTimeEntryUpdated(
     realtimeGateway,
-    entry,
+    result.entry,
   );
 }
