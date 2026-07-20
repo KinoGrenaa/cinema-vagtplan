@@ -1,4 +1,5 @@
 import { ConflictException } from '@nestjs/common';
+import { getPayrollReferenceDate } from '../../payroll/helpers/payroll-periods';
 import { PayrollService } from '../../payroll/payroll.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -37,7 +38,7 @@ async function findLinkedOrCalculatedPayrollPeriod({
 
   return payrollService.getPayrollPeriodEntityForDate(
     existingEntry.cinemaId,
-    existingEntry.clockIn,
+    getPayrollReferenceDate(existingEntry),
   );
 }
 
@@ -144,8 +145,10 @@ export async function createVoidPayrollAdjustmentIfNeeded({
     exportedMinutes,
     adjustedMinutes: 0,
     reason:
-      'Tidsregistrering annulleret efter eksport. ' +
-      `Efterregulering: ${formatSignedDuration(-exportedMinutes)}. ` +
+      'Tidsregistrering annulleret efter eksport.\n' +
+      `Efterregulering: ${formatSignedDuration(
+        -exportedMinutes,
+      )}. ` +
       `Årsag: ${reason}`,
     changedByUserId,
   });

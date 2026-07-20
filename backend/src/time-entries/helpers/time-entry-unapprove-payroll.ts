@@ -1,4 +1,5 @@
 import { ConflictException } from '@nestjs/common';
+import { getPayrollReferenceDate } from '../../payroll/helpers/payroll-periods';
 import { PayrollService } from '../../payroll/payroll.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -37,7 +38,7 @@ async function findOriginalPayrollPeriod({
 
   return payrollService.getPayrollPeriodEntityForDate(
     existingEntry.cinemaId,
-    existingEntry.clockIn,
+    getPayrollReferenceDate(existingEntry),
   );
 }
 
@@ -52,11 +53,12 @@ export async function getUnapprovePayrollContext({
   existingEntry: any;
   confirmPayrollAdjustment: boolean;
 }): Promise<UnapprovePayrollContext> {
-  const originalPayrollPeriod = await findOriginalPayrollPeriod({
-    prisma,
-    payrollService,
-    existingEntry,
-  });
+  const originalPayrollPeriod =
+    await findOriginalPayrollPeriod({
+      prisma,
+      payrollService,
+      existingEntry,
+    });
 
   if (originalPayrollPeriod?.status !== 'EXPORTED') {
     return {
@@ -152,8 +154,10 @@ export async function createUnapprovePayrollAdjustmentIfNeeded({
     exportedMinutes,
     adjustedMinutes: 0,
     reason:
-      'Godkendelse fjernet efter eksport. ' +
-      `Efterregulering: ${formatSignedDuration(-exportedMinutes)}.`,
+      'Godkendelse fjernet efter eksport.\n' +
+      `Efterregulering: ${formatSignedDuration(
+        -exportedMinutes,
+      )}.`,
     changedByUserId,
   });
 }

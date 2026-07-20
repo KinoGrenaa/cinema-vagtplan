@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { getPayrollReferenceDate } from '../../payroll/helpers/payroll-periods';
 import { PayrollService } from '../../payroll/payroll.service';
 import { analyzeTimeEntryDeviation } from './time-entry-deviation';
 import { ensureApprovalDeviationNotes } from './time-entry-deviation-notes';
@@ -24,7 +25,7 @@ export async function getApprovalPayrollContext({
   const payrollPeriod =
     await payrollService.getPayrollPeriodEntityForDate(
       existingEntry.cinemaId,
-      existingEntry.clockIn,
+      getPayrollReferenceDate(existingEntry),
     );
 
   if (payrollPeriod?.status === 'LOCKED') {
