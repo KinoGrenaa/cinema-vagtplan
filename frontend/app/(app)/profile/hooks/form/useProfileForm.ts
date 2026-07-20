@@ -6,9 +6,7 @@ import type {
   FormEvent,
   SetStateAction,
 } from "react";
-
 import { apiFetch } from "@/app/lib/api";
-
 import {
   formatDateForInput,
   readError,
@@ -33,7 +31,6 @@ export function useProfileForm({
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
@@ -95,13 +92,16 @@ export function useProfileForm({
       }
 
       const data = await response.json();
-
       setProfileImage(data.imageUrl);
-      setMessage("Billede uploadet. Husk at gemme profilen.");
+      setSelectedFileName("");
+      setMessage("Profilbilledet er opdateret.");
+      await fetchProfile();
     } catch (error) {
       showError(
         "Upload af billede fejlede",
-        error instanceof Error ? error.message : "Upload af billede fejlede.",
+        error instanceof Error
+          ? error.message
+          : "Upload af billede fejlede.",
       );
     } finally {
       setUploading(false);
@@ -123,7 +123,10 @@ export function useProfileForm({
 
     const mobileDigits = phone.replace(/\D/g, "");
 
-    if (mobileDigits.length > 0 && mobileDigits.length !== 8) {
+    if (
+      mobileDigits.length > 0 &&
+      mobileDigits.length !== 8
+    ) {
       showError(
         "Profilen kunne ikke gemmes",
         "Mobilnummer skal bestå af præcis 8 cifre.",
@@ -135,19 +138,23 @@ export function useProfileForm({
       setSaving(true);
       setMessage("");
 
-      const response = await apiFetch(`/users/${currentUser.id}/profile`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          email: email.trim(),
-          password: password.trim() || undefined,
-          phone: mobileDigits || undefined,
-          profileImage: profileImage || undefined,
-          address: address.trim() || undefined,
-          birthDate: birthDate || null,
-          emergencyPhone: emergencyPhone.trim() || undefined,
-          skills: skills.trim() || undefined,
-        }),
-      });
+      const response = await apiFetch(
+        `/users/${currentUser.id}/profile`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            email: email.trim(),
+            password: password.trim() || undefined,
+            phone: mobileDigits || undefined,
+            profileImage: profileImage || undefined,
+            address: address.trim() || undefined,
+            birthDate: birthDate || null,
+            emergencyPhone:
+              emergencyPhone.trim() || undefined,
+            skills: skills.trim() || undefined,
+          }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(await readError(response));
@@ -160,19 +167,22 @@ export function useProfileForm({
         email: data.email,
       };
 
-      localStorage.setItem("user", JSON.stringify(updatedCurrentUser));
+      localStorage.setItem(
+        "user",
+        JSON.stringify(updatedCurrentUser),
+      );
       setCurrentUser(updatedCurrentUser);
-
       setMessage("Profil opdateret.");
       setEditing(false);
       setPassword("");
       setSelectedFileName("");
-
       await fetchProfile();
     } catch (error) {
       showError(
         "Profilen kunne ikke gemmes",
-        error instanceof Error ? error.message : "Kunne ikke gemme profil.",
+        error instanceof Error
+          ? error.message
+          : "Kunne ikke gemme profil.",
       );
     } finally {
       setSaving(false);
@@ -205,7 +215,8 @@ export function useProfileForm({
     message,
     password,
     phone,
-    profileImage: profileImage || profile?.profileImage || "",
+    profileImage:
+      profileImage || profile?.profileImage || "",
     saveProfile,
     saving,
     selectedFileName,

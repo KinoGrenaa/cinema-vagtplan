@@ -20,7 +20,8 @@ function getAllowedCorsOrigins(): string[] {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app =
+    await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use(
     helmet({
@@ -45,7 +46,16 @@ async function bootstrap() {
 
   app.use(
     '/uploads/cinema-logos',
-    express.static(join(process.cwd(), 'uploads', 'cinema-logos')),
+    express.static(
+      join(process.cwd(), 'uploads', 'cinema-logos'),
+    ),
+  );
+
+  app.use(
+    '/uploads/profile-images',
+    express.static(
+      join(process.cwd(), 'uploads', 'profile-images'),
+    ),
   );
 
   await app.listen(3001);

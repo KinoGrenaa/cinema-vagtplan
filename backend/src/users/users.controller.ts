@@ -15,9 +15,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { unlink } from 'fs/promises';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
-
+import { basename, extname, join } from 'path';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -49,6 +49,33 @@ export class UsersController {
       throw new ForbiddenException(
         'Kun master kan oprette eller tildele master-rolle',
       );
+    }
+  }
+
+  private async removeManagedProfileImage(
+    imageUrl?: string | null,
+  ) {
+    const prefix = '/uploads/profile-images/';
+    if (!imageUrl?.startsWith(prefix)) {
+      return;
+    }
+
+    const fileName = basename(imageUrl.slice(prefix.length));
+    if (!fileName) {
+      return;
+    }
+
+    try {
+      await unlink(
+        join(
+          process.cwd(),
+          'uploads',
+          'profile-images',
+          fileName,
+        ),
+      );
+    } catch {
+      // File cleanup must not turn an otherwise valid request into an error.
     }
   }
 
@@ -146,7 +173,6 @@ export class UsersController {
     @Req() req: any,
   ) {
     const currentUser = req.user as AuthUser;
-
     this.validateUserRoleAccess(currentUser, body.role);
 
     if (currentUser.role !== 'MASTER') {
@@ -171,7 +197,6 @@ export class UsersController {
     @Req() req: any,
   ) {
     const currentUser = req.user as AuthUser;
-
     this.validateUserRoleAccess(currentUser, body.role);
 
     return this.usersService.updateUser(
@@ -283,26 +308,50 @@ export class UsersController {
       },
     }),
   )
-  uploadProfileImage(
+  async uploadProfileImage(
     @Param('id') id: string,
     @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
   ) {
     const currentUserId = req.user?.sub ?? req.user?.id;
+    const imageUrl = file
+      ? `/uploads/profile-images/${file.filename}`
+      : null;
 
     if (Number(currentUserId) !== Number(id)) {
+      await this.removeManagedProfileImage(imageUrl);
+
       throw new ForbiddenException(
         'Du kan kun uploade billede til din egen profil',
       );
     }
 
-    if (!file) {
+    if (!file || !imageUrl) {
       throw new BadRequestException('Ingen fil uploadet');
     }
 
-    return {
-      imageUrl: `/uploads/profile-images/${file.filename}`,
-    };
+    const userId = Number(id);
+    let currentProfile;
+
+    try {
+      currentProfile =
+        await this.usersService.findOwnProfile(userId);
+
+      await this.usersService.updateOwnProfile(userId, {
+        profileImage: imageUrl,
+      });
+    } catch (error) {
+      await this.removeManagedProfileImage(imageUrl);
+      throw error;
+    }
+
+    if (currentProfile.profileImage !== imageUrl) {
+      await this.removeManagedProfileImage(
+        currentProfile.profileImage,
+      );
+    }
+
+    return { imageUrl };
   }
 
   @UseGuards(JwtGuard)
