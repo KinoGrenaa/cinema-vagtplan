@@ -6,7 +6,7 @@ import {
   ensureTimeEntryEditable,
   ensureUserCanAccessTimeEntry,
 } from './time-entry-access';
-import { getTimeEntryWithUserCinemaInclude } from './time-entry-includes';
+import { getTimeEntryWithUserCinemaShiftInclude } from './time-entry-includes';
 import { getRequiredTrimmedNote } from './time-entry-note-helpers';
 
 export function getChangedByUserId(user: any) {
@@ -36,7 +36,8 @@ export async function findEditableStatusActionEntry({
       where: {
         id,
       },
-      include: getTimeEntryWithUserCinemaInclude(),
+      include:
+        getTimeEntryWithUserCinemaShiftInclude(),
     });
 
   if (!existingEntry) {
