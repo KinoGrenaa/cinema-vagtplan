@@ -34,6 +34,19 @@ export type AuthUser = {
   cinemaId: number | null;
 };
 
+const profileImageExtensionByMime: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
+const allowedProfileImageExtensions = [
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+];
+
 @Controller('users')
 export class UsersController {
   constructor(private usersService: UsersService) {}
@@ -279,10 +292,19 @@ export class UsersController {
             '-' +
             Math.round(Math.random() * 1e9);
 
-          callback(
-            null,
-            `${uniqueName}${extname(file.originalname)}`,
-          );
+          const extension =
+            profileImageExtensionByMime[file.mimetype];
+
+          if (!extension) {
+            return callback(
+              new BadRequestException(
+                'Kun JPG, PNG og WEBP er tilladt',
+              ),
+              '',
+            );
+          }
+
+          callback(null, `${uniqueName}${extension}`);
         },
       }),
       limits: {
@@ -295,7 +317,16 @@ export class UsersController {
           'image/webp',
         ];
 
-        if (!allowedTypes.includes(file.mimetype)) {
+        const extension = extname(
+          file.originalname,
+        ).toLowerCase();
+
+        if (
+          !allowedTypes.includes(file.mimetype) ||
+          !allowedProfileImageExtensions.includes(
+            extension,
+          )
+        ) {
           return callback(
             new BadRequestException(
               'Kun JPG, PNG og WEBP er tilladt',
