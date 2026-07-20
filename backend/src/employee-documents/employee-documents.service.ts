@@ -1,12 +1,13 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { existsSync } from 'fs';
+import { unlink } from 'fs/promises';
 import { basename, resolve, sep } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
-
 import {
   type AuthUser,
   resolveEmployeeDocumentCinemaId,
@@ -31,6 +32,8 @@ export type EmployeeDocumentDownload = {
 
 @Injectable()
 export class EmployeeDocumentsService {
+  private readonly logger = new Logger(EmployeeDocumentsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   private withProtectedFileUrl<T extends EmployeeDocumentWithProtectedUrl>(
@@ -56,6 +59,22 @@ export class EmployeeDocumentsService {
     }
 
     return filePath;
+  }
+
+  private async removeStoredEmployeeDocumentFile(fileUrl: string) {
+    try {
+      const filePath = this.getStoredEmployeeDocumentFilePath(fileUrl);
+      await unlink(filePath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return;
+      }
+
+      this.logger.error(
+        'Dokumentposten blev slettet, men dokumentfilen kunne ikke fjernes.',
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 
   async findForUser(
@@ -97,7 +116,6 @@ export class EmployeeDocumentsService {
     }
 
     const filePath = this.getStoredEmployeeDocumentFilePath(document.fileUrl);
-
     if (!existsSync(filePath)) {
       throw new NotFoundException('Dokumentfilen blev ikke fundet');
     }
@@ -114,6 +132,14 @@ export class EmployeeDocumentsService {
     id: number,
     selectedCinemaId?: number | null,
   ) {
-    return deleteEmployeeDocument(this.prisma, user, id, selectedCinemaId);
+    const document = await deleteEmployeeDocument(
+      this.prisma,
+      user,
+      id,
+      selectedCinemaId,
+    );
+
+    await this.removeStoredEmployeeDocumentFile(document.fileUrl);
+    return document;
   }
 }

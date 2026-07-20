@@ -16,10 +16,10 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { createReadStream } from 'fs';
+import { unlink } from 'fs/promises';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import type { Response } from 'express';
-
 import { EmployeeDocumentsService } from './employee-documents.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles/roles.guard';
@@ -35,7 +35,6 @@ export class EmployeeDocumentsController {
     }
 
     const cinemaId = Number(value);
-
     if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
       throw new BadRequestException('Biograf skal være et gyldigt ID');
     }
@@ -43,15 +42,23 @@ export class EmployeeDocumentsController {
     return cinemaId;
   }
 
-
   private parseRequiredId(value: string | number, message: string) {
     const parsedId = Number(value);
-
     if (!Number.isInteger(parsedId) || parsedId <= 0) {
       throw new BadRequestException(message);
     }
 
     return parsedId;
+  }
+
+  private async removeRejectedUpload(file: Express.Multer.File) {
+    try {
+      await unlink(file.path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        // Keep the original validation/database error as the response.
+      }
+    }
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -93,7 +100,6 @@ export class EmployeeDocumentsController {
           'image/png',
           'image/webp',
         ];
-
         const blockedExtensions = [
           '.exe',
           '.js',
@@ -106,7 +112,6 @@ export class EmployeeDocumentsController {
           '.cmd',
           '.ps1',
         ];
-
         const extension = extname(file.originalname).toLowerCase();
 
         if (
@@ -125,7 +130,7 @@ export class EmployeeDocumentsController {
       },
     }),
   )
-  uploadDocument(
+  async uploadDocument(
     @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { userId: string; title: string; cinemaId?: string },
@@ -134,17 +139,22 @@ export class EmployeeDocumentsController {
       throw new BadRequestException('Ingen fil uploadet');
     }
 
-    return this.employeeDocumentsService.create(req.user, {
-      userId: this.parseRequiredId(
-        body.userId,
-        'Bruger skal være et gyldigt ID',
-      ),
-      title: body.title,
-      cinemaId: this.parseCinemaId(body.cinemaId),
-      fileUrl: `/uploads/employee-documents/${file.filename}`,
-      fileName: file.originalname,
-      fileType: file.mimetype,
-    });
+    try {
+      return await this.employeeDocumentsService.create(req.user, {
+        userId: this.parseRequiredId(
+          body.userId,
+          'Bruger skal være et gyldigt ID',
+        ),
+        title: body.title,
+        cinemaId: this.parseCinemaId(body.cinemaId),
+        fileUrl: `/uploads/employee-documents/${file.filename}`,
+        fileName: file.originalname,
+        fileType: file.mimetype,
+      });
+    } catch (error) {
+      await this.removeRejectedUpload(file);
+      throw error;
+    }
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -163,7 +173,6 @@ export class EmployeeDocumentsController {
     );
 
     const safeFileName = document.fileName.replace(/[\r\n"]/g, '_');
-
     response.set({
       'Content-Type': document.fileType || 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${safeFileName}"; filename*=UTF-8''${encodeURIComponent(
