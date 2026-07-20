@@ -117,11 +117,13 @@ export class TimeEntriesController {
       note?: string;
       clockOutNote?: string;
     },
+    @Query('cinemaId') cinemaId?: string,
   ) {
     return this.timeEntriesService.clockOut(
       req.user,
       this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
       body,
+      this.parseOptionalId(cinemaId, 'Biograf skal være et gyldigt ID'),
     );
   }
 

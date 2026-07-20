@@ -151,8 +151,9 @@ export class TimeEntriesService {
       clockOut?: string;
       note?: string;
     },
+    selectedCinemaId?: number | null,
   ) {
-    await this.ensureClockOutAccess(user, id);
+    await this.ensureClockOutAccess(user, id, selectedCinemaId);
 
     return clockOutTimeEntry({
       prisma: this.prisma,
@@ -373,7 +374,11 @@ export class TimeEntriesService {
     };
   }
 
-  private async ensureClockOutAccess(user: any, id: number) {
+  private async ensureClockOutAccess(
+    user: any,
+    id: number,
+    selectedCinemaId?: number | null,
+  ) {
     const timeEntry = await this.prisma.timeEntry.findUnique({
       where: {
         id,
@@ -388,27 +393,24 @@ export class TimeEntriesService {
       throw new NotFoundException('Tidsregistrering ikke fundet.');
     }
 
+    const cinemaId = await resolveTimeEntryActorCinemaId(
+      this.prisma,
+      user,
+      selectedCinemaId,
+    );
+
+    if (timeEntry.cinemaId !== cinemaId) {
+      throw new ForbiddenException(
+        'Du har ikke adgang til denne tidsregistrering.',
+      );
+    }
+
     const actorUserId = getTimeEntryActorUserId(user);
     if (timeEntry.userId === actorUserId) {
       return;
     }
 
     if (!this.canActForOtherUsers(user)) {
-      throw new ForbiddenException(
-        'Du har ikke adgang til denne tidsregistrering.',
-      );
-    }
-
-    if (this.isMasterUser(user)) {
-      return;
-    }
-
-    const cinemaId = await resolveTimeEntryActorCinemaId(
-      this.prisma,
-      user,
-    );
-
-    if (timeEntry.cinemaId !== cinemaId) {
       throw new ForbiddenException(
         'Du har ikke adgang til denne tidsregistrering.',
       );
