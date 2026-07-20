@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { createReadStream } from 'fs';
-import { unlink } from 'fs/promises';
+import { open, unlink } from 'fs/promises';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import type { Response } from 'express';
@@ -24,6 +24,32 @@ import { EmployeeDocumentsService } from './employee-documents.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles/roles.guard';
 import { Roles } from '../auth/roles/roles.decorator';
+
+const employeeDocumentExtensionsByMime: Record<string, readonly string[]> = {
+  'application/pdf': ['.pdf'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
+    '.docx',
+  ],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
+    '.xlsx',
+  ],
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/webp': ['.webp'],
+};
+
+const employeeDocumentStoredExtensionByMime: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    '.docx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
+const invalidEmployeeDocumentMessage =
+  'Kun PDF, DOCX, XLSX, JPG, PNG og WEBP er tilladt';
 
 @Controller('employee-documents')
 export class EmployeeDocumentsController {
@@ -49,6 +75,71 @@ export class EmployeeDocumentsController {
     }
 
     return parsedId;
+  }
+
+  private async hasExpectedFileSignature(file: Express.Multer.File) {
+    const handle = await open(file.path, 'r');
+
+    try {
+      const signature = Buffer.alloc(12);
+      const { bytesRead } = await handle.read(signature, 0, signature.length, 0);
+      const bytes = signature.subarray(0, bytesRead);
+
+      switch (file.mimetype) {
+        case 'application/pdf':
+          return bytes.subarray(0, 5).toString('ascii') === '%PDF-';
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+          const isZip =
+            bytes.length >= 4 &&
+            bytes[0] === 0x50 &&
+            bytes[1] === 0x4b &&
+            ((bytes[2] === 0x03 && bytes[3] === 0x04) ||
+              (bytes[2] === 0x05 && bytes[3] === 0x06) ||
+              (bytes[2] === 0x07 && bytes[3] === 0x08));
+
+          if (!isZip) {
+            return false;
+          }
+
+          const contents = await handle.readFile();
+          const requiredFolder =
+            file.mimetype ===
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+              ? 'word/'
+              : 'xl/';
+
+          return (
+            contents.includes(Buffer.from('[Content_Types].xml')) &&
+            contents.includes(Buffer.from(requiredFolder))
+          );
+        }
+        case 'image/jpeg':
+          return (
+            bytes.length >= 3 &&
+            bytes[0] === 0xff &&
+            bytes[1] === 0xd8 &&
+            bytes[2] === 0xff
+          );
+        case 'image/png':
+          return (
+            bytes.length >= 8 &&
+            bytes.subarray(0, 8).equals(
+              Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+            )
+          );
+        case 'image/webp':
+          return (
+            bytes.length >= 12 &&
+            bytes.subarray(0, 4).toString('ascii') === 'RIFF' &&
+            bytes.subarray(8, 12).toString('ascii') === 'WEBP'
+          );
+        default:
+          return false;
+      }
+    } finally {
+      await handle.close();
+    }
   }
 
   private async removeRejectedUpload(file: Express.Multer.File) {
@@ -85,43 +176,29 @@ export class EmployeeDocumentsController {
         destination: './uploads/employee-documents',
         filename: (_, file, callback) => {
           const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          callback(null, `${uniqueName}${extname(file.originalname)}`);
+          const extension = employeeDocumentStoredExtensionByMime[file.mimetype];
+
+          if (!extension) {
+            return callback(
+              new BadRequestException(invalidEmployeeDocumentMessage),
+              '',
+            );
+          }
+
+          callback(null, `${uniqueName}${extension}`);
         },
       }),
       limits: {
         fileSize: 10 * 1024 * 1024,
       },
       fileFilter: (_, file, callback) => {
-        const allowedTypes = [
-          'application/pdf',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'image/jpeg',
-          'image/png',
-          'image/webp',
-        ];
-        const blockedExtensions = [
-          '.exe',
-          '.js',
-          '.html',
-          '.htm',
-          '.svg',
-          '.docm',
-          '.xlsm',
-          '.bat',
-          '.cmd',
-          '.ps1',
-        ];
         const extension = extname(file.originalname).toLowerCase();
+        const allowedExtensions =
+          employeeDocumentExtensionsByMime[file.mimetype];
 
-        if (
-          !allowedTypes.includes(file.mimetype) ||
-          blockedExtensions.includes(extension)
-        ) {
+        if (!allowedExtensions?.includes(extension)) {
           return callback(
-            new BadRequestException(
-              'Kun PDF, DOCX, XLSX, JPG, PNG og WEBP er tilladt',
-            ),
+            new BadRequestException(invalidEmployeeDocumentMessage),
             false,
           );
         }
@@ -140,6 +217,10 @@ export class EmployeeDocumentsController {
     }
 
     try {
+      if (!(await this.hasExpectedFileSignature(file))) {
+        throw new BadRequestException(invalidEmployeeDocumentMessage);
+      }
+
       return await this.employeeDocumentsService.create(req.user, {
         userId: this.parseRequiredId(
           body.userId,
