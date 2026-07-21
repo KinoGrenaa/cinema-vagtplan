@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Patch,
   Post,
@@ -9,27 +8,25 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-
 import { JwtGuard } from './jwt/jwt.guard';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SwitchCinemaDto } from './dto/switch-cinema.dto';
 import { UpdateDefaultCinemaDto } from './dto/update-default-cinema.dto';
+import {
+  getAuthenticatedAuthUserId,
+  parseAuthCinemaId,
+  parseOptionalAuthCinemaId,
+} from './helpers/auth-controller-input';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   private getCurrentUserId(req: any) {
-    const userId = req.user?.sub ?? req.user?.id;
-
-    if (!userId) {
-      throw new ForbiddenException(
-        'Brugeren kunne ikke identificeres',
-      );
-    }
-
-    return Number(userId);
+    return getAuthenticatedAuthUserId(
+      req.user?.sub ?? req.user?.id,
+    );
   }
 
   @Throttle({ default: { ttl: 60000, limit: 10 } })
@@ -49,7 +46,7 @@ export class AuthController {
   ) {
     return this.authService.switchCinema(
       this.getCurrentUserId(req),
-      body.cinemaId,
+      parseAuthCinemaId(body?.cinemaId),
     );
   }
 
@@ -69,7 +66,7 @@ export class AuthController {
   ) {
     return this.authService.updateDefaultCinema(
       this.getCurrentUserId(req),
-      body.cinemaId,
+      parseOptionalAuthCinemaId(body?.cinemaId),
     );
   }
 }
