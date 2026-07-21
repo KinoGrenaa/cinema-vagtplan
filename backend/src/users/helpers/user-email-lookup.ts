@@ -1,9 +1,16 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 
-import { PrismaService } from '../../prisma/prisma.service';
+type UserLookupClient = Pick<
+  Prisma.TransactionClient,
+  'user'
+>;
 
 export async function ensureUniqueUserEmail(
-  prisma: PrismaService,
+  prisma: UserLookupClient,
   email: string,
   errorMessage: string,
   excludedUserId?: number,
@@ -25,17 +32,26 @@ export async function ensureUniqueUserEmail(
         });
 
   if (existingUser) {
-    throw new BadRequestException(errorMessage);
+    throw new BadRequestException(
+      errorMessage,
+    );
   }
 }
 
-export async function findRequiredUser(prisma: PrismaService, id: number) {
+export async function findRequiredUser(
+  prisma: UserLookupClient,
+  id: number,
+) {
   const user = await prisma.user.findUnique({
-    where: { id },
+    where: {
+      id,
+    },
   });
 
   if (!user) {
-    throw new NotFoundException('Bruger blev ikke fundet');
+    throw new NotFoundException(
+      'Bruger blev ikke fundet',
+    );
   }
 
   return user;

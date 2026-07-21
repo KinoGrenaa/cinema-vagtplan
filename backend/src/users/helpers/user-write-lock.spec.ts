@@ -1,5 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-import { withUserWriteLock } from './user-write-lock';
+import {
+  lockUserWrite,
+  withUserDirectoryWriteLock,
+  withUserWriteLock,
+} from './user-write-lock';
 
 describe('user write lock', () => {
   it('serializes a user write in a transaction', async () => {
@@ -36,6 +40,57 @@ describe('user write lock', () => {
     );
   });
 
+  it('serializes a directory write in a transaction', async () => {
+    const transaction = {
+      $executeRaw: jest
+        .fn()
+        .mockResolvedValue(1),
+    };
+    const prisma = {
+      $transaction: jest.fn(
+        async (
+          callback: (value: any) => unknown,
+        ) => callback(transaction),
+      ),
+    };
+    const action = jest
+      .fn()
+      .mockResolvedValue('ok');
+
+    await expect(
+      withUserDirectoryWriteLock(
+        prisma as never,
+        action,
+      ),
+    ).resolves.toBe('ok');
+
+    expect(
+      transaction.$executeRaw,
+    ).toHaveBeenCalledTimes(1);
+    expect(action).toHaveBeenCalledWith(
+      transaction,
+    );
+  });
+
+  it('can take a per-user lock inside a directory transaction', async () => {
+    const transaction = {
+      $executeRaw: jest
+        .fn()
+        .mockResolvedValue(1),
+    };
+
+    await expect(
+      lockUserWrite(
+        transaction as never,
+        '9',
+      ),
+    ).resolves.toBe(9);
+
+    expect(
+      transaction.$executeRaw,
+    ).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     undefined,
     null,
@@ -49,7 +104,14 @@ describe('user write lock', () => {
     await expect(
       withUserWriteLock(
         {
-          $transaction: jest.fn(),
+          $transaction: jest.fn(
+            async (
+              callback: (value: any) => unknown,
+            ) =>
+              callback({
+                $executeRaw: jest.fn(),
+              }),
+          ),
         } as never,
         value,
         jest.fn(),

@@ -1,6 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -18,6 +17,11 @@ import {
   validateRoleCinema,
 } from './user-service-data-helpers';
 import { syncPrimaryUserCinemaMembership } from './user-cinema-membership-sync';
+import {
+  lockUserWrite,
+  withUserDirectoryWriteLock,
+  withUserWriteLock,
+} from './user-write-lock';
 
 export type UpdateUserInput = {
   email?: string;
@@ -60,69 +64,106 @@ export async function updateUserFlow(
   data: UpdateUserInput,
   currentUser?: AuthUser,
 ) {
-  const user = await findRequiredUser(prisma, id);
+  const hashedPassword =
+    data.password &&
+    data.password.trim() !== ''
+      ? await bcrypt.hash(
+          data.password,
+          10,
+        )
+      : undefined;
 
-  if (currentUser) {
-    ensureCanModifyTargetUser(currentUser, user);
-
-    if (
-      currentUser.role !== 'MASTER' &&
-      data.role === 'MASTER'
-    ) {
-      throw new ForbiddenException(
-        'Kun master kan oprette eller tildele master-rolle',
-      );
-    }
-  }
-
-  if (data.email) {
-    await ensureUniqueUserEmail(
+  const updatedUser =
+    await withUserDirectoryWriteLock(
       prisma,
-      data.email,
-      'Der findes allerede en anden bruger med denne email',
-      id,
+      async (transaction) => {
+        const userId = await lockUserWrite(
+          transaction,
+          id,
+        );
+        const user = await findRequiredUser(
+          transaction,
+          userId,
+        );
+
+        if (currentUser) {
+          ensureCanModifyTargetUser(
+            currentUser,
+            user,
+          );
+
+          if (
+            currentUser.role !== 'MASTER' &&
+            data.role === 'MASTER'
+          ) {
+            throw new ForbiddenException(
+              'Kun master kan oprette eller tildele master-rolle',
+            );
+          }
+        }
+
+        if (data.email) {
+          await ensureUniqueUserEmail(
+            transaction,
+            data.email,
+            'Der findes allerede en anden bruger med denne email',
+            userId,
+          );
+        }
+
+        const nextRole =
+          data.role || user.role;
+        const nextCinemaId =
+          await validateRoleCinema(
+            transaction,
+            nextRole,
+            nextRole === 'MASTER'
+              ? null
+              : user.cinemaId,
+          );
+        const updateData =
+          buildUserUpdateData(
+            data,
+            nextRole,
+            nextCinemaId,
+          );
+
+        if (hashedPassword !== undefined) {
+          updateData.password =
+            hashedPassword;
+        }
+
+        const nextUser =
+          await transaction.user.update({
+            where: {
+              id: userId,
+            },
+            data: updateData,
+          });
+
+        await syncPrimaryUserCinemaMembership(
+          transaction,
+          {
+            userId: nextUser.id,
+            cinemaId:
+              nextUser.cinemaId,
+            isActive:
+              nextUser.isActive,
+          },
+        );
+
+        return nextUser;
+      },
     );
-  }
-
-  const nextRole = data.role || user.role;
-  const nextCinemaId = await validateRoleCinema(
-    prisma,
-    nextRole,
-    nextRole === 'MASTER' ? null : user.cinemaId,
-  );
-  const updateData = buildUserUpdateData(
-    data,
-    nextRole,
-    nextCinemaId,
-  );
-
-  if (data.password && data.password.trim() !== '') {
-    updateData.password = await bcrypt.hash(data.password, 10);
-  }
-
-  const updatedUser = await prisma.$transaction(
-    async (transaction) => {
-      const nextUser = await transaction.user.update({
-        where: { id },
-        data: updateData,
-      });
-
-      await syncPrimaryUserCinemaMembership(transaction, {
-        userId: nextUser.id,
-        cinemaId: nextUser.cinemaId,
-        isActive: nextUser.isActive,
-      });
-
-      return nextUser;
-    },
-  );
 
   await auditLogsService.create({
     action: 'UPDATE_USER',
     entityType: 'User',
     entityId: updatedUser.id,
     description: `Opdaterede bruger ${updatedUser.firstName} ${updatedUser.lastName}`,
-    userId: getActorUserId(currentUser),
+    userId: getActorUserId(
+      currentUser,
+    ),
     cinemaId: updatedUser.cinemaId,
   });
 
@@ -134,27 +175,55 @@ export async function updateOwnProfileFlow(
   id: number,
   data: UpdateOwnProfileInput,
 ) {
-  await findRequiredUser(prisma, id);
+  const hashedPassword =
+    data.password &&
+    data.password.trim() !== ''
+      ? await bcrypt.hash(
+          data.password,
+          10,
+        )
+      : undefined;
 
-  if (data.email) {
-    await ensureUniqueUserEmail(
-      prisma,
-      data.email,
-      'Der findes allerede en anden bruger med denne email',
-      id,
-    );
-  }
+  return withUserDirectoryWriteLock(
+    prisma,
+    async (transaction) => {
+      const userId = await lockUserWrite(
+        transaction,
+        id,
+      );
 
-  const updateData = buildOwnProfileUpdateData(data);
+      await findRequiredUser(
+        transaction,
+        userId,
+      );
 
-  if (data.password && data.password.trim() !== '') {
-    updateData.password = await bcrypt.hash(data.password, 10);
-  }
+      if (data.email) {
+        await ensureUniqueUserEmail(
+          transaction,
+          data.email,
+          'Der findes allerede en anden bruger med denne email',
+          userId,
+        );
+      }
 
-  return prisma.user.update({
-    where: { id },
-    data: updateData,
-  });
+      const updateData =
+        buildOwnProfileUpdateData(
+          data,
+        );
+
+      if (hashedPassword !== undefined) {
+        updateData.password =
+          hashedPassword;
+      }
+
+      return transaction.user.update({
+        where: {
+          id: userId,
+        },
+        data: updateData,
+      });
+    },
+  );
 }
 
 export async function updateThemeFlow(
@@ -162,8 +231,20 @@ export async function updateThemeFlow(
   id: number,
   theme: string,
 ) {
-  return prisma.user.update({
-    where: { id },
-    data: { theme },
-  });
+  return withUserWriteLock(
+    prisma,
+    id,
+    (
+      transaction,
+      userId,
+    ) =>
+      transaction.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          theme,
+        },
+      }),
+  );
 }

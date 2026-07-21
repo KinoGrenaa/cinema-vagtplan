@@ -1,24 +1,34 @@
 import { BadRequestException } from '@nestjs/common';
-
-import { PrismaService } from '../../prisma/prisma.service';
+import type { Prisma } from '@prisma/client';
 import { UserRole } from './user-service-helpers';
 
+type UserCinemaValidationClient = Pick<
+  Prisma.TransactionClient,
+  'cinema'
+>;
+
 export async function ensureCinemaExists(
-  prisma: PrismaService,
+  prisma: UserCinemaValidationClient,
   cinemaId: number,
 ) {
   const cinema = await prisma.cinema.findUnique({
-    where: { id: cinemaId },
-    select: { id: true },
+    where: {
+      id: cinemaId,
+    },
+    select: {
+      id: true,
+    },
   });
 
   if (!cinema) {
-    throw new BadRequestException('Den valgte biograf blev ikke fundet');
+    throw new BadRequestException(
+      'Den valgte biograf blev ikke fundet',
+    );
   }
 }
 
 export async function validateRoleCinema(
-  prisma: PrismaService,
+  prisma: UserCinemaValidationClient,
   role: UserRole,
   cinemaId?: number | null,
 ) {
@@ -32,7 +42,10 @@ export async function validateRoleCinema(
     );
   }
 
-  await ensureCinemaExists(prisma, cinemaId);
+  await ensureCinemaExists(
+    prisma,
+    cinemaId,
+  );
 
   return cinemaId;
 }
