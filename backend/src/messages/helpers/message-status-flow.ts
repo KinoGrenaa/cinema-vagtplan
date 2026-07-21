@@ -20,7 +20,9 @@ export async function markMessageAsRead(
   cinemaId: number,
 ) {
   const message = await prisma.message.findUnique({
-    where: { id },
+    where: {
+      id,
+    },
   });
 
   if (!message) {
@@ -30,16 +32,17 @@ export async function markMessageAsRead(
   ensureMessageCinemaAccess(message, cinemaId);
 
   const allowed =
-    message.senderId === userId ||
     message.receiverId === userId ||
-    message.isBroadcast;
+    (message.isBroadcast && message.senderId !== userId);
 
   if (!allowed) {
     throw new ForbiddenException('Du har ikke adgang til denne besked');
   }
 
   const updatedMessage = await prisma.message.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       isRead: true,
       readAt: new Date(),
@@ -48,7 +51,6 @@ export async function markMessageAsRead(
   });
 
   notifyMessagesUpdated(realtime, updatedMessage);
-
   return updatedMessage;
 }
 
@@ -60,7 +62,9 @@ export async function archiveMessageForUser(
   cinemaId: number,
 ) {
   const message = await prisma.message.findUnique({
-    where: { id },
+    where: {
+      id,
+    },
   });
 
   if (!message) {
@@ -69,14 +73,17 @@ export async function archiveMessageForUser(
 
   ensureMessageCinemaAccess(message, cinemaId);
 
-  const allowed = message.senderId === userId || message.receiverId === userId;
+  const allowed =
+    message.senderId === userId || message.receiverId === userId;
 
   if (!allowed) {
     throw new ForbiddenException('Du har ikke adgang til denne besked');
   }
 
   const updatedMessage = await prisma.message.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       archivedAt: new Date(),
     },
@@ -84,7 +91,6 @@ export async function archiveMessageForUser(
   });
 
   notifyMessagesUpdated(realtime, updatedMessage);
-
   return updatedMessage;
 }
 
@@ -96,7 +102,9 @@ export async function unarchiveMessageForUser(
   cinemaId: number,
 ) {
   const message = await prisma.message.findUnique({
-    where: { id },
+    where: {
+      id,
+    },
   });
 
   if (!message) {
@@ -106,16 +114,16 @@ export async function unarchiveMessageForUser(
   ensureMessageCinemaAccess(message, cinemaId);
 
   const allowed =
-    message.senderId === userId ||
-    message.receiverId === userId ||
-    message.isBroadcast;
+    message.senderId === userId || message.receiverId === userId;
 
   if (!allowed) {
     throw new ForbiddenException('Du har ikke adgang til denne besked');
   }
 
   const updatedMessage = await prisma.message.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       archivedAt: null,
     },
@@ -123,7 +131,6 @@ export async function unarchiveMessageForUser(
   });
 
   notifyMessagesUpdated(realtime, updatedMessage);
-
   return updatedMessage;
 }
 
@@ -135,7 +142,9 @@ export async function recallMessageForUser(
   cinemaId: number,
 ) {
   const message = await prisma.message.findUnique({
-    where: { id },
+    where: {
+      id,
+    },
   });
 
   if (!message) {
@@ -149,7 +158,9 @@ export async function recallMessageForUser(
   }
 
   const updatedMessage = await prisma.message.update({
-    where: { id },
+    where: {
+      id,
+    },
     data: {
       recalledAt: new Date(),
       recalledByUserId: userId,
@@ -158,6 +169,5 @@ export async function recallMessageForUser(
   });
 
   notifyMessagesUpdated(realtime, updatedMessage);
-
   return updatedMessage;
 }
