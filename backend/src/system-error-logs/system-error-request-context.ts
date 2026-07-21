@@ -23,9 +23,24 @@ function getNonEmptyString(value: unknown) {
 
 function getPositiveInteger(value: unknown) {
   const normalizedValue = getFirstValue(value);
+
+  if (
+    typeof normalizedValue !== 'string' &&
+    typeof normalizedValue !== 'number'
+  ) {
+    return null;
+  }
+
+  if (
+    typeof normalizedValue === 'string' &&
+    !/^[0-9]+$/.test(normalizedValue)
+  ) {
+    return null;
+  }
+
   const parsedValue = Number(normalizedValue);
 
-  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+  if (!Number.isSafeInteger(parsedValue) || parsedValue <= 0) {
     return null;
   }
 
@@ -36,12 +51,27 @@ function getRequestHeader(request: any, name: string) {
   return request?.headers?.[name] ?? null;
 }
 
+function getValidCorrelationId(value: unknown) {
+  const correlationId = getNonEmptyString(value);
+
+  if (
+    correlationId &&
+    /^[A-Za-z0-9._:-]{1,128}$/.test(correlationId)
+  ) {
+    return correlationId;
+  }
+
+  return null;
+}
+
 function getExistingCorrelationId(request: any) {
   return (
-    getNonEmptyString(
+    getValidCorrelationId(
       getRequestHeader(request, 'x-correlation-id'),
     ) ??
-    getNonEmptyString(getRequestHeader(request, 'x-request-id'))
+    getValidCorrelationId(
+      getRequestHeader(request, 'x-request-id'),
+    )
   );
 }
 
@@ -74,7 +104,6 @@ export function createSystemErrorRequestContext(
   const correlationId =
     getExistingCorrelationId(request) ?? randomUUID();
   const cinemaId = getRequestCinemaId(request);
-
   const user =
     request?.user || cinemaId
       ? {

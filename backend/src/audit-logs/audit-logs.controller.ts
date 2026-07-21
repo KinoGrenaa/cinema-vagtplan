@@ -10,40 +10,48 @@ import {
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import {
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { AuditLogsService } from './audit-logs.service';
+
+function parseAuditEntityType(value: unknown) {
+  if (typeof value !== 'string') {
+    throw new BadRequestException('Entitetstype skal være gyldig');
+  }
+
+  const entityType = value.trim();
+
+  if (
+    entityType.length === 0 ||
+    entityType.length > 100 ||
+    /[\u0000-\u001f\u007f]/.test(entityType)
+  ) {
+    throw new BadRequestException('Entitetstype skal være gyldig');
+  }
+
+  return entityType;
+}
 
 @Controller('audit-logs')
 export class AuditLogsController {
   constructor(private auditLogsService: AuditLogsService) {}
 
-  private parseOptionalId(value: string | undefined, message: string) {
-    if (value === undefined || value === '') {
-      return undefined;
-    }
-
-    return this.parseRequiredId(value, message);
-  }
-
-  private parseRequiredId(value: string | number, message: string) {
-    const parsedId = Number(value);
-
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      throw new BadRequestException(message);
-    }
-
-    return parsedId;
-  }
-
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Get()
-  getAuditLogs(@Req() req: any, @Query('cinemaId') cinemaId?: string) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
+  getAuditLogs(
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.auditLogsService.findAll(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
-
-    return this.auditLogsService.findAll(req.user, selectedCinemaId);
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -55,16 +63,17 @@ export class AuditLogsController {
     @Param('entityId') entityId: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-
     return this.auditLogsService.findByEntity(
       req.user,
-      entityType,
-      this.parseRequiredId(entityId, 'Entitet skal være et gyldigt ID'),
-      selectedCinemaId,
+      parseAuditEntityType(entityType),
+      parseRequiredPositiveInteger(
+        entityId,
+        'Entitet skal være et gyldigt ID',
+      ),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 }
