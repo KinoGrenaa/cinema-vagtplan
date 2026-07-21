@@ -10,28 +10,40 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-
-import { LeaveRequestsService } from './leave-requests.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 import { UpdateLeaveStatusDto } from './dto/update-leave-status.dto';
+import { LeaveRequestsService } from './leave-requests.service';
 
 @Controller('leave-requests')
 export class LeaveRequestsController {
-  constructor(private leaveRequestsService: LeaveRequestsService) {}
+  constructor(
+    private readonly leaveRequestsService: LeaveRequestsService,
+  ) {}
 
-  private parsePositiveId(value: string | number, fieldName: string) {
+  private parsePositiveId(
+    value: string | number,
+    fieldName: string,
+  ) {
     const id = Number(value);
 
     if (!Number.isInteger(id) || id <= 0) {
-      throw new BadRequestException(`${fieldName} skal være et gyldigt ID`);
+      throw new BadRequestException(
+        `${fieldName} skal være et gyldigt ID`,
+      );
     }
 
     return id;
   }
 
-  private parseCinemaId(value?: string | number | null) {
-    if (value === undefined || value === null || value === '') {
+  private parseCinemaId(
+    value?: string | number | null,
+  ) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === ''
+    ) {
       return undefined;
     }
 
@@ -39,7 +51,28 @@ export class LeaveRequestsController {
   }
 
   private parseLeaveRequestId(value: string) {
-    return this.parsePositiveId(value, 'Fraværsansøgning');
+    return this.parsePositiveId(
+      value,
+      'Fraværsansøgning',
+    );
+  }
+
+  private parseIncludeAll(value?: string) {
+    if (value === undefined || value === '') {
+      return false;
+    }
+
+    if (value === 'true') {
+      return true;
+    }
+
+    if (value === 'false') {
+      return false;
+    }
+
+    throw new BadRequestException(
+      'includeAll skal være true eller false',
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -52,14 +85,20 @@ export class LeaveRequestsController {
     return this.leaveRequestsService.findAll(
       req.user,
       this.parseCinemaId(cinemaId),
-      includeAll === 'true',
+      this.parseIncludeAll(includeAll),
     );
   }
 
   @UseGuards(JwtGuard)
   @Post()
-  createLeaveRequest(@Req() req: any, @Body() body: CreateLeaveRequestDto) {
-    return this.leaveRequestsService.create(req.user, body);
+  createLeaveRequest(
+    @Req() req: any,
+    @Body() body: CreateLeaveRequestDto,
+  ) {
+    return this.leaveRequestsService.create(
+      req.user,
+      body,
+    );
   }
 
   @UseGuards(JwtGuard)

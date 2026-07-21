@@ -2,7 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-
+import { Prisma } from '@prisma/client';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
@@ -12,50 +12,31 @@ import {
   getActiveLeaveCinemaUserWhere,
 } from './leave-request-cinema-access';
 import {
+  LeaveRequestCreateInput,
+  normalizeLeaveRequestCreateInput,
+} from './leave-request-input';
+import {
   AuthUser,
   requireUserId,
   resolveLeaveCinemaId,
-  validateLeaveRequestDates,
 } from './leave-request-service-helpers';
 import { notifyLeaveRequestCreated } from './leave-request-notifications';
 import {
   analyzeAbsenceImpact,
+  ensureNoOverlappingLeaveRequest,
   ensureNoOverlappingShift,
   notifyLeaveRequestsUpdated,
 } from './leave-request-processing-helpers';
 
-type CreateLeaveRequestData = {
-  startDate: string;
-  endDate: string;
-  reason?: string;
-  cinemaId?: number;
-  userId?: number;
-};
-
-function parseOptionalPositiveId(
-  value: number | undefined,
-  fieldName: string,
+async function resolveLeaveRequestTarget(
+  params: {
+    prisma: PrismaService;
+    user: AuthUser;
+    data: ReturnType<
+      typeof normalizeLeaveRequestCreateInput
+    >;
+  },
 ) {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  const id = Number(value);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new BadRequestException(
-      `${fieldName} skal være et gyldigt ID`,
-    );
-  }
-
-  return id;
-}
-
-async function resolveLeaveRequestTarget(params: {
-  prisma: PrismaService;
-  user: AuthUser;
-  data: CreateLeaveRequestData;
-}) {
   const actorUserId = requireUserId(params.user);
   const cinemaId = resolveLeaveCinemaId(
     params.user,
@@ -68,10 +49,7 @@ async function resolveLeaveRequestTarget(params: {
     cinemaId,
   );
 
-  const requestedUserId = parseOptionalPositiveId(
-    params.data.userId,
-    'Medarbejder',
-  );
+  const requestedUserId = params.data.userId;
   const canCreateForOthers =
     params.user.role === 'ADMIN' ||
     params.user.role === 'MASTER';
@@ -99,16 +77,16 @@ async function resolveLeaveRequestTarget(params: {
     canCreateForOthers && requestedUserId
       ? requestedUserId
       : actorUserId;
-
-  const targetUser = await params.prisma.user.findFirst({
-    where: getActiveLeaveCinemaUserWhere(
-      userId,
-      cinemaId,
-    ),
-    select: {
-      id: true,
-    },
-  });
+  const targetUser =
+    await params.prisma.user.findFirst({
+      where: getActiveLeaveCinemaUserWhere(
+        userId,
+        cinemaId,
+      ),
+      select: {
+        id: true,
+      },
+    });
 
   if (!targetUser) {
     throw new BadRequestException(
@@ -123,52 +101,76 @@ async function resolveLeaveRequestTarget(params: {
   };
 }
 
-export async function createLeaveRequestFlow(params: {
-  prisma: PrismaService;
-  absenceImpactEngineService: AbsenceImpactEngineService;
-  realtimeGateway: RealtimeGateway;
-  notificationsService: NotificationsService;
-  user: AuthUser;
-  data: CreateLeaveRequestData;
-}) {
+export async function createLeaveRequestFlow(
+  params: {
+    prisma: PrismaService;
+    absenceImpactEngineService:
+      AbsenceImpactEngineService;
+    realtimeGateway: RealtimeGateway;
+    notificationsService: NotificationsService;
+    user: AuthUser;
+    data: LeaveRequestCreateInput;
+  },
+) {
+  const normalized =
+    normalizeLeaveRequestCreateInput(
+      params.data,
+    );
   const target = await resolveLeaveRequestTarget({
     prisma: params.prisma,
     user: params.user,
-    data: params.data,
-  });
-
-  const startDate = new Date(params.data.startDate);
-  const endDate = new Date(params.data.endDate);
-
-  validateLeaveRequestDates(startDate, endDate);
-
-  await ensureNoOverlappingShift({
-    prisma: params.prisma,
-    userId: target.userId,
-    cinemaId: target.cinemaId,
-    startDate,
-    endDate,
+    data: normalized,
   });
 
   const leaveRequest =
-    await params.prisma.leaveRequest.create({
-      data: {
-        startDate,
-        endDate,
-        reason: params.data.reason,
-        cinemaId: target.cinemaId,
-        userId: target.userId,
-        createdByUserId: target.actorUserId,
+    await params.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw(
+          Prisma.sql`
+            SELECT pg_advisory_xact_lock(
+              54001,
+              ${target.userId}
+            )
+          `,
+        );
+
+        await ensureNoOverlappingShift({
+          prisma: tx,
+          userId: target.userId,
+          cinemaId: target.cinemaId,
+          startDate: normalized.startDate,
+          endDate: normalized.endDate,
+        });
+        await ensureNoOverlappingLeaveRequest({
+          prisma: tx,
+          userId: target.userId,
+          cinemaId: target.cinemaId,
+          startDate: normalized.startDate,
+          endDate: normalized.endDate,
+        });
+
+        return tx.leaveRequest.create({
+          data: {
+            startDate: normalized.startDate,
+            endDate: normalized.endDate,
+            reason: normalized.reason ?? null,
+            cinemaId: target.cinemaId,
+            userId: target.userId,
+            createdByUserId:
+              target.actorUserId,
+          },
+          include: {
+            user: true,
+            createdByUser: true,
+          },
+        });
       },
-      include: {
-        user: true,
-        createdByUser: true,
-      },
-    });
+    );
 
   await notifyLeaveRequestCreated({
     prisma: params.prisma,
-    notificationsService: params.notificationsService,
+    notificationsService:
+      params.notificationsService,
     leaveRequest,
     actorUserId: target.actorUserId,
   });
@@ -178,11 +180,12 @@ export async function createLeaveRequestFlow(params: {
     leaveRequest.cinemaId,
   );
 
-  const absenceImpact = await analyzeAbsenceImpact({
-    absenceImpactEngineService:
-      params.absenceImpactEngineService,
-    leaveRequest,
-  });
+  const absenceImpact =
+    await analyzeAbsenceImpact({
+      absenceImpactEngineService:
+        params.absenceImpactEngineService,
+      leaveRequest,
+    });
 
   return {
     leaveRequest,
