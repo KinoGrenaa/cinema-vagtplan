@@ -1,61 +1,74 @@
 import { BadRequestException } from '@nestjs/common';
-
-import { PrismaService } from '../../prisma/prisma.service';
-import type {
-  AuthUser,
-  CinemaContextValue,
-} from './work-type-service-helpers';
+import type { PrismaService } from '../../prisma/prisma.service';
 import {
   ensureWorkTypeAdmin,
   getPayrollTypeIdForCinema,
   getRequiredWorkTypeCinemaId,
+  normalizeWorkTypeColor,
+  normalizeWorkTypeName,
+  withWorkTypeCinemaLock,
+  workTypeInclude,
+  type AuthUser,
+  type WorkTypeData,
 } from './work-type-service-helpers';
 
 export async function createWorkType(
   prisma: PrismaService,
   user: AuthUser,
-  data: {
-    name: string;
-    color?: string;
-    payrollTypeId?: number | null;
-    cinemaId?: CinemaContextValue;
-  },
+  data: WorkTypeData,
 ) {
   ensureWorkTypeAdmin(user);
 
-  const cinemaId = getRequiredWorkTypeCinemaId(user, data.cinemaId);
-  const payrollTypeId = await getPayrollTypeIdForCinema(
-    prisma,
-    cinemaId,
-    data.payrollTypeId,
+  const cinemaId = getRequiredWorkTypeCinemaId(
+    user,
+    data?.cinemaId,
+  );
+  const name = normalizeWorkTypeName(
+    data?.name,
+  );
+  const color = normalizeWorkTypeColor(
+    data?.color,
   );
 
-  const existing = await prisma.workType.findFirst({
-    where: {
-      name: data.name,
-      isActive: true,
-      cinemaId,
+  return withWorkTypeCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const payrollTypeId =
+        await getPayrollTypeIdForCinema(
+          transaction,
+          cinemaId,
+          data?.payrollTypeId,
+        );
+      const existing =
+        await transaction.workType.findFirst({
+          where: {
+            name,
+            isActive: true,
+            cinemaId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (existing) {
+        throw new BadRequestException(
+          'Aktiv vagttype findes allerede',
+        );
+      }
+
+      return transaction.workType.create({
+        data: {
+          name,
+          color,
+          cinemaId,
+          payrollTypeId,
+          isActive: true,
+          archivedAt: null,
+        },
+        include: workTypeInclude,
+      });
     },
-  });
-
-  if (existing) {
-    throw new BadRequestException('Aktiv vagttype findes allerede');
-  }
-
-  return prisma.workType.create({
-    data: {
-      name: data.name,
-      color: data.color,
-
-      cinemaId,
-
-      payrollTypeId,
-      isActive: true,
-      archivedAt: null,
-    },
-
-    include: {
-      payrollType: true,
-    },
-  });
+  );
 }

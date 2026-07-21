@@ -1,13 +1,13 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-
-import { PrismaService } from '../../prisma/prisma.service';
-import type {
-  AuthUser,
-  CinemaContextValue,
-} from './work-type-service-helpers';
+import { BadRequestException } from '@nestjs/common';
+import type { PrismaService } from '../../prisma/prisma.service';
 import {
   ensureWorkTypeAdmin,
+  findWorkTypeForCinema,
   getRequiredWorkTypeCinemaId,
+  withWorkTypeCinemaLock,
+  workTypeInclude,
+  type AuthUser,
+  type CinemaContextValue,
 } from './work-type-service-helpers';
 
 export async function archiveWorkType(
@@ -18,37 +18,40 @@ export async function archiveWorkType(
 ) {
   ensureWorkTypeAdmin(user);
 
-  const cinemaId = getRequiredWorkTypeCinemaId(user, selectedCinemaId);
+  const cinemaId = getRequiredWorkTypeCinemaId(
+    user,
+    selectedCinemaId,
+  );
 
-  const existing = await prisma.workType.findFirst({
-    where: {
-      id,
-      cinemaId,
+  return withWorkTypeCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findWorkTypeForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+
+      if (!existing.isActive) {
+        throw new BadRequestException(
+          'Vagttypen er allerede arkiveret',
+        );
+      }
+
+      return transaction.workType.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: false,
+          archivedAt: new Date(),
+        },
+        include: workTypeInclude,
+      });
     },
-  });
-
-  if (!existing) {
-    throw new NotFoundException('Vagttype blev ikke fundet');
-  }
-
-  if (!existing.isActive) {
-    throw new BadRequestException('Vagttypen er allerede arkiveret');
-  }
-
-  return prisma.workType.update({
-    where: {
-      id,
-    },
-
-    data: {
-      isActive: false,
-      archivedAt: new Date(),
-    },
-
-    include: {
-      payrollType: true,
-    },
-  });
+  );
 }
 
 export async function reactivateWorkType(
@@ -59,52 +62,59 @@ export async function reactivateWorkType(
 ) {
   ensureWorkTypeAdmin(user);
 
-  const cinemaId = getRequiredWorkTypeCinemaId(user, selectedCinemaId);
+  const cinemaId = getRequiredWorkTypeCinemaId(
+    user,
+    selectedCinemaId,
+  );
 
-  const existing = await prisma.workType.findFirst({
-    where: {
-      id,
-      cinemaId,
+  return withWorkTypeCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findWorkTypeForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+
+      if (existing.isActive) {
+        throw new BadRequestException(
+          'Vagttypen er allerede aktiv',
+        );
+      }
+
+      const duplicate =
+        await transaction.workType.findFirst({
+          where: {
+            name: existing.name,
+            isActive: true,
+            id: {
+              not: existing.id,
+            },
+            cinemaId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (duplicate) {
+        throw new BadRequestException(
+          'Der findes allerede en aktiv vagttype med samme navn',
+        );
+      }
+
+      return transaction.workType.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: true,
+          archivedAt: null,
+        },
+        include: workTypeInclude,
+      });
     },
-  });
-
-  if (!existing) {
-    throw new NotFoundException('Vagttype blev ikke fundet');
-  }
-
-  if (existing.isActive) {
-    throw new BadRequestException('Vagttypen er allerede aktiv');
-  }
-
-  const duplicate = await prisma.workType.findFirst({
-    where: {
-      name: existing.name,
-      isActive: true,
-      id: {
-        not: id,
-      },
-      cinemaId,
-    },
-  });
-
-  if (duplicate) {
-    throw new BadRequestException(
-      'Der findes allerede en aktiv vagttype med samme navn',
-    );
-  }
-
-  return prisma.workType.update({
-    where: {
-      id,
-    },
-
-    data: {
-      isActive: true,
-      archivedAt: null,
-    },
-
-    include: {
-      payrollType: true,
-    },
-  });
+  );
 }

@@ -1,85 +1,103 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-
-import { PrismaService } from '../../prisma/prisma.service';
-import type {
-  AuthUser,
-  CinemaContextValue,
-} from './work-type-service-helpers';
+import { BadRequestException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import type { PrismaService } from '../../prisma/prisma.service';
 import {
   ensureWorkTypeAdmin,
+  findWorkTypeForCinema,
   getPayrollTypeIdForCinema,
   getRequiredWorkTypeCinemaId,
+  normalizeWorkTypeColor,
+  normalizeWorkTypeName,
+  withWorkTypeCinemaLock,
+  workTypeInclude,
+  type AuthUser,
+  type CinemaContextValue,
+  type WorkTypeData,
 } from './work-type-service-helpers';
 
 export async function updateWorkType(
   prisma: PrismaService,
   user: AuthUser,
   id: number,
-  data: {
-    name?: string;
-    color?: string;
-    payrollTypeId?: number | null;
-    cinemaId?: CinemaContextValue;
-  },
+  data: WorkTypeData,
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureWorkTypeAdmin(user);
 
   const cinemaId = getRequiredWorkTypeCinemaId(
     user,
-    selectedCinemaId ?? data.cinemaId,
+    selectedCinemaId ?? data?.cinemaId,
   );
-
-  const existing = await prisma.workType.findFirst({
-    where: {
-      id,
-      cinemaId,
-    },
-  });
-
-  if (!existing) {
-    throw new NotFoundException('Vagttype blev ikke fundet');
-  }
-
-  if (data.name && data.name !== existing.name) {
-    const duplicate = await prisma.workType.findFirst({
-      where: {
-        name: data.name,
-        isActive: true,
-        id: {
-          not: id,
-        },
-        cinemaId,
-      },
-    });
-
-    if (duplicate) {
-      throw new BadRequestException('Aktiv vagttype findes allerede');
-    }
-  }
-
-  const payrollTypeId =
-    data.payrollTypeId === undefined
+  const name =
+    data?.name === undefined
       ? undefined
-      : await getPayrollTypeIdForCinema(
-          prisma,
+      : normalizeWorkTypeName(data.name);
+  const color =
+    data?.color === undefined
+      ? undefined
+      : normalizeWorkTypeColor(data.color);
+
+  return withWorkTypeCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findWorkTypeForCinema(
+          transaction,
+          id,
           cinemaId,
-          data.payrollTypeId,
         );
+      const updateData: Prisma.WorkTypeUncheckedUpdateInput =
+        {};
 
-  return prisma.workType.update({
-    where: {
-      id,
-    },
+      if (
+        name !== undefined &&
+        name !== existing.name
+      ) {
+        const duplicate =
+          await transaction.workType.findFirst({
+            where: {
+              name,
+              isActive: true,
+              id: {
+                not: existing.id,
+              },
+              cinemaId,
+            },
+            select: {
+              id: true,
+            },
+          });
 
-    data: {
-      name: data.name,
-      color: data.color,
-      payrollTypeId,
-    },
+        if (duplicate) {
+          throw new BadRequestException(
+            'Aktiv vagttype findes allerede',
+          );
+        }
 
-    include: {
-      payrollType: true,
+        updateData.name = name;
+      }
+
+      if (color !== undefined) {
+        updateData.color = color;
+      }
+
+      if (data?.payrollTypeId !== undefined) {
+        updateData.payrollTypeId =
+          await getPayrollTypeIdForCinema(
+            transaction,
+            cinemaId,
+            data.payrollTypeId,
+          );
+      }
+
+      return transaction.workType.update({
+        where: {
+          id: existing.id,
+        },
+        data: updateData,
+        include: workTypeInclude,
+      });
     },
-  });
+  );
 }
