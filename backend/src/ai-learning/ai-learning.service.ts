@@ -1,45 +1,99 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  normalizeAiLearningEvent,
+  parseAiLearningCinemaId,
+  type AiLearningEventInput,
+} from './ai-learning-input';
 
 @Injectable()
 export class AiLearningService {
   constructor(private prisma: PrismaService) {}
 
-  async createEvent(data: {
-    cinemaId: number;
-    type: string;
-    severity?: string;
-    metadata?: any;
-  }) {
+  private async ensureCinemaExists(
+    cinemaId: number,
+  ) {
+    const cinema =
+      await this.prisma.cinema.findUnique({
+        where: {
+          id: cinemaId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (!cinema) {
+      throw new BadRequestException(
+        'Biografen findes ikke.',
+      );
+    }
+  }
+
+  async createEvent(
+    data: AiLearningEventInput,
+  ) {
+    const normalizedData =
+      normalizeAiLearningEvent(data);
+
+    await this.ensureCinemaExists(
+      normalizedData.cinemaId,
+    );
+
     return this.prisma.aiLearningEvent.create({
-      data,
+      data: normalizedData,
     });
   }
 
-  async getStatistics(cinemaId: number) {
-    const events = await this.prisma.aiLearningEvent.findMany({
-      where: {
-        cinemaId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 500,
-    });
+  async getStatistics(
+    cinemaIdValue: unknown,
+  ) {
+    const cinemaId =
+      parseAiLearningCinemaId(
+        cinemaIdValue,
+      );
+
+    await this.ensureCinemaExists(cinemaId);
+
+    const [
+      totalEvents,
+      emergencyEvents,
+      overtimeEvents,
+      fatigueEvents,
+    ] = await Promise.all([
+      this.prisma.aiLearningEvent.count({
+        where: {
+          cinemaId,
+        },
+      }),
+      this.prisma.aiLearningEvent.count({
+        where: {
+          cinemaId,
+          type: 'EMERGENCY_STAFFING',
+        },
+      }),
+      this.prisma.aiLearningEvent.count({
+        where: {
+          cinemaId,
+          type: 'OVERTIME_WARNING',
+        },
+      }),
+      this.prisma.aiLearningEvent.count({
+        where: {
+          cinemaId,
+          type: 'FATIGUE_WARNING',
+        },
+      }),
+    ]);
 
     return {
-      totalEvents: events.length,
-
-      emergencyEvents: events.filter(
-        (event) => event.type === 'EMERGENCY_STAFFING',
-      ).length,
-
-      overtimeEvents: events.filter(
-        (event) => event.type === 'OVERTIME_WARNING',
-      ).length,
-
-      fatigueEvents: events.filter((event) => event.type === 'FATIGUE_WARNING')
-        .length,
+      totalEvents,
+      emergencyEvents,
+      overtimeEvents,
+      fatigueEvents,
     };
   }
 }
