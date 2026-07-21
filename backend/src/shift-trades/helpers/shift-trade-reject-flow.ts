@@ -2,16 +2,13 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  ShiftTradeStatus,
-  ShiftTradeType,
-} from '@prisma/client';
-
+import { ShiftTradeStatus } from '@prisma/client';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
+  ensureShiftTradeCanBeRejected,
   resolveShiftTradeActorContext,
   ShiftTradeActor,
 } from './shift-trade-accept-validation';
@@ -35,58 +32,63 @@ export async function rejectShiftTrade(
     notifications,
     push,
   } = deps;
+  const {
+    userId,
+    cinemaId,
+  } = await resolveShiftTradeActorContext(
+    prisma,
+    actor,
+  );
 
-  const { userId, cinemaId } =
-    await resolveShiftTradeActorContext(
-      prisma,
-      actor,
-    );
+  const trade = await prisma.$transaction(
+    async (tx) => {
+      const existingTrade =
+        await tx.shiftTrade.findFirst({
+          where: {
+            id,
+            cinemaId,
+          },
+        });
 
-  const existingTrade =
-    await prisma.shiftTrade.findFirst({
-      where: {
-        id,
-        cinemaId,
-      },
-    });
+      if (!existingTrade) {
+        throw new NotFoundException(
+          'Vagtbytte blev ikke fundet',
+        );
+      }
 
-  if (!existingTrade) {
-    throw new NotFoundException(
-      'Vagtbytte blev ikke fundet',
-    );
-  }
+      ensureShiftTradeCanBeRejected(
+        existingTrade,
+        userId,
+      );
 
-  if (existingTrade.status !== ShiftTradeStatus.OPEN) {
-    throw new ForbiddenException(
-      'Vagtbyttet er ikke længere åbent',
-    );
-  }
+      const rejected =
+        await tx.shiftTrade.updateMany({
+          where: {
+            id,
+            cinemaId,
+            status: ShiftTradeStatus.OPEN,
+          },
+          data: {
+            status:
+              ShiftTradeStatus.REJECTED,
+            rejectedByUserId: userId,
+          },
+        });
 
-  if (
-    existingTrade.type === ShiftTradeType.DIRECT &&
-    existingTrade.targetUserId !== userId
-  ) {
-    throw new ForbiddenException(
-      'Denne vagt er ikke sendt til dig',
-    );
-  }
+      if (rejected.count !== 1) {
+        throw new ForbiddenException(
+          'Vagtbyttet er ikke længere åbent',
+        );
+      }
 
-  await prisma.shiftTrade.update({
-    where: {
-      id,
+      return tx.shiftTrade.findUnique({
+        where: {
+          id,
+        },
+        include: shiftTradeInclude,
+      });
     },
-    data: {
-      status: ShiftTradeStatus.REJECTED,
-      rejectedByUserId: userId,
-    },
-  });
-
-  const trade = await prisma.shiftTrade.findUnique({
-    where: {
-      id,
-    },
-    include: shiftTradeInclude,
-  });
+  );
 
   if (!trade) {
     throw new NotFoundException(
@@ -110,17 +112,18 @@ export async function rejectShiftTrade(
       userId: trade.offeredByUserId,
       cinemaId: trade.cinemaId,
       title: 'Vagt afvist',
-      message: 'Din tilbudte vagt blev afvist',
+      message:
+        'Din tilbudte vagt blev afvist',
       type: 'SHIFT_REJECTED',
       linkUrl: '/my-shifts',
     });
-
     await push.sendToUserInCinema(
       trade.offeredByUserId,
       trade.cinemaId,
       {
         title: 'Vagt afvist',
-        body: 'Din tilbudte vagt blev afvist',
+        body:
+          'Din tilbudte vagt blev afvist',
         url: '/my-shifts',
       },
     );

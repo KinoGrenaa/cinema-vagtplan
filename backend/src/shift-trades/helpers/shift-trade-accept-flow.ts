@@ -1,12 +1,17 @@
-import { ShiftTradeStatus } from '@prisma/client';
-
+import {
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  LeaveStatus,
+  ShiftTradeStatus,
+} from '@prisma/client';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
-  ensureAcceptedShiftHasNoConflicts,
-  findAcceptableShiftTrade,
+  ensureShiftTradeCanBeAccepted,
   resolveShiftTradeActorContext,
   ShiftTradeActor,
 } from './shift-trade-accept-validation';
@@ -30,91 +35,206 @@ export async function acceptShiftTrade(
     notifications,
     push,
   } = deps;
-
-  const { userId, cinemaId } =
-    await resolveShiftTradeActorContext(
-      prisma,
-      actor,
-    );
-
-  const trade = await findAcceptableShiftTrade(
-    prisma,
-    id,
+  const {
+    userId,
     cinemaId,
-    userId,
-  );
-
-  await ensureAcceptedShiftHasNoConflicts(
+  } = await resolveShiftTradeActorContext(
     prisma,
-    trade,
-    userId,
+    actor,
   );
 
-  await prisma.$transaction([
-    prisma.shiftTrade.update({
-      where: {
-        id,
-      },
-      data: {
-        status: ShiftTradeStatus.ACCEPTED,
-        acceptedByUserId: userId,
-      },
-    }),
-    prisma.shift.update({
-      where: {
-        id: trade.shiftId,
-      },
-      data: {
+  const updatedTrade = await prisma.$transaction(
+    async (tx) => {
+      const trade =
+        await tx.shiftTrade.findFirst({
+          where: {
+            id,
+            cinemaId,
+          },
+        });
+
+      if (!trade) {
+        throw new NotFoundException(
+          'Vagtbytte blev ikke fundet',
+        );
+      }
+
+      ensureShiftTradeCanBeAccepted(
+        trade,
         userId,
-      },
-    }),
-  ]);
+      );
 
-  const updatedTrade =
-    await prisma.shiftTrade.findUnique({
-      where: {
-        id,
-      },
-      include: shiftTradeInclude,
-    });
+      const claimedTrade =
+        await tx.shiftTrade.updateMany({
+          where: {
+            id,
+            cinemaId,
+            status: ShiftTradeStatus.OPEN,
+          },
+          data: {
+            status:
+              ShiftTradeStatus.ACCEPTED,
+            acceptedByUserId: userId,
+          },
+        });
 
-  if (updatedTrade) {
-    realtime.notifyCinema(
-      updatedTrade.cinemaId,
-      'shiftTradesUpdated',
-      updatedTrade,
-    );
-    realtime.notifyCinema(
-      updatedTrade.cinemaId,
-      'shiftAccepted',
-      updatedTrade,
-    );
-  }
+      if (claimedTrade.count !== 1) {
+        throw new ForbiddenException(
+          'Vagtbyttet er ikke længere åbent',
+        );
+      }
 
-  await notifications.create({
-    userId: trade.offeredByUserId,
-    cinemaId: trade.cinemaId,
-    title: 'Vagt accepteret',
-    message: 'Din tilbudte vagt blev accepteret',
-    type: 'SHIFT_ACCEPTED',
-    linkUrl: '/my-shifts',
-  });
+      const shift = await tx.shift.findFirst({
+        where: {
+          id: trade.shiftId,
+          cinemaId,
+        },
+        select: {
+          id: true,
+          userId: true,
+          startTime: true,
+          endTime: true,
+        },
+      });
 
-  await push.sendToUserInCinema(
-    trade.offeredByUserId,
-    trade.cinemaId,
-    {
-      title: 'Vagt accepteret',
-      body: 'Din tilbudte vagt blev accepteret',
-      url: '/my-shifts',
+      if (!shift) {
+        throw new NotFoundException(
+          'Vagten blev ikke fundet',
+        );
+      }
+
+      if (
+        shift.userId !==
+        trade.offeredByUserId
+      ) {
+        throw new ForbiddenException(
+          'Vagten er allerede blevet tildelt en anden',
+        );
+      }
+
+      if (shift.startTime <= new Date()) {
+        throw new ForbiddenException(
+          'Vagten er allerede startet',
+        );
+      }
+
+      const conflictingShift =
+        await tx.shift.findFirst({
+          where: {
+            userId,
+            id: {
+              not: trade.shiftId,
+            },
+            startTime: {
+              lt: shift.endTime,
+            },
+            endTime: {
+              gt: shift.startTime,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (conflictingShift) {
+        throw new ForbiddenException(
+          'Du har allerede en vagt i dette tidsrum',
+        );
+      }
+
+      const approvedLeave =
+        await tx.leaveRequest.findFirst({
+          where: {
+            cinemaId,
+            userId,
+            status: LeaveStatus.APPROVED,
+            startDate: {
+              lt: shift.endTime,
+            },
+            endDate: {
+              gt: shift.startTime,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (approvedLeave) {
+        throw new ForbiddenException(
+          'Du har godkendt fravær i dette tidsrum',
+        );
+      }
+
+      const assignedShift =
+        await tx.shift.updateMany({
+          where: {
+            id: trade.shiftId,
+            cinemaId,
+            userId: trade.offeredByUserId,
+          },
+          data: {
+            userId,
+          },
+        });
+
+      if (assignedShift.count !== 1) {
+        throw new ForbiddenException(
+          'Vagten er allerede blevet tildelt en anden',
+        );
+      }
+
+      return tx.shiftTrade.findUnique({
+        where: {
+          id,
+        },
+        include: shiftTradeInclude,
+      });
     },
   );
 
+  if (!updatedTrade) {
+    throw new NotFoundException(
+      'Vagtbytte blev ikke fundet',
+    );
+  }
+
   realtime.notifyCinema(
-    trade.cinemaId,
+    updatedTrade.cinemaId,
+    'shiftTradesUpdated',
+    updatedTrade,
+  );
+  realtime.notifyCinema(
+    updatedTrade.cinemaId,
+    'shiftAccepted',
+    updatedTrade,
+  );
+
+  await notifications.create({
+    userId: updatedTrade.offeredByUserId,
+    cinemaId: updatedTrade.cinemaId,
+    title: 'Vagt accepteret',
+    message:
+      'Din tilbudte vagt blev accepteret',
+    type: 'SHIFT_ACCEPTED',
+    linkUrl: '/my-shifts',
+  });
+  await push.sendToUserInCinema(
+    updatedTrade.offeredByUserId,
+    updatedTrade.cinemaId,
+    {
+      title: 'Vagt accepteret',
+      body:
+        'Din tilbudte vagt blev accepteret',
+      url: '/my-shifts',
+    },
+  );
+  realtime.notifyCinema(
+    updatedTrade.cinemaId,
     'shiftsUpdated',
     {
-      shiftId: trade.shiftId,
+      shiftId: updatedTrade.shiftId,
       acceptedByUserId: userId,
     },
   );

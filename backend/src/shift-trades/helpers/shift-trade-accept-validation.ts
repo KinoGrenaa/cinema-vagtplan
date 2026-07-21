@@ -6,7 +6,6 @@ import {
   ShiftTradeStatus,
   ShiftTradeType,
 } from '@prisma/client';
-
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type ShiftTradeActor = {
@@ -16,12 +15,17 @@ export type ShiftTradeActor = {
   cinemaId?: number | null;
 };
 
-export async function resolveShiftTradeActorContext(
-  prisma: PrismaService,
+type ActionableShiftTrade = {
+  status: ShiftTradeStatus;
+  type: ShiftTradeType;
+  offeredByUserId: number;
+  targetUserId: number | null;
+};
+
+export function resolveShiftTradeActorUserId(
   actor: ShiftTradeActor,
 ) {
   const userId = Number(actor?.sub ?? actor?.id);
-  const cinemaId = Number(actor?.cinemaId);
 
   if (!Number.isInteger(userId) || userId <= 0) {
     throw new ForbiddenException(
@@ -29,13 +33,26 @@ export async function resolveShiftTradeActorContext(
     );
   }
 
+  return userId;
+}
+
+export async function resolveShiftTradeActorContext(
+  prisma: PrismaService,
+  actor: ShiftTradeActor,
+) {
+  const userId = resolveShiftTradeActorUserId(actor);
+  const cinemaId = Number(actor?.cinemaId);
+
   if (actor?.role === 'MASTER') {
     throw new ForbiddenException(
-      'MASTER kan ikke acceptere eller afvise personlige vagtbytter',
+      'MASTER kan ikke håndtere personlige vagtbytter',
     );
   }
 
-  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+  if (
+    !Number.isInteger(cinemaId) ||
+    cinemaId <= 0
+  ) {
     throw new ForbiddenException(
       'Vælg en aktiv biograf før du håndterer vagtbytter',
     );
@@ -90,25 +107,10 @@ export async function resolveShiftTradeActorContext(
   };
 }
 
-export async function findAcceptableShiftTrade(
-  prisma: PrismaService,
-  id: number,
-  actorCinemaId: number,
+export function ensureShiftTradeCanBeAccepted(
+  trade: ActionableShiftTrade,
   actorUserId: number,
 ) {
-  const trade = await prisma.shiftTrade.findFirst({
-    where: {
-      id,
-      cinemaId: actorCinemaId,
-    },
-  });
-
-  if (!trade) {
-    throw new NotFoundException(
-      'Vagtbytte blev ikke fundet',
-    );
-  }
-
   if (trade.status !== ShiftTradeStatus.OPEN) {
     throw new ForbiddenException(
       'Vagtbyttet er ikke længere åbent',
@@ -129,49 +131,27 @@ export async function findAcceptableShiftTrade(
       'Denne vagt er ikke sendt til dig',
     );
   }
-
-  return trade;
 }
 
-type AcceptableShiftTrade = Awaited<
-  ReturnType<typeof findAcceptableShiftTrade>
->;
-
-export async function ensureAcceptedShiftHasNoConflicts(
-  prisma: PrismaService,
-  trade: AcceptableShiftTrade,
-  acceptedByUserId: number,
+export function ensureShiftTradeCanBeRejected(
+  trade: ActionableShiftTrade,
+  actorUserId: number,
 ) {
-  const shift = await prisma.shift.findUnique({
-    where: {
-      id: trade.shiftId,
-    },
-  });
-
-  if (!shift) {
-    throw new NotFoundException(
-      'Vagten blev ikke fundet',
+  if (trade.status !== ShiftTradeStatus.OPEN) {
+    throw new ForbiddenException(
+      'Vagtbyttet er ikke længere åbent',
     );
   }
 
-  const conflictingShift = await prisma.shift.findFirst({
-    where: {
-      userId: acceptedByUserId,
-      id: {
-        not: trade.shiftId,
-      },
-      startTime: {
-        lt: shift.endTime,
-      },
-      endTime: {
-        gt: shift.startTime,
-      },
-    },
-  });
-
-  if (conflictingShift) {
+  if (trade.type !== ShiftTradeType.DIRECT) {
     throw new ForbiddenException(
-      'Du har allerede en vagt i dette tidsrum',
+      'Vagtpuljer kan ikke afvises',
+    );
+  }
+
+  if (trade.targetUserId !== actorUserId) {
+    throw new ForbiddenException(
+      'Denne vagt er ikke sendt til dig',
     );
   }
 }

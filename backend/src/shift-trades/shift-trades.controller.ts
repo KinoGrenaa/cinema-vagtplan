@@ -10,8 +10,6 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ShiftTradeType } from '@prisma/client';
-
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { ShiftTradesService } from './shift-trades.service';
 
@@ -19,7 +17,7 @@ import { ShiftTradesService } from './shift-trades.service';
 @UseGuards(JwtGuard)
 export class ShiftTradesController {
   constructor(
-    private shiftTradesService: ShiftTradesService,
+    private readonly shiftTradesService: ShiftTradesService,
   ) {}
 
   private parseRequiredId(value: unknown, label: string) {
@@ -51,15 +49,9 @@ export class ShiftTradesController {
     @Req() req: any,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf',
-    );
-
     return this.shiftTradesService.getPoolCount(
       req.user,
-      req.user.sub,
-      selectedCinemaId,
+      this.parseOptionalId(cinemaId, 'Biograf'),
     );
   }
 
@@ -68,15 +60,9 @@ export class ShiftTradesController {
     @Req() req: any,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf',
-    );
-
     return this.shiftTradesService.getDirectCount(
       req.user,
-      req.user.sub,
-      selectedCinemaId,
+      this.parseOptionalId(cinemaId, 'Biograf'),
     );
   }
 
@@ -85,30 +71,34 @@ export class ShiftTradesController {
     @Req() req: any,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf',
-    );
-
     return this.shiftTradesService.findAll(
       req.user,
-      selectedCinemaId,
+      this.parseOptionalId(cinemaId, 'Biograf'),
     );
   }
 
   @Post()
-  create(@Req() req: any, @Body() body: any) {
-    return this.shiftTradesService.create({
-      shiftId: this.parseRequiredId(body.shiftId, 'Vagt'),
-      offeredByUserId: req.user.sub,
-      cinemaId: req.user.cinemaId,
-      type: body.type ?? ShiftTradeType.POOL,
-      targetUserId: this.parseOptionalId(
-        body.targetUserId,
-        'Modtager',
-      ),
-      message: body.message,
-    });
+  create(
+    @Req() req: any,
+    @Body() body: any,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.shiftTradesService.create(
+      req.user,
+      {
+        shiftId: this.parseRequiredId(
+          body?.shiftId,
+          'Vagt',
+        ),
+        type: body?.type,
+        targetUserId: this.parseOptionalId(
+          body?.targetUserId,
+          'Modtager',
+        ),
+        message: body?.message,
+      },
+      this.parseOptionalId(cinemaId, 'Biograf'),
+    );
   }
 
   @Patch(':id/accept')
@@ -116,13 +106,8 @@ export class ShiftTradesController {
     @Req() req: any,
     @Param('id') id: string,
   ) {
-    const tradeId = this.parseRequiredId(
-      id,
-      'Vagtbytte',
-    );
-
     return this.shiftTradesService.acceptTrade(
-      tradeId,
+      this.parseRequiredId(id, 'Vagtbytte'),
       req.user,
     );
   }
@@ -132,13 +117,8 @@ export class ShiftTradesController {
     @Req() req: any,
     @Param('id') id: string,
   ) {
-    const tradeId = this.parseRequiredId(
-      id,
-      'Vagtbytte',
-    );
-
     return this.shiftTradesService.rejectTrade(
-      tradeId,
+      this.parseRequiredId(id, 'Vagtbytte'),
       req.user,
     );
   }
@@ -148,14 +128,9 @@ export class ShiftTradesController {
     @Req() req: any,
     @Param('id') id: string,
   ) {
-    const tradeId = this.parseRequiredId(
-      id,
-      'Vagtbytte',
-    );
-
     return this.shiftTradesService.cancelTrade(
-      tradeId,
-      req.user.sub,
+      this.parseRequiredId(id, 'Vagtbytte'),
+      req.user,
     );
   }
 }

@@ -8,44 +8,51 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { acceptShiftTrade } from './helpers/shift-trade-accept-flow';
+import {
+  resolveShiftTradeActorContext,
+  resolveShiftTradeActorUserId,
+} from './helpers/shift-trade-accept-validation';
+import { cancelShiftTrade } from './helpers/shift-trade-cancel-flow';
+import { createShiftTrade } from './helpers/shift-trade-create-flow';
+import { rejectShiftTrade } from './helpers/shift-trade-reject-flow';
 import {
   getShiftTradeCinemaFilter,
   resolveShiftTradeCinemaId,
   shiftTradeInclude,
 } from './helpers/shift-trade-service-helpers';
-import { acceptShiftTrade } from './helpers/shift-trade-accept-flow';
-import { cancelShiftTrade } from './helpers/shift-trade-cancel-flow';
-import { createShiftTrade } from './helpers/shift-trade-create-flow';
-import { rejectShiftTrade } from './helpers/shift-trade-reject-flow';
 
 @Injectable()
 export class ShiftTradesService {
   constructor(
-    private prisma: PrismaService,
-    private realtime: RealtimeGateway,
-    private notifications: NotificationsService,
-    private push: PushService,
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeGateway,
+    private readonly notifications: NotificationsService,
+    private readonly push: PushService,
   ) {}
 
-  async findAll(user: any, selectedCinemaId?: number | null) {
+  async findAll(
+    user: any,
+    selectedCinemaId?: number | null,
+  ) {
     const cinemaId = resolveShiftTradeCinemaId(
       user,
       selectedCinemaId,
     );
     const trades = await this.prisma.shiftTrade.findMany({
-      where: getShiftTradeCinemaFilter(user, selectedCinemaId),
+      where: getShiftTradeCinemaFilter(
+        user,
+        selectedCinemaId,
+      ),
       include: shiftTradeInclude,
       orderBy: {
         createdAt: 'desc',
       },
     });
-
-    const userId = Number(user?.sub);
+    const userId = resolveShiftTradeActorUserId(user);
     const now = new Date();
     const acceptableTrades = trades.filter((trade) => {
       if (
-        !Number.isInteger(userId) ||
-        userId <= 0 ||
         trade.status !== ShiftTradeStatus.OPEN ||
         trade.offeredByUserId === userId ||
         trade.shift.startTime <= now
@@ -81,7 +88,6 @@ export class ShiftTradesService {
         ),
       ),
     );
-
     const approvedLeaveRequests =
       await this.prisma.leaveRequest.findMany({
         where: {
@@ -104,7 +110,6 @@ export class ShiftTradesService {
           startDate: 'asc',
         },
       });
-
     const acceptableTradeIds = new Set(
       acceptableTrades.map((trade) => trade.id),
     );
@@ -120,8 +125,10 @@ export class ShiftTradesService {
       const approvedLeaveConflict =
         approvedLeaveRequests.find(
           (leaveRequest) =>
-            leaveRequest.startDate < trade.shift.endTime &&
-            leaveRequest.endDate > trade.shift.startTime,
+            leaveRequest.startDate <
+              trade.shift.endTime &&
+            leaveRequest.endDate >
+              trade.shift.startTime,
         ) ?? null;
 
       return {
@@ -133,13 +140,13 @@ export class ShiftTradesService {
 
   async getPoolCount(
     user: any,
-    userId: number,
     selectedCinemaId?: number | null,
   ) {
     const cinemaId = resolveShiftTradeCinemaId(
       user,
       selectedCinemaId,
     );
+    const userId = resolveShiftTradeActorUserId(user);
     const count = await this.prisma.shiftTrade.count({
       where: {
         cinemaId,
@@ -161,13 +168,13 @@ export class ShiftTradesService {
 
   async getDirectCount(
     user: any,
-    userId: number,
     selectedCinemaId?: number | null,
   ) {
     const cinemaId = resolveShiftTradeCinemaId(
       user,
       selectedCinemaId,
     );
+    const userId = resolveShiftTradeActorUserId(user);
     const count = await this.prisma.shiftTrade.count({
       where: {
         cinemaId,
@@ -185,14 +192,29 @@ export class ShiftTradesService {
     return { count };
   }
 
-  create(data: {
-    shiftId: number;
-    offeredByUserId: number;
-    cinemaId: number;
-    type?: ShiftTradeType;
-    targetUserId?: number;
-    message?: string;
-  }) {
+  async create(
+    actor: any,
+    data: {
+      shiftId: number;
+      type?: ShiftTradeType;
+      targetUserId?: number;
+      message?: string;
+    },
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = resolveShiftTradeCinemaId(
+      actor,
+      selectedCinemaId,
+    );
+    const actorContext =
+      await resolveShiftTradeActorContext(
+        this.prisma,
+        {
+          ...actor,
+          cinemaId,
+        },
+      );
+
     return createShiftTrade(
       {
         prisma: this.prisma,
@@ -200,7 +222,11 @@ export class ShiftTradesService {
         notifications: this.notifications,
         push: this.push,
       },
-      data,
+      {
+        ...data,
+        offeredByUserId: actorContext.userId,
+        cinemaId: actorContext.cinemaId,
+      },
     );
   }
 
@@ -230,14 +256,14 @@ export class ShiftTradesService {
     );
   }
 
-  cancelTrade(id: number, userId?: number) {
+  cancelTrade(id: number, actor: any) {
     return cancelShiftTrade(
       {
         prisma: this.prisma,
         realtime: this.realtime,
       },
       id,
-      userId,
+      actor,
     );
   }
 }

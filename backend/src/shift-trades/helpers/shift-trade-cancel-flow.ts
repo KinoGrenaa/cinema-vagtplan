@@ -1,8 +1,14 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ShiftTradeStatus } from '@prisma/client';
-
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
+import {
+  resolveShiftTradeActorContext,
+  ShiftTradeActor,
+} from './shift-trade-accept-validation';
 import { shiftTradeInclude } from './shift-trade-service-helpers';
 
 type ShiftTradeCancelFlowDeps = {
@@ -13,35 +19,94 @@ type ShiftTradeCancelFlowDeps = {
 export async function cancelShiftTrade(
   deps: ShiftTradeCancelFlowDeps,
   id: number,
-  userId?: number,
+  actor: ShiftTradeActor,
 ) {
-  const { prisma, realtime } = deps;
+  const {
+    prisma,
+    realtime,
+  } = deps;
+  const {
+    userId,
+    cinemaId,
+  } = await resolveShiftTradeActorContext(
+    prisma,
+    actor,
+  );
 
-  const existingTrade = await prisma.shiftTrade.findUnique({
-    where: { id },
-  });
+  const trade = await prisma.$transaction(
+    async (tx) => {
+      const existingTrade =
+        await tx.shiftTrade.findFirst({
+          where: {
+            id,
+            cinemaId,
+          },
+        });
 
-  if (!existingTrade) {
-    throw new NotFoundException('Vagtbytte blev ikke fundet');
-  }
+      if (!existingTrade) {
+        throw new NotFoundException(
+          'Vagtbytte blev ikke fundet',
+        );
+      }
 
-  if (userId && existingTrade.offeredByUserId !== userId) {
-    throw new ForbiddenException('Du kan kun annullere dine egne vagtbytter');
-  }
+      if (
+        existingTrade.offeredByUserId !==
+        userId
+      ) {
+        throw new ForbiddenException(
+          'Du kan kun annullere dine egne vagtbytter',
+        );
+      }
 
-  if (existingTrade.status !== ShiftTradeStatus.OPEN) {
-    throw new ForbiddenException('Vagtbyttet er ikke længere åbent');
-  }
+      if (
+        existingTrade.status !==
+        ShiftTradeStatus.OPEN
+      ) {
+        throw new ForbiddenException(
+          'Vagtbyttet er ikke længere åbent',
+        );
+      }
 
-  const trade = await prisma.shiftTrade.update({
-    where: { id },
-    data: {
-      status: ShiftTradeStatus.CANCELLED,
+      const cancelled =
+        await tx.shiftTrade.updateMany({
+          where: {
+            id,
+            cinemaId,
+            offeredByUserId: userId,
+            status: ShiftTradeStatus.OPEN,
+          },
+          data: {
+            status:
+              ShiftTradeStatus.CANCELLED,
+          },
+        });
+
+      if (cancelled.count !== 1) {
+        throw new ForbiddenException(
+          'Vagtbyttet er ikke længere åbent',
+        );
+      }
+
+      return tx.shiftTrade.findUnique({
+        where: {
+          id,
+        },
+        include: shiftTradeInclude,
+      });
     },
-    include: shiftTradeInclude,
-  });
+  );
 
-  realtime.notifyCinema(trade.cinemaId, 'shiftTradesUpdated', trade);
+  if (!trade) {
+    throw new NotFoundException(
+      'Vagtbytte blev ikke fundet',
+    );
+  }
+
+  realtime.notifyCinema(
+    trade.cinemaId,
+    'shiftTradesUpdated',
+    trade,
+  );
 
   return trade;
 }
