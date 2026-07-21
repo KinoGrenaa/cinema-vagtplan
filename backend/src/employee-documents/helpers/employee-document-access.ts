@@ -1,4 +1,7 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 export type AuthUser = {
   sub: number;
@@ -7,12 +10,16 @@ export type AuthUser = {
   cinemaId: number | null;
 };
 
+function isPositiveSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) > 0;
+}
+
 export function resolveEmployeeDocumentCinemaId(
   user: AuthUser,
   selectedCinemaId?: number | null,
 ) {
   if (user.role === 'MASTER') {
-    if (!selectedCinemaId) {
+    if (!isPositiveSafeInteger(selectedCinemaId)) {
       throw new BadRequestException(
         'Vælg en biograf, før du administrerer medarbejderdokumenter.',
       );
@@ -21,8 +28,10 @@ export function resolveEmployeeDocumentCinemaId(
     return selectedCinemaId;
   }
 
-  if (!user.cinemaId) {
-    throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
+  if (!isPositiveSafeInteger(user.cinemaId)) {
+    throw new ForbiddenException(
+      'Din bruger er ikke tilknyttet en biograf',
+    );
   }
 
   return user.cinemaId;
