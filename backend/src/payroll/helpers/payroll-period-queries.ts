@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -11,6 +10,7 @@ import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
 } from './payroll-access';
+import { normalizePayrollDate } from './payroll-input';
 
 export async function resolvePayrollPeriodForDate(
   prisma: PrismaService,
@@ -22,11 +22,13 @@ export async function resolvePayrollPeriodForDate(
     user,
     selectedCinemaId,
   ).cinemaId;
-  const reference = new Date(`${referenceDate}T00:00:00.000Z`);
-
-  if (Number.isNaN(reference.getTime())) {
-    throw new BadRequestException('Ugyldig dato');
-  }
+  const normalizedReferenceDate = normalizePayrollDate(
+    referenceDate,
+    'Ugyldig dato',
+  );
+  const reference = new Date(
+    `${normalizedReferenceDate}T00:00:00.000Z`,
+  );
 
   const cinema = await prisma.cinema.findUnique({
     where: {
@@ -91,6 +93,7 @@ export async function getPayrollRulesEnabled(
     user,
     selectedCinemaId,
   ).cinemaId;
+
   const cinema = await prisma.cinema.findUnique({
     where: {
       id: cinemaId,

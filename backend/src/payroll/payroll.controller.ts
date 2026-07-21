@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,38 +12,44 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { Buffer } from 'buffer';
-
 import { PayrollService } from './payroll.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import {
+  normalizePayrollDate,
+  normalizePayrollPeriod,
+  parsePayrollOptionalBodyId,
+  parsePayrollOptionalQueryId,
+  parsePayrollRequiredId,
+} from './helpers/payroll-input';
 
 @Controller('payroll')
 @UseGuards(JwtGuard, RolesGuard)
 @Roles('ADMIN', 'MASTER')
 export class PayrollController {
   constructor(private payrollService: PayrollService) {}
-  private parseOptionalId(
-    value: string | number | null | undefined,
-    message: string,
-  ) {
-    if (value === undefined || value === null || value === '') {
-      return undefined;
-    }
 
-    return this.parseRequiredId(value, message);
+  private parseQueryCinemaId(value: unknown) {
+    return parsePayrollOptionalQueryId(
+      value,
+      'Biograf skal være et gyldigt ID',
+    );
   }
 
-  private parseRequiredId(value: string | number, message: string) {
-    const parsedId = Number(value);
-
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      throw new BadRequestException(message);
-    }
-
-    return parsedId;
+  private parseBodyCinemaId(value: unknown) {
+    return parsePayrollOptionalBodyId(
+      value,
+      'Biograf skal være et gyldigt ID',
+    );
   }
 
+  private parseQueryUserId(value: unknown) {
+    return parsePayrollOptionalQueryId(
+      value,
+      'Bruger skal være et gyldigt ID',
+    )?.toString();
+  }
 
   @Get()
   getPayrollReport(
@@ -54,22 +59,14 @@ export class PayrollController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-    const selectedUserId = this.parseOptionalId(
-      userId,
-      'Bruger skal være et gyldigt ID',
-    )?.toString();
-
+    const period = normalizePayrollPeriod(startDate, endDate);
 
     return this.payrollService.getPayrollReport(
       req.user,
-      startDate,
-      endDate,
-      selectedUserId,
-      selectedCinemaId,
+      period.startDate,
+      period.endDate,
+      this.parseQueryUserId(userId),
+      this.parseQueryCinemaId(cinemaId),
     );
   }
 
@@ -80,16 +77,13 @@ export class PayrollController {
     @Query('endDate') endDate: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
+    const period = normalizePayrollPeriod(startDate, endDate);
 
     return this.payrollService.getPeriod(
       req.user,
-      startDate,
-      endDate,
-      selectedCinemaId,
+      period.startDate,
+      period.endDate,
+      this.parseQueryCinemaId(cinemaId),
     );
   }
 
@@ -100,15 +94,10 @@ export class PayrollController {
     @Query('date') date: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-
     return this.payrollService.getPayrollPeriodForDate(
       req.user,
-      date,
-      selectedCinemaId,
+      normalizePayrollDate(date, 'Dato skal være gyldig'),
+      this.parseQueryCinemaId(cinemaId),
     );
   }
 
@@ -119,16 +108,13 @@ export class PayrollController {
     @Query('endDate') endDate: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
+    const period = normalizePayrollPeriod(startDate, endDate);
 
     return this.payrollService.getPayrollAuditHistory(
       req.user,
-      startDate,
-      endDate,
-      selectedCinemaId,
+      period.startDate,
+      period.endDate,
+      this.parseQueryCinemaId(cinemaId),
     );
   }
 
@@ -137,18 +123,15 @@ export class PayrollController {
     @Req() req: any,
     @Body('startDate') startDate: string,
     @Body('endDate') endDate: string,
-    @Body('cinemaId') cinemaId?: number | string,
+    @Body('cinemaId') cinemaId?: number | string | null,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
+    const period = normalizePayrollPeriod(startDate, endDate);
 
     return this.payrollService.lockPeriod(
       req.user,
-      startDate,
-      endDate,
-      selectedCinemaId,
+      period.startDate,
+      period.endDate,
+      this.parseBodyCinemaId(cinemaId),
     );
   }
 
@@ -157,18 +140,16 @@ export class PayrollController {
     @Req() req: any,
     @Param('id') id: string,
     @Body('note') note?: string,
-    @Body('cinemaId') cinemaId?: number | string,
+    @Body('cinemaId') cinemaId?: number | string | null,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-
     return this.payrollService.unlockPeriod(
       req.user,
-      this.parseRequiredId(id, 'Lønperiode skal være et gyldigt ID'),
+      parsePayrollRequiredId(
+        id,
+        'Lønperiode skal være et gyldigt ID',
+      ),
       note,
-      selectedCinemaId,
+      this.parseBodyCinemaId(cinemaId),
     );
   }
 
@@ -177,18 +158,16 @@ export class PayrollController {
     @Req() req: any,
     @Param('id') id: string,
     @Body('note') note?: string,
-    @Body('cinemaId') cinemaId?: number | string,
+    @Body('cinemaId') cinemaId?: number | string | null,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-
     return this.payrollService.unlockTimeEntry(
       req.user,
-      this.parseRequiredId(id, 'Tidsregistrering skal være et gyldigt ID'),
+      parsePayrollRequiredId(
+        id,
+        'Tidsregistrering skal være et gyldigt ID',
+      ),
       note,
-      selectedCinemaId,
+      this.parseBodyCinemaId(cinemaId),
     );
   }
 
@@ -202,27 +181,18 @@ export class PayrollController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-    const selectedUserId = this.parseOptionalId(
-      userId,
-      'Bruger skal være et gyldigt ID',
-    )?.toString();
-
-
+    const period = normalizePayrollPeriod(startDate, endDate);
     const csv = await this.payrollService.exportPayrollCsv(
       req.user,
-      startDate,
-      endDate,
-      selectedUserId,
-      selectedCinemaId,
+      period.startDate,
+      period.endDate,
+      this.parseQueryUserId(userId),
+      this.parseQueryCinemaId(cinemaId),
     );
 
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="payroll-${startDate}-til-${endDate}.csv"`,
+      `attachment; filename="payroll-${period.startDate}-til-${period.endDate}.csv"`,
     );
 
     return res.send('\uFEFF' + csv);
@@ -241,27 +211,18 @@ export class PayrollController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-    const selectedUserId = this.parseOptionalId(
-      userId,
-      'Bruger skal være et gyldigt ID',
-    )?.toString();
-
-
+    const period = normalizePayrollPeriod(startDate, endDate);
     const buffer = await this.payrollService.exportPayrollXlsx(
       req.user,
-      startDate,
-      endDate,
-      selectedUserId,
-      selectedCinemaId,
+      period.startDate,
+      period.endDate,
+      this.parseQueryUserId(userId),
+      this.parseQueryCinemaId(cinemaId),
     );
 
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="payroll-${startDate}-til-${endDate}.xlsx"`,
+      `attachment; filename="payroll-${period.startDate}-til-${period.endDate}.xlsx"`,
     );
 
     return res.send(Buffer.from(buffer));
@@ -277,63 +238,45 @@ export class PayrollController {
     @Query('userId') userId?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-    const selectedUserId = this.parseOptionalId(
-      userId,
-      'Bruger skal være et gyldigt ID',
-    )?.toString();
-
-
+    const period = normalizePayrollPeriod(startDate, endDate);
     const buffer = await this.payrollService.exportPayrollPdf(
       req.user,
-      startDate,
-      endDate,
-      selectedUserId,
-      selectedCinemaId,
+      period.startDate,
+      period.endDate,
+      this.parseQueryUserId(userId),
+      this.parseQueryCinemaId(cinemaId),
     );
 
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="payroll-${startDate}-til-${endDate}.pdf"`,
+      `attachment; filename="payroll-${period.startDate}-til-${period.endDate}.pdf"`,
     );
 
     return res.send(buffer);
   }
+
   @Get('export/uniconta')
   async exportUniconta(
-    @Req() req,
+    @Req() req: any,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
-    @Query('userId') userId?: string,
-    @Query('cinemaId') cinemaId?: string,
-    @Res() res?,
+    @Query('userId') userId: string | undefined,
+    @Query('cinemaId') cinemaId: string | undefined,
+    @Res() res: Response,
   ) {
-    const selectedCinemaId = this.parseOptionalId(
-      cinemaId,
-      'Biograf skal være et gyldigt ID',
-    );
-    const selectedUserId = this.parseOptionalId(
-      userId,
-      'Bruger skal være et gyldigt ID',
-    )?.toString();
-
-
+    const period = normalizePayrollPeriod(startDate, endDate);
     const csv = await this.payrollService.exportUnicontaCsv(
       req.user,
-      startDate,
-      endDate,
-      selectedUserId,
-      selectedCinemaId,
+      period.startDate,
+      period.endDate,
+      this.parseQueryUserId(userId),
+      this.parseQueryCinemaId(cinemaId),
     );
 
     res.setHeader('Content-Type', 'text/csv');
-
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="uniconta-payroll-${startDate}-${endDate}.csv"`,
+      `attachment; filename="uniconta-payroll-${period.startDate}-${period.endDate}.csv"`,
     );
 
     return res.send(csv);

@@ -1,4 +1,7 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 export type PayrollAuthUser = {
   sub: number;
@@ -7,6 +10,10 @@ export type PayrollAuthUser = {
   cinemaId: number | null;
   canManagePayroll?: boolean;
 };
+
+function isPositiveSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) > 0;
+}
 
 export function ensurePayrollAccess(user: PayrollAuthUser) {
   if (user.role === 'MASTER') return;
@@ -24,9 +31,13 @@ export function ensurePayrollExportAccess(user: PayrollAuthUser) {
   throw new ForbiddenException('Du har ikke adgang til eksport');
 }
 
-export function ensurePayrollAdminOrMaster(user: PayrollAuthUser) {
+export function ensurePayrollAdminOrMaster(
+  user: PayrollAuthUser,
+) {
   if (user.role !== 'MASTER' && user.role !== 'ADMIN') {
-    throw new ForbiddenException('Kun ADMIN eller MASTER kan låse op igen');
+    throw new ForbiddenException(
+      'Kun ADMIN eller MASTER kan låse op igen',
+    );
   }
 }
 
@@ -35,16 +46,24 @@ export function getPayrollCinemaFilter(
   selectedCinemaId?: number | null,
 ) {
   if (user.role === 'MASTER') {
-    if (!selectedCinemaId || !Number.isFinite(selectedCinemaId)) {
-      throw new BadRequestException('Vælg en aktiv biograf først.');
+    if (!isPositiveSafeInteger(selectedCinemaId)) {
+      throw new BadRequestException(
+        'Vælg en aktiv biograf først.',
+      );
     }
 
-    return { cinemaId: selectedCinemaId };
+    return {
+      cinemaId: selectedCinemaId,
+    };
   }
 
-  if (!user.cinemaId) {
-    throw new BadRequestException('Brugeren er ikke tilknyttet en biograf.');
+  if (!isPositiveSafeInteger(user.cinemaId)) {
+    throw new BadRequestException(
+      'Brugeren er ikke tilknyttet en biograf.',
+    );
   }
 
-  return { cinemaId: user.cinemaId };
+  return {
+    cinemaId: user.cinemaId,
+  };
 }
