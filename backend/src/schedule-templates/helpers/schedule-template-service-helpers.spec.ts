@@ -9,6 +9,7 @@ import {
   getRequiredScheduleTemplateCinemaId,
   normalizeOptionalText,
   normalizeScheduleTemplateName,
+  parseOptionalDate,
   parseOptionalSortOrder,
   parseRequiredCount,
   parseRequiredPositiveId,
@@ -165,6 +166,52 @@ describe('schedule template service helpers', () => {
         sub: '1e2' as unknown as number,
       }),
     ).toBeNull();
+  });
+
+  it.each([
+    ['2026-07-21', '2026-07-21T00:00:00.000Z'],
+    ['2024-02-29', '2024-02-29T00:00:00.000Z'],
+  ])(
+    'parses valid date-only value %p',
+    (value, expected) => {
+      expect(
+        parseOptionalDate(value),
+      ).toEqual(new Date(expected));
+    },
+  );
+
+  it('clones a valid Date input', () => {
+    const source = new Date(
+      '2026-07-21T00:00:00.000Z',
+    );
+    const parsed = parseOptionalDate(source);
+
+    expect(parsed).toEqual(source);
+    expect(parsed).not.toBe(source);
+  });
+
+  it.each([
+    '2026-02-30',
+    '2025-02-29',
+    '2026-13-01',
+    '2026-00-01',
+    '2026-07-00',
+    '2026-7-21',
+    ' 2026-07-21',
+    '2026-07-21 ',
+    '2026-07-21T00:00:00Z',
+    '21-07-2026',
+    'tekst',
+  ])('rejects invalid start date %p', (value) => {
+    expect(() =>
+      parseOptionalDate(value),
+    ).toThrow(BadRequestException);
+  });
+
+  it('rejects an invalid Date input', () => {
+    expect(() =>
+      parseOptionalDate(new Date('invalid')),
+    ).toThrow(BadRequestException);
   });
 
   it('serializes a write with an advisory transaction lock', async () => {

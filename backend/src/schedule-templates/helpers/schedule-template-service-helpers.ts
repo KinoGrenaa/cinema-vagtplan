@@ -540,14 +540,36 @@ export function parseOptionalDate(
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
 
-  const parsedDate =
-    value instanceof Date
-      ? new Date(value.getTime())
-      : new Date(value);
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new BadRequestException(
+        'Startdato skal være en gyldig dato.',
+      );
+    }
 
-  if (Number.isNaN(parsedDate.getTime())) {
+    return new Date(value.getTime());
+  }
+
+  if (
+    typeof value !== 'string' ||
+    value !== value.trim() ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(value)
+  ) {
     throw new BadRequestException(
-      'Startdato skal være en gyldig dato.',
+      'Startdato skal angives som ÅÅÅÅ-MM-DD.',
+    );
+  }
+
+  const parsedDate = new Date(
+    `${value}T00:00:00.000Z`,
+  );
+
+  if (
+    Number.isNaN(parsedDate.getTime()) ||
+    parsedDate.toISOString().slice(0, 10) !== value
+  ) {
+    throw new BadRequestException(
+      'Startdato skal være en gyldig kalenderdato.',
     );
   }
 
