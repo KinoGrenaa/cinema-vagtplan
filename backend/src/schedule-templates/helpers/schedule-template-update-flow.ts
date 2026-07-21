@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
@@ -13,6 +14,7 @@ import {
   parseOptionalSortOrder,
   ScheduleTemplateUpdateData,
   scheduleTemplateInclude,
+  withScheduleTemplateCinemaLock,
 } from './schedule-template-service-helpers';
 
 export async function updateScheduleTemplate(
@@ -23,47 +25,90 @@ export async function updateScheduleTemplate(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(
-    user,
-    selectedCinemaId ?? data?.cinemaId,
+
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
+  const updateData: Prisma.ScheduleTemplateUncheckedUpdateInput =
+    {};
+
+  const normalizedName =
+    data?.name === undefined
+      ? undefined
+      : normalizeScheduleTemplateName(data.name);
+  const description = normalizeOptionalText(
+    data?.description,
+  );
+  const weekParity = normalizeWeekParity(
+    data?.weekParity,
+  );
+  const startsOn = parseOptionalDate(
+    data?.startsOn,
+  );
+  const sortOrder = parseOptionalSortOrder(
+    data?.sortOrder,
   );
 
-  const existing = await findScheduleTemplateForCinema(prisma, id, cinemaId);
-  const updateData: Record<string, unknown> = {};
-
-  if (data?.name !== undefined) {
-    const name = normalizeScheduleTemplateName(data.name);
-    const duplicate = await prisma.scheduleTemplate.findFirst({
-      where: {
-        cinemaId,
-        name,
-        isActive: true,
-        id: { not: existing.id },
-      },
-      select: { id: true },
-    });
-
-    if (duplicate) {
-      throw new BadRequestException('Aktiv vagtsskabelon findes allerede.');
-    }
-    updateData.name = name;
+  if (description !== undefined) {
+    updateData.description = description;
+  }
+  if (weekParity !== undefined) {
+    updateData.weekParity = weekParity;
+  }
+  if (startsOn !== undefined) {
+    updateData.startsOn = startsOn;
+  }
+  if (sortOrder !== undefined) {
+    updateData.sortOrder = sortOrder;
   }
 
-  const description = normalizeOptionalText(data?.description);
-  if (description !== undefined) updateData.description = description;
+  return withScheduleTemplateCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findScheduleTemplateForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
 
-  const weekParity = normalizeWeekParity(data?.weekParity);
-  if (weekParity !== undefined) updateData.weekParity = weekParity;
+      if (normalizedName !== undefined) {
+        const duplicate =
+          await transaction.scheduleTemplate.findFirst(
+            {
+              where: {
+                cinemaId,
+                name: normalizedName,
+                isActive: true,
+                id: {
+                  not: existing.id,
+                },
+              },
+              select: {
+                id: true,
+              },
+            },
+          );
 
-  const startsOn = parseOptionalDate(data?.startsOn);
-  if (startsOn !== undefined) updateData.startsOn = startsOn;
+        if (duplicate) {
+          throw new BadRequestException(
+            'Aktiv vagtsskabelon findes allerede.',
+          );
+        }
 
-  const sortOrder = parseOptionalSortOrder(data?.sortOrder);
-  if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
+        updateData.name = normalizedName;
+      }
 
-  return prisma.scheduleTemplate.update({
-    where: { id: existing.id },
-    data: updateData,
-    include: scheduleTemplateInclude,
-  });
+      return transaction.scheduleTemplate.update({
+        where: {
+          id: existing.id,
+        },
+        data: updateData,
+        include: scheduleTemplateInclude,
+      });
+    },
+  );
 }

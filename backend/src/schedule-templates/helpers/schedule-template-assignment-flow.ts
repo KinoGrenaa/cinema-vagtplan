@@ -1,9 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-
 import type { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
   CinemaContextValue,
+  ensureAssignableUserForJobFunction,
   ensureScheduleTemplateAdmin,
   findScheduleTemplateForCinema,
   findScheduleTemplateJobFunctionForCinema,
@@ -12,6 +12,7 @@ import {
   parseRequiredPositiveId,
   ScheduleTemplateAssignmentData,
   scheduleTemplateJobFunctionInclude,
+  withScheduleTemplateCinemaLock,
 } from './schedule-template-service-helpers';
 
 export async function addScheduleTemplateAssignment(
@@ -23,88 +24,88 @@ export async function addScheduleTemplateAssignment(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(
-    user,
-    selectedCinemaId ?? data?.cinemaId,
-  );
-  await findScheduleTemplateForCinema(prisma, templateId, cinemaId, true);
-  const templateJobFunction = await findScheduleTemplateJobFunctionForCinema(
-    prisma,
-    templateJobFunctionId,
-    templateId,
-    cinemaId,
-  );
 
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
   const userId = parseRequiredPositiveId(
     data?.userId,
     'Medarbejder skal være et gyldigt ID.',
   );
-  const employee = await prisma.user.findFirst({
-    where: {
-      id: userId,
-      isActive: true,
-      role: { not: 'MASTER' },
-      OR: [
-        { cinemaId },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId,
-              isActive: true,
+  const sortOrder =
+    parseOptionalSortOrder(data?.sortOrder) ?? 0;
+
+  return withScheduleTemplateCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      await findScheduleTemplateForCinema(
+        transaction,
+        templateId,
+        cinemaId,
+        true,
+      );
+
+      const templateJobFunction =
+        await findScheduleTemplateJobFunctionForCinema(
+          transaction,
+          templateJobFunctionId,
+          templateId,
+          cinemaId,
+        );
+
+      await ensureAssignableUserForJobFunction(
+        transaction,
+        userId,
+        templateJobFunction.jobFunctionId,
+        cinemaId,
+      );
+
+      const duplicate =
+        await transaction.scheduleTemplateAssignment.findFirst(
+          {
+            where: {
+              templateJobFunctionId:
+                templateJobFunction.id,
+              userId,
+            },
+            select: {
+              id: true,
             },
           },
+        );
+
+      if (duplicate) {
+        throw new BadRequestException(
+          'Medarbejderen er allerede standardmedarbejder på denne linje.',
+        );
+      }
+
+      await transaction.scheduleTemplateAssignment.create(
+        {
+          data: {
+            cinemaId,
+            templateJobFunctionId:
+              templateJobFunction.id,
+            userId,
+            sortOrder,
+          },
         },
-      ],
-    },
-    select: { id: true },
-  });
-  if (!employee) {
-    throw new BadRequestException(
-      'Medarbejderen findes ikke for den valgte biograf.',
-    );
-  }
+      );
 
-  const eligibility = await prisma.userJobFunction.findFirst({
-    where: {
-      userId,
-      jobFunctionId: templateJobFunction.jobFunctionId,
-      cinemaId,
+      return transaction.scheduleTemplateJobFunction.findUnique(
+        {
+          where: {
+            id: templateJobFunction.id,
+          },
+          include:
+            scheduleTemplateJobFunctionInclude,
+        },
+      );
     },
-    select: { id: true },
-  });
-  if (!eligibility) {
-    throw new BadRequestException(
-      'Medarbejderen har ikke denne jobfunktion.',
-    );
-  }
-
-  const duplicate = await prisma.scheduleTemplateAssignment.findFirst({
-    where: {
-      templateJobFunctionId: templateJobFunction.id,
-      userId,
-    },
-    select: { id: true },
-  });
-  if (duplicate) {
-    throw new BadRequestException(
-      'Medarbejderen er allerede standardmedarbejder på denne linje.',
-    );
-  }
-
-  const sortOrder = parseOptionalSortOrder(data?.sortOrder) ?? 0;
-  await prisma.scheduleTemplateAssignment.create({
-    data: {
-      cinemaId,
-      templateJobFunctionId: templateJobFunction.id,
-      userId,
-      sortOrder,
-    },
-  });
-
-  return prisma.scheduleTemplateJobFunction.findUnique({
-    where: { id: templateJobFunction.id },
-    include: scheduleTemplateJobFunctionInclude,
-  });
+  );
 }
 
 export async function removeScheduleTemplateAssignment(
@@ -116,35 +117,69 @@ export async function removeScheduleTemplateAssignment(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(user, selectedCinemaId);
-  await findScheduleTemplateForCinema(prisma, templateId, cinemaId, true);
-  const templateJobFunction = await findScheduleTemplateJobFunctionForCinema(
-    prisma,
-    templateJobFunctionId,
-    templateId,
-    cinemaId,
-  );
 
-  const assignment = await prisma.scheduleTemplateAssignment.findFirst({
-    where: {
-      id: assignmentId,
-      cinemaId,
-      templateJobFunctionId: templateJobFunction.id,
-    },
-    select: { id: true },
-  });
-  if (!assignment) {
-    throw new BadRequestException(
-      'Standardmedarbejderen findes ikke på denne skabelonlinje.',
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId,
     );
-  }
 
-  await prisma.scheduleTemplateAssignment.delete({
-    where: { id: assignment.id },
-  });
+  return withScheduleTemplateCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      await findScheduleTemplateForCinema(
+        transaction,
+        templateId,
+        cinemaId,
+        true,
+      );
 
-  return prisma.scheduleTemplateJobFunction.findUnique({
-    where: { id: templateJobFunction.id },
-    include: scheduleTemplateJobFunctionInclude,
-  });
+      const templateJobFunction =
+        await findScheduleTemplateJobFunctionForCinema(
+          transaction,
+          templateJobFunctionId,
+          templateId,
+          cinemaId,
+        );
+      const assignment =
+        await transaction.scheduleTemplateAssignment.findFirst(
+          {
+            where: {
+              id: assignmentId,
+              cinemaId,
+              templateJobFunctionId:
+                templateJobFunction.id,
+            },
+            select: {
+              id: true,
+            },
+          },
+        );
+
+      if (!assignment) {
+        throw new BadRequestException(
+          'Standardmedarbejderen findes ikke på denne skabelonlinje.',
+        );
+      }
+
+      await transaction.scheduleTemplateAssignment.delete(
+        {
+          where: {
+            id: assignment.id,
+          },
+        },
+      );
+
+      return transaction.scheduleTemplateJobFunction.findUnique(
+        {
+          where: {
+            id: templateJobFunction.id,
+          },
+          include:
+            scheduleTemplateJobFunctionInclude,
+        },
+      );
+    },
+  );
 }

@@ -11,6 +11,7 @@ import {
   parseWeekday,
   ScheduleTemplateDayData,
   scheduleTemplateDayInclude,
+  withScheduleTemplateCinemaLock,
 } from './schedule-template-service-helpers';
 
 export async function findScheduleTemplateDays(
@@ -20,12 +21,18 @@ export async function findScheduleTemplateDays(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(user, selectedCinemaId);
-  const template = await findScheduleTemplateForCinema(
-    prisma,
-    templateId,
-    cinemaId,
-  );
+
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId,
+    );
+  const template =
+    await findScheduleTemplateForCinema(
+      prisma,
+      templateId,
+      cinemaId,
+    );
 
   return prisma.scheduleTemplateDay.findMany({
     where: {
@@ -33,7 +40,17 @@ export async function findScheduleTemplateDays(
       cinemaId,
     },
     include: scheduleTemplateDayInclude,
-    orderBy: [{ weekday: 'asc' }, { sortOrder: 'asc' }, { id: 'asc' }],
+    orderBy: [
+      {
+        weekday: 'asc',
+      },
+      {
+        sortOrder: 'asc',
+      },
+      {
+        id: 'asc',
+      },
+    ],
   });
 }
 
@@ -46,42 +63,67 @@ export async function upsertScheduleTemplateDay(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(
-    user,
-    selectedCinemaId ?? data?.cinemaId,
-  );
+
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
   const weekday = parseWeekday(weekdayValue);
-  const template = await findScheduleTemplateForCinema(
-    prisma,
-    templateId,
-    cinemaId,
-    true,
+  const note = normalizeOptionalText(data?.note);
+  const isActive = parseOptionalBoolean(
+    data?.isActive,
+  );
+  const sortOrder = parseOptionalSortOrder(
+    data?.sortOrder,
   );
 
-  const note = normalizeOptionalText(data?.note);
-  const isActive = parseOptionalBoolean(data?.isActive);
-  const sortOrder = parseOptionalSortOrder(data?.sortOrder);
+  return withScheduleTemplateCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const template =
+        await findScheduleTemplateForCinema(
+          transaction,
+          templateId,
+          cinemaId,
+          true,
+        );
 
-  return prisma.scheduleTemplateDay.upsert({
-    where: {
-      templateId_weekday: {
-        templateId: template.id,
-        weekday,
-      },
+      return transaction.scheduleTemplateDay.upsert({
+        where: {
+          templateId_weekday: {
+            templateId: template.id,
+            weekday,
+          },
+        },
+        create: {
+          cinemaId,
+          templateId: template.id,
+          weekday,
+          note: note ?? null,
+          isActive: isActive ?? true,
+          sortOrder: sortOrder ?? 0,
+        },
+        update: {
+          ...(note !== undefined
+            ? {
+                note,
+              }
+            : {}),
+          ...(isActive !== undefined
+            ? {
+                isActive,
+              }
+            : {}),
+          ...(sortOrder !== undefined
+            ? {
+                sortOrder,
+              }
+            : {}),
+        },
+        include: scheduleTemplateDayInclude,
+      });
     },
-    create: {
-      cinemaId,
-      templateId: template.id,
-      weekday,
-      note: note ?? null,
-      isActive: isActive ?? true,
-      sortOrder: sortOrder ?? 0,
-    },
-    update: {
-      ...(note !== undefined ? { note } : {}),
-      ...(isActive !== undefined ? { isActive } : {}),
-      ...(sortOrder !== undefined ? { sortOrder } : {}),
-    },
-    include: scheduleTemplateDayInclude,
-  });
+  );
 }

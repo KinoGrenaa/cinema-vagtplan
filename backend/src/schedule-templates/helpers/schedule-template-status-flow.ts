@@ -7,6 +7,7 @@ import {
   findScheduleTemplateForCinema,
   getRequiredScheduleTemplateCinemaId,
   scheduleTemplateInclude,
+  withScheduleTemplateCinemaLock,
 } from './schedule-template-service-helpers';
 
 export async function archiveScheduleTemplate(
@@ -16,17 +17,36 @@ export async function archiveScheduleTemplate(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(user, selectedCinemaId);
-  const existing = await findScheduleTemplateForCinema(prisma, id, cinemaId);
 
-  return prisma.scheduleTemplate.update({
-    where: { id: existing.id },
-    data: {
-      isActive: false,
-      archivedAt: new Date(),
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId,
+    );
+
+  return withScheduleTemplateCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findScheduleTemplateForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+
+      return transaction.scheduleTemplate.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: false,
+          archivedAt: new Date(),
+        },
+        include: scheduleTemplateInclude,
+      });
     },
-    include: scheduleTemplateInclude,
-  });
+  );
 }
 
 export async function reactivateScheduleTemplate(
@@ -36,29 +56,56 @@ export async function reactivateScheduleTemplate(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(user, selectedCinemaId);
-  const existing = await findScheduleTemplateForCinema(prisma, id, cinemaId);
 
-  const duplicate = await prisma.scheduleTemplate.findFirst({
-    where: {
-      cinemaId,
-      name: existing.name,
-      isActive: true,
-      id: { not: existing.id },
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId,
+    );
+
+  return withScheduleTemplateCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findScheduleTemplateForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+      const duplicate =
+        await transaction.scheduleTemplate.findFirst(
+          {
+            where: {
+              cinemaId,
+              name: existing.name,
+              isActive: true,
+              id: {
+                not: existing.id,
+              },
+            },
+            select: {
+              id: true,
+            },
+          },
+        );
+
+      if (duplicate) {
+        throw new BadRequestException(
+          'Aktiv vagtsskabelon findes allerede.',
+        );
+      }
+
+      return transaction.scheduleTemplate.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: true,
+          archivedAt: null,
+        },
+        include: scheduleTemplateInclude,
+      });
     },
-    select: { id: true },
-  });
-
-  if (duplicate) {
-    throw new BadRequestException('Aktiv vagtsskabelon findes allerede.');
-  }
-
-  return prisma.scheduleTemplate.update({
-    where: { id: existing.id },
-    data: {
-      isActive: true,
-      archivedAt: null,
-    },
-    include: scheduleTemplateInclude,
-  });
+  );
 }

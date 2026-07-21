@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
@@ -15,6 +16,7 @@ import {
   parseWeekday,
   ScheduleTemplateJobFunctionData,
   scheduleTemplateJobFunctionInclude,
+  withScheduleTemplateCinemaLock,
 } from './schedule-template-service-helpers';
 
 export async function addScheduleTemplateJobFunction(
@@ -26,55 +28,80 @@ export async function addScheduleTemplateJobFunction(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(
-    user,
-    selectedCinemaId ?? data?.cinemaId,
-  );
+
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
   const weekday = parseWeekday(weekdayValue);
-  const template = await findScheduleTemplateForCinema(
+  const jobFunctionId =
+    parseRequiredPositiveId(
+      data?.jobFunctionId,
+      'Jobfunktion skal være et gyldigt ID.',
+    );
+  const requiredCount = parseRequiredCount(
+    data?.requiredCount,
+  );
+  const sortOrder =
+    parseOptionalSortOrder(data?.sortOrder) ?? 0;
+  const note =
+    normalizeOptionalText(data?.note) ?? null;
+
+  return withScheduleTemplateCinemaLock(
     prisma,
-    templateId,
     cinemaId,
-    true,
+    async (transaction) => {
+      const template =
+        await findScheduleTemplateForCinema(
+          transaction,
+          templateId,
+          cinemaId,
+          true,
+        );
+
+      await ensureActiveJobFunctionForCinema(
+        transaction,
+        jobFunctionId,
+        cinemaId,
+      );
+
+      const day =
+        await transaction.scheduleTemplateDay.upsert(
+          {
+            where: {
+              templateId_weekday: {
+                templateId: template.id,
+                weekday,
+              },
+            },
+            create: {
+              cinemaId,
+              templateId: template.id,
+              weekday,
+              isActive: true,
+              sortOrder: weekday,
+            },
+            update: {},
+          },
+        );
+
+      return transaction.scheduleTemplateJobFunction.create(
+        {
+          data: {
+            cinemaId,
+            templateDayId: day.id,
+            jobFunctionId,
+            requiredCount,
+            sortOrder,
+            note,
+          },
+          include:
+            scheduleTemplateJobFunctionInclude,
+        },
+      );
+    },
   );
-  const jobFunctionId = parseRequiredPositiveId(
-    data?.jobFunctionId,
-    'Jobfunktion skal være et gyldigt ID.',
-  );
-  await ensureActiveJobFunctionForCinema(prisma, jobFunctionId, cinemaId);
-
-  const requiredCount = parseRequiredCount(data?.requiredCount);
-  const sortOrder = parseOptionalSortOrder(data?.sortOrder) ?? 0;
-  const note = normalizeOptionalText(data?.note) ?? null;
-
-  const day = await prisma.scheduleTemplateDay.upsert({
-    where: {
-      templateId_weekday: {
-        templateId: template.id,
-        weekday,
-      },
-    },
-    create: {
-      cinemaId,
-      templateId: template.id,
-      weekday,
-      isActive: true,
-      sortOrder: weekday,
-    },
-    update: {},
-  });
-
-  return prisma.scheduleTemplateJobFunction.create({
-    data: {
-      cinemaId,
-      templateDayId: day.id,
-      jobFunctionId,
-      requiredCount,
-      sortOrder,
-      note,
-    },
-    include: scheduleTemplateJobFunctionInclude,
-  });
 }
 
 export async function updateScheduleTemplateJobFunction(
@@ -86,42 +113,80 @@ export async function updateScheduleTemplateJobFunction(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(
-    user,
-    selectedCinemaId ?? data?.cinemaId,
+
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
+  const jobFunctionId =
+    parseOptionalPositiveId(
+      data?.jobFunctionId,
+      'Jobfunktion skal være et gyldigt ID.',
+    );
+  const requiredCount = parseRequiredCount(
+    data?.requiredCount,
   );
-  await findScheduleTemplateForCinema(prisma, templateId, cinemaId, true);
-  const existing = await findScheduleTemplateJobFunctionForCinema(
-    prisma,
-    templateJobFunctionId,
-    templateId,
-    cinemaId,
+  const sortOrder = parseOptionalSortOrder(
+    data?.sortOrder,
   );
-
-  const updateData: Record<string, unknown> = {};
-  const jobFunctionId = parseOptionalPositiveId(
-    data?.jobFunctionId,
-    'Jobfunktion skal være et gyldigt ID.',
-  );
-  if (jobFunctionId !== undefined && jobFunctionId !== null) {
-    await ensureActiveJobFunctionForCinema(prisma, jobFunctionId, cinemaId);
-    updateData.jobFunctionId = jobFunctionId;
-  }
-
-  const requiredCount = parseRequiredCount(data?.requiredCount);
-  if (data?.requiredCount !== undefined) updateData.requiredCount = requiredCount;
-
-  const sortOrder = parseOptionalSortOrder(data?.sortOrder);
-  if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
-
   const note = normalizeOptionalText(data?.note);
-  if (note !== undefined) updateData.note = note;
 
-  return prisma.scheduleTemplateJobFunction.update({
-    where: { id: existing.id },
-    data: updateData,
-    include: scheduleTemplateJobFunctionInclude,
-  });
+  return withScheduleTemplateCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      await findScheduleTemplateForCinema(
+        transaction,
+        templateId,
+        cinemaId,
+        true,
+      );
+
+      const existing =
+        await findScheduleTemplateJobFunctionForCinema(
+          transaction,
+          templateJobFunctionId,
+          templateId,
+          cinemaId,
+        );
+      const updateData: Prisma.ScheduleTemplateJobFunctionUncheckedUpdateInput =
+        {};
+
+      if (
+        jobFunctionId !== undefined &&
+        jobFunctionId !== null
+      ) {
+        await ensureActiveJobFunctionForCinema(
+          transaction,
+          jobFunctionId,
+          cinemaId,
+        );
+        updateData.jobFunctionId = jobFunctionId;
+      }
+
+      if (data?.requiredCount !== undefined) {
+        updateData.requiredCount = requiredCount;
+      }
+      if (sortOrder !== undefined) {
+        updateData.sortOrder = sortOrder;
+      }
+      if (note !== undefined) {
+        updateData.note = note;
+      }
+
+      return transaction.scheduleTemplateJobFunction.update(
+        {
+          where: {
+            id: existing.id,
+          },
+          data: updateData,
+          include:
+            scheduleTemplateJobFunctionInclude,
+        },
+      );
+    },
+  );
 }
 
 export async function removeScheduleTemplateJobFunction(
@@ -132,17 +197,41 @@ export async function removeScheduleTemplateJobFunction(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureScheduleTemplateAdmin(user);
-  const cinemaId = getRequiredScheduleTemplateCinemaId(user, selectedCinemaId);
-  await findScheduleTemplateForCinema(prisma, templateId, cinemaId, true);
-  const existing = await findScheduleTemplateJobFunctionForCinema(
-    prisma,
-    templateJobFunctionId,
-    templateId,
-    cinemaId,
-  );
 
-  return prisma.scheduleTemplateJobFunction.delete({
-    where: { id: existing.id },
-    include: scheduleTemplateJobFunctionInclude,
-  });
+  const cinemaId =
+    getRequiredScheduleTemplateCinemaId(
+      user,
+      selectedCinemaId,
+    );
+
+  return withScheduleTemplateCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      await findScheduleTemplateForCinema(
+        transaction,
+        templateId,
+        cinemaId,
+        true,
+      );
+
+      const existing =
+        await findScheduleTemplateJobFunctionForCinema(
+          transaction,
+          templateJobFunctionId,
+          templateId,
+          cinemaId,
+        );
+
+      return transaction.scheduleTemplateJobFunction.delete(
+        {
+          where: {
+            id: existing.id,
+          },
+          include:
+            scheduleTemplateJobFunctionInclude,
+        },
+      );
+    },
+  );
 }
