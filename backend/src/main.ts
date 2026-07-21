@@ -5,23 +5,13 @@ import * as express from 'express';
 import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
-
-function getAllowedCorsOrigins(): string[] {
-  const configuredOrigins =
-    process.env.BACKEND_CORS_ORIGIN ??
-    process.env.CORS_ORIGIN ??
-    process.env.FRONTEND_ORIGIN ??
-    'http://localhost:3000';
-
-  return configuredOrigins
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-}
+import { getAllowedCorsOrigins } from './common/cors-origins';
 
 async function bootstrap() {
   const app =
-    await NestFactory.create<NestExpressApplication>(AppModule);
+    await NestFactory.create<NestExpressApplication>(
+      AppModule,
+    );
 
   app.use(
     helmet({
@@ -47,14 +37,32 @@ async function bootstrap() {
   app.use(
     '/uploads/cinema-logos',
     express.static(
-      join(process.cwd(), 'uploads', 'cinema-logos'),
+      join(
+        process.cwd(),
+        'uploads',
+        'cinema-logos',
+      ),
+      {
+        dotfiles: 'deny',
+        index: false,
+        fallthrough: false,
+      },
     ),
   );
 
   app.use(
     '/uploads/profile-images',
     express.static(
-      join(process.cwd(), 'uploads', 'profile-images'),
+      join(
+        process.cwd(),
+        'uploads',
+        'profile-images',
+      ),
+      {
+        dotfiles: 'deny',
+        index: false,
+        fallthrough: false,
+      },
     ),
   );
 

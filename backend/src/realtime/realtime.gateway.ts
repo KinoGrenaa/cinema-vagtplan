@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
-
+import { getAllowedCorsOrigins } from '../common/cors-origins';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   canJoinRealtimeCinema,
@@ -23,14 +23,14 @@ type RealtimeJwtPayload = {
   cinemaId?: number | string | null;
 };
 
-const realtimeCorsOrigins = (
-  process.env.REALTIME_CORS_ORIGIN ||
-  process.env.FRONTEND_ORIGIN ||
-  'http://localhost:3000'
-)
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const RESERVED_SOCKET_EVENTS = new Set([
+  'connect',
+  'connect_error',
+  'disconnect',
+  'disconnecting',
+  'newListener',
+  'removeListener',
+]);
 
 function getSocketToken(client: Socket) {
   const authToken = client.handshake.auth?.token;
@@ -62,19 +62,71 @@ function getSocketToken(client: Socket) {
   return token.trim();
 }
 
-function parsePositiveNumber(
-  value: number | string | null | undefined,
+function parsePositiveSafeInteger(
+  value: unknown,
 ) {
+  if (
+    typeof value !== 'number' &&
+    typeof value !== 'string'
+  ) {
+    return null;
+  }
+
+  if (
+    typeof value === 'string' &&
+    !/^[0-9]+$/.test(value)
+  ) {
+    return null;
+  }
+
   const numericValue = Number(value);
 
   if (
-    !Number.isInteger(numericValue) ||
+    !Number.isSafeInteger(numericValue) ||
     numericValue <= 0
   ) {
     return null;
   }
 
   return numericValue;
+}
+
+function requirePositiveSafeInteger(
+  value: unknown,
+  message: string,
+) {
+  const numericValue =
+    parsePositiveSafeInteger(value);
+
+  if (!numericValue) {
+    throw new TypeError(message);
+  }
+
+  return numericValue;
+}
+
+function normalizeRealtimeEventName(
+  value: unknown,
+) {
+  if (typeof value !== 'string') {
+    throw new TypeError(
+      'Realtime-event skal være tekst',
+    );
+  }
+
+  if (
+    value !== value.trim() ||
+    !/^[A-Za-z][A-Za-z0-9:._-]{0,99}$/.test(
+      value,
+    ) ||
+    RESERVED_SOCKET_EVENTS.has(value)
+  ) {
+    throw new TypeError(
+      'Realtime-event er ugyldigt',
+    );
+  }
+
+  return value;
 }
 
 function getAuthenticatedUser(client: Socket) {
@@ -87,11 +139,22 @@ function getAuthenticatedUser(client: Socket) {
 
 @WebSocketGateway({
   cors: {
-    origin: realtimeCorsOrigins,
+    origin: getAllowedCorsOrigins(
+      process.env,
+      [
+        'REALTIME_CORS_ORIGIN',
+        'FRONTEND_ORIGIN',
+        'BACKEND_CORS_ORIGIN',
+        'CORS_ORIGIN',
+      ],
+    ),
+    credentials: true,
   },
 })
 export class RealtimeGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements
+    OnGatewayConnection,
+    OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
@@ -107,7 +170,7 @@ export class RealtimeGateway
 
     if (!token || !jwtSecret) {
       console.warn(
-        `Rejected unauthenticated realtime client: ${client.id}`,
+        'Rejected unauthenticated realtime client',
       );
       client.disconnect(true);
       return;
@@ -121,11 +184,13 @@ export class RealtimeGateway
             secret: jwtSecret,
           },
         );
-      const userId = parsePositiveNumber(payload.sub);
+      const userId = parsePositiveSafeInteger(
+        payload.sub,
+      );
 
       if (!userId) {
         console.warn(
-          `Rejected realtime client with invalid token: ${client.id}`,
+          'Rejected realtime client with invalid token',
         );
         client.disconnect(true);
         return;
@@ -139,7 +204,7 @@ export class RealtimeGateway
 
       if (!activeUser) {
         console.warn(
-          `Rejected inactive realtime user: ${client.id}`,
+          'Rejected inactive realtime user',
         );
         client.disconnect(true);
         return;
@@ -148,22 +213,21 @@ export class RealtimeGateway
       client.data.user = {
         id: activeUser.id,
         role: activeUser.role,
-        cinemaId: parsePositiveNumber(
-          payload.cinemaId,
-        ),
+        cinemaId:
+          parsePositiveSafeInteger(
+            payload.cinemaId,
+          ),
       } satisfies RealtimeSocketUser;
-
-      console.log(`Client connected: ${client.id}`);
     } catch {
       console.warn(
-        `Rejected realtime client with invalid token: ${client.id}`,
+        'Rejected realtime client with invalid token',
       );
       client.disconnect(true);
     }
   }
 
-  handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
+  handleDisconnect(_client: Socket) {
+    // Der er ingen forbindelsestilstand at rydde op.
   }
 
   @SubscribeMessage('joinCinema')
@@ -173,7 +237,7 @@ export class RealtimeGateway
   ) {
     const user = getAuthenticatedUser(client);
     const numericCinemaId =
-      parsePositiveNumber(cinemaId);
+      parsePositiveSafeInteger(cinemaId);
 
     if (!user || !numericCinemaId) {
       return {
@@ -181,15 +245,16 @@ export class RealtimeGateway
       };
     }
 
-    const canJoin = await canJoinRealtimeCinema(
-      this.prisma,
-      user,
-      numericCinemaId,
-    );
+    const canJoin =
+      await canJoinRealtimeCinema(
+        this.prisma,
+        user,
+        numericCinemaId,
+      );
 
     if (!canJoin) {
       console.warn(
-        `Rejected realtime cinema room join for client ${client.id}: cinema-${numericCinemaId}`,
+        'Rejected realtime cinema room join',
       );
       return {
         joined: null,
@@ -198,10 +263,6 @@ export class RealtimeGateway
 
     const room = `cinema-${numericCinemaId}`;
     await client.join(room);
-
-    console.log(
-      `Client ${client.id} joined realtime room ${room}`,
-    );
 
     return {
       joined: room,
@@ -215,7 +276,7 @@ export class RealtimeGateway
   ) {
     const user = getAuthenticatedUser(client);
     const numericCinemaId =
-      parsePositiveNumber(cinemaId);
+      parsePositiveSafeInteger(cinemaId);
 
     if (!user || !numericCinemaId) {
       return {
@@ -225,10 +286,6 @@ export class RealtimeGateway
 
     const room = `cinema-${numericCinemaId}`;
     await client.leave(room);
-
-    console.log(
-      `Client ${client.id} left realtime room ${room}`,
-    );
 
     return {
       left: room,
@@ -241,7 +298,8 @@ export class RealtimeGateway
     @MessageBody() userId: number,
   ) {
     const user = getAuthenticatedUser(client);
-    const numericUserId = parsePositiveNumber(userId);
+    const numericUserId =
+      parsePositiveSafeInteger(userId);
 
     if (
       !user ||
@@ -256,10 +314,6 @@ export class RealtimeGateway
     const room = `user-${numericUserId}`;
     await client.join(room);
 
-    console.log(
-      `Client ${client.id} joined realtime room ${room}`,
-    );
-
     return {
       joined: room,
     };
@@ -271,7 +325,8 @@ export class RealtimeGateway
     @MessageBody() userId: number,
   ) {
     const user = getAuthenticatedUser(client);
-    const numericUserId = parsePositiveNumber(userId);
+    const numericUserId =
+      parsePositiveSafeInteger(userId);
 
     if (
       !user ||
@@ -286,10 +341,6 @@ export class RealtimeGateway
     const room = `user-${numericUserId}`;
     await client.leave(room);
 
-    console.log(
-      `Client ${client.id} left realtime room ${room}`,
-    );
-
     return {
       left: room,
     };
@@ -298,68 +349,109 @@ export class RealtimeGateway
   notifyCinema(
     cinemaId: number,
     event: string,
-    data: any,
+    data: unknown,
   ) {
+    const validCinemaId =
+      requirePositiveSafeInteger(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      );
+    const validEvent =
+      normalizeRealtimeEventName(event);
+
     this.server
-      .to(`cinema-${cinemaId}`)
-      .emit(event, data);
+      .to(`cinema-${validCinemaId}`)
+      .emit(validEvent, data ?? {});
   }
 
   notifyUser(
     userId: number,
     event: string,
-    data: any,
+    data: unknown,
   ) {
+    const validUserId =
+      requirePositiveSafeInteger(
+        userId,
+        'Bruger skal være et gyldigt ID',
+      );
+    const validEvent =
+      normalizeRealtimeEventName(event);
+
     this.server
-      .to(`user-${userId}`)
-      .emit(event, data);
+      .to(`user-${validUserId}`)
+      .emit(validEvent, data ?? {});
   }
 
-  notifyAll(event: string, data: any) {
-    this.server.emit(event, data);
+  notifyAll(event: string, data?: unknown) {
+    this.server.emit(
+      normalizeRealtimeEventName(event),
+      data ?? {},
+    );
   }
 
-  notifyStaffingRequestsUpdated(cinemaId: number) {
-    this.server
-      .to(`cinema-${cinemaId}`)
-      .emit('staffingRequestsUpdated', {
+  notifyStaffingRequestsUpdated(
+    cinemaId: number,
+  ) {
+    this.notifyCinema(
+      cinemaId,
+      'staffingRequestsUpdated',
+      {
         cinemaId,
-      });
+      },
+    );
   }
 
   notifyStaffingRequestAccepted(
     cinemaId: number,
     requestId: number,
   ) {
-    this.server
-      .to(`cinema-${cinemaId}`)
-      .emit('staffingRequestAccepted', {
+    this.notifyCinema(
+      cinemaId,
+      'staffingRequestAccepted',
+      {
         cinemaId,
-        requestId,
-      });
+        requestId:
+          requirePositiveSafeInteger(
+            requestId,
+            'Bemandingsforespørgsel skal være et gyldigt ID',
+          ),
+      },
+    );
   }
 
   notifyStaffingRequestRejected(
     cinemaId: number,
     requestId: number,
   ) {
-    this.server
-      .to(`cinema-${cinemaId}`)
-      .emit('staffingRequestRejected', {
+    this.notifyCinema(
+      cinemaId,
+      'staffingRequestRejected',
+      {
         cinemaId,
-        requestId,
-      });
+        requestId:
+          requirePositiveSafeInteger(
+            requestId,
+            'Bemandingsforespørgsel skal være et gyldigt ID',
+          ),
+      },
+    );
   }
 
   notifyStaffingRequestCancelled(
     cinemaId: number,
     requestId: number,
   ) {
-    this.server
-      .to(`cinema-${cinemaId}`)
-      .emit('staffingRequestCancelled', {
+    this.notifyCinema(
+      cinemaId,
+      'staffingRequestCancelled',
+      {
         cinemaId,
-        requestId,
-      });
+        requestId:
+          requirePositiveSafeInteger(
+            requestId,
+            'Bemandingsforespørgsel skal være et gyldigt ID',
+          ),
+      },
+    );
   }
 }
