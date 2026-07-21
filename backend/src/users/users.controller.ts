@@ -18,6 +18,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { unlink } from 'fs/promises';
 import { diskStorage } from 'multer';
 import { basename, extname, join } from 'path';
+import { validateUploadedImageFile } from '../common/file-validation/image-file-signature';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -365,6 +366,8 @@ export class UsersController {
     let currentProfile;
 
     try {
+      await validateUploadedImageFile(file);
+
       currentProfile =
         await this.usersService.findOwnProfile(userId);
 

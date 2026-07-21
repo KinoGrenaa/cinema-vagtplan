@@ -17,9 +17,16 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { unlink } from 'fs/promises';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { validateUploadedImageFile } from '../common/file-validation/image-file-signature';
 import { CinemasService } from './cinemas.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { hasPermission } from '../auth/permissions';
+
+const cinemaLogoExtensionByMime: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
 
 type AuthUser = {
   sub: number;
@@ -151,7 +158,16 @@ export class CinemasController {
         filename: (_, file, callback) => {
           const uniqueName =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
-          callback(null, `${uniqueName}${extname(file.originalname)}`);
+          const extension = cinemaLogoExtensionByMime[file.mimetype];
+
+          if (!extension) {
+            return callback(
+              new BadRequestException('Kun JPG, PNG og WEBP er tilladt'),
+              '',
+            );
+          }
+
+          callback(null, `${uniqueName}${extension}`);
         },
       }),
       limits: {
@@ -188,6 +204,8 @@ export class CinemasController {
       if (!file) {
         throw new BadRequestException('Ingen fil uploadet');
       }
+
+      await validateUploadedImageFile(file);
 
       return await this.cinemasService.updateLogo(
         cinemaId,
