@@ -3,13 +3,11 @@ import { MovieShowingsController } from './movie-showings.controller';
 import { MovieShowingsService } from './movie-showings.service';
 
 describe('MovieShowingsController', () => {
-  const service = {
-    findAll: jest.fn(),
+  let service: {
+    findAll: jest.Mock;
   };
-  const controller =
-    new MovieShowingsController(
-      service as unknown as MovieShowingsService,
-    );
+  let controller: MovieShowingsController;
+
   const req = {
     user: {
       sub: 7,
@@ -19,11 +17,27 @@ describe('MovieShowingsController', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    service = {
+      findAll: jest.fn(),
+    };
+    controller = new MovieShowingsController(
+      service as unknown as MovieShowingsService,
+    );
   });
 
-  it.each(['0', '-1', '1.5', 'ukendt'])(
-    'afviser ugyldigt biograf-ID %s',
+  it.each([
+    '0',
+    '-1',
+    '1.5',
+    '1e2',
+    '+2',
+    ' 2',
+    '2 ',
+    '9007199254740992',
+    'ukendt',
+    '',
+  ])(
+    'afviser ugyldigt biograf-ID %p',
     (cinemaId) => {
       expect(() =>
         controller.getAllMovieShowings(
@@ -32,10 +46,12 @@ describe('MovieShowingsController', () => {
           cinemaId,
         ),
       ).toThrow(BadRequestException);
+
+      expect(service.findAll).not.toHaveBeenCalled();
     },
   );
 
-  it('videresender dato og biografkontekst', () => {
+  it('videresender dato og strikt biografkontekst', () => {
     controller.getAllMovieShowings(
       req,
       '2026-07-21',
@@ -49,7 +65,7 @@ describe('MovieShowingsController', () => {
     });
   });
 
-  it('tillader manglende valgfri biograf', () => {
+  it('tillader udeladt valgfri biograf', () => {
     controller.getAllMovieShowings(
       req,
       undefined,

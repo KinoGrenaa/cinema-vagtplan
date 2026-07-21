@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Controller,
   Get,
   Param,
@@ -8,8 +7,11 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
@@ -17,34 +19,6 @@ export class NotificationsController {
   constructor(
     private notificationsService: NotificationsService,
   ) {}
-
-  private parseRequiredId(
-    value: string | number,
-    message: string,
-  ) {
-    const parsedId = Number(value);
-
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      throw new BadRequestException(message);
-    }
-
-    return parsedId;
-  }
-
-  private parseOptionalId(
-    value: string | number | null | undefined,
-    message: string,
-  ) {
-    if (
-      value === undefined ||
-      value === null ||
-      value === ''
-    ) {
-      return undefined;
-    }
-
-    return this.parseRequiredId(value, message);
-  }
 
   @UseGuards(JwtGuard)
   @Get()
@@ -54,7 +28,7 @@ export class NotificationsController {
   ) {
     return this.notificationsService.findForUser(
       req.user,
-      this.parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -71,7 +45,7 @@ export class NotificationsController {
       count:
         await this.notificationsService.unreadCount(
           req.user,
-          this.parseOptionalId(
+          parseOptionalPositiveIntegerQuery(
             cinemaId,
             'Biograf skal være et gyldigt ID',
           ),
@@ -87,7 +61,7 @@ export class NotificationsController {
   ) {
     return this.notificationsService.markAllAsRead(
       req.user,
-      this.parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -102,12 +76,12 @@ export class NotificationsController {
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.notificationsService.markAsRead(
-      this.parseRequiredId(
+      parseRequiredPositiveInteger(
         id,
         'Notifikation skal være et gyldigt ID',
       ),
       req.user,
-      this.parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),

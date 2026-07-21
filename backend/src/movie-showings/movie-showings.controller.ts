@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Controller,
   Get,
   Query,
@@ -7,35 +6,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import { parseOptionalPositiveIntegerQuery } from '../common/query-validation';
 import { MovieShowingsService } from './movie-showings.service';
 
 @Controller('movie-showings')
 export class MovieShowingsController {
   constructor(
-    private readonly movieShowingsService:
-      MovieShowingsService,
+    private readonly movieShowingsService: MovieShowingsService,
   ) {}
-
-  private parseOptionalCinemaId(
-    value?: string,
-  ) {
-    if (value === undefined || value === '') {
-      return undefined;
-    }
-
-    const cinemaId = Number(value);
-
-    if (
-      !Number.isInteger(cinemaId) ||
-      cinemaId <= 0
-    ) {
-      throw new BadRequestException(
-        'Biograf skal være et gyldigt ID',
-      );
-    }
-
-    return cinemaId;
-  }
 
   @UseGuards(JwtGuard)
   @Get()
@@ -48,7 +26,10 @@ export class MovieShowingsController {
       date,
       user: req.user,
       selectedCinemaId:
-        this.parseOptionalCinemaId(cinemaId),
+        parseOptionalPositiveIntegerQuery(
+          cinemaId,
+          'Biograf skal være et gyldigt ID',
+        ),
     });
   }
 }
