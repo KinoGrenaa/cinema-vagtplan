@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,20 +11,29 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalBooleanQuery,
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { JobFunctionsService } from './job-functions.service';
 
 @Controller('job-functions')
 export class JobFunctionsController {
   constructor(private jobFunctionsService: JobFunctionsService) {}
 
-  private parseRequiredId(value: string | number, message: string) {
-    const parsedId = Number(value);
+  private parseCinemaId(cinemaId?: string) {
+    return parseOptionalPositiveIntegerQuery(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
+  }
 
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      throw new BadRequestException(message);
-    }
-
-    return parsedId;
+  private parseJobFunctionId(id: string) {
+    return parseRequiredPositiveInteger(
+      id,
+      'Jobfunktion skal være et gyldigt ID',
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -37,15 +45,21 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.findAll(
       req.user,
-      includeArchived === 'true',
-      cinemaId,
+      parseOptionalBooleanQuery(
+        includeArchived,
+        'Parameteren includeArchived skal være true eller false.',
+      ),
+      this.parseCinemaId(cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
   @Get('payroll-types')
   findPayrollTypes(@Req() req, @Query('cinemaId') cinemaId?: string) {
-    return this.jobFunctionsService.findPayrollTypes(req.user, cinemaId);
+    return this.jobFunctionsService.findPayrollTypes(
+      req.user,
+      this.parseCinemaId(cinemaId),
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -64,9 +78,9 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.update(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
+      this.parseJobFunctionId(id),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -79,8 +93,8 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.remove(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
-      cinemaId,
+      this.parseJobFunctionId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -93,8 +107,8 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.reactivate(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
-      cinemaId,
+      this.parseJobFunctionId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -108,9 +122,12 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.getTimingRule(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
-      cinemaId,
-      includeInactive === 'true',
+      this.parseJobFunctionId(id),
+      this.parseCinemaId(cinemaId),
+      parseOptionalBooleanQuery(
+        includeInactive,
+        'Parameteren includeInactive skal være true eller false.',
+      ),
     );
   }
 
@@ -124,9 +141,9 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.upsertTimingRule(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
+      this.parseJobFunctionId(id),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -139,8 +156,8 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.removeTimingRule(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
-      cinemaId,
+      this.parseJobFunctionId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -153,8 +170,8 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.getUsers(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
-      cinemaId,
+      this.parseJobFunctionId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -168,9 +185,9 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.assignUser(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
+      this.parseJobFunctionId(id),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -184,9 +201,12 @@ export class JobFunctionsController {
   ) {
     return this.jobFunctionsService.removeUser(
       req.user,
-      this.parseRequiredId(id, 'Jobfunktion skal være et gyldigt ID'),
-      this.parseRequiredId(userId, 'Medarbejder skal være et gyldigt ID'),
-      cinemaId,
+      this.parseJobFunctionId(id),
+      parseRequiredPositiveInteger(
+        userId,
+        'Medarbejder skal være et gyldigt ID',
+      ),
+      this.parseCinemaId(cinemaId),
     );
   }
 }

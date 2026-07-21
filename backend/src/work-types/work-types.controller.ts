@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,22 +10,30 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-
-import { WorkTypesService } from './work-types.service';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalBooleanQuery,
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
+import { WorkTypesService } from './work-types.service';
 
 @Controller('work-types')
 export class WorkTypesController {
   constructor(private workTypesService: WorkTypesService) {}
 
-  private parseRequiredId(value: string | number, message: string) {
-    const parsedId = Number(value);
+  private parseCinemaId(cinemaId?: string) {
+    return parseOptionalPositiveIntegerQuery(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
+  }
 
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      throw new BadRequestException(message);
-    }
-
-    return parsedId;
+  private parseWorkTypeId(id: string) {
+    return parseRequiredPositiveInteger(
+      id,
+      'Vagttype skal være et gyldigt ID',
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -38,8 +45,11 @@ export class WorkTypesController {
   ) {
     return this.workTypesService.findAll(
       req.user,
-      includeArchived === 'true',
-      cinemaId,
+      parseOptionalBooleanQuery(
+        includeArchived,
+        'Parameteren includeArchived skal være true eller false.',
+      ),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -59,19 +69,23 @@ export class WorkTypesController {
   ) {
     return this.workTypesService.update(
       req.user,
-      this.parseRequiredId(id, 'Vagttype skal være et gyldigt ID'),
+      this.parseWorkTypeId(id),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
   @Delete(':id')
-  remove(@Req() req, @Param('id') id: string, @Query('cinemaId') cinemaId?: string) {
+  remove(
+    @Req() req,
+    @Param('id') id: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
     return this.workTypesService.remove(
       req.user,
-      this.parseRequiredId(id, 'Vagttype skal være et gyldigt ID'),
-      cinemaId,
+      this.parseWorkTypeId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -84,8 +98,8 @@ export class WorkTypesController {
   ) {
     return this.workTypesService.reactivate(
       req.user,
-      this.parseRequiredId(id, 'Vagttype skal være et gyldigt ID'),
-      cinemaId,
+      this.parseWorkTypeId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 }

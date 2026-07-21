@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,18 +11,39 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalBooleanQuery,
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredIntegerInRange,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { ScheduleTemplatesService } from './schedule-templates.service';
 
 @Controller('schedule-templates')
 export class ScheduleTemplatesController {
   constructor(private scheduleTemplatesService: ScheduleTemplatesService) {}
 
-  private parseRequiredId(value: string | number, message: string) {
-    const parsedId = Number(value);
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      throw new BadRequestException(message);
-    }
-    return parsedId;
+  private parseCinemaId(cinemaId?: string) {
+    return parseOptionalPositiveIntegerQuery(
+      cinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
+  }
+
+  private parseTemplateId(id: string) {
+    return parseRequiredPositiveInteger(
+      id,
+      'Vagtsskabelon skal være et gyldigt ID',
+    );
+  }
+
+  private parseWeekday(weekday: string) {
+    return parseRequiredIntegerInRange(
+      weekday,
+      1,
+      7,
+      'Ugedag skal være et gyldigt tal fra 1 til 7.',
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -35,8 +55,11 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.findAll(
       req.user,
-      includeArchived === 'true',
-      cinemaId,
+      parseOptionalBooleanQuery(
+        includeArchived,
+        'Parameteren includeArchived skal være true eller false.',
+      ),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -55,8 +78,8 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.findOne(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      cinemaId,
+      this.parseTemplateId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -70,9 +93,9 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.update(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
+      this.parseTemplateId(id),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -85,8 +108,8 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.remove(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      cinemaId,
+      this.parseTemplateId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -99,8 +122,8 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.reactivate(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      cinemaId,
+      this.parseTemplateId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -113,8 +136,8 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.findDays(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      cinemaId,
+      this.parseTemplateId(id),
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -129,10 +152,10 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.upsertDay(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      this.parseRequiredId(weekday, 'Ugedag skal være et gyldigt tal fra 1 til 7.'),
+      this.parseTemplateId(id),
+      this.parseWeekday(weekday),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -147,10 +170,10 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.addJobFunction(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      this.parseRequiredId(weekday, 'Ugedag skal være et gyldigt tal fra 1 til 7.'),
+      this.parseTemplateId(id),
+      this.parseWeekday(weekday),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -165,13 +188,13 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.updateJobFunction(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      this.parseRequiredId(
+      this.parseTemplateId(id),
+      parseRequiredPositiveInteger(
         templateJobFunctionId,
         'Skabelonlinje skal være et gyldigt ID',
       ),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -185,12 +208,12 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.removeJobFunction(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      this.parseRequiredId(
+      this.parseTemplateId(id),
+      parseRequiredPositiveInteger(
         templateJobFunctionId,
         'Skabelonlinje skal være et gyldigt ID',
       ),
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
@@ -205,18 +228,20 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.addAssignment(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      this.parseRequiredId(
+      this.parseTemplateId(id),
+      parseRequiredPositiveInteger(
         templateJobFunctionId,
         'Skabelonlinje skal være et gyldigt ID',
       ),
       body,
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
-  @Delete(':id/day-job-functions/:templateJobFunctionId/assignments/:assignmentId')
+  @Delete(
+    ':id/day-job-functions/:templateJobFunctionId/assignments/:assignmentId',
+  )
   removeAssignment(
     @Req() req,
     @Param('id') id: string,
@@ -226,16 +251,16 @@ export class ScheduleTemplatesController {
   ) {
     return this.scheduleTemplatesService.removeAssignment(
       req.user,
-      this.parseRequiredId(id, 'Vagtsskabelon skal være et gyldigt ID'),
-      this.parseRequiredId(
+      this.parseTemplateId(id),
+      parseRequiredPositiveInteger(
         templateJobFunctionId,
         'Skabelonlinje skal være et gyldigt ID',
       ),
-      this.parseRequiredId(
+      parseRequiredPositiveInteger(
         assignmentId,
         'Standardmedarbejder skal være et gyldigt ID',
       ),
-      cinemaId,
+      this.parseCinemaId(cinemaId),
     );
   }
 }
