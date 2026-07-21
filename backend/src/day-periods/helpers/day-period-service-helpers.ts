@@ -1,4 +1,7 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 export type AuthUser = {
   sub: number;
@@ -7,8 +10,17 @@ export type AuthUser = {
   cinemaId: number | null;
 };
 
-export type CinemaContextValue = number | string | null | undefined;
-export type MinuteContextValue = number | string | null | undefined;
+export type CinemaContextValue =
+  | number
+  | string
+  | null
+  | undefined;
+
+export type MinuteContextValue =
+  | number
+  | string
+  | null
+  | undefined;
 
 export type DayPeriodCreateData = {
   name: string;
@@ -33,14 +45,47 @@ export function ensureDayPeriodAdmin(user: AuthUser) {
   throw new ForbiddenException('Ingen adgang');
 }
 
-function parseCinemaId(value: CinemaContextValue) {
-  const cinemaId = Number(value);
+function parseStrictInteger(
+  value: unknown,
+  minimum: number,
+  maximum: number,
+  message: string,
+) {
+  if (
+    (typeof value !== 'string' && typeof value !== 'number') ||
+    (typeof value === 'string' && !/^[0-9]+$/.test(value))
+  ) {
+    throw new BadRequestException(message);
+  }
 
-  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+  const parsedValue = Number(value);
+
+  if (
+    !Number.isSafeInteger(parsedValue) ||
+    parsedValue < minimum ||
+    parsedValue > maximum
+  ) {
+    throw new BadRequestException(message);
+  }
+
+  return parsedValue;
+}
+
+function parseCinemaId(value: CinemaContextValue) {
+  if (value === null || value === undefined || value === '') {
     return null;
   }
 
-  return cinemaId;
+  try {
+    return parseStrictInteger(
+      value,
+      1,
+      Number.MAX_SAFE_INTEGER,
+      'Biograf skal være et gyldigt ID.',
+    );
+  } catch {
+    return null;
+  }
 }
 
 export function getRequiredDayPeriodCinemaId(
@@ -82,36 +127,39 @@ export function normalizeDayPeriodName(name: unknown) {
   return normalizedName;
 }
 
-export function parseRequiredMinute(value: MinuteContextValue, message: string) {
+export function parseRequiredMinute(
+  value: MinuteContextValue,
+  message: string,
+) {
   if (value === null || value === undefined || value === '') {
     throw new BadRequestException(message);
   }
 
-  const minute = Number(value);
-
-  if (!Number.isInteger(minute) || minute < 0 || minute > 1439) {
-    throw new BadRequestException(message);
-  }
-
-  return minute;
+  return parseStrictInteger(value, 0, 1439, message);
 }
 
-export function parseOptionalSortOrder(value: MinuteContextValue) {
+export function parseOptionalSortOrder(
+  value: MinuteContextValue,
+) {
   if (value === null || value === undefined || value === '') {
     return undefined;
   }
 
-  const sortOrder = Number(value);
-
-  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-    throw new BadRequestException('Sortering skal være et gyldigt tal.');
-  }
-
-  return sortOrder;
+  return parseStrictInteger(
+    value,
+    0,
+    Number.MAX_SAFE_INTEGER,
+    'Sortering skal være et gyldigt tal.',
+  );
 }
 
-export function ensureDayPeriodRange(startMinute: number, endMinute: number) {
+export function ensureDayPeriodRange(
+  startMinute: number,
+  endMinute: number,
+) {
   if (endMinute <= startMinute) {
-    throw new BadRequestException('Starttidspunkt skal være før sluttidspunkt.');
+    throw new BadRequestException(
+      'Starttidspunkt skal være før sluttidspunkt.',
+    );
   }
 }

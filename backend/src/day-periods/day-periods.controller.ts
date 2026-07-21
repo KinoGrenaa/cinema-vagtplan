@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,83 +11,97 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalBooleanQuery,
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { DayPeriodsService } from './day-periods.service';
+
+function parseOptionalCinemaId(value: unknown) {
+  return parseOptionalPositiveIntegerQuery(
+    value,
+    'Biograf skal være et gyldigt ID',
+  );
+}
 
 @Controller('day-periods')
 export class DayPeriodsController {
   constructor(private dayPeriodsService: DayPeriodsService) {}
 
-  private parseRequiredId(value: string | number, message: string) {
-    const parsedId = Number(value);
-
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      throw new BadRequestException(message);
-    }
-
-    return parsedId;
-  }
-
   @UseGuards(JwtGuard)
   @Get()
   findAll(
-    @Req() req,
+    @Req() req: any,
     @Query('includeArchived') includeArchived?: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.dayPeriodsService.findAll(
       req.user,
-      includeArchived === 'true',
-      cinemaId,
+      parseOptionalBooleanQuery(
+        includeArchived,
+        'includeArchived skal være true eller false',
+      ),
+      parseOptionalCinemaId(cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
   @Post()
-  create(@Req() req, @Body() body) {
-    return this.dayPeriodsService.create(req.user, body);
+  create(@Req() req: any, @Body() body: unknown) {
+    return this.dayPeriodsService.create(req.user, body as any);
   }
 
   @UseGuards(JwtGuard)
   @Patch(':id')
   update(
-    @Req() req,
+    @Req() req: any,
     @Param('id') id: string,
-    @Body() body,
+    @Body() body: unknown,
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.dayPeriodsService.update(
       req.user,
-      this.parseRequiredId(id, 'Dagsperiode skal være et gyldigt ID'),
-      body,
-      cinemaId,
+      parseRequiredPositiveInteger(
+        id,
+        'Dagsperiode skal være et gyldigt ID',
+      ),
+      body as any,
+      parseOptionalCinemaId(cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
   @Delete(':id')
   remove(
-    @Req() req,
+    @Req() req: any,
     @Param('id') id: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.dayPeriodsService.remove(
       req.user,
-      this.parseRequiredId(id, 'Dagsperiode skal være et gyldigt ID'),
-      cinemaId,
+      parseRequiredPositiveInteger(
+        id,
+        'Dagsperiode skal være et gyldigt ID',
+      ),
+      parseOptionalCinemaId(cinemaId),
     );
   }
 
   @UseGuards(JwtGuard)
   @Patch(':id/reactivate')
   reactivate(
-    @Req() req,
+    @Req() req: any,
     @Param('id') id: string,
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.dayPeriodsService.reactivate(
       req.user,
-      this.parseRequiredId(id, 'Dagsperiode skal være et gyldigt ID'),
-      cinemaId,
+      parseRequiredPositiveInteger(
+        id,
+        'Dagsperiode skal være et gyldigt ID',
+      ),
+      parseOptionalCinemaId(cinemaId),
     );
   }
 }
