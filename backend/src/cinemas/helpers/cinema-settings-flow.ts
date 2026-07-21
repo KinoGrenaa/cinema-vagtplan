@@ -1,9 +1,12 @@
+import type { Prisma } from '@prisma/client';
+import type { PrismaService } from '../../prisma/prisma.service';
 import {
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
-
-import { PrismaService } from '../../prisma/prisma.service';
+  ensureCinemaNameAvailable,
+  findCinemaForWrite,
+  normalizeCinemaLogoUrl,
+  normalizeCinemaName,
+  withCinemaWriteLock,
+} from './cinema-write-access';
 
 export type UpdateCinemaSettingsData = {
   name?: string;
@@ -23,46 +26,57 @@ export type UpdateCinemaSettingsData = {
   weeklyOvertimeEnabled?: boolean;
   dailyOvertimeThreshold?: number;
   weeklyOvertimeThreshold?: number;
-  payrollPeriodModel?: 'CALENDAR_MONTH' | 'FIXED_DAY_TO_DAY' | 'BIWEEKLY';
+  payrollPeriodModel?:
+    | 'CALENDAR_MONTH'
+    | 'FIXED_DAY_TO_DAY'
+    | 'BIWEEKLY';
   payrollPeriodStartDay?: number;
   payrollPeriodEndDay?: number;
   payrollPeriodAnchorDate?: Date | null;
-  payrollPayoutRule?: 'LAST_WEEKDAY_OF_MONTH' | 'FIXED_DAY_OF_MONTH';
+  payrollPayoutRule?:
+    | 'LAST_WEEKDAY_OF_MONTH'
+    | 'FIXED_DAY_OF_MONTH';
   payrollPayoutDay?: number;
 };
 
-function buildCinemaSettingsUpdateData(
+function setDefinedCinemaSettings(
+  target: Prisma.CinemaUncheckedUpdateInput,
   data: UpdateCinemaSettingsData,
-  nextName: string | undefined,
 ) {
-  return {
-    name: nextName,
-    logoUrl: data.logoUrl,
-    allowShiftTradePool: data.allowShiftTradePool,
-    allowShiftTradeDirect: data.allowShiftTradeDirect,
-    aiEnabled: data.aiEnabled,
-    payrollRulesEnabled: data.payrollRulesEnabled,
-    clockInDeviationToleranceMinutes: data.clockInDeviationToleranceMinutes,
-    clockOutDeviationToleranceMinutes: data.clockOutDeviationToleranceMinutes,
-    requireNoteForClockInDeviation: data.requireNoteForClockInDeviation,
-    requireNoteForClockOutDeviation: data.requireNoteForClockOutDeviation,
-    requireNoteForManualEntry: data.requireNoteForManualEntry,
-    payrollOvertimeEnabled: data.payrollOvertimeEnabled,
-    plannedOvertimeEnabled: data.plannedOvertimeEnabled,
-    dailyOvertimeEnabled: data.dailyOvertimeEnabled,
-    weeklyOvertimeEnabled: data.weeklyOvertimeEnabled,
-    dailyOvertimeThreshold: data.dailyOvertimeThreshold,
-    weeklyOvertimeThreshold: data.weeklyOvertimeThreshold,
-    payrollPeriodModel: data.payrollPeriodModel,
-    payrollPeriodStartDay: data.payrollPeriodStartDay,
-    payrollPeriodEndDay: data.payrollPeriodEndDay,
-    payrollPeriodAnchorDate:
-      data.payrollPeriodAnchorDate !== undefined
-        ? data.payrollPeriodAnchorDate
-        : undefined,
-    payrollPayoutRule: data.payrollPayoutRule,
-    payrollPayoutDay: data.payrollPayoutDay,
-  };
+  const fields: Array<
+    keyof UpdateCinemaSettingsData
+  > = [
+    'allowShiftTradePool',
+    'allowShiftTradeDirect',
+    'aiEnabled',
+    'payrollRulesEnabled',
+    'clockInDeviationToleranceMinutes',
+    'clockOutDeviationToleranceMinutes',
+    'requireNoteForClockInDeviation',
+    'requireNoteForClockOutDeviation',
+    'requireNoteForManualEntry',
+    'payrollOvertimeEnabled',
+    'plannedOvertimeEnabled',
+    'dailyOvertimeEnabled',
+    'weeklyOvertimeEnabled',
+    'dailyOvertimeThreshold',
+    'weeklyOvertimeThreshold',
+    'payrollPeriodModel',
+    'payrollPeriodStartDay',
+    'payrollPeriodEndDay',
+    'payrollPeriodAnchorDate',
+    'payrollPayoutRule',
+    'payrollPayoutDay',
+  ];
+
+  for (const field of fields) {
+    const value = data[field];
+
+    if (value !== undefined) {
+      (target as Record<string, unknown>)[field] =
+        value;
+    }
+  }
 }
 
 export async function updateCinemaSettings(
@@ -70,46 +84,58 @@ export async function updateCinemaSettings(
   id: number,
   data: UpdateCinemaSettingsData,
 ) {
-  const cinema = await prisma.cinema.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-    },
-  });
+  const nextName =
+    data?.name === undefined
+      ? undefined
+      : normalizeCinemaName(data.name);
+  const nextLogoUrl =
+    data?.logoUrl === undefined
+      ? undefined
+      : normalizeCinemaLogoUrl(
+          data.logoUrl,
+        );
 
-  if (!cinema) {
-    throw new NotFoundException('Biograf blev ikke fundet');
-  }
-
-  const nextName = data.name !== undefined ? data.name.trim() : undefined;
-
-  if (data.name !== undefined && !nextName) {
-    throw new BadRequestException('Biografnavn mangler');
-  }
-
-  if (nextName && nextName !== cinema.name) {
-    const existingCinema = await prisma.cinema.findFirst({
-      where: {
-        name: nextName,
-        id: {
-          not: id,
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (existingCinema) {
-      throw new BadRequestException(
-        'Der findes allerede en biograf med dette navn',
+  return withCinemaWriteLock(
+    prisma,
+    async (transaction) => {
+      const cinema = await findCinemaForWrite(
+        transaction,
+        id,
       );
-    }
-  }
 
-  return prisma.cinema.update({
-    where: { id },
-    data: buildCinemaSettingsUpdateData(data, nextName),
-  });
+      if (
+        nextName !== undefined &&
+        nextName !== cinema.name
+      ) {
+        await ensureCinemaNameAvailable(
+          transaction,
+          nextName,
+          cinema.id,
+        );
+      }
+
+      const updateData: Prisma.CinemaUncheckedUpdateInput =
+        {};
+
+      if (nextName !== undefined) {
+        updateData.name = nextName;
+      }
+
+      if (nextLogoUrl !== undefined) {
+        updateData.logoUrl = nextLogoUrl;
+      }
+
+      setDefinedCinemaSettings(
+        updateData,
+        data,
+      );
+
+      return transaction.cinema.update({
+        where: {
+          id: cinema.id,
+        },
+        data: updateData,
+      });
+    },
+  );
 }

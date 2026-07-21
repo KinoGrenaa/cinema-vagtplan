@@ -1,39 +1,35 @@
-import { BadRequestException } from '@nestjs/common';
-
-import { PrismaService } from '../../prisma/prisma.service';
+import type { PrismaService } from '../../prisma/prisma.service';
+import {
+  ensureCinemaNameAvailable,
+  normalizeCinemaName,
+  withCinemaWriteLock,
+} from './cinema-write-access';
 
 export type CreateCinemaData = {
-  name?: string;
+  name?: unknown;
 };
 
 export async function createCinema(
   prisma: PrismaService,
   data: CreateCinemaData,
 ) {
-  const name = data.name?.trim();
+  const name = normalizeCinemaName(
+    data?.name,
+  );
 
-  if (!name) {
-    throw new BadRequestException('Biografnavn mangler');
-  }
+  return withCinemaWriteLock(
+    prisma,
+    async (transaction) => {
+      await ensureCinemaNameAvailable(
+        transaction,
+        name,
+      );
 
-  const existingCinema = await prisma.cinema.findFirst({
-    where: {
-      name,
+      return transaction.cinema.create({
+        data: {
+          name,
+        },
+      });
     },
-    select: {
-      id: true,
-    },
-  });
-
-  if (existingCinema) {
-    throw new BadRequestException(
-      'Der findes allerede en biograf med dette navn',
-    );
-  }
-
-  return prisma.cinema.create({
-    data: {
-      name,
-    },
-  });
+  );
 }
