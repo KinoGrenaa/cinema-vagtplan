@@ -1,7 +1,19 @@
-import { Body, Controller, Delete, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
+
 import { JwtGuard } from "../auth/jwt/jwt.guard";
+import {
+  getRequiredPositivePushId,
+  normalizePushEndpoint,
+  normalizePushKey,
+} from "../push/helpers/push-validation";
 import { PushSubscriptionsService } from "./push-subscriptions.service";
-import { getRequiredPositivePushId } from "../push/helpers/push-validation";
 
 type PushSubscriptionBody = {
   endpoint?: unknown;
@@ -31,29 +43,51 @@ function getRequiredCinemaId(req: any) {
 
 @Controller("push-subscriptions")
 export class PushSubscriptionsController {
-  constructor(private pushSubscriptionsService: PushSubscriptionsService) {}
+  constructor(
+    private pushSubscriptionsService: PushSubscriptionsService,
+  ) {}
 
   @UseGuards(JwtGuard)
   @Post()
-  create(@Req() req: any, @Body() body: PushSubscriptionBody) {
+  create(
+    @Req() req: any,
+    @Body() body: PushSubscriptionBody,
+  ) {
     return this.pushSubscriptionsService.create(
       {
         id: getRequiredUserId(req),
         role: req.user?.role,
         cinemaId: getRequiredCinemaId(req),
       },
-      body,
+      {
+        endpoint: normalizePushEndpoint(
+          body?.endpoint,
+        ),
+        keys: {
+          p256dh: normalizePushKey(
+            body?.keys?.p256dh,
+            "p256dh",
+          ),
+          auth: normalizePushKey(
+            body?.keys?.auth,
+            "auth",
+          ),
+        },
+      },
     );
   }
 
   @UseGuards(JwtGuard)
   @Delete()
-  delete(@Req() req: any, @Body() body: DeletePushSubscriptionBody) {
+  delete(
+    @Req() req: any,
+    @Body() body: DeletePushSubscriptionBody,
+  ) {
     return this.pushSubscriptionsService.deleteByEndpoint(
       {
         id: getRequiredUserId(req),
       },
-      body?.endpoint,
+      normalizePushEndpoint(body?.endpoint),
     );
   }
 }

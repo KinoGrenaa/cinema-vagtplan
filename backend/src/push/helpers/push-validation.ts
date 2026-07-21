@@ -1,5 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { isIP } from "node:net";
+
+import { parseRequiredPositiveInteger } from "../../common/query-validation";
 import type {
   PushPayload,
   SavePushSubscriptionInput,
@@ -12,14 +14,11 @@ const MAX_BODY_LENGTH = 1000;
 const MAX_URL_LENGTH = 512;
 const PUSH_KEY_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
 
-export function getRequiredPositivePushId(value: unknown, message: string) {
-  const id = Number(value);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new BadRequestException(message);
-  }
-
-  return id;
+export function getRequiredPositivePushId(
+  value: unknown,
+  message: string,
+) {
+  return parseRequiredPositiveInteger(value, message);
 }
 
 function getRequiredTrimmedString(
@@ -78,7 +77,10 @@ export function normalizePushEndpoint(value: unknown) {
   return endpoint;
 }
 
-export function normalizePushKey(value: unknown, fieldName: "p256dh" | "auth") {
+export function normalizePushKey(
+  value: unknown,
+  fieldName: "p256dh" | "auth",
+) {
   const message =
     fieldName === "p256dh"
       ? "Push-nøgle er ugyldig"
@@ -88,9 +90,13 @@ export function normalizePushKey(value: unknown, fieldName: "p256dh" | "auth") {
     message,
     fieldName === "p256dh" ? 512 : 128,
   );
+
   const minimumLength = fieldName === "p256dh" ? 40 : 8;
 
-  if (key.length < minimumLength || !PUSH_KEY_PATTERN.test(key)) {
+  if (
+    key.length < minimumLength ||
+    !PUSH_KEY_PATTERN.test(key)
+  ) {
     throw new BadRequestException(message);
   }
 
@@ -116,7 +122,11 @@ export function normalizePushSubscriptionInput(
 }
 
 function normalizePushUrl(value: unknown) {
-  if (value === undefined || value === null || value === "") {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
     return undefined;
   }
 
@@ -133,7 +143,9 @@ function normalizePushUrl(value: unknown) {
   return url;
 }
 
-export function normalizePushPayload(payload: PushPayload): PushPayload {
+export function normalizePushPayload(
+  payload: PushPayload,
+): PushPayload {
   return {
     title: getRequiredTrimmedString(
       payload?.title,

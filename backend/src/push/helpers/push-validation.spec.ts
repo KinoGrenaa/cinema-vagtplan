@@ -1,5 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
+
 import {
+  getRequiredPositivePushId,
   normalizePushEndpoint,
   normalizePushPayload,
   normalizePushSubscriptionInput,
@@ -11,17 +13,36 @@ describe("push validation", () => {
       normalizePushSubscriptionInput({
         userId: "7",
         cinemaId: "3",
-        endpoint: " https://push.example.com/subscription ",
+        endpoint:
+          " https://push.example.com/subscription ",
         p256dh: "A".repeat(40),
         auth: "B".repeat(16),
       }),
     ).toEqual({
       userId: 7,
       cinemaId: 3,
-      endpoint: "https://push.example.com/subscription",
+      endpoint:
+        "https://push.example.com/subscription",
       p256dh: "A".repeat(40),
       auth: "B".repeat(16),
     });
+  });
+
+  it.each([
+    "",
+    "0",
+    "-1",
+    "1.5",
+    "1e2",
+    "abc",
+    "9007199254740992",
+  ])("afviser ugyldigt push-id %p", (value) => {
+    expect(() =>
+      getRequiredPositivePushId(
+        value,
+        "ID skal være gyldigt",
+      ),
+    ).toThrow(BadRequestException);
   });
 
   it.each([
@@ -30,7 +51,9 @@ describe("push validation", () => {
     "https://127.0.0.1/subscription",
     "https://push.example.com:8443/subscription",
   ])("afviser usikkert endpoint %s", (endpoint) => {
-    expect(() => normalizePushEndpoint(endpoint)).toThrow(BadRequestException);
+    expect(() =>
+      normalizePushEndpoint(endpoint),
+    ).toThrow(BadRequestException);
   });
 
   it("afviser eksternt push-link", () => {

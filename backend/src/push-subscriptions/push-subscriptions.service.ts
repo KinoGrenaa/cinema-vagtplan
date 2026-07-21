@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Injectable,
+} from "@nestjs/common";
+
 import { PrismaService } from "../prisma/prisma.service";
 import { savePushSubscription } from "../push/helpers/push-subscription-flow";
 import {
@@ -20,6 +24,14 @@ type PushSubscriptionActor = {
   cinemaId?: unknown;
 };
 
+function ensurePushSubscriptionRole(role: unknown) {
+  if (role !== "ADMIN" && role !== "EMPLOYEE") {
+    throw new ForbiddenException(
+      "Push-notifikationer kan kun aktiveres for ADMIN og EMPLOYEE.",
+    );
+  }
+}
+
 @Injectable()
 export class PushSubscriptionsService {
   constructor(private prisma: PrismaService) {}
@@ -28,11 +40,7 @@ export class PushSubscriptionsService {
     user: PushSubscriptionActor,
     subscription: PushSubscriptionBody,
   ) {
-    if (user?.role === "MASTER") {
-      throw new ForbiddenException(
-        "Push-notifikationer kan ikke aktiveres for MASTER.",
-      );
-    }
+    ensurePushSubscriptionRole(user?.role);
 
     return savePushSubscription(this.prisma, {
       userId: user?.id,
@@ -56,12 +64,16 @@ export class PushSubscriptionsService {
     });
   }
 
-  async deleteByEndpoint(user: PushSubscriptionActor, endpointValue: unknown) {
+  async deleteByEndpoint(
+    user: PushSubscriptionActor,
+    endpointValue: unknown,
+  ) {
     const userId = getRequiredPositivePushId(
       user?.id,
       "Bruger skal være et gyldigt ID",
     );
-    const endpoint = normalizePushEndpoint(endpointValue);
+    const endpoint =
+      normalizePushEndpoint(endpointValue);
 
     return this.prisma.pushSubscription.deleteMany({
       where: {
