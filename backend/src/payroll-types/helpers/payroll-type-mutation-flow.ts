@@ -1,72 +1,155 @@
-import { NotFoundException } from '@nestjs/common';
-
+import { BadRequestException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import {
-  AuthUser,
-  CinemaContextValue,
   ensurePayrollTypeAdmin,
+  ensurePayrollTypeCodeAvailable,
+  ensurePayrollTypeUnused,
+  findPayrollTypeForCinema,
   getRequiredPayrollTypeCinemaId,
+  normalizeOptionalDescription,
+  normalizeOptionalExportCode,
+  normalizeOptionalIsActive,
+  normalizeOptionalIsDefault,
+  normalizeOptionalPayrollTypeColor,
+  normalizePayrollTypeCode,
+  normalizePayrollTypeName,
+  withPayrollTypeCinemaLock,
+  type AuthUser,
+  type CinemaContextValue,
+  type PayrollTypeUpdateData,
 } from './payroll-type-access';
 
 export async function updatePayrollType(
   prisma: PrismaService,
   user: AuthUser,
   id: number,
-  data: {
-    name?: string;
-    payrollCode?: string;
-    exportCode?: string;
-    description?: string;
-    color?: string;
-    isDefault?: boolean;
-    isActive?: boolean;
-    cinemaId?: CinemaContextValue;
-  },
+  data: PayrollTypeUpdateData,
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensurePayrollTypeAdmin(user);
 
-  const cinemaId = getRequiredPayrollTypeCinemaId(
-    user,
-    selectedCinemaId ?? data.cinemaId,
+  const cinemaId =
+    getRequiredPayrollTypeCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
+  const name =
+    data?.name === undefined
+      ? undefined
+      : normalizePayrollTypeName(data.name);
+  const payrollCode =
+    data?.payrollCode === undefined
+      ? undefined
+      : normalizePayrollTypeCode(
+          data.payrollCode,
+        );
+  const exportCode =
+    normalizeOptionalExportCode(
+      data?.exportCode,
+    );
+  const description =
+    normalizeOptionalDescription(
+      data?.description,
+    );
+  const color =
+    normalizeOptionalPayrollTypeColor(
+      data?.color,
+    );
+  const isDefault =
+    normalizeOptionalIsDefault(
+      data?.isDefault,
+    );
+  const isActive =
+    normalizeOptionalIsActive(
+      data?.isActive,
+    );
+
+  return withPayrollTypeCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findPayrollTypeForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+
+      if (
+        payrollCode !== undefined &&
+        payrollCode !== existing.payrollCode
+      ) {
+        await ensurePayrollTypeCodeAvailable(
+          transaction,
+          cinemaId,
+          payrollCode,
+          existing.id,
+        );
+      }
+
+      const effectiveIsDefault =
+        isDefault ?? existing.isDefault;
+      const effectiveIsActive =
+        isActive ?? existing.isActive;
+
+      if (
+        effectiveIsDefault &&
+        !effectiveIsActive
+      ) {
+        throw new BadRequestException(
+          'Standardlønarten skal være aktiv.',
+        );
+      }
+
+      if (isDefault === true) {
+        await transaction.payrollType.updateMany({
+          where: {
+            cinemaId,
+            isDefault: true,
+            id: {
+              not: existing.id,
+            },
+          },
+          data: {
+            isDefault: false,
+          },
+        });
+      }
+
+      const updateData: Prisma.PayrollTypeUncheckedUpdateInput =
+        {};
+
+      if (name !== undefined) {
+        updateData.name = name;
+      }
+      if (payrollCode !== undefined) {
+        updateData.payrollCode = payrollCode;
+      }
+      if (exportCode !== undefined) {
+        updateData.exportCode = exportCode;
+      }
+      if (description !== undefined) {
+        updateData.description = description;
+      }
+      if (color !== undefined) {
+        updateData.color = color;
+      }
+      if (isDefault !== undefined) {
+        updateData.isDefault = isDefault;
+      }
+      if (isActive !== undefined) {
+        updateData.isActive = isActive;
+      }
+
+      return transaction.payrollType.update({
+        where: {
+          id: existing.id,
+        },
+        data: updateData,
+      });
+    },
   );
-
-  const existing = await prisma.payrollType.findFirst({
-    where: {
-      id,
-      cinemaId,
-    },
-  });
-
-  if (!existing) {
-    throw new NotFoundException('Lønart blev ikke fundet');
-  }
-
-  if (data.isDefault) {
-    await prisma.payrollType.updateMany({
-      where: {
-        cinemaId: existing.cinemaId,
-      },
-      data: {
-        isDefault: false,
-      },
-    });
-  }
-
-  return prisma.payrollType.update({
-    where: {
-      id,
-    },
-    data: {
-      name: data.name,
-      payrollCode: data.payrollCode,
-      exportCode: data.exportCode,
-      description: data.description,
-      color: data.color,
-      isDefault: data.isDefault,
-      isActive: data.isActive,
-    },
-  });
 }
 
 export async function removePayrollType(
@@ -77,22 +160,33 @@ export async function removePayrollType(
 ) {
   ensurePayrollTypeAdmin(user);
 
-  const cinemaId = getRequiredPayrollTypeCinemaId(user, selectedCinemaId);
+  const cinemaId =
+    getRequiredPayrollTypeCinemaId(
+      user,
+      selectedCinemaId,
+    );
 
-  const existing = await prisma.payrollType.findFirst({
-    where: {
-      id,
-      cinemaId,
+  return withPayrollTypeCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findPayrollTypeForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+
+      await ensurePayrollTypeUnused(
+        transaction,
+        existing.id,
+      );
+
+      return transaction.payrollType.delete({
+        where: {
+          id: existing.id,
+        },
+      });
     },
-  });
-
-  if (!existing) {
-    throw new NotFoundException('Lønart blev ikke fundet');
-  }
-
-  return prisma.payrollType.delete({
-    where: {
-      id,
-    },
-  });
+  );
 }
