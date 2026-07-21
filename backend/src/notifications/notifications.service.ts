@@ -4,7 +4,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
@@ -15,10 +14,16 @@ type NotificationActor = {
   cinemaId?: number | null;
 };
 
-function parsePositiveId(
-  value: unknown,
-  message: string,
-) {
+type CreateNotificationData = {
+  userId: number;
+  cinemaId: number;
+  title: string;
+  message: string;
+  type: string;
+  linkUrl?: string;
+};
+
+function parsePositiveId(value: unknown, message: string) {
   const parsed = Number(value);
 
   if (!Number.isInteger(parsed) || parsed <= 0) {
@@ -28,19 +33,39 @@ function parsePositiveId(
   return parsed;
 }
 
-function parseOptionalPositiveId(
-  value: unknown,
-  message: string,
-) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ''
-  ) {
+function parseOptionalPositiveId(value: unknown, message: string) {
+  if (value === undefined || value === null || value === '') {
     return undefined;
   }
 
   return parsePositiveId(value, message);
+}
+
+function normalizeRequiredText(value: unknown, message: string) {
+  if (typeof value !== 'string') {
+    throw new BadRequestException(message);
+  }
+
+  const normalized = value.trim();
+
+  if (!normalized) {
+    throw new BadRequestException(message);
+  }
+
+  return normalized;
+}
+
+function normalizeOptionalText(value: unknown, message: string) {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value !== 'string') {
+    throw new BadRequestException(message);
+  }
+
+  const normalized = value.trim();
+  return normalized || undefined;
 }
 
 @Injectable()
@@ -50,18 +75,88 @@ export class NotificationsService {
     private realtime: RealtimeGateway,
   ) {}
 
-  async create(data: {
-    userId: number;
-    cinemaId: number;
-    title: string;
-    message: string;
-    type: string;
-    linkUrl?: string;
-  }) {
-    const notification =
-      await this.prisma.notification.create({
-        data,
-      });
+  async create(data: CreateNotificationData) {
+    const userId = parsePositiveId(
+      data?.userId,
+      'Modtager skal være et gyldigt ID.',
+    );
+    const cinemaId = parsePositiveId(
+      data?.cinemaId,
+      'Biograf skal være et gyldigt ID.',
+    );
+    const title = normalizeRequiredText(
+      data?.title,
+      'Notifikationens titel må ikke være tom.',
+    );
+    const message = normalizeRequiredText(
+      data?.message,
+      'Notifikationens besked må ikke være tom.',
+    );
+    const type = normalizeRequiredText(
+      data?.type,
+      'Notifikationens type må ikke være tom.',
+    );
+    const linkUrl = normalizeOptionalText(
+      data?.linkUrl,
+      'Notifikationens link skal være tekst.',
+    );
+
+    const [cinema, recipient] = await Promise.all([
+      this.prisma.cinema.findUnique({
+        where: {
+          id: cinemaId,
+        },
+        select: {
+          id: true,
+        },
+      }),
+      this.prisma.user.findFirst({
+        where: {
+          id: userId,
+          isActive: true,
+          OR: [
+            {
+              role: 'MASTER',
+            },
+            {
+              cinemaId,
+            },
+            {
+              cinemaMemberships: {
+                some: {
+                  cinemaId,
+                  isActive: true,
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          id: true,
+        },
+      }),
+    ]);
+
+    if (!cinema) {
+      throw new NotFoundException('Biograf blev ikke fundet.');
+    }
+
+    if (!recipient) {
+      throw new ForbiddenException(
+        'Modtageren er ikke aktivt tilknyttet biografen.',
+      );
+    }
+
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId,
+        cinemaId,
+        title,
+        message,
+        type,
+        ...(linkUrl ? { linkUrl } : {}),
+      },
+    });
 
     this.realtime.notifyUser(
       notification.userId,
@@ -76,11 +171,10 @@ export class NotificationsService {
     actor: NotificationActor,
     selectedCinemaId?: number | null,
   ) {
-    const context =
-      await this.resolveNotificationContext(
-        actor,
-        selectedCinemaId,
-      );
+    const context = await this.resolveNotificationContext(
+      actor,
+      selectedCinemaId,
+    );
 
     return this.prisma.notification.findMany({
       where: {
@@ -97,11 +191,10 @@ export class NotificationsService {
     actor: NotificationActor,
     selectedCinemaId?: number | null,
   ) {
-    const context =
-      await this.resolveNotificationContext(
-        actor,
-        selectedCinemaId,
-      );
+    const context = await this.resolveNotificationContext(
+      actor,
+      selectedCinemaId,
+    );
 
     return this.prisma.notification.count({
       where: {
@@ -117,20 +210,21 @@ export class NotificationsService {
     actor: NotificationActor,
     selectedCinemaId?: number | null,
   ) {
-    const context =
-      await this.resolveNotificationContext(
-        actor,
-        selectedCinemaId,
-      );
-
-    const notification =
-      await this.prisma.notification.findFirst({
-        where: {
-          id,
-          userId: context.userId,
-          cinemaId: context.cinemaId,
-        },
-      });
+    const notificationId = parsePositiveId(
+      id,
+      'Notifikation skal være et gyldigt ID.',
+    );
+    const context = await this.resolveNotificationContext(
+      actor,
+      selectedCinemaId,
+    );
+    const notification = await this.prisma.notification.findFirst({
+      where: {
+        id: notificationId,
+        userId: context.userId,
+        cinemaId: context.cinemaId,
+      },
+    });
 
     if (!notification) {
       throw new NotFoundException(
@@ -144,7 +238,7 @@ export class NotificationsService {
 
     return this.prisma.notification.update({
       where: {
-        id,
+        id: notificationId,
       },
       data: {
         isRead: true,
@@ -156,11 +250,10 @@ export class NotificationsService {
     actor: NotificationActor,
     selectedCinemaId?: number | null,
   ) {
-    const context =
-      await this.resolveNotificationContext(
-        actor,
-        selectedCinemaId,
-      );
+    const context = await this.resolveNotificationContext(
+      actor,
+      selectedCinemaId,
+    );
 
     return this.prisma.notification.updateMany({
       where: {
@@ -182,11 +275,10 @@ export class NotificationsService {
       actor?.sub ?? actor?.id,
       'Bruger skal være et gyldigt ID',
     );
-    const requestedCinemaId =
-      parseOptionalPositiveId(
-        selectedCinemaId,
-        'Biograf skal være et gyldigt ID',
-      );
+    const requestedCinemaId = parseOptionalPositiveId(
+      selectedCinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
     if (actor?.role === 'MASTER') {
       if (!requestedCinemaId) {
@@ -223,9 +315,7 @@ export class NotificationsService {
       }
 
       if (!cinema) {
-        throw new NotFoundException(
-          'Biograf blev ikke fundet.',
-        );
+        throw new NotFoundException('Biograf blev ikke fundet.');
       }
 
       return {
@@ -234,11 +324,10 @@ export class NotificationsService {
       };
     }
 
-    const sessionCinemaId =
-      parseOptionalPositiveId(
-        actor?.cinemaId,
-        'Brugerens biograf skal være et gyldigt ID',
-      );
+    const sessionCinemaId = parseOptionalPositiveId(
+      actor?.cinemaId,
+      'Brugerens biograf skal være et gyldigt ID',
+    );
 
     if (!sessionCinemaId) {
       throw new BadRequestException(
@@ -246,41 +335,37 @@ export class NotificationsService {
       );
     }
 
-    if (
-      requestedCinemaId &&
-      requestedCinemaId !== sessionCinemaId
-    ) {
+    if (requestedCinemaId && requestedCinemaId !== sessionCinemaId) {
       throw new ForbiddenException(
         'Du har ikke adgang til denne biografs notifikationer.',
       );
     }
 
-    const activeUser =
-      await this.prisma.user.findFirst({
-        where: {
-          id: userId,
-          isActive: true,
-          role: {
-            not: 'MASTER',
+    const activeUser = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        isActive: true,
+        role: {
+          not: 'MASTER',
+        },
+        OR: [
+          {
+            cinemaId: sessionCinemaId,
           },
-          OR: [
-            {
-              cinemaId: sessionCinemaId,
-            },
-            {
-              cinemaMemberships: {
-                some: {
-                  cinemaId: sessionCinemaId,
-                  isActive: true,
-                },
+          {
+            cinemaMemberships: {
+              some: {
+                cinemaId: sessionCinemaId,
+                isActive: true,
               },
             },
-          ],
-        },
-        select: {
-          id: true,
-        },
-      });
+          },
+        ],
+      },
+      select: {
+        id: true,
+      },
+    });
 
     if (!activeUser) {
       throw new ForbiddenException(
