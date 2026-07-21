@@ -260,7 +260,6 @@ export class UsersController {
       email: string;
       phone?: string;
       password?: string;
-      profileImage?: string;
       address?: string;
       birthDate?: string | null;
       emergencyPhone?: string;
@@ -275,10 +274,25 @@ export class UsersController {
       );
     }
 
-    return this.usersService.updateOwnProfile(
-      Number(id),
-      body,
-    );
+    const {
+      email,
+      phone,
+      password,
+      address,
+      birthDate,
+      emergencyPhone,
+      skills,
+    } = body;
+
+    return this.usersService.updateOwnProfile(Number(id), {
+      email,
+      phone,
+      password,
+      address,
+      birthDate,
+      emergencyPhone,
+      skills,
+    });
   }
 
   @UseGuards(JwtGuard)

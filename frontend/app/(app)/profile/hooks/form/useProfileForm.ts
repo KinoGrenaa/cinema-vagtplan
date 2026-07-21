@@ -146,7 +146,6 @@ export function useProfileForm({
             email: email.trim(),
             password: password.trim() || undefined,
             phone: mobileDigits || undefined,
-            profileImage: profileImage || undefined,
             address: address.trim() || undefined,
             birthDate: birthDate || null,
             emergencyPhone:
