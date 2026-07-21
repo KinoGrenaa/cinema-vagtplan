@@ -1,4 +1,7 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type {
   AuthUser,
@@ -12,66 +15,91 @@ import {
   findJobFunctionForCinema,
   getRequiredJobFunctionCinemaId,
   jobFunctionTimingRuleInclude,
+  withJobFunctionCinemaLock,
 } from './job-function-service-helpers';
 
-const TIMING_ANCHORS: JobFunctionTimingAnchorValue[] = [
-  'DAY_PERIOD_START',
-  'DAY_PERIOD_END',
-  'FIRST_MOVIE_START',
-  'FIRST_MOVIE_END',
-  'LAST_MOVIE_START',
-  'LAST_MOVIE_END',
-  'FIXED_TIME',
-];
+const TIMING_ANCHORS: JobFunctionTimingAnchorValue[] =
+  [
+    'DAY_PERIOD_START',
+    'DAY_PERIOD_END',
+    'FIRST_MOVIE_START',
+    'FIRST_MOVIE_END',
+    'LAST_MOVIE_START',
+    'LAST_MOVIE_END',
+    'FIXED_TIME',
+  ];
 
 function normalizeTimingAnchor(
   value: unknown,
   fallback: JobFunctionTimingAnchorValue,
 ) {
-  if (value === undefined || value === null || value === '') {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ''
+  ) {
     return fallback;
   }
 
-  if (typeof value !== 'string') {
-    throw new BadRequestException('Timing-reglen har en ugyldig anker-type.');
-  }
-
-  if (!TIMING_ANCHORS.includes(value as JobFunctionTimingAnchorValue)) {
-    throw new BadRequestException('Timing-reglen har en ugyldig anker-type.');
+  if (
+    typeof value !== 'string' ||
+    !TIMING_ANCHORS.includes(
+      value as JobFunctionTimingAnchorValue,
+    )
+  ) {
+    throw new BadRequestException(
+      'Timing-reglen har en ugyldig anker-type.',
+    );
   }
 
   return value as JobFunctionTimingAnchorValue;
 }
 
-function parseOptionalInteger(value: NumberContextValue, message: string) {
-  if (value === undefined) {
-    return undefined;
-  }
+function parseOptionalInteger(
+  value: NumberContextValue,
+  message: string,
+) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
 
-  if (value === null || value === '') {
-    return null;
+  if (
+    (typeof value !== 'string' &&
+      typeof value !== 'number') ||
+    (typeof value === 'string' &&
+      !/^-?[0-9]+$/.test(value))
+  ) {
+    throw new BadRequestException(message);
   }
 
   const parsedValue = Number(value);
 
-  if (!Number.isInteger(parsedValue)) {
+  if (!Number.isSafeInteger(parsedValue)) {
     throw new BadRequestException(message);
   }
 
   return parsedValue;
 }
 
-function parseOffsetMinutes(value: NumberContextValue, fieldName: string) {
+function parseOffsetMinutes(
+  value: NumberContextValue,
+  fieldName: string,
+) {
   const offsetMinutes = parseOptionalInteger(
     value,
     `${fieldName} skal være et helt antal minutter.`,
   );
 
-  if (offsetMinutes === undefined || offsetMinutes === null) {
+  if (
+    offsetMinutes === undefined ||
+    offsetMinutes === null
+  ) {
     return 0;
   }
 
-  if (offsetMinutes < -720 || offsetMinutes > 720) {
+  if (
+    offsetMinutes < -720 ||
+    offsetMinutes > 720
+  ) {
     throw new BadRequestException(
       `${fieldName} skal være mellem -720 og 720 minutter.`,
     );
@@ -80,22 +108,40 @@ function parseOffsetMinutes(value: NumberContextValue, fieldName: string) {
   return offsetMinutes;
 }
 
-function parseMinuteOfDay(value: NumberContextValue, fieldName: string) {
-  const minute = parseOptionalInteger(value, `${fieldName} skal være et gyldigt tidspunkt.`);
+function parseMinuteOfDay(
+  value: NumberContextValue,
+  fieldName: string,
+) {
+  const minute = parseOptionalInteger(
+    value,
+    `${fieldName} skal være et gyldigt tidspunkt.`,
+  );
 
-  if (minute === undefined || minute === null) {
+  if (
+    minute === undefined ||
+    minute === null
+  ) {
     return minute;
   }
 
   if (minute < 0 || minute > 1439) {
-    throw new BadRequestException(`${fieldName} skal være mellem 00:00 og 23:59.`);
+    throw new BadRequestException(
+      `${fieldName} skal være mellem 00:00 og 23:59.`,
+    );
   }
 
   return minute;
 }
 
-function parseBoolean(value: unknown, fallback: boolean) {
-  if (value === undefined || value === null || value === '') {
+function parseBoolean(
+  value: unknown,
+  fallback: boolean,
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ''
+  ) {
     return fallback;
   }
 
@@ -103,73 +149,99 @@ function parseBoolean(value: unknown, fallback: boolean) {
     return value;
   }
 
-  if (typeof value === 'string') {
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-  }
+  if (value === 'true') return true;
+  if (value === 'false') return false;
 
-  throw new BadRequestException('Timing-reglen har en ugyldig ja/nej-værdi.');
+  throw new BadRequestException(
+    'Timing-reglen har en ugyldig ja/nej-værdi.',
+  );
 }
 
-function normalizeTimingRuleData(data: JobFunctionTimingRuleData) {
-  const startAnchor = normalizeTimingAnchor(data.startAnchor, 'FIRST_MOVIE_START');
-  const endAnchor = normalizeTimingAnchor(data.endAnchor, 'LAST_MOVIE_END');
+function normalizeTimingRuleData(
+  data: JobFunctionTimingRuleData,
+) {
+  const startAnchor = normalizeTimingAnchor(
+    data?.startAnchor,
+    'FIRST_MOVIE_START',
+  );
+  const endAnchor = normalizeTimingAnchor(
+    data?.endAnchor,
+    'LAST_MOVIE_END',
+  );
   const startOffsetMinutes = parseOffsetMinutes(
-    data.startOffsetMinutes,
+    data?.startOffsetMinutes,
     'Start-forskydning',
   );
   const endOffsetMinutes = parseOffsetMinutes(
-    data.endOffsetMinutes,
+    data?.endOffsetMinutes,
     'Slut-forskydning',
   );
-
-  const parsedStartFixedMinute = parseMinuteOfDay(
-    data.startFixedMinute,
-    'Fast starttidspunkt',
-  );
-  const parsedEndFixedMinute = parseMinuteOfDay(
-    data.endFixedMinute,
-    'Fast sluttidspunkt',
-  );
-
+  const parsedStartFixedMinute =
+    parseMinuteOfDay(
+      data?.startFixedMinute,
+      'Fast starttidspunkt',
+    );
+  const parsedEndFixedMinute =
+    parseMinuteOfDay(
+      data?.endFixedMinute,
+      'Fast sluttidspunkt',
+    );
   const startFixedMinute =
-    startAnchor === 'FIXED_TIME' ? parsedStartFixedMinute : null;
-  const endFixedMinute = endAnchor === 'FIXED_TIME' ? parsedEndFixedMinute : null;
+    startAnchor === 'FIXED_TIME'
+      ? parsedStartFixedMinute
+      : null;
+  const endFixedMinute =
+    endAnchor === 'FIXED_TIME'
+      ? parsedEndFixedMinute
+      : null;
 
   if (
     startAnchor === 'FIXED_TIME' &&
-    (startFixedMinute === undefined || startFixedMinute === null)
+    (startFixedMinute === undefined ||
+      startFixedMinute === null)
   ) {
-    throw new BadRequestException('Fast starttidspunkt mangler.');
+    throw new BadRequestException(
+      'Fast starttidspunkt mangler.',
+    );
   }
 
   if (
     endAnchor === 'FIXED_TIME' &&
-    (endFixedMinute === undefined || endFixedMinute === null)
+    (endFixedMinute === undefined ||
+      endFixedMinute === null)
   ) {
-    throw new BadRequestException('Fast sluttidspunkt mangler.');
+    throw new BadRequestException(
+      'Fast sluttidspunkt mangler.',
+    );
   }
 
-  const fallbackStartMinute = parseMinuteOfDay(
-    data.fallbackStartMinute,
-    'Fallback starttidspunkt',
-  );
-  const fallbackEndMinute = parseMinuteOfDay(
-    data.fallbackEndMinute,
-    'Fallback sluttidspunkt',
-  );
+  const fallbackStartMinute =
+    parseMinuteOfDay(
+      data?.fallbackStartMinute,
+      'Fallback starttidspunkt',
+    );
+  const fallbackEndMinute =
+    parseMinuteOfDay(
+      data?.fallbackEndMinute,
+      'Fallback sluttidspunkt',
+    );
   const hasFallbackStart =
-    fallbackStartMinute !== undefined && fallbackStartMinute !== null;
-  const hasFallbackEnd = fallbackEndMinute !== undefined && fallbackEndMinute !== null;
+    fallbackStartMinute !== undefined &&
+    fallbackStartMinute !== null;
+  const hasFallbackEnd =
+    fallbackEndMinute !== undefined &&
+    fallbackEndMinute !== null;
 
   if (hasFallbackStart !== hasFallbackEnd) {
-    throw new BadRequestException('Fallback skal have både start og slut.');
+    throw new BadRequestException(
+      'Fallback skal have både start og slut.',
+    );
   }
 
   if (
     hasFallbackStart &&
     hasFallbackEnd &&
-    Number(fallbackEndMinute) <= Number(fallbackStartMinute)
+    fallbackEndMinute <= fallbackStartMinute
   ) {
     throw new BadRequestException(
       'Fallback-starttidspunkt skal være før fallback-sluttidspunkt.',
@@ -183,9 +255,16 @@ function normalizeTimingRuleData(data: JobFunctionTimingRuleData) {
     endAnchor,
     endOffsetMinutes,
     endFixedMinute,
-    fallbackStartMinute: hasFallbackStart ? Number(fallbackStartMinute) : null,
-    fallbackEndMinute: hasFallbackEnd ? Number(fallbackEndMinute) : null,
-    clampToDayPeriod: parseBoolean(data.clampToDayPeriod, true),
+    fallbackStartMinute: hasFallbackStart
+      ? fallbackStartMinute
+      : null,
+    fallbackEndMinute: hasFallbackEnd
+      ? fallbackEndMinute
+      : null,
+    clampToDayPeriod: parseBoolean(
+      data?.clampToDayPeriod,
+      true,
+    ),
   };
 }
 
@@ -197,14 +276,28 @@ export async function findJobFunctionTimingRule(
   includeInactive = false,
 ) {
   ensureJobFunctionAdmin(user);
-  const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
-  await findJobFunctionForCinema(prisma, jobFunctionId, cinemaId);
+
+  const cinemaId =
+    getRequiredJobFunctionCinemaId(
+      user,
+      selectedCinemaId,
+    );
+
+  await findJobFunctionForCinema(
+    prisma,
+    jobFunctionId,
+    cinemaId,
+  );
 
   return prisma.jobFunctionTimingRule.findFirst({
     where: {
       cinemaId,
       jobFunctionId,
-      ...(includeInactive ? {} : { isActive: true }),
+      ...(includeInactive
+        ? {}
+        : {
+            isActive: true,
+          }),
     },
     include: jobFunctionTimingRuleInclude,
   });
@@ -218,34 +311,45 @@ export async function upsertJobFunctionTimingRule(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureJobFunctionAdmin(user);
-  const cinemaId = getRequiredJobFunctionCinemaId(
-    user,
-    selectedCinemaId ?? data.cinemaId,
-  );
-  const jobFunction = await findJobFunctionForCinema(
-    prisma,
-    jobFunctionId,
-    cinemaId,
-    true,
-  );
-  const normalizedData = normalizeTimingRuleData(data);
 
-  return prisma.jobFunctionTimingRule.upsert({
-    where: {
-      jobFunctionId: jobFunction.id,
+  const cinemaId =
+    getRequiredJobFunctionCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
+  const normalizedData =
+    normalizeTimingRuleData(data);
+
+  return withJobFunctionCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const jobFunction =
+        await findJobFunctionForCinema(
+          transaction,
+          jobFunctionId,
+          cinemaId,
+          true,
+        );
+
+      return transaction.jobFunctionTimingRule.upsert({
+        where: {
+          jobFunctionId: jobFunction.id,
+        },
+        create: {
+          cinemaId,
+          jobFunctionId: jobFunction.id,
+          ...normalizedData,
+          isActive: true,
+        },
+        update: {
+          ...normalizedData,
+          isActive: true,
+        },
+        include: jobFunctionTimingRuleInclude,
+      });
     },
-    create: {
-      cinemaId,
-      jobFunctionId: jobFunction.id,
-      ...normalizedData,
-      isActive: true,
-    },
-    update: {
-      ...normalizedData,
-      isActive: true,
-    },
-    include: jobFunctionTimingRuleInclude,
-  });
+  );
 }
 
 export async function archiveJobFunctionTimingRule(
@@ -255,28 +359,50 @@ export async function archiveJobFunctionTimingRule(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureJobFunctionAdmin(user);
-  const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
-  await findJobFunctionForCinema(prisma, jobFunctionId, cinemaId);
 
-  const existing = await prisma.jobFunctionTimingRule.findFirst({
-    where: {
-      cinemaId,
-      jobFunctionId,
-      isActive: true,
-    },
-  });
+  const cinemaId =
+    getRequiredJobFunctionCinemaId(
+      user,
+      selectedCinemaId,
+    );
 
-  if (!existing) {
-    throw new NotFoundException('Timing-reglen findes ikke for den valgte jobfunktion.');
-  }
+  return withJobFunctionCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      await findJobFunctionForCinema(
+        transaction,
+        jobFunctionId,
+        cinemaId,
+      );
 
-  return prisma.jobFunctionTimingRule.update({
-    where: {
-      id: existing.id,
+      const existing =
+        await transaction.jobFunctionTimingRule.findFirst({
+          where: {
+            cinemaId,
+            jobFunctionId,
+            isActive: true,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (!existing) {
+        throw new NotFoundException(
+          'Timing-reglen findes ikke for den valgte jobfunktion.',
+        );
+      }
+
+      return transaction.jobFunctionTimingRule.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: false,
+        },
+        include: jobFunctionTimingRuleInclude,
+      });
     },
-    data: {
-      isActive: false,
-    },
-    include: jobFunctionTimingRuleInclude,
-  });
+  );
 }

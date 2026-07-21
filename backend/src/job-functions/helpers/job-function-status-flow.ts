@@ -9,6 +9,7 @@ import {
   findJobFunctionForCinema,
   getRequiredJobFunctionCinemaId,
   jobFunctionInclude,
+  withJobFunctionCinemaLock,
 } from './job-function-service-helpers';
 
 export async function archiveJobFunction(
@@ -19,21 +20,41 @@ export async function archiveJobFunction(
 ) {
   ensureJobFunctionAdmin(user);
 
-  const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
-  const existing = await findJobFunctionForCinema(prisma, id, cinemaId);
+  const cinemaId =
+    getRequiredJobFunctionCinemaId(
+      user,
+      selectedCinemaId,
+    );
 
-  if (!existing.isActive) {
-    throw new BadRequestException('Jobfunktionen er allerede arkiveret.');
-  }
+  return withJobFunctionCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findJobFunctionForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
 
-  return prisma.jobFunction.update({
-    where: { id },
-    data: {
-      isActive: false,
-      archivedAt: new Date(),
+      if (!existing.isActive) {
+        throw new BadRequestException(
+          'Jobfunktionen er allerede arkiveret.',
+        );
+      }
+
+      return transaction.jobFunction.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: false,
+          archivedAt: new Date(),
+        },
+        include: jobFunctionInclude,
+      });
     },
-    include: jobFunctionInclude,
-  });
+  );
 }
 
 export async function reactivateJobFunction(
@@ -44,34 +65,60 @@ export async function reactivateJobFunction(
 ) {
   ensureJobFunctionAdmin(user);
 
-  const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
-  const existing = await findJobFunctionForCinema(prisma, id, cinemaId);
-
-  if (existing.isActive) {
-    throw new BadRequestException('Jobfunktionen er allerede aktiv.');
-  }
-
-  const duplicate = await prisma.jobFunction.findFirst({
-    where: {
-      name: existing.name,
-      isActive: true,
-      id: { not: id },
-      cinemaId,
-    },
-  });
-
-  if (duplicate) {
-    throw new BadRequestException(
-      'Der findes allerede en aktiv jobfunktion med samme navn.',
+  const cinemaId =
+    getRequiredJobFunctionCinemaId(
+      user,
+      selectedCinemaId,
     );
-  }
 
-  return prisma.jobFunction.update({
-    where: { id },
-    data: {
-      isActive: true,
-      archivedAt: null,
+  return withJobFunctionCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findJobFunctionForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+
+      if (existing.isActive) {
+        throw new BadRequestException(
+          'Jobfunktionen er allerede aktiv.',
+        );
+      }
+
+      const duplicate =
+        await transaction.jobFunction.findFirst({
+          where: {
+            name: existing.name,
+            isActive: true,
+            id: {
+              not: existing.id,
+            },
+            cinemaId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (duplicate) {
+        throw new BadRequestException(
+          'Der findes allerede en aktiv jobfunktion med samme navn.',
+        );
+      }
+
+      return transaction.jobFunction.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: true,
+          archivedAt: null,
+        },
+        include: jobFunctionInclude,
+      });
     },
-    include: jobFunctionInclude,
-  });
+  );
 }

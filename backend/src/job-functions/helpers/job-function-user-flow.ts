@@ -1,5 +1,7 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-
+import {
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type {
   AuthUser,
@@ -7,12 +9,14 @@ import type {
   UserJobFunctionAssignData,
 } from './job-function-service-helpers';
 import {
+  ensureAssignableJobFunctionUser,
   ensureJobFunctionAdmin,
   findJobFunctionForCinema,
   getActorUserId,
   getRequiredJobFunctionCinemaId,
   parseRequiredPositiveId,
   userJobFunctionInclude,
+  withJobFunctionCinemaLock,
 } from './job-function-service-helpers';
 
 export async function findJobFunctionUsers(
@@ -22,8 +26,18 @@ export async function findJobFunctionUsers(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureJobFunctionAdmin(user);
-  const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
-  await findJobFunctionForCinema(prisma, jobFunctionId, cinemaId);
+
+  const cinemaId =
+    getRequiredJobFunctionCinemaId(
+      user,
+      selectedCinemaId,
+    );
+
+  await findJobFunctionForCinema(
+    prisma,
+    jobFunctionId,
+    cinemaId,
+  );
 
   return prisma.userJobFunction.findMany({
     where: {
@@ -32,9 +46,19 @@ export async function findJobFunctionUsers(
     },
     include: userJobFunctionInclude,
     orderBy: [
-      { user: { firstName: 'asc' } },
-      { user: { lastName: 'asc' } },
-      { createdAt: 'asc' },
+      {
+        user: {
+          firstName: 'asc',
+        },
+      },
+      {
+        user: {
+          lastName: 'asc',
+        },
+      },
+      {
+        createdAt: 'asc',
+      },
     ],
   });
 }
@@ -47,65 +71,64 @@ export async function assignUserJobFunction(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureJobFunctionAdmin(user);
-  const cinemaId = getRequiredJobFunctionCinemaId(
-    user,
-    selectedCinemaId ?? data.cinemaId,
-  );
-  await findJobFunctionForCinema(prisma, jobFunctionId, cinemaId, true);
 
+  const cinemaId =
+    getRequiredJobFunctionCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
   const userId = parseRequiredPositiveId(
-    data.userId,
+    data?.userId,
     'Medarbejder skal være et gyldigt ID.',
   );
-  const employee = await prisma.user.findFirst({
-    where: {
-      id: userId,
-      isActive: true,
-      role: { not: 'MASTER' },
-      OR: [
-        { cinemaId },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId,
-              isActive: true,
-            },
+  const assignedByUserId = getActorUserId(user);
+
+  return withJobFunctionCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      await findJobFunctionForCinema(
+        transaction,
+        jobFunctionId,
+        cinemaId,
+        true,
+      );
+
+      await ensureAssignableJobFunctionUser(
+        transaction,
+        userId,
+        cinemaId,
+      );
+
+      const existing =
+        await transaction.userJobFunction.findFirst({
+          where: {
+            cinemaId,
+            userId,
+            jobFunctionId,
           },
+          select: {
+            id: true,
+          },
+        });
+
+      if (existing) {
+        throw new BadRequestException(
+          'Medarbejderen har allerede denne jobfunktion.',
+        );
+      }
+
+      return transaction.userJobFunction.create({
+        data: {
+          cinemaId,
+          userId,
+          jobFunctionId,
+          assignedByUserId,
         },
-      ],
+        include: userJobFunctionInclude,
+      });
     },
-    select: {
-      id: true,
-    },
-  });
-  if (!employee) {
-    throw new BadRequestException(
-      'Medarbejderen findes ikke for den valgte biograf.',
-    );
-  }
-
-  const existing = await prisma.userJobFunction.findFirst({
-    where: {
-      cinemaId,
-      userId,
-      jobFunctionId,
-    },
-  });
-  if (existing) {
-    throw new BadRequestException(
-      'Medarbejderen har allerede denne jobfunktion.',
-    );
-  }
-
-  return prisma.userJobFunction.create({
-    data: {
-      cinemaId,
-      userId,
-      jobFunctionId,
-      assignedByUserId: getActorUserId(user),
-    },
-    include: userJobFunctionInclude,
-  });
+  );
 }
 
 export async function removeUserJobFunction(
@@ -116,24 +139,47 @@ export async function removeUserJobFunction(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensureJobFunctionAdmin(user);
-  const cinemaId = getRequiredJobFunctionCinemaId(user, selectedCinemaId);
-  await findJobFunctionForCinema(prisma, jobFunctionId, cinemaId);
 
-  const existing = await prisma.userJobFunction.findFirst({
-    where: {
-      cinemaId,
-      userId,
-      jobFunctionId,
-    },
-  });
-  if (!existing) {
-    throw new NotFoundException('Medarbejderen har ikke denne jobfunktion.');
-  }
+  const cinemaId =
+    getRequiredJobFunctionCinemaId(
+      user,
+      selectedCinemaId,
+    );
 
-  return prisma.userJobFunction.delete({
-    where: {
-      id: existing.id,
+  return withJobFunctionCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      await findJobFunctionForCinema(
+        transaction,
+        jobFunctionId,
+        cinemaId,
+      );
+
+      const existing =
+        await transaction.userJobFunction.findFirst({
+          where: {
+            cinemaId,
+            userId,
+            jobFunctionId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (!existing) {
+        throw new NotFoundException(
+          'Medarbejderen har ikke denne jobfunktion.',
+        );
+      }
+
+      return transaction.userJobFunction.delete({
+        where: {
+          id: existing.id,
+        },
+        include: userJobFunctionInclude,
+      });
     },
-    include: userJobFunctionInclude,
-  });
+  );
 }
