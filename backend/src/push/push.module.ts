@@ -1,15 +1,10 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PushService } from './push.service';
-import { PushController } from './push.controller';
+import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module";
+import { PushService } from "./push.service";
+import { PushController } from "./push.controller";
 
 @Module({
-  imports: [
-    JwtModule.register({
-      secret: 'super-secret-key-change-later',
-      signOptions: { expiresIn: '7d' },
-    }),
-  ],
+  imports: [AuthModule],
   controllers: [PushController],
   providers: [PushService],
   exports: [PushService],

@@ -1,51 +1,24 @@
+import { ForbiddenException, Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { savePushSubscription } from "../push/helpers/push-subscription-flow";
 import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
-
-import { PrismaService } from '../prisma/prisma.service';
+  getRequiredPositivePushId,
+  normalizePushEndpoint,
+} from "../push/helpers/push-validation";
 
 type PushSubscriptionBody = {
-  endpoint?: string;
+  endpoint?: unknown;
   keys?: {
-    p256dh?: string;
-    auth?: string;
+    p256dh?: unknown;
+    auth?: unknown;
   };
 };
 
 type PushSubscriptionActor = {
-  id?: number;
+  id?: unknown;
   role?: string;
-  cinemaId?: number | null;
+  cinemaId?: unknown;
 };
-
-function getRequiredPositiveId(
-  value: unknown,
-  message: string,
-) {
-  const id = Number(value);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new BadRequestException(message);
-  }
-
-  return id;
-}
-
-function getRequiredString(
-  value: unknown,
-  message: string,
-) {
-  if (
-    typeof value !== 'string' ||
-    value.trim() === ''
-  ) {
-    throw new BadRequestException(message);
-  }
-
-  return value.trim();
-}
 
 @Injectable()
 export class PushSubscriptionsService {
@@ -55,87 +28,27 @@ export class PushSubscriptionsService {
     user: PushSubscriptionActor,
     subscription: PushSubscriptionBody,
   ) {
-    const userId = getRequiredPositiveId(
-      user?.id,
-      'Bruger skal være et gyldigt ID',
-    );
-    const cinemaId = getRequiredPositiveId(
-      user?.cinemaId,
-      'Vælg en biograf, før du aktiverer push-notifikationer.',
-    );
-
-    if (user?.role === 'MASTER') {
+    if (user?.role === "MASTER") {
       throw new ForbiddenException(
-        'Push-notifikationer kan ikke aktiveres for MASTER.',
+        "Push-notifikationer kan ikke aktiveres for MASTER.",
       );
     }
 
-    const activeUser = await this.prisma.user.findFirst({
-      where: {
-        id: userId,
-        isActive: true,
-        role: {
-          not: 'MASTER',
-        },
-        OR: [
-          {
-            cinemaId,
-          },
-          {
-            cinemaMemberships: {
-              some: {
-                cinemaId,
-                isActive: true,
-              },
-            },
-          },
-        ],
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!activeUser) {
-      throw new ForbiddenException(
-        'Du er ikke længere aktivt tilknyttet denne biograf.',
-      );
-    }
-
-    const endpoint = getRequiredString(
-      subscription?.endpoint,
-      'Push-endpoint mangler',
-    );
-    const p256dh = getRequiredString(
-      subscription?.keys?.p256dh,
-      'Push-nøgle mangler',
-    );
-    const auth = getRequiredString(
-      subscription?.keys?.auth,
-      'Push-godkendelse mangler',
-    );
-
-    return this.prisma.pushSubscription.upsert({
-      where: {
-        endpoint,
-      },
-      update: {
-        userId,
-        cinemaId,
-        p256dh,
-        auth,
-      },
-      create: {
-        endpoint,
-        p256dh,
-        auth,
-        userId,
-        cinemaId,
-      },
+    return savePushSubscription(this.prisma, {
+      userId: user?.id,
+      cinemaId: user?.cinemaId,
+      endpoint: subscription?.endpoint,
+      p256dh: subscription?.keys?.p256dh,
+      auth: subscription?.keys?.auth,
     });
   }
 
-  async findForUser(userId: number) {
+  async findForUser(userIdValue: unknown) {
+    const userId = getRequiredPositivePushId(
+      userIdValue,
+      "Bruger skal være et gyldigt ID",
+    );
+
     return this.prisma.pushSubscription.findMany({
       where: {
         userId,
@@ -143,18 +56,12 @@ export class PushSubscriptionsService {
     });
   }
 
-  async deleteByEndpoint(
-    user: PushSubscriptionActor,
-    endpointValue: unknown,
-  ) {
-    const userId = getRequiredPositiveId(
+  async deleteByEndpoint(user: PushSubscriptionActor, endpointValue: unknown) {
+    const userId = getRequiredPositivePushId(
       user?.id,
-      'Bruger skal være et gyldigt ID',
+      "Bruger skal være et gyldigt ID",
     );
-    const endpoint = getRequiredString(
-      endpointValue,
-      'Push-endpoint mangler',
-    );
+    const endpoint = normalizePushEndpoint(endpointValue);
 
     return this.prisma.pushSubscription.deleteMany({
       where: {

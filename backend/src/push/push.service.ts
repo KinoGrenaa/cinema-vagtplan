@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
-
-import { PrismaService } from '../prisma/prisma.service';
-import { sendPushNotificationsToSubscriptions } from './helpers/push-delivery';
-import { savePushSubscription } from './helpers/push-subscription-flow';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { sendPushNotificationsToSubscriptions } from "./helpers/push-delivery";
+import { savePushSubscription } from "./helpers/push-subscription-flow";
 import type {
   PushPayload,
   SavePushSubscriptionInput,
-} from './helpers/push-types';
-import { configureWebPush } from './helpers/push-vapid-config';
+} from "./helpers/push-types";
+import {
+  getRequiredPositivePushId,
+  normalizePushPayload,
+} from "./helpers/push-validation";
+import { configureWebPush } from "./helpers/push-vapid-config";
 
 @Injectable()
 export class PushService {
@@ -17,16 +20,16 @@ export class PushService {
     this.pushEnabled = configureWebPush();
   }
 
-  async saveSubscription(
-    data: SavePushSubscriptionInput,
-  ) {
+  async saveSubscription(data: SavePushSubscriptionInput) {
     return savePushSubscription(this.prisma, data);
   }
 
-  async sendToUser(
-    userId: number,
-    payload: PushPayload,
-  ) {
+  async sendToUser(userIdValue: unknown, payload: PushPayload) {
+    const userId = getRequiredPositivePushId(
+      userIdValue,
+      "Bruger skal være et gyldigt ID",
+    );
+
     return this.sendToSubscriptions(
       {
         userId,
@@ -36,10 +39,19 @@ export class PushService {
   }
 
   async sendToUserInCinema(
-    userId: number,
-    cinemaId: number,
+    userIdValue: unknown,
+    cinemaIdValue: unknown,
     payload: PushPayload,
   ) {
+    const userId = getRequiredPositivePushId(
+      userIdValue,
+      "Bruger skal være et gyldigt ID",
+    );
+    const cinemaId = getRequiredPositivePushId(
+      cinemaIdValue,
+      "Biograf skal være et gyldigt ID",
+    );
+
     return this.sendToSubscriptions(
       {
         userId,
@@ -54,43 +66,48 @@ export class PushService {
       userId: number;
       cinemaId?: number;
     },
-    payload: PushPayload,
+    payloadValue: PushPayload,
   ) {
+    const payload = normalizePushPayload(payloadValue);
+
     if (!this.pushEnabled) {
       return {
+        attempted: 0,
         sent: 0,
+        failed: 0,
+        removed: 0,
         skipped: true,
         reason:
-          'Push notifications are disabled because VAPID keys are missing',
+          "Push notifications are disabled because VAPID keys are missing",
       };
     }
 
-    const subscriptions =
-      await this.prisma.pushSubscription.findMany({
-        where,
-      });
-
-    await sendPushNotificationsToSubscriptions(
+    const subscriptions = await this.prisma.pushSubscription.findMany({
+      where,
+    });
+    const summary = await sendPushNotificationsToSubscriptions(
       subscriptions,
       payload,
       (endpoint) =>
-        this.prisma.pushSubscription
-          .delete({
-            where: {
-              endpoint,
-            },
-          })
-          .catch(() => null),
+        this.prisma.pushSubscription.deleteMany({
+          where: {
+            endpoint,
+          },
+        }),
     );
 
     return {
-      sent: subscriptions.length,
+      ...summary,
+      skipped: false,
     };
   }
 
-  async deleteSubscriptionsForUser(
-    userId: number,
-  ) {
+  async deleteSubscriptionsForUser(userIdValue: unknown) {
+    const userId = getRequiredPositivePushId(
+      userIdValue,
+      "Bruger skal være et gyldigt ID",
+    );
+
     return this.prisma.pushSubscription.deleteMany({
       where: {
         userId,

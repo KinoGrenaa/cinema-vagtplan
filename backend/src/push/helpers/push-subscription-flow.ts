@@ -1,10 +1,45 @@
-import { PrismaService } from '../../prisma/prisma.service';
-import type { SavePushSubscriptionInput } from './push-types';
+import { ForbiddenException } from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import type { SavePushSubscriptionInput } from "./push-types";
+import { normalizePushSubscriptionInput } from "./push-validation";
 
-export function savePushSubscription(
+export async function savePushSubscription(
   prisma: PrismaService,
-  data: SavePushSubscriptionInput,
+  input: SavePushSubscriptionInput,
 ) {
+  const data = normalizePushSubscriptionInput(input);
+  const activeUser = await prisma.user.findFirst({
+    where: {
+      id: data.userId,
+      isActive: true,
+      role: {
+        not: "MASTER",
+      },
+      OR: [
+        {
+          cinemaId: data.cinemaId,
+        },
+        {
+          cinemaMemberships: {
+            some: {
+              cinemaId: data.cinemaId,
+              isActive: true,
+            },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!activeUser) {
+    throw new ForbiddenException(
+      "Du er ikke længere aktivt tilknyttet denne biograf.",
+    );
+  }
+
   return prisma.pushSubscription.upsert({
     where: {
       endpoint: data.endpoint,
@@ -15,12 +50,6 @@ export function savePushSubscription(
       p256dh: data.p256dh,
       auth: data.auth,
     },
-    create: {
-      userId: data.userId,
-      cinemaId: data.cinemaId,
-      endpoint: data.endpoint,
-      p256dh: data.p256dh,
-      auth: data.auth,
-    },
+    create: data,
   });
 }

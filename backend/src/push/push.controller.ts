@@ -1,73 +1,59 @@
+import { Body, Controller, Post, Req, UseGuards } from "@nestjs/common";
+import { PushService } from "./push.service";
+import { JwtGuard } from "../auth/jwt/jwt.guard";
 import {
-  BadRequestException,
-  Body,
-  Controller,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
-import { PushService } from './push.service';
-import { JwtGuard } from '../auth/jwt/jwt.guard';
+  getRequiredPositivePushId,
+  normalizePushEndpoint,
+  normalizePushKey,
+} from "./helpers/push-validation";
 
 type PushSubscribeBody = {
-  endpoint?: string;
-  p256dh?: string;
-  auth?: string;
+  endpoint?: unknown;
+  p256dh?: unknown;
+  auth?: unknown;
 };
 
 function getRequiredUserId(req: any) {
-  const userId = Number(req.user?.sub);
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    throw new BadRequestException('Bruger skal være et gyldigt ID');
-  }
-
-  return userId;
+  return getRequiredPositivePushId(
+    req.user?.sub,
+    "Bruger skal være et gyldigt ID",
+  );
 }
 
 function getRequiredCinemaId(req: any) {
-  const cinemaId = Number(req.user?.cinemaId);
-
-  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
-    throw new BadRequestException(
-      'Vælg en biograf, før du aktiverer push-notifikationer.',
-    );
-  }
-
-  return cinemaId;
+  return getRequiredPositivePushId(
+    req.user?.cinemaId,
+    "Vælg en biograf, før du aktiverer push-notifikationer.",
+  );
 }
 
-function getRequiredString(value: unknown, message: string) {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new BadRequestException(message);
-  }
-
-  return value;
-}
-
-@Controller('push')
+@Controller("push")
 export class PushController {
   constructor(private pushService: PushService) {}
 
   @UseGuards(JwtGuard)
-  @Post('subscribe')
+  @Post("subscribe")
   subscribe(@Req() req: any, @Body() body: PushSubscribeBody) {
     return this.pushService.saveSubscription({
       userId: getRequiredUserId(req),
       cinemaId: getRequiredCinemaId(req),
-      endpoint: getRequiredString(body.endpoint, 'Push-endpoint mangler'),
-      p256dh: getRequiredString(body.p256dh, 'Push-nøgle mangler'),
-      auth: getRequiredString(body.auth, 'Push-godkendelse mangler'),
+      endpoint: normalizePushEndpoint(body?.endpoint),
+      p256dh: normalizePushKey(body?.p256dh, "p256dh"),
+      auth: normalizePushKey(body?.auth, "auth"),
     });
   }
 
   @UseGuards(JwtGuard)
-  @Post('test')
+  @Post("test")
   test(@Req() req: any) {
-    return this.pushService.sendToUser(getRequiredUserId(req), {
-      title: 'Test notifikation',
-      body: 'Push notifikationer virker ',
-      url: '/dashboard',
-    });
+    return this.pushService.sendToUserInCinema(
+      getRequiredUserId(req),
+      getRequiredCinemaId(req),
+      {
+        title: "Test notifikation",
+        body: "Push-notifikationer virker",
+        url: "/dashboard",
+      },
+    );
   }
 }

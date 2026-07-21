@@ -1,23 +1,12 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-
-import { PushSubscriptionsController } from './push-subscriptions.controller';
-import { PushSubscriptionsService } from './push-subscriptions.service';
-
-import { PrismaService } from '../prisma/prisma.service';
+import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module";
+import { PushSubscriptionsController } from "./push-subscriptions.controller";
+import { PushSubscriptionsService } from "./push-subscriptions.service";
 
 @Module({
-  imports: [
-    JwtModule.register({
-      secret: 'super-secret-key-change-later',
-      signOptions: { expiresIn: '7d' },
-    }),
-  ],
-
+  imports: [AuthModule],
   controllers: [PushSubscriptionsController],
-
-  providers: [PushSubscriptionsService, PrismaService],
-
+  providers: [PushSubscriptionsService],
   exports: [PushSubscriptionsService],
 })
 export class PushSubscriptionsModule {}

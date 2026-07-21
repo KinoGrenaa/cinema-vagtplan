@@ -1,47 +1,45 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Delete,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Post, Req, UseGuards } from "@nestjs/common";
+import { JwtGuard } from "../auth/jwt/jwt.guard";
+import { PushSubscriptionsService } from "./push-subscriptions.service";
+import { getRequiredPositivePushId } from "../push/helpers/push-validation";
 
-import { JwtGuard } from '../auth/jwt/jwt.guard';
-import { PushSubscriptionsService } from './push-subscriptions.service';
+type PushSubscriptionBody = {
+  endpoint?: unknown;
+  keys?: {
+    p256dh?: unknown;
+    auth?: unknown;
+  };
+};
 
-function getRequiredCinemaId(req: any) {
-  const cinemaId = Number(req.user?.cinemaId);
+type DeletePushSubscriptionBody = {
+  endpoint?: unknown;
+};
 
-  if (
-    !Number.isInteger(cinemaId) ||
-    cinemaId <= 0
-  ) {
-    throw new BadRequestException(
-      'Vælg en biograf, før du aktiverer push-notifikationer.',
-    );
-  }
-
-  return cinemaId;
+function getRequiredUserId(req: any) {
+  return getRequiredPositivePushId(
+    req.user?.sub,
+    "Bruger skal være et gyldigt ID",
+  );
 }
 
-@Controller('push-subscriptions')
+function getRequiredCinemaId(req: any) {
+  return getRequiredPositivePushId(
+    req.user?.cinemaId,
+    "Vælg en biograf, før du aktiverer push-notifikationer.",
+  );
+}
+
+@Controller("push-subscriptions")
 export class PushSubscriptionsController {
-  constructor(
-    private pushSubscriptionsService: PushSubscriptionsService,
-  ) {}
+  constructor(private pushSubscriptionsService: PushSubscriptionsService) {}
 
   @UseGuards(JwtGuard)
   @Post()
-  create(
-    @Req() req: any,
-    @Body() body: any,
-  ) {
+  create(@Req() req: any, @Body() body: PushSubscriptionBody) {
     return this.pushSubscriptionsService.create(
       {
-        id: req.user.sub,
-        role: req.user.role,
+        id: getRequiredUserId(req),
+        role: req.user?.role,
         cinemaId: getRequiredCinemaId(req),
       },
       body,
@@ -50,13 +48,10 @@ export class PushSubscriptionsController {
 
   @UseGuards(JwtGuard)
   @Delete()
-  delete(
-    @Req() req: any,
-    @Body() body: any,
-  ) {
+  delete(@Req() req: any, @Body() body: DeletePushSubscriptionBody) {
     return this.pushSubscriptionsService.deleteByEndpoint(
       {
-        id: req.user.sub,
+        id: getRequiredUserId(req),
       },
       body?.endpoint,
     );
