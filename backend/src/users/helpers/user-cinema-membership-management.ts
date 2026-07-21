@@ -2,16 +2,26 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-
+import type { Prisma } from '@prisma/client';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
+import { parseRequiredPositiveInteger } from '../../common/query-validation';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
   getActorUserId,
 } from './user-service-helpers';
+import {
+  UserWriteDbClient,
+  withUserWriteLock,
+} from './user-write-lock';
+
+type UserMembershipReadClient = Pick<
+  Prisma.TransactionClient,
+  'user'
+>;
 
 async function findMembershipTarget(
-  prisma: PrismaService,
+  prisma: UserMembershipReadClient,
   userId: number,
 ) {
   const user = await prisma.user.findUnique({
@@ -47,14 +57,20 @@ async function findMembershipTarget(
   });
 
   if (!user) {
-    throw new NotFoundException('Bruger blev ikke fundet');
+    throw new NotFoundException(
+      'Bruger blev ikke fundet',
+    );
   }
 
   return user;
 }
 
 function formatManagedMemberships(
-  user: Awaited<ReturnType<typeof findMembershipTarget>>,
+  user: Awaited<
+    ReturnType<
+      typeof findMembershipTarget
+    >
+  >,
 ) {
   return {
     user: {
@@ -63,7 +79,8 @@ function formatManagedMemberships(
       lastName: user.lastName,
       role: user.role,
       cinemaId: user.cinemaId,
-      defaultCinemaId: user.defaultCinemaId,
+      defaultCinemaId:
+        user.defaultCinemaId,
       isActive: user.isActive,
     },
     memberships: user.cinemaMemberships
@@ -71,13 +88,19 @@ function formatManagedMemberships(
         id: membership.id,
         cinemaId: membership.cinemaId,
         isPrimary:
-          membership.cinemaId === user.cinemaId,
+          membership.cinemaId ===
+          user.cinemaId,
         createdAt: membership.createdAt,
         cinema: membership.cinema,
       }))
       .sort((first, second) => {
-        if (first.isPrimary !== second.isPrimary) {
-          return first.isPrimary ? -1 : 1;
+        if (
+          first.isPrimary !==
+          second.isPrimary
+        ) {
+          return first.isPrimary
+            ? -1
+            : 1;
         }
 
         return first.cinema.name.localeCompare(
@@ -88,23 +111,40 @@ function formatManagedMemberships(
   };
 }
 
-export async function findManagedUserCinemaMemberships(
-  prisma: PrismaService,
-  userId: number,
+function normalizeManagedCinemaIds(
+  cinemaIds: unknown,
 ) {
-  const user = await findMembershipTarget(prisma, userId);
+  if (!Array.isArray(cinemaIds)) {
+    throw new BadRequestException(
+      'Biografmedlemskaber skal være en liste',
+    );
+  }
 
-  return formatManagedMemberships(user);
+  return Array.from(
+    new Set(
+      cinemaIds.map((cinemaId) =>
+        parseRequiredPositiveInteger(
+          cinemaId,
+          'Biograf skal være et gyldigt ID',
+        ),
+      ),
+    ),
+  ).sort(
+    (first, second) =>
+      first - second,
+  );
 }
 
-export async function updateManagedUserCinemaMemberships(
-  prisma: PrismaService,
-  auditLogsService: AuditLogsService,
+async function applyManagedMemberships(
+  transaction: UserWriteDbClient,
   userId: number,
-  cinemaIds: number[],
-  currentUser: AuthUser,
+  normalizedCinemaIds: number[],
 ) {
-  const user = await findMembershipTarget(prisma, userId);
+  const user =
+    await findMembershipTarget(
+      transaction,
+      userId,
+    );
 
   if (user.role === 'MASTER') {
     throw new BadRequestException(
@@ -118,29 +158,33 @@ export async function updateManagedUserCinemaMemberships(
     );
   }
 
-  const normalizedCinemaIds = Array.from(
-    new Set(cinemaIds),
-  ).sort((first, second) => first - second);
-
-  if (!normalizedCinemaIds.includes(user.cinemaId)) {
+  if (
+    !normalizedCinemaIds.includes(
+      user.cinemaId,
+    )
+  ) {
     throw new BadRequestException(
       'Brugerens hjemmebiograf skal forblive et aktivt medlemskab',
     );
   }
 
-  const cinemas = await prisma.cinema.findMany({
-    where: {
-      id: {
-        in: normalizedCinemaIds,
+  const cinemas =
+    await transaction.cinema.findMany({
+      where: {
+        id: {
+          in: normalizedCinemaIds,
+        },
       },
-    },
-    select: {
-      id: true,
-      name: true,
-    },
-  });
+      select: {
+        id: true,
+        name: true,
+      },
+    });
 
-  if (cinemas.length !== normalizedCinemaIds.length) {
+  if (
+    cinemas.length !==
+    normalizedCinemaIds.length
+  ) {
     throw new BadRequestException(
       'En eller flere valgte biografer findes ikke',
     );
@@ -148,10 +192,12 @@ export async function updateManagedUserCinemaMemberships(
 
   const shouldResetDefaultCinema =
     user.defaultCinemaId !== null &&
-    !normalizedCinemaIds.includes(user.defaultCinemaId);
+    !normalizedCinemaIds.includes(
+      user.defaultCinemaId,
+    );
 
-  await prisma.$transaction(async (transaction) => {
-    await transaction.userCinemaMembership.updateMany({
+  await transaction.userCinemaMembership.updateMany(
+    {
       where: {
         userId,
         cinemaId: {
@@ -162,10 +208,12 @@ export async function updateManagedUserCinemaMemberships(
       data: {
         isActive: false,
       },
-    });
+    },
+  );
 
-    for (const cinemaId of normalizedCinemaIds) {
-      await transaction.userCinemaMembership.upsert({
+  for (const cinemaId of normalizedCinemaIds) {
+    await transaction.userCinemaMembership.upsert(
+      {
         where: {
           userId_cinemaId: {
             userId,
@@ -180,41 +228,104 @@ export async function updateManagedUserCinemaMemberships(
         update: {
           isActive: true,
         },
-      });
-    }
+      },
+    );
+  }
 
-    if (shouldResetDefaultCinema) {
-      await transaction.user.update({
-        where: {
-          id: userId,
-        },
-        data: {
-          defaultCinemaId: user.cinemaId,
-        },
-      });
-    }
-  });
+  if (shouldResetDefaultCinema) {
+    await transaction.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        defaultCinemaId:
+          user.cinemaId,
+      },
+    });
+  }
+
+  const updatedUser =
+    await findMembershipTarget(
+      transaction,
+      userId,
+    );
+
+  return {
+    formatted:
+      formatManagedMemberships(
+        updatedUser,
+      ),
+    user,
+    cinemas,
+    shouldResetDefaultCinema,
+  };
+}
+
+export async function findManagedUserCinemaMemberships(
+  prisma: PrismaService,
+  userId: number,
+) {
+  const user =
+    await findMembershipTarget(
+      prisma,
+      userId,
+    );
+
+  return formatManagedMemberships(user);
+}
+
+export async function updateManagedUserCinemaMemberships(
+  prisma: PrismaService,
+  auditLogsService: AuditLogsService,
+  userId: number,
+  cinemaIds: number[],
+  currentUser: AuthUser,
+) {
+  const normalizedCinemaIds =
+    normalizeManagedCinemaIds(
+      cinemaIds,
+    );
+  const result =
+    await withUserWriteLock(
+      prisma,
+      userId,
+      (
+        transaction,
+        lockedUserId,
+      ) =>
+        applyManagedMemberships(
+          transaction,
+          lockedUserId,
+          normalizedCinemaIds,
+        ),
+    );
 
   await auditLogsService.create({
-    action: 'UPDATE_USER_CINEMA_MEMBERSHIPS',
+    action:
+      'UPDATE_USER_CINEMA_MEMBERSHIPS',
     entityType: 'User',
-    entityId: user.id,
-    description: `Opdaterede biograftilknytninger for ${user.firstName} ${user.lastName}: ${cinemas
-      .map((cinema) => cinema.name)
-      .sort((first, second) =>
-        first.localeCompare(second, 'da'),
-      )
-      .join(', ')}${
-      shouldResetDefaultCinema
-        ? '. Standardbiograf blev nulstillet til hjemmebiografen.'
-        : ''
-    }`,
-    userId: getActorUserId(currentUser),
-    cinemaId: user.cinemaId,
+    entityId: result.user.id,
+    description:
+      `Opdaterede biograftilknytninger for ${result.user.firstName} ${result.user.lastName}: ` +
+      `${result.cinemas
+        .map((cinema) => cinema.name)
+        .sort((first, second) =>
+          first.localeCompare(
+            second,
+            'da',
+          ),
+        )
+        .join(', ')}` +
+      `${
+        result.shouldResetDefaultCinema
+          ? '. Standardbiograf blev nulstillet til hjemmebiografen.'
+          : ''
+      }`,
+    userId: getActorUserId(
+      currentUser,
+    ),
+    cinemaId: result.user.cinemaId,
   });
 
-  return findManagedUserCinemaMemberships(
-    prisma,
-    userId,
-  );
+  return result.formatted;
 }

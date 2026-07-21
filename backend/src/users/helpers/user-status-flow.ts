@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -5,7 +6,29 @@ import {
   ensureCanModifyTargetUser,
   getActorUserId,
 } from './user-service-helpers';
-import { findRequiredUser } from './user-service-data-helpers';
+import {
+  UserWriteDbClient,
+  withUserWriteLock,
+} from './user-write-lock';
+
+async function findStatusTarget(
+  prisma: UserWriteDbClient,
+  id: number,
+) {
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!user) {
+    throw new NotFoundException(
+      'Bruger blev ikke fundet',
+    );
+  }
+
+  return user;
+}
 
 export async function deactivateUserFlow(
   prisma: PrismaService,
@@ -13,19 +36,35 @@ export async function deactivateUserFlow(
   id: number,
   currentUser?: AuthUser,
 ) {
-  const existingUser = await findRequiredUser(prisma, id);
+  const deactivatedUser =
+    await withUserWriteLock(
+      prisma,
+      id,
+      async (transaction, userId) => {
+        const existingUser =
+          await findStatusTarget(
+            transaction,
+            userId,
+          );
 
-  if (currentUser) {
-    ensureCanModifyTargetUser(currentUser, existingUser);
-  }
+        if (currentUser) {
+          ensureCanModifyTargetUser(
+            currentUser,
+            existingUser,
+          );
+        }
 
-  const deactivatedUser = await prisma.user.update({
-    where: { id },
-    data: {
-      isActive: false,
-      deactivatedAt: new Date(),
-    },
-  });
+        return transaction.user.update({
+          where: {
+            id: existingUser.id,
+          },
+          data: {
+            isActive: false,
+            deactivatedAt: new Date(),
+          },
+        });
+      },
+    );
 
   await auditLogsService.create({
     action: 'DEACTIVATE_USER',
@@ -45,19 +84,35 @@ export async function reactivateUserFlow(
   id: number,
   currentUser?: AuthUser,
 ) {
-  const existingUser = await findRequiredUser(prisma, id);
+  const reactivatedUser =
+    await withUserWriteLock(
+      prisma,
+      id,
+      async (transaction, userId) => {
+        const existingUser =
+          await findStatusTarget(
+            transaction,
+            userId,
+          );
 
-  if (currentUser) {
-    ensureCanModifyTargetUser(currentUser, existingUser);
-  }
+        if (currentUser) {
+          ensureCanModifyTargetUser(
+            currentUser,
+            existingUser,
+          );
+        }
 
-  const reactivatedUser = await prisma.user.update({
-    where: { id },
-    data: {
-      isActive: true,
-      deactivatedAt: null,
-    },
-  });
+        return transaction.user.update({
+          where: {
+            id: existingUser.id,
+          },
+          data: {
+            isActive: true,
+            deactivatedAt: null,
+          },
+        });
+      },
+    );
 
   await auditLogsService.create({
     action: 'REACTIVATE_USER',
