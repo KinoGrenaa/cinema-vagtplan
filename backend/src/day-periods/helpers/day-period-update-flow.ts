@@ -1,5 +1,6 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { BadRequestException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import type { PrismaService } from '../../prisma/prisma.service';
 import type {
   AuthUser,
   CinemaContextValue,
@@ -8,10 +9,12 @@ import type {
 import {
   ensureDayPeriodAdmin,
   ensureDayPeriodRange,
+  findDayPeriodForCinema,
   getRequiredDayPeriodCinemaId,
   normalizeDayPeriodName,
   parseOptionalSortOrder,
   parseRequiredMinute,
+  withDayPeriodCinemaLock,
 } from './day-period-service-helpers';
 
 export async function updateDayPeriod(
@@ -23,64 +26,94 @@ export async function updateDayPeriod(
 ) {
   ensureDayPeriodAdmin(user);
 
-  const cinemaId = getRequiredDayPeriodCinemaId(
-    user,
-    selectedCinemaId ?? data.cinemaId,
+  const cinemaId =
+    getRequiredDayPeriodCinemaId(
+      user,
+      selectedCinemaId ?? data?.cinemaId,
+    );
+  const name =
+    data?.name === undefined
+      ? undefined
+      : normalizeDayPeriodName(data.name);
+  const sortOrder = parseOptionalSortOrder(
+    data?.sortOrder,
   );
 
-  const existing = await prisma.dayPeriod.findFirst({
-    where: {
-      id,
-      cinemaId,
-    },
-  });
-
-  if (!existing) {
-    throw new NotFoundException('Dagsperioden findes ikke for den valgte biograf.');
-  }
-
-  const name =
-    data.name === undefined ? undefined : normalizeDayPeriodName(data.name);
-  const startMinute =
-    data.startMinute === undefined
-      ? existing.startMinute
-      : parseRequiredMinute(
-          data.startMinute,
-          'Starttidspunkt skal være et gyldigt minut.',
+  return withDayPeriodCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findDayPeriodForCinema(
+          transaction,
+          id,
+          cinemaId,
         );
-  const endMinute =
-    data.endMinute === undefined
-      ? existing.endMinute
-      : parseRequiredMinute(
-          data.endMinute,
-          'Sluttidspunkt skal være et gyldigt minut.',
-        );
-  const sortOrder = parseOptionalSortOrder(data.sortOrder);
+      const startMinute =
+        data?.startMinute === undefined
+          ? existing.startMinute
+          : parseRequiredMinute(
+              data.startMinute,
+              'Starttidspunkt skal være et gyldigt minut.',
+            );
+      const endMinute =
+        data?.endMinute === undefined
+          ? existing.endMinute
+          : parseRequiredMinute(
+              data.endMinute,
+              'Sluttidspunkt skal være et gyldigt minut.',
+            );
 
-  ensureDayPeriodRange(startMinute, endMinute);
+      ensureDayPeriodRange(
+        startMinute,
+        endMinute,
+      );
 
-  if (name && name !== existing.name) {
-    const duplicate = await prisma.dayPeriod.findFirst({
-      where: {
-        name,
-        isActive: true,
-        id: { not: id },
-        cinemaId,
-      },
-    });
+      if (
+        name !== undefined &&
+        name !== existing.name
+      ) {
+        const duplicate =
+          await transaction.dayPeriod.findFirst({
+            where: {
+              name,
+              isActive: true,
+              id: {
+                not: existing.id,
+              },
+              cinemaId,
+            },
+            select: {
+              id: true,
+            },
+          });
 
-    if (duplicate) {
-      throw new BadRequestException('Aktiv dagsperiode findes allerede.');
-    }
-  }
+        if (duplicate) {
+          throw new BadRequestException(
+            'Aktiv dagsperiode findes allerede.',
+          );
+        }
+      }
 
-  return prisma.dayPeriod.update({
-    where: { id },
-    data: {
-      name,
-      startMinute,
-      endMinute,
-      sortOrder,
+      const updateData: Prisma.DayPeriodUncheckedUpdateInput =
+        {
+          startMinute,
+          endMinute,
+        };
+
+      if (name !== undefined) {
+        updateData.name = name;
+      }
+      if (sortOrder !== undefined) {
+        updateData.sortOrder = sortOrder;
+      }
+
+      return transaction.dayPeriod.update({
+        where: {
+          id: existing.id,
+        },
+        data: updateData,
+      });
     },
-  });
+  );
 }

@@ -1,7 +1,10 @@
 import {
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import type { PrismaService } from '../../prisma/prisma.service';
 
 export type AuthUser = {
   sub: number;
@@ -38,12 +41,11 @@ export type DayPeriodUpdateData = {
   cinemaId?: CinemaContextValue;
 };
 
-export function ensureDayPeriodAdmin(user: AuthUser) {
-  if (user.role === 'MASTER') return;
-  if (user.role === 'ADMIN') return;
+export type DayPeriodDbClient =
+  Prisma.TransactionClient;
 
-  throw new ForbiddenException('Ingen adgang');
-}
+const DAY_PERIOD_LOCK_NAMESPACE = 1_145_052_962;
+const MAX_DAY_PERIOD_NAME_LENGTH = 200;
 
 function parseStrictInteger(
   value: unknown,
@@ -52,8 +54,10 @@ function parseStrictInteger(
   message: string,
 ) {
   if (
-    (typeof value !== 'string' && typeof value !== 'number') ||
-    (typeof value === 'string' && !/^[0-9]+$/.test(value))
+    (typeof value !== 'string' &&
+      typeof value !== 'number') ||
+    (typeof value === 'string' &&
+      !/^[0-9]+$/.test(value))
   ) {
     throw new BadRequestException(message);
   }
@@ -71,8 +75,14 @@ function parseStrictInteger(
   return parsedValue;
 }
 
-function parseCinemaId(value: CinemaContextValue) {
-  if (value === null || value === undefined || value === '') {
+function parseCinemaId(
+  value: CinemaContextValue,
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
     return null;
   }
 
@@ -88,12 +98,23 @@ function parseCinemaId(value: CinemaContextValue) {
   }
 }
 
+export function ensureDayPeriodAdmin(
+  user: AuthUser,
+) {
+  if (user.role === 'MASTER') return;
+  if (user.role === 'ADMIN') return;
+
+  throw new ForbiddenException('Ingen adgang');
+}
+
 export function getRequiredDayPeriodCinemaId(
   user: AuthUser,
   selectedCinemaId?: CinemaContextValue,
 ) {
   if (user.role === 'MASTER') {
-    const cinemaId = parseCinemaId(selectedCinemaId);
+    const cinemaId = parseCinemaId(
+      selectedCinemaId,
+    );
 
     if (!cinemaId) {
       throw new BadRequestException(
@@ -107,13 +128,17 @@ export function getRequiredDayPeriodCinemaId(
   const cinemaId = parseCinemaId(user.cinemaId);
 
   if (!cinemaId) {
-    throw new BadRequestException('Brugeren mangler biograf.');
+    throw new BadRequestException(
+      'Brugeren mangler biograf.',
+    );
   }
 
   return cinemaId;
 }
 
-export function normalizeDayPeriodName(name: unknown) {
+export function normalizeDayPeriodName(
+  name: unknown,
+) {
   if (typeof name !== 'string') {
     throw new BadRequestException('Navn mangler.');
   }
@@ -124,6 +149,18 @@ export function normalizeDayPeriodName(name: unknown) {
     throw new BadRequestException('Navn mangler.');
   }
 
+  if (
+    normalizedName.length >
+      MAX_DAY_PERIOD_NAME_LENGTH ||
+    /[\u0000-\u001f\u007f]/.test(
+      normalizedName,
+    )
+  ) {
+    throw new BadRequestException(
+      'Navnet er for langt eller indeholder ugyldige tegn.',
+    );
+  }
+
   return normalizedName;
 }
 
@@ -131,17 +168,30 @@ export function parseRequiredMinute(
   value: MinuteContextValue,
   message: string,
 ) {
-  if (value === null || value === undefined || value === '') {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
     throw new BadRequestException(message);
   }
 
-  return parseStrictInteger(value, 0, 1439, message);
+  return parseStrictInteger(
+    value,
+    0,
+    1439,
+    message,
+  );
 }
 
 export function parseOptionalSortOrder(
   value: MinuteContextValue,
 ) {
-  if (value === null || value === undefined || value === '') {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
     return undefined;
   }
 
@@ -162,4 +212,47 @@ export function ensureDayPeriodRange(
       'Starttidspunkt skal være før sluttidspunkt.',
     );
   }
+}
+
+export async function findDayPeriodForCinema(
+  prisma: DayPeriodDbClient,
+  id: number,
+  cinemaId: number,
+) {
+  const dayPeriod =
+    await prisma.dayPeriod.findFirst({
+      where: {
+        id,
+        cinemaId,
+      },
+    });
+
+  if (!dayPeriod) {
+    throw new NotFoundException(
+      'Dagsperioden findes ikke for den valgte biograf.',
+    );
+  }
+
+  return dayPeriod;
+}
+
+export async function withDayPeriodCinemaLock<T>(
+  prisma: PrismaService,
+  cinemaId: number,
+  action: (
+    transaction: DayPeriodDbClient,
+  ) => Promise<T>,
+) {
+  return prisma.$transaction(
+    async (transaction) => {
+      await transaction.$executeRaw`
+        SELECT pg_advisory_xact_lock(
+          ${DAY_PERIOD_LOCK_NAMESPACE},
+          ${cinemaId}
+        )
+      `;
+
+      return action(transaction);
+    },
+  );
 }

@@ -9,6 +9,7 @@ import {
   normalizeDayPeriodName,
   parseOptionalSortOrder,
   parseRequiredMinute,
+  withDayPeriodCinemaLock,
   type AuthUser,
 } from './day-period-service-helpers';
 
@@ -28,8 +29,12 @@ const admin: AuthUser = {
 
 describe('day period service helpers', () => {
   it('allows master and administrator roles', () => {
-    expect(() => ensureDayPeriodAdmin(master)).not.toThrow();
-    expect(() => ensureDayPeriodAdmin(admin)).not.toThrow();
+    expect(() =>
+      ensureDayPeriodAdmin(master),
+    ).not.toThrow();
+    expect(() =>
+      ensureDayPeriodAdmin(admin),
+    ).not.toThrow();
   });
 
   it('rejects employees', () => {
@@ -42,7 +47,12 @@ describe('day period service helpers', () => {
   });
 
   it('uses a strict selected cinema for master', () => {
-    expect(getRequiredDayPeriodCinemaId(master, '12')).toBe(12);
+    expect(
+      getRequiredDayPeriodCinemaId(
+        master,
+        '12',
+      ),
+    ).toBe(12);
   });
 
   it.each([
@@ -55,12 +65,20 @@ describe('day period service helpers', () => {
     '9007199254740992',
   ])('rejects invalid master cinema %p', (cinemaId) => {
     expect(() =>
-      getRequiredDayPeriodCinemaId(master, cinemaId),
+      getRequiredDayPeriodCinemaId(
+        master,
+        cinemaId,
+      ),
     ).toThrow(BadRequestException);
   });
 
   it('uses the administrators own cinema', () => {
-    expect(getRequiredDayPeriodCinemaId(admin, 99)).toBe(7);
+    expect(
+      getRequiredDayPeriodCinemaId(
+        admin,
+        99,
+      ),
+    ).toBe(7);
   });
 
   it.each([
@@ -71,34 +89,46 @@ describe('day period service helpers', () => {
     Number.MAX_SAFE_INTEGER + 1,
   ])('rejects invalid administrator cinema %p', (cinemaId) => {
     expect(() =>
-      getRequiredDayPeriodCinemaId({
-        ...admin,
-        cinemaId,
-      }),
+      getRequiredDayPeriodCinemaId(
+        {
+          ...admin,
+          cinemaId,
+        },
+      ),
     ).toThrow(BadRequestException);
   });
 
   it('normalizes the name', () => {
-    expect(normalizeDayPeriodName('  Aften  ')).toBe('Aften');
+    expect(
+      normalizeDayPeriodName(' Aften '),
+    ).toBe('Aften');
   });
 
-  it.each([undefined, null, '', '   ', 12])(
-    'rejects invalid name %p',
-    (name) => {
-      expect(() => normalizeDayPeriodName(name)).toThrow(
-        BadRequestException,
-      );
-    },
-  );
+  it.each([
+    undefined,
+    null,
+    '',
+    ' ',
+    12,
+    'Aften\nNat',
+    'x'.repeat(201),
+  ])('rejects invalid name %p', (name) => {
+    expect(() =>
+      normalizeDayPeriodName(name),
+    ).toThrow(BadRequestException);
+  });
 
   it.each([
     [0, 0],
     ['60', 60],
     [1439, 1439],
   ])('parses minute %p as %p', (value, expected) => {
-    expect(parseRequiredMinute(value, 'Ugyldig tid')).toBe(
-      expected,
-    );
+    expect(
+      parseRequiredMinute(
+        value,
+        'Ugyldig tid',
+      ),
+    ).toBe(expected);
   });
 
   it.each([
@@ -112,7 +142,10 @@ describe('day period service helpers', () => {
     '9007199254740992',
   ])('rejects invalid minute %p', (value) => {
     expect(() =>
-      parseRequiredMinute(value, 'Ugyldig tid'),
+      parseRequiredMinute(
+        value,
+        'Ugyldig tid',
+      ),
     ).toThrow(BadRequestException);
   });
 
@@ -123,7 +156,9 @@ describe('day period service helpers', () => {
     [0, 0],
     ['12', 12],
   ])('parses sort order %p as %p', (value, expected) => {
-    expect(parseOptionalSortOrder(value)).toBe(expected);
+    expect(
+      parseOptionalSortOrder(value),
+    ).toBe(expected);
   });
 
   it.each([
@@ -133,21 +168,56 @@ describe('day period service helpers', () => {
     -1,
     Number.MAX_SAFE_INTEGER + 1,
   ])('rejects invalid sort order %p', (value) => {
-    expect(() => parseOptionalSortOrder(value)).toThrow(
-      BadRequestException,
-    );
+    expect(() =>
+      parseOptionalSortOrder(value),
+    ).toThrow(BadRequestException);
   });
 
   it('allows a valid minute range', () => {
-    expect(() => ensureDayPeriodRange(60, 120)).not.toThrow();
+    expect(() =>
+      ensureDayPeriodRange(60, 120),
+    ).not.toThrow();
   });
 
   it.each([
     [60, 60],
     [120, 60],
   ])('rejects invalid minute range %p-%p', (start, end) => {
-    expect(() => ensureDayPeriodRange(start, end)).toThrow(
-      BadRequestException,
+    expect(() =>
+      ensureDayPeriodRange(start, end),
+    ).toThrow(BadRequestException);
+  });
+
+  it('serializes writes with an advisory lock', async () => {
+    const transaction = {
+      $executeRaw: jest
+        .fn()
+        .mockResolvedValue(1),
+    };
+    const prisma = {
+      $transaction: jest.fn(
+        async (
+          callback: (value: any) => unknown,
+        ) => callback(transaction),
+      ),
+    };
+    const action = jest
+      .fn()
+      .mockResolvedValue('ok');
+
+    await expect(
+      withDayPeriodCinemaLock(
+        prisma as never,
+        7,
+        action,
+      ),
+    ).resolves.toBe('ok');
+
+    expect(
+      transaction.$executeRaw,
+    ).toHaveBeenCalledTimes(1);
+    expect(action).toHaveBeenCalledWith(
+      transaction,
     );
   });
 });

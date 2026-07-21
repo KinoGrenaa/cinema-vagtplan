@@ -1,12 +1,14 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { BadRequestException } from '@nestjs/common';
+import type { PrismaService } from '../../prisma/prisma.service';
 import type {
   AuthUser,
   CinemaContextValue,
 } from './day-period-service-helpers';
 import {
   ensureDayPeriodAdmin,
+  findDayPeriodForCinema,
   getRequiredDayPeriodCinemaId,
+  withDayPeriodCinemaLock,
 } from './day-period-service-helpers';
 
 export async function archiveDayPeriod(
@@ -17,30 +19,40 @@ export async function archiveDayPeriod(
 ) {
   ensureDayPeriodAdmin(user);
 
-  const cinemaId = getRequiredDayPeriodCinemaId(user, selectedCinemaId);
+  const cinemaId =
+    getRequiredDayPeriodCinemaId(
+      user,
+      selectedCinemaId,
+    );
 
-  const existing = await prisma.dayPeriod.findFirst({
-    where: {
-      id,
-      cinemaId,
+  return withDayPeriodCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findDayPeriodForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+
+      if (!existing.isActive) {
+        throw new BadRequestException(
+          'Dagsperioden er allerede arkiveret.',
+        );
+      }
+
+      return transaction.dayPeriod.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: false,
+          archivedAt: new Date(),
+        },
+      });
     },
-  });
-
-  if (!existing) {
-    throw new NotFoundException('Dagsperioden findes ikke for den valgte biograf.');
-  }
-
-  if (!existing.isActive) {
-    throw new BadRequestException('Dagsperioden er allerede arkiveret.');
-  }
-
-  return prisma.dayPeriod.update({
-    where: { id },
-    data: {
-      isActive: false,
-      archivedAt: new Date(),
-    },
-  });
+  );
 }
 
 export async function reactivateDayPeriod(
@@ -51,43 +63,59 @@ export async function reactivateDayPeriod(
 ) {
   ensureDayPeriodAdmin(user);
 
-  const cinemaId = getRequiredDayPeriodCinemaId(user, selectedCinemaId);
-
-  const existing = await prisma.dayPeriod.findFirst({
-    where: {
-      id,
-      cinemaId,
-    },
-  });
-
-  if (!existing) {
-    throw new NotFoundException('Dagsperioden findes ikke for den valgte biograf.');
-  }
-
-  if (existing.isActive) {
-    throw new BadRequestException('Dagsperioden er allerede aktiv.');
-  }
-
-  const duplicate = await prisma.dayPeriod.findFirst({
-    where: {
-      name: existing.name,
-      isActive: true,
-      id: { not: id },
-      cinemaId,
-    },
-  });
-
-  if (duplicate) {
-    throw new BadRequestException(
-      'Der findes allerede en aktiv dagsperiode med samme navn.',
+  const cinemaId =
+    getRequiredDayPeriodCinemaId(
+      user,
+      selectedCinemaId,
     );
-  }
 
-  return prisma.dayPeriod.update({
-    where: { id },
-    data: {
-      isActive: true,
-      archivedAt: null,
+  return withDayPeriodCinemaLock(
+    prisma,
+    cinemaId,
+    async (transaction) => {
+      const existing =
+        await findDayPeriodForCinema(
+          transaction,
+          id,
+          cinemaId,
+        );
+
+      if (existing.isActive) {
+        throw new BadRequestException(
+          'Dagsperioden er allerede aktiv.',
+        );
+      }
+
+      const duplicate =
+        await transaction.dayPeriod.findFirst({
+          where: {
+            name: existing.name,
+            isActive: true,
+            id: {
+              not: existing.id,
+            },
+            cinemaId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (duplicate) {
+        throw new BadRequestException(
+          'Der findes allerede en aktiv dagsperiode med samme navn.',
+        );
+      }
+
+      return transaction.dayPeriod.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          isActive: true,
+          archivedAt: null,
+        },
+      });
     },
-  });
+  );
 }
