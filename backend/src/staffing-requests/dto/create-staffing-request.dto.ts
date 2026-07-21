@@ -1,5 +1,5 @@
 import { StaffingRequestType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -8,18 +8,22 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 
 export class CreateStaffingRequestDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(1)
   shiftId?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(1)
   targetUserId?: number;
 
   @IsEnum(StaffingRequestType)
@@ -36,6 +40,7 @@ export class CreateStaffingRequestDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(1)
   workTypeId?: number;
 
   @IsOptional()
@@ -46,7 +51,12 @@ export class CreateStaffingRequestDto {
   priority?: number;
 
   @IsOptional()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
+  @MinLength(1)
+  @MaxLength(1000)
   message?: string;
 
   @IsOptional()
@@ -60,5 +70,6 @@ export class CreateStaffingRequestDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(1)
   cinemaId?: number;
 }

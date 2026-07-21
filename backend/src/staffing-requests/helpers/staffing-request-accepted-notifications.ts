@@ -1,5 +1,10 @@
 import { PrismaService } from '../../prisma/prisma.service';
 
+type StaffingNotificationPrisma = Pick<
+  PrismaService,
+  'user' | 'notification'
+>;
+
 export function buildAcceptedStaffingRequestAdminFilter(cinemaId: number) {
   return {
     role: 'ADMIN' as const,
@@ -19,7 +24,7 @@ export function buildAcceptedStaffingRequestAdminFilter(cinemaId: number) {
 }
 
 export async function createStaffingRequestAcceptedNotifications(
-  prisma: PrismaService,
+  prisma: StaffingNotificationPrisma,
   cinemaId: number,
   requestId: number,
   acceptedByEmail: string,

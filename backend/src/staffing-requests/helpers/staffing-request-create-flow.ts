@@ -1,11 +1,11 @@
 import { ForbiddenException } from '@nestjs/common';
-
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
   AuthUser,
   canManageStaffing,
   CreateStaffingRequestInput,
+  normalizeCreateStaffingRequestInput,
   resolveStaffingCinemaId,
   staffingRequestInclude,
 } from './staffing-request-helpers';
@@ -38,47 +38,40 @@ export async function createStaffingRequest({
     );
   }
 
+  const normalizedDto = normalizeCreateStaffingRequestInput(dto);
   const cinemaId = resolveStaffingCinemaId(
     user,
-    dto.cinemaId,
+    normalizedDto.cinemaId,
   );
 
-  await ensureStaffingRequestActorAccess({
-    prisma,
-    user,
-    cinemaId,
-  });
-
+  await ensureStaffingRequestActorAccess({ prisma, user, cinemaId });
   await ensureStaffingRequestTargetUserExists({
     prisma,
     cinemaId,
-    targetUserId: dto.targetUserId,
+    targetUserId: normalizedDto.targetUserId,
   });
 
   let shift = await resolveStaffingRequestShift({
     prisma,
     cinemaId,
-    shiftId: dto.shiftId,
+    shiftId: normalizedDto.shiftId,
   });
-
   const schedule = resolveStaffingRequestSchedule({
-    dto,
+    dto: normalizedDto,
     shift,
   });
-
-  const requestedWorkTypeId =
-    await resolveStaffingRequestWorkTypeId({
-      prisma,
-      cinemaId,
-      dto,
-      shift,
-    });
+  const requestedWorkTypeId = await resolveStaffingRequestWorkTypeId({
+    prisma,
+    cinemaId,
+    dto: normalizedDto,
+    shift,
+  });
 
   shift = await createUnassignedStaffingShiftIfNeeded({
     prisma,
     realtimeGateway,
     cinemaId,
-    dto,
+    dto: normalizedDto,
     shift,
     requestedWorkTypeId,
     schedule,
@@ -88,31 +81,24 @@ export async function createStaffingRequest({
     data: {
       cinemaId,
       requestedByUserId: user.sub,
-      targetUserId: dto.targetUserId ?? null,
+      targetUserId: normalizedDto.targetUserId ?? null,
       shiftId: shift.id,
       requestStartTime: shift.startTime,
       requestEndTime: shift.endTime,
       workTypeId: requestedWorkTypeId,
-      type: dto.type,
-      priority: dto.priority ?? 1,
-      message: dto.message,
-      aiGenerated: dto.aiGenerated ?? false,
-      expiresAt: dto.expiresAt
-        ? new Date(dto.expiresAt)
+      type: normalizedDto.type,
+      priority: normalizedDto.priority ?? 1,
+      message: normalizedDto.message,
+      aiGenerated: normalizedDto.aiGenerated ?? false,
+      expiresAt: normalizedDto.expiresAt
+        ? new Date(normalizedDto.expiresAt)
         : undefined,
     },
     include: staffingRequestInclude,
   });
 
-  await createNotificationForStaffingRequest(
-    prisma,
-    request.id,
-  );
-
-  emitStaffingRequestsUpdate(
-    realtimeGateway,
-    request.cinemaId,
-  );
+  await createNotificationForStaffingRequest(prisma, request.id);
+  emitStaffingRequestsUpdate(realtimeGateway, request.cinemaId);
 
   return request;
 }
@@ -123,7 +109,5 @@ function emitStaffingRequestsUpdate(
 ) {
   realtimeGateway.server
     .to(`cinema-${cinemaId}`)
-    .emit('staffingRequestsUpdated', {
-      cinemaId,
-    });
+    .emit('staffingRequestsUpdated', { cinemaId });
 }
