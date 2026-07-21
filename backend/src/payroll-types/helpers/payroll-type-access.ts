@@ -10,7 +10,7 @@ export type AuthUser = {
   cinemaId: number | null;
 };
 
-export type CinemaContextValue = number | string | null | undefined;
+export type CinemaContextValue = number | null | undefined;
 
 export function ensurePayrollTypeAdmin(user: AuthUser) {
   if (user.role === 'MASTER') return;
@@ -20,13 +20,11 @@ export function ensurePayrollTypeAdmin(user: AuthUser) {
 }
 
 function parsePayrollTypeCinemaId(value: CinemaContextValue) {
-  const cinemaId = Number(value);
-
-  if (!Number.isFinite(cinemaId) || cinemaId <= 0) {
+  if (!Number.isSafeInteger(value) || (value ?? 0) <= 0) {
     return null;
   }
 
-  return cinemaId;
+  return value as number;
 }
 
 export function getRequiredPayrollTypeCinemaId(
