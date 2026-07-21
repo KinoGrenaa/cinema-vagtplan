@@ -2,88 +2,89 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  AuthUser,
-  ShiftWriteData,
-  getShiftCinemaFilter,
-  validateShiftTimes,
-} from './shift-service-helpers';
 import { checkShiftConflicts } from './shift-conflict-checks';
-import { ensureShiftUserHasCinemaAccess } from './shift-user-access';
+import {
+  NormalizedShiftWriteData,
+} from './shift-input';
+import {
+  shiftResponseInclude,
+} from './shift-service-helpers';
+import {
+  ensureShiftUserHasCinemaAccess,
+} from './shift-user-access';
+
+type ShiftUpdatePrismaClient = Pick<
+  PrismaService,
+  'shift' | 'workType' | 'user' | 'cinema' | 'leaveRequest'
+>;
 
 export async function getShiftUpdateContext({
   prisma,
-  user,
+  cinemaId,
   id,
   data,
+  oldShift,
 }: {
-  prisma: PrismaService;
-  user: AuthUser;
+  prisma: ShiftUpdatePrismaClient;
+  cinemaId: number;
   id: number;
-  data: ShiftWriteData;
+  data: NormalizedShiftWriteData;
+  oldShift?: any;
 }) {
-  const oldShift = await prisma.shift.findFirst({
-    where: {
-      id,
-      ...getShiftCinemaFilter(user, data.cinemaId),
-    },
-    include: {
-      user: true,
-      workType: true,
-    },
-  });
+  const existingShift =
+    oldShift ??
+    (await prisma.shift.findFirst({
+      where: {
+        id,
+        cinemaId,
+      },
+      include: shiftResponseInclude,
+    }));
 
-  if (!oldShift) {
+  if (!existingShift) {
     throw new NotFoundException(
       'Vagten blev ikke fundet',
     );
   }
 
-  const cinemaId = oldShift.cinemaId;
-  const assignedUserId = data.userId ?? null;
-
-  const workType = await prisma.workType.findFirst({
-    where: {
-      id: data.workTypeId,
-      cinemaId,
-    },
-  });
+  const workType =
+    await prisma.workType.findFirst({
+      where: {
+        id: data.workTypeId,
+        cinemaId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+      },
+    });
 
   if (!workType) {
     throw new ForbiddenException(
-      'Vagttypen findes ikke i denne biograf',
+      'Vagttypen findes ikke eller er inaktiv i denne biograf',
     );
   }
 
-  if (assignedUserId) {
+  if (data.userId) {
     await ensureShiftUserHasCinemaAccess(
       prisma,
-      assignedUserId,
+      data.userId,
       cinemaId,
     );
-  }
-
-  const startTime = new Date(data.startTime);
-  const endTime = new Date(data.endTime);
-
-  validateShiftTimes(startTime, endTime);
-
-  if (assignedUserId) {
     await checkShiftConflicts(prisma, {
-      startTime,
-      endTime,
-      userId: assignedUserId,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      userId: data.userId,
       cinemaId,
       ignoreShiftId: id,
     });
   }
 
   return {
-    oldShift,
-    assignedUserId,
-    startTime,
-    endTime,
+    oldShift: existingShift,
+    assignedUserId: data.userId,
+    startTime: data.startTime,
+    endTime: data.endTime,
   };
 }

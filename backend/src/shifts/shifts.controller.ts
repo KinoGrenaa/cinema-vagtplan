@@ -11,40 +11,50 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-
-import { ShiftsService } from './shifts.service';
-import { JwtGuard } from '../auth/jwt/jwt.guard';
+import { Roles } from '../auth/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
+import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
-import { Roles } from '../auth/roles/roles.decorator';
+import { ShiftsService } from './shifts.service';
 
 @Controller('shifts')
 export class ShiftsController {
-  constructor(private shiftsService: ShiftsService) {}
+  constructor(
+    private readonly shiftsService: ShiftsService,
+  ) {}
 
-  private parseRequiredId(value: string | number, message: string) {
+  private parseRequiredId(
+    value: string | number,
+    message: string,
+  ) {
     const parsedId = Number(value);
 
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    if (
+      !Number.isInteger(parsedId) ||
+      parsedId <= 0
+    ) {
       throw new BadRequestException(message);
     }
 
     return parsedId;
   }
 
-  private parseCinemaId(value?: string | number | null) {
-    if (value === undefined || value === null || value === '') {
+  private parseCinemaId(
+    value?: string | number | null,
+  ) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === ''
+    ) {
       return undefined;
     }
 
-    const cinemaId = Number(value);
-
-    if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
-      throw new BadRequestException('Biograf skal være et gyldigt ID');
-    }
-
-    return cinemaId;
+    return this.parseRequiredId(
+      value,
+      'Biograf skal være et gyldigt ID',
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -55,7 +65,7 @@ export class ShiftsController {
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.shiftsService.findAll(
-      req.user as any,
+      req.user,
       date,
       this.parseCinemaId(cinemaId),
     );
@@ -64,8 +74,14 @@ export class ShiftsController {
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')
   @Post()
-  createShift(@Req() req: any, @Body() body: CreateShiftDto) {
-    return this.shiftsService.createShift(req.user as any, body);
+  createShift(
+    @Req() req: any,
+    @Body() body: CreateShiftDto,
+  ) {
+    return this.shiftsService.createShift(
+      req.user,
+      body,
+    );
   }
 
   @UseGuards(JwtGuard, RolesGuard)
@@ -77,8 +93,11 @@ export class ShiftsController {
     @Body() body: UpdateShiftDto,
   ) {
     return this.shiftsService.updateShift(
-      req.user as any,
-      this.parseRequiredId(id, 'Vagt skal være et gyldigt ID'),
+      req.user,
+      this.parseRequiredId(
+        id,
+        'Vagt skal være et gyldigt ID',
+      ),
       body,
     );
   }
@@ -92,8 +111,11 @@ export class ShiftsController {
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.shiftsService.deleteShift(
-      req.user as any,
-      this.parseRequiredId(id, 'Vagt skal være et gyldigt ID'),
+      req.user,
+      this.parseRequiredId(
+        id,
+        'Vagt skal være et gyldigt ID',
+      ),
       this.parseCinemaId(cinemaId),
     );
   }

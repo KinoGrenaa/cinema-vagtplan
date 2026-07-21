@@ -2,10 +2,11 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../prisma/prisma.service';
-
-import { AuthUser } from './shift-service-helpers';
+import {
+  AuthUser,
+  getRequiredPositiveShiftId,
+} from './shift-service-helpers';
 
 type ShiftUserAccessPrismaClient = Pick<
   PrismaService,
@@ -15,11 +16,20 @@ type ShiftUserAccessPrismaClient = Pick<
 export async function ensureShiftActorHasCinemaAccess(
   prisma: ShiftUserAccessPrismaClient,
   user: AuthUser,
-  cinemaId: number,
+  cinemaIdValue: number,
 ) {
+  const actorUserId =
+    getRequiredPositiveShiftId(
+      user?.sub,
+      'Brugeren kunne ikke identificeres',
+    );
+  const cinemaId = getRequiredPositiveShiftId(
+    cinemaIdValue,
+    'Biograf skal være et gyldigt ID',
+  );
   const actor = await prisma.user.findUnique({
     where: {
-      id: user.sub,
+      id: actorUserId,
     },
     select: {
       id: true,
@@ -50,14 +60,15 @@ export async function ensureShiftActorHasCinemaAccess(
   }
 
   if (user.role === 'MASTER') {
-    const cinema = await prisma.cinema.findUnique({
-      where: {
-        id: cinemaId,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const cinema =
+      await prisma.cinema.findUnique({
+        where: {
+          id: cinemaId,
+        },
+        select: {
+          id: true,
+        },
+      });
 
     if (!cinema) {
       throw new NotFoundException(
@@ -81,9 +92,17 @@ export async function ensureShiftActorHasCinemaAccess(
 
 export async function ensureShiftUserHasCinemaAccess(
   prisma: ShiftUserAccessPrismaClient,
-  userId: number,
-  cinemaId: number,
+  userIdValue: number,
+  cinemaIdValue: number,
 ) {
+  const userId = getRequiredPositiveShiftId(
+    userIdValue,
+    'Medarbejder skal være et gyldigt ID',
+  );
+  const cinemaId = getRequiredPositiveShiftId(
+    cinemaIdValue,
+    'Biograf skal være et gyldigt ID',
+  );
   const shiftUser = await prisma.user.findFirst({
     where: {
       id: userId,

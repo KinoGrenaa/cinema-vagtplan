@@ -1,18 +1,23 @@
 import { ForbiddenException } from '@nestjs/common';
-
+import { Prisma } from '@prisma/client';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
+import { checkShiftConflicts } from './shift-conflict-checks';
+import {
+  normalizeShiftWriteData,
+} from './shift-input';
 import {
   AuthUser,
   ShiftWriteData,
   getShiftUserLabel,
   resolveShiftCinemaId,
-  validateShiftTimes,
+  shiftResponseInclude,
 } from './shift-service-helpers';
-import { checkShiftConflicts } from './shift-conflict-checks';
-import { ensureShiftUserHasCinemaAccess } from './shift-user-access';
+import {
+  ensureShiftUserHasCinemaAccess,
+} from './shift-user-access';
 
 export async function createShiftFlow({
   prisma,
@@ -34,76 +39,87 @@ export async function createShiftFlow({
   user: AuthUser;
   data: ShiftWriteData;
 }) {
+  const normalized =
+    normalizeShiftWriteData(data);
   const cinemaId = resolveShiftCinemaId(
     user,
-    data.cinemaId,
+    normalized.cinemaId,
   );
-  const assignedUserId = data.userId ?? null;
+  const assignedUserId = normalized.userId;
+  const shift = await prisma.$transaction(
+    async (tx) => {
+      if (assignedUserId) {
+        await tx.$queryRaw(
+          Prisma.sql`
+            SELECT pg_advisory_xact_lock(
+              56001,
+              ${assignedUserId}
+            )
+          `,
+        );
+      }
 
-  const workType = await prisma.workType.findFirst({
-    where: {
-      id: data.workTypeId,
-      cinemaId,
+      const workType =
+        await tx.workType.findFirst({
+          where: {
+            id: normalized.workTypeId,
+            cinemaId,
+            isActive: true,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (!workType) {
+        throw new ForbiddenException(
+          'Vagttypen findes ikke eller er inaktiv i denne biograf',
+        );
+      }
+
+      if (assignedUserId) {
+        await ensureShiftUserHasCinemaAccess(
+          tx,
+          assignedUserId,
+          cinemaId,
+        );
+        await checkShiftConflicts(tx, {
+          startTime: normalized.startTime,
+          endTime: normalized.endTime,
+          userId: assignedUserId,
+          cinemaId,
+        });
+      }
+
+      return tx.shift.create({
+        data: {
+          startTime: normalized.startTime,
+          endTime: normalized.endTime,
+          note: normalized.note,
+          cinemaId,
+          userId: assignedUserId,
+          workTypeId:
+            normalized.workTypeId,
+        },
+        include: shiftResponseInclude,
+      });
     },
-  });
-
-  if (!workType) {
-    throw new ForbiddenException(
-      'Vagttypen findes ikke i denne biograf',
-    );
-  }
-
-  if (assignedUserId) {
-    await ensureShiftUserHasCinemaAccess(
-      prisma,
-      assignedUserId,
-      cinemaId,
-    );
-  }
-
-  const startTime = new Date(data.startTime);
-  const endTime = new Date(data.endTime);
-
-  validateShiftTimes(startTime, endTime);
-
-  if (assignedUserId) {
-    await checkShiftConflicts(prisma, {
-      startTime,
-      endTime,
-      userId: assignedUserId,
-      cinemaId,
-    });
-  }
-
-  const shift = await prisma.shift.create({
-    data: {
-      startTime,
-      endTime,
-      note: data.note,
-      cinemaId,
-      userId: assignedUserId,
-      workTypeId: data.workTypeId,
-    },
-    include: {
-      workType: true,
-      user: true,
-    },
-  });
+  );
 
   await auditLogsService.create({
     action: 'CREATE_SHIFT',
     entityType: 'Shift',
     entityId: shift.id,
-    description: `Oprettede vagt til ${getShiftUserLabel(
-      shift,
-    )}: ${shift.workType.name} - ${formatShiftTime(
-      shift.startTime,
-      shift.endTime,
-    )}`,
+    description:
+      `Oprettede vagt til ${getShiftUserLabel(
+        shift,
+      )}: ${shift.workType.name} - ${formatShiftTime(
+        shift.startTime,
+        shift.endTime,
+      )}`,
     userId: user.sub,
     cinemaId: shift.cinemaId,
   });
-
   realtimeGateway.notifyCinema(
     shift.cinemaId,
     'shiftsUpdated',
@@ -116,10 +132,11 @@ export async function createShiftFlow({
       shift.cinemaId,
       {
         title: 'Ny vagt',
-        body: `${shift.workType.name} - ${formatShiftTime(
-          startTime,
-          endTime,
-        )}`,
+        body:
+          `${shift.workType.name} - ${formatShiftTime(
+            shift.startTime,
+            shift.endTime,
+          )}`,
         url: '/my-shifts',
       },
     );

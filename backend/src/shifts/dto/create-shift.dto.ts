@@ -1,24 +1,36 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { SHIFT_NOTE_MAX_LENGTH } from '../helpers/shift-input';
 
 export class CreateShiftDto {
   @IsOptional()
   @IsInt()
+  @Min(1)
   userId?: number | null;
 
   @IsInt()
+  @Min(1)
   workTypeId: number;
 
   @IsOptional()
   @IsInt()
+  @Min(1)
   cinemaId?: number;
 
-  @IsString()
+  @IsDateString()
   startTime: string;
 
-  @IsString()
+  @IsDateString()
   endTime: string;
 
   @IsOptional()
   @IsString()
-  note?: string;
+  @MaxLength(SHIFT_NOTE_MAX_LENGTH)
+  note?: string | null;
 }

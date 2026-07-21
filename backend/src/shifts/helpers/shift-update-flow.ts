@@ -1,13 +1,51 @@
+import {
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
+  normalizeShiftWriteData,
+} from './shift-input';
+import {
   AuthUser,
   ShiftWriteData,
   getShiftUserLabel,
+  resolveShiftCinemaId,
+  shiftResponseInclude,
 } from './shift-service-helpers';
-import { getShiftUpdateContext } from './shift-update-validation';
+import {
+  getShiftUpdateContext,
+} from './shift-update-validation';
+
+async function acquireShiftUserLocks(
+  tx: any,
+  userIds: Array<number | null | undefined>,
+) {
+  const uniqueUserIds = [
+    ...new Set(
+      userIds.filter(
+        (value): value is number =>
+          Number.isInteger(value) &&
+          Number(value) > 0,
+      ),
+    ),
+  ].sort((left, right) => left - right);
+
+  for (const userId of uniqueUserIds) {
+    await tx.$queryRaw(
+      Prisma.sql`
+        SELECT pg_advisory_xact_lock(
+          56001,
+          ${userId}
+        )
+      `,
+    );
+  }
+}
 
 export async function updateShiftFlow({
   prisma,
@@ -31,52 +69,118 @@ export async function updateShiftFlow({
   id: number;
   data: ShiftWriteData;
 }) {
+  const normalized =
+    normalizeShiftWriteData(data);
+  const cinemaId = resolveShiftCinemaId(
+    user,
+    normalized.cinemaId,
+  );
+  const result = await prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`
+          SELECT pg_advisory_xact_lock(
+            56002,
+            ${id}
+          )
+        `,
+      );
+
+      const oldShift =
+        await tx.shift.findFirst({
+          where: {
+            id,
+            cinemaId,
+          },
+          include: shiftResponseInclude,
+        });
+
+      if (!oldShift) {
+        throw new NotFoundException(
+          'Vagten blev ikke fundet',
+        );
+      }
+
+      await acquireShiftUserLocks(tx, [
+        oldShift.userId,
+        normalized.userId,
+      ]);
+
+      const context =
+        await getShiftUpdateContext({
+          prisma: tx,
+          cinemaId,
+          id,
+          data: normalized,
+          oldShift,
+        });
+      const updated =
+        await tx.shift.updateMany({
+          where: {
+            id,
+            cinemaId,
+          },
+          data: {
+            startTime: normalized.startTime,
+            endTime: normalized.endTime,
+            note: normalized.note,
+            userId: normalized.userId,
+            workTypeId:
+              normalized.workTypeId,
+          },
+        });
+
+      if (updated.count !== 1) {
+        throw new ConflictException(
+          'Vagten blev ændret af en anden. Genindlæs og prøv igen.',
+        );
+      }
+
+      const shift =
+        await tx.shift.findUnique({
+          where: {
+            id,
+          },
+          include: shiftResponseInclude,
+        });
+
+      if (!shift) {
+        throw new NotFoundException(
+          'Vagten blev ikke fundet',
+        );
+      }
+
+      return {
+        ...context,
+        shift,
+      };
+    },
+  );
   const {
     oldShift,
     assignedUserId,
     startTime,
     endTime,
-  } = await getShiftUpdateContext({
-    prisma,
-    user,
-    id,
-    data,
-  });
-
-  const shift = await prisma.shift.update({
-    where: {
-      id,
-    },
-    data: {
-      startTime,
-      endTime,
-      note: data.note,
-      userId: assignedUserId,
-      workTypeId: data.workTypeId,
-    },
-    include: {
-      workType: true,
-      user: true,
-    },
-  });
+    shift,
+  } = result;
 
   await auditLogsService.create({
     action: 'UPDATE_SHIFT',
     entityType: 'Shift',
     entityId: shift.id,
-    description: `Opdaterede vagt fra ${oldShift.workType.name} - ${formatShiftTime(
-      oldShift.startTime,
-      oldShift.endTime,
-    )} til ${getShiftUserLabel(shift)}: ${
-      shift.workType.name
-    } - ${formatShiftTime(
-      shift.startTime,
-      shift.endTime,
-    )}`,
+    description:
+      `Opdaterede vagt fra ${oldShift.workType.name} - ${formatShiftTime(
+        oldShift.startTime,
+        oldShift.endTime,
+      )} til ${getShiftUserLabel(
+        shift,
+      )}: ${shift.workType.name} - ${formatShiftTime(
+        shift.startTime,
+        shift.endTime,
+      )}`,
     userId: user.sub,
     cinemaId: shift.cinemaId,
   });
-
   realtimeGateway.notifyCinema(
     shift.cinemaId,
     'shiftsUpdated',
@@ -92,10 +196,11 @@ export async function updateShiftFlow({
           oldShift.userId === assignedUserId
             ? 'Vagt ændret'
             : 'Vagt tildelt',
-        body: `${shift.workType.name} - ${formatShiftTime(
-          startTime,
-          endTime,
-        )}`,
+        body:
+          `${shift.workType.name} - ${formatShiftTime(
+            startTime,
+            endTime,
+          )}`,
         url: '/my-shifts',
       },
     );
