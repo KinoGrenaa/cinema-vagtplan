@@ -12,6 +12,9 @@ type AbsenceCalendarHeaderProps = {
   onOpenApproval: () => void;
 };
 
+const secondaryButtonClass =
+  "rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950";
+
 export default function AbsenceCalendarHeader({
   selectedMonth,
   isCurrentMonth,
@@ -20,12 +23,13 @@ export default function AbsenceCalendarHeader({
   onOpenApproval,
 }: AbsenceCalendarHeaderProps) {
   return (
-    <header className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950/60">
+    <header className="rounded-3xl border border-gray-200 bg-white p-5 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-950/60 dark:text-gray-100">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-950 dark:text-white">
             Ferie/fraværskalender
           </h1>
+
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Månedsoverblik over
             godkendt fravær og
@@ -37,7 +41,7 @@ export default function AbsenceCalendarHeader({
         <button
           type="button"
           onClick={onOpenApproval}
-          className="w-fit rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+          className={secondaryButtonClass}
         >
           Åbn fraværsgodkendelse
         </button>
@@ -49,7 +53,7 @@ export default function AbsenceCalendarHeader({
           onClick={() =>
             onChangeMonth(-1)
           }
-          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+          className={secondaryButtonClass}
         >
           ← Forrige
         </button>
@@ -60,11 +64,12 @@ export default function AbsenceCalendarHeader({
               selectedMonth,
             )}
           </div>
+
           {!isCurrentMonth && (
             <button
               type="button"
               onClick={onToday}
-              className="mt-1 text-sm font-semibold text-blue-700 hover:underline dark:text-blue-300"
+              className="mt-1 rounded-md text-sm font-semibold text-blue-700 transition hover:text-blue-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
             >
               Gå til denne måned
             </button>
@@ -76,7 +81,7 @@ export default function AbsenceCalendarHeader({
           onClick={() =>
             onChangeMonth(1)
           }
-          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+          className={secondaryButtonClass}
         >
           Næste →
         </button>
