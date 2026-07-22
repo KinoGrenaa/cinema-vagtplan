@@ -21,3 +21,26 @@ export type EmployeeDocument = {
   fileType?: string;
   createdAt: string;
 };
+
+export type EmployeeDocumentCategory =
+  | "PDF"
+  | "IMAGE"
+  | "OFFICE"
+  | "OTHER";
+
+export type EmployeeDocumentTypeFilter =
+  | "ALL"
+  | EmployeeDocumentCategory;
+
+export type EmployeeDocumentSort =
+  | "NEWEST"
+  | "OLDEST"
+  | "TITLE";
+
+export type EmployeeDocumentSummary = {
+  total: number;
+  pdf: number;
+  images: number;
+  office: number;
+  latestCreatedAt: string | null;
+};
