@@ -11,16 +11,22 @@ type DashboardOverviewSectionsProps = {
   };
 };
 
+const shortcutBaseClass =
+  "rounded-xl px-4 py-3 text-center font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
+
 const shortcutClasses = {
   schedule:
-    "rounded-xl bg-blue-600 px-4 py-3 text-center font-medium text-white hover:bg-blue-700",
+    `${shortcutBaseClass} bg-blue-700 hover:bg-blue-800 focus-visible:ring-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:ring-blue-400`,
   timeTracking:
-    "rounded-xl bg-green-600 px-4 py-3 text-center font-medium text-white hover:bg-green-700",
+    `${shortcutBaseClass} bg-green-700 hover:bg-green-800 focus-visible:ring-green-600 dark:bg-green-600 dark:hover:bg-green-500 dark:focus-visible:ring-green-400`,
   shiftTrades:
-    "rounded-xl bg-purple-600 px-4 py-3 text-center font-medium text-white hover:bg-purple-700",
+    `${shortcutBaseClass} bg-purple-700 hover:bg-purple-800 focus-visible:ring-purple-600 dark:bg-purple-600 dark:hover:bg-purple-500 dark:focus-visible:ring-purple-400`,
   payroll:
-    "rounded-xl bg-gray-800 px-4 py-3 text-center font-medium text-white hover:bg-gray-900",
+    `${shortcutBaseClass} bg-gray-800 hover:bg-gray-900 focus-visible:ring-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus-visible:ring-gray-400`,
 };
+
+const panelClass =
+  "rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100";
 
 export default function DashboardOverviewSections({
   movieCount,
@@ -74,44 +80,44 @@ export default function DashboardOverviewSections({
   return (
     <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       {moduleAccess.schedule && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="text-xl font-bold">
+        <div className={panelClass}>
+          <h2 className="text-xl font-bold text-gray-950 dark:text-white">
             Biograf i dag
           </h2>
 
           <div className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600 dark:text-gray-300">
                 Forestillinger
               </span>
-              <span className="font-medium">
+              <span className="font-medium text-gray-950 dark:text-white">
                 {movieCount}
               </span>
             </div>
 
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600 dark:text-gray-300">
                 Solgte billetter
               </span>
-              <span className="font-medium">
+              <span className="font-medium text-gray-950 dark:text-white">
                 {soldSeatsToday}
               </span>
             </div>
 
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600 dark:text-gray-300">
                 Belægning
               </span>
-              <span className="font-medium">
+              <span className="font-medium text-gray-950 dark:text-white">
                 {seatLoadPercent}%
               </span>
             </div>
 
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-gray-400">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600 dark:text-gray-300">
                 Vagter i dag
               </span>
-              <span className="font-medium">
+              <span className="font-medium text-gray-950 dark:text-white">
                 {shiftCount}
               </span>
             </div>
@@ -120,8 +126,8 @@ export default function DashboardOverviewSections({
       )}
 
       {shortcuts.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="text-xl font-bold">
+        <div className={panelClass}>
+          <h2 className="text-xl font-bold text-gray-950 dark:text-white">
             Genveje
           </h2>
 

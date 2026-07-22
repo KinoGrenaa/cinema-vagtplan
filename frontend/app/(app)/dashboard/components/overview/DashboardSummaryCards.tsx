@@ -13,6 +13,13 @@ type DashboardSummaryCardsProps = {
   };
 };
 
+const cardClass =
+  "rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100";
+const labelClass =
+  "text-sm text-gray-600 dark:text-gray-300";
+const valueClass =
+  "mt-2 text-3xl font-bold text-gray-950 dark:text-white";
+
 export default function DashboardSummaryCards({
   todayPlannedHours,
   myRegisteredHours,
@@ -33,11 +40,11 @@ export default function DashboardSummaryCards({
   return (
     <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
       {moduleAccess.schedule && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+        <div className={cardClass}>
+          <div className={labelClass}>
             Planlagte timer i dag
           </div>
-          <div className="mt-2 text-3xl font-bold">
+          <div className={valueClass}>
             {formatHours(
               todayPlannedHours,
             )}
@@ -46,11 +53,11 @@ export default function DashboardSummaryCards({
       )}
 
       {moduleAccess.timeTracking && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+        <div className={cardClass}>
+          <div className={labelClass}>
             Mine registrerede timer
           </div>
-          <div className="mt-2 text-3xl font-bold">
+          <div className={valueClass}>
             {formatHours(
               myRegisteredHours,
             )}
@@ -59,22 +66,22 @@ export default function DashboardSummaryCards({
       )}
 
       {moduleAccess.shiftTrades && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+        <div className={cardClass}>
+          <div className={labelClass}>
             Åbne vagtbytter
           </div>
-          <div className="mt-2 text-3xl font-bold">
+          <div className={valueClass}>
             {openShiftTrades}
           </div>
         </div>
       )}
 
       {moduleAccess.leave && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+        <div className={cardClass}>
+          <div className={labelClass}>
             Afventer fridage
           </div>
-          <div className="mt-2 text-3xl font-bold">
+          <div className={valueClass}>
             {pendingLeaveRequests}
           </div>
         </div>
