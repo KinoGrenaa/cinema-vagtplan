@@ -1,15 +1,26 @@
 "use client";
 
+import {
+  useState,
+} from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
-
 import MasterCinemasListSection from "./components/cinemas/MasterCinemasListSection";
 import MasterCreateCinemaSection from "./components/cinemas/MasterCreateCinemaSection";
 import MasterHeader from "./components/layout/MasterHeader";
+import MasterCinemaModulesSection from "./components/modules/MasterCinemaModulesSection";
 import MasterSummaryCards from "./components/overview/MasterSummaryCards";
 import MasterSystemErrorSummaryCard from "./components/overview/MasterSystemErrorSummaryCard";
+import type {
+  Cinema,
+} from "./helpers/core/masterTypes";
 import { useMasterPanel } from "./hooks/useMasterPanel";
 
 export default function MasterPage() {
+  const [
+    moduleCinema,
+    setModuleCinema,
+  ] = useState<Cinema | null>(null);
+
   const {
     infoDialog,
     checkedAccess,
@@ -44,12 +55,20 @@ export default function MasterPage() {
     );
   }
 
-  if (!currentUser || currentUser.role !== "MASTER") {
+  if (
+    !currentUser ||
+    currentUser.role !== "MASTER"
+  ) {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 shadow-sm dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-          <h1 className="text-2xl font-bold">Ingen adgang</h1>
-          <p className="mt-2">Denne side er kun for globale MASTER-brugere.</p>
+          <h1 className="text-2xl font-bold">
+            Ingen adgang
+          </h1>
+          <p className="mt-2">
+            Denne side er kun for
+            globale MASTER-brugere.
+          </p>
         </div>
       </main>
     );
@@ -58,11 +77,15 @@ export default function MasterPage() {
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <MasterHeader onRefresh={fetchCinemas} />
+        <MasterHeader
+          onRefresh={fetchCinemas}
+        />
 
         <MasterSummaryCards
           cinemas={cinemas}
-          selectedCinema={selectedCinema}
+          selectedCinema={
+            selectedCinema
+          }
         />
 
         <MasterSystemErrorSummaryCard />
@@ -70,8 +93,12 @@ export default function MasterPage() {
         <MasterCreateCinemaSection
           newCinemaName={newCinemaName}
           creating={creating}
-          onNewCinemaNameChange={setNewCinemaName}
-          onCreateCinema={createCinema}
+          onNewCinemaNameChange={
+            setNewCinemaName
+          }
+          onCreateCinema={
+            createCinema
+          }
         />
 
         {message && (
@@ -82,23 +109,55 @@ export default function MasterPage() {
 
         <MasterCinemasListSection
           cinemas={cinemas}
-          selectedCinemaId={selectedCinemaId}
-          editingCinemaId={editingCinemaId}
-          editingCinemaName={editingCinemaName}
-          savingCinemaId={savingCinemaId}
-          onEditingCinemaNameChange={setEditingCinemaName}
-          onSaveSelectedCinema={saveSelectedCinema}
-          onStartEditingCinema={startEditingCinema}
-          onCancelEditingCinema={cancelEditingCinema}
-          onSaveCinemaName={saveCinemaName}
+          selectedCinemaId={
+            selectedCinemaId
+          }
+          editingCinemaId={
+            editingCinemaId
+          }
+          editingCinemaName={
+            editingCinemaName
+          }
+          savingCinemaId={
+            savingCinemaId
+          }
+          onEditingCinemaNameChange={
+            setEditingCinemaName
+          }
+          onSaveSelectedCinema={
+            saveSelectedCinema
+          }
+          onStartEditingCinema={
+            startEditingCinema
+          }
+          onCancelEditingCinema={
+            cancelEditingCinema
+          }
+          onSaveCinemaName={
+            saveCinemaName
+          }
+          onManageModules={
+            setModuleCinema
+          }
         />
       </div>
+
+      <MasterCinemaModulesSection
+        cinema={moduleCinema}
+        onClose={() =>
+          setModuleCinema(null)
+        }
+      />
 
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
-        description={infoDialog.description}
-        buttonText={infoDialog.buttonText}
+        description={
+          infoDialog.description
+        }
+        buttonText={
+          infoDialog.buttonText
+        }
         variant={infoDialog.variant}
         onClose={infoDialog.close}
       />

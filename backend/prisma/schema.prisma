@@ -161,6 +161,21 @@ model Cinema {
   aiEnabled                         Boolean                       @default(false)
   shiftPlanningDrafts               ShiftPlanningDraft[]
   shiftPlanningDraftItems           ShiftPlanningDraftItem[]
+  moduleSettings                   CinemaModuleSetting[]
+}
+
+
+model CinemaModuleSetting {
+  id        Int      @id @default(autoincrement())
+  cinemaId  Int
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  moduleKey String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cinemaId, moduleKey])
+  @@index([cinemaId, enabled])
 }
 
 model User {
