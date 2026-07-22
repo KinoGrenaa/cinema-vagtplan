@@ -24,8 +24,19 @@ describe('LeaveRequestsController', () => {
     jest.clearAllMocks();
   });
 
-  it.each(['0', '-1', '1.5', 'ukendt'])(
-    'afviser ugyldigt fraværs-ID %s',
+  it.each([
+    '0',
+    '-1',
+    '1.5',
+    '1e2',
+    '+8',
+    ' 8',
+    '8 ',
+    '9007199254740992',
+    'ukendt',
+    '',
+  ])(
+    'afviser ugyldigt fraværs-ID %p',
     (id) => {
       expect(() =>
         controller.updateStatus(
@@ -37,11 +48,26 @@ describe('LeaveRequestsController', () => {
           undefined,
         ),
       ).toThrow(BadRequestException);
+
+      expect(
+        service.updateStatus,
+      ).not.toHaveBeenCalled();
     },
   );
 
-  it.each(['0', '-1', '2.5', 'ukendt'])(
-    'afviser ugyldigt biograf-ID %s',
+  it.each([
+    '0',
+    '-1',
+    '2.5',
+    '1e2',
+    '+2',
+    ' 2',
+    '2 ',
+    '9007199254740992',
+    'ukendt',
+    '',
+  ])(
+    'afviser ugyldigt biograf-ID %p',
     (cinemaId) => {
       expect(() =>
         controller.getAllLeaveRequests(
@@ -50,11 +76,20 @@ describe('LeaveRequestsController', () => {
           undefined,
         ),
       ).toThrow(BadRequestException);
+
+      expect(
+        service.findAll,
+      ).not.toHaveBeenCalled();
     },
   );
 
-  it.each(['1', 'yes', 'TRUE'])(
-    'afviser ugyldigt includeAll %s',
+  it.each([
+    '1',
+    'yes',
+    'TRUE',
+    ' false ',
+  ])(
+    'afviser ugyldigt includeAll %p',
     (includeAll) => {
       expect(() =>
         controller.getAllLeaveRequests(
@@ -63,8 +98,44 @@ describe('LeaveRequestsController', () => {
           includeAll,
         ),
       ).toThrow(BadRequestException);
+
+      expect(
+        service.findAll,
+      ).not.toHaveBeenCalled();
     },
   );
+
+  it('videresender valideret listekald', () => {
+    controller.getAllLeaveRequests(
+      req,
+      '2',
+      'true',
+    );
+
+    expect(
+      service.findAll,
+    ).toHaveBeenCalledWith(
+      req.user,
+      2,
+      true,
+    );
+  });
+
+  it('tillader helt udeladt valgfri biograf', () => {
+    controller.getAllLeaveRequests(
+      req,
+      undefined,
+      undefined,
+    );
+
+    expect(
+      service.findAll,
+    ).toHaveBeenCalledWith(
+      req.user,
+      undefined,
+      false,
+    );
+  });
 
   it('videresender en gyldig oprettelse', () => {
     const body = {
@@ -82,9 +153,31 @@ describe('LeaveRequestsController', () => {
       body,
     );
 
-    expect(service.create).toHaveBeenCalledWith(
+    expect(
+      service.create,
+    ).toHaveBeenCalledWith(
       req.user,
       body,
+    );
+  });
+
+  it('videresender valideret statusændring', () => {
+    controller.updateStatus(
+      req,
+      '8',
+      {
+        status: 'APPROVED',
+      },
+      '2',
+    );
+
+    expect(
+      service.updateStatus,
+    ).toHaveBeenCalledWith(
+      req.user,
+      8,
+      'APPROVED',
+      2,
     );
   });
 });

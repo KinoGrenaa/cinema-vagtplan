@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -10,43 +9,18 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { MessagesService } from './messages.service';
-
-function parseRequiredId(
-  value: string | number,
-  message: string,
-) {
-  const parsedId = Number(value);
-
-  if (!Number.isInteger(parsedId) || parsedId <= 0) {
-    throw new BadRequestException(message);
-  }
-
-  return parsedId;
-}
-
-function parseOptionalId(
-  value: string | number | null | undefined,
-  message: string,
-) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ''
-  ) {
-    return undefined;
-  }
-
-  return parseRequiredId(value, message);
-}
 
 @Controller('messages')
 export class MessagesController {
   constructor(
-    private messagesService: MessagesService,
+    private readonly messagesService: MessagesService,
   ) {}
 
   @UseGuards(JwtGuard)
@@ -57,7 +31,7 @@ export class MessagesController {
   ) {
     return this.messagesService.getUnreadCount(
       req.user,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -72,7 +46,7 @@ export class MessagesController {
   ) {
     return this.messagesService.findArchivedForUser(
       req.user,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -87,7 +61,7 @@ export class MessagesController {
   ) {
     return this.messagesService.findSentForUser(
       req.user,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -102,7 +76,7 @@ export class MessagesController {
   ) {
     return this.messagesService.findAllForUser(
       req.user,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -119,7 +93,7 @@ export class MessagesController {
     return this.messagesService.create(
       req.user,
       body,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -134,12 +108,12 @@ export class MessagesController {
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.messagesService.markAsRead(
-      parseRequiredId(
+      parseRequiredPositiveInteger(
         id,
         'Besked skal være et gyldigt ID',
       ),
       req.user,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -154,12 +128,12 @@ export class MessagesController {
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.messagesService.archiveMessage(
-      parseRequiredId(
+      parseRequiredPositiveInteger(
         id,
         'Besked skal være et gyldigt ID',
       ),
       req.user,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -174,12 +148,12 @@ export class MessagesController {
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.messagesService.unarchiveMessage(
-      parseRequiredId(
+      parseRequiredPositiveInteger(
         id,
         'Besked skal være et gyldigt ID',
       ),
       req.user,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),
@@ -194,12 +168,12 @@ export class MessagesController {
     @Query('cinemaId') cinemaId?: string,
   ) {
     return this.messagesService.recallMessage(
-      parseRequiredId(
+      parseRequiredPositiveInteger(
         id,
         'Besked skal være et gyldigt ID',
       ),
       req.user,
-      parseOptionalId(
+      parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
       ),

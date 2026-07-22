@@ -11,6 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 import { UpdateLeaveStatusDto } from './dto/update-leave-status.dto';
 import { LeaveRequestsService } from './leave-requests.service';
@@ -20,42 +24,6 @@ export class LeaveRequestsController {
   constructor(
     private readonly leaveRequestsService: LeaveRequestsService,
   ) {}
-
-  private parsePositiveId(
-    value: string | number,
-    fieldName: string,
-  ) {
-    const id = Number(value);
-
-    if (!Number.isInteger(id) || id <= 0) {
-      throw new BadRequestException(
-        `${fieldName} skal være et gyldigt ID`,
-      );
-    }
-
-    return id;
-  }
-
-  private parseCinemaId(
-    value?: string | number | null,
-  ) {
-    if (
-      value === undefined ||
-      value === null ||
-      value === ''
-    ) {
-      return undefined;
-    }
-
-    return this.parsePositiveId(value, 'Biograf');
-  }
-
-  private parseLeaveRequestId(value: string) {
-    return this.parsePositiveId(
-      value,
-      'Fraværsansøgning',
-    );
-  }
 
   private parseIncludeAll(value?: string) {
     if (value === undefined || value === '') {
@@ -84,7 +52,10 @@ export class LeaveRequestsController {
   ) {
     return this.leaveRequestsService.findAll(
       req.user,
-      this.parseCinemaId(cinemaId),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
       this.parseIncludeAll(includeAll),
     );
   }
@@ -111,9 +82,15 @@ export class LeaveRequestsController {
   ) {
     return this.leaveRequestsService.updateStatus(
       req.user,
-      this.parseLeaveRequestId(id),
+      parseRequiredPositiveInteger(
+        id,
+        'Fraværsansøgning skal være et gyldigt ID',
+      ),
       body.status,
-      this.parseCinemaId(cinemaId),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 }
