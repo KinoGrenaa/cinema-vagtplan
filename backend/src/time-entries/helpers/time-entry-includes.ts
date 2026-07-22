@@ -5,6 +5,21 @@ const payrollPeriodStatusSelect = {
   status: true,
 } as const;
 
+const pendingPayrollAdjustmentsInclude = {
+  where: {
+    status: 'PENDING',
+  },
+  orderBy: {
+    createdAt: 'desc',
+  },
+  select: {
+    id: true,
+    minutesDelta: true,
+    reason: true,
+    createdAt: true,
+  },
+} as const;
+
 export function getTimeEntryResponseInclude() {
   return {
     user: true,
@@ -21,6 +36,8 @@ export function getTimeEntryResponseInclude() {
         },
       },
     },
+    payrollAdjustments:
+      pendingPayrollAdjustmentsInclude,
   } as const;
 }
 

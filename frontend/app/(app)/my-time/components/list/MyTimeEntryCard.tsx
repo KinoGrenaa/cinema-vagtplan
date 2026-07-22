@@ -1,3 +1,4 @@
+import PayrollAdjustmentNotice from "../../../../components/time-entries/PayrollAdjustmentNotice";
 import { formatDateTime } from "../../helpers/core/myTimeDate";
 import { getHours } from "../../helpers/core/myTimeEntries";
 import {
@@ -34,7 +35,6 @@ export default function MyTimeEntryCard({
               entry.payrollType?.name ||
               "Timeregistrering"}
           </h3>
-
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {formatDateTime(entry.clockIn)}
           </p>
@@ -45,12 +45,23 @@ export default function MyTimeEntryCard({
         </span>
       </div>
 
+      <div className="mt-4">
+        <PayrollAdjustmentNotice
+          adjustments={
+            entry.payrollAdjustments
+          }
+          audience="employee"
+        />
+      </div>
+
       <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
             Mødetid
           </div>
-          <div className="mt-1 font-medium">{formatDateTime(entry.clockIn)}</div>
+          <div className="mt-1 font-medium">
+            {formatDateTime(entry.clockIn)}
+          </div>
         </div>
 
         <div>
@@ -58,7 +69,11 @@ export default function MyTimeEntryCard({
             Fyraften
           </div>
           <div className="mt-1 font-medium">
-            {entry.clockOut ? formatDateTime(entry.clockOut) : "Ikke registreret"}
+            {entry.clockOut
+              ? formatDateTime(
+                  entry.clockOut,
+                )
+              : "Ikke registreret"}
           </div>
         </div>
 
@@ -66,22 +81,33 @@ export default function MyTimeEntryCard({
           <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
             Timer
           </div>
-          <div className="mt-1 font-medium">{getHours(entry)}</div>
+          <div className="mt-1 font-medium">
+            {getHours(entry)}
+          </div>
         </div>
 
         <div>
           <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
             Status
           </div>
-          <div className="mt-1 font-medium">{getStatusLabel(entry.status)}</div>
+          <div className="mt-1 font-medium">
+            {getStatusLabel(entry.status)}
+          </div>
         </div>
       </div>
 
-      {(entry.note || entry.clockInNote || entry.clockOutNote || entry.adminNote) && (
+      {(entry.note ||
+        entry.clockInNote ||
+        entry.clockOutNote ||
+        entry.adminNote) && (
         <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white/70 p-3 text-sm dark:border-gray-800 dark:bg-gray-950/40">
-          {shouldShowEntryNoteAsSingleNote(entry) ? (
+          {shouldShowEntryNoteAsSingleNote(
+            entry,
+          ) ? (
             <div>
-              <div className="font-semibold">Note</div>
+              <div className="font-semibold">
+                Note
+              </div>
               <div className="mt-1 whitespace-pre-wrap">
                 {getEntrySingleNote(entry)}
               </div>
@@ -90,16 +116,19 @@ export default function MyTimeEntryCard({
             <>
               {entry.clockInNote && (
                 <div>
-                  <div className="font-semibold">Mødetidsnote</div>
+                  <div className="font-semibold">
+                    Mødetidsnote
+                  </div>
                   <div className="mt-1 whitespace-pre-wrap">
                     {entry.clockInNote}
                   </div>
                 </div>
               )}
-
               {entry.clockOutNote && (
                 <div>
-                  <div className="font-semibold">Fyraftensnote</div>
+                  <div className="font-semibold">
+                    Fyraftensnote
+                  </div>
                   <div className="mt-1 whitespace-pre-wrap">
                     {entry.clockOutNote}
                   </div>
@@ -111,20 +140,25 @@ export default function MyTimeEntryCard({
           {entry.adminNote && (
             <div>
               <div className="font-semibold">
-                {entry.status === "NEEDS_CHANGES"
+                {entry.status ===
+                "NEEDS_CHANGES"
                   ? "Besked fra administrationen"
                   : "Note fra administrationen"}
               </div>
-              <div className="mt-1 whitespace-pre-wrap">{entry.adminNote}</div>
+              <div className="mt-1 whitespace-pre-wrap">
+                {entry.adminNote}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {entry.status === "NEEDS_CHANGES" && (
+      {entry.status ===
+        "NEEDS_CHANGES" && (
         <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-900/70 dark:bg-orange-950/30 dark:text-orange-200">
-          Denne tidsregistrering er sendt retur til rettelse og skal opdateres
-          før den kan godkendes.
+          Denne tidsregistrering er sendt
+          retur til rettelse og skal
+          opdateres før den kan godkendes.
         </div>
       )}
 
@@ -137,15 +171,16 @@ export default function MyTimeEntryCard({
           Historik
         </button>
 
-        {entry.status !== "APPROVED" && entry.status !== "VOIDED" && (
-          <button
-            type="button"
-            onClick={() => onEdit(entry)}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-          >
-            Redigér
-          </button>
-        )}
+        {entry.status !== "APPROVED" &&
+          entry.status !== "VOIDED" && (
+            <button
+              type="button"
+              onClick={() => onEdit(entry)}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+            >
+              Redigér
+            </button>
+          )}
       </div>
     </article>
   );

@@ -17,6 +17,12 @@ export type TimeEntry = {
       name: string;
     } | null;
   } | null;
+  payrollAdjustments?: {
+    id: number;
+    minutesDelta: number;
+    reason?: string | null;
+    createdAt?: string;
+  }[];
 };
 
 export type TimeEntryRevision = {
@@ -24,25 +30,18 @@ export type TimeEntryRevision = {
   action: string;
   reason?: string | null;
   createdAt: string;
-
   previousStatus?: string | null;
   newStatus?: string | null;
-
   previousClockIn?: string | null;
   newClockIn?: string | null;
-
   previousClockOut?: string | null;
   newClockOut?: string | null;
-
   previousClockInNote?: string | null;
   newClockInNote?: string | null;
-
   previousClockOutNote?: string | null;
   newClockOutNote?: string | null;
-
   previousAdminNote?: string | null;
   newAdminNote?: string | null;
-
   changedByUser?: {
     id: number;
     firstName: string;
