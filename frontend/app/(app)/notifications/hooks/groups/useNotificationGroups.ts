@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import type { Notification } from "@/app/types/notifications";
 
@@ -20,6 +24,8 @@ type UseNotificationGroupsParams = {
   unreadMessages: Message[];
   directTrades: ShiftTrade[];
   poolTrades: ShiftTrade[];
+  messagesEnabled: boolean;
+  shiftTradesEnabled: boolean;
 };
 
 export function useNotificationGroups({
@@ -28,105 +34,240 @@ export function useNotificationGroups({
   unreadMessages,
   directTrades,
   poolTrades,
+  messagesEnabled,
+  shiftTradesEnabled,
 }: UseNotificationGroupsParams) {
-  const [activeCategory, setActiveCategory] =
-    useState<NotificationCategory>("system");
-  const [expandedDateKeys, setExpandedDateKeys] = useState<string[]>([]);
+  const [
+    activeCategory,
+    setActiveCategory,
+  ] =
+    useState<NotificationCategory>(
+      "system",
+    );
+  const [
+    expandedDateKeys,
+    setExpandedDateKeys,
+  ] = useState<string[]>([]);
+
+  const visibleCategories =
+    useMemo<
+      NotificationCategory[]
+    >(() => {
+      const categories:
+        NotificationCategory[] = [
+        "system",
+      ];
+
+      if (messagesEnabled) {
+        categories.push("messages");
+      }
+
+      if (shiftTradesEnabled) {
+        categories.push(
+          "directTrades",
+          "poolTrades",
+        );
+      }
+
+      return categories;
+    }, [
+      messagesEnabled,
+      shiftTradesEnabled,
+    ]);
+
+  useEffect(() => {
+    if (
+      !visibleCategories.includes(
+        activeCategory,
+      )
+    ) {
+      setActiveCategory("system");
+      setExpandedDateKeys([]);
+    }
+  }, [
+    activeCategory,
+    visibleCategories,
+  ]);
 
   const systemGroups = useMemo(
     () =>
       groupByDate(
         notifications,
-        (notification) => notification.createdAt,
-        (notification) => !notification.isRead,
+        (notification) =>
+          notification.createdAt,
+        (notification) =>
+          !notification.isRead,
       ),
     [notifications],
   );
 
   const messageGroups = useMemo(
-    () => groupByDate(unreadMessages, (message) => message.createdAt),
+    () =>
+      groupByDate(
+        unreadMessages,
+        (message) =>
+          message.createdAt,
+      ),
     [unreadMessages],
   );
 
-  const directTradeGroups = useMemo(
-    () => groupByDate(directTrades, (trade) => trade.shift.startTime),
-    [directTrades],
-  );
+  const directTradeGroups =
+    useMemo(
+      () =>
+        groupByDate(
+          directTrades,
+          (trade) =>
+            trade.shift.startTime,
+        ),
+      [directTrades],
+    );
 
   const poolTradeGroups = useMemo(
-    () => groupByDate(poolTrades, (trade) => trade.shift.startTime),
+    () =>
+      groupByDate(
+        poolTrades,
+        (trade) =>
+          trade.shift.startTime,
+      ),
     [poolTrades],
   );
 
-  const activeGroups = useMemo(() => {
-    switch (activeCategory) {
-      case "system":
-        return systemGroups;
-      case "messages":
-        return messageGroups;
-      case "directTrades":
-        return directTradeGroups;
-      case "poolTrades":
-        return poolTradeGroups;
-    }
-  }, [
-    activeCategory,
-    directTradeGroups,
-    messageGroups,
-    poolTradeGroups,
-    systemGroups,
-  ]);
+  const activeGroups = useMemo(
+    () => {
+      switch (activeCategory) {
+        case "system":
+          return systemGroups;
+        case "messages":
+          return messageGroups;
+        case "directTrades":
+          return directTradeGroups;
+        case "poolTrades":
+          return poolTradeGroups;
+      }
+    },
+    [
+      activeCategory,
+      directTradeGroups,
+      messageGroups,
+      poolTradeGroups,
+      systemGroups,
+    ],
+  );
 
   useEffect(() => {
-    setExpandedDateKeys((current) => {
-      const validKeys = activeGroups.map((group) => group.dateKey);
+    setExpandedDateKeys(
+      (current) => {
+        const validKeys =
+          activeGroups.map(
+            (group) =>
+              group.dateKey,
+          );
 
-      if (validKeys.length === 0) {
-        return [];
-      }
+        if (
+          validKeys.length === 0
+        ) {
+          return [];
+        }
 
-      const currentValidKeys = current.filter((dateKey) =>
-        validKeys.includes(dateKey),
-      );
-      const latestDateKey = validKeys[0];
-      const nextKeys = currentValidKeys.includes(latestDateKey)
-        ? currentValidKeys
-        : [latestDateKey, ...currentValidKeys];
+        const currentValidKeys =
+          current.filter(
+            (dateKey) =>
+              validKeys.includes(
+                dateKey,
+              ),
+          );
+        const latestDateKey =
+          validKeys[0];
+        const nextKeys =
+          currentValidKeys.includes(
+            latestDateKey,
+          )
+            ? currentValidKeys
+            : [
+                latestDateKey,
+                ...currentValidKeys,
+              ];
+        const isUnchanged =
+          nextKeys.length ===
+            current.length &&
+          nextKeys.every(
+            (
+              dateKey,
+              index,
+            ) =>
+              dateKey ===
+              current[index],
+          );
 
-      const isUnchanged =
-        nextKeys.length === current.length &&
-        nextKeys.every((dateKey, index) => dateKey === current[index]);
-
-      return isUnchanged ? current : nextKeys;
-    });
+        return isUnchanged
+          ? current
+          : nextKeys;
+      },
+    );
   }, [activeGroups]);
 
   const totalCount =
-    unreadMessages.length + unreadCount + directTrades.length + poolTrades.length;
+    unreadMessages.length +
+    unreadCount +
+    directTrades.length +
+    poolTrades.length;
 
-  const categoryCounts: Record<NotificationCategory, number> = {
+  const categoryCounts: Record<
+    NotificationCategory,
+    number
+  > = {
     system: unreadCount,
-    messages: unreadMessages.length,
-    directTrades: directTrades.length,
-    poolTrades: poolTrades.length,
+    messages:
+      unreadMessages.length,
+    directTrades:
+      directTrades.length,
+    poolTrades:
+      poolTrades.length,
   };
 
-  const activeCategoryLabel = getCategoryLabel(activeCategory);
+  const activeCategoryLabel =
+    getCategoryLabel(
+      activeCategory,
+    );
   const activeCount =
     activeCategory === "system"
       ? notifications.length
-      : categoryCounts[activeCategory];
+      : categoryCounts[
+          activeCategory
+        ];
 
-  function switchCategory(category: NotificationCategory) {
+  function switchCategory(
+    category: NotificationCategory,
+  ) {
+    if (
+      !visibleCategories.includes(
+        category,
+      )
+    ) {
+      return;
+    }
+
     setActiveCategory(category);
     setExpandedDateKeys([]);
   }
 
-  function toggleDateGroup(dateKey: string) {
-    setExpandedDateKeys((current) =>
-      current.includes(dateKey)
-        ? current.filter((currentDateKey) => currentDateKey !== dateKey)
-        : [dateKey, ...current],
+  function toggleDateGroup(
+    dateKey: string,
+  ) {
+    setExpandedDateKeys(
+      (current) =>
+        current.includes(dateKey)
+          ? current.filter(
+              (
+                currentDateKey,
+              ) =>
+                currentDateKey !==
+                dateKey,
+            )
+          : [
+              dateKey,
+              ...current,
+            ],
     );
   }
 
@@ -135,6 +276,7 @@ export function useNotificationGroups({
     expandedDateKeys,
     totalCount,
     categoryCounts,
+    visibleCategories,
     activeGroups,
     activeCategoryLabel,
     activeCount,

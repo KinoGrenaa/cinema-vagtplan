@@ -1,19 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { useApi } from "@/app/hooks/useApi";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { useCinemaModules } from "@/app/providers/CinemaModulesProvider";
 
 import {
   getErrorMessage,
   readErrorMessage,
 } from "../../helpers/core/notificationHelpers";
-import type { Message, ShiftTrade } from "../../helpers/core/notificationTypes";
+import type {
+  Message,
+  ShiftTrade,
+} from "../../helpers/core/notificationTypes";
 
 type UseNotificationsExtraDataParams = {
-  showError: (title: string, description: string) => void;
+  showError: (
+    title: string,
+    description: string,
+  ) => void;
 };
 
 function getSelectedMasterCinemaId() {
@@ -21,9 +33,10 @@ function getSelectedMasterCinemaId() {
     return undefined;
   }
 
-  const selectedCinemaId = window.localStorage.getItem(
-    "masterSelectedCinemaId",
-  );
+  const selectedCinemaId =
+    window.localStorage.getItem(
+      "masterSelectedCinemaId",
+    );
 
   if (!selectedCinemaId) {
     return undefined;
@@ -32,24 +45,34 @@ function getSelectedMasterCinemaId() {
   return selectedCinemaId;
 }
 
-function getMasterCinemaQuery(user: any) {
-  const isGlobalMaster = user?.role === "MASTER" && !user?.cinemaId;
+function getMasterCinemaQuery(
+  user: any,
+) {
+  const isGlobalMaster =
+    user?.role === "MASTER" &&
+    !user?.cinemaId;
 
   if (!isGlobalMaster) {
     return "";
   }
 
-  const selectedCinemaId = getSelectedMasterCinemaId();
+  const selectedCinemaId =
+    getSelectedMasterCinemaId();
 
   if (!selectedCinemaId) {
     return undefined;
   }
 
-  return `?cinemaId=${encodeURIComponent(selectedCinemaId)}`;
+  return `?cinemaId=${encodeURIComponent(
+    selectedCinemaId,
+  )}`;
 }
 
-function getMessagesEndpoint(user: any) {
-  const cinemaQuery = getMasterCinemaQuery(user);
+function getMessagesEndpoint(
+  user: any,
+) {
+  const cinemaQuery =
+    getMasterCinemaQuery(user);
 
   if (cinemaQuery === undefined) {
     return undefined;
@@ -58,8 +81,11 @@ function getMessagesEndpoint(user: any) {
   return `/messages${cinemaQuery}`;
 }
 
-function getShiftTradesEndpoint(user: any) {
-  const cinemaQuery = getMasterCinemaQuery(user);
+function getShiftTradesEndpoint(
+  user: any,
+) {
+  const cinemaQuery =
+    getMasterCinemaQuery(user);
 
   if (cinemaQuery === undefined) {
     return undefined;
@@ -72,30 +98,78 @@ export function useNotificationsExtraData({
   showError,
 }: UseNotificationsExtraDataParams) {
   const { apiFetch } = useApi();
-  const { user, loading: authLoading } = useAuth();
+  const {
+    user,
+    loading: authLoading,
+  } = useAuth();
+  const {
+    loading: modulesLoading,
+    isModuleEnabled,
+  } = useCinemaModules();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [shiftTrades, setShiftTrades] = useState<ShiftTrade[]>([]);
-  const [extraLoading, setExtraLoading] = useState(true);
+  const messagesEnabled =
+    isModuleEnabled("MESSAGES");
+  const shiftTradesEnabled =
+    isModuleEnabled("SHIFT_TRADES");
+
+  const [messages, setMessages] =
+    useState<Message[]>([]);
+  const [
+    shiftTrades,
+    setShiftTrades,
+  ] = useState<ShiftTrade[]>([]);
+  const [
+    extraLoading,
+    setExtraLoading,
+  ] = useState(true);
 
   const fetchExtraData = useCallback(
-    async (showErrorDialog = true) => {
-      if (!user) return;
+    async (
+      showErrorDialog = true,
+    ) => {
+      if (!user) {
+        setMessages([]);
+        setShiftTrades([]);
+        setExtraLoading(false);
+        return;
+      }
 
       try {
         setExtraLoading(true);
 
-        const messagesEndpoint = getMessagesEndpoint(user);
-        const shiftTradesEndpoint = getShiftTradesEndpoint(user);
+        const messagesEndpoint =
+          messagesEnabled
+            ? getMessagesEndpoint(user)
+            : undefined;
+        const shiftTradesEndpoint =
+          shiftTradesEnabled
+            ? getShiftTradesEndpoint(
+                user,
+              )
+            : undefined;
 
-        const [messagesResponse, tradesResponse] = await Promise.all([
-          messagesEndpoint ? apiFetch(messagesEndpoint) : Promise.resolve(undefined),
+        const [
+          messagesResponse,
+          tradesResponse,
+        ] = await Promise.all([
+          messagesEndpoint
+            ? apiFetch(messagesEndpoint)
+            : Promise.resolve(
+                undefined,
+              ),
           shiftTradesEndpoint
-            ? apiFetch(shiftTradesEndpoint)
-            : Promise.resolve(undefined),
+            ? apiFetch(
+                shiftTradesEndpoint,
+              )
+            : Promise.resolve(
+                undefined,
+              ),
         ]);
 
-        if (messagesResponse && !messagesResponse.ok) {
+        if (
+          messagesResponse &&
+          !messagesResponse.ok
+        ) {
           throw new Error(
             await readErrorMessage(
               messagesResponse,
@@ -104,7 +178,10 @@ export function useNotificationsExtraData({
           );
         }
 
-        if (tradesResponse && !tradesResponse.ok) {
+        if (
+          tradesResponse &&
+          !tradesResponse.ok
+        ) {
           throw new Error(
             await readErrorMessage(
               tradesResponse,
@@ -113,13 +190,28 @@ export function useNotificationsExtraData({
           );
         }
 
-        const [messagesData, tradesData] = await Promise.all([
-          messagesResponse ? messagesResponse.json() : Promise.resolve([]),
-          tradesResponse ? tradesResponse.json() : Promise.resolve([]),
+        const [
+          messagesData,
+          tradesData,
+        ] = await Promise.all([
+          messagesResponse
+            ? messagesResponse.json()
+            : Promise.resolve([]),
+          tradesResponse
+            ? tradesResponse.json()
+            : Promise.resolve([]),
         ]);
 
-        setMessages(Array.isArray(messagesData) ? messagesData : []);
-        setShiftTrades(Array.isArray(tradesData) ? tradesData : []);
+        setMessages(
+          Array.isArray(messagesData)
+            ? messagesData
+            : [],
+        );
+        setShiftTrades(
+          Array.isArray(tradesData)
+            ? tradesData
+            : [],
+        );
       } catch (error) {
         if (showErrorDialog) {
           showError(
@@ -137,71 +229,153 @@ export function useNotificationsExtraData({
         setExtraLoading(false);
       }
     },
-    [apiFetch, showError, user],
+    [
+      apiFetch,
+      messagesEnabled,
+      shiftTradesEnabled,
+      showError,
+      user,
+    ],
   );
 
   useEffect(() => {
-    if (authLoading) return;
+    if (
+      authLoading ||
+      modulesLoading
+    ) {
+      return;
+    }
 
     if (!user) {
       window.location.href = "/";
       return;
     }
 
-    fetchExtraData(true);
-  }, [authLoading, fetchExtraData, user]);
+    void fetchExtraData(true);
+  }, [
+    authLoading,
+    fetchExtraData,
+    modulesLoading,
+    user,
+  ]);
 
-  const refreshExtraDataSilently = useCallback(() => {
-    fetchExtraData(false);
-  }, [fetchExtraData]);
+  const refreshExtraDataSilently =
+    useCallback(() => {
+      void fetchExtraData(false);
+    }, [fetchExtraData]);
 
   useRealtimeCore({
-    onMessage: refreshExtraDataSilently,
-    onShiftUpdated: refreshExtraDataSilently,
-    onShiftTradeUpdated: refreshExtraDataSilently,
+    onMessage: messagesEnabled
+      ? refreshExtraDataSilently
+      : undefined,
+    onShiftUpdated:
+      shiftTradesEnabled
+        ? refreshExtraDataSilently
+        : undefined,
+    onShiftTradeUpdated:
+      shiftTradesEnabled
+        ? refreshExtraDataSilently
+        : undefined,
   });
 
-  const unreadMessages = useMemo(() => {
-    if (!user) return [];
+  const unreadMessages = useMemo(
+    () => {
+      if (
+        !user ||
+        !messagesEnabled
+      ) {
+        return [];
+      }
 
-    return messages.filter((message) => {
-      const isUnread = !message.readAt;
-      const isForMe =
-        message.isBroadcast || message.receiver?.id === user.id || !message.receiver;
+      return messages.filter(
+        (message) => {
+          const isUnread =
+            !message.readAt;
+          const isForMe =
+            message.isBroadcast ||
+            message.receiver?.id ===
+              user.id ||
+            !message.receiver;
 
-      return isUnread && isForMe;
-    });
-  }, [messages, user]);
+          return (
+            isUnread && isForMe
+          );
+        },
+      );
+    },
+    [
+      messages,
+      messagesEnabled,
+      user,
+    ],
+  );
 
-  const directTrades = useMemo(() => {
-    if (!user) return [];
+  const directTrades = useMemo(
+    () => {
+      if (
+        !user ||
+        !shiftTradesEnabled
+      ) {
+        return [];
+      }
 
-    return shiftTrades.filter(
-      (trade) =>
-        trade.status === "OPEN" &&
-        trade.type === "DIRECT" &&
-        trade.targetUserId === user.id &&
-        new Date(trade.shift.startTime) > new Date(),
-    );
-  }, [shiftTrades, user]);
+      return shiftTrades.filter(
+        (trade) =>
+          trade.status === "OPEN" &&
+          trade.type === "DIRECT" &&
+          trade.targetUserId ===
+            user.id &&
+          new Date(
+            trade.shift.startTime,
+          ) > new Date(),
+      );
+    },
+    [
+      shiftTrades,
+      shiftTradesEnabled,
+      user,
+    ],
+  );
 
-  const poolTrades = useMemo(() => {
-    if (!user) return [];
+  const poolTrades = useMemo(
+    () => {
+      if (
+        !user ||
+        !shiftTradesEnabled
+      ) {
+        return [];
+      }
 
-    return shiftTrades.filter(
-      (trade) =>
-        trade.status === "OPEN" &&
-        trade.type === "POOL" &&
-        trade.offeredByUserId !== user.id &&
-        new Date(trade.shift.startTime) > new Date(),
-    );
-  }, [shiftTrades, user]);
+      return shiftTrades.filter(
+        (trade) =>
+          trade.status === "OPEN" &&
+          trade.type === "POOL" &&
+          trade.offeredByUserId !==
+            user.id &&
+          new Date(
+            trade.shift.startTime,
+          ) > new Date(),
+      );
+    },
+    [
+      shiftTrades,
+      shiftTradesEnabled,
+      user,
+    ],
+  );
 
   return {
-    authLoading,
+    authLoading:
+      authLoading ||
+      modulesLoading,
     extraLoading,
     unreadMessages,
     directTrades,
     poolTrades,
+    moduleAccess: {
+      messages: messagesEnabled,
+      shiftTrades:
+        shiftTradesEnabled,
+    },
   };
 }
