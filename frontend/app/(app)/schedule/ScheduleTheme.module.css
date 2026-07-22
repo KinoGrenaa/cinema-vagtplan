@@ -1,0 +1,153 @@
+.scheduleTheme {
+  min-width: 0;
+  color-scheme: light;
+}
+
+:global(.dark) .scheduleTheme {
+  color-scheme: dark;
+}
+
+.scheduleTheme :global(input),
+.scheduleTheme :global(select),
+.scheduleTheme :global(textarea) {
+  color-scheme: inherit;
+}
+
+.scheduleTheme :global(input::placeholder),
+.scheduleTheme :global(textarea::placeholder) {
+  color: rgb(107 114 128);
+  opacity: 1;
+}
+
+:global(.dark)
+  .scheduleTheme
+  :global(input::placeholder),
+:global(.dark)
+  .scheduleTheme
+  :global(textarea::placeholder) {
+  color: rgb(156 163 175);
+}
+
+.scheduleTheme :global(select option) {
+  background: rgb(255 255 255);
+  color: rgb(17 24 39);
+}
+
+:global(.dark)
+  .scheduleTheme
+  :global(select option) {
+  background: rgb(3 7 18);
+  color: rgb(243 244 246);
+}
+
+.scheduleTheme
+  :global(input[type="date"]::-webkit-calendar-picker-indicator),
+.scheduleTheme
+  :global(input[type="datetime-local"]::-webkit-calendar-picker-indicator),
+.scheduleTheme
+  :global(input[type="time"]::-webkit-calendar-picker-indicator) {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+:global(.dark)
+  .scheduleTheme
+  :global(input[type="date"]::-webkit-calendar-picker-indicator),
+:global(.dark)
+  .scheduleTheme
+  :global(input[type="datetime-local"]::-webkit-calendar-picker-indicator),
+:global(.dark)
+  .scheduleTheme
+  :global(input[type="time"]::-webkit-calendar-picker-indicator) {
+  filter: invert(1);
+  opacity: 0.85;
+}
+
+.scheduleTheme :global(button:focus-visible),
+.scheduleTheme :global(a:focus-visible),
+.scheduleTheme
+  :global([role="button"]:focus-visible),
+.scheduleTheme :global(input:focus-visible),
+.scheduleTheme :global(select:focus-visible),
+.scheduleTheme :global(textarea:focus-visible) {
+  outline: 2px solid rgb(37 99 235);
+  outline-offset: 2px;
+}
+
+:global(.dark)
+  .scheduleTheme
+  :global(button:focus-visible),
+:global(.dark)
+  .scheduleTheme
+  :global(a:focus-visible),
+:global(.dark)
+  .scheduleTheme
+  :global([role="button"]:focus-visible),
+:global(.dark)
+  .scheduleTheme
+  :global(input:focus-visible),
+:global(.dark)
+  .scheduleTheme
+  :global(select:focus-visible),
+:global(.dark)
+  .scheduleTheme
+  :global(textarea:focus-visible) {
+  outline-color: rgb(96 165 250);
+}
+
+.scheduleTheme :global(button:disabled),
+.scheduleTheme :global(input:disabled),
+.scheduleTheme :global(select:disabled),
+.scheduleTheme :global(textarea:disabled) {
+  cursor: not-allowed;
+}
+
+.scheduleTheme :global(input:disabled),
+.scheduleTheme :global(select:disabled),
+.scheduleTheme :global(textarea:disabled) {
+  opacity: 0.72;
+}
+
+.scheduleTheme :global(*) {
+  scrollbar-color:
+    rgb(156 163 175)
+    rgb(243 244 246);
+}
+
+:global(.dark) .scheduleTheme :global(*) {
+  scrollbar-color:
+    rgb(75 85 99)
+    rgb(17 24 39);
+}
+
+.scheduleTheme
+  :global(*::-webkit-scrollbar) {
+  width: 11px;
+  height: 11px;
+}
+
+.scheduleTheme
+  :global(*::-webkit-scrollbar-track) {
+  background: rgb(243 244 246);
+  border-radius: 9999px;
+}
+
+.scheduleTheme
+  :global(*::-webkit-scrollbar-thumb) {
+  background: rgb(156 163 175);
+  border: 3px solid rgb(243 244 246);
+  border-radius: 9999px;
+}
+
+:global(.dark)
+  .scheduleTheme
+  :global(*::-webkit-scrollbar-track) {
+  background: rgb(17 24 39);
+}
+
+:global(.dark)
+  .scheduleTheme
+  :global(*::-webkit-scrollbar-thumb) {
+  background: rgb(75 85 99);
+  border-color: rgb(17 24 39);
+}
