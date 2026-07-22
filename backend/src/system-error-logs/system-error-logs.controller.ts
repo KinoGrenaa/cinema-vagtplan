@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -8,9 +9,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+
 import { JwtGuard } from '../auth/jwt/jwt.guard';
-import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import {
   parseOptionalPositiveIntegerQuery,
   parseRequiredPositiveInteger,
@@ -27,7 +29,8 @@ import { SystemErrorLogsService } from './system-error-logs.service';
 @Controller('system-error-logs')
 export class SystemErrorLogsController {
   constructor(
-    private systemErrorLogsService: SystemErrorLogsService,
+    private systemErrorLogsService:
+      SystemErrorLogsService,
   ) {}
 
   @Get()
@@ -38,21 +41,43 @@ export class SystemErrorLogsController {
     @Query('take') take?: string,
   ) {
     return this.systemErrorLogsService.findAll({
-      severity: normalizeSystemErrorSeverity(severity),
-      status: normalizeSystemErrorStatus(status),
-      cinemaId: parseOptionalPositiveIntegerQuery(
-        cinemaId,
-        'Biograf skal være et gyldigt ID',
-      ),
-      take: parseOptionalPositiveIntegerQuery(
-        take,
-        'Antal skal være et gyldigt tal',
-      ),
+      severity:
+        normalizeSystemErrorSeverity(
+          severity,
+        ),
+      status:
+        normalizeSystemErrorStatus(
+          status,
+        ),
+      cinemaId:
+        parseOptionalPositiveIntegerQuery(
+          cinemaId,
+          'Biograf skal være et gyldigt ID',
+        ),
+      take:
+        parseOptionalPositiveIntegerQuery(
+          take,
+          'Antal skal være et gyldigt tal',
+        ),
     });
   }
 
+  @Get('retention-summary')
+  getRetentionSummary() {
+    return this.systemErrorLogsService
+      .getRetentionSummary();
+  }
+
+  @Delete('retention-cleanup')
+  cleanupRetention() {
+    return this.systemErrorLogsService
+      .cleanupRetention();
+  }
+
   @Patch(':id/seen')
-  markSeen(@Param('id') id: string) {
+  markSeen(
+    @Param('id') id: string,
+  ) {
     return this.systemErrorLogsService.updateStatus({
       id: parseRequiredPositiveInteger(
         id,
@@ -74,11 +99,15 @@ export class SystemErrorLogsController {
         'Fejl-log skal være et gyldigt ID',
       ),
       status: 'RESOLVED',
-      changedByUserId: parseRequiredPositiveInteger(
-        req.user?.sub,
-        'Bruger skal være et gyldigt ID',
-      ),
-      note: normalizeSystemErrorResolutionNote(note),
+      changedByUserId:
+        parseRequiredPositiveInteger(
+          req.user?.sub,
+          'Bruger skal være et gyldigt ID',
+        ),
+      note:
+        normalizeSystemErrorResolutionNote(
+          note,
+        ),
     });
   }
 
@@ -94,11 +123,15 @@ export class SystemErrorLogsController {
         'Fejl-log skal være et gyldigt ID',
       ),
       status: 'IGNORED',
-      changedByUserId: parseRequiredPositiveInteger(
-        req.user?.sub,
-        'Bruger skal være et gyldigt ID',
-      ),
-      note: normalizeSystemErrorResolutionNote(note),
+      changedByUserId:
+        parseRequiredPositiveInteger(
+          req.user?.sub,
+          'Bruger skal være et gyldigt ID',
+        ),
+      note:
+        normalizeSystemErrorResolutionNote(
+          note,
+        ),
     });
   }
 }
