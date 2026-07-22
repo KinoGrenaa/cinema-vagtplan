@@ -1,6 +1,14 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { Rnd } from "react-rnd";
 import type { Shift } from "../../../../../../shared/types";
 
@@ -14,6 +22,11 @@ type ShiftTimelineProps = {
   shifts: Shift[];
   users: User[];
   selectedDate: string;
+  createAtTimeLabel?: string | null;
+  onCreateAtTime?: (
+    hour: number,
+    minute: number,
+  ) => void;
   onSelectShift: (shift: Shift) => void;
   onMoveShift: (
     shift: Shift,
@@ -51,9 +64,16 @@ const LANE_GAP = 10;
 const TOP_OFFSET = 52;
 const SNAP_MINUTES = 15;
 const MIN_SHIFT_WIDTH = 36;
+const DEFAULT_CREATION_MINUTES = 14 * 60;
+const LAST_CREATION_MINUTES =
+  DAY_MINUTES - SNAP_MINUTES;
 
 function getShiftUserId(shift: Shift) {
-  return (shift as Shift & { userId?: number | null }).userId ?? null;
+  return (
+    shift as Shift & {
+      userId?: number | null;
+    }
+  ).userId ?? null;
 }
 
 function getShiftUserName(shift: Shift) {
@@ -64,13 +84,22 @@ function getShiftUserName(shift: Shift) {
     } | null;
   };
 
-  if (maybeShift.user?.firstName || maybeShift.user?.lastName) {
-    return `${maybeShift.user.firstName ?? ""} ${maybeShift.user.lastName ?? ""}`.trim();
+  if (
+    maybeShift.user?.firstName ||
+    maybeShift.user?.lastName
+  ) {
+    return `${
+      maybeShift.user.firstName ?? ""
+    } ${
+      maybeShift.user.lastName ?? ""
+    }`.trim();
   }
 
   const shiftUserId = getShiftUserId(shift);
 
-  return shiftUserId ? `Medarbejder #${shiftUserId}` : "Ikke tildelt";
+  return shiftUserId
+    ? `Medarbejder #${shiftUserId}`
+    : "Ikke tildelt";
 }
 
 function getShiftWorkTypeName(shift: Shift) {
@@ -81,7 +110,10 @@ function getShiftWorkTypeName(shift: Shift) {
     };
   };
 
-  return maybeShift.workType?.name ?? `Arbejdstype #${shift.workTypeId}`;
+  return (
+    maybeShift.workType?.name ??
+    `Arbejdstype #${shift.workTypeId}`
+  );
 }
 
 function getShiftColor(shift: Shift) {
@@ -91,72 +123,141 @@ function getShiftColor(shift: Shift) {
     };
   };
 
-  return maybeShift.workType?.color || "#2563eb";
+  return (
+    maybeShift.workType?.color || "#2563eb"
+  );
 }
 
 function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString("da-DK", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return new Date(value).toLocaleTimeString(
+    "da-DK",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
+}
+
+function formatMinutes(totalMinutes: number) {
+  const hour = Math.floor(
+    totalMinutes / 60,
+  );
+  const minute = totalMinutes % 60;
+
+  return `${String(hour).padStart(
+    2,
+    "0",
+  )}:${String(minute).padStart(2, "0")}`;
 }
 
 function clampMinutes(value: number) {
-  return Math.max(0, Math.min(DAY_MINUTES, value));
+  return Math.max(
+    0,
+    Math.min(DAY_MINUTES, value),
+  );
 }
 
 function snapMinutes(value: number) {
-  return Math.round(value / SNAP_MINUTES) * SNAP_MINUTES;
+  return (
+    Math.round(value / SNAP_MINUTES) *
+    SNAP_MINUTES
+  );
 }
 
-function selectedDateStart(selectedDate: string) {
-  return new Date(`${selectedDate}T00:00:00`);
+function selectedDateStart(
+  selectedDate: string,
+) {
+  return new Date(
+    `${selectedDate}T00:00:00`,
+  );
 }
 
 function selectedDateEnd(selectedDate: string) {
   const end = selectedDateStart(selectedDate);
   end.setDate(end.getDate() + 1);
-
   return end;
 }
 
-function getVisibleShiftMinutes(shift: Shift, selectedDate: string) {
-  const dayStart = selectedDateStart(selectedDate);
+function getVisibleShiftMinutes(
+  shift: Shift,
+  selectedDate: string,
+) {
+  const dayStart =
+    selectedDateStart(selectedDate);
   const dayEnd = selectedDateEnd(selectedDate);
   const shiftStart = new Date(shift.startTime);
   const shiftEnd = new Date(shift.endTime);
 
-  if (shiftEnd <= dayStart || shiftStart >= dayEnd) {
+  if (
+    shiftEnd <= dayStart ||
+    shiftStart >= dayEnd
+  ) {
     return null;
   }
 
-  const visibleStart = Math.max(shiftStart.getTime(), dayStart.getTime());
-  const visibleEnd = Math.min(shiftEnd.getTime(), dayEnd.getTime());
-
-  const startMinutes = clampMinutes(
-    Math.round((visibleStart - dayStart.getTime()) / 60000),
+  const visibleStart = Math.max(
+    shiftStart.getTime(),
+    dayStart.getTime(),
   );
-
+  const visibleEnd = Math.min(
+    shiftEnd.getTime(),
+    dayEnd.getTime(),
+  );
+  const startMinutes = clampMinutes(
+    Math.round(
+      (visibleStart - dayStart.getTime()) /
+        60000,
+    ),
+  );
   const endMinutes = clampMinutes(
-    Math.round((visibleEnd - dayStart.getTime()) / 60000),
+    Math.round(
+      (visibleEnd - dayStart.getTime()) /
+        60000,
+    ),
   );
 
   return {
     startMinutes,
-    endMinutes: Math.max(endMinutes, startMinutes + SNAP_MINUTES),
+    endMinutes: Math.max(
+      endMinutes,
+      startMinutes + SNAP_MINUTES,
+    ),
   };
 }
 
-function xToTime(x: number, timelineWidth: number) {
-  const safeTimelineWidth = Math.max(1, timelineWidth);
-  const totalMinutes = clampMinutes(
-    snapMinutes((x / safeTimelineWidth) * DAY_MINUTES),
+function xToTime(
+  x: number,
+  timelineWidth: number,
+) {
+  const safeTimelineWidth = Math.max(
+    1,
+    timelineWidth,
   );
-
+  const totalMinutes = clampMinutes(
+    snapMinutes(
+      (x / safeTimelineWidth) *
+        DAY_MINUTES,
+    ),
+  );
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
 
   return { hour, minute };
+}
+
+function xToCreationMinutes(
+  x: number,
+  timelineWidth: number,
+) {
+  const { hour, minute } = xToTime(
+    x,
+    timelineWidth,
+  );
+
+  return Math.min(
+    LAST_CREATION_MINUTES,
+    hour * 60 + minute,
+  );
 }
 
 function buildTimelineShifts(
@@ -164,22 +265,36 @@ function buildTimelineShifts(
   selectedDate: string,
   timelineWidth: number,
 ) {
-  const safeTimelineWidth = Math.max(1, timelineWidth);
-
+  const safeTimelineWidth = Math.max(
+    1,
+    timelineWidth,
+  );
   const dayShifts = shifts
     .map((shift) => {
-      const visibleMinutes = getVisibleShiftMinutes(shift, selectedDate);
+      const visibleMinutes =
+        getVisibleShiftMinutes(
+          shift,
+          selectedDate,
+        );
 
       if (!visibleMinutes) {
         return null;
       }
 
-      const { startMinutes, endMinutes } = visibleMinutes;
-      const safeEndMinutes = Math.max(endMinutes, startMinutes + SNAP_MINUTES);
-      const left = (startMinutes / DAY_MINUTES) * safeTimelineWidth;
+      const { startMinutes, endMinutes } =
+        visibleMinutes;
+      const safeEndMinutes = Math.max(
+        endMinutes,
+        startMinutes + SNAP_MINUTES,
+      );
+      const left =
+        (startMinutes / DAY_MINUTES) *
+        safeTimelineWidth;
       const width = Math.max(
         MIN_SHIFT_WIDTH,
-        ((safeEndMinutes - startMinutes) / DAY_MINUTES) * safeTimelineWidth,
+        ((safeEndMinutes - startMinutes) /
+          DAY_MINUTES) *
+          safeTimelineWidth,
       );
 
       return {
@@ -192,20 +307,28 @@ function buildTimelineShifts(
         laneCount: 1,
       } satisfies TimelineShift;
     })
-    .filter((item): item is TimelineShift => item !== null)
+    .filter(
+      (item): item is TimelineShift =>
+        item !== null,
+    )
     .sort(
-      (a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes,
+      (a, b) =>
+        a.startMinutes - b.startMinutes ||
+        a.endMinutes - b.endMinutes,
     );
 
   const groups: TimelineShift[][] = [];
 
   for (const item of dayShifts) {
-    const existingGroup = groups.find((group) =>
-      group.some(
-        (other) =>
-          item.startMinutes < other.endMinutes &&
-          item.endMinutes > other.startMinutes,
-      ),
+    const existingGroup = groups.find(
+      (group) =>
+        group.some(
+          (other) =>
+            item.startMinutes <
+              other.endMinutes &&
+            item.endMinutes >
+              other.startMinutes,
+        ),
     );
 
     if (existingGroup) {
@@ -219,12 +342,15 @@ function buildTimelineShifts(
     const lanes: TimelineShift[][] = [];
 
     for (const item of group) {
-      const laneIndex = lanes.findIndex((lane) =>
-        lane.every(
-          (other) =>
-            item.endMinutes <= other.startMinutes ||
-            item.startMinutes >= other.endMinutes,
-        ),
+      const laneIndex = lanes.findIndex(
+        (lane) =>
+          lane.every(
+            (other) =>
+              item.endMinutes <=
+                other.startMinutes ||
+              item.startMinutes >=
+                other.endMinutes,
+          ),
       );
 
       if (laneIndex === -1) {
@@ -248,15 +374,26 @@ function ShiftTimeline({
   shifts,
   users,
   selectedDate,
+  createAtTimeLabel,
+  onCreateAtTime,
   onSelectShift,
   onMoveShift,
   onChangeShiftUser,
   onResizeShift,
 }: ShiftTimelineProps) {
-  const timelineRef = useRef<HTMLDivElement | null>(null);
-  const [timelineWidth, setTimelineWidth] = useState(1);
-  const dragStartPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const timelineRef =
+    useRef<HTMLDivElement | null>(null);
+  const [timelineWidth, setTimelineWidth] =
+    useState(1);
+  const [creationPreviewMinutes, setCreationPreviewMinutes] =
+    useState<number | null>(null);
+  const dragStartPositionRef = useRef<{
+    x: number;
+    y: number;
+  } | null>(null);
   const resizeStartRef = useRef(false);
+  const creationEnabled =
+    typeof onCreateAtTime === "function";
 
   useEffect(() => {
     const element = timelineRef.current;
@@ -264,49 +401,179 @@ function ShiftTimeline({
     if (!element) return;
 
     const updateWidth = () => {
-      setTimelineWidth(Math.max(1, element.clientWidth));
+      setTimelineWidth(
+        Math.max(1, element.clientWidth),
+      );
     };
 
     updateWidth();
 
-    const resizeObserver = new ResizeObserver(updateWidth);
+    const resizeObserver =
+      new ResizeObserver(updateWidth);
     resizeObserver.observe(element);
 
-    return () => resizeObserver.disconnect();
+    return () =>
+      resizeObserver.disconnect();
   }, []);
 
+  useEffect(() => {
+    setCreationPreviewMinutes(
+      creationEnabled
+        ? DEFAULT_CREATION_MINUTES
+        : null,
+    );
+  }, [creationEnabled, selectedDate]);
+
   const timelineShifts = useMemo(
-    () => buildTimelineShifts(shifts, selectedDate, timelineWidth),
+    () =>
+      buildTimelineShifts(
+        shifts,
+        selectedDate,
+        timelineWidth,
+      ),
     [selectedDate, shifts, timelineWidth],
   );
-
   const hours = useMemo(
-    () => Array.from({ length: 25 }, (_, hour) => hour),
+    () =>
+      Array.from(
+        { length: 25 },
+        (_, hour) => hour,
+      ),
     [],
   );
-
-  const laneCount = Math.max(1, ...timelineShifts.map((item) => item.lane + 1));
-
+  const laneCount = Math.max(
+    1,
+    ...timelineShifts.map(
+      (item) => item.lane + 1,
+    ),
+  );
   const dynamicHeight = Math.max(
     TIMELINE_HEIGHT,
-    TOP_OFFSET + laneCount * (SHIFT_HEIGHT + LANE_GAP) + 48,
+    TOP_OFFSET +
+      laneCount *
+        (SHIFT_HEIGHT + LANE_GAP) +
+      48,
   );
+
+  function getPointerCreationMinutes(
+    clientX: number,
+  ) {
+    const bounds =
+      timelineRef.current?.getBoundingClientRect();
+
+    if (!bounds) {
+      return null;
+    }
+
+    return xToCreationMinutes(
+      clientX - bounds.left,
+      bounds.width,
+    );
+  }
+
+  function handleTimelineMouseMove(
+    event: MouseEvent<HTMLDivElement>,
+  ) {
+    if (
+      !creationEnabled ||
+      event.target !== event.currentTarget
+    ) {
+      return;
+    }
+
+    const nextMinutes =
+      getPointerCreationMinutes(
+        event.clientX,
+      );
+
+    if (nextMinutes !== null) {
+      setCreationPreviewMinutes(
+        nextMinutes,
+      );
+    }
+  }
+
+  function handleTimelineClick(
+    event: MouseEvent<HTMLDivElement>,
+  ) {
+    if (
+      !onCreateAtTime ||
+      event.target !== event.currentTarget
+    ) {
+      return;
+    }
+
+    const nextMinutes =
+      getPointerCreationMinutes(
+        event.clientX,
+      );
+
+    if (nextMinutes === null) {
+      return;
+    }
+
+    onCreateAtTime(
+      Math.floor(nextMinutes / 60),
+      nextMinutes % 60,
+    );
+  }
+
+  function handleTimelineKeyDown(
+    event: KeyboardEvent<HTMLDivElement>,
+  ) {
+    if (
+      !onCreateAtTime ||
+      creationPreviewMinutes === null ||
+      (event.key !== "Enter" &&
+        event.key !== " ")
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    onCreateAtTime(
+      Math.floor(
+        creationPreviewMinutes / 60,
+      ),
+      creationPreviewMinutes % 60,
+    );
+  }
+
+  const creationLeftPercent =
+    creationPreviewMinutes === null
+      ? null
+      : (creationPreviewMinutes /
+          DAY_MINUTES) *
+        100;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             Dagsoversigt
           </h2>
-
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Hele dagen vises skaleret fra 00:00 til 24:00.
+            {creationEnabled
+              ? "Klik på et tomt tidspunkt for at placere den untildelte vagt. Tiden snapper til nærmeste kvarter."
+              : "Hele dagen vises skaleret fra 00:00 til 24:00."}
           </p>
         </div>
+
+        {creationEnabled && (
+          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-900 dark:bg-blue-950/60 dark:text-blue-100">
+            Placér: {createAtTimeLabel || "jobfunktion"}
+          </span>
+        )}
       </div>
 
-      <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
+      <div
+        className={`w-full overflow-hidden rounded-xl border bg-gray-50 dark:bg-gray-950 ${
+          creationEnabled
+            ? "border-blue-400 ring-2 ring-blue-500/15 dark:border-blue-700"
+            : "border-gray-200 dark:border-gray-800"
+        }`}
+      >
         <div
           className="relative w-full"
           style={{
@@ -315,7 +582,9 @@ function ShiftTimeline({
         >
           <div
             className="absolute bottom-0 top-0 border-l border-gray-300 dark:border-gray-700"
-            style={{ left: LEFT_LABEL_WIDTH }}
+            style={{
+              left: LEFT_LABEL_WIDTH,
+            }}
           />
 
           <div
@@ -326,14 +595,18 @@ function ShiftTimeline({
             }}
           >
             {hours.map((hour) => {
-              const leftPercent = (hour / 24) * 100;
+              const leftPercent =
+                (hour / 24) * 100;
 
               return (
                 <div
                   key={hour}
                   className="absolute bottom-0 top-0 border-l border-gray-200 dark:border-gray-800"
                   style={{
-                    left: hour === 24 ? "calc(100% - 1px)" : `${leftPercent}%`,
+                    left:
+                      hour === 24
+                        ? "calc(100% - 1px)"
+                        : `${leftPercent}%`,
                   }}
                 >
                   <div
@@ -343,7 +616,10 @@ function ShiftTimeline({
                         : "-translate-x-1/2"
                     }`}
                   >
-                    {String(hour).padStart(2, "0")}
+                    {String(hour).padStart(
+                      2,
+                      "0",
+                    )}
                   </div>
                 </div>
               );
@@ -352,165 +628,295 @@ function ShiftTimeline({
 
           <div
             className="absolute left-0 text-xs font-semibold text-gray-500 dark:text-gray-400"
-            style={{ top: TOP_OFFSET + 20 }}
+            style={{
+              top: TOP_OFFSET + 20,
+            }}
           >
             Vagter
           </div>
 
           {timelineShifts.length === 0 && (
             <div
-              className="absolute rounded-xl border border-dashed border-gray-300 bg-white px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+              className="pointer-events-none absolute rounded-xl border border-dashed border-gray-300 bg-white px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
               style={{
-                left: LEFT_LABEL_WIDTH + 16,
+                left:
+                  LEFT_LABEL_WIDTH + 16,
                 top: TOP_OFFSET,
               }}
             >
-              Ingen vagter på den valgte dato.
+              {creationEnabled
+                ? "Klik på tidslinjen for at placere den første vagt."
+                : "Ingen vagter på den valgte dato."}
             </div>
           )}
 
           <div
             ref={timelineRef}
-            className="absolute"
+            role={
+              creationEnabled
+                ? "button"
+                : undefined
+            }
+            tabIndex={
+              creationEnabled ? 0 : undefined
+            }
+            aria-label={
+              creationEnabled
+                ? `Placér ${
+                    createAtTimeLabel ||
+                    "jobfunktion"
+                  } på tidslinjen`
+                : undefined
+            }
+            onMouseMove={
+              handleTimelineMouseMove
+            }
+            onClick={handleTimelineClick}
+            onKeyDown={handleTimelineKeyDown}
+            className={`absolute outline-none ${
+              creationEnabled
+                ? "cursor-crosshair focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                : ""
+            }`}
             style={{
               left: LEFT_LABEL_WIDTH,
               right: 0,
               top: TOP_OFFSET,
-              height: dynamicHeight - TOP_OFFSET - 24,
+              height:
+                dynamicHeight -
+                TOP_OFFSET -
+                24,
             }}
           >
-            {timelineShifts.map(({ shift, left, width, lane }) => {
-              const y = lane * (SHIFT_HEIGHT + LANE_GAP);
-              const shiftUserId = getShiftUserId(shift);
-
-              return (
-                <Rnd
-                  key={shift.id}
-                  bounds="parent"
-                  dragAxis="x"
-                  enableResizing={{
-                    top: false,
-                    right: true,
-                    bottom: false,
-                    left: true,
-                    topRight: false,
-                    bottomRight: false,
-                    bottomLeft: false,
-                    topLeft: false,
+            {creationEnabled &&
+              creationLeftPercent !== null &&
+              creationPreviewMinutes !== null && (
+                <div
+                  className="pointer-events-none absolute inset-y-0 z-20 border-l-2 border-blue-600 dark:border-blue-400"
+                  style={{
+                    left: `${creationLeftPercent}%`,
                   }}
-                  minWidth={MIN_SHIFT_WIDTH}
-                  size={{
-                    width,
-                    height: SHIFT_HEIGHT,
-                  }}
-                  position={{
-                    x: left,
-                    y,
-                  }}
-                  onDragStart={(_, data) => {
-                    dragStartPositionRef.current = { x: data.x, y: data.y };
-                  }}
-                  onDragStop={(_, data) => {
-                    const dragStartPosition = dragStartPositionRef.current;
-                    dragStartPositionRef.current = null;
-
-                    if (
-                      dragStartPosition &&
-                      Math.round(dragStartPosition.x) === Math.round(data.x) &&
-                      Math.round(dragStartPosition.y) === Math.round(data.y)
-                    ) {
-                      return;
-                    }
-
-                    const { hour, minute } = xToTime(data.x, timelineWidth);
-                    onMoveShift(shift, hour, minute);
-                  }}
-                  onResizeStart={() => {
-                    resizeStartRef.current = true;
-                  }}
-                  onResizeStop={(_, __, ref, ___, position) => {
-                    resizeStartRef.current = false;
-
-                    const start = xToTime(position.x, timelineWidth);
-                    const end = xToTime(
-                      position.x + ref.offsetWidth,
-                      timelineWidth,
-                    );
-
-                    onResizeShift(
-                      shift,
-                      start.hour,
-                      start.minute,
-                      end.hour,
-                      end.minute,
-                    );
-                  }}
-                  className="z-10"
                 >
                   <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={(event) => {
-                      event.stopPropagation();
+                    className={`absolute top-0 whitespace-nowrap rounded-lg bg-blue-700 px-2 py-1 text-xs font-bold text-white shadow-lg dark:bg-blue-500 ${
+                      creationPreviewMinutes >=
+                        18 * 60
+                        ? "-translate-x-full"
+                        : ""
+                    }`}
+                  >
+                    {createAtTimeLabel ||
+                      "Jobfunktion"}{" "}
+                    · {formatMinutes(
+                      creationPreviewMinutes,
+                    )}
+                  </div>
+                </div>
+              )}
 
-                      if (resizeStartRef.current) {
+            {timelineShifts.map(
+              ({
+                shift,
+                left,
+                width,
+                lane,
+              }) => {
+                const y =
+                  lane *
+                  (SHIFT_HEIGHT +
+                    LANE_GAP);
+                const shiftUserId =
+                  getShiftUserId(shift);
+
+                return (
+                  <Rnd
+                    key={shift.id}
+                    bounds="parent"
+                    dragAxis="x"
+                    enableResizing={{
+                      top: false,
+                      right: true,
+                      bottom: false,
+                      left: true,
+                      topRight: false,
+                      bottomRight: false,
+                      bottomLeft: false,
+                      topLeft: false,
+                    }}
+                    minWidth={MIN_SHIFT_WIDTH}
+                    size={{
+                      width,
+                      height: SHIFT_HEIGHT,
+                    }}
+                    position={{
+                      x: left,
+                      y,
+                    }}
+                    onDragStart={(_, data) => {
+                      dragStartPositionRef.current = {
+                        x: data.x,
+                        y: data.y,
+                      };
+                    }}
+                    onDragStop={(_, data) => {
+                      const dragStartPosition =
+                        dragStartPositionRef.current;
+                      dragStartPositionRef.current =
+                        null;
+
+                      if (
+                        dragStartPosition &&
+                        Math.round(
+                          dragStartPosition.x,
+                        ) ===
+                          Math.round(data.x) &&
+                        Math.round(
+                          dragStartPosition.y,
+                        ) ===
+                          Math.round(data.y)
+                      ) {
                         return;
                       }
 
-                      onSelectShift(shift);
+                      const { hour, minute } =
+                        xToTime(
+                          data.x,
+                          timelineWidth,
+                        );
+                      onMoveShift(
+                        shift,
+                        hour,
+                        minute,
+                      );
                     }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onSelectShift(shift);
-                      }
+                    onResizeStart={() => {
+                      resizeStartRef.current =
+                        true;
                     }}
-                    className="h-full cursor-pointer overflow-hidden rounded-xl border border-white/50 p-2 text-white shadow-lg transition hover:brightness-95"
-                    style={{ backgroundColor: getShiftColor(shift) }}
+                    onResizeStop={(
+                      _,
+                      __,
+                      ref,
+                      ___,
+                      position,
+                    ) => {
+                      resizeStartRef.current =
+                        false;
+                      const start = xToTime(
+                        position.x,
+                        timelineWidth,
+                      );
+                      const end = xToTime(
+                        position.x +
+                          ref.offsetWidth,
+                        timelineWidth,
+                      );
+
+                      onResizeShift(
+                        shift,
+                        start.hour,
+                        start.minute,
+                        end.hour,
+                        end.minute,
+                      );
+                    }}
+                    className="z-10"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-bold">
-                          {getShiftUserName(shift)}
-                        </div>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        event.stopPropagation();
 
-                        <div className="truncate text-[11px] opacity-90">
-                          {getShiftWorkTypeName(shift)}
-                        </div>
-                      </div>
-
-                      <div className="shrink-0 text-right text-[11px] font-semibold opacity-90">
-                        {formatTime(shift.startTime)}-
-                        {formatTime(shift.endTime)}
-                      </div>
-                    </div>
-
-                    {users.length > 0 && (
-                      <select
-                        value={shiftUserId ?? ""}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={(event) =>
-                          onChangeShiftUser(
-                            shift,
-                            event.target.value
-                              ? Number(event.target.value)
-                              : null,
-                          )
+                        if (
+                          resizeStartRef.current
+                        ) {
+                          return;
                         }
-                        className="mt-1 w-full rounded-lg border border-white/30 bg-white/90 px-2 py-0.5 text-[11px] text-gray-900 dark:bg-gray-950 dark:text-gray-100"
-                      >
-                        <option value="">Ikke tildelt</option>
-                        {users.map((user) => (
-                          <option key={user.id} value={user.id}>
-                            {user.firstName} {user.lastName}
+
+                        onSelectShift(shift);
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          event.key ===
+                            "Enter" ||
+                          event.key === " "
+                        ) {
+                          event.preventDefault();
+                          onSelectShift(shift);
+                        }
+                      }}
+                      className="h-full cursor-pointer overflow-hidden rounded-xl border border-white/50 p-2 text-white shadow-lg transition hover:brightness-95"
+                      style={{
+                        backgroundColor:
+                          getShiftColor(shift),
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-bold">
+                            {getShiftUserName(
+                              shift,
+                            )}
+                          </div>
+                          <div className="truncate text-[11px] opacity-90">
+                            {getShiftWorkTypeName(
+                              shift,
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right text-[11px] font-semibold opacity-90">
+                          {formatTime(
+                            shift.startTime,
+                          )}
+                          -
+                          {formatTime(
+                            shift.endTime,
+                          )}
+                        </div>
+                      </div>
+
+                      {users.length > 0 && (
+                        <select
+                          value={
+                            shiftUserId ?? ""
+                          }
+                          onClick={(event) =>
+                            event.stopPropagation()
+                          }
+                          onChange={(event) =>
+                            onChangeShiftUser(
+                              shift,
+                              event.target.value
+                                ? Number(
+                                    event.target
+                                      .value,
+                                  )
+                                : null,
+                            )
+                          }
+                          className="mt-1 w-full rounded-lg border border-white/30 bg-white/90 px-2 py-0.5 text-[11px] text-gray-900 dark:bg-gray-950 dark:text-gray-100"
+                        >
+                          <option value="">
+                            Ikke tildelt
                           </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                </Rnd>
-              );
-            })}
+                          {users.map((user) => (
+                            <option
+                              key={user.id}
+                              value={user.id}
+                            >
+                              {user.firstName}{" "}
+                              {user.lastName}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </Rnd>
+                );
+              },
+            )}
           </div>
         </div>
       </div>

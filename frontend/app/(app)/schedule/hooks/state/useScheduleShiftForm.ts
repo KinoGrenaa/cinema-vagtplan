@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+} from "react";
 import { toast } from "sonner";
 import type { Shift } from "../../../../../../shared/types";
 import type { useSchedule } from "../data/useSchedule";
@@ -33,6 +37,54 @@ type UseScheduleShiftFormParams = {
   infoDialog: InfoDialog;
 };
 
+const DEFAULT_START_HOUR = 14;
+const DEFAULT_END_HOUR = 22;
+const DEFAULT_DURATION_MINUTES =
+  (DEFAULT_END_HOUR - DEFAULT_START_HOUR) * 60;
+const SNAP_MINUTES = 15;
+const LAST_START_MINUTE = 24 * 60 - SNAP_MINUTES;
+
+function snapCreationMinutes(value: number) {
+  return Math.max(
+    0,
+    Math.min(
+      LAST_START_MINUTE,
+      Math.round(value / SNAP_MINUTES) * SNAP_MINUTES,
+    ),
+  );
+}
+
+function getPresetShiftTimes(
+  selectedDate: string,
+  presetStartMinutes?: number,
+) {
+  if (presetStartMinutes === undefined) {
+    return {
+      startTime: `${selectedDate}T${String(
+        DEFAULT_START_HOUR,
+      ).padStart(2, "0")}:00`,
+      endTime: `${selectedDate}T${String(
+        DEFAULT_END_HOUR,
+      ).padStart(2, "0")}:00`,
+    };
+  }
+
+  const start = new Date(`${selectedDate}T00:00:00`);
+  start.setMinutes(
+    snapCreationMinutes(presetStartMinutes),
+  );
+
+  const end = new Date(start);
+  end.setMinutes(
+    end.getMinutes() + DEFAULT_DURATION_MINUTES,
+  );
+
+  return {
+    startTime: toInputDateTime(start.toISOString()),
+    endTime: toInputDateTime(end.toISOString()),
+  };
+}
+
 export function useScheduleShiftForm({
   selectedDate,
   users,
@@ -46,12 +98,16 @@ export function useScheduleShiftForm({
   confirmDialog,
   infoDialog,
 }: UseScheduleShiftFormParams) {
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
-  const [showShiftFormModal, setShowShiftFormModal] = useState(false);
+  const [selectedShift, setSelectedShift] =
+    useState<Shift | null>(null);
+  const [showShiftFormModal, setShowShiftFormModal] =
+    useState(false);
   const [startTime, setStartTime] = useState(
     `${selectedDate}T14:00`,
   );
-  const [endTime, setEndTime] = useState(`${selectedDate}T22:00`);
+  const [endTime, setEndTime] = useState(
+    `${selectedDate}T22:00`,
+  );
   const [note, setNote] = useState("");
   const [userId, setUserId] = useState(0);
   const [workTypeId, setWorkTypeId] = useState(0);
@@ -70,18 +126,28 @@ export function useScheduleShiftForm({
     if (
       workTypeId !== 0 &&
       workTypes.length > 0 &&
-      !workTypes.some((workType) => workType.id === workTypeId)
+      !workTypes.some(
+        (workType) => workType.id === workTypeId,
+      )
     ) {
       setWorkTypeId(0);
     }
   }, [workTypeId, workTypes]);
 
-  function clearForm(presetWorkTypeId = 0) {
+  function clearForm(
+    presetWorkTypeId = 0,
+    presetStartMinutes?: number,
+  ) {
+    const presetTimes = getPresetShiftTimes(
+      selectedDate,
+      presetStartMinutes,
+    );
+
     setSelectedShift(null);
     setUserId(0);
     setWorkTypeId(presetWorkTypeId);
-    setStartTime(`${selectedDate}T14:00`);
-    setEndTime(`${selectedDate}T22:00`);
+    setStartTime(presetTimes.startTime);
+    setEndTime(presetTimes.endTime);
     setNote("");
   }
 
@@ -92,13 +158,19 @@ export function useScheduleShiftForm({
     setShowShiftFormModal(false);
   }
 
-  function openCreateShiftModal(presetWorkTypeId = 0) {
+  function openCreateShiftModal(
+    presetWorkTypeId = 0,
+    presetStartMinutes?: number,
+  ) {
     if (needsMasterCinemaSelection) {
       showMissingActiveCinemaMessage();
       return;
     }
 
-    clearForm(presetWorkTypeId);
+    clearForm(
+      presetWorkTypeId,
+      presetStartMinutes,
+    );
     setShowShiftFormModal(true);
   }
 
@@ -111,12 +183,16 @@ export function useScheduleShiftForm({
     setShowShiftFormModal(false);
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(
+    event: FormEvent,
+  ) {
     event.preventDefault();
 
     const body = {
-      startTime: localDateTimeToISOString(startTime),
-      endTime: localDateTimeToISOString(endTime),
+      startTime:
+        localDateTimeToISOString(startTime),
+      endTime:
+        localDateTimeToISOString(endTime),
       note,
       userId: userId > 0 ? userId : null,
       workTypeId,
@@ -176,10 +252,16 @@ export function useScheduleShiftForm({
 
   function handleSelectShift(shift: Shift) {
     setSelectedShift(shift);
-    setStartTime(toInputDateTime(shift.startTime));
-    setEndTime(toInputDateTime(shift.endTime));
+    setStartTime(
+      toInputDateTime(shift.startTime),
+    );
+    setEndTime(
+      toInputDateTime(shift.endTime),
+    );
     setNote(shift.note || "");
-    setUserId(getShiftUserId(shift) ?? 0);
+    setUserId(
+      getShiftUserId(shift) ?? 0,
+    );
     setWorkTypeId(shift.workTypeId);
     setShowShiftFormModal(true);
   }
@@ -208,7 +290,9 @@ export function useScheduleShiftForm({
       onConfirm: async () => {
         try {
           await offerShiftTrade(selectedShift);
-          toast.success("Vagten er sendt i byttepuljen");
+          toast.success(
+            "Vagten er sendt i byttepuljen",
+          );
         } catch (error) {
           infoDialog.showError(
             "Vagten kunne ikke sendes i byttepuljen",

@@ -224,6 +224,7 @@ type ScheduleShiftsPanelProps = {
   onOpenStaffingRequest: () => void;
   onOpenCreateShiftModal: (
     workTypeId?: number,
+    presetStartMinutes?: number,
   ) => void;
   onPreviousDay: () => void;
   onToday: () => void;
@@ -299,6 +300,10 @@ export default function ScheduleShiftsPanel({
     selectedJobFunctionId,
     setSelectedJobFunctionId,
   ] = useState(0);
+  const [
+    isPlacingJobFunction,
+    setIsPlacingJobFunction,
+  ] = useState(false);
 
   const approvedLeaveConflicts =
     useMemo(
@@ -330,6 +335,27 @@ export default function ScheduleShiftsPanel({
       [jobFunctions],
     );
 
+  const selectedJobFunction =
+    useMemo(
+      () =>
+        availableJobFunctions.find(
+          (jobFunction) =>
+            jobFunction.id ===
+            selectedJobFunctionId,
+        ) ?? null,
+      [
+        availableJobFunctions,
+        selectedJobFunctionId,
+      ],
+    );
+
+  const selectedWorkTypeId =
+    selectedJobFunction
+      ? getWorkTypeId(
+          selectedJobFunction,
+        )
+      : null;
+
   const missingWorkTypeCount =
     useMemo(
       () =>
@@ -359,30 +385,49 @@ export default function ScheduleShiftsPanel({
       availableJobFunctions[0]
         ?.id ?? 0,
     );
+    setIsPlacingJobFunction(false);
   }, [
     availableJobFunctions,
     selectedJobFunctionId,
   ]);
 
-  function handleAddJobFunction() {
-    const jobFunction =
-      availableJobFunctions.find(
-        (item) =>
-          item.id ===
-          selectedJobFunctionId,
-      );
-    const workTypeId = jobFunction
-      ? getWorkTypeId(
-          jobFunction,
-        )
-      : null;
+  useEffect(() => {
+    setIsPlacingJobFunction(false);
+  }, [selectedDate]);
 
-    if (!workTypeId) {
+  function handleToggleJobFunctionPlacement() {
+    if (!selectedWorkTypeId) {
       return;
     }
 
+    setIsPlacingJobFunction(
+      (current) => !current,
+    );
+  }
+
+  function handleOpenJobFunctionForm() {
+    if (!selectedWorkTypeId) {
+      return;
+    }
+
+    setIsPlacingJobFunction(false);
     onOpenCreateShiftModal(
-      workTypeId,
+      selectedWorkTypeId,
+    );
+  }
+
+  function handleCreateAtTime(
+    hour: number,
+    minute: number,
+  ) {
+    if (!selectedWorkTypeId) {
+      return;
+    }
+
+    setIsPlacingJobFunction(false);
+    onOpenCreateShiftModal(
+      selectedWorkTypeId,
+      hour * 60 + minute,
     );
   }
 
@@ -595,14 +640,17 @@ export default function ScheduleShiftsPanel({
                     }
                     onChange={(
                       event,
-                    ) =>
+                    ) => {
                       setSelectedJobFunctionId(
                         Number(
                           event.target
                             .value,
                         ),
-                      )
-                    }
+                      );
+                      setIsPlacingJobFunction(
+                        false,
+                      );
+                    }}
                     disabled={
                       jobFunctionsLoading ||
                       availableJobFunctions.length ===
@@ -655,20 +703,52 @@ export default function ScheduleShiftsPanel({
                   <button
                     type="button"
                     onClick={
-                      handleAddJobFunction
+                      handleToggleJobFunctionPlacement
                     }
                     disabled={
                       jobFunctionsLoading ||
-                      selectedJobFunctionId <=
-                        0
+                      !selectedWorkTypeId
                     }
-                    className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500"
+                    className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                      isPlacingJobFunction
+                        ? "bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500"
+                        : "bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
+                    }`}
                   >
-                    + Tilføj
-                    untildelt vagt
+                    {isPlacingJobFunction
+                      ? "Annuller placering"
+                      : "Placér på tidslinjen"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleOpenJobFunctionForm
+                    }
+                    disabled={
+                      jobFunctionsLoading ||
+                      !selectedWorkTypeId
+                    }
+                    className="rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-950 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-100 dark:hover:bg-blue-950/60"
+                  >
+                    Åbn vagtformular
                   </button>
                 </div>
               </div>
+
+              {isPlacingJobFunction &&
+                selectedJobFunction && (
+                  <p className="mt-2 rounded-lg bg-blue-100 px-3 py-2 text-xs font-semibold text-blue-950 dark:bg-blue-950/60 dark:text-blue-100">
+                    Klik på et tomt
+                    tidspunkt i
+                    tidslinjen for at
+                    placere {
+                      selectedJobFunction.name
+                    }. Starttiden
+                    snapper til nærmeste
+                    kvarter.
+                  </p>
+                )}
 
               {missingWorkTypeCount >
                 0 && (
@@ -699,6 +779,17 @@ export default function ScheduleShiftsPanel({
           shifts={shifts}
           users={users}
           selectedDate={selectedDate}
+          createAtTimeLabel={
+            isPlacingJobFunction
+              ? selectedJobFunction?.name ??
+                null
+              : null
+          }
+          onCreateAtTime={
+            isPlacingJobFunction
+              ? handleCreateAtTime
+              : undefined
+          }
           onSelectShift={
             canManageShifts
               ? onSelectShift
