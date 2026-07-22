@@ -3,19 +3,51 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
-import { useApi } from "./useApi";
+
 import { useAuth } from "../providers/AuthProvider";
-import { useRealtimeCore } from "./useRealtimeCore";
 import { useCinemaModules } from "../providers/CinemaModulesProvider";
+import { useApi } from "./useApi";
+import { useRealtimeCore } from "./useRealtimeCore";
+
+function getCount(data: unknown) {
+  if (typeof data === "number") {
+    return data;
+  }
+
+  if (
+    data &&
+    typeof data === "object" &&
+    "count" in data
+  ) {
+    return Number(data.count || 0);
+  }
+
+  return 0;
+}
+
+function getPendingCount(data: unknown) {
+  if (!Array.isArray(data)) {
+    return 0;
+  }
+
+  return data.filter(
+    (item) =>
+      item?.status === "PENDING",
+  ).length;
+}
 
 export function useRealtimeBadges() {
   const { apiFetch } = useApi();
   const { token, user } = useAuth();
   const {
+    loading: modulesLoading,
+    hasCinemaContext,
     isModuleEnabled,
   } = useCinemaModules();
+
   const [poolCount, setPoolCount] =
     useState(0);
   const [
@@ -38,57 +70,44 @@ export function useRealtimeBadges() {
     leaveRequestCount,
     setLeaveRequestCount,
   ] = useState(0);
+  const refreshVersionRef =
+    useRef(0);
 
-  const getCount = (
-    data: unknown,
-  ) => {
-    if (
-      typeof data === "number"
-    ) {
-      return data;
-    }
+  const shiftTradesEnabled =
+    !modulesLoading &&
+    hasCinemaContext &&
+    isModuleEnabled(
+      "SHIFT_TRADES",
+    );
+  const messagesEnabled =
+    !modulesLoading &&
+    hasCinemaContext &&
+    isModuleEnabled("MESSAGES");
+  const staffingRequestsEnabled =
+    !modulesLoading &&
+    hasCinemaContext &&
+    isModuleEnabled(
+      "STAFFING_REQUESTS",
+    );
+  const leaveEnabled =
+    !modulesLoading &&
+    hasCinemaContext &&
+    isModuleEnabled("LEAVE");
 
-    if (
-      data &&
-      typeof data === "object" &&
-      "count" in data
-    ) {
-      return Number(
-        data.count || 0,
-      );
-    }
-
-    return 0;
-  };
-
-  const getPendingStaffingCount =
-    (data: unknown) => {
-      if (!Array.isArray(data)) {
-        return 0;
-      }
-
-      return data.filter(
-        (request) =>
-          request?.status ===
-          "PENDING",
-      ).length;
-    };
-
-  const getPendingLeaveRequestCount =
-    (data: unknown) => {
-      if (!Array.isArray(data)) {
-        return 0;
-      }
-
-      return data.filter(
-        (request) =>
-          request?.status ===
-          "PENDING",
-      ).length;
-    };
+  const resetBadges = useCallback(
+    () => {
+      setPoolCount(0);
+      setDirectCount(0);
+      setUnreadMessages(0);
+      setNotificationCount(0);
+      setStaffingRequestCount(0);
+      setLeaveRequestCount(0);
+    },
+    [],
+  );
 
   const getMasterCinemaQuery =
-    () => {
+    useCallback(() => {
       if (
         typeof window ===
         "undefined"
@@ -113,28 +132,40 @@ export function useRealtimeBadges() {
             selectedCinemaId,
           )}`
         : null;
-    };
+    }, [user]);
 
-  const loadJson = async (
-    enabled: boolean,
-    endpoint: string,
-    fallback: unknown,
-  ) => {
-    if (!enabled) {
-      return fallback;
-    }
+  const loadJson = useCallback(
+    async (
+      enabled: boolean,
+      endpoint: string,
+      fallback: unknown,
+    ) => {
+      if (!enabled) {
+        return fallback;
+      }
 
-    const response =
-      await apiFetch(endpoint);
+      const response =
+        await apiFetch(endpoint);
 
-    return response.ok
-      ? response.json()
-      : fallback;
-  };
+      return response.ok
+        ? response.json()
+        : fallback;
+    },
+    [apiFetch],
+  );
 
   const refreshBadges =
     useCallback(async () => {
-      if (!token) {
+      const refreshVersion =
+        ++refreshVersionRef.current;
+
+      if (
+        !token ||
+        !user ||
+        modulesLoading ||
+        !hasCinemaContext
+      ) {
+        resetBadges();
         return;
       }
 
@@ -144,12 +175,7 @@ export function useRealtimeBadges() {
       if (
         masterCinemaQuery === null
       ) {
-        setPoolCount(0);
-        setDirectCount(0);
-        setUnreadMessages(0);
-        setNotificationCount(0);
-        setStaffingRequestCount(0);
-        setLeaveRequestCount(0);
+        resetBadges();
         return;
       }
 
@@ -163,23 +189,17 @@ export function useRealtimeBadges() {
           leaveRequestsData,
         ] = await Promise.all([
           loadJson(
-            isModuleEnabled(
-              "SHIFT_TRADES",
-            ),
+            shiftTradesEnabled,
             `/shift-trades/pool-count${masterCinemaQuery}`,
             { count: 0 },
           ),
           loadJson(
-            isModuleEnabled(
-              "SHIFT_TRADES",
-            ),
+            shiftTradesEnabled,
             `/shift-trades/direct-count${masterCinemaQuery}`,
             { count: 0 },
           ),
           loadJson(
-            isModuleEnabled(
-              "MESSAGES",
-            ),
+            messagesEnabled,
             `/messages/unread-count${masterCinemaQuery}`,
             { count: 0 },
           ),
@@ -189,20 +209,23 @@ export function useRealtimeBadges() {
             { count: 0 },
           ),
           loadJson(
-            isModuleEnabled(
-              "STAFFING_REQUESTS",
-            ),
+            staffingRequestsEnabled,
             `/staffing-requests/mine${masterCinemaQuery}`,
             [],
           ),
           loadJson(
-            isModuleEnabled(
-              "LEAVE",
-            ),
+            leaveEnabled,
             `/leave-requests${masterCinemaQuery}`,
             [],
           ),
         ]);
+
+        if (
+          refreshVersion !==
+          refreshVersionRef.current
+        ) {
+          return;
+        }
 
         setPoolCount(
           getCount(poolData),
@@ -219,28 +242,37 @@ export function useRealtimeBadges() {
           ),
         );
         setStaffingRequestCount(
-          getPendingStaffingCount(
+          getPendingCount(
             staffingData,
           ),
         );
         setLeaveRequestCount(
-          getPendingLeaveRequestCount(
+          getPendingCount(
             leaveRequestsData,
           ),
         );
       } catch {
-        setPoolCount(0);
-        setDirectCount(0);
-        setUnreadMessages(0);
-        setNotificationCount(0);
-        setStaffingRequestCount(0);
-        setLeaveRequestCount(0);
+        if (
+          refreshVersion !==
+          refreshVersionRef.current
+        ) {
+          return;
+        }
+
+        resetBadges();
       }
     }, [
-      apiFetch,
+      getMasterCinemaQuery,
+      hasCinemaContext,
+      leaveEnabled,
+      loadJson,
+      messagesEnabled,
+      modulesLoading,
+      resetBadges,
+      shiftTradesEnabled,
+      staffingRequestsEnabled,
       token,
       user,
-      isModuleEnabled,
     ]);
 
   useEffect(() => {
@@ -249,25 +281,51 @@ export function useRealtimeBadges() {
 
   useRealtimeCore({
     onShiftUpdated:
-      refreshBadges,
+      shiftTradesEnabled
+        ? refreshBadges
+        : undefined,
     onShiftTradeUpdated:
-      refreshBadges,
+      shiftTradesEnabled
+        ? refreshBadges
+        : undefined,
     onNotification:
       refreshBadges,
-    onMessage: refreshBadges,
+    onMessage:
+      messagesEnabled
+        ? refreshBadges
+        : undefined,
     onStaffingRequestUpdated:
-      refreshBadges,
+      staffingRequestsEnabled
+        ? refreshBadges
+        : undefined,
     onLeaveRequestUpdated:
-      refreshBadges,
+      leaveEnabled
+        ? refreshBadges
+        : undefined,
   });
 
   return {
-    poolCount,
-    directCount,
-    unreadMessages,
+    poolCount:
+      shiftTradesEnabled
+        ? poolCount
+        : 0,
+    directCount:
+      shiftTradesEnabled
+        ? directCount
+        : 0,
+    unreadMessages:
+      messagesEnabled
+        ? unreadMessages
+        : 0,
     notificationCount,
-    staffingRequestCount,
-    leaveRequestCount,
+    staffingRequestCount:
+      staffingRequestsEnabled
+        ? staffingRequestCount
+        : 0,
+    leaveRequestCount:
+      leaveEnabled
+        ? leaveRequestCount
+        : 0,
     refreshBadges,
   };
 }
