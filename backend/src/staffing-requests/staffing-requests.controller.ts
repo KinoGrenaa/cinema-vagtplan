@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -10,10 +9,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-
 import { JwtGuard } from '../auth/jwt/jwt.guard';
-import { StaffingRequestsService } from './staffing-requests.service';
+import {
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { CreateStaffingRequestDto } from './dto/create-staffing-request.dto';
+import { StaffingRequestsService } from './staffing-requests.service';
 
 type AuthRequest = {
   user: {
@@ -24,59 +26,74 @@ type AuthRequest = {
   };
 };
 
+function parseOptionalBodyId(
+  value: unknown,
+  message: string,
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ''
+  ) {
+    return undefined;
+  }
+
+  return parseRequiredPositiveInteger(
+    value,
+    message,
+  );
+}
+
 @UseGuards(JwtGuard)
 @Controller('staffing-requests')
 export class StaffingRequestsController {
-  constructor(private readonly staffingRequestsService: StaffingRequestsService) {}
-
-  private parseCinemaId(value?: string | number | null) {
-    if (value === undefined || value === null || value === '') {
-      return undefined;
-    }
-
-    const cinemaId = Number(value);
-
-    if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
-      throw new BadRequestException('Biograf skal være et gyldigt ID');
-    }
-
-    return cinemaId;
-  }
-
-  private parseRequestId(value: string) {
-    const requestId = Number(value);
-
-    if (!Number.isInteger(requestId) || requestId <= 0) {
-      throw new BadRequestException(
-        'Bemandingsforespørgsel skal være et gyldigt ID',
-      );
-    }
-
-    return requestId;
-  }
+  constructor(
+    private readonly staffingRequestsService: StaffingRequestsService,
+  ) {}
 
   @Get()
-  findAll(@Req() req: AuthRequest, @Query('cinemaId') cinemaId?: string) {
+  findAll(
+    @Req() req: AuthRequest,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
     return this.staffingRequestsService.findAll(
       req.user,
-      this.parseCinemaId(cinemaId),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
   @Get('mine')
-  findMine(@Req() req: AuthRequest, @Query('cinemaId') cinemaId?: string) {
+  findMine(
+    @Req() req: AuthRequest,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
     return this.staffingRequestsService.findMine(
       req.user,
-      this.parseCinemaId(cinemaId),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
   @Post()
-  create(@Req() req: AuthRequest, @Body() dto: CreateStaffingRequestDto) {
-    return this.staffingRequestsService.create(req.user, {
-      ...dto,
-      cinemaId: this.parseCinemaId(dto.cinemaId),
-    });
+  create(
+    @Req() req: AuthRequest,
+    @Body() dto: CreateStaffingRequestDto,
+  ) {
+    return this.staffingRequestsService.create(
+      req.user,
+      {
+        ...dto,
+        cinemaId: parseOptionalBodyId(
+          dto.cinemaId,
+          'Biograf skal være et gyldigt ID',
+        ),
+      },
+    );
   }
 
   @Patch(':id/accept')
@@ -87,8 +104,14 @@ export class StaffingRequestsController {
   ) {
     return this.staffingRequestsService.accept(
       req.user,
-      this.parseRequestId(id),
-      this.parseCinemaId(cinemaId),
+      parseRequiredPositiveInteger(
+        id,
+        'Bemandingsforespørgsel skal være et gyldigt ID',
+      ),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
@@ -100,8 +123,14 @@ export class StaffingRequestsController {
   ) {
     return this.staffingRequestsService.reject(
       req.user,
-      this.parseRequestId(id),
-      this.parseCinemaId(cinemaId),
+      parseRequiredPositiveInteger(
+        id,
+        'Bemandingsforespørgsel skal være et gyldigt ID',
+      ),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
@@ -113,8 +142,14 @@ export class StaffingRequestsController {
   ) {
     return this.staffingRequestsService.cancel(
       req.user,
-      this.parseRequestId(id),
-      this.parseCinemaId(cinemaId),
+      parseRequiredPositiveInteger(
+        id,
+        'Bemandingsforespørgsel skal være et gyldigt ID',
+      ),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 }

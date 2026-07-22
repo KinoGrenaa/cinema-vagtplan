@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,9 +10,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
-import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 import { ShiftsService } from './shifts.service';
@@ -23,39 +26,6 @@ export class ShiftsController {
   constructor(
     private readonly shiftsService: ShiftsService,
   ) {}
-
-  private parseRequiredId(
-    value: string | number,
-    message: string,
-  ) {
-    const parsedId = Number(value);
-
-    if (
-      !Number.isInteger(parsedId) ||
-      parsedId <= 0
-    ) {
-      throw new BadRequestException(message);
-    }
-
-    return parsedId;
-  }
-
-  private parseCinemaId(
-    value?: string | number | null,
-  ) {
-    if (
-      value === undefined ||
-      value === null ||
-      value === ''
-    ) {
-      return undefined;
-    }
-
-    return this.parseRequiredId(
-      value,
-      'Biograf skal være et gyldigt ID',
-    );
-  }
 
   @UseGuards(JwtGuard)
   @Get()
@@ -67,7 +37,10 @@ export class ShiftsController {
     return this.shiftsService.findAll(
       req.user,
       date,
-      this.parseCinemaId(cinemaId),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
@@ -94,7 +67,7 @@ export class ShiftsController {
   ) {
     return this.shiftsService.updateShift(
       req.user,
-      this.parseRequiredId(
+      parseRequiredPositiveInteger(
         id,
         'Vagt skal være et gyldigt ID',
       ),
@@ -112,11 +85,14 @@ export class ShiftsController {
   ) {
     return this.shiftsService.deleteShift(
       req.user,
-      this.parseRequiredId(
+      parseRequiredPositiveInteger(
         id,
         'Vagt skal være et gyldigt ID',
       ),
-      this.parseCinemaId(cinemaId),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 }

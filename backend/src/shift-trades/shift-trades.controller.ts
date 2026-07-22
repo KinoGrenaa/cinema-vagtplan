@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -11,7 +10,29 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  parseOptionalPositiveIntegerQuery,
+  parseRequiredPositiveInteger,
+} from '../common/query-validation';
 import { ShiftTradesService } from './shift-trades.service';
+
+function parseOptionalBodyId(
+  value: unknown,
+  message: string,
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ''
+  ) {
+    return undefined;
+  }
+
+  return parseRequiredPositiveInteger(
+    value,
+    message,
+  );
+}
 
 @Controller('shift-trades')
 @UseGuards(JwtGuard)
@@ -20,30 +41,6 @@ export class ShiftTradesController {
     private readonly shiftTradesService: ShiftTradesService,
   ) {}
 
-  private parseRequiredId(value: unknown, label: string) {
-    const parsed = Number(value);
-
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      throw new BadRequestException(
-        `${label} skal være et gyldigt ID`,
-      );
-    }
-
-    return parsed;
-  }
-
-  private parseOptionalId(value: unknown, label: string) {
-    if (
-      value === undefined ||
-      value === null ||
-      value === ''
-    ) {
-      return undefined;
-    }
-
-    return this.parseRequiredId(value, label);
-  }
-
   @Get('pool-count')
   getPoolCount(
     @Req() req: any,
@@ -51,7 +48,10 @@ export class ShiftTradesController {
   ) {
     return this.shiftTradesService.getPoolCount(
       req.user,
-      this.parseOptionalId(cinemaId, 'Biograf'),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
@@ -62,7 +62,10 @@ export class ShiftTradesController {
   ) {
     return this.shiftTradesService.getDirectCount(
       req.user,
-      this.parseOptionalId(cinemaId, 'Biograf'),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
@@ -73,7 +76,10 @@ export class ShiftTradesController {
   ) {
     return this.shiftTradesService.findAll(
       req.user,
-      this.parseOptionalId(cinemaId, 'Biograf'),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
@@ -86,18 +92,22 @@ export class ShiftTradesController {
     return this.shiftTradesService.create(
       req.user,
       {
-        shiftId: this.parseRequiredId(
-          body?.shiftId,
-          'Vagt',
-        ),
+        shiftId:
+          parseRequiredPositiveInteger(
+            body?.shiftId,
+            'Vagt skal være et gyldigt ID',
+          ),
         type: body?.type,
-        targetUserId: this.parseOptionalId(
+        targetUserId: parseOptionalBodyId(
           body?.targetUserId,
-          'Modtager',
+          'Modtager skal være et gyldigt ID',
         ),
         message: body?.message,
       },
-      this.parseOptionalId(cinemaId, 'Biograf'),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
     );
   }
 
@@ -107,7 +117,10 @@ export class ShiftTradesController {
     @Param('id') id: string,
   ) {
     return this.shiftTradesService.acceptTrade(
-      this.parseRequiredId(id, 'Vagtbytte'),
+      parseRequiredPositiveInteger(
+        id,
+        'Vagtbytte skal være et gyldigt ID',
+      ),
       req.user,
     );
   }
@@ -118,7 +131,10 @@ export class ShiftTradesController {
     @Param('id') id: string,
   ) {
     return this.shiftTradesService.rejectTrade(
-      this.parseRequiredId(id, 'Vagtbytte'),
+      parseRequiredPositiveInteger(
+        id,
+        'Vagtbytte skal være et gyldigt ID',
+      ),
       req.user,
     );
   }
@@ -129,7 +145,10 @@ export class ShiftTradesController {
     @Param('id') id: string,
   ) {
     return this.shiftTradesService.cancelTrade(
-      this.parseRequiredId(id, 'Vagtbytte'),
+      parseRequiredPositiveInteger(
+        id,
+        'Vagtbytte skal være et gyldigt ID',
+      ),
       req.user,
     );
   }
