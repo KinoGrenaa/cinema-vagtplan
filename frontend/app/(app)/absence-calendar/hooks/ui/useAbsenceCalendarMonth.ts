@@ -1,32 +1,108 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
 import { dateToLocalMonthString } from "@/app/utils/dateTime";
 
 export function useAbsenceCalendarMonth() {
-  const [selectedMonth, setSelectedMonth] = useState(
-    dateToLocalMonthString(new Date()),
+  const [
+    selectedMonth,
+    setSelectedMonth,
+  ] = useState(
+    dateToLocalMonthString(
+      new Date(),
+    ),
   );
 
-  const daysInMonth = useMemo(() => {
-    const [year, month] = selectedMonth.split("-").map(Number);
-    const lastDay = new Date(year, month, 0).getDate();
+  const calendarDays = useMemo(() => {
+    const [year, month] =
+      selectedMonth
+        .split("-")
+        .map(Number);
+    const firstDay = new Date(
+      year,
+      month - 1,
+      1,
+      12,
+    );
+    const lastDay = new Date(
+      year,
+      month,
+      0,
+      12,
+    ).getDate();
+    const leadingEmptyDays =
+      (firstDay.getDay() + 6) % 7;
+    const days: Array<string | null> = [
+      ...Array.from(
+        {
+          length:
+            leadingEmptyDays,
+        },
+        () => null,
+      ),
+      ...Array.from(
+        { length: lastDay },
+        (_, index) =>
+          `${selectedMonth}-${String(
+            index + 1,
+          ).padStart(2, "0")}`,
+      ),
+    ];
+    const trailingEmptyDays =
+      (7 - (days.length % 7)) %
+      7;
 
-    return Array.from({ length: lastDay }, (_, index) => {
-      const day = index + 1;
-      return `${selectedMonth}-${String(day).padStart(2, "0")}`;
-    });
+    return [
+      ...days,
+      ...Array.from(
+        {
+          length:
+            trailingEmptyDays,
+        },
+        () => null,
+      ),
+    ];
   }, [selectedMonth]);
 
-  function changeMonth(direction: number) {
-    const date = new Date(`${selectedMonth}-01T12:00:00`);
-    date.setMonth(date.getMonth() + direction);
-    setSelectedMonth(dateToLocalMonthString(date));
+  const currentMonth =
+    dateToLocalMonthString(
+      new Date(),
+    );
+
+  function changeMonth(
+    direction: number,
+  ) {
+    const [year, month] =
+      selectedMonth
+        .split("-")
+        .map(Number);
+    const date = new Date(
+      year,
+      month - 1 + direction,
+      1,
+      12,
+    );
+
+    setSelectedMonth(
+      dateToLocalMonthString(
+        date,
+      ),
+    );
+  }
+
+  function goToToday() {
+    setSelectedMonth(currentMonth);
   }
 
   return {
+    calendarDays,
     changeMonth,
-    daysInMonth,
+    goToToday,
+    isCurrentMonth:
+      selectedMonth === currentMonth,
     selectedMonth,
   };
 }
