@@ -1,10 +1,15 @@
-import type { Dispatch, SetStateAction } from "react";
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
 
 import {
   severityOptions,
   statusOptions,
 } from "../../helpers/core/systemErrorLogConstants";
-import { getQuickFilterButtonClass } from "../../helpers/core/systemErrorLogHelpers";
+import {
+  getQuickFilterButtonClass,
+} from "../../helpers/core/systemErrorLogHelpers";
 import type {
   SeverityFilter,
   StatusFilter,
@@ -34,6 +39,12 @@ type SystemErrorLogFiltersProps = {
   onReset: () => void;
 };
 
+const fieldClass =
+  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-purple-400 dark:focus:ring-purple-400/25";
+
+const quickFilterFocusClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 dark:focus-visible:ring-purple-400 dark:focus-visible:ring-offset-gray-900";
+
 export default function SystemErrorLogFilters({
   statusFilter,
   severityFilter,
@@ -50,42 +61,48 @@ export default function SystemErrorLogFilters({
   onReset,
 }: SystemErrorLogFiltersProps) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section className="rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div className="mb-4 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onShowActive}
-          className={getQuickFilterButtonClass(
-            statusFilter === "ACTIVE" && severityFilter === "",
-          )}
+          className={`${getQuickFilterButtonClass(
+            statusFilter === "ACTIVE" &&
+              severityFilter === "",
+          )} ${quickFilterFocusClass}`}
         >
           Aktive
         </button>
+
         <button
           type="button"
           onClick={onShowNew}
-          className={getQuickFilterButtonClass(
-            statusFilter === "NEW" && severityFilter === "",
-          )}
+          className={`${getQuickFilterButtonClass(
+            statusFilter === "NEW" &&
+              severityFilter === "",
+          )} ${quickFilterFocusClass}`}
         >
           Nye
         </button>
+
         <button
           type="button"
           onClick={onShowCritical}
-          className={getQuickFilterButtonClass(
+          className={`${getQuickFilterButtonClass(
             statusFilter === "ACTIVE" &&
               severityFilter === "CRITICAL",
-          )}
+          )} ${quickFilterFocusClass}`}
         >
           Kritiske
         </button>
+
         <button
           type="button"
           onClick={onShowAll}
-          className={getQuickFilterButtonClass(
-            statusFilter === "" && severityFilter === "",
-          )}
+          className={`${getQuickFilterButtonClass(
+            statusFilter === "" &&
+              severityFilter === "",
+          )} ${quickFilterFocusClass}`}
         >
           Alle
         </button>
@@ -96,20 +113,27 @@ export default function SystemErrorLogFilters({
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Status
           </label>
+
           <select
             value={statusFilter}
             onChange={(event) =>
               onStatusFilterChange(
-                event.target.value as StatusFilter,
+                event.target
+                  .value as StatusFilter,
               )
             }
-            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
+            className={fieldClass}
           >
-            {statusOptions.map((option) => (
-              <option key={option.label} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {statusOptions.map(
+              (option) => (
+                <option
+                  key={option.label}
+                  value={option.value}
+                >
+                  {option.label}
+                </option>
+              ),
+            )}
           </select>
         </div>
 
@@ -117,20 +141,27 @@ export default function SystemErrorLogFilters({
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Niveau
           </label>
+
           <select
             value={severityFilter}
             onChange={(event) =>
               onSeverityFilterChange(
-                event.target.value as SeverityFilter,
+                event.target
+                  .value as SeverityFilter,
               )
             }
-            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
+            className={fieldClass}
           >
-            {severityOptions.map((option) => (
-              <option key={option.label} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {severityOptions.map(
+              (option) => (
+                <option
+                  key={option.label}
+                  value={option.value}
+                >
+                  {option.label}
+                </option>
+              ),
+            )}
           </select>
         </div>
 
@@ -138,16 +169,20 @@ export default function SystemErrorLogFilters({
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Biograf-ID
           </label>
+
           <input
             value={cinemaIdFilter}
             onChange={(event) =>
               onCinemaIdFilterChange(
-                event.target.value.replace(/\D/g, ""),
+                event.target.value.replace(
+                  /\D/g,
+                  "",
+                ),
               )
             }
             inputMode="numeric"
             placeholder="Fx 1"
-            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
+            className={fieldClass}
           />
         </div>
 
@@ -155,13 +190,16 @@ export default function SystemErrorLogFilters({
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Correlation-id
           </label>
+
           <input
             value={correlationIdFilter}
             onChange={(event) =>
-              onCorrelationIdFilterChange(event.target.value)
+              onCorrelationIdFilterChange(
+                event.target.value,
+              )
             }
             placeholder="Indsæt hele eller dele af id"
-            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
+            className={fieldClass}
           />
         </div>
 
@@ -169,7 +207,7 @@ export default function SystemErrorLogFilters({
           <button
             type="button"
             onClick={onReset}
-            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Nulstil filter
           </button>
