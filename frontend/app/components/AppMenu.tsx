@@ -8,6 +8,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+
 import { useRealtimeBadges } from "@/app/hooks/useRealtimeBadges";
 import { useAuth } from "@/app/providers/AuthProvider";
 import {
@@ -21,6 +22,7 @@ type NavItem = {
   badge?: number;
   adminOnly?: boolean;
   moduleKey?: CinemaModuleKey;
+  moduleKeysAny?: CinemaModuleKey[];
   children?: NavItem[];
 };
 
@@ -81,6 +83,10 @@ export default function AppMenu() {
       label: "Dashboard",
     },
     {
+      href: "/colleagues",
+      label: "Kollegaer",
+    },
+    {
       label: "Vagtplan",
       badge: totalTradeCount,
       children: [
@@ -90,9 +96,17 @@ export default function AppMenu() {
           moduleKey: "SCHEDULE",
         },
         {
+          href: "/live",
+          label: "Live-overblik",
+          adminOnly: true,
+          moduleKeysAny: [
+            "SCHEDULE",
+            "TIME_TRACKING",
+          ],
+        },
+        {
           href: "/shift-planning",
-          label:
-            "Vagtplanlægning",
+          label: "Vagtplanlægning",
           adminOnly: true,
           moduleKey:
             "SHIFT_PLANNING",
@@ -120,10 +134,22 @@ export default function AppMenu() {
             "SHIFT_PLANNING",
         },
         {
+          href: "/work-types",
+          label: "Vagttyper",
+          adminOnly: true,
+          moduleKey: "SCHEDULE",
+        },
+        {
           href: "/my-shifts",
           label: "Mine vagter",
           badge: directCount,
           moduleKey: "SCHEDULE",
+        },
+        {
+          href: "/clock",
+          label: "Registrér tid",
+          moduleKey:
+            "TIME_TRACKING",
         },
         {
           href: "/my-time",
@@ -238,6 +264,13 @@ export default function AppMenu() {
             "TIME_TRACKING",
         },
         {
+          href:
+            "/absence-calendar",
+          label:
+            "Fraværskalender",
+          moduleKey: "LEAVE",
+        },
+        {
           href: "/leave-approval",
           label:
             "Fraværsgodkendelse",
@@ -272,6 +305,12 @@ export default function AppMenu() {
                 label:
                   "Master panel",
               },
+              {
+                href:
+                  "/system-error-logs",
+                label:
+                  "Systemfejl",
+              },
             ]
           : []),
       ],
@@ -287,6 +326,13 @@ export default function AppMenu() {
       (!item.moduleKey ||
         isModuleEnabled(
           item.moduleKey,
+        )) &&
+      (!item.moduleKeysAny ||
+        item.moduleKeysAny.some(
+          (moduleKey) =>
+            isModuleEnabled(
+              moduleKey,
+            ),
         ))
     );
   }
@@ -347,6 +393,7 @@ export default function AppMenu() {
         aria-label="Åbn menu"
       >
         <Menu size={22} />
+
         {totalMenuBadgeCount >
           0 && (
           <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">
@@ -433,10 +480,16 @@ export default function AppMenu() {
               ) {
                 return (
                   <Link
-                    key={item.href}
-                    href={item.href}
+                    key={
+                      item.href
+                    }
+                    href={
+                      item.href
+                    }
                     onClick={() =>
-                      setOpen(false)
+                      setOpen(
+                        false,
+                      )
                     }
                     className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${
                       active
@@ -444,7 +497,9 @@ export default function AppMenu() {
                         : "text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
                     }`}
                   >
-                    {item.label}
+                    {
+                      item.label
+                    }
                     {renderBadge(
                       item.badge,
                       active,
@@ -455,7 +510,9 @@ export default function AppMenu() {
 
               return (
                 <div
-                  key={item.label}
+                  key={
+                    item.label
+                  }
                 >
                   <button
                     type="button"
@@ -471,7 +528,9 @@ export default function AppMenu() {
                     }`}
                   >
                     <span>
-                      {item.label}
+                      {
+                        item.label
+                      }
                     </span>
                     <span className="flex items-center">
                       {renderBadge(
@@ -492,7 +551,9 @@ export default function AppMenu() {
                   {groupOpen && (
                     <div className="mt-1 space-y-1 pl-3">
                       {item.children?.map(
-                        (child) => {
+                        (
+                          child,
+                        ) => {
                           if (
                             !child.href
                           ) {

@@ -18,11 +18,15 @@ function LiveMasterCinemaRequired() {
           Ingen aktiv biograf valgt
         </p>
         <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Vælg en biograf for at se live-overblik
+          Vælg en biograf for at se
+          live-overblik
         </h1>
         <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
-          Live-overblikket viser fremmødte medarbejdere, aktive vagter og
-          aktuelle filmvisninger for en konkret biograf. Som MASTER skal du
+          Live-overblikket viser
+          fremmødte medarbejdere,
+          aktive vagter og aktuelle
+          filmvisninger for en konkret
+          biograf. Som MASTER skal du
           vælge en aktiv biograf først.
         </p>
         <Link
@@ -38,38 +42,92 @@ function LiveMasterCinemaRequired() {
 
 export default function LivePage() {
   const {
+    loading,
     users,
     timeEntries,
     activeShifts,
     activeMovies,
     needsMasterCinemaSelection,
+    moduleAccess,
     infoDialog,
   } = useLivePage();
 
-  if (needsMasterCinemaSelection) {
-    return <LiveMasterCinemaRequired />;
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-gray-100 p-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        Indlæser live-overblik...
+      </main>
+    );
   }
+
+  if (needsMasterCinemaSelection) {
+    return (
+      <LiveMasterCinemaRequired />
+    );
+  }
+
+  const hasVisibleSections =
+    moduleAccess.schedule ||
+    moduleAccess.timeTracking;
 
   return (
     <>
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <LiveHeader />
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <LiveClockedInSection timeEntries={timeEntries} users={users} />
-            <LiveActiveShiftsSection activeShifts={activeShifts} />
-            <LiveActiveMoviesSection activeMovies={activeMovies} />
-          </div>
+          {!hasVisibleSections && (
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm dark:border-amber-900 dark:bg-amber-950/30">
+              <h2 className="text-xl font-bold">
+                Ingen live-data er
+                aktiveret
+              </h2>
+              <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                Live-overblikket kræver
+                et aktivt Vagtplan- eller
+                Tidsregistreringsmodul.
+              </p>
+            </section>
+          )}
+
+          {moduleAccess.timeTracking && (
+            <LiveClockedInSection
+              timeEntries={
+                timeEntries
+              }
+              users={users}
+            />
+          )}
+
+          {moduleAccess.schedule && (
+            <>
+              <LiveActiveShiftsSection
+                activeShifts={
+                  activeShifts
+                }
+              />
+              <LiveActiveMoviesSection
+                activeMovies={
+                  activeMovies
+                }
+              />
+            </>
+          )}
         </div>
       </main>
 
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
-        description={infoDialog.description}
-        buttonText={infoDialog.buttonText}
-        variant={infoDialog.variant}
+        description={
+          infoDialog.description
+        }
+        variant={
+          infoDialog.variant
+        }
+        buttonText={
+          infoDialog.buttonText
+        }
         onClose={infoDialog.close}
       />
     </>
