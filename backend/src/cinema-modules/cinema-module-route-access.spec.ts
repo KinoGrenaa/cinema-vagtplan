@@ -18,6 +18,18 @@ describe('cinema module route access', () => {
       'SHIFT_PLANNING',
     ],
     [
+      '/schedule-templates/4/days',
+      'SHIFT_PLANNING',
+    ],
+    [
+      '/day-periods?includeArchived=true',
+      'SHIFT_PLANNING',
+    ],
+    [
+      '/job-functions/7',
+      'SHIFT_PLANNING',
+    ],
+    [
       '/time-entries/me',
       'TIME_TRACKING',
     ],

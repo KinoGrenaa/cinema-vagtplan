@@ -18,6 +18,18 @@ export const CINEMA_MODULE_ROUTE_RULES:
     moduleKey: 'SHIFT_PLANNING',
   },
   {
+    prefix: '/schedule-templates',
+    moduleKey: 'SHIFT_PLANNING',
+  },
+  {
+    prefix: '/day-periods',
+    moduleKey: 'SHIFT_PLANNING',
+  },
+  {
+    prefix: '/job-functions',
+    moduleKey: 'SHIFT_PLANNING',
+  },
+  {
     prefix: '/staffing-ai',
     moduleKey: 'STAFFING_AI',
   },
