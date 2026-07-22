@@ -8,6 +8,7 @@ import {
 import { AiLearningModule } from './ai-learning/ai-learning.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AuthModule } from './auth/auth.module';
+import { CinemaModuleAccessGuard } from './cinema-modules/cinema-module-access.guard';
 import { CinemaModulesModule } from './cinema-modules/cinema-modules.module';
 import { CinemasModule } from './cinemas/cinemas.module';
 import { DayPeriodsModule } from './day-periods/day-periods.module';
@@ -78,6 +79,11 @@ import { WorkTypesModule } from './work-types/work-types.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useExisting:
+        CinemaModuleAccessGuard,
     },
   ],
 })

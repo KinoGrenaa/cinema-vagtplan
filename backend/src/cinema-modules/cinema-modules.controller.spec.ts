@@ -27,6 +27,43 @@ describe('CinemaModulesController', () => {
     jest.clearAllMocks();
   });
 
+  it('returns current cinema modules for ADMIN session cinema', () => {
+    controller.findCurrentCinemaModules(
+      {
+        user: {
+          sub: 8,
+          email:
+            'admin@example.com',
+          role: 'ADMIN',
+          cinemaId: 2,
+        },
+      },
+    );
+
+    expect(
+      service.findForCinema,
+    ).toHaveBeenCalledWith(2);
+  });
+
+  it('returns current cinema modules for MASTER selected cinema header', () => {
+    controller.findCurrentCinemaModules(
+      masterRequest,
+      '3',
+    );
+
+    expect(
+      service.findForCinema,
+    ).toHaveBeenCalledWith(3);
+  });
+
+  it('requires a selected cinema for MASTER current modules', () => {
+    expect(() =>
+      controller.findCurrentCinemaModules(
+        masterRequest,
+      ),
+    ).toThrow(BadRequestException);
+  });
+
   it('routes normalized module updates for MASTER', () => {
     controller.updateForCinema(
       '2',

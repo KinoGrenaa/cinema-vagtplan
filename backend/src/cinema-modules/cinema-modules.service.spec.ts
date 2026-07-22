@@ -132,6 +132,23 @@ describe('CinemaModulesService', () => {
     expect(
       transaction.$executeRaw,
     ).toHaveBeenCalledTimes(1);
+
+    const [
+      rawQueryParts,
+      lockNamespace,
+      lockedCinemaId,
+    ] =
+      transaction.$executeRaw.mock.calls[0];
+
+    expect(
+      Array.from(rawQueryParts).join(""),
+    ).toContain(
+      "CAST( AS integer)",
+    );
+    expect(lockNamespace).toBe(
+      1_435_988_811,
+    );
+    expect(lockedCinemaId).toBe(2);
     expect(
       transaction.cinemaModuleSetting.upsert,
     ).toHaveBeenCalledWith(

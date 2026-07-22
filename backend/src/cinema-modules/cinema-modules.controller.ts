@@ -1,9 +1,12 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  Headers,
   Param,
   Patch,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -25,6 +28,59 @@ export class CinemaModulesController {
   constructor(
     private readonly cinemaModulesService: CinemaModulesService,
   ) {}
+
+  private resolveCurrentCinemaId(
+    user: CinemaControllerUser,
+    headerCinemaId?: string,
+    queryCinemaId?: string,
+  ) {
+    if (user.role === 'MASTER') {
+      const selectedCinemaId =
+        headerCinemaId ??
+        queryCinemaId;
+
+      if (!selectedCinemaId) {
+        throw new BadRequestException(
+          'Vælg en aktiv biograf i MASTER-panelet',
+        );
+      }
+
+      return parseCinemaControllerId(
+        selectedCinemaId,
+      );
+    }
+
+    if (!user.cinemaId) {
+      throw new BadRequestException(
+        'Din session mangler en aktiv biograf',
+      );
+    }
+
+    return user.cinemaId;
+  }
+
+  @UseGuards(JwtGuard)
+  @Get('current')
+  findCurrentCinemaModules(
+    @Req() req: any,
+    @Headers('x-cinema-id')
+    headerCinemaId?: string,
+    @Query('cinemaId')
+    queryCinemaId?: string,
+  ) {
+    const user =
+      req.user as CinemaControllerUser;
+    const cinemaId =
+      this.resolveCurrentCinemaId(
+        user,
+        headerCinemaId,
+        queryCinemaId,
+      );
+
+    return this.cinemaModulesService.findForCinema(
+      cinemaId,
+    );
+  }
 
   @UseGuards(JwtGuard)
   @Get(':cinemaId')

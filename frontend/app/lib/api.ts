@@ -1,34 +1,125 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:3001";
 
-export const SESSION_EXPIRED_EVENT = "auth:session-expired";
+export const SESSION_EXPIRED_EVENT =
+  "auth:session-expired";
+
+const MASTER_SELECTED_CINEMA_ID_KEY =
+  "masterSelectedCinemaId";
 
 function notifySessionExpired() {
-  if (typeof window === "undefined") return;
+  if (
+    typeof window === "undefined"
+  ) {
+    return;
+  }
 
-  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  window.dispatchEvent(
+    new Event(
+      SESSION_EXPIRED_EVENT,
+    ),
+  );
 }
 
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+function getMasterSelectedCinemaId() {
+  if (
+    typeof window === "undefined"
+  ) {
+    return null;
+  }
+
+  try {
+    const savedUser =
+      localStorage.getItem("user");
+
+    if (!savedUser) {
+      return null;
+    }
+
+    const user = JSON.parse(
+      savedUser,
+    ) as {
+      role?: string;
+    };
+
+    if (user.role !== "MASTER") {
+      return null;
+    }
+
+    const cinemaId = Number(
+      localStorage.getItem(
+        MASTER_SELECTED_CINEMA_ID_KEY,
+      ),
+    );
+
+    if (
+      !Number.isInteger(cinemaId) ||
+      cinemaId <= 0
+    ) {
+      return null;
+    }
+
+    return cinemaId;
+  } catch {
+    return null;
+  }
+}
+
+export async function apiFetch(
+  endpoint: string,
+  options: RequestInit = {},
+) {
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-  const headers = new Headers(options.headers || {});
-
+    typeof window !== "undefined"
+      ? localStorage.getItem(
+          "token",
+        )
+      : null;
+  const headers = new Headers(
+    options.headers || {},
+  );
   const isFormDataBody =
-    typeof FormData !== "undefined" && options.body instanceof FormData;
+    typeof FormData !==
+      "undefined" &&
+    options.body instanceof FormData;
 
-  if (!headers.has("Content-Type") && !isFormDataBody) {
-    headers.set("Content-Type", "application/json");
+  if (
+    !headers.has(
+      "Content-Type",
+    ) &&
+    !isFormDataBody
+  ) {
+    headers.set(
+      "Content-Type",
+      "application/json",
+    );
   }
 
   if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+    headers.set(
+      "Authorization",
+      `Bearer ${token}`,
+    );
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const masterCinemaId =
+    getMasterSelectedCinemaId();
+
+  if (masterCinemaId) {
+    headers.set(
+      "X-Cinema-Id",
+      String(masterCinemaId),
+    );
+  }
+
+  const response = await fetch(
+    `${API_URL}${endpoint}`,
+    {
+      ...options,
+      headers,
+    },
+  );
 
   if (response.status === 401) {
     notifySessionExpired();

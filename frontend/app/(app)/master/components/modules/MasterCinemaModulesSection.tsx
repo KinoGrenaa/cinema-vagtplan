@@ -323,13 +323,27 @@ export default function MasterCinemaModulesSection({
       const data =
         (await response.json()) as CinemaModulesResponse;
 
-      setModules(data.modules);
+      setModules(
+        data.modules.map((module) => ({
+          ...module,
+        })),
+      );
       setInitialModules(
-        data.modules,
+        data.modules.map((module) => ({
+          ...module,
+        })),
       );
-      setMessage(
-        `Modulindstillinger for ${data.cinema.name} er gemt.`,
+      window.dispatchEvent(
+        new CustomEvent(
+          "cinemaModulesChanged",
+          {
+            detail: {
+              cinemaId: cinema.id,
+            },
+          },
+        ),
       );
+      onClose();
     } catch (saveError) {
       setError(
         saveError instanceof Error
@@ -536,29 +550,43 @@ export default function MasterCinemaModulesSection({
           )}
         </div>
 
-        <footer className="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-4 sm:flex-row sm:justify-end dark:border-gray-800 md:px-6">
-          <button
-            type="button"
-            onClick={closeModal}
-            disabled={saving}
-            className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+        <footer className="flex flex-col gap-3 border-t border-gray-200 px-5 py-4 sm:flex-row sm:items-center dark:border-gray-800 md:px-6">
+          <div
+            aria-live="polite"
+            className="min-h-5 flex-1 text-sm"
           >
-            Luk
-          </button>
-          <button
-            type="button"
-            onClick={saveModules}
-            disabled={
-              saving ||
-              loading ||
-              !hasChanges
-            }
-            className="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saving
-              ? "Gemmer..."
-              : "Gem moduler"}
-          </button>
+            {error && (
+              <span className="font-semibold text-red-700 dark:text-red-300">
+                {error}
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={closeModal}
+              disabled={saving}
+              className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              Luk
+            </button>
+            <button
+              type="button"
+              onClick={saveModules}
+              disabled={
+                saving ||
+                loading ||
+                !hasChanges
+              }
+              aria-busy={saving}
+              className="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving
+                ? "Gemmer..."
+                : "Gem og luk"}
+            </button>
+          </div>
         </footer>
       </section>
     </div>

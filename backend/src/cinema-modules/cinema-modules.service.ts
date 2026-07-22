@@ -185,8 +185,8 @@ export class CinemaModulesService {
         async (transaction) => {
           await transaction.$executeRaw`
             SELECT pg_advisory_xact_lock(
-              ${CINEMA_MODULE_LOCK_NAMESPACE},
-              ${cinemaId}
+              CAST(${CINEMA_MODULE_LOCK_NAMESPACE} AS integer),
+              CAST(${cinemaId} AS integer)
             )
           `;
 
