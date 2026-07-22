@@ -1,21 +1,22 @@
 "use client";
 
-import AiStaffingHeatmap from "./components/ai/AiStaffingHeatmap";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
-import AiPatternInsights from "./components/ai/AiPatternInsights";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
-import OperationsStatus from "./components/operations/OperationsStatus";
-import { useDashboard } from "./hooks/useDashboard";
+import AiPatternInsights from "./components/ai/AiPatternInsights";
+import AiStaffingHeatmap from "./components/ai/AiStaffingHeatmap";
 import DashboardHeader from "./components/layout/DashboardHeader";
+import OperationsStatus from "./components/operations/OperationsStatus";
 import DashboardOverviewSections from "./components/overview/DashboardOverviewSections";
 import DashboardSummaryCards from "./components/overview/DashboardSummaryCards";
 import DashboardStaffingSections from "./components/staffing/DashboardStaffingSections";
+import { useDashboard } from "./hooks/useDashboard";
 
 export default function DashboardPage() {
   const {
     loading,
     currentUser,
     needsMasterCinemaSelection,
+    moduleAccess,
     shifts,
     movies,
     todayPlannedHours,
@@ -37,7 +38,9 @@ export default function DashboardPage() {
   if (loading || !currentUser) {
     return (
       <main className="min-h-screen bg-gray-100 p-6 dark:bg-gray-950">
-        <div className="text-gray-600 dark:text-gray-300">Indlæser...</div>
+        <div className="text-gray-600 dark:text-gray-300">
+          Indlæser...
+        </div>
       </main>
     );
   }
@@ -50,10 +53,15 @@ export default function DashboardPage() {
             Ingen aktiv biograf valgt
           </p>
           <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Vælg en biograf for at se dashboardet
+            Vælg en biograf for at se
+            dashboardet
           </h1>
           <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
-            Dashboardet viser vagter, fravær, vagtbytter og filmprogram for en konkret biograf. Som MASTER skal du vælge en aktiv biograf først.
+            Dashboardet viser vagter,
+            fravær, vagtbytter og
+            filmprogram for en konkret
+            biograf. Som MASTER skal du
+            vælge en aktiv biograf først.
           </p>
           <a
             href="/master"
@@ -66,42 +74,100 @@ export default function DashboardPage() {
     );
   }
 
+  const showStaffingAi =
+    moduleAccess.staffingAi &&
+    moduleAccess.schedule;
+
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <DashboardHeader firstName={currentUser.firstName} />
-
-        <AiOperationsCommandCenter
-          operationsHealth={operationsHealth}
-          operationalRecommendations={operationalRecommendations}
+        <DashboardHeader
+          firstName={
+            currentUser.firstName
+          }
         />
 
-        <OperationsStatus liveOperationsStatus={liveOperationsStatus} />
+        {showStaffingAi && (
+          <>
+            <AiOperationsCommandCenter
+              operationsHealth={
+                operationsHealth
+              }
+              operationalRecommendations={
+                operationalRecommendations
+              }
+            />
 
-        <AiStaffingHeatmap staffingHeatmap={staffingHeatmap} />
+            <OperationsStatus
+              liveOperationsStatus={
+                liveOperationsStatus
+              }
+            />
 
-        <AiLearningAnalytics aiLearningAnalytics={aiLearningAnalytics} />
+            <AiStaffingHeatmap
+              staffingHeatmap={
+                staffingHeatmap
+              }
+            />
+
+            <AiLearningAnalytics
+              aiLearningAnalytics={
+                aiLearningAnalytics
+              }
+            />
+          </>
+        )}
 
         <DashboardSummaryCards
-          todayPlannedHours={todayPlannedHours}
-          myRegisteredHours={myRegisteredHours}
-          openShiftTrades={openShiftTrades}
-          pendingLeaveRequests={pendingLeaveRequests}
+          todayPlannedHours={
+            todayPlannedHours
+          }
+          myRegisteredHours={
+            myRegisteredHours
+          }
+          openShiftTrades={
+            openShiftTrades
+          }
+          pendingLeaveRequests={
+            pendingLeaveRequests
+          }
+          moduleAccess={
+            moduleAccess
+          }
         />
 
-        <DashboardStaffingSections
-          staffingWarnings={staffingWarnings}
-          predictiveStaffing={predictiveStaffing}
-        />
+        {showStaffingAi && (
+          <DashboardStaffingSections
+            staffingWarnings={
+              staffingWarnings
+            }
+            predictiveStaffing={
+              predictiveStaffing
+            }
+          />
+        )}
 
         <DashboardOverviewSections
           movieCount={movies.length}
-          soldSeatsToday={soldSeatsToday}
-          seatLoadPercent={seatLoadPercent}
+          soldSeatsToday={
+            soldSeatsToday
+          }
+          seatLoadPercent={
+            seatLoadPercent
+          }
           shiftCount={shifts.length}
+          moduleAccess={
+            moduleAccess
+          }
         />
 
-        <AiPatternInsights aiPatternInsights={aiPatternInsights} />
+        {showStaffingAi && (
+          <AiPatternInsights
+            aiPatternInsights={
+              aiPatternInsights
+            }
+          />
+        )}
       </div>
     </main>
   );
