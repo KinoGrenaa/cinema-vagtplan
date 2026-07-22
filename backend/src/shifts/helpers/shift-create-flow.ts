@@ -1,10 +1,26 @@
-import { ForbiddenException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { AuditLogsService } from '../../audit-logs/audit-logs.service';
-import { PrismaService } from '../../prisma/prisma.service';
-import { PushService } from '../../push/push.service';
-import { RealtimeGateway } from '../../realtime/realtime.gateway';
-import { checkShiftConflicts } from './shift-conflict-checks';
+import {
+  ForbiddenException,
+} from '@nestjs/common';
+
+import {
+  AuditLogsService,
+} from '../../audit-logs/audit-logs.service';
+import {
+  PrismaService,
+} from '../../prisma/prisma.service';
+import {
+  PushService,
+} from '../../push/push.service';
+import {
+  RealtimeGateway,
+} from '../../realtime/realtime.gateway';
+import {
+  acquireShiftAdvisoryLock,
+  SHIFT_USER_LOCK_NAMESPACE,
+} from './shift-advisory-lock';
+import {
+  checkShiftConflicts,
+} from './shift-conflict-checks';
 import {
   normalizeShiftWriteData,
 } from './shift-input';
@@ -41,70 +57,87 @@ export async function createShiftFlow({
 }) {
   const normalized =
     normalizeShiftWriteData(data);
-  const cinemaId = resolveShiftCinemaId(
-    user,
-    normalized.cinemaId,
-  );
-  const assignedUserId = normalized.userId;
-  const shift = await prisma.$transaction(
-    async (tx) => {
-      if (assignedUserId) {
-        await tx.$queryRaw(
-          Prisma.sql`
-            SELECT pg_advisory_xact_lock(
-              56001,
-              ${assignedUserId}
-            )
-          `,
-        );
-      }
+  const cinemaId =
+    resolveShiftCinemaId(
+      user,
+      normalized.cinemaId,
+    );
+  const assignedUserId =
+    normalized.userId;
 
-      const workType =
-        await tx.workType.findFirst({
-          where: {
-            id: normalized.workTypeId,
+  const shift =
+    await prisma.$transaction(
+      async (transaction) => {
+        if (assignedUserId) {
+          await acquireShiftAdvisoryLock(
+            transaction,
+            SHIFT_USER_LOCK_NAMESPACE,
+            assignedUserId,
+          );
+        }
+
+        const workType =
+          await transaction.workType.findFirst(
+            {
+              where: {
+                id:
+                  normalized.workTypeId,
+                cinemaId,
+                isActive: true,
+              },
+              select: {
+                id: true,
+              },
+            },
+          );
+
+        if (!workType) {
+          throw new ForbiddenException(
+            'Vagttypen findes ikke eller er inaktiv i denne biograf',
+          );
+        }
+
+        if (assignedUserId) {
+          await ensureShiftUserHasCinemaAccess(
+            transaction,
+            assignedUserId,
             cinemaId,
-            isActive: true,
+          );
+
+          await checkShiftConflicts(
+            transaction,
+            {
+              startTime:
+                normalized.startTime,
+              endTime:
+                normalized.endTime,
+              userId:
+                assignedUserId,
+              cinemaId,
+            },
+          );
+        }
+
+        return transaction.shift.create(
+          {
+            data: {
+              startTime:
+                normalized.startTime,
+              endTime:
+                normalized.endTime,
+              note: normalized.note,
+              cinemaId,
+              userId:
+                assignedUserId,
+              workTypeId:
+                normalized.workTypeId,
+            },
+            include:
+              shiftResponseInclude,
           },
-          select: {
-            id: true,
-          },
-        });
-
-      if (!workType) {
-        throw new ForbiddenException(
-          'Vagttypen findes ikke eller er inaktiv i denne biograf',
         );
-      }
-
-      if (assignedUserId) {
-        await ensureShiftUserHasCinemaAccess(
-          tx,
-          assignedUserId,
-          cinemaId,
-        );
-        await checkShiftConflicts(tx, {
-          startTime: normalized.startTime,
-          endTime: normalized.endTime,
-          userId: assignedUserId,
-          cinemaId,
-        });
-      }
-
-      return tx.shift.create({
-        data: {
-          startTime: normalized.startTime,
-          endTime: normalized.endTime,
-          note: normalized.note,
-          cinemaId,
-          userId: assignedUserId,
-          workTypeId:
-            normalized.workTypeId,
-        },
-        include: shiftResponseInclude,
-      });
-    },
-  );
+      },
+    );
 
   await auditLogsService.create({
     action: 'CREATE_SHIFT',
@@ -120,6 +153,7 @@ export async function createShiftFlow({
     userId: user.sub,
     cinemaId: shift.cinemaId,
   });
+
   realtimeGateway.notifyCinema(
     shift.cinemaId,
     'shiftsUpdated',

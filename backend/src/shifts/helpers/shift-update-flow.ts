@@ -2,11 +2,27 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { AuditLogsService } from '../../audit-logs/audit-logs.service';
-import { PrismaService } from '../../prisma/prisma.service';
-import { PushService } from '../../push/push.service';
-import { RealtimeGateway } from '../../realtime/realtime.gateway';
+import type {
+  Prisma,
+} from '@prisma/client';
+
+import {
+  AuditLogsService,
+} from '../../audit-logs/audit-logs.service';
+import {
+  PrismaService,
+} from '../../prisma/prisma.service';
+import {
+  PushService,
+} from '../../push/push.service';
+import {
+  RealtimeGateway,
+} from '../../realtime/realtime.gateway';
+import {
+  acquireShiftAdvisoryLock,
+  SHIFT_RECORD_LOCK_NAMESPACE,
+  SHIFT_USER_LOCK_NAMESPACE,
+} from './shift-advisory-lock';
 import {
   normalizeShiftWriteData,
 } from './shift-input';
@@ -22,27 +38,34 @@ import {
 } from './shift-update-validation';
 
 async function acquireShiftUserLocks(
-  tx: any,
-  userIds: Array<number | null | undefined>,
+  transaction:
+    Prisma.TransactionClient,
+  userIds: Array<
+    number | null | undefined
+  >,
 ) {
   const uniqueUserIds = [
     ...new Set(
       userIds.filter(
-        (value): value is number =>
+        (
+          value,
+        ): value is number =>
           Number.isInteger(value) &&
           Number(value) > 0,
       ),
     ),
-  ].sort((left, right) => left - right);
+  ].sort(
+    (left, right) =>
+      left - right,
+  );
 
-  for (const userId of uniqueUserIds) {
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT pg_advisory_xact_lock(
-          56001,
-          ${userId}
-        )
-      `,
+  for (
+    const userId of uniqueUserIds
+  ) {
+    await acquireShiftAdvisoryLock(
+      transaction,
+      SHIFT_USER_LOCK_NAMESPACE,
+      userId,
     );
   }
 }
@@ -71,91 +94,109 @@ export async function updateShiftFlow({
 }) {
   const normalized =
     normalizeShiftWriteData(data);
-  const cinemaId = resolveShiftCinemaId(
-    user,
-    normalized.cinemaId,
-  );
-  const result = await prisma.$transaction(
-    async (tx) => {
-      await tx.$queryRaw(
-        Prisma.sql`
-          SELECT pg_advisory_xact_lock(
-            56002,
-            ${id}
-          )
-        `,
-      );
+  const cinemaId =
+    resolveShiftCinemaId(
+      user,
+      normalized.cinemaId,
+    );
 
-      const oldShift =
-        await tx.shift.findFirst({
-          where: {
-            id,
-            cinemaId,
-          },
-          include: shiftResponseInclude,
-        });
-
-      if (!oldShift) {
-        throw new NotFoundException(
-          'Vagten blev ikke fundet',
-        );
-      }
-
-      await acquireShiftUserLocks(tx, [
-        oldShift.userId,
-        normalized.userId,
-      ]);
-
-      const context =
-        await getShiftUpdateContext({
-          prisma: tx,
-          cinemaId,
+  const result =
+    await prisma.$transaction(
+      async (transaction) => {
+        await acquireShiftAdvisoryLock(
+          transaction,
+          SHIFT_RECORD_LOCK_NAMESPACE,
           id,
-          data: normalized,
-          oldShift,
-        });
-      const updated =
-        await tx.shift.updateMany({
-          where: {
-            id,
-            cinemaId,
-          },
-          data: {
-            startTime: normalized.startTime,
-            endTime: normalized.endTime,
-            note: normalized.note,
-            userId: normalized.userId,
-            workTypeId:
-              normalized.workTypeId,
-          },
-        });
-
-      if (updated.count !== 1) {
-        throw new ConflictException(
-          'Vagten blev ændret af en anden. Genindlæs og prøv igen.',
         );
-      }
 
-      const shift =
-        await tx.shift.findUnique({
-          where: {
-            id,
-          },
-          include: shiftResponseInclude,
-        });
+        const oldShift =
+          await transaction.shift.findFirst(
+            {
+              where: {
+                id,
+                cinemaId,
+              },
+              include:
+                shiftResponseInclude,
+            },
+          );
 
-      if (!shift) {
-        throw new NotFoundException(
-          'Vagten blev ikke fundet',
+        if (!oldShift) {
+          throw new NotFoundException(
+            'Vagten blev ikke fundet',
+          );
+        }
+
+        await acquireShiftUserLocks(
+          transaction,
+          [
+            oldShift.userId,
+            normalized.userId,
+          ],
         );
-      }
 
-      return {
-        ...context,
-        shift,
-      };
-    },
-  );
+        const context =
+          await getShiftUpdateContext(
+            {
+              prisma: transaction,
+              cinemaId,
+              id,
+              data: normalized,
+              oldShift,
+            },
+          );
+
+        const updated =
+          await transaction.shift.updateMany(
+            {
+              where: {
+                id,
+                cinemaId,
+              },
+              data: {
+                startTime:
+                  normalized.startTime,
+                endTime:
+                  normalized.endTime,
+                note: normalized.note,
+                userId:
+                  normalized.userId,
+                workTypeId:
+                  normalized.workTypeId,
+              },
+            },
+          );
+
+        if (updated.count !== 1) {
+          throw new ConflictException(
+            'Vagten blev ændret af en anden. Genindlæs og prøv igen.',
+          );
+        }
+
+        const shift =
+          await transaction.shift.findUnique(
+            {
+              where: {
+                id,
+              },
+              include:
+                shiftResponseInclude,
+            },
+          );
+
+        if (!shift) {
+          throw new NotFoundException(
+            'Vagten blev ikke fundet',
+          );
+        }
+
+        return {
+          ...context,
+          shift,
+        };
+      },
+    );
+
   const {
     oldShift,
     assignedUserId,
@@ -181,6 +222,7 @@ export async function updateShiftFlow({
     userId: user.sub,
     cinemaId: shift.cinemaId,
   });
+
   realtimeGateway.notifyCinema(
     shift.cinemaId,
     'shiftsUpdated',
@@ -193,7 +235,8 @@ export async function updateShiftFlow({
       shift.cinemaId,
       {
         title:
-          oldShift.userId === assignedUserId
+          oldShift.userId ===
+          assignedUserId
             ? 'Vagt ændret'
             : 'Vagt tildelt',
         body:
@@ -208,7 +251,8 @@ export async function updateShiftFlow({
 
   if (
     oldShift.userId &&
-    oldShift.userId !== assignedUserId
+    oldShift.userId !==
+      assignedUserId
   ) {
     await pushService.sendToUserInCinema(
       oldShift.userId,
