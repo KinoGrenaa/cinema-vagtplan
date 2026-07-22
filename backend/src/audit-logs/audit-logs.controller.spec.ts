@@ -1,116 +1,152 @@
 import { BadRequestException } from '@nestjs/common';
 import { AuditLogsController } from './audit-logs.controller';
-import { AuditLogsService } from './audit-logs.service';
 
-describe('AuditLogsController input validation', () => {
+describe('AuditLogsController boundaries', () => {
+  const service = {
+    findAll: jest.fn(),
+    findByEntity: jest.fn(),
+  };
+  const controller =
+    new AuditLogsController(
+      service as never,
+    );
   const req = {
     user: {
-      sub: 10,
-      role: 'MASTER',
-      cinemaId: null,
+      sub: 7,
+      role: 'ADMIN',
+      cinemaId: 2,
     },
   };
-
-  let service: {
-    findAll: jest.Mock;
-    findByEntity: jest.Mock;
-  };
-  let controller: AuditLogsController;
 
   beforeEach(() => {
-    service = {
-      findAll: jest.fn(),
-      findByEntity: jest.fn(),
-    };
-
-    controller = new AuditLogsController(
-      service as unknown as AuditLogsService,
-    );
+    jest.clearAllMocks();
   });
 
-  it('parses a valid selected cinema for the list', () => {
-    controller.getAuditLogs(req, '12');
-
-    expect(service.findAll).toHaveBeenCalledWith(req.user, 12);
-  });
-
-  it('allows an omitted selected cinema query', () => {
-    controller.getAuditLogs(req);
-
-    expect(service.findAll).toHaveBeenCalledWith(
-      req.user,
-      undefined,
-    );
-  });
-
-  it.each(['', '1.5', '1e2', '-1', 'abc', '9007199254740992'])(
-    'rejects invalid list cinema ID %p',
-    (value) => {
-      expect(() => controller.getAuditLogs(req, value)).toThrow(
-        BadRequestException,
-      );
-      expect(service.findAll).not.toHaveBeenCalled();
-    },
-  );
-
-  it('normalizes valid entity history input', () => {
-    controller.getEntityHistory(
-      req,
-      '  TIME_ENTRY  ',
-      '7',
-      '3',
-    );
-
-    expect(service.findByEntity).toHaveBeenCalledWith(
-      req.user,
-      'TIME_ENTRY',
-      7,
-      3,
-    );
-  });
-
-  it.each(['', '   ', `User\u0000`, 'x'.repeat(101)])(
-    'rejects invalid entity type %p',
-    (entityType) => {
-      expect(() =>
-        controller.getEntityHistory(
-          req,
-          entityType,
-          '2',
-          '1',
-        ),
-      ).toThrow(BadRequestException);
-      expect(service.findByEntity).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(['', '1.5', '1e2', '-1', 'abc', '9007199254740992'])(
-    'rejects invalid entity ID %p',
+  it.each([
+    '0',
+    '-1',
+    '1.5',
+    '1e2',
+    '+8',
+    ' 8',
+    '8 ',
+    '9007199254740992',
+    'ukendt',
+    '',
+  ])(
+    'afviser ugyldigt entitets-ID %p',
     (entityId) => {
       expect(() =>
         controller.getEntityHistory(
           req,
           'User',
           entityId,
-          '1',
+          undefined,
         ),
       ).toThrow(BadRequestException);
-      expect(service.findByEntity).not.toHaveBeenCalled();
+
+      expect(
+        service.findByEntity,
+      ).not.toHaveBeenCalled();
     },
   );
 
-  it.each(['', '1.5', '1e2', '-1', 'abc', '9007199254740992'])(
-    'rejects invalid entity-history cinema ID %p',
+  it.each([
+    '0',
+    '-1',
+    '2.5',
+    '1e2',
+    '+2',
+    ' 2',
+    '2 ',
+    '9007199254740992',
+    'ukendt',
+    '',
+  ])(
+    'afviser ugyldigt biograf-ID %p',
     (cinemaId) => {
       expect(() =>
-        controller.getEntityHistory(
+        controller.getAuditLogs(
           req,
-          'User',
-          '2',
           cinemaId,
         ),
       ).toThrow(BadRequestException);
-      expect(service.findByEntity).not.toHaveBeenCalled();
+
+      expect(
+        service.findAll,
+      ).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    '',
+    ' User',
+    'User ',
+    'User/Entry',
+    'User Entry',
+    '7User',
+    'x'.repeat(101),
+  ])(
+    'afviser ugyldig entitetstype %p',
+    (entityType) => {
+      expect(() =>
+        controller.getEntityHistory(
+          req,
+          entityType,
+          '8',
+          undefined,
+        ),
+      ).toThrow(BadRequestException);
+
+      expect(
+        service.findByEntity,
+      ).not.toHaveBeenCalled();
+    },
+  );
+
+  it('videresender valideret listekald', () => {
+    controller.getAuditLogs(
+      req,
+      '2',
+    );
+
+    expect(
+      service.findAll,
+    ).toHaveBeenCalledWith(
+      req.user,
+      2,
+    );
+  });
+
+  it('tillader helt udeladt valgfri biograf', () => {
+    controller.getAuditLogs(
+      req,
+      undefined,
+    );
+
+    expect(
+      service.findAll,
+    ).toHaveBeenCalledWith(
+      req.user,
+      undefined,
+    );
+  });
+
+  it('videresender valideret entitetshistorik', () => {
+    controller.getEntityHistory(
+      req,
+      'TimeEntry',
+      '8',
+      '2',
+    );
+
+    expect(
+      service.findByEntity,
+    ).toHaveBeenCalledWith(
+      req.user,
+      'TimeEntry',
+      8,
+      2,
+    );
+  });
 });
