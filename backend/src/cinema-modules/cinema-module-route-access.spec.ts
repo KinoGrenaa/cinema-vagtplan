@@ -14,6 +14,10 @@ describe('cinema module route access', () => {
       'SCHEDULE',
     ],
     [
+      '/work-types?includeArchived=true',
+      'SCHEDULE',
+    ],
+    [
       '/shift-planning-drafts/9',
       'SHIFT_PLANNING',
     ],
@@ -89,6 +93,7 @@ describe('cinema module route access', () => {
     '/auth/login',
     '/payroll-report',
     '/messages-old',
+    '/work-types-old',
   ])(
     'does not map unrelated route %s',
     (path) => {

@@ -70,6 +70,10 @@ export const CINEMA_MODULE_ROUTE_RULES:
     moduleKey: 'MESSAGES',
   },
   {
+    prefix: '/work-types',
+    moduleKey: 'SCHEDULE',
+  },
+  {
     prefix: '/movie-showings',
     moduleKey: 'SCHEDULE',
   },
