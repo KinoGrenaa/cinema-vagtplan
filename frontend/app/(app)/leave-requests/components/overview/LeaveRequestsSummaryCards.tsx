@@ -30,11 +30,12 @@ export default function LeaveRequestsSummaryCards({
         <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
           Ansøgninger der afventer behandling.
         </div>
+
         {statusCounts.pending > 0 && (
           <button
             type="button"
             onClick={onShowPendingOnly}
-            className="mt-3 rounded-xl bg-yellow-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-yellow-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-600 focus-visible:ring-offset-2 dark:bg-yellow-600 dark:hover:bg-yellow-500 dark:focus-visible:ring-yellow-400 dark:focus-visible:ring-offset-gray-900"
+            className="mt-3 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Vis afventende
           </button>
