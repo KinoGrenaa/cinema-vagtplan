@@ -434,7 +434,7 @@ export default function ShiftForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl bg-gray-200 px-5 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+            className="rounded-xl bg-gray-200 px-5 py-2 font-semibold text-gray-900 transition hover:bg-gray-300 active:bg-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-600 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Annuller
           </button>
@@ -443,7 +443,7 @@ export default function ShiftForm({
             <button
               type="button"
               onClick={onOfferTrade}
-              className="rounded-xl bg-blue-600 px-5 py-2 text-white transition hover:bg-blue-700"
+              className="rounded-xl bg-blue-700 px-5 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
             >
               Send i byttepulje
             </button>
@@ -453,7 +453,7 @@ export default function ShiftForm({
             <button
               type="button"
               onClick={onSendStaffingRequest}
-              className="rounded-xl bg-purple-600 px-5 py-2 text-white transition hover:bg-purple-700"
+              className="rounded-xl bg-blue-700 px-5 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
             >
               Send bemandingsforespørgsel
             </button>

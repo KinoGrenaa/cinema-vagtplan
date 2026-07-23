@@ -188,7 +188,7 @@ function MasterActiveCinemaIndicator() {
           <button
             type="button"
             onClick={handleClearSelectedCinema}
-            className="inline-flex w-fit rounded-xl border border-blue-300 bg-white/80 px-3 py-2 text-sm font-semibold text-blue-900 transition hover:bg-white dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:bg-blue-900/60"
+            className="inline-flex w-fit rounded-xl border border-gray-300 bg-white/80 px-3 py-2 text-sm font-semibold text-gray-800 transition hover:bg-white active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950/60 dark:text-gray-100 dark:hover:bg-gray-900 dark:active:bg-gray-800 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-slate-950"
           >
             Ryd valg
           </button>

@@ -77,7 +77,7 @@ export function TimeRegistrationModal({
       <div className="mx-4 w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">Registrer tid</h2>
-          <button onClick={onClose} className="text-2xl">
+          <button type="button" onClick={onClose} aria-label="Luk" className="rounded-lg px-2 py-1 text-2xl text-gray-600 transition hover:bg-gray-100 hover:text-gray-950 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white dark:active:bg-gray-700 dark:focus-visible:ring-gray-400">
             ×
           </button>
         </div>
@@ -149,7 +149,7 @@ export function TimeRegistrationModal({
               />
               <button
                 onClick={onRegisterClockIn}
-                className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
               >
                 Registrer mødetid
               </button>
@@ -175,7 +175,7 @@ export function TimeRegistrationModal({
               />
               <button
                 onClick={onRegisterClockOut}
-                className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
               >
                 Registrer fyraften
               </button>
@@ -211,7 +211,7 @@ export function ManualTimeRegistrationModal({
               godkendelse.
             </p>
           </div>
-          <button onClick={onClose} className="text-2xl">
+          <button type="button" onClick={onClose} aria-label="Luk" className="rounded-lg px-2 py-1 text-2xl text-gray-600 transition hover:bg-gray-100 hover:text-gray-950 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white dark:active:bg-gray-700 dark:focus-visible:ring-gray-400">
             ×
           </button>
         </div>
@@ -248,7 +248,7 @@ export function ManualTimeRegistrationModal({
           </div>
           <button
             onClick={onSubmit}
-            className="w-full rounded-xl bg-black py-3 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+            className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           >
             Send til godkendelse
           </button>
