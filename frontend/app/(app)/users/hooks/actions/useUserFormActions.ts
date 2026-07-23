@@ -12,6 +12,7 @@ import {
   getStoredMasterCinemaId,
   normalizeUser,
 } from "../../helpers/core/userHelpers";
+import { withRequiredRolePermissions } from "../../helpers/core/userRolePermissions";
 import {
   emptyUser,
   type CurrentUser,
@@ -43,18 +44,15 @@ export function useUserFormActions({
     if (!newUser.lastName.trim()) return "Efternavn mangler.";
     if (!newUser.email.trim()) return "Email mangler.";
     if (!newUser.email.includes("@")) return "Indtast en gyldig emailadresse.";
-
     if (!newUser.password || newUser.password.length < 8) {
       return "Adgangskode skal være mindst 8 tegn.";
     }
-
     return "";
   }
 
   async function createUser() {
     try {
       const validationError = validateCreateUser();
-
       if (validationError) {
         showError("Bruger kunne ikke oprettes", validationError);
         return;
@@ -86,16 +84,18 @@ export function useUserFormActions({
         return;
       }
 
+      const normalizedNewUser = withRequiredRolePermissions(newUser);
       const response = await apiFetch("/users", {
         method: "POST",
         body: JSON.stringify({
-          ...newUser,
-          firstName: newUser.firstName.trim(),
-          lastName: newUser.lastName.trim(),
-          email: newUser.email.trim(),
-          phone: newUser.phone?.trim() || undefined,
-          employmentType: newUser.employmentType || "HOURLY",
-          cinemaId: newUser.role === "MASTER" ? null : activeCinemaId,
+          ...normalizedNewUser,
+          firstName: normalizedNewUser.firstName.trim(),
+          lastName: normalizedNewUser.lastName.trim(),
+          email: normalizedNewUser.email.trim(),
+          phone: normalizedNewUser.phone?.trim() || undefined,
+          employmentType: normalizedNewUser.employmentType || "HOURLY",
+          cinemaId:
+            normalizedNewUser.role === "MASTER" ? null : activeCinemaId,
         }),
       });
 
@@ -104,7 +104,6 @@ export function useUserFormActions({
       }
 
       const createdUser = await response.json();
-
       setUsers((prev) => [...prev, normalizeUser(createdUser)]);
       setShowCreate(false);
       resetNewUser();
@@ -120,23 +119,28 @@ export function useUserFormActions({
     if (!editingUser) return;
 
     try {
-      const response = await apiFetch(`/users/${editingUser.id}`, {
+      const normalizedEditingUser =
+        withRequiredRolePermissions(editingUser);
+      const response = await apiFetch(`/users/${normalizedEditingUser.id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          firstName: editingUser.firstName,
-          lastName: editingUser.lastName,
-          email: editingUser.email,
-          phone: editingUser.phone || undefined,
-          role: editingUser.role,
-          employmentType: editingUser.employmentType || "HOURLY",
-          canManageSchedule: editingUser.canManageSchedule || false,
-          canManageUsers: editingUser.canManageUsers || false,
-          canManagePayroll: editingUser.canManagePayroll || false,
-          canManageLeaveRequests: editingUser.canManageLeaveRequests || false,
+          firstName: normalizedEditingUser.firstName,
+          lastName: normalizedEditingUser.lastName,
+          email: normalizedEditingUser.email,
+          phone: normalizedEditingUser.phone || undefined,
+          role: normalizedEditingUser.role,
+          employmentType:
+            normalizedEditingUser.employmentType || "HOURLY",
+          canManageSchedule:
+            normalizedEditingUser.canManageSchedule || false,
+          canManageUsers: normalizedEditingUser.canManageUsers || false,
+          canManagePayroll: normalizedEditingUser.canManagePayroll || false,
+          canManageLeaveRequests:
+            normalizedEditingUser.canManageLeaveRequests || false,
           canManageCinemaSettings:
-            editingUser.canManageCinemaSettings || false,
+            normalizedEditingUser.canManageCinemaSettings || false,
           canSendBroadcastMessages:
-            editingUser.canSendBroadcastMessages || false,
+            normalizedEditingUser.canSendBroadcastMessages || false,
         }),
       });
 
@@ -145,13 +149,11 @@ export function useUserFormActions({
       }
 
       const updatedUser = await response.json();
-
       setUsers((prev) =>
         prev.map((user) =>
           user.id === updatedUser.id ? normalizeUser(updatedUser) : user,
         ),
       );
-
       setEditingUser(null);
     } catch (error) {
       showError(
@@ -185,7 +187,9 @@ export function useUserFormActions({
   }
 
   function openEditUserModal(user: User) {
-    setEditingUser(getEditableUser(user));
+    setEditingUser(
+      withRequiredRolePermissions(getEditableUser(user)),
+    );
   }
 
   return {

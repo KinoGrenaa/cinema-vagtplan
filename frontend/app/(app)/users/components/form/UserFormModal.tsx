@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+import {
+  changeUserFormRole,
+  isPermissionRequiredForRole,
+  USER_PERMISSION_FIELDS,
+  withRequiredRolePermissions,
+} from "../../helpers/core/userRolePermissions";
 import type {
   EmploymentType,
   User,
@@ -25,47 +31,50 @@ export function UserModal({
   showPassword?: boolean;
 }) {
   const preventCreateAutofill = Boolean(showPassword);
+  const normalizedUser = withRequiredRolePermissions(user);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
         <h2 className="mb-4 text-2xl font-bold">{title}</h2>
+
         <div className="grid gap-4 md:grid-cols-2">
           <Input
             label="Fornavn"
             name={preventCreateAutofill ? "create-user-first-name" : undefined}
-            value={user.firstName}
+            value={normalizedUser.firstName}
             autoComplete={preventCreateAutofill ? "off" : undefined}
             preventBrowserAutofill={preventCreateAutofill}
-            onChange={(value) => setUser({ ...user, firstName: value })}
+            onChange={(value) =>
+              setUser({ ...normalizedUser, firstName: value })
+            }
           />
-
           <Input
             label="Efternavn"
             name={preventCreateAutofill ? "create-user-last-name" : undefined}
-            value={user.lastName}
+            value={normalizedUser.lastName}
             autoComplete={preventCreateAutofill ? "off" : undefined}
             preventBrowserAutofill={preventCreateAutofill}
-            onChange={(value) => setUser({ ...user, lastName: value })}
+            onChange={(value) =>
+              setUser({ ...normalizedUser, lastName: value })
+            }
           />
-
           <Input
             label="Email"
             type="email"
             name={preventCreateAutofill ? "create-user-email" : undefined}
-            value={user.email}
+            value={normalizedUser.email}
             autoComplete={preventCreateAutofill ? "off" : undefined}
             preventBrowserAutofill={preventCreateAutofill}
-            onChange={(value) => setUser({ ...user, email: value })}
+            onChange={(value) => setUser({ ...normalizedUser, email: value })}
           />
-
           <Input
             label="Telefon"
             name={preventCreateAutofill ? "create-user-phone" : undefined}
-            value={user.phone || ""}
+            value={normalizedUser.phone || ""}
             autoComplete={preventCreateAutofill ? "off" : undefined}
             preventBrowserAutofill={preventCreateAutofill}
-            onChange={(value) => setUser({ ...user, phone: value })}
+            onChange={(value) => setUser({ ...normalizedUser, phone: value })}
           />
 
           {showPassword && (
@@ -74,13 +83,14 @@ export function UserModal({
                 label="Password"
                 type="password"
                 name="create-user-password"
-                value={user.password || ""}
+                value={normalizedUser.password || ""}
                 minLength={8}
                 autoComplete="new-password"
                 preventBrowserAutofill={preventCreateAutofill}
-                onChange={(value) => setUser({ ...user, password: value })}
+                onChange={(value) =>
+                  setUser({ ...normalizedUser, password: value })
+                }
               />
-
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Adgangskode skal være mindst 8 tegn.
               </p>
@@ -90,9 +100,18 @@ export function UserModal({
           <label className="space-y-1">
             <span className="text-sm font-medium">Rolle</span>
             <select
-              value={user.role === "MASTER" ? "ADMIN" : user.role}
+              value={
+                normalizedUser.role === "MASTER"
+                  ? "ADMIN"
+                  : normalizedUser.role
+              }
               onChange={(event) =>
-                setUser({ ...user, role: event.target.value as UserRole })
+                setUser(
+                  changeUserFormRole(
+                    normalizedUser,
+                    event.target.value as UserRole,
+                  ),
+                )
               }
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
             >
@@ -104,10 +123,10 @@ export function UserModal({
           <label className="space-y-1">
             <span className="text-sm font-medium">Ansættelsestype</span>
             <select
-              value={user.employmentType}
+              value={normalizedUser.employmentType}
               onChange={(event) =>
                 setUser({
-                  ...user,
+                  ...normalizedUser,
                   employmentType: event.target.value as EmploymentType,
                 })
               }
@@ -119,17 +138,18 @@ export function UserModal({
           </label>
         </div>
 
-        <PermissionFields user={user} setUser={setUser} />
+        <PermissionFields user={normalizedUser} setUser={setUser} />
 
         <div className="mt-6 flex justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="rounded-lg bg-gray-200 px-4 py-2 text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
           >
             Annuller
           </button>
-
           <button
+            type="button"
             onClick={onSave}
             className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
@@ -152,7 +172,7 @@ export function EditUserModal({
   onClose: () => void;
   onSave: () => void;
 }) {
-  const formUser: UserFormData = {
+  const formUser = withRequiredRolePermissions<UserFormData>({
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
@@ -165,12 +185,12 @@ export function EditUserModal({
     canManageLeaveRequests: user.canManageLeaveRequests || false,
     canManageCinemaSettings: user.canManageCinemaSettings || false,
     canSendBroadcastMessages: user.canSendBroadcastMessages || false,
-  };
+  });
 
   function updateForm(nextUser: UserFormData) {
     setUser({
       ...user,
-      ...nextUser,
+      ...withRequiredRolePermissions(nextUser),
     });
   }
 
@@ -245,44 +265,58 @@ function PermissionFields({
   user: UserFormData;
   setUser: (user: UserFormData) => void;
 }) {
-  const permissions: {
-    key: keyof UserFormData;
-    label: string;
-  }[] = [
-    { key: "canManageSchedule", label: "Kan administrere vagtplan" },
-    { key: "canManageUsers", label: "Kan administrere brugere" },
-    { key: "canManagePayroll", label: "Kan administrere løn" },
-    { key: "canManageLeaveRequests", label: "Kan administrere fravær" },
-    {
-      key: "canManageCinemaSettings",
-      label: "Kan administrere biografindstillinger",
-    },
-    {
-      key: "canSendBroadcastMessages",
-      label: "Kan sende fællesbeskeder",
-    },
-  ];
+  const roleLabel = user.role === "ADMIN" ? "Admin" : user.role;
 
   return (
     <div className="mt-6 rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-      <h3 className="mb-3 font-semibold">Rettigheder</h3>
-      <div className="grid gap-3 md:grid-cols-2">
-        {permissions.map((permission) => (
-          <label key={permission.key} className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={Boolean(user[permission.key])}
-              onChange={(event) =>
-                setUser({
-                  ...user,
-                  [permission.key]: event.target.checked,
-                })
-              }
-              className="h-4 w-4"
-            />
-            <span className="text-sm">{permission.label}</span>
-          </label>
-        ))}
+      <h3 className="font-semibold">Rettigheder</h3>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        Rettigheder, der følger med rollen, er markeret og kan ikke fravælges.
+      </p>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        {USER_PERMISSION_FIELDS.map((permission) => {
+          const requiredByRole = isPermissionRequiredForRole(
+            user.role,
+            permission.key,
+          );
+
+          return (
+            <label
+              key={permission.key}
+              className={`flex items-start gap-2 rounded-lg px-2 py-1.5 ${
+                requiredByRole
+                  ? "cursor-not-allowed bg-blue-50/70 dark:bg-blue-950/25"
+                  : "cursor-pointer"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={
+                  requiredByRole || Boolean(user[permission.key])
+                }
+                disabled={requiredByRole}
+                onChange={(event) => {
+                  if (requiredByRole) return;
+
+                  setUser({
+                    ...user,
+                    [permission.key]: event.target.checked,
+                  });
+                }}
+                className="mt-0.5 h-4 w-4 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-80"
+              />
+              <span className="min-w-0 text-sm">
+                <span>{permission.label}</span>
+                {requiredByRole && (
+                  <span className="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
+                    Via rollen {roleLabel}
+                  </span>
+                )}
+              </span>
+            </label>
+          );
+        })}
       </div>
     </div>
   );

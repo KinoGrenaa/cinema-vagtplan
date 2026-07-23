@@ -1,4 +1,5 @@
 import { UserRole } from './user-service-helpers';
+
 import {
   OwnProfileUpdateInput,
   UserPermissionInput,
@@ -16,22 +17,56 @@ export type {
   UserUpdateInput,
 } from './user-service-data-types';
 
+const USER_PERMISSION_KEYS = [
+  'canManageSchedule',
+  'canManageUsers',
+  'canManagePayroll',
+  'canManageLeaveRequests',
+  'canManageCinemaSettings',
+  'canSendBroadcastMessages',
+] as const;
+
+type UserPermissionKey = (typeof USER_PERMISSION_KEYS)[number];
+
+const ROLE_REQUIRED_PERMISSION_KEYS: Record<
+  UserRole,
+  readonly UserPermissionKey[]
+> = {
+  MASTER: USER_PERMISSION_KEYS,
+  ADMIN: USER_PERMISSION_KEYS,
+  EMPLOYEE: [],
+};
+
+function isPermissionRequiredForRole(
+  role: UserRole,
+  permission: UserPermissionKey,
+) {
+  return ROLE_REQUIRED_PERMISSION_KEYS[role].includes(permission);
+}
+
 export function getCreatePermissionData(
   role: UserRole,
   data: UserPermissionInput,
 ) {
   return {
     canManageSchedule:
-      role === 'MASTER' ? true : (data.canManageSchedule ?? false),
-    canManageUsers: role === 'MASTER' ? true : (data.canManageUsers ?? false),
+      isPermissionRequiredForRole(role, 'canManageSchedule') ||
+      (data.canManageSchedule ?? false),
+    canManageUsers:
+      isPermissionRequiredForRole(role, 'canManageUsers') ||
+      (data.canManageUsers ?? false),
     canManagePayroll:
-      role === 'MASTER' ? true : (data.canManagePayroll ?? false),
+      isPermissionRequiredForRole(role, 'canManagePayroll') ||
+      (data.canManagePayroll ?? false),
     canManageLeaveRequests:
-      role === 'MASTER' ? true : (data.canManageLeaveRequests ?? false),
+      isPermissionRequiredForRole(role, 'canManageLeaveRequests') ||
+      (data.canManageLeaveRequests ?? false),
     canManageCinemaSettings:
-      role === 'MASTER' ? true : (data.canManageCinemaSettings ?? false),
+      isPermissionRequiredForRole(role, 'canManageCinemaSettings') ||
+      (data.canManageCinemaSettings ?? false),
     canSendBroadcastMessages:
-      role === 'MASTER' ? true : (data.canSendBroadcastMessages ?? false),
+      isPermissionRequiredForRole(role, 'canSendBroadcastMessages') ||
+      (data.canSendBroadcastMessages ?? false),
   };
 }
 
@@ -41,7 +76,6 @@ export function buildUserUpdateData(
   nextCinemaId: number | null,
 ) {
   const updateData: any = {};
-
   if (data.email !== undefined) updateData.email = data.email;
   if (data.firstName !== undefined) updateData.firstName = data.firstName;
   if (data.lastName !== undefined) updateData.lastName = data.lastName;
@@ -67,38 +101,22 @@ export function buildUserUpdateData(
   if (data.skills !== undefined) updateData.skills = data.skills;
   if (data.notes !== undefined) updateData.notes = data.notes;
 
-  if (data.canManageSchedule !== undefined) {
-    updateData.canManageSchedule =
-      nextRole === 'MASTER' ? true : data.canManageSchedule;
-  }
-  if (data.canManageUsers !== undefined) {
-    updateData.canManageUsers =
-      nextRole === 'MASTER' ? true : data.canManageUsers;
-  }
-  if (data.canManagePayroll !== undefined) {
-    updateData.canManagePayroll =
-      nextRole === 'MASTER' ? true : data.canManagePayroll;
-  }
-  if (data.canManageLeaveRequests !== undefined) {
-    updateData.canManageLeaveRequests =
-      nextRole === 'MASTER' ? true : data.canManageLeaveRequests;
-  }
-  if (data.canManageCinemaSettings !== undefined) {
-    updateData.canManageCinemaSettings =
-      nextRole === 'MASTER' ? true : data.canManageCinemaSettings;
-  }
-  if (data.canSendBroadcastMessages !== undefined) {
-    updateData.canSendBroadcastMessages =
-      nextRole === 'MASTER' ? true : data.canSendBroadcastMessages;
-  }
+  const roleIsBeingChanged = data.role !== undefined;
 
-  if (nextRole === 'MASTER') {
-    updateData.canManageSchedule = true;
-    updateData.canManageUsers = true;
-    updateData.canManagePayroll = true;
-    updateData.canManageLeaveRequests = true;
-    updateData.canManageCinemaSettings = true;
-    updateData.canSendBroadcastMessages = true;
+  for (const permission of USER_PERMISSION_KEYS) {
+    if (isPermissionRequiredForRole(nextRole, permission)) {
+      updateData[permission] = true;
+      continue;
+    }
+
+    if (data[permission] !== undefined) {
+      updateData[permission] = data[permission];
+      continue;
+    }
+
+    if (roleIsBeingChanged) {
+      updateData[permission] = false;
+    }
   }
 
   return updateData;
@@ -106,7 +124,6 @@ export function buildUserUpdateData(
 
 export function buildOwnProfileUpdateData(data: OwnProfileUpdateInput) {
   const updateData: any = {};
-
   if (data.email !== undefined) updateData.email = data.email;
   if (data.phone !== undefined) updateData.phone = data.phone;
   if (data.profileImage !== undefined) {
@@ -120,6 +137,5 @@ export function buildOwnProfileUpdateData(data: OwnProfileUpdateInput) {
     updateData.emergencyPhone = data.emergencyPhone;
   }
   if (data.skills !== undefined) updateData.skills = data.skills;
-
   return updateData;
 }

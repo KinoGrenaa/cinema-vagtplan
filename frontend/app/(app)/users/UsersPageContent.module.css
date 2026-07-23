@@ -1,0 +1,486 @@
+.page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgb(219 234 254 / 0.55), transparent 34rem),
+    #f3f4f6;
+  color: #111827;
+  padding: 1.5rem;
+}
+
+.content {
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+.loadingCard {
+  display: flex;
+  min-height: 9rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  background: #fff;
+  color: #374151;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.06);
+}
+
+.spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid #bfdbfe;
+  border-top-color: #2563eb;
+  border-radius: 9999px;
+  animation: users-spin 0.8s linear infinite;
+}
+
+.page :global(h1),
+.page :global(h2),
+.page :global(h3) {
+  color: #111827;
+}
+
+.page :global(.bg-white),
+.page [class*="bg-white"] {
+  background-color: #fff !important;
+}
+
+.page :global(table) {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.page :global(table) :global(thead) {
+  background: #f8fafc;
+}
+
+.page :global(table) :global(th) {
+  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.page :global(table) :global(th),
+.page :global(table) :global(td) {
+  border-color: #e5e7eb !important;
+}
+
+.page :global(table) :global(tbody tr) {
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.page :global(table) :global(tbody tr:hover) {
+  background: #eff6ff !important;
+}
+
+.page :global(input:not([type="checkbox"])),
+.page :global(select),
+.page :global(textarea) {
+  border-color: #cbd5e1 !important;
+  background: #fff !important;
+  color: #111827 !important;
+  caret-color: #2563eb;
+  transition: border-color 150ms ease, box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.page :global(input::placeholder),
+.page :global(textarea::placeholder) {
+  color: #6b7280 !important;
+  opacity: 1;
+}
+
+.page :global(input:not([type="checkbox"]):hover),
+.page :global(select:hover),
+.page :global(textarea:hover) {
+  border-color: #94a3b8 !important;
+}
+
+.page :global(input:not([type="checkbox"]):focus-visible),
+.page :global(select:focus-visible),
+.page :global(textarea:focus-visible) {
+  border-color: #2563eb !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.3) !important;
+}
+
+.page :global(input[type="checkbox"]) {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+  border-color: #94a3b8;
+  border-radius: 0.25rem;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.page :global(input[type="checkbox"]:focus-visible) {
+  outline: 3px solid rgb(59 130 246 / 0.35);
+  outline-offset: 3px;
+}
+
+.page :global(input[type="checkbox"]:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.page :global(label:has(input[type="checkbox"])) {
+  color: #374151;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.page :global(label:has(input[type="checkbox"]):hover) {
+  color: #111827;
+}
+
+.page :global(button),
+.page :global(a) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.page :global(button) {
+  transition: background-color 150ms ease, border-color 150ms ease,
+    color 150ms ease, box-shadow 150ms ease, transform 100ms ease,
+    opacity 150ms ease;
+}
+
+.page :global(button:active:not(:disabled)) {
+  transform: translateY(1px);
+}
+
+.page :global(button:focus-visible),
+.page :global(a:focus-visible) {
+  outline: 3px solid rgb(59 130 246 / 0.38) !important;
+  outline-offset: 3px !important;
+}
+
+.page :global(button:disabled) {
+  cursor: not-allowed !important;
+  opacity: 0.55 !important;
+  transform: none !important;
+}
+
+.page :global(button[class*="bg-blue-600"]),
+.page :global(a[class*="bg-blue-600"]) {
+  background: #2563eb !important;
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgb(37 99 235 / 0.28);
+}
+
+.page :global(button[class*="bg-blue-600"]:hover:not(:disabled)),
+.page :global(a[class*="bg-blue-600"]:hover) {
+  background: #1d4ed8 !important;
+}
+
+.page :global(button[class*="bg-yellow-700"]),
+.page :global(a[class*="bg-yellow-700"]) {
+  background: #a16207 !important;
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgb(161 98 7 / 0.28);
+}
+
+.page :global(button[class*="bg-yellow-700"]:hover:not(:disabled)),
+.page :global(a[class*="bg-yellow-700"]:hover) {
+  background: #854d0e !important;
+}
+
+.page :global(button[class*="bg-purple-700"]),
+.page :global(a[class*="bg-purple-700"]) {
+  background: #7e22ce !important;
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgb(126 34 206 / 0.28);
+}
+
+.page :global(button[class*="bg-purple-700"]:hover:not(:disabled)),
+.page :global(a[class*="bg-purple-700"]:hover) {
+  background: #6b21a8 !important;
+}
+
+.page :global(button[class*="bg-orange-600"]),
+.page :global(a[class*="bg-orange-600"]) {
+  background: #ea580c !important;
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgb(234 88 12 / 0.28);
+}
+
+.page :global(button[class*="bg-orange-600"]:hover:not(:disabled)),
+.page :global(a[class*="bg-orange-600"]:hover) {
+  background: #c2410c !important;
+}
+
+.page :global(button[class*="bg-green-600"]) {
+  background: #15803d !important;
+  color: #fff !important;
+}
+
+.page :global(button[class*="bg-green-600"]:hover:not(:disabled)) {
+  background: #166534 !important;
+}
+
+.page :global(button[class*="bg-red-600"]) {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+
+.page :global(button[class*="bg-red-600"]:hover:not(:disabled)) {
+  background: #b91c1c !important;
+}
+
+.page :global(button[class*="bg-gray-200"]) {
+  border: 1px solid #d1d5db;
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.page :global(button[class*="bg-gray-200"]:hover:not(:disabled)) {
+  background: #e5e7eb !important;
+}
+
+.page :global(button[class*="text-blue-"]) {
+  color: #1d4ed8 !important;
+}
+
+.page :global(button[class*="text-blue-"]:hover:not(:disabled)) {
+  color: #1e3a8a !important;
+}
+
+.page :global(button[class*="text-red-"]) {
+  color: #b91c1c !important;
+}
+
+.page :global(button[class*="text-red-"]:hover:not(:disabled)) {
+  color: #7f1d1d !important;
+}
+
+.page :global(button[class*="text-green-"]) {
+  color: #166534 !important;
+}
+
+.page :global(button[class*="text-green-"]:hover:not(:disabled)) {
+  color: #14532d !important;
+}
+
+.page :global([class*="fixed"][class*="inset-0"]) {
+  backdrop-filter: blur(2px);
+}
+
+.page :global([class*="fixed"][class*="inset-0"] > [class*="rounded"]) {
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 24px 64px rgb(15 23 42 / 0.24) !important;
+}
+
+
+
+@media (max-width: 640px) {
+  .page {
+    padding: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.8s;
+  }
+
+  .page *,
+  .page *::before,
+  .page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes users-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:global(.dark) .page {
+  background:
+    radial-gradient(circle at top right, rgb(30 58 138 / 0.22), transparent 34rem),
+    #030712;
+  color: #f3f4f6;
+}
+
+:global(.dark) .page .loadingCard {
+  border-color: #374151;
+  background: #111827;
+  color: #d1d5db;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+}
+
+:global(.dark) .page .spinner {
+  border-color: #1e3a8a;
+  border-top-color: #60a5fa;
+}
+
+:global(.dark) .page :global(h1),
+:global(.dark) .page :global(h2),
+:global(.dark) .page :global(h3) {
+  color: #f9fafb;
+}
+
+:global(.dark) .page :global(.bg-white),
+:global(.dark) .page [class*="bg-white"] {
+  background-color: #111827 !important;
+}
+
+:global(.dark) .page :global(table) :global(thead) {
+  background: #0f172a;
+}
+
+:global(.dark) .page :global(table) :global(th) {
+  color: #cbd5e1;
+}
+
+:global(.dark) .page :global(table) :global(th),
+:global(.dark) .page :global(table) :global(td) {
+  border-color: #374151 !important;
+}
+
+:global(.dark) .page :global(table) :global(tbody tr:hover) {
+  background: #172554 !important;
+}
+
+:global(.dark) .page :global(input:not([type="checkbox"])),
+:global(.dark) .page :global(select),
+:global(.dark) .page :global(textarea) {
+  border-color: #4b5563 !important;
+  background: #030712 !important;
+  color: #f9fafb !important;
+  color-scheme: dark;
+}
+
+:global(.dark) .page :global(input::placeholder),
+:global(.dark) .page :global(textarea::placeholder) {
+  color: #9ca3af !important;
+}
+
+:global(.dark) .page :global(input:not([type="checkbox"]):hover),
+:global(.dark) .page :global(select:hover),
+:global(.dark) .page :global(textarea:hover) {
+  border-color: #6b7280 !important;
+}
+
+:global(.dark) .page :global(input[type="checkbox"]) {
+  border-color: #6b7280;
+  accent-color: #60a5fa;
+}
+
+:global(.dark) .page :global(label:has(input[type="checkbox"])) {
+  color: #d1d5db;
+}
+
+:global(.dark) .page :global(label:has(input[type="checkbox"]):hover) {
+  color: #f9fafb;
+}
+
+:global(.dark) .page :global(button[class*="bg-blue-600"]),
+:global(.dark) .page :global(a[class*="bg-blue-600"]) {
+  background: #2563eb !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-blue-600"]:hover:not(:disabled)),
+:global(.dark) .page :global(a[class*="bg-blue-600"]:hover) {
+  background: #3b82f6 !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-yellow-700"]),
+:global(.dark) .page :global(a[class*="bg-yellow-700"]) {
+  background: #ca8a04 !important;
+  color: #111827 !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-yellow-700"]:hover:not(:disabled)),
+:global(.dark) .page :global(a[class*="bg-yellow-700"]:hover) {
+  background: #eab308 !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-purple-700"]),
+:global(.dark) .page :global(a[class*="bg-purple-700"]) {
+  background: #7e22ce !important;
+  color: #fff !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-purple-700"]:hover:not(:disabled)),
+:global(.dark) .page :global(a[class*="bg-purple-700"]:hover) {
+  background: #9333ea !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-orange-600"]),
+:global(.dark) .page :global(a[class*="bg-orange-600"]) {
+  background: #ea580c !important;
+  color: #fff !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-orange-600"]:hover:not(:disabled)),
+:global(.dark) .page :global(a[class*="bg-orange-600"]:hover) {
+  background: #f97316 !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-green-600"]) {
+  background: #15803d !important;
+  color: #fff !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-green-600"]:hover:not(:disabled)) {
+  background: #22c55e !important;
+  color: #052e16 !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-red-600"]) {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-red-600"]:hover:not(:disabled)) {
+  background: #ef4444 !important;
+}
+
+
+:global(.dark) .page :global(button[class*="bg-gray-200"]),
+:global(.dark) .page :global(button[class*="dark:bg-gray-800"]) {
+  border-color: #4b5563;
+  background: #1f2937 !important;
+  color: #f3f4f6 !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-gray-200"]:hover:not(:disabled)),
+:global(.dark) .page :global(button[class*="dark:bg-gray-800"]:hover:not(:disabled)) {
+  background: #374151 !important;
+}
+
+:global(.dark) .page :global(button[class*="text-blue-"]) {
+  color: #93c5fd !important;
+}
+
+:global(.dark) .page :global(button[class*="text-blue-"]:hover:not(:disabled)) {
+  color: #dbeafe !important;
+}
+
+:global(.dark) .page :global(button[class*="text-red-"]) {
+  color: #fca5a5 !important;
+}
+
+:global(.dark) .page :global(button[class*="text-red-"]:hover:not(:disabled)) {
+  color: #fee2e2 !important;
+}
+
+:global(.dark) .page :global(button[class*="text-green-"]) {
+  color: #86efac !important;
+}
+
+:global(.dark) .page :global(button[class*="text-green-"]:hover:not(:disabled)) {
+  color: #dcfce7 !important;
+}
+
+:global(.dark) .page :global([class*="fixed"][class*="inset-0"] > [class*="rounded"]) {
+  border-color: #374151;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.5) !important;
+}
