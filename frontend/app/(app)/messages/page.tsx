@@ -1,15 +1,10 @@
 "use client";
 
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
-
 import InfoModal from "@/app/components/modals/InfoModal";
-
 import InboxMessagesEmptyState from "./components/list/InboxMessagesEmptyState";
-
 import InboxMessagesHeader from "./components/layout/InboxMessagesHeader";
-
 import InboxMessagesList from "./components/list/InboxMessagesList";
-
 import { useInboxMessagesPage } from "./hooks/page/useInboxMessagesPage";
 
 export default function MessagesPage() {
@@ -25,12 +20,16 @@ export default function MessagesPage() {
   } = useInboxMessagesPage();
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+    <main className="min-h-screen bg-slate-50 p-4 text-slate-950 transition-colors dark:bg-[#030712] dark:text-slate-100 md:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <InboxMessagesHeader />
 
         {loading && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+          <div
+            className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600 shadow-sm dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-300"
+            role="status"
+            aria-live="polite"
+          >
             Henter beskeder...
           </div>
         )}
