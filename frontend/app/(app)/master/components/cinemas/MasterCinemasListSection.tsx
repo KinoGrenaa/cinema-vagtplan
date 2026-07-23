@@ -121,7 +121,7 @@ export default function MasterCinemasListSection({
                             savingCinemaId ===
                             cinema.id
                           }
-                          className="rounded-xl bg-green-700 px-4 py-3 font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-xl bg-blue-700 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
                         >
                           Gem
                         </button>
@@ -134,7 +134,7 @@ export default function MasterCinemasListSection({
                             savingCinemaId ===
                             cinema.id
                           }
-                          className="rounded-xl border border-gray-300 px-4 py-3 font-semibold hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                          className="rounded-xl border border-gray-300 bg-white px-4 py-3 font-semibold text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
                         >
                           Annuller
                         </button>
@@ -207,10 +207,10 @@ export default function MasterCinemasListSection({
                             cinema,
                           )
                         }
-                        className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                        className={`rounded-xl px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 ${
                           isSelected
-                            ? "bg-purple-700 text-white hover:bg-purple-800"
-                            : "border border-purple-300 bg-white text-purple-800 hover:bg-purple-50 dark:border-purple-800 dark:bg-gray-950 dark:text-purple-200 dark:hover:bg-purple-950/40"
+                            ? "bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400"
+                            : "border border-blue-300 bg-white text-blue-800 hover:bg-blue-50 active:bg-blue-100 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200 dark:hover:bg-blue-950/40 dark:active:bg-blue-950/70"
                         }`}
                       >
                         {isSelected
@@ -225,7 +225,7 @@ export default function MasterCinemasListSection({
                             cinema,
                           )
                         }
-                        className="rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-50 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200 dark:hover:bg-blue-950/40"
+                        className="rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-50 active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-200 dark:hover:bg-blue-950/40 dark:active:bg-blue-950/70 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
                       >
                         Moduler
                       </button>
@@ -237,7 +237,7 @@ export default function MasterCinemasListSection({
                             cinema,
                           )
                         }
-                        className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+                        className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
                       >
                         Rediger navn
                       </button>

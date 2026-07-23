@@ -310,7 +310,7 @@ function getCreatorBadgeClass(
 }
 
 const actionButtonBase =
-  "rounded-lg px-3 py-2 text-sm font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
+  "rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm transition active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
 
 export default function LeaveApprovalRequestCard({
   request,
@@ -386,7 +386,7 @@ export default function LeaveApprovalRequestCard({
                     "APPROVED",
                   )
                 }
-                className={`${actionButtonBase} bg-green-700 hover:bg-green-800 focus-visible:ring-green-600 dark:bg-green-600 dark:hover:bg-green-500 dark:focus-visible:ring-green-400`}
+                className={`${actionButtonBase} bg-green-700 hover:bg-green-800 active:bg-green-900 focus-visible:ring-green-600 dark:bg-green-600 dark:hover:bg-green-500 dark:active:bg-green-400 dark:focus-visible:ring-green-400`}
               >
                 Godkend
               </button>
@@ -399,7 +399,7 @@ export default function LeaveApprovalRequestCard({
                     "REJECTED",
                   )
                 }
-                className={`${actionButtonBase} bg-red-700 hover:bg-red-800 focus-visible:ring-red-600 dark:bg-red-600 dark:hover:bg-red-500 dark:focus-visible:ring-red-400`}
+                className={`${actionButtonBase} bg-red-700 hover:bg-red-800 active:bg-red-900 focus-visible:ring-red-600 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400`}
               >
                 Afvis
               </button>
@@ -418,7 +418,7 @@ export default function LeaveApprovalRequestCard({
                   "CANCELLED",
                 )
               }
-              className={`${actionButtonBase} bg-gray-700 hover:bg-gray-800 focus-visible:ring-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 dark:focus-visible:ring-gray-400`}
+              className={`${actionButtonBase} bg-red-900 hover:bg-red-950 active:bg-black focus-visible:ring-red-700 dark:bg-red-800 dark:hover:bg-red-700 dark:active:bg-red-600 dark:focus-visible:ring-red-500`}
             >
               {getCancelActionLabel(
                 request.status,
