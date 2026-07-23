@@ -1,7 +1,6 @@
 import type { FormEvent } from "react";
 
 import { inputClass, labelClass } from "../../helpers/core/sendMessageHelpers";
-
 import type { User } from "../../helpers/core/sendMessageTypes";
 
 type SendMessageFormProps = {
@@ -43,14 +42,12 @@ export default function SendMessageForm({
           checked={isBroadcast}
           onChange={(event) => {
             onBroadcastChange(event.target.checked);
-
             if (event.target.checked) {
               onReceiverIdChange("");
             }
           }}
-          className="h-4 w-4"
+          className="h-4 w-4 rounded border-gray-300 accent-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-600 dark:accent-blue-400 dark:focus-visible:ring-blue-400"
         />
-
         <label
           htmlFor="broadcast"
           className="font-medium text-gray-800 dark:text-gray-200"
@@ -58,7 +55,6 @@ export default function SendMessageForm({
           Send til alle medarbejdere
         </label>
       </div>
-
       {!isBroadcast && (
         <div>
           <label className={labelClass}>Modtager</label>
@@ -76,7 +72,6 @@ export default function SendMessageForm({
           </select>
         </div>
       )}
-
       <div>
         <label className={labelClass}>Emne</label>
         <input
@@ -86,21 +81,19 @@ export default function SendMessageForm({
           placeholder="Skriv emne"
         />
       </div>
-
       <div>
         <label className={labelClass}>Besked</label>
         <textarea
           value={body}
           onChange={(event) => onBodyChange(event.target.value)}
-          className="min-h-48 w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10"
+          className="min-h-48 w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-gray-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
           placeholder="Skriv din besked..."
         />
       </div>
-
       <button
         type="submit"
         disabled={sending}
-        className="w-full rounded-xl bg-black py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+        className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
       >
         {sending ? "Sender besked..." : "Send besked"}
       </button>

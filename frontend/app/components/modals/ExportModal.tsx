@@ -39,7 +39,7 @@ export default function ExportModal({
             type="button"
             disabled={exporting}
             onClick={() => onExport(format.value)}
-            className="w-full rounded-xl border border-gray-200 p-4 text-left transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-800 dark:hover:bg-gray-800"
+            className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           >
             <div className="font-semibold text-gray-900 dark:text-gray-100">
               {format.label}
@@ -50,13 +50,12 @@ export default function ExportModal({
           </button>
         ))}
       </div>
-
       <div className="mt-6 flex justify-end">
         <button
           type="button"
           onClick={onClose}
           disabled={exporting}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
         >
           Annuller
         </button>

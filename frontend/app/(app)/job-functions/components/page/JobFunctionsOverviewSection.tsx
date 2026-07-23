@@ -1,4 +1,5 @@
 import JobFunctionsList from "../list/JobFunctionsList";
+
 import type {
   JobFunctionWithWorkType,
   MissingPayrollTypeWarningData,
@@ -59,12 +60,11 @@ export default function JobFunctionsOverviewSection({
                 }`}
           </p>
         </div>
-
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={onCreate}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           >
             Opret jobfunktion
           </button>
@@ -73,20 +73,19 @@ export default function JobFunctionsOverviewSection({
               type="checkbox"
               checked={showArchived}
               onChange={(event) => onShowArchivedChange(event.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-gray-300 accent-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-600 dark:accent-blue-400 dark:focus-visible:ring-blue-400"
             />
             Vis arkiverede
           </label>
           <button
             type="button"
             onClick={onRefresh}
-            className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
+            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Opdater
           </button>
         </div>
       </div>
-
       <JobFunctionsList
         expandedJobFunctionIds={expandedJobFunctionIds}
         jobFunctions={jobFunctions}

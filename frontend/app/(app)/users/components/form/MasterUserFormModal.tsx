@@ -17,6 +17,9 @@ type MasterUserFormModalProps = {
   onSave: () => void;
 };
 
+const inputClass =
+  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/25 dark:disabled:bg-gray-800 dark:disabled:text-gray-500";
+
 export default function MasterUserFormModal({
   mode,
   form,
@@ -37,16 +40,13 @@ export default function MasterUserFormModal({
               : "Rediger MASTER-bruger"}
           </h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            MASTER-brugere er globale og er ikke knyttet til
-            en bestemt biograf.
+            MASTER-brugere er globale og er ikke knyttet til en bestemt
+            biograf.
           </p>
         </div>
-
         <div className="grid gap-4 p-6 md:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">
-              Fornavn
-            </span>
+            <span className="mb-1 block text-sm font-medium">Fornavn</span>
             <input
               value={form.firstName}
               onChange={(event) =>
@@ -56,14 +56,12 @@ export default function MasterUserFormModal({
                 })
               }
               autoComplete="off"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              disabled={saving}
+              className={inputClass}
             />
           </label>
-
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">
-              Efternavn
-            </span>
+            <span className="mb-1 block text-sm font-medium">Efternavn</span>
             <input
               value={form.lastName}
               onChange={(event) =>
@@ -73,14 +71,12 @@ export default function MasterUserFormModal({
                 })
               }
               autoComplete="off"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              disabled={saving}
+              className={inputClass}
             />
           </label>
-
           <label className="block md:col-span-2">
-            <span className="mb-1 block text-sm font-medium">
-              Email
-            </span>
+            <span className="mb-1 block text-sm font-medium">Email</span>
             <input
               type="email"
               value={form.email}
@@ -91,14 +87,12 @@ export default function MasterUserFormModal({
                 })
               }
               autoComplete="off"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              disabled={saving}
+              className={inputClass}
             />
           </label>
-
           <label className="block md:col-span-2">
-            <span className="mb-1 block text-sm font-medium">
-              Telefon
-            </span>
+            <span className="mb-1 block text-sm font-medium">Telefon</span>
             <input
               value={form.phone}
               onChange={(event) =>
@@ -108,15 +102,13 @@ export default function MasterUserFormModal({
                 })
               }
               autoComplete="off"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              disabled={saving}
+              className={inputClass}
             />
           </label>
-
           <label className="block md:col-span-2">
             <span className="mb-1 block text-sm font-medium">
-              {isCreate
-                ? "Adgangskode"
-                : "Ny adgangskode (valgfri)"}
+              {isCreate ? "Adgangskode" : "Ny adgangskode (valgfri)"}
             </span>
             <input
               type="password"
@@ -128,7 +120,8 @@ export default function MasterUserFormModal({
                 })
               }
               autoComplete="new-password"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              disabled={saving}
+              className={inputClass}
             />
             <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
               {isCreate
@@ -136,20 +129,17 @@ export default function MasterUserFormModal({
                 : "Lad feltet være tomt for at beholde den nuværende adgangskode."}
             </span>
           </label>
-
           <div className="rounded-xl bg-purple-50 p-4 text-sm text-purple-900 md:col-span-2 dark:bg-purple-950/30 dark:text-purple-100">
-            Rollen er fastsat til <strong>MASTER</strong>.
-            Brugeren får alle administrationsrettigheder og
-            vælger aktiv biograf i MASTER-panelet.
+            Rollen er fastsat til <strong>MASTER</strong>. Brugeren får alle
+            administrationsrettigheder og vælger aktiv biograf i MASTER-panelet.
           </div>
         </div>
-
         <div className="flex flex-col-reverse gap-3 border-t border-gray-200 p-6 sm:flex-row sm:justify-end dark:border-gray-800">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded-xl border border-gray-300 px-4 py-2 font-semibold hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            className="rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Annuller
           </button>
@@ -157,7 +147,7 @@ export default function MasterUserFormModal({
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-blue-700 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           >
             {saving
               ? "Gemmer..."

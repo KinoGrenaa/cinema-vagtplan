@@ -36,6 +36,7 @@ type ScheduleTemplateListProps = {
 function formatWeekParity(value: WeekParity) {
   if (value === "EVEN") return "Kun lige uger";
   if (value === "ODD") return "Kun ulige uger";
+
   return "Alle uger";
 }
 
@@ -77,35 +78,31 @@ export default function ScheduleTemplateList({
         <button
           type="button"
           onClick={onCreateTemplate}
-          className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white hover:bg-blue-700"
+          className="rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
         >
           Opret vagtsskabelon
         </button>
       </div>
-
       <label className="mt-4 flex items-center gap-3 text-sm font-semibold">
         <input
           type="checkbox"
           checked={showArchived}
           onChange={(event) => onShowArchivedChange(event.target.checked)}
-          className="h-4 w-4 rounded border-gray-300"
+          className="h-4 w-4 rounded border-gray-300 accent-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-600 dark:accent-blue-400 dark:focus-visible:ring-blue-400"
         />
         Vis arkiverede
       </label>
-
       <div className="mt-4 flex flex-col gap-3">
         {loading && (
           <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
             Henter vagtsskabeloner...
           </p>
         )}
-
         {!loading && templates.length === 0 && (
           <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
             Der er endnu ingen vagtsskabeloner for den valgte biograf.
           </p>
         )}
-
         {templates.map((template) => {
           const selected = selectedTemplateId === template.id;
           const templateGapSummary = getTemplateStaffingGapSummary(template);
@@ -115,10 +112,10 @@ export default function ScheduleTemplateList({
               key={template.id}
               type="button"
               onClick={() => onSelectTemplate(template.id)}
-              className={`w-full rounded-2xl border p-4 text-left transition ${
+              className={`w-full rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 ${
                 selected
-                  ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/40"
-                  : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900"
+                  ? "border-blue-500 bg-blue-50 active:bg-blue-100 dark:border-blue-400 dark:bg-blue-950/40 dark:active:bg-blue-950/70"
+                  : "border-gray-200 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900 dark:active:bg-gray-800"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -140,7 +137,6 @@ export default function ScheduleTemplateList({
                   {template.isActive ? "Aktiv" : "Arkiveret"}
                 </span>
               </div>
-
               <div className="mt-3">
                 {templateGapSummary.missingShiftCount > 0 ? (
                   <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">

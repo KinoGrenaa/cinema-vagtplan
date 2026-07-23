@@ -8,7 +8,6 @@ type BaseModalProps = {
   title: string;
   children: ReactNode;
   onClose: () => void;
-
   width?: "sm" | "md" | "lg" | "xl";
 };
 
@@ -37,17 +36,15 @@ export default function BaseModal({
           <h2 className="text-lg font-semibold leading-7 text-gray-950 dark:text-gray-50">
             {title}
           </h2>
-
           <button
             type="button"
             onClick={onClose}
             aria-label="Luk"
-            className="rounded-xl p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            className="rounded-xl p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             <X size={20} />
           </button>
         </div>
-
         <div className="max-h-[80vh] overflow-y-auto px-5 py-5">{children}</div>
       </div>
     </div>
