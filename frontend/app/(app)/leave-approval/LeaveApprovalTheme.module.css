@@ -1,0 +1,218 @@
+.leaveApprovalTheme {
+  min-width: 0;
+  color-scheme: light;
+}
+
+:global(.dark)
+  .leaveApprovalTheme {
+  color-scheme: dark;
+}
+
+.leaveApprovalTheme
+  :global(input),
+.leaveApprovalTheme
+  :global(select),
+.leaveApprovalTheme
+  :global(textarea) {
+  color-scheme: inherit;
+}
+
+.leaveApprovalTheme
+  :global(input::placeholder),
+.leaveApprovalTheme
+  :global(textarea::placeholder) {
+  color: rgb(107 114 128);
+  opacity: 1;
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(input::placeholder),
+:global(.dark)
+  .leaveApprovalTheme
+  :global(textarea::placeholder) {
+  color: rgb(156 163 175);
+}
+
+.leaveApprovalTheme
+  :global(select option) {
+  background: rgb(255 255 255);
+  color: rgb(17 24 39);
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(select option) {
+  background: rgb(3 7 18);
+  color: rgb(243 244 246);
+}
+
+.leaveApprovalTheme
+  :global(
+    button[class*="border-gray-300"]
+  ),
+.leaveApprovalTheme
+  :global(
+    a[class*="border-gray-300"]
+  ),
+.leaveApprovalTheme
+  :global(
+    button[class*="border-blue-300"]
+  ),
+.leaveApprovalTheme
+  :global(
+    a[class*="border-blue-300"]
+  ) {
+  background-color: rgb(255 255 255);
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(
+    button[class*="border-gray-300"]
+  ),
+:global(.dark)
+  .leaveApprovalTheme
+  :global(
+    a[class*="border-gray-300"]
+  ),
+:global(.dark)
+  .leaveApprovalTheme
+  :global(
+    button[class*="border-blue-300"]
+  ),
+:global(.dark)
+  .leaveApprovalTheme
+  :global(
+    a[class*="border-blue-300"]
+  ) {
+  background-color: rgb(3 7 18);
+}
+
+.leaveApprovalTheme
+  :global(button:focus-visible),
+.leaveApprovalTheme
+  :global(a:focus-visible),
+.leaveApprovalTheme
+  :global([role="button"]:focus-visible),
+.leaveApprovalTheme
+  :global(input:focus-visible),
+.leaveApprovalTheme
+  :global(select:focus-visible),
+.leaveApprovalTheme
+  :global(textarea:focus-visible) {
+  outline: 2px solid rgb(37 99 235);
+  outline-offset: 2px;
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(button:focus-visible),
+:global(.dark)
+  .leaveApprovalTheme
+  :global(a:focus-visible),
+:global(.dark)
+  .leaveApprovalTheme
+  :global([role="button"]:focus-visible),
+:global(.dark)
+  .leaveApprovalTheme
+  :global(input:focus-visible),
+:global(.dark)
+  .leaveApprovalTheme
+  :global(select:focus-visible),
+:global(.dark)
+  .leaveApprovalTheme
+  :global(textarea:focus-visible) {
+  outline-color: rgb(96 165 250);
+}
+
+.leaveApprovalTheme
+  :global(button:disabled),
+.leaveApprovalTheme
+  :global(input:disabled),
+.leaveApprovalTheme
+  :global(select:disabled),
+.leaveApprovalTheme
+  :global(textarea:disabled) {
+  cursor: not-allowed;
+}
+
+.leaveApprovalTheme
+  :global(input:disabled),
+.leaveApprovalTheme
+  :global(select:disabled),
+.leaveApprovalTheme
+  :global(textarea:disabled) {
+  opacity: 0.72;
+}
+
+.leaveApprovalTheme
+  :global(input[type="checkbox"]) {
+  accent-color: rgb(37 99 235);
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(input[type="checkbox"]) {
+  accent-color: rgb(96 165 250);
+}
+
+.leaveApprovalTheme
+  :global(input[type="date"]::-webkit-calendar-picker-indicator) {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(input[type="date"]::-webkit-calendar-picker-indicator) {
+  filter: invert(1);
+  opacity: 0.85;
+}
+
+.leaveApprovalTheme
+  :global(*) {
+  scrollbar-color:
+    rgb(156 163 175)
+    rgb(243 244 246);
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(*) {
+  scrollbar-color:
+    rgb(75 85 99)
+    rgb(17 24 39);
+}
+
+.leaveApprovalTheme
+  :global(*::-webkit-scrollbar) {
+  width: 11px;
+  height: 11px;
+}
+
+.leaveApprovalTheme
+  :global(*::-webkit-scrollbar-track) {
+  background: rgb(243 244 246);
+  border-radius: 9999px;
+}
+
+.leaveApprovalTheme
+  :global(*::-webkit-scrollbar-thumb) {
+  background: rgb(156 163 175);
+  border: 3px solid rgb(243 244 246);
+  border-radius: 9999px;
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(*::-webkit-scrollbar-track) {
+  background: rgb(17 24 39);
+}
+
+:global(.dark)
+  .leaveApprovalTheme
+  :global(*::-webkit-scrollbar-thumb) {
+  background: rgb(75 85 99);
+  border-color: rgb(17 24 39);
+}
