@@ -49,11 +49,7 @@ export default function EmployeeDocumentsPage() {
   });
 
   const selectedUser = useMemo(
-    () =>
-      users.find(
-        (user) =>
-          user.id === selectedUserId,
-      ) ?? null,
+    () => users.find((user) => user.id === selectedUserId) ?? null,
     [selectedUserId, users],
   );
 
@@ -63,16 +59,12 @@ export default function EmployeeDocumentsPage() {
 
   return (
     <AdminGuard>
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 md:p-8 dark:bg-gray-950 dark:text-gray-100">
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-950 transition-colors md:p-8 dark:bg-gray-950 dark:text-gray-100">
         <div className="mx-auto max-w-7xl space-y-6">
           <EmployeeDocumentsHeader
             employeeCount={users.length}
-            selectedEmployeeName={
-              selectedUserName
-            }
-            documentCount={
-              documents.length
-            }
+            selectedEmployeeName={selectedUserName}
+            documentCount={documents.length}
           />
 
           {needsMasterCinemaSelection && (
@@ -81,32 +73,22 @@ export default function EmployeeDocumentsPage() {
 
           <EmployeeDocumentUploadForm
             users={users}
-            selectedUserId={
-              selectedUserId
-            }
-            setSelectedUserId={
-              setSelectedUserId
-            }
+            selectedUserId={selectedUserId}
+            setSelectedUserId={setSelectedUserId}
             title={title}
             setTitle={setTitle}
             file={file}
             setFile={setFile}
             uploading={uploading}
-            needsMasterCinemaSelection={
-              needsMasterCinemaSelection
-            }
+            needsMasterCinemaSelection={needsMasterCinemaSelection}
             onSubmit={handleUpload}
           />
 
           <EmployeeDocumentsListSection
             documents={documents}
             loading={loading}
-            selectedUserId={
-              selectedUserId
-            }
-            selectedUserName={
-              selectedUserName
-            }
+            selectedUserId={selectedUserId}
+            selectedUserName={selectedUserName}
             onDelete={handleDelete}
           />
         </div>
@@ -115,36 +97,20 @@ export default function EmployeeDocumentsPage() {
       <ConfirmModal
         open={confirmDialog.open}
         title={confirmDialog.title}
-        description={
-          confirmDialog.description
-        }
-        confirmText={
-          confirmDialog.confirmText
-        }
-        cancelText={
-          confirmDialog.cancelText
-        }
-        confirmVariant={
-          confirmDialog.confirmVariant
-        }
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        confirmVariant={confirmDialog.confirmVariant}
         loading={confirmDialog.loading}
-        onConfirm={
-          confirmDialog.handleConfirm
-        }
-        onCancel={
-          confirmDialog.handleCancel
-        }
+        onConfirm={confirmDialog.handleConfirm}
+        onCancel={confirmDialog.handleCancel}
       />
 
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
-        description={
-          infoDialog.description
-        }
-        buttonText={
-          infoDialog.buttonText
-        }
+        description={infoDialog.description}
+        buttonText={infoDialog.buttonText}
         variant={infoDialog.variant}
         onClose={infoDialog.close}
       />
