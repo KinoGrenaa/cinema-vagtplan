@@ -1,67 +1,47 @@
 "use client";
 
-import {
-  useCallback,
-  useState,
-} from "react";
-
+import { useCallback, useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useNotifications } from "@/app/hooks/useNotifications";
-
 import NotificationsHeader from "./components/layout/NotificationsHeader";
 import NotificationsOverview from "./components/overview/NotificationsOverview";
 import type { ErrorDialogState } from "./helpers/core/notificationTypes";
 import { useNotificationPushActions } from "./hooks/actions/useNotificationPushActions";
 import { useNotificationsExtraData } from "./hooks/data/useNotificationsExtraData";
 import { useNotificationGroups } from "./hooks/groups/useNotificationGroups";
+import styles from "./NotificationsPage.module.css";
 
 export default function NotificationsPage() {
-  const [
-    errorDialog,
-    setErrorDialog,
-  ] =
-    useState<ErrorDialogState>({
-      open: false,
-      title: "",
-      description: "",
+  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
+    open: false,
+    title: "",
+    description: "",
+  });
+
+  const showError = useCallback((title: string, description: string) => {
+    setErrorDialog({
+      open: true,
+      title,
+      description,
     });
+  }, []);
 
-  const showError = useCallback(
-    (
-      title: string,
-      description: string,
-    ) => {
-      setErrorDialog({
-        open: true,
-        title,
-        description,
-      });
+  const handleNotificationError = useCallback(
+    (message: string) => {
+      showError("Kunne ikke opdatere notifikationer", message);
     },
-    [],
+    [showError],
   );
-
-  const handleNotificationError =
-    useCallback(
-      (message: string) => {
-        showError(
-          "Kunne ikke opdatere notifikationer",
-          message,
-        );
-      },
-      [showError],
-    );
 
   const {
     notifications,
     unreadCount,
-    loading:
-      notificationsLoading,
+    loading: notificationsLoading,
     loadNotifications,
     markAsRead,
     markAllAsRead,
   } = useNotifications({
-    onError:
-      handleNotificationError,
+    onError: handleNotificationError,
   });
 
   const {
@@ -71,10 +51,9 @@ export default function NotificationsPage() {
     directTrades,
     poolTrades,
     moduleAccess,
-  } =
-    useNotificationsExtraData({
-      showError,
-    });
+  } = useNotificationsExtraData({
+    showError,
+  });
 
   const {
     pushMessage,
@@ -82,10 +61,9 @@ export default function NotificationsPage() {
     pushLoading,
     handleEnablePush,
     handleDisablePush,
-  } =
-    useNotificationPushActions({
-      showError,
-    });
+  } = useNotificationPushActions({
+    showError,
+  });
 
   const {
     activeCategory,
@@ -104,27 +82,19 @@ export default function NotificationsPage() {
     unreadMessages,
     directTrades,
     poolTrades,
-    messagesEnabled:
-      moduleAccess.messages,
-    shiftTradesEnabled:
-      moduleAccess.shiftTrades,
+    messagesEnabled: moduleAccess.messages,
+    shiftTradesEnabled: moduleAccess.shiftTrades,
   });
 
   function closeErrorDialog() {
-    setErrorDialog(
-      (current) => ({
-        ...current,
-        open: false,
-      }),
-    );
+    setErrorDialog((current) => ({
+      ...current,
+      open: false,
+    }));
   }
 
-  async function handleMarkNotificationAsRead(
-    notificationId: number,
-  ) {
-    await markAsRead(
-      notificationId,
-    );
+  async function handleMarkNotificationAsRead(notificationId: number) {
+    await markAsRead(notificationId);
     await loadNotifications();
   }
 
@@ -133,109 +103,64 @@ export default function NotificationsPage() {
     await loadNotifications();
   }
 
-  const loading =
-    authLoading ||
-    notificationsLoading ||
-    extraLoading;
+  const loading = authLoading || notificationsLoading || extraLoading;
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-100 p-8 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-        Indlæser notifikationer...
+      <main className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}>
+        <div className="mx-auto max-w-5xl">
+          <div className={styles.loadingCard} role="status" aria-live="polite">
+            Indlæser notifikationer...
+          </div>
+        </div>
 
         <InfoModal
           open={errorDialog.open}
           title={errorDialog.title}
-          description={
-            errorDialog.description
-          }
+          description={errorDialog.description}
           variant="error"
           buttonText="OK"
-          onClose={
-            closeErrorDialog
-          }
+          onClose={closeErrorDialog}
         />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+    <main className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}>
       <div className="mx-auto max-w-5xl space-y-6">
         <NotificationsHeader
           totalCount={totalCount}
-          pushLoading={
-            pushLoading
-          }
-          pushEnabled={
-            pushEnabled
-          }
-          pushMessage={
-            pushMessage
-          }
-          activeCategory={
-            activeCategory
-          }
-          unreadCount={
-            unreadCount
-          }
-          onEnablePush={
-            handleEnablePush
-          }
-          onDisablePush={
-            handleDisablePush
-          }
-          onMarkAllNotificationsAsRead={
-            handleMarkAllNotificationsAsRead
-          }
+          pushLoading={pushLoading}
+          pushEnabled={pushEnabled}
+          pushMessage={pushMessage}
+          activeCategory={activeCategory}
+          unreadCount={unreadCount}
+          onEnablePush={handleEnablePush}
+          onDisablePush={handleDisablePush}
+          onMarkAllNotificationsAsRead={handleMarkAllNotificationsAsRead}
         />
 
         <NotificationsOverview
-          activeCategory={
-            activeCategory
-          }
-          activeCategoryLabel={
-            activeCategoryLabel
-          }
-          activeCount={
-            activeCount
-          }
-          activeGroups={
-            activeGroups
-          }
-          categories={
-            visibleCategories
-          }
-          categoryCounts={
-            categoryCounts
-          }
-          expandedDateKeys={
-            expandedDateKeys
-          }
-          notificationsCount={
-            notifications.length
-          }
-          unreadCount={
-            unreadCount
-          }
-          onSwitchCategory={
-            switchCategory
-          }
-          onToggleDateGroup={
-            toggleDateGroup
-          }
-          onMarkNotificationAsRead={
-            handleMarkNotificationAsRead
-          }
+          activeCategory={activeCategory}
+          activeCategoryLabel={activeCategoryLabel}
+          activeCount={activeCount}
+          activeGroups={activeGroups}
+          categories={visibleCategories}
+          categoryCounts={categoryCounts}
+          expandedDateKeys={expandedDateKeys}
+          notificationsCount={notifications.length}
+          unreadCount={unreadCount}
+          onSwitchCategory={switchCategory}
+          onToggleDateGroup={toggleDateGroup}
+          onMarkNotificationAsRead={handleMarkNotificationAsRead}
         />
       </div>
 
       <InfoModal
         open={errorDialog.open}
         title={errorDialog.title}
-        description={
-          errorDialog.description
-        }
+        description={errorDialog.description}
         variant="error"
         buttonText="OK"
         onClose={closeErrorDialog}

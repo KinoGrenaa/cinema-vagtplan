@@ -1,0 +1,263 @@
+.page {
+  min-height: 100vh;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.loadingCard {
+  display: flex;
+  min-height: 10rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 1rem;
+  background: #ffffff;
+  color: #4b5563;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.page :global(section.rounded-2xl),
+.page :global(div.rounded-2xl.border) {
+  border-color: #d1d5db !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.page :global(button),
+.page :global(a) {
+  outline: none;
+}
+
+.page :global(button:focus-visible),
+.page :global(a:focus-visible) {
+  outline: 3px solid rgb(37 99 235 / 0.42);
+  outline-offset: 3px;
+}
+
+.page :global(button:active:not(:disabled)),
+.page :global(a:active) {
+  transform: translateY(1px);
+}
+
+.page :global(button:disabled) {
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+  filter: saturate(0.7);
+}
+
+.page :global(button[class*="bg-green-600"]) {
+  background: #15803d !important;
+  color: #ffffff !important;
+}
+
+.page :global(button[class*="bg-green-600"]:hover:not(:disabled)) {
+  background: #166534 !important;
+}
+
+.page :global(button[class*="bg-gray-700"]) {
+  background: #475569 !important;
+  color: #ffffff !important;
+}
+
+.page :global(button[class*="bg-gray-700"]:hover:not(:disabled)) {
+  background: #334155 !important;
+}
+
+.page :global(button[class*="bg-black"]) {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.page :global(button[class*="bg-black"]:hover:not(:disabled)) {
+  background: #1d4ed8 !important;
+}
+
+.page :global(button[class*="bg-gray-900"][class*="dark:bg-gray-100"]) {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.page :global(button[class*="bg-gray-900"][class*="dark:bg-gray-100"]:hover) {
+  background: #1d4ed8 !important;
+}
+
+.page :global(button[class*="bg-gray-100"]) {
+  border: 1px solid #d1d5db;
+  background: #f8fafc !important;
+  color: #334155 !important;
+}
+
+.page :global(button[class*="bg-gray-100"]:hover) {
+  background: #e2e8f0 !important;
+}
+
+.page :global(button[class*="bg-gray-900"] > span.rounded-full),
+.page :global(button[class*="bg-gray-100"] > span.rounded-full) {
+  background: rgb(255 255 255 / 0.94) !important;
+  color: #1e293b !important;
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
+}
+
+.page :global(section.rounded-2xl > button) {
+  background: transparent;
+}
+
+.page :global(section.rounded-2xl > button:hover) {
+  background: #f8fafc !important;
+}
+
+.page :global(section.rounded-2xl > button span[class*="bg-gray-900"]) {
+  background: #475569 !important;
+  color: #ffffff !important;
+}
+
+.page :global(button.block.w-full) {
+  background: #ffffff !important;
+}
+
+.page :global(button.block.w-full:hover) {
+  background: #f8fafc !important;
+}
+
+.page :global(button.block.w-full[class*="bg-purple-50"]) {
+  background: #eff6ff !important;
+  box-shadow: inset 4px 0 0 #2563eb;
+}
+
+.page :global(button.block.w-full[class*="bg-purple-50"]:hover) {
+  background: #dbeafe !important;
+}
+
+.page :global(button.block.w-full span[class*="bg-purple-600"]) {
+  background: #2563eb !important;
+}
+
+.page :global(a.block) {
+  color: inherit;
+}
+
+.page :global(a.block:hover) {
+  background: #f8fafc !important;
+}
+
+.page :global(span[class*="bg-red-600"]) {
+  background: #dc2626 !important;
+}
+
+.page :global(span[class*="bg-blue-600"]) {
+  background: #2563eb !important;
+}
+
+.page :global(span[class*="bg-orange-600"]) {
+  background: #ea580c !important;
+}
+
+.page :global(span[class*="bg-green-600"]) {
+  background: #15803d !important;
+}
+
+.page :global(span[class*="bg-gray-700"]) {
+  background: #475569 !important;
+}
+
+:global(.dark) .page {
+  background: #030712;
+  color: #f8fafc;
+}
+
+:global(.dark) .loadingCard {
+  border-color: #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+  box-shadow: 0 16px 32px rgb(0 0 0 / 0.18);
+}
+
+:global(.dark) .page :global(section.rounded-2xl),
+:global(.dark) .page :global(div.rounded-2xl.border) {
+  border-color: #334155 !important;
+  background: #0f172a !important;
+  box-shadow: 0 16px 32px rgb(0 0 0 / 0.16);
+}
+
+:global(.dark) .page :global(button[class*="bg-gray-100"]) {
+  border-color: #334155;
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-gray-100"]:hover) {
+  background: #334155 !important;
+}
+
+:global(.dark) .page :global(button[class*="bg-gray-900"] > span.rounded-full),
+:global(.dark) .page :global(button[class*="bg-gray-100"] > span.rounded-full) {
+  background: #020617 !important;
+  color: #e2e8f0 !important;
+  box-shadow: inset 0 0 0 1px #475569;
+}
+
+:global(.dark) .page :global(section.rounded-2xl > button:hover) {
+  background: #172033 !important;
+}
+
+:global(.dark) .page :global(section.rounded-2xl > button span[class*="bg-gray-900"]) {
+  background: #334155 !important;
+}
+
+:global(.dark) .page :global(button.block.w-full) {
+  background: #0f172a !important;
+}
+
+:global(.dark) .page :global(button.block.w-full:hover),
+:global(.dark) .page :global(a.block:hover) {
+  background: #172033 !important;
+}
+
+:global(.dark) .page :global(button.block.w-full[class*="bg-purple-50"]) {
+  background: rgb(30 64 175 / 0.22) !important;
+  box-shadow: inset 4px 0 0 #3b82f6;
+}
+
+:global(.dark) .page :global(button.block.w-full[class*="bg-purple-50"]:hover) {
+  background: rgb(30 64 175 / 0.32) !important;
+}
+
+:global(.dark) .page :global(.divide-gray-200) {
+  border-color: #334155 !important;
+}
+
+:global(.dark) .page :global(.text-gray-900) {
+  color: #f8fafc !important;
+}
+
+:global(.dark) .page :global(.text-gray-700),
+:global(.dark) .page :global(.text-gray-600) {
+  color: #cbd5e1 !important;
+}
+
+:global(.dark) .page :global(.text-gray-500),
+:global(.dark) .page :global(.text-gray-400) {
+  color: #94a3b8 !important;
+}
+
+@media (max-width: 640px) {
+  .page :global(button),
+  .page :global(a.block) {
+    min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .page :global(*) {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .page :global(button:active:not(:disabled)),
+  .page :global(a:active) {
+    transform: none;
+  }
+}
