@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+
 import type {
   Dispatch,
   FormEvent,
   SetStateAction,
 } from "react";
+
 import { apiFetch } from "@/app/lib/api";
+
 import {
   formatDateForInput,
   readError,
@@ -110,7 +113,6 @@ export function useProfileForm({
 
   async function saveProfile(event: FormEvent) {
     event.preventDefault();
-
     if (!currentUser) return;
 
     if (password && password.length < 8) {
@@ -123,10 +125,7 @@ export function useProfileForm({
 
     const mobileDigits = phone.replace(/\D/g, "");
 
-    if (
-      mobileDigits.length > 0 &&
-      mobileDigits.length !== 8
-    ) {
+    if (mobileDigits.length > 0 && mobileDigits.length !== 8) {
       showError(
         "Profilen kunne ikke gemmes",
         "Mobilnummer skal bestå af præcis 8 cifre.",
@@ -145,12 +144,11 @@ export function useProfileForm({
           body: JSON.stringify({
             email: email.trim(),
             password: password.trim() || undefined,
-            phone: mobileDigits || undefined,
-            address: address.trim() || undefined,
+            phone: mobileDigits,
+            address: address.trim(),
             birthDate: birthDate || null,
-            emergencyPhone:
-              emergencyPhone.trim() || undefined,
-            skills: skills.trim() || undefined,
+            emergencyPhone: emergencyPhone.trim(),
+            skills: skills.trim(),
           }),
         },
       );
@@ -160,7 +158,6 @@ export function useProfileForm({
       }
 
       const data = await response.json();
-
       const updatedCurrentUser = {
         ...currentUser,
         email: data.email,
@@ -191,7 +188,7 @@ export function useProfileForm({
   function toggleEditing() {
     if (!profile) return;
 
-    setEditing(!editing);
+    setEditing((current) => !current);
     setMessage("");
     fillForm(profile);
   }
@@ -214,8 +211,7 @@ export function useProfileForm({
     message,
     password,
     phone,
-    profileImage:
-      profileImage || profile?.profileImage || "",
+    profileImage: profileImage || profile?.profileImage || "",
     saveProfile,
     saving,
     selectedFileName,

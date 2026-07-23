@@ -1,0 +1,181 @@
+.page {
+  min-height: 100vh;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.stateCard {
+  display: flex;
+  min-height: 10rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 1.5rem;
+  color: #4b5563;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.errorCard {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.page :global(section.rounded-2xl),
+.page :global(div.flex.flex-col.gap-4.rounded-2xl) {
+  border-color: #d1d5db !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.page :global(div.whitespace-pre-line.rounded-xl) {
+  border-color: #bbf7d0 !important;
+  background: #f0fdf4 !important;
+  color: #166534;
+}
+
+.page :global(input:not([type="file"])),
+.page :global(textarea) {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  outline: none;
+}
+
+.page :global(input::placeholder),
+.page :global(textarea::placeholder) {
+  color: #64748b;
+}
+
+.page :global(input:focus-visible),
+.page :global(textarea:focus-visible) {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.2);
+}
+
+.page :global(button) {
+  outline: none;
+}
+
+.page :global(button:focus-visible) {
+  outline: 3px solid rgb(37 99 235 / 0.42);
+  outline-offset: 3px;
+}
+
+.page :global(button:disabled) {
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+}
+
+.page :global(label:has(input[type="file"]:focus-visible) > div) {
+  outline: 3px solid rgb(37 99 235 / 0.42);
+  outline-offset: 3px;
+}
+
+.page :global(label:has(input[type="file"]:disabled) > div) {
+  cursor: not-allowed;
+}
+
+.page :global(div.rounded-xl.border:not(.whitespace-pre-line)) {
+  border-color: #d1d5db !important;
+  background: #f8fafc;
+}
+
+.page :global(div.rounded-xl.border-2.border-dashed) {
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+}
+
+.page :global(div.rounded-xl.border-2.border-dashed:hover) {
+  background: #dbeafe !important;
+}
+
+.page :global(img.rounded-2xl) {
+  border: 1px solid #d1d5db;
+  box-shadow: 0 4px 12px rgb(15 23 42 / 0.12);
+}
+
+:global(.dark) .page {
+  background: #030712;
+  color: #f8fafc;
+}
+
+:global(.dark) .stateCard {
+  border-color: #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+  box-shadow: 0 16px 32px rgb(0 0 0 / 0.18);
+}
+
+:global(.dark) .errorCard {
+  border-color: #7f1d1d;
+  background: rgb(127 29 29 / 0.22);
+  color: #fecaca;
+}
+
+:global(.dark) .page :global(section.rounded-2xl),
+:global(.dark) .page :global(div.flex.flex-col.gap-4.rounded-2xl) {
+  border-color: #334155 !important;
+  background: #0f172a !important;
+  box-shadow: 0 16px 32px rgb(0 0 0 / 0.16);
+}
+
+:global(.dark) .page :global(div.whitespace-pre-line.rounded-xl) {
+  border-color: #166534 !important;
+  background: rgb(20 83 45 / 0.28) !important;
+  color: #bbf7d0;
+}
+
+:global(.dark) .page :global(input:not([type="file"])),
+:global(.dark) .page :global(textarea) {
+  border-color: #475569 !important;
+  background: #020617 !important;
+  color: #f8fafc !important;
+}
+
+:global(.dark) .page :global(input::placeholder),
+:global(.dark) .page :global(textarea::placeholder) {
+  color: #94a3b8;
+}
+
+:global(.dark) .page :global(div.rounded-xl.border:not(.whitespace-pre-line)) {
+  border-color: #334155 !important;
+  background: #111827;
+}
+
+:global(.dark) .page :global(div.rounded-xl.border-2.border-dashed) {
+  border-color: #1d4ed8 !important;
+  background: rgb(30 64 175 / 0.22) !important;
+}
+
+:global(.dark) .page :global(div.rounded-xl.border-2.border-dashed:hover) {
+  background: rgb(30 64 175 / 0.34) !important;
+}
+
+:global(.dark) .page :global(img.rounded-2xl) {
+  border-color: #475569;
+  box-shadow: 0 12px 24px rgb(0 0 0 / 0.28);
+}
+
+:global(.dark) .page :global(.text-gray-500),
+:global(.dark) .page :global(.text-gray-400) {
+  color: #94a3b8 !important;
+}
+
+@media (max-width: 640px) {
+  .page :global(button) {
+    min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page,
+  .page :global(*) {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -111,12 +111,14 @@ export default function ProfileEditForm({
         </label>
 
         <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-          <label className="block cursor-pointer">
+          <label
+            className={`block ${uploading ? "cursor-not-allowed" : "cursor-pointer"}`}
+          >
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
               disabled={uploading}
-              className="hidden"
+              className="sr-only"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) {
@@ -125,7 +127,11 @@ export default function ProfileEditForm({
               }}
             />
 
-            <div className="rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 p-6 text-center transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:hover:bg-blue-900">
+            <div
+              className={`rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 p-6 text-center transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:hover:bg-blue-900 ${
+                uploading ? "opacity-60" : ""
+              }`}
+            >
               <div className="font-medium text-blue-700 dark:text-blue-200">
                 {uploading
                   ? "Uploader billede..."
@@ -145,11 +151,12 @@ export default function ProfileEditForm({
           </label>
         </div>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl bg-gray-200 px-5 py-3 font-medium text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+            disabled={saving || uploading}
+            className="rounded-xl border border-gray-300 bg-white px-5 py-3 font-medium text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-600"
           >
             Annuller
           </button>
@@ -157,7 +164,7 @@ export default function ProfileEditForm({
           <button
             type="submit"
             disabled={saving || uploading}
-            className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Gemmer..." : "Gem profil"}
           </button>

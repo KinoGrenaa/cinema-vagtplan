@@ -1,11 +1,13 @@
 "use client";
 
 import InfoModal from "@/app/components/modals/InfoModal";
+
 import ProfileDetailsSection from "./components/details/ProfileDetailsSection";
+import ProfileMessage from "./components/feedback/ProfileMessage";
 import ProfileEditForm from "./components/form/ProfileEditForm";
 import ProfileHeader from "./components/layout/ProfileHeader";
-import ProfileMessage from "./components/feedback/ProfileMessage";
 import { useProfilePage } from "./hooks/useProfilePage";
+import styles from "./ProfilePage.module.css";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -42,8 +44,14 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        <div className="mx-auto max-w-4xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <main
+        className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}
+      >
+        <div
+          className={`${styles.stateCard} mx-auto max-w-4xl`}
+          role="status"
+          aria-live="polite"
+        >
           Indlæser profil...
         </div>
       </main>
@@ -52,8 +60,13 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        <div className="mx-auto max-w-4xl rounded-2xl border border-red-200 bg-white p-6 text-red-600 shadow-sm dark:border-red-900 dark:bg-gray-900">
+      <main
+        className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}
+      >
+        <div
+          className={`${styles.stateCard} ${styles.errorCard} mx-auto max-w-4xl`}
+          role="alert"
+        >
           Kunne ikke hente profil.
         </div>
 
@@ -70,7 +83,9 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
+    <main
+      className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}
+    >
       <div className="mx-auto max-w-4xl space-y-6">
         <ProfileHeader editing={editing} onToggleEdit={toggleEditing} />
 

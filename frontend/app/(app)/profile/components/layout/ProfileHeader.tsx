@@ -17,8 +17,13 @@ export default function ProfileHeader({
       </div>
 
       <button
+        type="button"
         onClick={onToggleEdit}
-        className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700"
+        className={
+          editing
+            ? "rounded-xl border border-gray-300 bg-white px-5 py-3 font-medium text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-600"
+            : "rounded-xl bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700 active:bg-blue-800"
+        }
       >
         {editing ? "Annuller" : "Rediger profil"}
       </button>
