@@ -1,0 +1,189 @@
+.shiftPlanningTheme {
+  min-width: 0;
+  color-scheme: light;
+}
+
+:global(.dark)
+  .shiftPlanningTheme {
+  color-scheme: dark;
+}
+
+.shiftPlanningTheme
+  :global(input),
+.shiftPlanningTheme
+  :global(select),
+.shiftPlanningTheme
+  :global(textarea) {
+  color-scheme: inherit;
+}
+
+.shiftPlanningTheme
+  :global(input::placeholder),
+.shiftPlanningTheme
+  :global(textarea::placeholder) {
+  color: rgb(107 114 128);
+  opacity: 1;
+}
+
+:global(.dark)
+  .shiftPlanningTheme
+  :global(input::placeholder),
+:global(.dark)
+  .shiftPlanningTheme
+  :global(textarea::placeholder) {
+  color: rgb(156 163 175);
+}
+
+.shiftPlanningTheme
+  :global(select option) {
+  background: rgb(255 255 255);
+  color: rgb(17 24 39);
+}
+
+:global(.dark)
+  .shiftPlanningTheme
+  :global(select option) {
+  background: rgb(3 7 18);
+  color: rgb(243 244 246);
+}
+
+.shiftPlanningTheme
+  :global(
+    button[class*="border-gray-300"][class*="hover:bg-gray-50"]
+  ),
+.shiftPlanningTheme
+  :global(
+    a[class*="border-gray-300"][class*="hover:bg-gray-50"]
+  ) {
+  background-color: rgb(255 255 255);
+  color: rgb(31 41 55);
+}
+
+:global(.dark)
+  .shiftPlanningTheme
+  :global(
+    button[class*="border-gray-300"][class*="hover:bg-gray-50"]
+  ),
+:global(.dark)
+  .shiftPlanningTheme
+  :global(
+    a[class*="border-gray-300"][class*="hover:bg-gray-50"]
+  ) {
+  background-color: rgb(3 7 18);
+  color: rgb(243 244 246);
+}
+
+.shiftPlanningTheme
+  :global(button:focus-visible),
+.shiftPlanningTheme
+  :global(a:focus-visible),
+.shiftPlanningTheme
+  :global([role="button"]:focus-visible),
+.shiftPlanningTheme
+  :global(input:focus-visible),
+.shiftPlanningTheme
+  :global(select:focus-visible),
+.shiftPlanningTheme
+  :global(textarea:focus-visible) {
+  outline: 2px solid rgb(37 99 235);
+  outline-offset: 2px;
+}
+
+:global(.dark)
+  .shiftPlanningTheme
+  :global(button:focus-visible),
+:global(.dark)
+  .shiftPlanningTheme
+  :global(a:focus-visible),
+:global(.dark)
+  .shiftPlanningTheme
+  :global([role="button"]:focus-visible),
+:global(.dark)
+  .shiftPlanningTheme
+  :global(input:focus-visible),
+:global(.dark)
+  .shiftPlanningTheme
+  :global(select:focus-visible),
+:global(.dark)
+  .shiftPlanningTheme
+  :global(textarea:focus-visible) {
+  outline-color: rgb(96 165 250);
+}
+
+.shiftPlanningTheme
+  :global(button:disabled),
+.shiftPlanningTheme
+  :global(input:disabled),
+.shiftPlanningTheme
+  :global(select:disabled),
+.shiftPlanningTheme
+  :global(textarea:disabled) {
+  cursor: not-allowed;
+}
+
+.shiftPlanningTheme
+  :global(input:disabled),
+.shiftPlanningTheme
+  :global(select:disabled),
+.shiftPlanningTheme
+  :global(textarea:disabled) {
+  opacity: 0.72;
+}
+
+.shiftPlanningTheme
+  :global(input[type="checkbox"]) {
+  accent-color: rgb(37 99 235);
+}
+
+:global(.dark)
+  .shiftPlanningTheme
+  :global(input[type="checkbox"]) {
+  accent-color: rgb(96 165 250);
+}
+
+.shiftPlanningTheme
+  :global(*) {
+  scrollbar-color:
+    rgb(156 163 175)
+    rgb(243 244 246);
+}
+
+:global(.dark)
+  .shiftPlanningTheme
+  :global(*) {
+  scrollbar-color:
+    rgb(75 85 99)
+    rgb(17 24 39);
+}
+
+.shiftPlanningTheme
+  :global(*::-webkit-scrollbar) {
+  width: 11px;
+  height: 11px;
+}
+
+.shiftPlanningTheme
+  :global(*::-webkit-scrollbar-track) {
+  background: rgb(243 244 246);
+  border-radius: 9999px;
+}
+
+.shiftPlanningTheme
+  :global(*::-webkit-scrollbar-thumb) {
+  background: rgb(156 163 175);
+  border: 3px solid rgb(243 244 246);
+  border-radius: 9999px;
+}
+
+:global(.dark)
+  .shiftPlanningTheme
+  :global(*::-webkit-scrollbar-track) {
+  background: rgb(17 24 39);
+}
+
+:global(.dark)
+  .shiftPlanningTheme
+  :global(*::-webkit-scrollbar-thumb) {
+  background: rgb(75 85 99);
+  border-color: rgb(17 24 39);
+}
