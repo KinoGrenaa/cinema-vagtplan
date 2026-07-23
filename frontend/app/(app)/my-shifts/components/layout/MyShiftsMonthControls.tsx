@@ -4,6 +4,9 @@ type MyShiftsMonthControlsProps = {
   changeMonth: (direction: number) => void;
 };
 
+const navigationButtonClass =
+  "rounded-xl border border-gray-300 bg-white px-4 py-2 font-medium text-gray-800 shadow-sm transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-600 dark:focus-visible:ring-offset-gray-950";
+
 export default function MyShiftsMonthControls({
   selectedMonth,
   message,
@@ -11,28 +14,37 @@ export default function MyShiftsMonthControls({
 }: MyShiftsMonthControlsProps) {
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <nav
+        className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+        aria-label="Vælg måned"
+      >
         <button
+          type="button"
           onClick={() => changeMonth(-1)}
-          className="rounded-xl bg-gray-200 px-4 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+          className={navigationButtonClass}
         >
           Forrige måned
         </button>
 
-        <span className="rounded-xl bg-gray-100 px-4 py-2 font-bold dark:bg-gray-950">
+        <span className="min-w-36 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-center font-bold text-gray-950 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100">
           {selectedMonth}
         </span>
 
         <button
+          type="button"
           onClick={() => changeMonth(1)}
-          className="rounded-xl bg-gray-200 px-4 py-2 transition hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+          className={navigationButtonClass}
         >
           Næste måned
         </button>
-      </div>
+      </nav>
 
       {message && (
-        <div className="rounded-xl border border-yellow-300 bg-yellow-100 p-4 text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-200">
+        <div
+          className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 dark:border-emerald-900/70 dark:bg-emerald-950/35 dark:text-emerald-100"
+          role="status"
+          aria-live="polite"
+        >
           {message}
         </div>
       )}
