@@ -14,12 +14,16 @@ import { useLeaveApprovalFilters } from "./hooks/filters/useLeaveApprovalFilters
 
 export default function LeaveApprovalPage() {
   const infoDialog = useInfoModal();
+
   const {
     requests,
     loading,
     needsMasterCinemaSelection,
     updateStatus,
-  } = useLeaveApprovalData(infoDialog);
+  } = useLeaveApprovalData(
+    infoDialog,
+  );
+
   const {
     showFilterModal,
     draftStatusFilters,
@@ -44,72 +48,138 @@ export default function LeaveApprovalPage() {
     showOnlyPending,
     toggleUserGroup,
     toggleDateGroup,
-  } = useLeaveApprovalFilters(requests);
+  } = useLeaveApprovalFilters(
+    requests,
+  );
 
   return (
     <AdminGuard>
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <LeaveApprovalHeader
-            statusFilterSummary={statusFilterSummary}
-            dateFilterSummary={dateFilterSummary}
-            pendingCount={dateRangeStatusCounts.PENDING}
-            activeFilterCount={activeFilterCount}
-            hasCustomFilters={hasCustomFilters}
-            onShowOnlyPending={showOnlyPending}
-            onOpenFilterModal={openFilterModal}
-            onResetFilter={resetFilter}
+            statusFilterSummary={
+              statusFilterSummary
+            }
+            dateFilterSummary={
+              dateFilterSummary
+            }
+            pendingCount={
+              dateRangeStatusCounts.PENDING
+            }
+            activeFilterCount={
+              activeFilterCount
+            }
+            hasCustomFilters={
+              hasCustomFilters
+            }
+            onShowOnlyPending={
+              showOnlyPending
+            }
+            onOpenFilterModal={
+              openFilterModal
+            }
+            onResetFilter={
+              resetFilter
+            }
           />
 
           {needsMasterCinemaSelection && (
-            <div className="rounded-2xl border border-yellow-300 bg-yellow-50 p-5 text-yellow-900 shadow-sm dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-100">
-              <h2 className="text-lg font-semibold">Ingen aktiv biograf valgt</h2>
-              <p className="mt-2 text-sm">
-                Vælg en biograf i MASTER-panelet, før du kan se eller behandle
+            <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm transition-colors dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-100">
+              <h2 className="text-lg font-semibold">
+                Ingen aktiv biograf valgt
+              </h2>
+
+              <p className="mt-2 text-sm text-amber-900 dark:text-amber-100/90">
+                Vælg en biograf i
+                MASTER-panelet, før du
+                kan se eller behandle
                 fravær.
               </p>
-            </div>
+            </section>
           )}
 
-          {!needsMasterCinemaSelection && !loading && (
-            <LeaveApprovalSummaryCards statusCounts={dateRangeStatusCounts} />
-          )}
+          {!needsMasterCinemaSelection &&
+            !loading && (
+              <LeaveApprovalSummaryCards
+                statusCounts={
+                  dateRangeStatusCounts
+                }
+              />
+            )}
 
           {loading && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-500 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-              Henter fraværsansøgninger...
-            </div>
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-700 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
+              Henter
+              fraværsansøgninger...
+            </section>
           )}
 
-          {!needsMasterCinemaSelection && !loading && (
-            <LeaveApprovalRequestsSection
-              requests={requests}
-              visibleRequests={visibleRequests}
-              groupedRequests={groupedRequests}
-              statusFilterSummary={statusFilterSummary}
-              dateFilterSummary={dateFilterSummary}
-              expandedUserIds={expandedUserIds}
-              isDateGroupExpanded={(userId, dateKey) =>
-                expandedDateGroupKeys.includes(
-                  makeDateGroupExpansionKey(userId, dateKey),
-                )
-              }
-              onToggleUserGroup={toggleUserGroup}
-              onToggleDateGroup={toggleDateGroup}
-              onUpdateStatus={updateStatus}
-            />
-          )}
+          {!needsMasterCinemaSelection &&
+            !loading && (
+              <LeaveApprovalRequestsSection
+                requests={requests}
+                visibleRequests={
+                  visibleRequests
+                }
+                groupedRequests={
+                  groupedRequests
+                }
+                statusFilterSummary={
+                  statusFilterSummary
+                }
+                dateFilterSummary={
+                  dateFilterSummary
+                }
+                expandedUserIds={
+                  expandedUserIds
+                }
+                isDateGroupExpanded={(
+                  userId,
+                  dateKey,
+                ) =>
+                  expandedDateGroupKeys.includes(
+                    makeDateGroupExpansionKey(
+                      userId,
+                      dateKey,
+                    ),
+                  )
+                }
+                onToggleUserGroup={
+                  toggleUserGroup
+                }
+                onToggleDateGroup={
+                  toggleDateGroup
+                }
+                onUpdateStatus={
+                  updateStatus
+                }
+              />
+            )}
         </div>
 
         <LeaveApprovalFilterModal
           open={showFilterModal}
-          activeFilterCount={activeFilterCount}
-          draftStatusFilters={draftStatusFilters}
-          draftStartDateFilter={draftStartDateFilter}
-          draftEndDateFilter={draftEndDateFilter}
-          onStatusFilterChange={updateDraftStatusFilter}
-          onStartDateFilterChange={setDraftStartDateFilter}
-          onEndDateFilterChange={setDraftEndDateFilter}
+          activeFilterCount={
+            activeFilterCount
+          }
+          draftStatusFilters={
+            draftStatusFilters
+          }
+          draftStartDateFilter={
+            draftStartDateFilter
+          }
+          draftEndDateFilter={
+            draftEndDateFilter
+          }
+          onStatusFilterChange={
+            updateDraftStatusFilter
+          }
+          onStartDateFilterChange={
+            setDraftStartDateFilter
+          }
+          onEndDateFilterChange={
+            setDraftEndDateFilter
+          }
           onApply={applyFilter}
           onReset={resetFilter}
           onClose={closeFilterModal}
@@ -118,9 +188,15 @@ export default function LeaveApprovalPage() {
         <InfoModal
           open={infoDialog.open}
           title={infoDialog.title}
-          description={infoDialog.description}
-          buttonText={infoDialog.buttonText}
-          variant={infoDialog.variant}
+          description={
+            infoDialog.description
+          }
+          buttonText={
+            infoDialog.buttonText
+          }
+          variant={
+            infoDialog.variant
+          }
           onClose={infoDialog.close}
         />
       </main>

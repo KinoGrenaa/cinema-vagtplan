@@ -1,4 +1,7 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 
 import type {
   GroupedLeaveRequests,
@@ -10,37 +13,58 @@ import LeaveApprovalRequestCard from "./LeaveApprovalRequestCard";
 type LeaveApprovalRequestsSectionProps = {
   requests: LeaveRequest[];
   visibleRequests: LeaveRequest[];
-  groupedRequests: GroupedLeaveRequests[];
+  groupedRequests:
+    GroupedLeaveRequests[];
   statusFilterSummary: string;
   dateFilterSummary: string;
   expandedUserIds: number[];
-  isDateGroupExpanded: (userId: number, dateKey: string) => boolean;
-  onToggleUserGroup: (userId: number) => void;
-  onToggleDateGroup: (userId: number, dateKey: string) => void;
-  onUpdateStatus: (requestId: number, status: LeaveStatus) => void;
+  isDateGroupExpanded: (
+    userId: number,
+    dateKey: string,
+  ) => boolean;
+  onToggleUserGroup: (
+    userId: number,
+  ) => void;
+  onToggleDateGroup: (
+    userId: number,
+    dateKey: string,
+  ) => void;
+  onUpdateStatus: (
+    requestId: number,
+    status: LeaveStatus,
+  ) => void;
 };
 
-function getStatusBadge(status: LeaveStatus) {
+function getStatusBadge(
+  status: LeaveStatus,
+) {
   if (status === "APPROVED") {
-    return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
+    return "border-green-200 bg-green-100 text-green-900 dark:border-green-900 dark:bg-green-950/50 dark:text-green-100";
   }
+
   if (status === "REJECTED") {
-    return "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200";
+    return "border-red-200 bg-red-100 text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-100";
   }
+
   if (status === "CANCELLED") {
-    return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+    return "border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200";
   }
+
   if (status === "EXPIRED") {
-    return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
+    return "border-slate-200 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
   }
-  return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200";
+
+  return "border-amber-200 bg-amber-100 text-amber-950 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-100";
 }
 
-function getStatusCountsForRequests(requests: LeaveRequest[]) {
+function getStatusCountsForRequests(
+  requests: LeaveRequest[],
+) {
   return requests.reduce(
     (counts, request) => ({
       ...counts,
-      [request.status]: counts[request.status] + 1,
+      [request.status]:
+        counts[request.status] + 1,
     }),
     {
       PENDING: 0,
@@ -48,24 +72,59 @@ function getStatusCountsForRequests(requests: LeaveRequest[]) {
       REJECTED: 0,
       CANCELLED: 0,
       EXPIRED: 0,
-    } satisfies Record<LeaveStatus, number>,
+    } satisfies Record<
+      LeaveStatus,
+      number
+    >,
   );
 }
 
-function getStatusSummaryParts(requests: LeaveRequest[]) {
-  const counts = getStatusCountsForRequests(requests);
+function getStatusSummaryParts(
+  requests: LeaveRequest[],
+) {
+  const counts =
+    getStatusCountsForRequests(
+      requests,
+    );
+
   return [
-    { label: "Afventer", count: counts.PENDING, status: "PENDING" as const },
-    { label: "Godkendt", count: counts.APPROVED, status: "APPROVED" as const },
-    { label: "Afvist", count: counts.REJECTED, status: "REJECTED" as const },
+    {
+      label: "Afventer",
+      count: counts.PENDING,
+      status:
+        "PENDING" as const,
+    },
+    {
+      label: "Godkendt",
+      count: counts.APPROVED,
+      status:
+        "APPROVED" as const,
+    },
+    {
+      label: "Afvist",
+      count: counts.REJECTED,
+      status:
+        "REJECTED" as const,
+    },
     {
       label: "Annulleret",
       count: counts.CANCELLED,
-      status: "CANCELLED" as const,
+      status:
+        "CANCELLED" as const,
     },
-    { label: "Udløbet", count: counts.EXPIRED, status: "EXPIRED" as const },
-  ].filter((item) => item.count > 0);
+    {
+      label: "Udløbet",
+      count: counts.EXPIRED,
+      status:
+        "EXPIRED" as const,
+    },
+  ].filter(
+    (item) => item.count > 0,
+  );
 }
+
+const groupButtonClass =
+  "flex w-full gap-4 bg-gray-50 p-4 text-left text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-blue-400";
 
 export default function LeaveApprovalRequestsSection({
   requests,
@@ -80,134 +139,236 @@ export default function LeaveApprovalRequestsSection({
   onUpdateStatus,
 }: LeaveApprovalRequestsSectionProps) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Ansøgninger</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Viser {visibleRequests.length} af {requests.length} ansøgninger.
+          <h2 className="text-2xl font-bold text-gray-950 dark:text-white">
+            Ansøgninger
+          </h2>
+
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Viser{" "}
+            {visibleRequests.length} af{" "}
+            {requests.length}{" "}
+            ansøgninger.
           </p>
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          {statusFilterSummary} · {dateFilterSummary}
+
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          {statusFilterSummary} ·{" "}
+          {dateFilterSummary}
         </div>
       </div>
 
-      {groupedRequests.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 p-8 text-center dark:border-gray-800">
-          <h3 className="text-xl font-bold">Ingen fraværsansøgninger</h3>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Ingen ansøgninger matcher det valgte filter.
+      {groupedRequests.length ===
+      0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-950/50">
+          <h3 className="text-xl font-bold text-gray-950 dark:text-white">
+            Ingen
+            fraværsansøgninger
+          </h3>
+
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Ingen ansøgninger matcher
+            det valgte filter.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {groupedRequests.map((group) => {
-            const isExpanded = expandedUserIds.includes(group.userId);
-            const groupStatusSummary = getStatusSummaryParts(group.requests);
+          {groupedRequests.map(
+            (group) => {
+              const isExpanded =
+                expandedUserIds.includes(
+                  group.userId,
+                );
+              const groupStatusSummary =
+                getStatusSummaryParts(
+                  group.requests,
+                );
 
-            return (
-              <div
-                key={group.userId}
-                className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
-              >
-                <button
-                  type="button"
-                  onClick={() => onToggleUserGroup(group.userId)}
-                  className="flex w-full items-center justify-between gap-4 bg-gray-50 p-4 text-left transition hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900"
+              return (
+                <div
+                  key={group.userId}
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
                 >
-                  <div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      {isExpanded ? (
-                        <ChevronDown size={18} />
-                      ) : (
-                        <ChevronRight size={18} />
-                      )}
-                      {group.userName}
-                    </div>
-                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {group.requests.length} ansøgning
-                      {group.requests.length === 1 ? "" : "er"}
-                    </div>
-                  </div>
-                  <div className="text-right text-sm text-gray-500 dark:text-gray-400">
-                    {groupStatusSummary
-                      .map((item) => `${item.label}: ${item.count}`)
-                      .join(" · ")}
-                  </div>
-                </button>
-
-                {isExpanded && (
-                  <div className="space-y-3 p-4">
-                    {group.dateGroups.map((dateGroup) => {
-                      const isDateExpanded = isDateGroupExpanded(
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onToggleUserGroup(
                         group.userId,
-                        dateGroup.key,
-                      );
-                      const statusSummary = getStatusSummaryParts(
-                        dateGroup.requests,
-                      );
+                      )
+                    }
+                    aria-expanded={
+                      isExpanded
+                    }
+                    className={`${groupButtonClass} items-center justify-between`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">
+                        {isExpanded ? (
+                          <ChevronDown
+                            size={18}
+                          />
+                        ) : (
+                          <ChevronRight
+                            size={18}
+                          />
+                        )}
 
-                      return (
-                        <div
-                          key={dateGroup.key}
-                          className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800"
-                        >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onToggleDateGroup(group.userId, dateGroup.key)
-                            }
-                            className="flex w-full flex-col gap-3 bg-gray-50 p-4 text-left transition hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900 md:flex-row md:items-center md:justify-between"
-                          >
-                            <div>
-                              <div className="flex items-center gap-2 font-semibold">
-                                {isDateExpanded ? (
-                                  <ChevronDown size={18} />
-                                ) : (
-                                  <ChevronRight size={18} />
-                                )}
-                                {dateGroup.title}
-                              </div>
-                              <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                {dateGroup.requests.length} ansøgning
-                                {dateGroup.requests.length === 1 ? "" : "er"}
-                              </div>
-                            </div>
+                        {group.userName}
+                      </div>
 
-                            <div className="flex flex-wrap gap-2 md:justify-end">
-                              {statusSummary.map((item) => (
-                                <span
-                                  key={item.status}
-                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
-                                    item.status,
-                                  )}`}
-                                >
-                                  {item.label}: {item.count}
-                                </span>
-                              ))}
-                            </div>
-                          </button>
+                      <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        {
+                          group.requests
+                            .length
+                        }{" "}
+                        ansøgning
+                        {group.requests
+                          .length === 1
+                          ? ""
+                          : "er"}
+                      </div>
+                    </div>
 
-                          {isDateExpanded && (
-                            <div className="space-y-3 border-t border-gray-200 p-4 dark:border-gray-800">
-                              {dateGroup.requests.map((request) => (
-                                <LeaveApprovalRequestCard
-                                  key={request.id}
-                                  request={request}
-                                  onUpdateStatus={onUpdateStatus}
-                                />
-                              ))}
+                    <div className="text-right text-sm text-gray-600 dark:text-gray-400">
+                      {groupStatusSummary
+                        .map(
+                          (item) =>
+                            `${item.label}: ${item.count}`,
+                        )
+                        .join(" · ")}
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="space-y-3 border-t border-gray-200 p-4 dark:border-gray-800">
+                      {group.dateGroups.map(
+                        (dateGroup) => {
+                          const isDateExpanded =
+                            isDateGroupExpanded(
+                              group.userId,
+                              dateGroup.key,
+                            );
+                          const statusSummary =
+                            getStatusSummaryParts(
+                              dateGroup.requests,
+                            );
+
+                          return (
+                            <div
+                              key={
+                                dateGroup.key
+                              }
+                              className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onToggleDateGroup(
+                                    group.userId,
+                                    dateGroup.key,
+                                  )
+                                }
+                                aria-expanded={
+                                  isDateExpanded
+                                }
+                                className={`${groupButtonClass} flex-col md:flex-row md:items-center md:justify-between`}
+                              >
+                                <div>
+                                  <div className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">
+                                    {isDateExpanded ? (
+                                      <ChevronDown
+                                        size={
+                                          18
+                                        }
+                                      />
+                                    ) : (
+                                      <ChevronRight
+                                        size={
+                                          18
+                                        }
+                                      />
+                                    )}
+
+                                    {
+                                      dateGroup.title
+                                    }
+                                  </div>
+
+                                  <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                    {
+                                      dateGroup
+                                        .requests
+                                        .length
+                                    }{" "}
+                                    ansøgning
+                                    {dateGroup
+                                      .requests
+                                      .length ===
+                                    1
+                                      ? ""
+                                      : "er"}
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 md:justify-end">
+                                  {statusSummary.map(
+                                    (
+                                      item,
+                                    ) => (
+                                      <span
+                                        key={
+                                          item.status
+                                        }
+                                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getStatusBadge(
+                                          item.status,
+                                        )}`}
+                                      >
+                                        {
+                                          item.label
+                                        }
+                                        :{" "}
+                                        {
+                                          item.count
+                                        }
+                                      </span>
+                                    ),
+                                  )}
+                                </div>
+                              </button>
+
+                              {isDateExpanded && (
+                                <div className="space-y-3 border-t border-gray-200 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-950/30">
+                                  {dateGroup.requests.map(
+                                    (
+                                      request,
+                                    ) => (
+                                      <LeaveApprovalRequestCard
+                                        key={
+                                          request.id
+                                        }
+                                        request={
+                                          request
+                                        }
+                                        onUpdateStatus={
+                                          onUpdateStatus
+                                        }
+                                      />
+                                    ),
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                          );
+                        },
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            },
+          )}
         </div>
       )}
     </section>
