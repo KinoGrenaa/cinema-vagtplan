@@ -120,7 +120,7 @@ export default function ScheduleTemplateJobFunctionCard({
               onToggleDetails(item.id)
             }
             aria-expanded={expanded}
-            className="rounded-2xl border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
+            className="rounded-2xl border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-900 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:active:bg-gray-800 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
           >
             {expanded
               ? "Skjul detaljer"
@@ -132,7 +132,7 @@ export default function ScheduleTemplateJobFunctionCard({
             onClick={() =>
               onRemoveJobFunction(item)
             }
-            className="rounded-2xl bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-500 dark:focus-visible:ring-red-400 dark:focus-visible:ring-offset-gray-950"
+            className="rounded-2xl bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800 active:bg-red-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400 dark:focus-visible:ring-offset-gray-950"
           >
             Fjern
           </button>

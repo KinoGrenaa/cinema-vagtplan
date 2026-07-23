@@ -71,10 +71,10 @@ export default function NotificationsOverview({
                       category,
                     )
                   }
-                  className={`rounded-xl px-4 py-3 text-left transition ${
+                  className={`rounded-xl px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 ${
                     isActive
-                      ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-950"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                      ? "bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500 dark:active:bg-blue-400"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:active:bg-gray-600"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -144,7 +144,7 @@ export default function NotificationsOverview({
                   aria-expanded={
                     isExpanded
                   }
-                  className="flex w-full flex-col gap-2 border-b border-gray-200 px-5 py-4 text-left transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/70 md:flex-row md:items-center md:justify-between"
+                  className="flex w-full flex-col gap-2 border-b border-gray-200 px-5 py-4 text-left transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:border-gray-800 dark:hover:bg-gray-800/70 dark:active:bg-gray-800 dark:focus-visible:ring-blue-400 md:flex-row md:items-center md:justify-between"
                 >
                   <div>
                     <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -197,10 +197,10 @@ export default function NotificationsOverview({
                                 );
                               }
                             }}
-                            className={`block w-full p-5 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/70 ${
+                            className={`block w-full p-5 text-left transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:hover:bg-gray-800/70 dark:active:bg-gray-800 dark:focus-visible:ring-blue-400 ${
                               notification.isRead
                                 ? "bg-white dark:bg-gray-900"
-                                : "bg-purple-50 dark:bg-purple-950/30"
+                                : "bg-blue-50 dark:bg-blue-950/30"
                             }`}
                           >
                             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

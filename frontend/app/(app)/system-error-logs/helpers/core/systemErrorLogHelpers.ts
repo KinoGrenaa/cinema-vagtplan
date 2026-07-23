@@ -5,14 +5,13 @@ import type {
 } from "../../types";
 
 export function getQuickFilterButtonClass(active: boolean) {
-  const baseClass =
-    "rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60";
+  const baseClass = "rounded-xl border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-gray-900";
 
   if (active) {
-    return `${baseClass} border-purple-700 bg-purple-700 text-white hover:bg-purple-800 dark:border-purple-500 dark:bg-purple-500 dark:hover:bg-purple-400`;
+    return `${baseClass} border-blue-700 bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900 focus-visible:ring-blue-600 dark:border-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400`;
   }
 
-  return `${baseClass} border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800`;
+  return `${baseClass} border-gray-300 bg-white text-gray-800 hover:bg-gray-50 active:bg-gray-100 focus-visible:ring-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400`;
 }
 
 export async function readErrorMessage(response: Response, fallback: string) {

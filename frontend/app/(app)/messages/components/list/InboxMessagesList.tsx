@@ -36,7 +36,7 @@ export default function InboxMessagesList({
               type="button"
               onClick={() => onOpenMessage(message.id, isExpanded)}
               aria-expanded={isExpanded}
-              className="w-full rounded-t-2xl p-5 text-left transition-colors hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:hover:bg-slate-800/80 dark:focus-visible:ring-blue-400"
+              className="w-full rounded-t-2xl p-5 text-left transition-colors hover:bg-slate-100/80 active:bg-slate-200/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:hover:bg-slate-800/80 dark:active:bg-slate-700/80 dark:focus-visible:ring-blue-400"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
