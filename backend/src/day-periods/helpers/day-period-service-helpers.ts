@@ -247,8 +247,8 @@ export async function withDayPeriodCinemaLock<T>(
     async (transaction) => {
       await transaction.$executeRaw`
         SELECT pg_advisory_xact_lock(
-          ${DAY_PERIOD_LOCK_NAMESPACE},
-          ${cinemaId}
+          ${DAY_PERIOD_LOCK_NAMESPACE}::integer,
+          ${cinemaId}::integer
         )
       `;
 

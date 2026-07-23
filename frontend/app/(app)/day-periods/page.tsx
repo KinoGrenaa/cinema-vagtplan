@@ -3,7 +3,6 @@
 import AdminGuard from "@/app/components/access/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
-
 import DayPeriodFormModal from "./components/form/DayPeriodFormModal";
 import DayPeriodsHeader from "./components/layout/DayPeriodsHeader";
 import DayPeriodsMasterCinemaRequired from "./components/layout/DayPeriodsMasterCinemaRequired";
@@ -37,26 +36,28 @@ export default function DayPeriodsPage() {
 
   return (
     <AdminGuard>
-      <main className="min-h-screen space-y-6 bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-        <DayPeriodsHeader />
+      <main className="min-h-screen bg-gray-50 px-4 py-6 text-gray-950 dark:bg-gray-950 dark:text-gray-100 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <DayPeriodsHeader />
 
-        {needsMasterCinemaSelection && <DayPeriodsMasterCinemaRequired />}
+          {needsMasterCinemaSelection && <DayPeriodsMasterCinemaRequired />}
 
-        {!needsMasterCinemaSelection && (
-          <DayPeriodsOverviewSection
-            dayPeriods={dayPeriods}
-            loading={loading}
-            showArchived={showArchived}
-            activeCount={activeCount}
-            archivedCount={archivedCount}
-            onCreate={openCreateModal}
-            onShowArchivedChange={setShowArchived}
-            onRefresh={fetchDayPeriods}
-            onEdit={openEditModal}
-            onArchive={archiveDayPeriod}
-            onReactivate={reactivateDayPeriod}
-          />
-        )}
+          {!needsMasterCinemaSelection && (
+            <DayPeriodsOverviewSection
+              dayPeriods={dayPeriods}
+              loading={loading}
+              showArchived={showArchived}
+              activeCount={activeCount}
+              archivedCount={archivedCount}
+              onCreate={openCreateModal}
+              onShowArchivedChange={setShowArchived}
+              onRefresh={fetchDayPeriods}
+              onEdit={openEditModal}
+              onArchive={archiveDayPeriod}
+              onReactivate={reactivateDayPeriod}
+            />
+          )}
+        </div>
       </main>
 
       {formModalOpen && (
