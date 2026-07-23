@@ -7,7 +7,9 @@ import PayrollSummaryCards from "../overview/PayrollSummaryCards";
 import PayrollAdjustmentsSection from "../report/PayrollAdjustmentsSection";
 import PayrollAdvancedAnalysisSection from "../report/PayrollAdvancedAnalysisSection";
 import PayrollEmployeesSection from "../report/PayrollEmployeesSection";
+
 import PayrollHeader from "./PayrollHeader";
+import styles from "./PayrollPageContent.module.css";
 
 type PayrollPageState = ReturnType<typeof usePayrollPage>;
 
@@ -69,77 +71,75 @@ export default function PayrollPageContent({
 
   return (
     <>
-      <div className="relative mx-auto min-h-screen max-w-7xl space-y-6 bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-        <div
-          aria-hidden="true"
-          className="fixed inset-0 -z-10 bg-gray-50 dark:bg-gray-950"
-        />
+      <div
+        className={`${styles.payrollPage} min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100`}
+      >
+        <div className="mx-auto max-w-7xl space-y-6 p-6">
+          <PayrollHeader
+            adjustmentCount={adjustmentCount}
+            cinemaSettings={cinemaSettings}
+            endDate={endDate}
+            loading={loading}
+            pendingCount={pendingCount}
+            showAdvancedFilters={showAdvancedFilters}
+            startDate={startDate}
+            userId={userId}
+            users={users}
+            onApplyCurrentPayrollPeriod={handleApplyCurrentPayrollPeriod}
+            onNextPayrollPeriod={handleNextPayrollPeriod}
+            onPreviousPayrollPeriod={handlePreviousPayrollPeriod}
+            onRefreshPayroll={refreshPayroll}
+            onSetEndDate={setEndDate}
+            onSetStartDate={setStartDate}
+            onSetUserId={setUserId}
+            onToggleAdvancedFilters={toggleAdvancedFilters}
+          />
 
-        <PayrollHeader
-          adjustmentCount={adjustmentCount}
-          cinemaSettings={cinemaSettings}
-          endDate={endDate}
-          loading={loading}
-          pendingCount={pendingCount}
-          showAdvancedFilters={showAdvancedFilters}
-          startDate={startDate}
-          userId={userId}
-          users={users}
-          onApplyCurrentPayrollPeriod={handleApplyCurrentPayrollPeriod}
-          onNextPayrollPeriod={handleNextPayrollPeriod}
-          onPreviousPayrollPeriod={handlePreviousPayrollPeriod}
-          onRefreshPayroll={refreshPayroll}
-          onSetEndDate={setEndDate}
-          onSetStartDate={setStartDate}
-          onSetUserId={setUserId}
-          onToggleAdvancedFilters={toggleAdvancedFilters}
-        />
+          <PayrollPeriodStatus
+            period={period}
+            totalHours={totalHours}
+            pendingCount={pendingCount}
+            voidedCount={voidedCount}
+            adjustmentCount={adjustmentCount}
+            locking={locking}
+            unlocking={unlocking}
+            exporting={exporting}
+            onLockPeriod={lockPeriod}
+            onUnlockPeriod={unlockPeriod}
+            onOpenExportModal={openExportModal}
+            onOpenTimeApproval={handleOpenTimeApproval}
+          />
 
-        <PayrollPeriodStatus
-          period={period}
-          totalHours={totalHours}
-          pendingCount={pendingCount}
-          voidedCount={voidedCount}
-          adjustmentCount={adjustmentCount}
-          locking={locking}
-          unlocking={unlocking}
-          exporting={exporting}
-          onLockPeriod={lockPeriod}
-          onUnlockPeriod={unlockPeriod}
-          onOpenExportModal={openExportModal}
-          onOpenTimeApproval={handleOpenTimeApproval}
-        />
+          <PayrollSummaryCards
+            adjustmentCount={adjustmentCount}
+            eveningHours={eveningHours}
+            nightHours={nightHours}
+            overtimeHours={overtimeHours}
+            pendingCount={pendingCount}
+            totalHours={totalHours}
+            voidedCount={voidedCount}
+            weekendHours={weekendHours}
+          />
 
-        <PayrollSummaryCards
-          adjustmentCount={adjustmentCount}
-          eveningHours={eveningHours}
-          nightHours={nightHours}
-          overtimeHours={overtimeHours}
-          pendingCount={pendingCount}
-          totalHours={totalHours}
-          voidedCount={voidedCount}
-          weekendHours={weekendHours}
-        />
+          {overtimeWarnings.length > 0 && (
+            <PayrollAttentionTable overtimeWarnings={overtimeWarnings} />
+          )}
 
-        {overtimeWarnings.length > 0 && (
-          <PayrollAttentionTable overtimeWarnings={overtimeWarnings} />
-        )}
+          <PayrollEmployeesSection
+            expandedEmployeeIds={expandedEmployeeIds}
+            loading={loading}
+            report={report}
+            onToggleEmployeeGroup={toggleEmployeeGroup}
+          />
 
-        <PayrollEmployeesSection
-          expandedEmployeeIds={expandedEmployeeIds}
-          loading={loading}
-          report={report}
-          onToggleEmployeeGroup={toggleEmployeeGroup}
-        />
-
-        <PayrollAdjustmentsSection employees={payrollAdjustmentEmployees} />
-
-        <PayrollAdvancedAnalysisSection
-          auditHistory={auditHistory}
-          dailyHoursData={dailyHoursData}
-          employeeLoadData={employeeLoadData}
-          payrollDistributionData={payrollDistributionData}
-        />
+          <PayrollAdjustmentsSection employees={payrollAdjustmentEmployees} />
+          <PayrollAdvancedAnalysisSection
+            auditHistory={auditHistory}
+            dailyHoursData={dailyHoursData}
+            employeeLoadData={employeeLoadData}
+            payrollDistributionData={payrollDistributionData}
+          />
+        </div>
       </div>
 
       <PayrollModals
