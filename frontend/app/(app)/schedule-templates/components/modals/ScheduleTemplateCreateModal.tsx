@@ -18,14 +18,10 @@ type TemplateFormState = {
 
 type ScheduleTemplateCreateModalProps = {
   form: TemplateFormState;
-  setForm: Dispatch<
-    SetStateAction<TemplateFormState>
-  >;
+  setForm: Dispatch<SetStateAction<TemplateFormState>>;
   saving: boolean;
   onClose: () => void;
-  onSubmit: (
-    event: FormEvent,
-  ) => void;
+  onSubmit: (event: FormEvent) => void;
 };
 
 const fieldClass =
@@ -46,35 +42,26 @@ export default function ScheduleTemplateCreateModal({
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">
               Ny skabelon
             </p>
-
-            <h2 className="text-2xl font-black">
-              Opret vagtsskabelon
-            </h2>
+            <h2 className="text-2xl font-black">Opret vagtsskabelon</h2>
           </div>
-
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-2xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
+            className="shrink-0 rounded-2xl border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-900 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Luk
           </button>
         </div>
 
-        <form
-          className="mt-5 grid gap-3"
-          onSubmit={onSubmit}
-        >
+        <form className="mt-5 grid gap-3" onSubmit={onSubmit}>
           <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
             Navn
-
             <input
               value={form.name}
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
-                  name:
-                    event.target.value,
+                  name: event.target.value,
                 }))
               }
               className={fieldClass}
@@ -85,44 +72,31 @@ export default function ScheduleTemplateCreateModal({
 
           <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
             Ugeregel
-
             <select
               value={form.weekParity}
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
-                  weekParity:
-                    event.target
-                      .value as WeekParity,
+                  weekParity: event.target.value as WeekParity,
                 }))
               }
               className={fieldClass}
               disabled={saving}
             >
-              <option value="ANY">
-                Alle uger
-              </option>
-              <option value="EVEN">
-                Kun lige uger
-              </option>
-              <option value="ODD">
-                Kun ulige uger
-              </option>
+              <option value="ANY">Alle uger</option>
+              <option value="EVEN">Kun lige uger</option>
+              <option value="ODD">Kun ulige uger</option>
             </select>
           </label>
 
           <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
             Beskrivelse
-
             <textarea
-              value={
-                form.description
-              }
+              value={form.description}
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
-                  description:
-                    event.target.value,
+                  description: event.target.value,
                 }))
               }
               className={`${fieldClass} min-h-24`}
@@ -132,7 +106,6 @@ export default function ScheduleTemplateCreateModal({
 
           <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
             Sortering
-
             <input
               type="number"
               min="0"
@@ -140,8 +113,7 @@ export default function ScheduleTemplateCreateModal({
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
-                  sortOrder:
-                    event.target.value,
+                  sortOrder: event.target.value,
                 }))
               }
               className={fieldClass}
@@ -151,12 +123,10 @@ export default function ScheduleTemplateCreateModal({
 
           <button
             type="submit"
-            className="rounded-2xl bg-green-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-green-200 disabled:text-green-800 dark:bg-green-600 dark:hover:bg-green-500 dark:focus-visible:ring-green-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-green-950 dark:disabled:text-green-400"
+            className="rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-blue-950 dark:disabled:text-blue-400"
             disabled={saving}
           >
-            {saving
-              ? "Opretter..."
-              : "Opret vagtsskabelon"}
+            {saving ? "Opretter..." : "Opret vagtsskabelon"}
           </button>
         </form>
       </div>

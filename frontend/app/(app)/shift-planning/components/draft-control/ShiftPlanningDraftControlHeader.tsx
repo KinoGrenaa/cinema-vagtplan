@@ -9,9 +9,7 @@ type ShiftPlanningDraftControlHeaderProps = {
   totalItems: number;
 };
 
-function formatDraftStatus(
-  status?: string | null,
-) {
+function formatDraftStatus(status?: string | null) {
   switch (status) {
     case "DRAFT":
       return "Åben forhåndsvisning";
@@ -26,21 +24,16 @@ function formatDraftStatus(
   }
 }
 
-function getStatusClasses(
-  status?: string | null,
-) {
+function getStatusClasses(status?: string | null) {
   if (status === "DRAFT") {
     return "bg-green-100 text-green-900 ring-green-200 dark:bg-green-950/60 dark:text-green-200 dark:ring-green-900";
   }
-
   if (status === "SUPERSEDED") {
     return "bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-800";
   }
-
   if (status === "PUBLISHED") {
     return "bg-blue-100 text-blue-900 ring-blue-200 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-900";
   }
-
   return "bg-amber-100 text-amber-900 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:ring-amber-900";
 }
 
@@ -60,30 +53,21 @@ export function ShiftPlanningDraftControlHeader({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">
           Kontrol før oprettelse
         </p>
-
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h3 className="text-xl font-bold text-gray-950 dark:text-white">
-            Forhåndsvisning #{draftId} ·{" "}
-            {totalItems} vagter
+            Forhåndsvisning #{draftId} · {totalItems} vagter
           </h3>
-
           <span
             className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClasses(
               draftStatus,
             )}`}
           >
-            {formatDraftStatus(
-              draftStatus,
-            )}
+            {formatDraftStatus(draftStatus)}
           </span>
         </div>
-
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          Gennemgå vagter,
-          medarbejdere og tider. Opret
-          først vagterne, når kontrollen
-          er grøn, og arbejdstypen er
-          valgt.
+          Gennemgå vagter, medarbejdere og tider. Opret først vagterne, når
+          kontrollen er grøn, og arbejdstypen er valgt.
         </p>
       </div>
 
@@ -91,33 +75,23 @@ export function ShiftPlanningDraftControlHeader({
         <button
           type="button"
           onClick={onValidate}
-          className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-blue-950 dark:disabled:text-blue-400"
+          className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-blue-950 dark:disabled:text-blue-400"
           disabled={isValidating}
         >
-          {isValidating
-            ? "Kontrollerer..."
-            : "Kontrollér"}
+          {isValidating ? "Kontrollerer..." : "Kontrollér"}
         </button>
-
         <button
           type="button"
-          onClick={
-            onLoadPublicationPreview
-          }
-          className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-white dark:focus-visible:ring-gray-300 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
-          disabled={
-            isLoadingPublicationPreview
-          }
+          onClick={onLoadPublicationPreview}
+          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+          disabled={isLoadingPublicationPreview}
         >
-          {isLoadingPublicationPreview
-            ? "Henter vagter..."
-            : "Se vagter"}
+          {isLoadingPublicationPreview ? "Henter vagter..." : "Se vagter"}
         </button>
-
         <button
           type="button"
           onClick={onClose}
-          className="rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-900 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-100 dark:hover:bg-blue-900/40 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
+          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
         >
           Luk kontrol
         </button>

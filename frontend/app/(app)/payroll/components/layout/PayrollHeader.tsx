@@ -28,6 +28,12 @@ type PayrollHeaderProps = {
   onToggleAdvancedFilters: () => void;
 };
 
+const secondaryButtonClass =
+  "rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900";
+
+const primaryButtonClass =
+  "rounded-xl bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900";
+
 export default function PayrollHeader({
   adjustmentCount,
   cinemaSettings,
@@ -87,28 +93,29 @@ export default function PayrollHeader({
             <button
               type="button"
               onClick={onPreviousPayrollPeriod}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+              className={secondaryButtonClass}
             >
               Forrige
             </button>
             <button
               type="button"
               onClick={onApplyCurrentPayrollPeriod}
-              className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+              className={primaryButtonClass}
             >
               Aktuel
             </button>
             <button
               type="button"
               onClick={onNextPayrollPeriod}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+              className={secondaryButtonClass}
             >
               Næste
             </button>
             <button
               type="button"
               onClick={onToggleAdvancedFilters}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+              className={secondaryButtonClass}
+              aria-expanded={showAdvancedFilters}
             >
               {showAdvancedFilters ? "Skjul filter" : "Filter"}
             </button>
@@ -127,7 +134,6 @@ export default function PayrollHeader({
               medarbejder.
             </p>
           </div>
-
           <div className="grid gap-4 md:grid-cols-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -140,7 +146,6 @@ export default function PayrollHeader({
                 className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
               />
             </div>
-
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Slutdato
@@ -152,7 +157,6 @@ export default function PayrollHeader({
                 className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
               />
             </div>
-
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Medarbejder
@@ -170,13 +174,12 @@ export default function PayrollHeader({
                 ))}
               </select>
             </div>
-
             <div className="flex items-end">
               <button
                 type="button"
                 onClick={onRefreshPayroll}
                 disabled={loading}
-                className="w-full rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                className={`w-full ${primaryButtonClass}`}
               >
                 {loading ? "Henter..." : "Opdater"}
               </button>
