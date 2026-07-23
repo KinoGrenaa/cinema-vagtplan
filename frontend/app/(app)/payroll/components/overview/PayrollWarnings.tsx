@@ -22,19 +22,18 @@ export default function PayrollWarnings({
             {pendingCount} kræver handling før låsning og eksport
           </div>
           <div className="mt-1 text-sm">
-            Er stadig åbne, afventer godkendelse eller er sendt
-            retur til rettelse.
+            Er stadig åbne, afventer godkendelse eller er sendt retur til
+            rettelse.
           </div>
           <button
             type="button"
             onClick={onOpenTimeApproval}
-            className="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm font-semibold transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-950"
+            className="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm font-semibold transition hover:bg-amber-100 active:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-950 dark:active:bg-amber-900 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-gray-900"
           >
             Gå til timegodkendelse
           </button>
         </div>
       )}
-
       {adjustmentCount > 0 && (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-900 dark:border-blue-900/70 dark:bg-blue-950/30 dark:text-blue-200">
           <div className="font-semibold">
@@ -46,15 +45,13 @@ export default function PayrollWarnings({
           </div>
         </div>
       )}
-
       {voidedCount > 0 && (
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-950/40 dark:text-gray-200">
           <div className="font-semibold">
             {voidedCount} afvist/annulleret
           </div>
           <div className="mt-1 text-sm">
-            Indgår ikke i løngrundlaget, men bevares i
-            historikken.
+            Indgår ikke i løngrundlaget, men bevares i historikken.
           </div>
         </div>
       )}

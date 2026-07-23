@@ -18,7 +18,6 @@ export default function MasterCreateCinemaSection({
         Opretter en ny biograf med standardindstillinger. Admins og
         medarbejdere kan tilknyttes senere.
       </p>
-
       <div className="mt-4 flex flex-col gap-3 md:flex-row">
         <input
           value={newCinemaName}
@@ -30,7 +29,7 @@ export default function MasterCreateCinemaSection({
           type="button"
           onClick={onCreateCinema}
           disabled={creating}
-          className="rounded-xl bg-purple-700 px-5 py-3 font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
         >
           {creating ? "Opretter..." : "Opret biograf"}
         </button>

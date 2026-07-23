@@ -88,7 +88,7 @@ export function PayrollTypeCreateForm({
       <button
         onClick={onCreate}
         disabled={saving || !name || !payrollCode}
-        className="mt-6 rounded-xl bg-black px-5 py-3 font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+        className="mt-6 rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400"
       >
         {saving ? "Gemmer..." : "Opret lønart"}
       </button>

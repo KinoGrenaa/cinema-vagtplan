@@ -1,4 +1,5 @@
 import { formatUserName } from "../../helpers/page/jobFunctionHelpers";
+
 import type { User } from "../../helpers/types/jobFunctionTypes";
 
 type JobFunctionEmployeeAssignmentControlsProps = {
@@ -36,7 +37,7 @@ export default function JobFunctionEmployeeAssignmentControls({
         <select
           value={selectedUserId}
           onChange={(event) => onSelectedUserIdChange(event.target.value)}
-          className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus-visible:ring-blue-400"
           disabled={assignmentSaving || availableUsers.length === 0}
         >
           <option value="">
@@ -53,7 +54,7 @@ export default function JobFunctionEmployeeAssignmentControls({
         <button
           type="button"
           onClick={onAssignSelectedUser}
-          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           disabled={
             assignmentSaving || !selectedUserId || availableUsers.length === 0
           }
