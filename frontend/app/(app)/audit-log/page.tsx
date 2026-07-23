@@ -19,6 +19,7 @@ export default function AuditLogPage() {
     user,
     showError: errorDialog.showError,
   });
+
   const {
     search,
     setSearch,
@@ -38,9 +39,16 @@ export default function AuditLogPage() {
     return (
       <PermissionGuard permission="canManageUsers">
         <>
-          <div className="min-h-screen bg-gray-50 p-6 text-gray-600 dark:bg-gray-950 dark:text-gray-300">
-            Indlæser ændringshistorik...
-          </div>
+          <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-700 dark:bg-slate-950 dark:text-slate-200 sm:px-6">
+            <div className="mx-auto max-w-7xl">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+                <div className="flex items-center gap-3" role="status" aria-live="polite">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" />
+                  <span className="text-sm font-medium">Indlæser ændringshistorik...</span>
+                </div>
+              </div>
+            </div>
+          </main>
           <InfoModal
             open={errorDialog.open}
             title={errorDialog.title}
@@ -57,7 +65,7 @@ export default function AuditLogPage() {
   if (needsMasterCinemaSelection) {
     return (
       <PermissionGuard permission="canManageUsers">
-        <div className="min-h-screen bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
           <AuditLogMasterCinemaRequired />
           <InfoModal
             open={errorDialog.open}
@@ -67,39 +75,41 @@ export default function AuditLogPage() {
             variant={errorDialog.variant}
             onClose={errorDialog.close}
           />
-        </div>
+        </main>
       </PermissionGuard>
     );
   }
 
   return (
     <PermissionGuard permission="canManageUsers">
-      <div className="min-h-screen bg-gray-50 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-        <AuditLogHeader />
-        <AuditLogFilters
-          search={search}
-          setSearch={setSearch}
-          entityFilter={entityFilter}
-          setEntityFilter={setEntityFilter}
-          entityTypes={entityTypes}
-        />
-        <AuditLogListSection
-          logs={logs}
-          visibleLogs={visibleLogs}
-          groupedLogs={groupedLogs}
-          expandedDateKeys={expandedDateKeys}
-          isMaster={isMaster}
-          toggleDateGroup={toggleDateGroup}
-        />
-        <InfoModal
-          open={errorDialog.open}
-          title={errorDialog.title}
-          description={errorDialog.description}
-          buttonText={errorDialog.buttonText}
-          variant={errorDialog.variant}
-          onClose={errorDialog.close}
-        />
-      </div>
+      <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-950 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <AuditLogHeader />
+          <AuditLogFilters
+            search={search}
+            setSearch={setSearch}
+            entityFilter={entityFilter}
+            setEntityFilter={setEntityFilter}
+            entityTypes={entityTypes}
+          />
+          <AuditLogListSection
+            logs={logs}
+            visibleLogs={visibleLogs}
+            groupedLogs={groupedLogs}
+            expandedDateKeys={expandedDateKeys}
+            isMaster={isMaster}
+            toggleDateGroup={toggleDateGroup}
+          />
+          <InfoModal
+            open={errorDialog.open}
+            title={errorDialog.title}
+            description={errorDialog.description}
+            buttonText={errorDialog.buttonText}
+            variant={errorDialog.variant}
+            onClose={errorDialog.close}
+          />
+        </div>
+      </main>
     </PermissionGuard>
   );
 }
