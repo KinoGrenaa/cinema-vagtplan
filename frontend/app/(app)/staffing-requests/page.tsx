@@ -6,20 +6,20 @@ import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useApi } from "@/app/hooks/useApi";
 import { useAuth } from "@/app/providers/AuthProvider";
+
 import StaffingRequestsHeader from "./components/layout/StaffingRequestsHeader";
 import StaffingRequestsMasterCinemaRequired from "./components/layout/StaffingRequestsMasterCinemaRequired";
 import StaffingRequestsListSection from "./components/list/StaffingRequestsListSection";
 import StaffingRequestsSummaryCards from "./components/overview/StaffingRequestsSummaryCards";
+import type { StaffingRequest } from "./helpers/core/staffingRequestTypes";
 import { useStaffingRequestActions } from "./hooks/actions/useStaffingRequestActions";
 import { useStaffingRequestsData } from "./hooks/data/useStaffingRequestsData";
-import type { StaffingRequest } from "./helpers/core/staffingRequestTypes";
 
 export default function StaffingRequestsPage() {
   const { apiFetch } = useApi();
   const { user } = useAuth();
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
-
   const {
     activeCinemaId,
     currentUserId,
@@ -37,7 +37,6 @@ export default function StaffingRequestsPage() {
     apiFetch,
     showError: infoDialog.showError,
   });
-
   const { acceptRequest, cancelRequest, processingId, rejectRequest } =
     useStaffingRequestActions({
       apiFetch,
@@ -78,17 +77,37 @@ export default function StaffingRequestsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 md:p-8 dark:bg-gray-950 dark:text-gray-100">
-        Indlæser bemandingsforespørgsler...
+      <main className="min-h-screen bg-gray-100 px-4 py-8 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:px-8">
+        <div
+          className="mx-auto max-w-6xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className="h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 dark:border-blue-950 dark:border-t-blue-400"
+              aria-hidden="true"
+            />
+            <div>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                Henter bemandingsforespørgsler
+              </p>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Akutte behov, åbne forespørgsler og historik indlæses.
+              </p>
+            </div>
+          </div>
+        </div>
       </main>
     );
   }
 
   return (
     <>
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 md:p-8 dark:bg-gray-950 dark:text-gray-100">
+      <main className="min-h-screen bg-gray-100 px-4 py-8 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:px-8">
         <div className="mx-auto max-w-6xl space-y-6">
           <StaffingRequestsHeader />
+
           {needsMasterCinemaSelection ? (
             <StaffingRequestsMasterCinemaRequired />
           ) : (
