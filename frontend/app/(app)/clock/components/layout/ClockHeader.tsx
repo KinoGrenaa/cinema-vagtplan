@@ -1,11 +1,15 @@
 export default function ClockHeader() {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-      <h1 className="text-3xl font-bold">Clock ind / ud</h1>
-
-      <p className="mt-2 text-gray-500 dark:text-gray-400">
+    <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-sm font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+        Tidsregistrering
+      </p>
+      <h1 className="mt-1 text-3xl font-bold text-slate-950 dark:text-white">
+        Clock ind / ud
+      </h1>
+      <p className="mt-2 text-slate-600 dark:text-slate-400">
         Registrer arbejdstid og se tidligere registreringer.
       </p>
-    </div>
+    </header>
   );
 }
