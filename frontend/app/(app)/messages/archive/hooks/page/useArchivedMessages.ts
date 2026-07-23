@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { apiFetch } from "@/app/lib/api";
 import { useAuth } from "@/app/providers/AuthProvider";
-
 import {
   getArchiveSectionLabel,
   getMessageArchiveSection,
@@ -43,6 +42,12 @@ export function useArchivedMessages({
   errorDialog,
 }: UseArchivedMessagesOptions) {
   const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
+  const showErrorRef = useRef(errorDialog.showError);
+  const confirmRef = useRef(confirmDialog.confirm);
+
+  showErrorRef.current = errorDialog.showError;
+  confirmRef.current = confirmDialog.confirm;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeSection, setActiveSection] =
@@ -58,7 +63,7 @@ export function useArchivedMessages({
 
   const fetchMessages = useCallback(
     async (showLoading = true) => {
-      if (!user) {
+      if (userId === null) {
         setMessages([]);
         setLoading(false);
         return;
@@ -70,9 +75,8 @@ export function useArchivedMessages({
         }
 
         const response = await apiFetch("/messages/archive");
-
         if (!response.ok) {
-          errorDialog.showError(
+          showErrorRef.current(
             "Kunne ikke hente arkiverede beskeder",
             await readErrorMessage(
               response,
@@ -86,7 +90,7 @@ export function useArchivedMessages({
         const data = await response.json();
         setMessages(Array.isArray(data) ? data : []);
       } catch (error) {
-        errorDialog.showError(
+        showErrorRef.current(
           "Kunne ikke hente arkiverede beskeder",
           error instanceof Error
             ? error.message
@@ -99,7 +103,7 @@ export function useArchivedMessages({
         }
       }
     },
-    [errorDialog, user],
+    [userId],
   );
 
   useEffect(() => {
@@ -107,16 +111,16 @@ export function useArchivedMessages({
       return;
     }
 
-    if (!user) {
+    if (userId === null) {
       window.location.href = "/";
       return;
     }
 
-    fetchMessages();
-  }, [authLoading, fetchMessages, user]);
+    void fetchMessages();
+  }, [authLoading, fetchMessages, userId]);
 
   const refreshMessagesSilently = useCallback(() => {
-    fetchMessages(false);
+    void fetchMessages(false);
   }, [fetchMessages]);
 
   useRealtimeCore({
@@ -125,19 +129,20 @@ export function useArchivedMessages({
 
   const receivedMessages = useMemo(() => {
     return messages.filter(
-      (message) => getMessageArchiveSection(message, user?.id) === "received",
+      (message) =>
+        getMessageArchiveSection(message, userId ?? undefined) === "received",
     );
-  }, [messages, user?.id]);
+  }, [messages, userId]);
 
   const sentMessages = useMemo(() => {
     return messages.filter(
-      (message) => getMessageArchiveSection(message, user?.id) === "sent",
+      (message) =>
+        getMessageArchiveSection(message, userId ?? undefined) === "sent",
     );
-  }, [messages, user?.id]);
+  }, [messages, userId]);
 
   const activeMessages =
     activeSection === "sent" ? sentMessages : receivedMessages;
-
   const groupedMessages = useMemo(() => {
     return groupMessagesBySentDate(activeMessages);
   }, [activeMessages]);
@@ -145,9 +150,8 @@ export function useArchivedMessages({
   useEffect(() => {
     setExpandedDateKeys((current) => {
       const validKeys = groupedMessages.map((group) => group.dateKey);
-
       if (validKeys.length === 0) {
-        return [];
+        return current.length === 0 ? current : [];
       }
 
       const currentValidKeys = current.filter((dateKey) =>
@@ -157,7 +161,6 @@ export function useArchivedMessages({
       const nextKeys = currentValidKeys.includes(latestDateKey)
         ? currentValidKeys
         : [latestDateKey, ...currentValidKeys];
-
       const isUnchanged =
         nextKeys.length === current.length &&
         nextKeys.every((dateKey, index) => dateKey === current[index]);
@@ -189,13 +192,12 @@ export function useArchivedMessages({
   async function restoreMessage(messageId: number, section: ArchiveSection) {
     try {
       setRestoringMessageId(messageId);
-
       const response = await apiFetch(`/messages/${messageId}/unarchive`, {
         method: "PATCH",
       });
 
       if (!response.ok) {
-        errorDialog.showError(
+        showErrorRef.current(
           "Kunne ikke flytte beskeden tilbage",
           await readErrorMessage(
             response,
@@ -214,7 +216,7 @@ export function useArchivedMessages({
         currentId === messageId ? null : currentId,
       );
     } catch (error) {
-      errorDialog.showError(
+      showErrorRef.current(
         "Kunne ikke flytte beskeden tilbage",
         error instanceof Error
           ? error.message
@@ -229,8 +231,7 @@ export function useArchivedMessages({
 
   function confirmRestoreMessage(message: Message, section: ArchiveSection) {
     const targetLabel = getRestoreTargetLabel(section);
-
-    confirmDialog.confirm({
+    confirmRef.current({
       title: "Flyt besked tilbage",
       description: `Vil du flytte "${message.subject}" tilbage til ${targetLabel}?`,
       confirmText: "Flyt tilbage",
