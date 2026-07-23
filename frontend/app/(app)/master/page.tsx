@@ -1,26 +1,21 @@
 "use client";
 
-import {
-  useState,
-} from "react";
+import { useState } from "react";
+
 import InfoModal from "@/app/components/modals/InfoModal";
+
 import MasterCinemasListSection from "./components/cinemas/MasterCinemasListSection";
 import MasterCreateCinemaSection from "./components/cinemas/MasterCreateCinemaSection";
 import MasterHeader from "./components/layout/MasterHeader";
 import MasterCinemaModulesSection from "./components/modules/MasterCinemaModulesSection";
 import MasterSummaryCards from "./components/overview/MasterSummaryCards";
 import MasterSystemErrorSummaryCard from "./components/overview/MasterSystemErrorSummaryCard";
-import type {
-  Cinema,
-} from "./helpers/core/masterTypes";
+import type { Cinema } from "./helpers/core/masterTypes";
 import { useMasterPanel } from "./hooks/useMasterPanel";
+import styles from "./MasterPage.module.css";
 
 export default function MasterPage() {
-  const [
-    moduleCinema,
-    setModuleCinema,
-  ] = useState<Cinema | null>(null);
-
+  const [moduleCinema, setModuleCinema] = useState<Cinema | null>(null);
   const {
     infoDialog,
     checkedAccess,
@@ -47,120 +42,79 @@ export default function MasterPage() {
 
   if (!checkedAccess || loading) {
     return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          Indlæser MASTER-panel...
-        </div>
-      </main>
+      <div className={styles.scope}>
+        <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            Indlæser MASTER-panel...
+          </div>
+        </main>
+      </div>
     );
   }
 
-  if (
-    !currentUser ||
-    currentUser.role !== "MASTER"
-  ) {
+  if (!currentUser || currentUser.role !== "MASTER") {
     return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 shadow-sm dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-          <h1 className="text-2xl font-bold">
-            Ingen adgang
-          </h1>
-          <p className="mt-2">
-            Denne side er kun for
-            globale MASTER-brugere.
-          </p>
-        </div>
-      </main>
+      <div className={styles.scope}>
+        <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
+          <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 shadow-sm dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+            <h1 className="text-2xl font-bold">Ingen adgang</h1>
+            <p className="mt-2">
+              Denne side er kun for globale MASTER-brugere.
+            </p>
+          </div>
+        </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <MasterHeader
-          onRefresh={fetchCinemas}
+    <div className={styles.scope}>
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <MasterHeader onRefresh={fetchCinemas} />
+          <MasterSummaryCards
+            cinemas={cinemas}
+            selectedCinema={selectedCinema}
+          />
+          <MasterSystemErrorSummaryCard />
+          <MasterCreateCinemaSection
+            newCinemaName={newCinemaName}
+            creating={creating}
+            onNewCinemaNameChange={setNewCinemaName}
+            onCreateCinema={createCinema}
+          />
+          {message && (
+            <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">
+              {message}
+            </div>
+          )}
+          <MasterCinemasListSection
+            cinemas={cinemas}
+            selectedCinemaId={selectedCinemaId}
+            editingCinemaId={editingCinemaId}
+            editingCinemaName={editingCinemaName}
+            savingCinemaId={savingCinemaId}
+            onEditingCinemaNameChange={setEditingCinemaName}
+            onSaveSelectedCinema={saveSelectedCinema}
+            onStartEditingCinema={startEditingCinema}
+            onCancelEditingCinema={cancelEditingCinema}
+            onSaveCinemaName={saveCinemaName}
+            onManageModules={setModuleCinema}
+          />
+        </div>
+        <MasterCinemaModulesSection
+          cinema={moduleCinema}
+          onClose={() => setModuleCinema(null)}
         />
-
-        <MasterSummaryCards
-          cinemas={cinemas}
-          selectedCinema={
-            selectedCinema
-          }
+        <InfoModal
+          open={infoDialog.open}
+          title={infoDialog.title}
+          description={infoDialog.description}
+          buttonText={infoDialog.buttonText}
+          variant={infoDialog.variant}
+          onClose={infoDialog.close}
         />
-
-        <MasterSystemErrorSummaryCard />
-
-        <MasterCreateCinemaSection
-          newCinemaName={newCinemaName}
-          creating={creating}
-          onNewCinemaNameChange={
-            setNewCinemaName
-          }
-          onCreateCinema={
-            createCinema
-          }
-        />
-
-        {message && (
-          <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">
-            {message}
-          </div>
-        )}
-
-        <MasterCinemasListSection
-          cinemas={cinemas}
-          selectedCinemaId={
-            selectedCinemaId
-          }
-          editingCinemaId={
-            editingCinemaId
-          }
-          editingCinemaName={
-            editingCinemaName
-          }
-          savingCinemaId={
-            savingCinemaId
-          }
-          onEditingCinemaNameChange={
-            setEditingCinemaName
-          }
-          onSaveSelectedCinema={
-            saveSelectedCinema
-          }
-          onStartEditingCinema={
-            startEditingCinema
-          }
-          onCancelEditingCinema={
-            cancelEditingCinema
-          }
-          onSaveCinemaName={
-            saveCinemaName
-          }
-          onManageModules={
-            setModuleCinema
-          }
-        />
-      </div>
-
-      <MasterCinemaModulesSection
-        cinema={moduleCinema}
-        onClose={() =>
-          setModuleCinema(null)
-        }
-      />
-
-      <InfoModal
-        open={infoDialog.open}
-        title={infoDialog.title}
-        description={
-          infoDialog.description
-        }
-        buttonText={
-          infoDialog.buttonText
-        }
-        variant={infoDialog.variant}
-        onClose={infoDialog.close}
-      />
-    </main>
+      </main>
+    </div>
   );
 }

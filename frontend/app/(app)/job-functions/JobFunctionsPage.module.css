@@ -16,8 +16,8 @@
   --jf-danger-hover: #b91c1c;
   --jf-warning: #c2410c;
   --jf-warning-hover: #9a3412;
-  --jf-purple: #7c3aed;
-  --jf-purple-hover: #6d28d9;
+  --jf-purple: #2563eb;
+  --jf-purple-hover: #1d4ed8;
   --jf-neutral: #475569;
   --jf-neutral-hover: #334155;
   --jf-focus: #2563eb;
@@ -42,8 +42,8 @@
   --jf-danger-hover: #ef4444;
   --jf-warning: #c2410c;
   --jf-warning-hover: #ea580c;
-  --jf-purple: #7c3aed;
-  --jf-purple-hover: #8b5cf6;
+  --jf-purple: #2563eb;
+  --jf-purple-hover: #3b82f6;
   --jf-neutral: #334155;
   --jf-neutral-hover: #475569;
   --jf-focus: #60a5fa;
@@ -266,15 +266,15 @@
 
 .scope :global(button[class*="border-purple-"][class*="text-purple-"]),
 .scope :global(a[class*="border-purple-"][class*="text-purple-"]) {
-  border-color: #c4b5fd !important;
-  background: color-mix(in srgb, var(--jf-purple) 7%, var(--jf-surface)) !important;
-  color: var(--jf-purple) !important;
+  border-color: #93c5fd !important;
+  background: color-mix(in srgb, var(--jf-primary) 7%, var(--jf-surface)) !important;
+  color: #1d4ed8 !important;
 }
 
 :global(.dark) .scope :global(button[class*="border-purple-"][class*="text-purple-"]),
 :global(.dark) .scope :global(a[class*="border-purple-"][class*="text-purple-"]) {
-  border-color: #6d28d9 !important;
-  color: #ddd6fe !important;
+  border-color: #1d4ed8 !important;
+  color: #bfdbfe !important;
 }
 
 .scope :global(button[class*="border-purple-"][class*="text-purple-"]:not(:disabled):hover),
@@ -438,6 +438,33 @@
   color: #fcd34d !important;
 }
 
+.scope :global([class*="border-purple-"]) {
+  border-color: #93c5fd !important;
+}
+
+:global(.dark) .scope :global([class*="dark:border-purple-"]),
+:global(.dark) .scope :global([class*="border-purple-"]) {
+  border-color: #1d4ed8 !important;
+}
+
+.scope :global([class*="text-purple-"]) {
+  color: #1d4ed8 !important;
+}
+
+:global(.dark) .scope :global([class*="dark:text-purple-"]),
+:global(.dark) .scope :global([class*="text-purple-"]) {
+  color: #bfdbfe !important;
+}
+
+.scope :global([class*="bg-purple-50"]:not(button):not(a)),
+.scope :global([class*="bg-purple-100"]:not(button):not(a)) {
+  background: color-mix(in srgb, var(--jf-primary) 7%, var(--jf-surface)) !important;
+}
+
+:global(.dark) .scope :global([class*="dark:bg-purple-"]:not(button):not(a)) {
+  background: color-mix(in srgb, var(--jf-primary) 10%, var(--jf-surface)) !important;
+}
+
 .scope :global([class*="bg-red-50"]),
 .scope :global([class*="bg-red-100"]) {
   background: #fef2f2 !important;
@@ -480,4 +507,16 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Keep the full-page canvas darker than the card surfaces. */
+.scope,
+.scope :global([class~="min-h-screen"]) {
+  min-height: 100vh;
+  background-color: var(--jf-page) !important;
+}
+
+:global(.dark) .scope,
+:global(.dark) .scope :global([class~="min-h-screen"]) {
+  background-color: #030712 !important;
 }
