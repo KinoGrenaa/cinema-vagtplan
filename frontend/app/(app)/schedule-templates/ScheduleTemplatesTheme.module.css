@@ -1,0 +1,205 @@
+.scheduleTemplatesTheme {
+  min-width: 0;
+  color-scheme: light;
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme {
+  color-scheme: dark;
+}
+
+.scheduleTemplatesTheme
+  :global(input),
+.scheduleTemplatesTheme
+  :global(select),
+.scheduleTemplatesTheme
+  :global(textarea) {
+  color-scheme: inherit;
+}
+
+.scheduleTemplatesTheme
+  :global(input::placeholder),
+.scheduleTemplatesTheme
+  :global(textarea::placeholder) {
+  color: rgb(107 114 128);
+  opacity: 1;
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(input::placeholder),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(textarea::placeholder) {
+  color: rgb(156 163 175);
+}
+
+.scheduleTemplatesTheme
+  :global(select option) {
+  background: rgb(255 255 255);
+  color: rgb(17 24 39);
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(select option) {
+  background: rgb(3 7 18);
+  color: rgb(243 244 246);
+}
+
+.scheduleTemplatesTheme
+  :global(
+    button[class*="border-gray-300"]
+  ),
+.scheduleTemplatesTheme
+  :global(
+    a[class*="border-gray-300"]
+  ),
+.scheduleTemplatesTheme
+  :global(
+    button[class*="border-blue-300"]
+  ),
+.scheduleTemplatesTheme
+  :global(
+    a[class*="border-blue-300"]
+  ) {
+  background-color: rgb(255 255 255);
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(
+    button[class*="border-gray-300"]
+  ),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(
+    a[class*="border-gray-300"]
+  ),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(
+    button[class*="border-blue-300"]
+  ),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(
+    a[class*="border-blue-300"]
+  ) {
+  background-color: rgb(3 7 18);
+}
+
+.scheduleTemplatesTheme
+  :global(button:focus-visible),
+.scheduleTemplatesTheme
+  :global(a:focus-visible),
+.scheduleTemplatesTheme
+  :global([role="button"]:focus-visible),
+.scheduleTemplatesTheme
+  :global(input:focus-visible),
+.scheduleTemplatesTheme
+  :global(select:focus-visible),
+.scheduleTemplatesTheme
+  :global(textarea:focus-visible) {
+  outline: 2px solid rgb(37 99 235);
+  outline-offset: 2px;
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(button:focus-visible),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(a:focus-visible),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global([role="button"]:focus-visible),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(input:focus-visible),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(select:focus-visible),
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(textarea:focus-visible) {
+  outline-color: rgb(96 165 250);
+}
+
+.scheduleTemplatesTheme
+  :global(button:disabled),
+.scheduleTemplatesTheme
+  :global(input:disabled),
+.scheduleTemplatesTheme
+  :global(select:disabled),
+.scheduleTemplatesTheme
+  :global(textarea:disabled) {
+  cursor: not-allowed;
+}
+
+.scheduleTemplatesTheme
+  :global(input:disabled),
+.scheduleTemplatesTheme
+  :global(select:disabled),
+.scheduleTemplatesTheme
+  :global(textarea:disabled) {
+  opacity: 0.72;
+}
+
+.scheduleTemplatesTheme
+  :global(input[type="checkbox"]) {
+  accent-color: rgb(37 99 235);
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(input[type="checkbox"]) {
+  accent-color: rgb(96 165 250);
+}
+
+.scheduleTemplatesTheme
+  :global(*) {
+  scrollbar-color:
+    rgb(156 163 175)
+    rgb(243 244 246);
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(*) {
+  scrollbar-color:
+    rgb(75 85 99)
+    rgb(17 24 39);
+}
+
+.scheduleTemplatesTheme
+  :global(*::-webkit-scrollbar) {
+  width: 11px;
+  height: 11px;
+}
+
+.scheduleTemplatesTheme
+  :global(*::-webkit-scrollbar-track) {
+  background: rgb(243 244 246);
+  border-radius: 9999px;
+}
+
+.scheduleTemplatesTheme
+  :global(*::-webkit-scrollbar-thumb) {
+  background: rgb(156 163 175);
+  border: 3px solid rgb(243 244 246);
+  border-radius: 9999px;
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(*::-webkit-scrollbar-track) {
+  background: rgb(17 24 39);
+}
+
+:global(.dark)
+  .scheduleTemplatesTheme
+  :global(*::-webkit-scrollbar-thumb) {
+  background: rgb(75 85 99);
+  border-color: rgb(17 24 39);
+}
