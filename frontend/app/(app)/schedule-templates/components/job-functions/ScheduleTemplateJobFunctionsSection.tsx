@@ -1,4 +1,8 @@
-import type { Dispatch, FormEvent, SetStateAction } from "react";
+import type {
+  Dispatch,
+  FormEvent,
+  SetStateAction,
+} from "react";
 
 import ScheduleTemplateJobFunctionCard, {
   type ScheduleTemplateAssignment,
@@ -16,7 +20,10 @@ type ScheduleTemplateUser = {
   firstName: string | null;
   lastName: string | null;
   email: string;
-  role?: "MASTER" | "ADMIN" | "EMPLOYEE";
+  role?:
+    | "MASTER"
+    | "ADMIN"
+    | "EMPLOYEE";
   isActive?: boolean;
 };
 
@@ -26,7 +33,8 @@ type TemplateDay = {
   isActive: boolean;
   note: string | null;
   sortOrder: number;
-  jobFunctions: TemplateJobFunction[];
+  jobFunctions:
+    TemplateJobFunction[];
 };
 
 type JobFunctionFormState = {
@@ -36,9 +44,15 @@ type JobFunctionFormState = {
   note: string;
 };
 
-type TemplateJobFunctionUpdates = Partial<
-  Pick<TemplateJobFunction, "requiredCount" | "sortOrder" | "note">
->;
+type TemplateJobFunctionUpdates =
+  Partial<
+    Pick<
+      TemplateJobFunction,
+      | "requiredCount"
+      | "sortOrder"
+      | "note"
+    >
+  >;
 
 type ScheduleTemplateJobFunctionsSectionProps = {
   weekdayLabel: string;
@@ -46,13 +60,21 @@ type ScheduleTemplateJobFunctionsSectionProps = {
   jobFunctions: JobFunction[];
   employees: ScheduleTemplateUser[];
   form: JobFunctionFormState;
-  setForm: Dispatch<SetStateAction<JobFunctionFormState>>;
+  setForm: Dispatch<
+    SetStateAction<JobFunctionFormState>
+  >;
   savingJobFunction: boolean;
   expandedJobFunctionIds: Set<number>;
   savingAssignmentKey: string | null;
-  onAddJobFunction: (event: FormEvent) => void | Promise<void>;
-  onToggleJobFunctionDetails: (id: number) => void;
-  onRemoveTemplateJobFunction: (item: TemplateJobFunction) => void | Promise<void>;
+  onAddJobFunction: (
+    event: FormEvent,
+  ) => void | Promise<void>;
+  onToggleJobFunctionDetails: (
+    id: number,
+  ) => void;
+  onRemoveTemplateJobFunction: (
+    item: TemplateJobFunction,
+  ) => void | Promise<void>;
   onAddTemplateAssignment: (
     item: TemplateJobFunction,
     userIdValue: number | string,
@@ -84,18 +106,26 @@ export default function ScheduleTemplateJobFunctionsSection({
   onRemoveTemplateAssignment,
   onUpdateTemplateJobFunction,
 }: ScheduleTemplateJobFunctionsSectionProps) {
-  const templateJobFunctions = selectedDay?.jobFunctions ?? [];
+  const templateJobFunctions =
+    selectedDay?.jobFunctions ?? [];
 
   return (
-    <div className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800">
+    <div className="rounded-3xl border border-gray-200 bg-white p-4 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-300">
-          Jobfunktioner på {weekdayLabel.toLowerCase()}
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">
+          Jobfunktioner på{" "}
+          {weekdayLabel.toLowerCase()}
         </p>
-        <h3 className="text-xl font-black">Vagter fra skabelonen</h3>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Fast medarbejder er frivilligt. Vagter uden fast medarbejder vises som
-          åbne vagter i skabelonen.
+
+        <h3 className="text-xl font-black text-gray-950 dark:text-white">
+          Vagter fra skabelonen
+        </h3>
+
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+          Fast medarbejder er
+          frivilligt. Vagter uden fast
+          medarbejder vises som åbne
+          vagter i skabelonen.
         </p>
       </div>
 
@@ -108,26 +138,44 @@ export default function ScheduleTemplateJobFunctionsSection({
       />
 
       <div className="mt-5 flex flex-col gap-3">
-        {templateJobFunctions.length === 0 && (
-          <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
-            Der er ingen jobfunktioner på denne ugedag endnu.
+        {templateJobFunctions.length ===
+          0 && (
+          <p className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950/50 dark:text-gray-300">
+            Der er ingen jobfunktioner
+            på denne ugedag endnu.
           </p>
         )}
 
-        {templateJobFunctions.map((item) => (
-          <ScheduleTemplateJobFunctionCard
-            key={item.id}
-            item={item}
-            employees={employees}
-            expanded={expandedJobFunctionIds.has(item.id)}
-            savingAssignmentKey={savingAssignmentKey}
-            onToggleDetails={onToggleJobFunctionDetails}
-            onRemoveJobFunction={onRemoveTemplateJobFunction}
-            onAddAssignment={onAddTemplateAssignment}
-            onRemoveAssignment={onRemoveTemplateAssignment}
-            onUpdateJobFunction={onUpdateTemplateJobFunction}
-          />
-        ))}
+        {templateJobFunctions.map(
+          (item) => (
+            <ScheduleTemplateJobFunctionCard
+              key={item.id}
+              item={item}
+              employees={employees}
+              expanded={expandedJobFunctionIds.has(
+                item.id,
+              )}
+              savingAssignmentKey={
+                savingAssignmentKey
+              }
+              onToggleDetails={
+                onToggleJobFunctionDetails
+              }
+              onRemoveJobFunction={
+                onRemoveTemplateJobFunction
+              }
+              onAddAssignment={
+                onAddTemplateAssignment
+              }
+              onRemoveAssignment={
+                onRemoveTemplateAssignment
+              }
+              onUpdateJobFunction={
+                onUpdateTemplateJobFunction
+              }
+            />
+          ),
+        )}
       </div>
     </div>
   );
