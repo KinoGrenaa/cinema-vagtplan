@@ -2,25 +2,15 @@ import type { NotificationCategory } from "../../helpers/core/notificationTypes"
 
 type NotificationsHeaderProps = {
   totalCount: number;
-  pushLoading: boolean;
-  pushEnabled: boolean;
-  pushMessage: string;
   activeCategory: NotificationCategory;
   unreadCount: number;
-  onEnablePush: () => Promise<void>;
-  onDisablePush: () => Promise<void>;
   onMarkAllNotificationsAsRead: () => Promise<void>;
 };
 
 export default function NotificationsHeader({
   totalCount,
-  pushLoading,
-  pushEnabled,
-  pushMessage,
   activeCategory,
   unreadCount,
-  onEnablePush,
-  onDisablePush,
   onMarkAllNotificationsAsRead,
 }: NotificationsHeaderProps) {
   return (
@@ -31,42 +21,13 @@ export default function NotificationsHeader({
           <p className="mt-2 text-gray-500 dark:text-gray-400">
             Du har {totalCount} aktive notifikationer.
           </p>
-
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={onEnablePush}
-              disabled={pushLoading || pushEnabled}
-              className="rounded-xl bg-green-600 px-4 py-2 text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {pushLoading
-                ? "Arbejder..."
-                : pushEnabled
-                  ? "Push er aktiveret"
-                  : "Aktivér push-notifikationer"}
-            </button>
-            <button
-              type="button"
-              onClick={onDisablePush}
-              disabled={pushLoading || !pushEnabled}
-              className="rounded-xl bg-gray-700 px-4 py-2 text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Deaktivér push-notifikationer
-            </button>
-          </div>
-
-          {pushMessage && (
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              {pushMessage}
-            </p>
-          )}
         </div>
 
         {activeCategory === "system" && unreadCount > 0 && (
           <button
             type="button"
             onClick={onMarkAllNotificationsAsRead}
-            className="rounded-xl bg-black px-4 py-2 text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+            className="rounded-xl bg-blue-700 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           >
             Markér systemnotifikationer som læst
           </button>

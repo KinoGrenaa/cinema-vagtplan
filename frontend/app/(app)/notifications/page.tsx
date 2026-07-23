@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
+
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import NotificationsHeader from "./components/layout/NotificationsHeader";
 import NotificationsOverview from "./components/overview/NotificationsOverview";
 import type { ErrorDialogState } from "./helpers/core/notificationTypes";
-import { useNotificationPushActions } from "./hooks/actions/useNotificationPushActions";
 import { useNotificationsExtraData } from "./hooks/data/useNotificationsExtraData";
 import { useNotificationGroups } from "./hooks/groups/useNotificationGroups";
 import styles from "./NotificationsPage.module.css";
@@ -56,16 +56,6 @@ export default function NotificationsPage() {
   });
 
   const {
-    pushMessage,
-    pushEnabled,
-    pushLoading,
-    handleEnablePush,
-    handleDisablePush,
-  } = useNotificationPushActions({
-    showError,
-  });
-
-  const {
     activeCategory,
     expandedDateKeys,
     totalCount,
@@ -107,9 +97,15 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <main className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}>
+      <main
+        className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}
+      >
         <div className="mx-auto max-w-5xl">
-          <div className={styles.loadingCard} role="status" aria-live="polite">
+          <div
+            className={styles.loadingCard}
+            role="status"
+            aria-live="polite"
+          >
             Indlæser notifikationer...
           </div>
         </div>
@@ -127,17 +123,14 @@ export default function NotificationsPage() {
   }
 
   return (
-    <main className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}>
+    <main
+      className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}
+    >
       <div className="mx-auto max-w-5xl space-y-6">
         <NotificationsHeader
           totalCount={totalCount}
-          pushLoading={pushLoading}
-          pushEnabled={pushEnabled}
-          pushMessage={pushMessage}
           activeCategory={activeCategory}
           unreadCount={unreadCount}
-          onEnablePush={handleEnablePush}
-          onDisablePush={handleDisablePush}
           onMarkAllNotificationsAsRead={handleMarkAllNotificationsAsRead}
         />
 
