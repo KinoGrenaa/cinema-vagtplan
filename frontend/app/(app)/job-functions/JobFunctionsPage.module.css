@@ -1,0 +1,483 @@
+.scope {
+  --jf-page: #f8fafc;
+  --jf-surface: #ffffff;
+  --jf-surface-soft: #f8fafc;
+  --jf-surface-muted: #f1f5f9;
+  --jf-border: #cbd5e1;
+  --jf-border-soft: #e2e8f0;
+  --jf-text: #0f172a;
+  --jf-text-muted: #475569;
+  --jf-primary: #2563eb;
+  --jf-primary-hover: #1d4ed8;
+  --jf-primary-active: #1e40af;
+  --jf-success: #15803d;
+  --jf-success-hover: #166534;
+  --jf-danger: #dc2626;
+  --jf-danger-hover: #b91c1c;
+  --jf-warning: #c2410c;
+  --jf-warning-hover: #9a3412;
+  --jf-purple: #7c3aed;
+  --jf-purple-hover: #6d28d9;
+  --jf-neutral: #475569;
+  --jf-neutral-hover: #334155;
+  --jf-focus: #2563eb;
+  color: var(--jf-text);
+}
+
+:global(.dark) .scope {
+  --jf-page: #020617;
+  --jf-surface: #0f172a;
+  --jf-surface-soft: #111827;
+  --jf-surface-muted: #1e293b;
+  --jf-border: #475569;
+  --jf-border-soft: #334155;
+  --jf-text: #f8fafc;
+  --jf-text-muted: #cbd5e1;
+  --jf-primary: #2563eb;
+  --jf-primary-hover: #3b82f6;
+  --jf-primary-active: #1d4ed8;
+  --jf-success: #15803d;
+  --jf-success-hover: #16a34a;
+  --jf-danger: #dc2626;
+  --jf-danger-hover: #ef4444;
+  --jf-warning: #c2410c;
+  --jf-warning-hover: #ea580c;
+  --jf-purple: #7c3aed;
+  --jf-purple-hover: #8b5cf6;
+  --jf-neutral: #334155;
+  --jf-neutral-hover: #475569;
+  --jf-focus: #60a5fa;
+}
+
+.scope :global(main) {
+  min-height: 100vh;
+  background: var(--jf-page) !important;
+  color: var(--jf-text) !important;
+}
+
+.scope :global(h1),
+.scope :global(h2),
+.scope :global(h3),
+.scope :global(h4),
+.scope :global(strong) {
+  color: var(--jf-text);
+}
+
+.scope :global(p),
+.scope :global(label),
+.scope :global(dt),
+.scope :global(dd),
+.scope :global(span) {
+  text-wrap: pretty;
+}
+
+.scope :global(.text-gray-500),
+.scope :global(.text-gray-600),
+.scope :global(.text-gray-700),
+.scope :global(.text-slate-500),
+.scope :global(.text-slate-600),
+.scope :global(.text-slate-700) {
+  color: var(--jf-text-muted) !important;
+}
+
+:global(.dark) .scope :global(.dark\:text-gray-300),
+:global(.dark) .scope :global(.dark\:text-gray-400),
+:global(.dark) .scope :global(.dark\:text-slate-300),
+:global(.dark) .scope :global(.dark\:text-slate-400) {
+  color: var(--jf-text-muted) !important;
+}
+
+.scope :global(section.rounded-2xl),
+.scope :global(li.rounded-2xl),
+.scope :global(div.rounded-2xl),
+.scope :global(div.rounded-xl),
+.scope :global(div.rounded-lg) {
+  border-color: var(--jf-border-soft) !important;
+}
+
+.scope :global(section.rounded-2xl),
+.scope :global(li.rounded-2xl) {
+  background: var(--jf-surface) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08),
+    0 10px 28px rgb(15 23 42 / 0.05);
+}
+
+:global(.dark) .scope :global(section.rounded-2xl),
+:global(.dark) .scope :global(li.rounded-2xl) {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.35),
+    0 14px 32px rgb(0 0 0 / 0.22);
+}
+
+.scope :global(li.rounded-2xl) {
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.scope :global(li.rounded-2xl:hover) {
+  border-color: #93c5fd !important;
+  box-shadow: 0 10px 26px rgb(37 99 235 / 0.1);
+}
+
+:global(.dark) .scope :global(li.rounded-2xl:hover) {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.32);
+}
+
+.scope :global(.bg-white),
+.scope :global(.bg-gray-50),
+.scope :global(.bg-slate-50) {
+  background-color: var(--jf-surface) !important;
+}
+
+.scope :global(.bg-gray-100),
+.scope :global(.bg-slate-100) {
+  background-color: var(--jf-surface-muted) !important;
+}
+
+:global(.dark) .scope :global(.dark\:bg-gray-950),
+:global(.dark) .scope :global(.dark\:bg-gray-950\/60),
+:global(.dark) .scope :global(.dark\:bg-gray-900),
+:global(.dark) .scope :global(.dark\:bg-slate-950),
+:global(.dark) .scope :global(.dark\:bg-slate-900) {
+  background-color: var(--jf-surface) !important;
+}
+
+:global(.dark) .scope :global(.dark\:bg-gray-800),
+:global(.dark) .scope :global(.dark\:bg-slate-800) {
+  background-color: var(--jf-surface-muted) !important;
+}
+
+.scope :global(.border-gray-200),
+.scope :global(.border-gray-300),
+.scope :global(.border-slate-200),
+.scope :global(.border-slate-300) {
+  border-color: var(--jf-border-soft) !important;
+}
+
+:global(.dark) .scope :global(.dark\:border-gray-700),
+:global(.dark) .scope :global(.dark\:border-gray-800),
+:global(.dark) .scope :global(.dark\:border-slate-700),
+:global(.dark) .scope :global(.dark\:border-slate-800) {
+  border-color: var(--jf-border-soft) !important;
+}
+
+.scope :global(input:not([type="checkbox"]):not([type="radio"]):not([type="color"])),
+.scope :global(select),
+.scope :global(textarea) {
+  border-color: var(--jf-border) !important;
+  background: var(--jf-surface) !important;
+  color: var(--jf-text) !important;
+  caret-color: var(--jf-primary);
+  transition: border-color 150ms ease, box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.scope :global(input::placeholder),
+.scope :global(textarea::placeholder) {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+:global(.dark) .scope :global(input::placeholder),
+:global(.dark) .scope :global(textarea::placeholder) {
+  color: #94a3b8 !important;
+}
+
+.scope :global(select option) {
+  background: var(--jf-surface);
+  color: var(--jf-text);
+}
+
+.scope :global(input[type="color"]) {
+  border-color: var(--jf-border) !important;
+  background: var(--jf-surface-muted) !important;
+  cursor: pointer;
+}
+
+.scope :global(input[type="checkbox"]),
+.scope :global(input[type="radio"]) {
+  width: 1rem;
+  height: 1rem;
+  border-color: var(--jf-border) !important;
+  accent-color: var(--jf-primary);
+  cursor: pointer;
+}
+
+.scope :global(input[type="checkbox"]:disabled),
+.scope :global(input[type="radio"]:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.scope :global(button),
+.scope :global(a) {
+  transition: background-color 150ms ease, border-color 150ms ease,
+    color 150ms ease, box-shadow 150ms ease, transform 100ms ease,
+    opacity 150ms ease;
+}
+
+.scope :global(button:not(:disabled):active),
+.scope :global(a:active) {
+  transform: translateY(1px);
+}
+
+.scope :global(button[class*="bg-blue-"]),
+.scope :global(a[class*="bg-blue-"]),
+.scope :global(button[class*="bg-black"]),
+.scope :global(a[class*="bg-black"]) {
+  border-color: transparent !important;
+  background: var(--jf-primary) !important;
+  color: #ffffff !important;
+}
+
+.scope :global(button[class*="bg-blue-"]:not(:disabled):hover),
+.scope :global(a[class*="bg-blue-"]:hover),
+.scope :global(button[class*="bg-black"]:not(:disabled):hover),
+.scope :global(a[class*="bg-black"]:hover) {
+  background: var(--jf-primary-hover) !important;
+}
+
+.scope :global(button[class*="bg-blue-"]:not(:disabled):active),
+.scope :global(a[class*="bg-blue-"]:active),
+.scope :global(button[class*="bg-black"]:not(:disabled):active),
+.scope :global(a[class*="bg-black"]:active) {
+  background: var(--jf-primary-active) !important;
+}
+
+
+.scope :global(button[class*="border-blue-"][class*="text-blue-"]),
+.scope :global(a[class*="border-blue-"][class*="text-blue-"]) {
+  border-color: #93c5fd !important;
+  background: color-mix(in srgb, var(--jf-primary) 7%, var(--jf-surface)) !important;
+  color: var(--jf-primary-hover) !important;
+}
+
+:global(.dark) .scope :global(button[class*="border-blue-"][class*="text-blue-"]),
+:global(.dark) .scope :global(a[class*="border-blue-"][class*="text-blue-"]) {
+  border-color: #1d4ed8 !important;
+  color: #bfdbfe !important;
+}
+
+.scope :global(button[class*="border-blue-"][class*="text-blue-"]:not(:disabled):hover),
+.scope :global(a[class*="border-blue-"][class*="text-blue-"]:hover) {
+  border-color: var(--jf-primary) !important;
+  background: color-mix(in srgb, var(--jf-primary) 15%, var(--jf-surface)) !important;
+}
+
+.scope :global(button[class*="border-purple-"][class*="text-purple-"]),
+.scope :global(a[class*="border-purple-"][class*="text-purple-"]) {
+  border-color: #c4b5fd !important;
+  background: color-mix(in srgb, var(--jf-purple) 7%, var(--jf-surface)) !important;
+  color: var(--jf-purple) !important;
+}
+
+:global(.dark) .scope :global(button[class*="border-purple-"][class*="text-purple-"]),
+:global(.dark) .scope :global(a[class*="border-purple-"][class*="text-purple-"]) {
+  border-color: #6d28d9 !important;
+  color: #ddd6fe !important;
+}
+
+.scope :global(button[class*="border-purple-"][class*="text-purple-"]:not(:disabled):hover),
+.scope :global(a[class*="border-purple-"][class*="text-purple-"]:hover) {
+  border-color: var(--jf-purple) !important;
+  background: color-mix(in srgb, var(--jf-purple) 15%, var(--jf-surface)) !important;
+}
+
+.scope :global(button[class*="bg-purple-"]),
+.scope :global(a[class*="bg-purple-"]) {
+  border-color: transparent !important;
+  background: var(--jf-purple) !important;
+  color: #ffffff !important;
+}
+
+.scope :global(button[class*="bg-purple-"]:not(:disabled):hover),
+.scope :global(a[class*="bg-purple-"]:hover) {
+  background: var(--jf-purple-hover) !important;
+}
+
+.scope :global(button[class*="bg-green-"]),
+.scope :global(a[class*="bg-green-"]) {
+  border-color: transparent !important;
+  background: var(--jf-success) !important;
+  color: #ffffff !important;
+}
+
+.scope :global(button[class*="bg-green-"]:not(:disabled):hover),
+.scope :global(a[class*="bg-green-"]:hover) {
+  background: var(--jf-success-hover) !important;
+}
+
+.scope :global(button[class*="bg-red-"]),
+.scope :global(a[class*="bg-red-"]) {
+  border-color: transparent !important;
+  background: var(--jf-danger) !important;
+  color: #ffffff !important;
+}
+
+.scope :global(button[class*="bg-red-"]:not(:disabled):hover),
+.scope :global(a[class*="bg-red-"]:hover) {
+  background: var(--jf-danger-hover) !important;
+}
+
+.scope :global(button[class*="bg-orange-"]),
+.scope :global(button[class*="bg-amber-"]),
+.scope :global(a[class*="bg-orange-"]),
+.scope :global(a[class*="bg-amber-"]) {
+  border-color: transparent !important;
+  background: var(--jf-warning) !important;
+  color: #ffffff !important;
+}
+
+.scope :global(button[class*="bg-orange-"]:not(:disabled):hover),
+.scope :global(button[class*="bg-amber-"]:not(:disabled):hover),
+.scope :global(a[class*="bg-orange-"]:hover),
+.scope :global(a[class*="bg-amber-"]:hover) {
+  background: var(--jf-warning-hover) !important;
+}
+
+.scope :global(button[class*="bg-gray-"]),
+.scope :global(button[class*="bg-slate-"]) {
+  border-color: var(--jf-border) !important;
+  background: var(--jf-surface-muted) !important;
+  color: var(--jf-text) !important;
+}
+
+.scope :global(button[class*="bg-gray-"]:not(:disabled):hover),
+.scope :global(button[class*="bg-slate-"]:not(:disabled):hover) {
+  border-color: #94a3b8 !important;
+  background: var(--jf-border-soft) !important;
+}
+
+.scope :global(button.border),
+.scope :global(a.border) {
+  border-color: var(--jf-border) !important;
+}
+
+.scope :global(button.border:not([class*="bg-"])),
+.scope :global(a.border:not([class*="bg-"])) {
+  background: var(--jf-surface) !important;
+  color: var(--jf-text) !important;
+}
+
+.scope :global(button.border:not([class*="bg-"]):not(:disabled):hover),
+.scope :global(a.border:not([class*="bg-"]):hover) {
+  background: var(--jf-surface-muted) !important;
+  border-color: #94a3b8 !important;
+}
+
+.scope :global(button:disabled),
+.scope :global(input:disabled),
+.scope :global(select:disabled),
+.scope :global(textarea:disabled) {
+  cursor: not-allowed !important;
+  opacity: 0.52 !important;
+}
+
+.scope :global(button:focus-visible),
+.scope :global(a:focus-visible),
+.scope :global(input:focus-visible),
+.scope :global(select:focus-visible),
+.scope :global(textarea:focus-visible),
+.scope :global([tabindex]:focus-visible) {
+  outline: 3px solid color-mix(in srgb, var(--jf-focus) 48%, transparent) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 1px var(--jf-focus) !important;
+}
+
+.scope :global([role="dialog"]) {
+  color: var(--jf-text);
+}
+
+.scope :global([role="dialog"] > div),
+.scope :global(.fixed.inset-0 > div) {
+  border-color: var(--jf-border-soft) !important;
+}
+
+.scope :global(.fixed.inset-0) {
+  backdrop-filter: blur(3px);
+}
+
+.scope :global(.overflow-x-auto) {
+  scrollbar-color: #94a3b8 transparent;
+  scrollbar-width: thin;
+}
+
+.scope :global(table) {
+  color: var(--jf-text);
+}
+
+.scope :global(thead) {
+  background: var(--jf-surface-muted) !important;
+}
+
+.scope :global(th) {
+  color: var(--jf-text-muted) !important;
+  border-color: var(--jf-border-soft) !important;
+}
+
+.scope :global(td) {
+  border-color: var(--jf-border-soft) !important;
+}
+
+.scope :global(tbody tr:hover) {
+  background: color-mix(in srgb, var(--jf-primary) 7%, var(--jf-surface)) !important;
+}
+
+.scope :global([class*="bg-yellow-"]),
+.scope :global([class*="bg-amber-"]) {
+  border-color: #f59e0b !important;
+}
+
+.scope :global([class*="text-yellow-"]),
+.scope :global([class*="text-amber-"]) {
+  color: #92400e !important;
+}
+
+:global(.dark) .scope :global([class*="text-yellow-"]),
+:global(.dark) .scope :global([class*="text-amber-"]) {
+  color: #fcd34d !important;
+}
+
+.scope :global([class*="bg-red-50"]),
+.scope :global([class*="bg-red-100"]) {
+  background: #fef2f2 !important;
+}
+
+:global(.dark) .scope :global([class*="dark:bg-red-"]) {
+  background: rgb(127 29 29 / 0.3) !important;
+}
+
+.scope :global([class*="bg-green-50"]),
+.scope :global([class*="bg-green-100"]) {
+  background: #f0fdf4 !important;
+}
+
+:global(.dark) .scope :global([class*="dark:bg-green-"]) {
+  background: rgb(20 83 45 / 0.32) !important;
+}
+
+.scope :global(svg) {
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .scope :global(main) {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .scope :global(button) {
+    min-height: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scope *,
+  .scope *::before,
+  .scope *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

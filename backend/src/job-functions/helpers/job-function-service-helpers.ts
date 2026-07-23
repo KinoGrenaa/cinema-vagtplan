@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+
 import type { PrismaService } from '../../prisma/prisma.service';
 
 export type AuthUser = {
@@ -81,8 +82,7 @@ export type JobFunctionTimingRuleData = {
   clampToDayPeriod?: BooleanContextValue;
 };
 
-export type JobFunctionDbClient =
-  Prisma.TransactionClient;
+export type JobFunctionDbClient = Prisma.TransactionClient;
 
 const JOB_FUNCTION_LOCK_NAMESPACE = 1_245_660_518;
 const MAX_JOB_FUNCTION_NAME_LENGTH = 200;
@@ -170,16 +170,13 @@ function parseStrictInteger(
   message: string,
 ) {
   if (
-    (typeof value !== 'string' &&
-      typeof value !== 'number') ||
-    (typeof value === 'string' &&
-      !/^[0-9]+$/.test(value))
+    (typeof value !== 'string' && typeof value !== 'number') ||
+    (typeof value === 'string' && !/^[0-9]+$/.test(value))
   ) {
     throw new BadRequestException(message);
   }
 
   const parsedValue = Number(value);
-
   if (
     !Number.isSafeInteger(parsedValue) ||
     parsedValue < minimum ||
@@ -191,14 +188,8 @@ function parseStrictInteger(
   return parsedValue;
 }
 
-function parseCinemaId(
-  value: CinemaContextValue,
-) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ''
-  ) {
+function parseCinemaId(value: CinemaContextValue) {
+  if (value === null || value === undefined || value === '') {
     return null;
   }
 
@@ -214,12 +205,9 @@ function parseCinemaId(
   }
 }
 
-export function ensureJobFunctionAdmin(
-  user: AuthUser,
-) {
+export function ensureJobFunctionAdmin(user: AuthUser) {
   if (user.role === 'MASTER') return;
   if (user.role === 'ADMIN') return;
-
   throw new ForbiddenException('Ingen adgang');
 }
 
@@ -228,25 +216,18 @@ export function getRequiredJobFunctionCinemaId(
   selectedCinemaId?: CinemaContextValue,
 ) {
   if (user.role === 'MASTER') {
-    const cinemaId = parseCinemaId(
-      selectedCinemaId,
-    );
-
+    const cinemaId = parseCinemaId(selectedCinemaId);
     if (!cinemaId) {
       throw new BadRequestException(
         'Vælg en biograf, før du administrerer jobfunktioner.',
       );
     }
-
     return cinemaId;
   }
 
   const cinemaId = parseCinemaId(user.cinemaId);
-
   if (!cinemaId) {
-    throw new BadRequestException(
-      'Brugeren mangler biograf.',
-    );
+    throw new BadRequestException('Brugeren mangler biograf.');
   }
 
   return cinemaId;
@@ -254,7 +235,6 @@ export function getRequiredJobFunctionCinemaId(
 
 export function getActorUserId(user: AuthUser) {
   const value = user.sub ?? user.id;
-
   if (value === undefined || value === null) {
     return null;
   }
@@ -271,15 +251,12 @@ export function getActorUserId(user: AuthUser) {
   }
 }
 
-export function normalizeJobFunctionName(
-  value: unknown,
-) {
+export function normalizeJobFunctionName(value: unknown) {
   if (typeof value !== 'string') {
     throw new BadRequestException('Navn mangler.');
   }
 
   const name = value.trim();
-
   if (!name) {
     throw new BadRequestException('Navn mangler.');
   }
@@ -296,20 +273,14 @@ export function normalizeJobFunctionName(
   return name;
 }
 
-export function normalizeOptionalText(
-  value: unknown,
-) {
+export function normalizeOptionalText(value: unknown) {
   if (value === undefined) return undefined;
   if (value === null) return null;
-
   if (typeof value !== 'string') {
-    throw new BadRequestException(
-      'Tekstfeltet er ugyldigt.',
-    );
+    throw new BadRequestException('Tekstfeltet er ugyldigt.');
   }
 
   const text = value.trim();
-
   if (
     text.length > MAX_JOB_FUNCTION_TEXT_LENGTH ||
     text.includes('\u0000')
@@ -322,14 +293,8 @@ export function normalizeOptionalText(
   return text || null;
 }
 
-export function normalizeJobFunctionColor(
-  value: unknown,
-) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ''
-  ) {
+export function normalizeJobFunctionColor(value: unknown) {
+  if (value === undefined || value === null || value === '') {
     return undefined;
   }
 
@@ -340,7 +305,6 @@ export function normalizeJobFunctionColor(
   }
 
   const color = value.trim();
-
   if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
     throw new BadRequestException(
       'Farve skal være en gyldig hex-farve.',
@@ -354,11 +318,7 @@ export function parseRequiredPositiveId(
   value: NumberContextValue,
   message: string,
 ) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ''
-  ) {
+  if (value === null || value === undefined || value === '') {
     throw new BadRequestException(message);
   }
 
@@ -376,18 +336,11 @@ export function parseOptionalPositiveId(
 ) {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
-
   return parseRequiredPositiveId(value, message);
 }
 
-export function parseOptionalSortOrder(
-  value: NumberContextValue,
-) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ''
-  ) {
+export function parseOptionalSortOrder(value: NumberContextValue) {
+  if (value === null || value === undefined || value === '') {
     return undefined;
   }
 
@@ -404,16 +357,13 @@ export async function getDayPeriodIdForCinema(
   cinemaId: number,
   dayPeriodId: NumberContextValue,
 ) {
-  const parsedDayPeriodId =
-    parseOptionalPositiveId(
-      dayPeriodId,
-      'Dagsperiode skal være et gyldigt ID.',
-    );
-
+  const parsedDayPeriodId = parseOptionalPositiveId(
+    dayPeriodId,
+    'Dagsperiode skal være et gyldigt ID.',
+  );
   if (parsedDayPeriodId === undefined) {
     return undefined;
   }
-
   if (parsedDayPeriodId === null) {
     return null;
   }
@@ -428,7 +378,6 @@ export async function getDayPeriodIdForCinema(
       id: true,
     },
   });
-
   if (!dayPeriod) {
     throw new BadRequestException(
       'Dagsperioden findes ikke for den valgte biograf.',
@@ -443,16 +392,13 @@ export async function getWorkTypeIdForCinema(
   cinemaId: number,
   workTypeId: NumberContextValue,
 ) {
-  const parsedWorkTypeId =
-    parseOptionalPositiveId(
-      workTypeId,
-      'Arbejdstype skal være et gyldigt ID.',
-    );
-
+  const parsedWorkTypeId = parseOptionalPositiveId(
+    workTypeId,
+    'Arbejdstype skal være et gyldigt ID.',
+  );
   if (parsedWorkTypeId === undefined) {
     return undefined;
   }
-
   if (parsedWorkTypeId === null) {
     return null;
   }
@@ -467,7 +413,6 @@ export async function getWorkTypeIdForCinema(
       id: true,
     },
   });
-
   if (!workType) {
     throw new BadRequestException(
       'Arbejdstypen findes ikke for den valgte biograf.',
@@ -482,42 +427,36 @@ export async function getWorkTypeIdForPayrollType(
   cinemaId: number,
   payrollTypeId: NumberContextValue,
 ) {
-  const parsedPayrollTypeId =
-    parseOptionalPositiveId(
-      payrollTypeId,
-      'Løntype skal være et gyldigt ID.',
-    );
-
+  const parsedPayrollTypeId = parseOptionalPositiveId(
+    payrollTypeId,
+    'Løntype skal være et gyldigt ID.',
+  );
   if (parsedPayrollTypeId === undefined) {
     return undefined;
   }
-
   if (parsedPayrollTypeId === null) {
     return null;
   }
 
-  const payrollType =
-    await prisma.payrollType.findFirst({
-      where: {
-        id: parsedPayrollTypeId,
-        cinemaId,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        color: true,
-      },
-    });
-
+  const payrollType = await prisma.payrollType.findFirst({
+    where: {
+      id: parsedPayrollTypeId,
+      cinemaId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      color: true,
+    },
+  });
   if (!payrollType) {
     throw new BadRequestException(
       'Løntypen findes ikke for den valgte biograf.',
     );
   }
 
-  const workTypeColor =
-    payrollType.color || '#2563eb';
+  const workTypeColor = payrollType.color || '#2563eb';
   const existingWorkType =
     (await prisma.workType.findFirst({
       where: {
@@ -572,7 +511,6 @@ export async function getWorkTypeIdForPayrollType(
         },
       });
     }
-
     return existingWorkType.id;
   }
 
@@ -599,19 +537,14 @@ export async function findJobFunctionForCinema(
   cinemaId: number,
   requireActive = false,
 ) {
-  const jobFunction =
-    await prisma.jobFunction.findFirst({
-      where: {
-        id: jobFunctionId,
-        cinemaId,
-        ...(requireActive
-          ? {
-              isActive: true,
-            }
-          : {}),
-      },
-      include: jobFunctionInclude,
-    });
+  const jobFunction = await prisma.jobFunction.findFirst({
+    where: {
+      id: jobFunctionId,
+      cinemaId,
+      ...(requireActive ? { isActive: true } : {}),
+    },
+    include: jobFunctionInclude,
+  });
 
   if (!jobFunction) {
     throw new NotFoundException(
@@ -658,18 +591,15 @@ export async function ensureAssignableJobFunctionUser(
 export async function withJobFunctionCinemaLock<T>(
   prisma: PrismaService,
   cinemaId: number,
-  action: (
-    transaction: JobFunctionDbClient,
-  ) => Promise<T>,
+  action: (transaction: JobFunctionDbClient) => Promise<T>,
 ) {
   return prisma.$transaction(async (transaction) => {
     await transaction.$executeRaw`
       SELECT pg_advisory_xact_lock(
-        ${JOB_FUNCTION_LOCK_NAMESPACE},
-        ${cinemaId}
+        ${JOB_FUNCTION_LOCK_NAMESPACE}::integer,
+        ${cinemaId}::integer
       )
     `;
-
     return action(transaction);
   });
 }
