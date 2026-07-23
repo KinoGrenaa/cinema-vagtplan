@@ -3,10 +3,10 @@ import FilterModal from "@/app/components/modals/FilterModal";
 import type { LeaveStatusFilters } from "../../helpers/core/leaveRequestTypes";
 
 const inputClass =
-  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
+  "mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/20";
 
-const labelClass =
-  "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
+const checkboxClass =
+  "mt-0.5 h-4 w-4 shrink-0 accent-blue-600 dark:accent-blue-500";
 
 type LeaveRequestsFilterModalProps = {
   activeFilterCount: number;
@@ -24,6 +24,39 @@ type LeaveRequestsFilterModalProps = {
     checked: boolean,
   ) => void;
 };
+
+const statusOptions: Array<{
+  key: keyof LeaveStatusFilters;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: "pending",
+    label: "Afventer",
+    description: "Ansøgninger der endnu ikke er behandlet.",
+  },
+  {
+    key: "approved",
+    label: "Godkendte",
+    description: "Fravær der er godkendt.",
+  },
+  {
+    key: "rejected",
+    label: "Afviste",
+    description: "Ansøgninger der er afvist.",
+  },
+  {
+    key: "cancelled",
+    label: "Annullerede",
+    description: "Ansøgninger der er annulleret.",
+  },
+  {
+    key: "expired",
+    label: "Udløbne",
+    description:
+      "Ansøgninger der ikke blev behandlet, før fraværsperioden begyndte.",
+  },
+];
 
 export default function LeaveRequestsFilterModal({
   activeFilterCount,
@@ -49,110 +82,57 @@ export default function LeaveRequestsFilterModal({
       onReset={onReset}
       onClose={onClose}
     >
-      <div className="space-y-5">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+      <div className="space-y-5 text-gray-900 dark:text-gray-100">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Vælg hvilke fraværsansøgninger du vil se.
         </p>
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-950 dark:text-white">
             Status
           </h3>
+          <div className="mt-3 space-y-3">
+            {statusOptions.map((option) => {
+              const checked = draftStatusFilters[option.key];
 
-          <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-            <input
-              type="checkbox"
-              checked={draftStatusFilters.pending}
-              onChange={(event) =>
-                onUpdateDraftStatusFilter("pending", event.target.checked)
-              }
-              className="mt-0.5 h-4 w-4"
-            />
-            <span>
-              <span className="block font-medium">Afventer</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Ansøgninger der endnu ikke er behandlet.
-              </span>
-            </span>
-          </label>
-
-          <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-            <input
-              type="checkbox"
-              checked={draftStatusFilters.approved}
-              onChange={(event) =>
-                onUpdateDraftStatusFilter("approved", event.target.checked)
-              }
-              className="mt-0.5 h-4 w-4"
-            />
-            <span>
-              <span className="block font-medium">Godkendte</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Fravær der er godkendt.
-              </span>
-            </span>
-          </label>
-
-          <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-            <input
-              type="checkbox"
-              checked={draftStatusFilters.rejected}
-              onChange={(event) =>
-                onUpdateDraftStatusFilter("rejected", event.target.checked)
-              }
-              className="mt-0.5 h-4 w-4"
-            />
-            <span>
-              <span className="block font-medium">Afviste</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Ansøgninger der er afvist.
-              </span>
-            </span>
-          </label>
-
-          <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-            <input
-              type="checkbox"
-              checked={draftStatusFilters.cancelled}
-              onChange={(event) =>
-                onUpdateDraftStatusFilter("cancelled", event.target.checked)
-              }
-              className="mt-0.5 h-4 w-4"
-            />
-            <span>
-              <span className="block font-medium">Annullerede</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Ansøgninger der er annulleret.
-              </span>
-            </span>
-          </label>
-
-          <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
-            <input
-              type="checkbox"
-              checked={draftStatusFilters.expired}
-              onChange={(event) =>
-                onUpdateDraftStatusFilter("expired", event.target.checked)
-              }
-              className="mt-0.5 h-4 w-4"
-            />
-            <span>
-              <span className="block font-medium">Udløbne</span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Ansøgninger der ikke blev behandlet, før fraværsperioden begyndte.
-              </span>
-            </span>
-          </label>
+              return (
+                <label
+                  key={option.key}
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-900 ${
+                    checked
+                      ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40"
+                      : "border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) =>
+                      onUpdateDraftStatusFilter(option.key, event.target.checked)
+                    }
+                    className={checkboxClass}
+                  />
+                  <span>
+                    <span className="block font-medium text-gray-950 dark:text-white">
+                      {option.label}
+                    </span>
+                    <span className="block text-xs text-gray-600 dark:text-gray-400">
+                      {option.description}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-950 dark:text-white">
             Periode
           </h3>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>Fra dato</label>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm text-gray-800 dark:text-gray-200">
+              <span className="font-medium">Fra dato</span>
               <input
                 type="date"
                 className={inputClass}
@@ -161,22 +141,18 @@ export default function LeaveRequestsFilterModal({
                   onSetDraftFilterStartDate(event.target.value)
                 }
               />
-            </div>
-
-            <div>
-              <label className={labelClass}>Til dato</label>
+            </label>
+            <label className="block text-sm text-gray-800 dark:text-gray-200">
+              <span className="font-medium">Til dato</span>
               <input
                 type="date"
                 className={inputClass}
                 value={draftFilterEndDate}
-                onChange={(event) =>
-                  onSetDraftFilterEndDate(event.target.value)
-                }
+                onChange={(event) => onSetDraftFilterEndDate(event.target.value)}
               />
-            </div>
+            </label>
           </div>
-
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
             Datofilteret viser ansøgninger, der overlapper den valgte periode.
           </p>
         </div>

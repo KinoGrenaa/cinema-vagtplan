@@ -1,15 +1,17 @@
 import { FormEvent, useRef } from "react";
-
 import { Calendar } from "lucide-react";
 
 import BaseModal from "@/app/components/modals/BaseModal";
 import type { LeaveRequestEmployeeOption } from "../../hooks/form/useLeaveRequestEmployeeOptions";
 
 const inputClass =
-  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
+  "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-blue-400 dark:focus:ring-blue-400/20 dark:disabled:bg-gray-900 dark:disabled:text-gray-500";
 
 const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
+
+const focusClass =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
 
 type LeaveRequestFormModalProps = {
   allDay: boolean;
@@ -37,6 +39,7 @@ type LeaveRequestFormModalProps = {
 
 function openDatePicker(input: HTMLInputElement | null) {
   if (!input) return;
+
   input.focus();
   if (typeof input.showPicker === "function") {
     input.showPicker();
@@ -75,7 +78,10 @@ export default function LeaveRequestFormModal({
       onClose={onClose}
       title={canCreateForEmployees ? "Opret fravær" : "Ansøg om fravær"}
     >
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form
+        onSubmit={onSubmit}
+        className="space-y-4 text-gray-900 dark:text-gray-100"
+      >
         {canCreateForEmployees && (
           <div>
             <label className={labelClass}>Medarbejder</label>
@@ -98,7 +104,7 @@ export default function LeaveRequestFormModal({
                 ))
               )}
             </select>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
               Hvis fraværet oprettes for en anden medarbejder, kan det ses og
               behandles under Fraværsgodkendelse.
             </p>
@@ -121,13 +127,12 @@ export default function LeaveRequestFormModal({
                 type="button"
                 aria-label="Åbn kalender for fra dato"
                 onClick={() => openDatePicker(startDateInputRef.current)}
-                className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 dark:focus-visible:ring-blue-400"
               >
                 <Calendar size={18} />
               </button>
             </div>
           </div>
-
           <div>
             <label className={labelClass}>Til dato</label>
             <div className="relative">
@@ -143,7 +148,7 @@ export default function LeaveRequestFormModal({
                 type="button"
                 aria-label="Åbn kalender for til dato"
                 onClick={() => openDatePicker(endDateInputRef.current)}
-                className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 dark:focus-visible:ring-blue-400"
               >
                 <Calendar size={18} />
               </button>
@@ -151,11 +156,12 @@ export default function LeaveRequestFormModal({
           </div>
         </div>
 
-        <label className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition hover:bg-gray-50 focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-900">
           <input
             type="checkbox"
             checked={allDay}
             onChange={(event) => onSetAllDay(event.target.checked)}
+            className="h-4 w-4 accent-blue-600 dark:accent-blue-500"
           />
           Hele dagen
         </label>
@@ -171,7 +177,6 @@ export default function LeaveRequestFormModal({
                 onChange={(event) => onSetStartTime(event.target.value)}
               />
             </div>
-
             <div>
               <label className={labelClass}>Til tidspunkt</label>
               <input
@@ -198,13 +203,13 @@ export default function LeaveRequestFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-gray-300 px-4 py-2 font-medium transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            className={`rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 transition hover:bg-gray-100 focus-visible:ring-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:focus-visible:ring-gray-400 ${focusClass}`}
           >
             Annullér
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-black px-4 py-2 font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+            className={`rounded-xl bg-gray-950 px-4 py-2 font-semibold text-white transition hover:bg-gray-800 focus-visible:ring-gray-600 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-200 dark:focus-visible:ring-gray-300 ${focusClass}`}
           >
             {canCreateForEmployees ? "Opret fravær" : "Send ansøgning"}
           </button>

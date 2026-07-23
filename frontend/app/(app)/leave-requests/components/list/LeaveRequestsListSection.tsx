@@ -37,22 +37,29 @@ export default function LeaveRequestsListSection({
   onToggleGroup,
 }: LeaveRequestsListSectionProps) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Mine ansøgninger</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <h2 className="text-2xl font-bold text-gray-950 dark:text-white">
+            Mine ansøgninger
+          </h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Viser {visibleRequestCount} af {totalRequestCount} ansøgninger.
           </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
             Filter: {filterSummary}
           </p>
         </div>
       </div>
 
       {groupedRequests.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 p-6 text-center text-gray-500 dark:border-gray-800 dark:text-gray-400">
-          Ingen fraværsansøgninger matcher det valgte filter.
+        <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-950/50">
+          <h3 className="text-xl font-bold text-gray-950 dark:text-white">
+            Ingen fraværsansøgninger
+          </h3>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Ingen fraværsansøgninger matcher det valgte filter.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -67,10 +74,11 @@ export default function LeaveRequestsListSection({
                 <button
                   type="button"
                   onClick={() => onToggleGroup(group.key)}
-                  className="flex w-full items-center justify-between gap-4 bg-gray-50 p-4 text-left transition hover:bg-gray-100 dark:bg-gray-950 dark:hover:bg-gray-900"
+                  aria-expanded={isExpanded}
+                  className="flex w-full items-center justify-between gap-4 bg-gray-50 p-4 text-left text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-blue-400"
                 >
                   <div>
-                    <div className="flex items-center gap-2 font-semibold">
+                    <div className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">
                       {isExpanded ? (
                         <ChevronDown size={18} />
                       ) : (
@@ -78,17 +86,16 @@ export default function LeaveRequestsListSection({
                       )}
                       {group.key}
                     </div>
-                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                       {group.requests.length} ansøgning
                       {group.requests.length === 1 ? "" : "er"}
                     </div>
                   </div>
-
                   <div className="flex flex-wrap justify-end gap-2">
                     {getStatusSummaryParts(group.requests).map((part) => (
                       <span
                         key={part}
-                        className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                        className="inline-flex rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                       >
                         {part}
                       </span>
@@ -97,20 +104,20 @@ export default function LeaveRequestsListSection({
                 </button>
 
                 {isExpanded && (
-                  <div className="space-y-3 p-4">
+                  <div className="space-y-3 border-t border-gray-200 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-950/30">
                     {group.requests.map((request) => (
-                      <div
+                      <article
                         key={request.id}
-                        className="rounded-2xl border border-gray-200 p-4 dark:border-gray-800"
+                        className="rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
                       >
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div>
-                            <div className="text-lg font-semibold">
+                            <div className="text-lg font-semibold text-gray-950 dark:text-white">
                               {getPeriodText(request)}
                             </div>
                             <div className="mt-2 flex flex-wrap gap-2">
                               <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
+                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ring-black/5 dark:ring-white/10 ${getStatusBadge(
                                   request.status,
                                 )}`}
                               >
@@ -119,7 +126,8 @@ export default function LeaveRequestsListSection({
                             </div>
                             {request.status === "EXPIRED" && (
                               <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
-                                Ansøgningen blev ikke behandlet, før fraværsperioden begyndte.
+                                Ansøgningen blev ikke behandlet, før
+                                fraværsperioden begyndte.
                               </p>
                             )}
                           </div>
@@ -130,7 +138,7 @@ export default function LeaveRequestsListSection({
                               <button
                                 type="button"
                                 onClick={() => onSelectCancelRequest(request)}
-                                className="rounded-lg bg-gray-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-700"
+                                className="rounded-lg bg-gray-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-600 focus-visible:ring-offset-2 dark:bg-gray-600 dark:hover:bg-gray-500 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
                               >
                                 Annullér
                               </button>
@@ -138,32 +146,32 @@ export default function LeaveRequestsListSection({
                         </div>
 
                         <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-                          <div>
+                          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950/50">
                             <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                               Periode
                             </div>
-                            <div className="mt-1">{getPeriodText(request)}</div>
+                            <div className="mt-1 font-medium text-gray-900 dark:text-gray-100">
+                              {getPeriodText(request)}
+                            </div>
                           </div>
-
-                          <div>
+                          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950/50">
                             <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                               Årsag
                             </div>
-                            <div className="mt-1">
+                            <div className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                               {getEmptyReasonText(request.reason)}
                             </div>
                           </div>
-
-                          <div>
+                          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950/50">
                             <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                               Status
                             </div>
-                            <div className="mt-1">
+                            <div className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                               {getStatusLabel(request.status)}
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </article>
                     ))}
                   </div>
                 )}
