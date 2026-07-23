@@ -5,7 +5,6 @@ import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-
 import WorkTypeFormSection from "./components/form/WorkTypeFormSection";
 import WorkTypesHeader from "./components/layout/WorkTypesHeader";
 import WorkTypesMasterCinemaRequired from "./components/layout/WorkTypesMasterCinemaRequired";
@@ -49,7 +48,7 @@ export default function WorkTypesPage() {
 
   return (
     <AdminGuard>
-      <main className="min-h-screen bg-gray-100 p-4 md:p-8 dark:bg-gray-950">
+      <main className="min-h-screen bg-slate-50 p-4 text-slate-950 transition-colors sm:p-6 lg:p-8 dark:bg-slate-950 dark:text-slate-100">
         <div className="mx-auto max-w-6xl space-y-6">
           <WorkTypesHeader />
 
