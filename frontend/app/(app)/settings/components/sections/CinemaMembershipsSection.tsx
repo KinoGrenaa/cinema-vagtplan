@@ -38,34 +38,37 @@ export default function CinemaMembershipsSection({
   onSwitchCinema,
 }: CinemaMembershipsSectionProps) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="text-xl font-bold">
-        Mine biograftilknytninger
-      </h2>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900">
+      <h2 className="text-2xl font-bold">Mine biograftilknytninger</h2>
+
+      <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-slate-300">
         Den aktive biograf bestemmer, hvilke data og
         realtime-opdateringer du arbejder med i denne session.
         Standardbiografen bruges ved næste almindelige login.
       </p>
 
       {loading ? (
-        <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+        <div
+          className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+          role="status"
+        >
           Henter biograftilknytninger...
         </div>
       ) : error ? (
-        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+        <div
+          className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200"
+          role="alert"
+        >
           {error}
         </div>
       ) : memberships.length === 0 ? (
-        <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+        <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
           Din bruger har ingen aktive biograftilknytninger.
         </div>
       ) : (
-        <div className="mt-4 space-y-3">
+        <div className="mt-5 grid gap-4">
           {memberships.map((membership) => {
-            const logoSrc = getLogoSrc(
-              membership.cinema.logoUrl,
-            );
+            const logoSrc = getLogoSrc(membership.cinema.logoUrl);
             const isCurrent =
               membership.cinemaId === currentCinemaId;
             const isSwitching =
@@ -74,66 +77,68 @@ export default function CinemaMembershipsSection({
             return (
               <article
                 key={membership.id}
-                className={`flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center ${
+                className={`rounded-xl border p-4 transition ${
                   isCurrent
-                    ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/25"
-                    : "border-gray-200 dark:border-gray-800"
+                    ? "border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/25"
+                    : "border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-950"
                 }`}
               >
-                <div className="flex min-w-0 flex-1 items-center gap-4">
-                  {logoSrc ? (
-                    <img
-                      src={logoSrc}
-                      alt=""
-                      className="h-12 w-12 rounded-xl object-contain"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-lg font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                      {membership.cinema.name
-                        .slice(0, 1)
-                        .toUpperCase()}
-                    </div>
-                  )}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-1 items-center gap-4">
+                    {logoSrc ? (
+                      <img
+                        src={logoSrc}
+                        alt=""
+                        className="h-14 w-14 shrink-0 rounded-xl border border-gray-200 bg-white object-contain p-1 dark:border-slate-600 dark:bg-slate-800"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-xl font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                        {membership.cinema.name
+                          .slice(0, 1)
+                          .toUpperCase()}
+                      </div>
+                    )}
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-lg font-bold">
                         {membership.cinema.name}
                       </h3>
 
-                      {isCurrent && (
-                        <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800 dark:bg-green-900 dark:text-green-100">
-                          Aktiv nu
-                        </span>
-                      )}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {isCurrent && (
+                          <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
+                            Aktiv nu
+                          </span>
+                        )}
 
-                      {membership.isHomeCinema && (
-                        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-                          Hjemmebiograf
-                        </span>
-                      )}
+                        {membership.isHomeCinema && (
+                          <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-800 dark:bg-slate-700 dark:text-slate-100">
+                            Hjemmebiograf
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
+                        Biograf-ID: {membership.cinemaId}
+                      </p>
                     </div>
-
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Biograf-ID: {membership.cinemaId}
-                    </p>
                   </div>
-                </div>
 
-                {!isCurrent && memberships.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onSwitchCinema(membership.cinemaId)
-                    }
-                    disabled={switchingCinemaId !== null}
-                    className="rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isSwitching
-                      ? "Skifter..."
-                      : "Skift til denne biograf"}
-                  </button>
-                )}
+                  {!isCurrent && memberships.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onSwitchCinema(membership.cinemaId)
+                      }
+                      disabled={switchingCinemaId !== null}
+                      className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/35 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSwitching
+                        ? "Skifter..."
+                        : "Skift til denne biograf"}
+                    </button>
+                  )}
+                </div>
               </article>
             );
           })}
@@ -141,10 +146,10 @@ export default function CinemaMembershipsSection({
       )}
 
       {memberships.length > 1 && (
-        <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-          Biografskiftet gælder kun den aktuelle session og
-          ændrer ikke din standardbiograf.
-        </p>
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+          Biografskiftet gælder kun den aktuelle session og ændrer
+          ikke din standardbiograf.
+        </div>
       )}
     </section>
   );

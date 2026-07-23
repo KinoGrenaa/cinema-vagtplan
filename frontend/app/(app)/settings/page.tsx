@@ -15,9 +15,11 @@ export default function SettingsPage() {
     theme,
     setTheme,
     permission,
+    pushSupported,
     pushEnabled,
     pushLoading,
     pushMessage,
+    pushMessageTone,
     cinemaMemberships,
     cinemaMembershipsLoading,
     cinemaMembershipsError,
@@ -39,8 +41,16 @@ export default function SettingsPage() {
 
   if (!currentUser) {
     return (
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
-        Indlæser...
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+        <div className="mx-auto max-w-4xl">
+          <div
+            className="flex min-h-40 items-center justify-center rounded-2xl border border-gray-200 bg-white p-6 text-gray-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+            role="status"
+            aria-live="polite"
+          >
+            Indlæser indstillinger...
+          </div>
+        </div>
       </main>
     );
   }
@@ -57,9 +67,7 @@ export default function SettingsPage() {
           saving={defaultCinemaSaving}
           error={defaultCinemaError}
           message={defaultCinemaMessage}
-          onSelectedCinemaIdChange={
-            setSelectedDefaultCinemaId
-          }
+          onSelectedCinemaIdChange={setSelectedDefaultCinemaId}
           onSave={saveDefaultCinema}
         />
 
@@ -74,16 +82,15 @@ export default function SettingsPage() {
           />
         )}
 
-        <ThemeSettingsSection
-          theme={theme}
-          setTheme={setTheme}
-        />
+        <ThemeSettingsSection theme={theme} setTheme={setTheme} />
 
         <PushNotificationsSection
           permission={permission}
+          supported={pushSupported}
           pushEnabled={pushEnabled}
           pushLoading={pushLoading}
           pushMessage={pushMessage}
+          pushMessageTone={pushMessageTone}
           isMasterWithoutOwnCinema={isMasterWithoutOwnCinema}
           onEnableNotifications={enableNotifications}
           onDisableNotifications={disableNotifications}

@@ -175,7 +175,6 @@ export default function AppMenu() {
           label: "Notifikationer",
           badge: notificationCount,
         },
-        { href: "/push", label: "Push-notifikationer" },
       ],
     },
     {

@@ -12,6 +12,7 @@ import { apiFetch } from "@/app/lib/api";
 import { useAuth } from "@/app/providers/AuthProvider";
 import { useTheme } from "@/app/providers/ThemeProvider";
 
+import type { PushMessageTone } from "../components/sections/PushNotificationsSection";
 import type { CinemaMembership } from "../helpers/settingsTypes";
 
 export type DefaultCinemaOptions = {
@@ -58,14 +59,28 @@ async function readErrorMessage(
   return fallback;
 }
 
+function browserSupportsPushNotifications() {
+  return (
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
+}
+
 export function useSettingsPage() {
   const infoDialog = useInfoModal();
   const { user: currentUser, login } = useAuth();
+  const { theme, setTheme } = useTheme();
+
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
+  const [pushSupported, setPushSupported] = useState(true);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushMessage, setPushMessage] = useState("");
+  const [pushMessageTone, setPushMessageTone] =
+    useState<PushMessageTone>("info");
+
   const [cinemaMemberships, setCinemaMemberships] = useState<
     CinemaMembership[]
   >([]);
@@ -76,6 +91,7 @@ export function useSettingsPage() {
   const [switchingCinemaId, setSwitchingCinemaId] = useState<
     number | null
   >(null);
+
   const [defaultCinemaOptions, setDefaultCinemaOptions] =
     useState<DefaultCinemaOptions | null>(null);
   const [
@@ -90,22 +106,56 @@ export function useSettingsPage() {
     useState("");
   const [defaultCinemaMessage, setDefaultCinemaMessage] =
     useState("");
-  const { theme, setTheme } = useTheme();
 
   const isMasterWithoutOwnCinema =
     currentUser?.role === "MASTER" && !currentUser.cinemaId;
 
   useEffect(() => {
-    if ("Notification" in window) {
-      setPermission(Notification.permission);
-    }
+    let cancelled = false;
 
     async function loadPushStatus() {
-      const enabled = await isPushNotificationsEnabled();
-      setPushEnabled(enabled);
+      const supported = browserSupportsPushNotifications();
+
+      if (!cancelled) {
+        setPushSupported(supported);
+      }
+
+      if (!supported) {
+        if (!cancelled) {
+          setPushEnabled(false);
+          setPushMessageTone("warning");
+          setPushMessage(
+            "Denne browser eller enhed understøtter ikke web-push.",
+          );
+        }
+        return;
+      }
+
+      if (!cancelled) {
+        setPermission(Notification.permission);
+      }
+
+      try {
+        const enabled = await isPushNotificationsEnabled();
+
+        if (!cancelled) {
+          setPushEnabled(enabled);
+        }
+      } catch {
+        if (!cancelled) {
+          setPushMessageTone("error");
+          setPushMessage(
+            "Push-status kunne ikke kontrolleres. Prøv at genindlæse siden.",
+          );
+        }
+      }
     }
 
     void loadPushStatus();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -140,9 +190,7 @@ export function useSettingsPage() {
 
         if (!cancelled) {
           setDefaultCinemaOptions(payload);
-          setSelectedDefaultCinemaId(
-            payload.defaultCinemaId,
-          );
+          setSelectedDefaultCinemaId(payload.defaultCinemaId);
         }
       } catch (error) {
         if (!cancelled) {
@@ -227,15 +275,12 @@ export function useSettingsPage() {
       setDefaultCinemaError("");
       setDefaultCinemaMessage("");
 
-      const response = await apiFetch(
-        "/auth/default-cinema",
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            cinemaId: selectedDefaultCinemaId,
-          }),
-        },
-      );
+      const response = await apiFetch("/auth/default-cinema", {
+        method: "PATCH",
+        body: JSON.stringify({
+          cinemaId: selectedDefaultCinemaId,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(
@@ -296,7 +341,7 @@ export function useSettingsPage() {
       const payload =
         (await response.json()) as SwitchCinemaResponse;
 
-      if (!payload?.access_token || !payload.user) {
+      if (!payload.access_token || !payload.user) {
         throw new Error(
           "Serveren returnerede ikke en gyldig session.",
         );
@@ -324,21 +369,44 @@ export function useSettingsPage() {
       return;
     }
 
+    if (!pushSupported) {
+      setPushMessageTone("warning");
+      setPushMessage(
+        "Denne browser eller enhed understøtter ikke web-push.",
+      );
+      return;
+    }
+
     try {
       setPushLoading(true);
       setPushMessage("");
 
       const success = await enablePushNotifications();
+      const currentPermission = Notification.permission;
 
-      if ("Notification" in window) {
-        setPermission(Notification.permission);
-      }
-
+      setPermission(currentPermission);
       setPushEnabled(success);
+
+      if (success) {
+        setPushMessageTone("success");
+        setPushMessage(
+          "Push-notifikationer er aktiveret på denne browser.",
+        );
+      } else if (currentPermission === "denied") {
+        setPushMessageTone("error");
+        setPushMessage(
+          "Browseren har blokeret notifikationer. Tillad dem manuelt i browserens indstillinger.",
+        );
+      } else {
+        setPushMessageTone("warning");
+        setPushMessage(
+          "Push-notifikationer kunne ikke aktiveres. Kontrollér browserens tilladelser og prøv igen.",
+        );
+      }
+    } catch {
+      setPushMessageTone("error");
       setPushMessage(
-        success
-          ? "Push-notifikationer er aktiveret på denne browser."
-          : "Push-notifikationer kunne ikke aktiveres.",
+        "Push-notifikationer kunne ikke aktiveres på grund af en teknisk fejl.",
       );
     } finally {
       setPushLoading(false);
@@ -346,19 +414,44 @@ export function useSettingsPage() {
   }
 
   async function disableNotifications() {
+    if (!pushSupported) {
+      setPushMessageTone("warning");
+      setPushMessage(
+        "Denne browser eller enhed understøtter ikke web-push.",
+      );
+      return;
+    }
+
     try {
       setPushLoading(true);
       setPushMessage("");
 
-      await disablePushNotifications();
+      const success = await disablePushNotifications();
+      const enabled = await isPushNotificationsEnabled();
 
-      if ("Notification" in window) {
-        setPermission(Notification.permission);
+      setPermission(Notification.permission);
+      setPushEnabled(enabled);
+
+      if (success && !enabled) {
+        setPushMessageTone("success");
+        setPushMessage(
+          "Push-notifikationer er deaktiveret på denne browser.",
+        );
+      } else if (!enabled) {
+        setPushMessageTone("warning");
+        setPushMessage(
+          "Push er deaktiveret i browseren, men serveren kunne ikke bekræfte hele afmeldingen.",
+        );
+      } else {
+        setPushMessageTone("error");
+        setPushMessage(
+          "Push-notifikationer kunne ikke deaktiveres. Prøv igen.",
+        );
       }
-
-      setPushEnabled(false);
+    } catch {
+      setPushMessageTone("error");
       setPushMessage(
-        "Push-notifikationer er deaktiveret på denne browser.",
+        "Push-notifikationer kunne ikke deaktiveres på grund af en teknisk fejl.",
       );
     } finally {
       setPushLoading(false);
@@ -370,9 +463,11 @@ export function useSettingsPage() {
     theme,
     setTheme,
     permission,
+    pushSupported,
     pushEnabled,
     pushLoading,
     pushMessage,
+    pushMessageTone,
     cinemaMemberships,
     cinemaMembershipsLoading,
     cinemaMembershipsError,

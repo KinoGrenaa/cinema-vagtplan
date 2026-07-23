@@ -24,39 +24,45 @@ export default function DefaultCinemaSection({
   onSave,
 }: DefaultCinemaSectionProps) {
   const hasChanged =
-    options !== null &&
-    selectedCinemaId !== options.defaultCinemaId;
+    options !== null && selectedCinemaId !== options.defaultCinemaId;
   const selectionIsValid =
-    options?.allowNoDefault || selectedCinemaId !== null;
+    Boolean(options?.allowNoDefault) || selectedCinemaId !== null;
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="text-xl font-bold">Standardbiograf</h2>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Standardbiografen vælges automatisk ved dit næste
-        login. Den aktive biograf i den nuværende session
-        ændres ikke.
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900">
+      <h2 className="text-2xl font-bold">Standardbiograf</h2>
+
+      <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-slate-300">
+        Standardbiografen vælges automatisk ved dit næste login. Den
+        aktive biograf i den nuværende session ændres ikke.
       </p>
 
       {loading ? (
-        <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+        <div
+          className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+          role="status"
+        >
           Henter mulige standardbiografer...
         </div>
       ) : error ? (
-        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+        <div
+          className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200"
+          role="alert"
+        >
           {error}
         </div>
       ) : !options ? (
-        <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+        <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
           Standardbiografen kunne ikke vises.
         </div>
       ) : (
         <>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-            <label className="block min-w-0 flex-1">
-              <span className="mb-1 block text-sm font-medium">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="min-w-0 flex-1">
+              <span className="mb-2 block text-sm font-semibold">
                 Vælg standard
               </span>
+
               <select
                 value={selectedCinemaId ?? ""}
                 onChange={(event) =>
@@ -67,7 +73,7 @@ export default function DefaultCinemaSection({
                   )
                 }
                 disabled={saving}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
               >
                 {options.allowNoDefault && (
                   <option value="">Ingen standard</option>
@@ -76,9 +82,7 @@ export default function DefaultCinemaSection({
                 {options.cinemas.map((cinema) => (
                   <option key={cinema.id} value={cinema.id}>
                     {cinema.name}
-                    {cinema.isHomeCinema
-                      ? " · Hjemmebiograf"
-                      : ""}
+                    {cinema.isHomeCinema ? " · Hjemmebiograf" : ""}
                   </option>
                 ))}
               </select>
@@ -88,32 +92,26 @@ export default function DefaultCinemaSection({
               type="button"
               onClick={onSave}
               disabled={
-                saving ||
-                !hasChanged ||
-                !selectionIsValid ||
-                options.cinemas.length === 0
+                saving || !hasChanged || !selectionIsValid
               }
-              className="rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/35 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Gemmer..." : "Gem standard"}
             </button>
           </div>
 
-          {options.role === "MASTER" ? (
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              Vælger du <strong>Ingen standard</strong>, starter
-              næste login uden aktiv biograf. Du vælger derefter
-              biograf i MASTER-panelet.
-            </p>
-          ) : (
-            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              Du kan kun vælge blandt dine aktive
-              biograftilknytninger. Din hjemmebiograf ændres ikke.
-            </p>
-          )}
+          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+            {options.role === "MASTER"
+              ? "Vælger du Ingen standard, starter næste login uden aktiv biograf. Du vælger derefter biograf i MASTER-panelet."
+              : "Du kan kun vælge blandt dine aktive biograftilknytninger. Din hjemmebiograf ændres ikke."}
+          </div>
 
           {message && (
-            <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200">
+            <div
+              className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-200"
+              role="status"
+              aria-live="polite"
+            >
               {message}
             </div>
           )}
