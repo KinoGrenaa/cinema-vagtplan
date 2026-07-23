@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-
 import {
-  CINEMA_DEFAULTS,
   MASTER_SELECTED_CINEMA_ID_KEY,
+  normalizeCinemaSettings,
+  normalizeCinemaSettingsUpdate,
 } from "../../helpers/core/cinemaSettingsTypes";
 import type {
   Cinema,
+  CinemaSettingsUpdate,
   CurrentUser,
 } from "../../helpers/core/cinemaSettingsTypes";
-
 import { syncMasterSelectedCinemaStorage } from "../../helpers/core/cinemaSettingsBrandingHelpers";
 import { readErrorMessage } from "../../helpers/core/cinemaSettingsRequestHelpers";
 
@@ -28,6 +27,7 @@ export function useCinemaSettingsData() {
       setMessage("");
 
       const savedUser = localStorage.getItem("user");
+
       if (!savedUser) {
         setCinema(null);
         return;
@@ -37,7 +37,6 @@ export function useCinemaSettingsData() {
       const savedMasterCinemaId = Number(
         localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY),
       );
-
       const cinemaId =
         user.role === "MASTER" &&
         !user.cinemaId &&
@@ -58,6 +57,7 @@ export function useCinemaSettingsData() {
       }
 
       const response = await apiFetch(`/cinemas/${cinemaId}`);
+
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(
@@ -67,12 +67,7 @@ export function useCinemaSettingsData() {
         );
       }
 
-      const data = await response.json();
-      const nextCinema = {
-        ...CINEMA_DEFAULTS,
-        ...data,
-      };
-
+      const nextCinema = normalizeCinemaSettings(await response.json());
       setCinema(nextCinema);
       syncMasterSelectedCinemaStorage(nextCinema);
     } catch (error) {
@@ -80,6 +75,7 @@ export function useCinemaSettingsData() {
         error instanceof Error
           ? error.message
           : "Kunne ikke hente biografindstillinger.";
+
       setMessage("");
       setCinema(null);
       infoDialog.showError("Indstillinger kunne ikke hentes", description);
@@ -92,40 +88,29 @@ export function useCinemaSettingsData() {
     fetchCinema();
   }, [fetchCinema]);
 
-  async function updateCinemaSettings(updatedCinema: Cinema) {
+  async function updateCinemaSettings(changes: CinemaSettingsUpdate) {
+    if (!cinema) {
+      return;
+    }
+
+    const safeChanges = normalizeCinemaSettingsUpdate(changes);
+
+    if (Object.keys(safeChanges).length === 0) {
+      return;
+    }
+
+    const pendingCinema = normalizeCinemaSettings({
+      ...cinema,
+      ...safeChanges,
+    });
+
     try {
       setSaving(true);
       setMessage("");
 
-      const response = await apiFetch(`/cinemas/${updatedCinema.id}`, {
+      const response = await apiFetch(`/cinemas/${cinema.id}`, {
         method: "PATCH",
-        body: JSON.stringify({
-          allowShiftTradePool: updatedCinema.allowShiftTradePool,
-          allowShiftTradeDirect: updatedCinema.allowShiftTradeDirect,
-          aiEnabled: updatedCinema.aiEnabled,
-          payrollRulesEnabled: updatedCinema.payrollRulesEnabled,
-          clockInDeviationToleranceMinutes:
-            updatedCinema.clockInDeviationToleranceMinutes,
-          clockOutDeviationToleranceMinutes:
-            updatedCinema.clockOutDeviationToleranceMinutes,
-          requireNoteForClockInDeviation:
-            updatedCinema.requireNoteForClockInDeviation,
-          requireNoteForClockOutDeviation:
-            updatedCinema.requireNoteForClockOutDeviation,
-          requireNoteForManualEntry: updatedCinema.requireNoteForManualEntry,
-          payrollOvertimeEnabled: updatedCinema.payrollOvertimeEnabled,
-          plannedOvertimeEnabled: updatedCinema.plannedOvertimeEnabled,
-          dailyOvertimeEnabled: updatedCinema.dailyOvertimeEnabled,
-          weeklyOvertimeEnabled: updatedCinema.weeklyOvertimeEnabled,
-          dailyOvertimeThreshold: updatedCinema.dailyOvertimeThreshold,
-          weeklyOvertimeThreshold: updatedCinema.weeklyOvertimeThreshold,
-          payrollPeriodModel: updatedCinema.payrollPeriodModel,
-          payrollPeriodStartDay: updatedCinema.payrollPeriodStartDay,
-          payrollPeriodEndDay: updatedCinema.payrollPeriodEndDay,
-          payrollPeriodAnchorDate: updatedCinema.payrollPeriodAnchorDate,
-          payrollPayoutRule: updatedCinema.payrollPayoutRule,
-          payrollPayoutDay: updatedCinema.payrollPayoutDay,
-        }),
+        body: JSON.stringify(safeChanges),
       });
 
       if (!response.ok) {
@@ -135,10 +120,10 @@ export function useCinemaSettingsData() {
       }
 
       const savedCinema = await response.json();
-      const nextCinema = {
-        ...CINEMA_DEFAULTS,
+      const nextCinema = normalizeCinemaSettings({
+        ...pendingCinema,
         ...savedCinema,
-      };
+      });
 
       setCinema(nextCinema);
       syncMasterSelectedCinemaStorage(nextCinema);
@@ -148,6 +133,7 @@ export function useCinemaSettingsData() {
         error instanceof Error
           ? error.message
           : "Kunne ikke gemme indstillinger.";
+
       setMessage("");
       infoDialog.showError("Indstillinger kunne ikke gemmes", description);
     } finally {
@@ -161,6 +147,7 @@ export function useCinemaSettingsData() {
     }
 
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
     if (!allowedTypes.includes(file.type)) {
       infoDialog.showError(
         "Logo kunne ikke uploades",
@@ -195,11 +182,10 @@ export function useCinemaSettingsData() {
         );
       }
 
-      const savedCinema = await response.json();
-      const nextCinema = {
-        ...CINEMA_DEFAULTS,
-        ...savedCinema,
-      };
+      const nextCinema = normalizeCinemaSettings({
+        ...cinema,
+        ...(await response.json()),
+      });
 
       setCinema(nextCinema);
       syncMasterSelectedCinemaStorage(nextCinema);
@@ -233,11 +219,10 @@ export function useCinemaSettingsData() {
         );
       }
 
-      const savedCinema = await response.json();
-      const nextCinema = {
-        ...CINEMA_DEFAULTS,
-        ...savedCinema,
-      };
+      const nextCinema = normalizeCinemaSettings({
+        ...cinema,
+        ...(await response.json()),
+      });
 
       setCinema(nextCinema);
       syncMasterSelectedCinemaStorage(nextCinema);

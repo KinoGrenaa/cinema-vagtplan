@@ -9,6 +9,7 @@ export type CinemaWriteDbClient =
   Prisma.TransactionClient;
 
 const CINEMA_WRITE_LOCK_NAMESPACE = 1_129_664_877;
+
 const MAX_CINEMA_NAME_LENGTH = 200;
 const CINEMA_LOGO_URL_PATTERN =
   /^\/uploads\/cinema-logos\/[A-Za-z0-9][A-Za-z0-9._-]{0,254}\.(?:jpg|png|webp)$/;
@@ -21,7 +22,6 @@ export function normalizeCinemaName(
       'Biografnavn mangler',
     );
   }
-
   const name = value.trim();
 
   if (!name) {
@@ -119,8 +119,8 @@ export async function withCinemaWriteLock<T>(
     async (transaction) => {
       await transaction.$executeRaw`
         SELECT pg_advisory_xact_lock(
-          ${CINEMA_WRITE_LOCK_NAMESPACE},
-          0
+          ${CINEMA_WRITE_LOCK_NAMESPACE}::integer,
+          0::integer
         )
       `;
 

@@ -1,15 +1,13 @@
-﻿"use client";
+"use client";
 
 import AdminGuard from "@/app/components/access/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
-
 import CinemaSettingsBrandingSection from "./components/sections/CinemaSettingsBrandingSection";
 import CinemaSettingsFeatureTogglesSection from "./components/sections/CinemaSettingsFeatureTogglesSection";
 import CinemaSettingsHeaderSection from "./components/layout/CinemaSettingsHeaderSection";
 import CinemaSettingsLoadingState from "./components/layout/CinemaSettingsLoadingState";
 import CinemaSettingsMasterRequired from "./components/layout/CinemaSettingsMasterRequired";
 import CinemaSettingsPayrollSection from "./components/payroll/CinemaSettingsPayrollSection";
-
 import { calculatePeriodExample } from "./helpers/core/cinemaSettingsDateHelpers";
 import { useCinemaSettingsData } from "./hooks/data/useCinemaSettingsData";
 
@@ -54,7 +52,7 @@ export default function CinemaSettingsPage() {
 
   return (
     <AdminGuard>
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+      <main className="min-h-screen bg-slate-100 p-4 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100 md:p-8">
         <div className="mx-auto max-w-4xl space-y-6">
           <CinemaSettingsHeaderSection cinemaName={cinema.name} />
 
