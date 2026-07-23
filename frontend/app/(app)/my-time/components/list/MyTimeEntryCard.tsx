@@ -17,6 +17,22 @@ type MyTimeEntryCardProps = {
   onHistory: (entry: TimeEntry) => void;
 };
 
+function getStatusBadgeClass(status: TimeEntry["status"]) {
+  if (status === "APPROVED") {
+    return "border-green-300 bg-green-100 text-green-900 dark:border-green-800 dark:bg-green-950/70 dark:text-green-200";
+  }
+
+  if (status === "NEEDS_CHANGES") {
+    return "border-orange-300 bg-orange-100 text-orange-900 dark:border-orange-800 dark:bg-orange-950/70 dark:text-orange-200";
+  }
+
+  if (status === "VOIDED") {
+    return "border-red-300 bg-red-100 text-red-900 dark:border-red-900 dark:bg-red-950/60 dark:text-red-200";
+  }
+
+  return "border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-200";
+}
+
 export default function MyTimeEntryCard({
   entry,
   onEdit,
@@ -24,141 +40,138 @@ export default function MyTimeEntryCard({
 }: MyTimeEntryCardProps) {
   return (
     <article
-      className={`rounded-2xl border p-4 shadow-sm ${getStatusClass(
-        entry.status,
-      )}`}
+      className={`rounded-2xl border p-4 shadow-sm transition-colors ${getStatusClass(entry.status)}`}
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0">
-          <h3 className="text-lg font-semibold">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-gray-950 dark:text-white">
             {entry.shift?.workType?.name ||
               entry.payrollType?.name ||
               "Timeregistrering"}
           </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {formatDateTime(entry.clockIn)}
           </p>
         </div>
-
-        <span className="w-fit rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-950">
+        <span
+          className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(entry.status)}`}
+        >
           {getStatusLabel(entry.status)}
         </span>
       </div>
 
-      <div className="mt-4">
-        <PayrollAdjustmentNotice
-          adjustments={
-            entry.payrollAdjustments
-          }
-          audience="employee"
-        />
-      </div>
+      <PayrollAdjustmentNotice
+        adjustments={entry.payrollAdjustments}
+        audience="employee"
+      />
 
-      <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Mødetid
-          </div>
-          <div className="mt-1 font-medium">
+          </dt>
+          <dd className="mt-1 font-medium text-gray-950 dark:text-white">
             {formatDateTime(entry.clockIn)}
-          </div>
+          </dd>
         </div>
-
-        <div>
-          <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Fyraften
-          </div>
-          <div className="mt-1 font-medium">
+          </dt>
+          <dd className="mt-1 font-medium text-gray-950 dark:text-white">
             {entry.clockOut
-              ? formatDateTime(
-                  entry.clockOut,
-                )
+              ? formatDateTime(entry.clockOut)
               : "Ikke registreret"}
-          </div>
+          </dd>
         </div>
-
-        <div>
-          <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Timer
-          </div>
-          <div className="mt-1 font-medium">
+          </dt>
+          <dd className="mt-1 font-medium text-gray-950 dark:text-white">
             {getHours(entry)}
-          </div>
+          </dd>
         </div>
-
-        <div>
-          <div className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+        <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Status
-          </div>
-          <div className="mt-1 font-medium">
+          </dt>
+          <dd className="mt-1 font-medium text-gray-950 dark:text-white">
             {getStatusLabel(entry.status)}
-          </div>
+          </dd>
         </div>
-      </div>
+      </dl>
 
       {(entry.note ||
         entry.clockInNote ||
         entry.clockOutNote ||
         entry.adminNote) && (
-        <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white/70 p-3 text-sm dark:border-gray-800 dark:bg-gray-950/40">
-          {shouldShowEntryNoteAsSingleNote(
-            entry,
-          ) ? (
+        <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white/80 p-4 text-sm dark:border-gray-800 dark:bg-gray-950/50">
+          {shouldShowEntryNoteAsSingleNote(entry) ? (
             <div>
-              <div className="font-semibold">
+              <p className="font-semibold text-gray-800 dark:text-gray-200">
                 Note
-              </div>
-              <div className="mt-1 whitespace-pre-wrap">
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                 {getEntrySingleNote(entry)}
-              </div>
+              </p>
             </div>
           ) : (
             <>
               {entry.clockInNote && (
                 <div>
-                  <div className="font-semibold">
+                  <p className="font-semibold text-gray-800 dark:text-gray-200">
                     Mødetidsnote
-                  </div>
-                  <div className="mt-1 whitespace-pre-wrap">
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                     {entry.clockInNote}
-                  </div>
+                  </p>
                 </div>
               )}
               {entry.clockOutNote && (
                 <div>
-                  <div className="font-semibold">
+                  <p className="font-semibold text-gray-800 dark:text-gray-200">
                     Fyraftensnote
-                  </div>
-                  <div className="mt-1 whitespace-pre-wrap">
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                     {entry.clockOutNote}
-                  </div>
+                  </p>
                 </div>
               )}
             </>
           )}
 
           {entry.adminNote && (
-            <div>
-              <div className="font-semibold">
-                {entry.status ===
-                "NEEDS_CHANGES"
+            <div
+              className={`rounded-xl border p-3 ${
+                entry.status === "NEEDS_CHANGES"
+                  ? "border-orange-300 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/40"
+                  : "border-blue-200 bg-blue-50 dark:border-blue-900/70 dark:bg-blue-950/30"
+              }`}
+            >
+              <p
+                className={`font-semibold ${
+                  entry.status === "NEEDS_CHANGES"
+                    ? "text-orange-900 dark:text-orange-200"
+                    : "text-blue-900 dark:text-blue-200"
+                }`}
+              >
+                {entry.status === "NEEDS_CHANGES"
                   ? "Besked fra administrationen"
                   : "Note fra administrationen"}
-              </div>
-              <div className="mt-1 whitespace-pre-wrap">
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                 {entry.adminNote}
-              </div>
+              </p>
             </div>
           )}
         </div>
       )}
 
-      {entry.status ===
-        "NEEDS_CHANGES" && (
-        <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-900/70 dark:bg-orange-950/30 dark:text-orange-200">
-          Denne tidsregistrering er sendt
-          retur til rettelse og skal
-          opdateres før den kan godkendes.
+      {entry.status === "NEEDS_CHANGES" && (
+        <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm font-medium text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
+          Denne tidsregistrering er sendt retur til rettelse og skal opdateres,
+          før den kan godkendes.
         </div>
       )}
 
@@ -166,21 +179,19 @@ export default function MyTimeEntryCard({
         <button
           type="button"
           onClick={() => onHistory(entry)}
-          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
         >
           Historik
         </button>
-
-        {entry.status !== "APPROVED" &&
-          entry.status !== "VOIDED" && (
-            <button
-              type="button"
-              onClick={() => onEdit(entry)}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-            >
-              Redigér
-            </button>
-          )}
+        {entry.status !== "APPROVED" && entry.status !== "VOIDED" && (
+          <button
+            type="button"
+            onClick={() => onEdit(entry)}
+            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-500 dark:text-gray-950 dark:hover:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
+          >
+            Redigér
+          </button>
+        )}
       </div>
     </article>
   );
