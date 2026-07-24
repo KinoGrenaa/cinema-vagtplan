@@ -850,7 +850,18 @@ export default function ScheduleShiftsPanel({
             ? selectedDurationMinutes
             : null
         }
-          onCreateAtTime={
+        createWorkTypeId={
+          isPlacingJobFunction
+            ? selectedWorkTypeId
+            : null
+        }
+        createPreviewColor={
+          isPlacingJobFunction
+            ? selectedJobFunction
+                ?.color ?? null
+            : null
+        }
+        onCreateAtTime={
             isPlacingJobFunction &&
           !isCreatingJobFunctionShift
             ? handleCreateAtTime

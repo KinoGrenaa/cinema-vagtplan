@@ -10,6 +10,10 @@ import {
   type MouseEvent,
 } from "react";
 import { Rnd } from "react-rnd";
+import ScheduleTimelineCreationGhost from "./ScheduleTimelineCreationGhost";
+import {
+  getScheduleTimelineCreationPreview,
+} from "../../helpers/derived/scheduleTimelineCreationPreview";
 import type { Shift } from "../../../../../../shared/types";
 
 type User = {
@@ -25,6 +29,10 @@ type ShiftTimelineProps = {
   createAtTimeLabel?: string | null;
   createDurationMinutes?:
     number | null;
+  createWorkTypeId?:
+    number | null;
+  createPreviewColor?:
+    string | null;
   onCreateAtTime?: (
     hour: number,
     minute: number,
@@ -410,6 +418,8 @@ function ShiftTimeline({
   selectedDate,
   createAtTimeLabel,
   createDurationMinutes,
+  createWorkTypeId,
+  createPreviewColor,
   onCreateAtTime,
   onSelectShift,
   onMoveShift,
@@ -468,6 +478,33 @@ function ShiftTimeline({
       ),
     [selectedDate, shifts, timelineWidth],
   );
+
+  const creationPreview =
+    useMemo(
+      () =>
+        creationEnabled &&
+        creationPreviewMinutes !==
+          null
+          ? getScheduleTimelineCreationPreview({
+              selectedDate,
+              startMinutes:
+                creationPreviewMinutes,
+              durationMinutes:
+                createDurationMinutes,
+              workTypeId:
+                createWorkTypeId,
+              shifts,
+            })
+          : null,
+      [
+        createDurationMinutes,
+        createWorkTypeId,
+        creationEnabled,
+        creationPreviewMinutes,
+        selectedDate,
+        shifts,
+      ],
+    );
   const hours = useMemo(
     () =>
       Array.from(
@@ -573,13 +610,6 @@ function ShiftTimeline({
       creationPreviewMinutes % 60,
     );
   }
-
-  const creationLeftPercent =
-    creationPreviewMinutes === null
-      ? null
-      : (creationPreviewMinutes /
-          DAY_MINUTES) *
-        100;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -723,33 +753,26 @@ function ShiftTimeline({
                 24,
             }}
           >
-            {creationEnabled &&
-              creationLeftPercent !== null &&
-              creationPreviewMinutes !== null && (
-                <div
-                  className="pointer-events-none absolute inset-y-0 z-20 border-l-2 border-blue-600 dark:border-blue-400"
-                  style={{
-                    left: `${creationLeftPercent}%`,
-                  }}
-                >
-                  <div
-                    className={`absolute top-0 whitespace-nowrap rounded-lg bg-blue-700 px-2 py-1 text-xs font-bold text-white shadow-lg dark:bg-blue-500 ${
-                      creationPreviewMinutes >=
-                        18 * 60
-                        ? "-translate-x-full"
-                        : ""
-                    }`}
-                  >
-                    {createAtTimeLabel ||
-                      "Jobfunktion"}{" "}
-                    · {formatCreationRange(
-                creationPreviewMinutes,
-                createDurationMinutes,
-              )}
-                  </div>
-                </div>
-              )}
-
+            {creationPreview &&
+            creationPreviewMinutes !==
+              null && (
+              <ScheduleTimelineCreationGhost
+                label={
+                  createAtTimeLabel ||
+                  "Jobfunktion"
+                }
+                timeLabel={formatCreationRange(
+                  creationPreviewMinutes,
+                  createDurationMinutes,
+                )}
+                color={
+                  createPreviewColor
+                }
+                preview={
+                  creationPreview
+                }
+              />
+            )}
             {timelineShifts.map(
               ({
                 shift,
