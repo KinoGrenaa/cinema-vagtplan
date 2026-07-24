@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Menu, X } from "lucide-react";
+
 import { useRealtimeBadges } from "@/app/hooks/useRealtimeBadges";
 import { useAuth } from "@/app/providers/AuthProvider";
 import {
@@ -11,15 +12,30 @@ import {
   useCinemaModules,
 } from "@/app/providers/CinemaModulesProvider";
 
+type MenuGroupId =
+  | "schedule"
+  | "time-and-leave"
+  | "planning"
+  | "messages"
+  | "employees-and-payroll"
+  | "settings"
+  | "system";
+
 type NavItem = {
+  id?: MenuGroupId;
   href?: string;
   label: string;
   badge?: number;
   adminOnly?: boolean;
+  masterOnly?: boolean;
   moduleKey?: CinemaModuleKey;
   moduleKeysAny?: CinemaModuleKey[];
   children?: NavItem[];
 };
+
+function pathMatches(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export default function AppMenu() {
   const pathname = usePathname();
@@ -34,36 +50,31 @@ export default function AppMenu() {
   const { user, logout, isAdmin, isMaster } = useAuth();
   const { isModuleEnabled } = useCinemaModules();
   const [open, setOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    Vagtplan: true,
-    Beskeder: false,
-    Indstillinger: false,
-    Administration: false,
-  });
-
-  function toggleGroup(label: string) {
-    setOpenGroups((current) => ({
-      ...current,
-      [label]: !current[label],
-    }));
-  }
+  const [openGroups, setOpenGroups] = useState<
+    Partial<Record<MenuGroupId, boolean>>
+  >({});
 
   const totalTradeCount = poolCount + directCount;
+  const scheduleBadgeCount = totalTradeCount + staffingRequestCount;
   const totalMenuBadgeCount =
-    totalTradeCount +
+    scheduleBadgeCount +
     unreadMessages +
     notificationCount +
-    staffingRequestCount +
     leaveRequestCount;
 
   const navItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/colleagues", label: "Kollegaer" },
     {
+      id: "schedule",
       label: "Vagtplan",
-      badge: totalTradeCount,
+      badge: scheduleBadgeCount,
       children: [
-        { href: "/schedule", label: "Vagtplan", moduleKey: "SCHEDULE" },
+        {
+          href: "/schedule",
+          label: "Vagtplan",
+          moduleKey: "SCHEDULE",
+        },
         {
           href: "/live",
           label: "Live-overblik",
@@ -71,41 +82,30 @@ export default function AppMenu() {
           moduleKeysAny: ["SCHEDULE", "TIME_TRACKING"],
         },
         {
-          href: "/shift-planning",
-          label: "Vagtplanlægning",
-          adminOnly: true,
-          moduleKey: "SHIFT_PLANNING",
-        },
-        {
-          href: "/schedule-templates",
-          label: "Vagtsskabeloner",
-          adminOnly: true,
-          moduleKey: "SHIFT_PLANNING",
-        },
-        {
-          href: "/day-periods",
-          label: "Dagsperioder",
-          adminOnly: true,
-          moduleKey: "SHIFT_PLANNING",
-        },
-        {
-          href: "/job-functions",
-          label: "Jobfunktioner",
-          adminOnly: true,
-          moduleKey: "SHIFT_PLANNING",
-        },
-        {
-          href: "/work-types",
-          label: "Vagttyper",
-          adminOnly: true,
-          moduleKey: "SCHEDULE",
-        },
-        {
           href: "/my-shifts",
           label: "Mine vagter",
           badge: directCount,
           moduleKey: "SCHEDULE",
         },
+        {
+          href: "/shift-trades",
+          label: "Vagtpulje",
+          badge: poolCount,
+          moduleKey: "SHIFT_TRADES",
+        },
+        {
+          href: "/staffing-requests",
+          label: "Bemanding",
+          badge: staffingRequestCount,
+          moduleKey: "STAFFING_REQUESTS",
+        },
+      ],
+    },
+    {
+      id: "time-and-leave",
+      label: "Tid & fravær",
+      badge: leaveRequestCount,
+      children: [
         {
           href: "/clock",
           label: "Registrér tid",
@@ -117,25 +117,65 @@ export default function AppMenu() {
           moduleKey: "TIME_TRACKING",
         },
         {
-          href: "/shift-trades",
-          label: "Vagtpulje",
-          badge: poolCount,
-          moduleKey: "SHIFT_TRADES",
-        },
-        {
           href: "/leave-requests",
           label: "Mit fravær",
           moduleKey: "LEAVE",
         },
         {
-          href: "/staffing-requests",
-          label: "Staffing",
-          badge: staffingRequestCount,
-          moduleKey: "STAFFING_REQUESTS",
+          href: "/time-approval",
+          label: "Godkend timer",
+          adminOnly: true,
+          moduleKey: "TIME_TRACKING",
+        },
+        {
+          href: "/absence-calendar",
+          label: "Fraværskalender",
+          adminOnly: true,
+          moduleKey: "LEAVE",
+        },
+        {
+          href: "/leave-approval",
+          label: "Godkend fravær",
+          badge: leaveRequestCount,
+          adminOnly: true,
+          moduleKey: "LEAVE",
         },
       ],
     },
     {
+      id: "planning",
+      label: "Planlægning",
+      adminOnly: true,
+      children: [
+        {
+          href: "/shift-planning",
+          label: "Vagtplanlægning",
+          moduleKey: "SHIFT_PLANNING",
+        },
+        {
+          href: "/schedule-templates",
+          label: "Vagtsskabeloner",
+          moduleKey: "SHIFT_PLANNING",
+        },
+        {
+          href: "/day-periods",
+          label: "Dagsperioder",
+          moduleKey: "SHIFT_PLANNING",
+        },
+        {
+          href: "/job-functions",
+          label: "Jobfunktioner",
+          moduleKey: "SHIFT_PLANNING",
+        },
+        {
+          href: "/work-types",
+          label: "Vagttyper",
+          moduleKey: "SCHEDULE",
+        },
+      ],
+    },
+    {
+      id: "messages",
       label: "Beskeder",
       badge: unreadMessages,
       moduleKey: "MESSAGES",
@@ -164,11 +204,44 @@ export default function AppMenu() {
       ],
     },
     {
+      id: "employees-and-payroll",
+      label: "Medarbejdere & løn",
+      adminOnly: true,
+      children: [
+        {
+          href: "/users",
+          label: "Brugere",
+        },
+        {
+          href: "/employee-documents",
+          label: "Medarbejderdokumenter",
+          moduleKey: "EMPLOYEE_DOCUMENTS",
+        },
+        {
+          href: "/payroll",
+          label: "Løn",
+          moduleKey: "PAYROLL",
+        },
+        {
+          href: "/cinema-settings/payroll-types",
+          label: "Lønarter",
+          moduleKey: "PAYROLL",
+        },
+      ],
+    },
+    {
+      id: "settings",
       label: "Indstillinger",
       badge: notificationCount,
       children: [
-        { href: "/profile", label: "Min profil" },
-        { href: "/settings", label: "Brugerindstillinger" },
+        {
+          href: "/profile",
+          label: "Min profil",
+        },
+        {
+          href: "/settings",
+          label: "Brugerindstillinger",
+        },
         {
           href: "/notifications",
           label: "Notifikationer",
@@ -177,50 +250,28 @@ export default function AppMenu() {
       ],
     },
     {
-      label: "Administration",
+      id: "system",
+      label: "System",
       adminOnly: true,
-      badge: leaveRequestCount,
       children: [
-        { href: "/users", label: "Brugere" },
         {
-          href: "/employee-documents",
-          label: "Medarbejderdokumenter",
-          moduleKey: "EMPLOYEE_DOCUMENTS",
+          href: "/cinema-settings",
+          label: "Biografindstillinger",
         },
         {
-          href: "/time-approval",
-          label: "Tidsregistrering",
-          moduleKey: "TIME_TRACKING",
+          href: "/audit-log",
+          label: "Auditlog",
         },
         {
-          href: "/absence-calendar",
-          label: "Fraværskalender",
-          moduleKey: "LEAVE",
+          href: "/master",
+          label: "MASTER-panel",
+          masterOnly: true,
         },
         {
-          href: "/leave-approval",
-          label: "Fraværsgodkendelse",
-          badge: leaveRequestCount,
-          moduleKey: "LEAVE",
+          href: "/system-error-logs",
+          label: "Systemfejl",
+          masterOnly: true,
         },
-        {
-          href: "/payroll",
-          label: "Løn / timer",
-          moduleKey: "PAYROLL",
-        },
-        { href: "/cinema-settings", label: "Biograf indstillinger" },
-        { href: "/audit-log", label: "Audit log" },
-        {
-          href: "/cinema-settings/payroll-types",
-          label: "Løn setup",
-          moduleKey: "PAYROLL",
-        },
-        ...(isMaster
-          ? [
-              { href: "/master", label: "Master panel" },
-              { href: "/system-error-logs", label: "Systemfejl" },
-            ]
-          : []),
       ],
     },
   ];
@@ -228,6 +279,7 @@ export default function AppMenu() {
   function canShowItem(item: NavItem) {
     return (
       (!item.adminOnly || isAdmin) &&
+      (!item.masterOnly || isMaster) &&
       (!item.moduleKey || isModuleEnabled(item.moduleKey)) &&
       (!item.moduleKeysAny ||
         item.moduleKeysAny.some((moduleKey) => isModuleEnabled(moduleKey)))
@@ -241,6 +293,40 @@ export default function AppMenu() {
       children: item.children?.filter(canShowItem),
     }))
     .filter((item) => !item.children || item.children.length > 0);
+
+  const visibleLinks = visibleNavItems.flatMap((item) =>
+    item.children?.length ? item.children : [item],
+  );
+  const activeHref = visibleLinks
+    .filter(
+      (item): item is NavItem & { href: string } =>
+        Boolean(item.href && pathMatches(pathname, item.href)),
+    )
+    .sort((first, second) => second.href.length - first.href.length)[0]?.href;
+
+  const activeGroupId = visibleNavItems.find(
+    (item) =>
+      item.id &&
+      item.children?.some((child) => child.href === activeHref),
+  )?.id;
+
+  useEffect(() => {
+    if (!open || !activeGroupId) {
+      return;
+    }
+
+    setOpenGroups((current) => ({
+      ...current,
+      [activeGroupId]: true,
+    }));
+  }, [activeGroupId, open]);
+
+  function toggleGroup(groupId: MenuGroupId) {
+    setOpenGroups((current) => ({
+      ...current,
+      [groupId]: !current[groupId],
+    }));
+  }
 
   function renderBadge(badge?: number, active = false) {
     if (!badge || badge <= 0) {
@@ -261,7 +347,7 @@ export default function AppMenu() {
   }
 
   function isGroupActive(item: NavItem) {
-    return item.children?.some((child) => child.href === pathname) ?? false;
+    return item.children?.some((child) => child.href === activeHref) ?? false;
   }
 
   return (
@@ -269,7 +355,7 @@ export default function AppMenu() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative rounded-2xl border border-gray-800 bg-black p-3 text-white shadow-xl transition hover:scale-105 hover:bg-gray-800 dark:border-gray-700 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+        className="relative rounded-2xl border border-gray-800 bg-black p-3 text-white shadow-xl transition hover:scale-105 hover:bg-gray-800 active:scale-100 active:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-700 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:active:bg-gray-300 dark:focus-visible:ring-gray-300 dark:focus-visible:ring-offset-gray-950"
         aria-label="Åbn menu"
       >
         <Menu size={22} />
@@ -306,7 +392,7 @@ export default function AppMenu() {
                 </p>
                 <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   {user.role === "MASTER"
-                    ? "Master"
+                    ? "MASTER"
                     : user.role === "ADMIN"
                       ? "Administrator"
                       : "Medarbejder"}
@@ -317,7 +403,7 @@ export default function AppMenu() {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="rounded-xl p-2 text-gray-600 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="rounded-xl p-2 text-gray-600 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:text-gray-300 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
             aria-label="Luk menu"
           >
             <X size={20} />
@@ -327,9 +413,8 @@ export default function AppMenu() {
         <nav className="flex-1 space-y-2 overflow-y-auto p-4">
           {visibleNavItems.map((item) => {
             const hasChildren = Boolean(item.children?.length);
-            const active = item.href === pathname;
+            const active = item.href === activeHref;
             const groupActive = isGroupActive(item);
-            const groupOpen = openGroups[item.label] || groupActive;
 
             if (!hasChildren && item.href) {
               return (
@@ -337,11 +422,12 @@ export default function AppMenu() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                  className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950 ${
                     active
-                      ? "bg-black text-white shadow-sm dark:bg-white dark:text-black"
-                      : "text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                      ? "bg-black text-white shadow-sm active:bg-gray-900 dark:bg-white dark:text-black dark:active:bg-gray-200"
+                      : "text-gray-800 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                   }`}
+                  aria-current={active ? "page" : undefined}
                 >
                   {item.label}
                   {renderBadge(item.badge, active)}
@@ -349,45 +435,62 @@ export default function AppMenu() {
               );
             }
 
+            if (!item.id) {
+              return null;
+            }
+
+            const groupOpen = Boolean(openGroups[item.id]);
+            const panelId = `app-menu-group-${item.id}`;
+
             return (
-              <div key={item.label}>
+              <div key={item.id}>
                 <button
                   type="button"
-                  onClick={() => toggleGroup(item.label)}
-                  className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  onClick={() => toggleGroup(item.id!)}
+                  className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950 ${
                     groupActive
-                      ? "bg-black text-white shadow-sm dark:bg-white dark:text-black"
-                      : "text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                      ? "bg-black text-white shadow-sm active:bg-gray-900 dark:bg-white dark:text-black dark:active:bg-gray-200"
+                      : "text-gray-800 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                   }`}
+                  aria-expanded={groupOpen}
+                  aria-controls={panelId}
                 >
                   <span>{item.label}</span>
                   <span className="flex items-center">
                     {renderBadge(item.badge, groupActive)}
                     <ChevronDown
                       size={18}
-                      className={`ml-2 transition ${groupOpen ? "rotate-180" : ""}`}
+                      aria-hidden="true"
+                      className={`ml-2 transition ${
+                        groupOpen ? "rotate-180" : ""
+                      }`}
                     />
                   </span>
                 </button>
 
                 {groupOpen && (
-                  <div className="mt-1 space-y-1 pl-3">
+                  <div
+                    id={panelId}
+                    className="mt-1 space-y-1 pl-3"
+                  >
                     {item.children?.map((child) => {
                       if (!child.href) {
                         return null;
                       }
 
-                      const childActive = child.href === pathname;
+                      const childActive = child.href === activeHref;
+
                       return (
                         <Link
                           key={child.href}
                           href={child.href}
                           onClick={() => setOpen(false)}
-                          className={`flex items-center justify-between rounded-xl px-4 py-2 text-sm transition ${
+                          className={`flex items-center justify-between rounded-xl px-4 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950 ${
                             childActive
-                              ? "bg-gray-900 text-white dark:bg-white dark:text-black"
-                              : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                              ? "bg-gray-900 text-white active:bg-black dark:bg-white dark:text-black dark:active:bg-gray-200"
+                              : "text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                           }`}
+                          aria-current={childActive ? "page" : undefined}
                         >
                           {child.label}
                           {renderBadge(child.badge, childActive)}
@@ -405,7 +508,7 @@ export default function AppMenu() {
           <button
             type="button"
             onClick={logout}
-            className="w-full rounded-2xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-200 active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
+            className="w-full rounded-2xl bg-red-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 active:bg-red-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400 dark:focus-visible:ring-offset-gray-950"
           >
             Log ud
           </button>
