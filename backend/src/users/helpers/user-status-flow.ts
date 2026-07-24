@@ -1,9 +1,11 @@
-import { NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
-  ensureCanModifyTargetUser,
   getActorUserId,
 } from './user-service-helpers';
 import {
@@ -30,6 +32,20 @@ async function findStatusTarget(
   return user;
 }
 
+function ensureGlobalMasterStatusAccess(
+  currentUser: AuthUser | undefined,
+  targetRole: string,
+) {
+  if (
+    currentUser?.role !== 'MASTER' ||
+    targetRole !== 'MASTER'
+  ) {
+    throw new ForbiddenException(
+      'Almindelige brugere deaktiveres i den enkelte biograf',
+    );
+  }
+}
+
 export async function deactivateUserFlow(
   prisma: PrismaService,
   auditLogsService: AuditLogsService,
@@ -47,12 +63,10 @@ export async function deactivateUserFlow(
             userId,
           );
 
-        if (currentUser) {
-          ensureCanModifyTargetUser(
-            currentUser,
-            existingUser,
-          );
-        }
+        ensureGlobalMasterStatusAccess(
+          currentUser,
+          existingUser.role,
+        );
 
         return transaction.user.update({
           where: {
@@ -67,12 +81,14 @@ export async function deactivateUserFlow(
     );
 
   await auditLogsService.create({
-    action: 'DEACTIVATE_USER',
+    action: 'DEACTIVATE_MASTER_USER',
     entityType: 'User',
     entityId: deactivatedUser.id,
-    description: `Deaktiverede bruger ${deactivatedUser.firstName} ${deactivatedUser.lastName}`,
+    description:
+      `Deaktiverede MASTER-bruger ` +
+      `${deactivatedUser.firstName} ${deactivatedUser.lastName}`,
     userId: getActorUserId(currentUser),
-    cinemaId: deactivatedUser.cinemaId,
+    cinemaId: null,
   });
 
   return deactivatedUser;
@@ -95,12 +111,10 @@ export async function reactivateUserFlow(
             userId,
           );
 
-        if (currentUser) {
-          ensureCanModifyTargetUser(
-            currentUser,
-            existingUser,
-          );
-        }
+        ensureGlobalMasterStatusAccess(
+          currentUser,
+          existingUser.role,
+        );
 
         return transaction.user.update({
           where: {
@@ -115,12 +129,14 @@ export async function reactivateUserFlow(
     );
 
   await auditLogsService.create({
-    action: 'REACTIVATE_USER',
+    action: 'REACTIVATE_MASTER_USER',
     entityType: 'User',
     entityId: reactivatedUser.id,
-    description: `Genaktiverede bruger ${reactivatedUser.firstName} ${reactivatedUser.lastName}`,
+    description:
+      `Genaktiverede MASTER-bruger ` +
+      `${reactivatedUser.firstName} ${reactivatedUser.lastName}`,
     userId: getActorUserId(currentUser),
-    cinemaId: reactivatedUser.cinemaId,
+    cinemaId: null,
   });
 
   return reactivatedUser;

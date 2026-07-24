@@ -43,6 +43,14 @@ async function findMembershipTarget(
         select: {
           id: true,
           cinemaId: true,
+          role: true,
+          employmentType: true,
+          canManageSchedule: true,
+          canManageUsers: true,
+          canManagePayroll: true,
+          canManageLeaveRequests: true,
+          canManageCinemaSettings: true,
+          canSendBroadcastMessages: true,
           createdAt: true,
           cinema: {
             select: {
@@ -84,6 +92,21 @@ function formatManagedMemberships(
       .map((membership) => ({
         id: membership.id,
         cinemaId: membership.cinemaId,
+        role: membership.role,
+        employmentType:
+          membership.employmentType,
+        canManageSchedule:
+          membership.canManageSchedule,
+        canManageUsers:
+          membership.canManageUsers,
+        canManagePayroll:
+          membership.canManagePayroll,
+        canManageLeaveRequests:
+          membership.canManageLeaveRequests,
+        canManageCinemaSettings:
+          membership.canManageCinemaSettings,
+        canSendBroadcastMessages:
+          membership.canSendBroadcastMessages,
         isPrimary:
           membership.cinemaId === user.cinemaId,
         createdAt: membership.createdAt,

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  USER_PERMISSION_FIELDS,
+  type UserPermissionKey,
+} from "../../helpers/core/userRolePermissions";
 import type { User } from "../../helpers/core/userTypes";
 
 export type UserCinemaOption = {
@@ -8,17 +12,56 @@ export type UserCinemaOption = {
   logoUrl?: string | null;
 };
 
+export type CinemaMembershipRole =
+  | "ADMIN"
+  | "EMPLOYEE";
+
+export type CinemaMembershipEmploymentType =
+  | "HOURLY"
+  | "SALARIED";
+
+export type UserCinemaMembershipSettings = {
+  role: CinemaMembershipRole;
+  employmentType:
+    CinemaMembershipEmploymentType;
+  canManageSchedule: boolean;
+  canManageUsers: boolean;
+  canManagePayroll: boolean;
+  canManageLeaveRequests: boolean;
+  canManageCinemaSettings: boolean;
+  canSendBroadcastMessages: boolean;
+};
+
 type UserCinemaMembershipModalProps = {
   user: User | null;
   cinemas: UserCinemaOption[];
   selectedCinemaIds: number[];
+  membershipSettings: Record<
+    number,
+    UserCinemaMembershipSettings
+  >;
   primaryCinemaId: number | null;
   defaultCinemaId: number | null;
   loading: boolean;
   saving: boolean;
   error: string;
   onToggleCinema: (cinemaId: number) => void;
-  onChooseDefaultCinema: (cinemaId: number) => void;
+  onChooseDefaultCinema: (
+    cinemaId: number,
+  ) => void;
+  onChangeMembershipRole: (
+    cinemaId: number,
+    role: CinemaMembershipRole,
+  ) => void;
+  onChangeEmploymentType: (
+    cinemaId: number,
+    employmentType:
+      CinemaMembershipEmploymentType,
+  ) => void;
+  onToggleMembershipPermission: (
+    cinemaId: number,
+    permission: UserPermissionKey,
+  ) => void;
   onClose: () => void;
   onSave: () => void;
 };
@@ -27,12 +70,16 @@ export default function UserCinemaMembershipModal({
   user,
   cinemas,
   selectedCinemaIds,
+  membershipSettings,
   defaultCinemaId,
   loading,
   saving,
   error,
   onToggleCinema,
   onChooseDefaultCinema,
+  onChangeMembershipRole,
+  onChangeEmploymentType,
+  onToggleMembershipPermission,
   onClose,
   onSave,
 }: UserCinemaMembershipModalProps) {
@@ -45,7 +92,7 @@ export default function UserCinemaMembershipModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
+      <div className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
         <div className="border-b border-gray-200 p-6 dark:border-gray-800">
           <h2 className="text-xl font-bold">
             Biograftilknytninger
@@ -55,30 +102,41 @@ export default function UserCinemaMembershipModal({
           </p>
         </div>
 
-        <div className="max-h-[65vh] overflow-y-auto p-6">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Vælg de biografer, brugeren må arbejde i.
-            Ved flere biografer kan MASTER vælge, hvilken
-            biograf der skal bruges som standard ved næste
-            login.
+        <div className="max-h-[70vh] overflow-y-auto p-6">
+          <p className="text-sm leading-6 text-gray-600 dark:text-gray-400">
+            Vælg brugerens biografer. Rolle,
+            ansættelsestype og rettigheder gælder kun
+            for den enkelte biograf.
           </p>
 
           {loading ? (
-            <div className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300">
+            <div
+              className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-300"
+              role="status"
+            >
               Henter biograftilknytninger...
             </div>
           ) : error ? (
-            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+            <div
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200"
+              role="alert"
+            >
               {error}
             </div>
           ) : (
             <>
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-4">
                 {cinemas.map((cinema) => {
                   const isDefault =
                     cinema.id === defaultCinemaId;
                   const isSelected =
-                    selectedCinemaIds.includes(cinema.id);
+                    selectedCinemaIds.includes(
+                      cinema.id,
+                    );
+                  const settings =
+                    membershipSettings[cinema.id];
+                  const role =
+                    settings?.role ?? "EMPLOYEE";
                   const showDefaultControls =
                     selectedCinemaIds.length > 1 &&
                     isSelected;
@@ -86,7 +144,7 @@ export default function UserCinemaMembershipModal({
                   return (
                     <article
                       key={cinema.id}
-                      className={`rounded-xl border p-4 ${
+                      className={`rounded-xl border p-4 transition ${
                         isSelected
                           ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30"
                           : "border-gray-200 dark:border-gray-800"
@@ -140,6 +198,111 @@ export default function UserCinemaMembershipModal({
                             </button>
                           )}
                       </div>
+
+                      {isSelected && settings && (
+                        <div className="mt-4 border-t border-blue-200 pt-4 dark:border-blue-900">
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <label>
+                              <span className="mb-2 block text-sm font-semibold">
+                                Rolle i biografen
+                              </span>
+                              <select
+                                value={settings.role}
+                                disabled={saving}
+                                onChange={(event) =>
+                                  onChangeMembershipRole(
+                                    cinema.id,
+                                    event.target
+                                      .value as CinemaMembershipRole,
+                                  )
+                                }
+                                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                              >
+                                <option value="EMPLOYEE">
+                                  Medarbejder
+                                </option>
+                                <option value="ADMIN">
+                                  Administrator
+                                </option>
+                              </select>
+                            </label>
+
+                            <label>
+                              <span className="mb-2 block text-sm font-semibold">
+                                Ansættelsestype
+                              </span>
+                              <select
+                                value={
+                                  settings.employmentType
+                                }
+                                disabled={saving}
+                                onChange={(event) =>
+                                  onChangeEmploymentType(
+                                    cinema.id,
+                                    event.target
+                                      .value as CinemaMembershipEmploymentType,
+                                  )
+                                }
+                                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                              >
+                                <option value="HOURLY">
+                                  Timelønnet
+                                </option>
+                                <option value="SALARIED">
+                                  Fastlønnet
+                                </option>
+                              </select>
+                            </label>
+                          </div>
+
+                          <fieldset className="mt-4">
+                            <legend className="text-sm font-semibold">
+                              Rettigheder i biografen
+                            </legend>
+
+                            {role === "ADMIN" && (
+                              <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-400">
+                                Administratorer har alle
+                                administrationsrettigheder.
+                              </p>
+                            )}
+
+                            <div className="mt-3 grid gap-2 md:grid-cols-2">
+                              {USER_PERMISSION_FIELDS.map(
+                                (permission) => (
+                                  <label
+                                    key={permission.key}
+                                    className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-gray-800 dark:bg-gray-950"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(
+                                        settings[
+                                          permission.key
+                                        ],
+                                      )}
+                                      disabled={
+                                        saving ||
+                                        role === "ADMIN"
+                                      }
+                                      onChange={() =>
+                                        onToggleMembershipPermission(
+                                          cinema.id,
+                                          permission.key,
+                                        )
+                                      }
+                                      className="h-4 w-4 rounded border-gray-300 accent-blue-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:accent-blue-400"
+                                    />
+                                    <span>
+                                      {permission.label}
+                                    </span>
+                                  </label>
+                                ),
+                              )}
+                            </div>
+                          </fieldset>
+                        </div>
+                      )}
                     </article>
                   );
                 })}
@@ -157,9 +320,10 @@ export default function UserCinemaMembershipModal({
                     className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
                     role="status"
                   >
-                    Brugeren mister adgang til systemet,
-                    men kontoen og biografspecifik historik
-                    bevares efter de gældende slettefrister.
+                    Brugeren mister adgang til
+                    systemet, men kontoen og
+                    biografspecifik historik bevares
+                    efter de gældende slettefrister.
                   </div>
                 )}
             </>

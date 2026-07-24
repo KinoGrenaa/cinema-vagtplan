@@ -2,7 +2,6 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser } from './user-service-helpers';
 import { ensureCinemaExists } from './user-service-data-helpers';
@@ -10,41 +9,83 @@ import { ensureCinemaExists } from './user-service-data-helpers';
 async function findCinemaUsers(
   prisma: PrismaService,
   cinemaId: number,
-  canManageAllAccounts: boolean,
 ) {
   const users = await prisma.user.findMany({
     where: {
       role: {
         not: 'MASTER',
       },
-      OR: [
-        {
+      cinemaMemberships: {
+        some: {
           cinemaId,
         },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId,
-              isActive: true,
-            },
-          },
-        },
-      ],
+      },
     },
     include: {
       cinema: true,
+      cinemaMemberships: {
+        where: {
+          cinemaId,
+        },
+        select: {
+          role: true,
+          employmentType: true,
+          isActive: true,
+          deactivatedAt: true,
+          canManageSchedule: true,
+          canManageUsers: true,
+          canManagePayroll: true,
+          canManageLeaveRequests: true,
+          canManageCinemaSettings: true,
+          canSendBroadcastMessages: true,
+        },
+        take: 1,
+      },
     },
     orderBy: {
       firstName: 'asc',
     },
   });
 
-  return users.map((user) => ({
-    ...user,
-    isHomeCinema: user.cinemaId === cinemaId,
-    canManageAccount:
-      canManageAllAccounts || user.cinemaId === cinemaId,
-  }));
+  return users.flatMap((user) => {
+    const membership =
+      user.cinemaMemberships[0];
+
+    if (!membership) {
+      return [];
+    }
+
+    const {
+      cinemaMemberships: _memberships,
+      ...globalUser
+    } = user;
+
+    return [
+      {
+        ...globalUser,
+        cinemaId,
+        role: membership.role,
+        employmentType:
+          membership.employmentType,
+        isActive: membership.isActive,
+        deactivatedAt:
+          membership.deactivatedAt,
+        canManageSchedule:
+          membership.canManageSchedule,
+        canManageUsers:
+          membership.canManageUsers,
+        canManagePayroll:
+          membership.canManagePayroll,
+        canManageLeaveRequests:
+          membership.canManageLeaveRequests,
+        canManageCinemaSettings:
+          membership.canManageCinemaSettings,
+        canSendBroadcastMessages:
+          membership.canSendBroadcastMessages,
+        canManageAccount: true,
+      },
+    ];
+  });
 }
 
 export async function findAllUsers(
@@ -54,12 +95,14 @@ export async function findAllUsers(
 ) {
   if (currentUser.role === 'MASTER') {
     if (selectedCinemaId) {
-      await ensureCinemaExists(prisma, selectedCinemaId);
+      await ensureCinemaExists(
+        prisma,
+        selectedCinemaId,
+      );
 
       return findCinemaUsers(
         prisma,
         selectedCinemaId,
-        true,
       );
     }
 
@@ -82,7 +125,6 @@ export async function findAllUsers(
   return findCinemaUsers(
     prisma,
     currentUser.cinemaId,
-    false,
   );
 }
 

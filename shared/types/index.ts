@@ -1,10 +1,22 @@
-export type Role = "MASTER" | "ADMIN" | "EMPLOYEE";
+export type Role =
+  | "MASTER"
+  | "ADMIN"
+  | "EMPLOYEE";
 
-export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type LeaveStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
 
-export type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type TimeEntryStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
 
-export type ShiftTradeStatus = "OPEN" | "ACCEPTED" | "CANCELLED";
+export type ShiftTradeStatus =
+  | "OPEN"
+  | "ACCEPTED"
+  | "CANCELLED";
 
 export type User = {
   id: number;
@@ -72,6 +84,13 @@ export type CurrentUser = {
   email: string;
   role: Role;
   cinemaId: number | null;
+  defaultCinemaId?: number | null;
   firstName?: string;
   lastName?: string;
+  canManageSchedule?: boolean;
+  canManageUsers?: boolean;
+  canManagePayroll?: boolean;
+  canManageLeaveRequests?: boolean;
+  canManageCinemaSettings?: boolean;
+  canSendBroadcastMessages?: boolean;
 };

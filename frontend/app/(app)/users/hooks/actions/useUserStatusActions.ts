@@ -1,6 +1,9 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
@@ -17,10 +20,33 @@ type ConfirmOptions = {
 };
 
 type UseUserStatusActionsOptions = {
-  setUsers: Dispatch<SetStateAction<User[]>>;
+  setUsers: Dispatch<
+    SetStateAction<User[]>
+  >;
   confirm: (options: ConfirmOptions) => void;
-  showError: (title: string, description: string) => void;
+  showError: (
+    title: string,
+    description: string,
+  ) => void;
 };
+
+function getMembershipStatusEndpoint(
+  user: User,
+  action: "deactivate" | "reactivate",
+) {
+  if (!user.cinemaId) {
+    throw new Error(
+      "Brugeren mangler en biograftilknytning.",
+    );
+  }
+
+  const path =
+    action === "deactivate"
+      ? `/users/${user.id}/cinema-membership`
+      : `/users/${user.id}/cinema-membership/reactivate`;
+
+  return `${path}?cinemaId=${user.cinemaId}`;
+}
 
 export function useUserStatusActions({
   setUsers,
@@ -28,32 +54,43 @@ export function useUserStatusActions({
   showError,
 }: UseUserStatusActionsOptions) {
   function deactivateUser(user: User) {
-    const fullName = `${user.firstName} ${user.lastName}`;
+    const fullName =
+      `${user.firstName} ${user.lastName}`.trim();
 
     confirm({
-      title: "Deaktivér bruger",
+      title: "Deaktivér i denne biograf",
       description:
-        `Er du sikker på, at du vil deaktivere ${fullName}?\n\n` +
-        "Brugeren kan ikke længere logge ind.\n\n" +
-        "Tidligere vagter, tidsregistreringer, lønhistorik, beskeder og anden historik bevares.\n\n" +
-        "Brugeren kan genaktiveres senere.",
+        `Er du sikker på, at du vil deaktivere ${fullName} i denne biograf?\n\n` +
+        "Brugeren mister kun adgangen til denne biograf. " +
+        "Andre aktive biograftilknytninger påvirkes ikke.\n\n" +
+        "Tidligere vagter, tidsregistreringer, lønhistorik, dokumenter og anden historik " +
+        "behandles fortsat efter biografens gældende opbevarings- og slettefrister.",
       confirmText: "Deaktivér",
       cancelText: "Annuller",
       confirmVariant: "danger",
       onConfirm: async () => {
         try {
-          const response = await apiFetch(`/users/${user.id}`, {
-            method: "DELETE",
-          });
+          const response = await apiFetch(
+            getMembershipStatusEndpoint(
+              user,
+              "deactivate",
+            ),
+            {
+              method: "DELETE",
+            },
+          );
 
           if (!response.ok) {
-            throw new Error(await getErrorMessage(response));
+            throw new Error(
+              await getErrorMessage(response),
+            );
           }
 
-          const deactivatedUser = await response.json();
+          const deactivatedUser =
+            (await response.json()) as User;
 
-          setUsers((prev) =>
-            prev.map((existingUser) =>
+          setUsers((previous) =>
+            previous.map((existingUser) =>
               existingUser.id === user.id
                 ? {
                     ...existingUser,
@@ -65,10 +102,10 @@ export function useUserStatusActions({
           );
         } catch (error) {
           showError(
-            "Bruger kunne ikke deaktiveres",
+            "Brugeren kunne ikke deaktiveres",
             error instanceof Error
               ? error.message
-              : "Kunne ikke deaktivere bruger.",
+              : "Kunne ikke deaktivere brugeren i denne biograf.",
           );
         }
       },
@@ -76,28 +113,41 @@ export function useUserStatusActions({
   }
 
   function reactivateUser(user: User) {
-    const fullName = `${user.firstName} ${user.lastName}`;
+    const fullName =
+      `${user.firstName} ${user.lastName}`.trim();
 
     confirm({
-      title: "Genaktivér bruger",
-      description: `Vil du genaktivere ${fullName}?\n\nBrugeren vil igen kunne logge ind.`,
+      title: "Genaktivér i denne biograf",
+      description:
+        `Vil du genaktivere ${fullName} i denne biograf?\n\n` +
+        "Brugeren får igen adgang med den rolle og de rettigheder, " +
+        "der er gemt på biograftilknytningen.",
       confirmText: "Genaktivér",
       cancelText: "Annuller",
       confirmVariant: "success",
       onConfirm: async () => {
         try {
-          const response = await apiFetch(`/users/${user.id}/reactivate`, {
-            method: "PATCH",
-          });
+          const response = await apiFetch(
+            getMembershipStatusEndpoint(
+              user,
+              "reactivate",
+            ),
+            {
+              method: "PATCH",
+            },
+          );
 
           if (!response.ok) {
-            throw new Error(await getErrorMessage(response));
+            throw new Error(
+              await getErrorMessage(response),
+            );
           }
 
-          const reactivatedUser = await response.json();
+          const reactivatedUser =
+            (await response.json()) as User;
 
-          setUsers((prev) =>
-            prev.map((existingUser) =>
+          setUsers((previous) =>
+            previous.map((existingUser) =>
               existingUser.id === user.id
                 ? {
                     ...existingUser,
@@ -110,10 +160,10 @@ export function useUserStatusActions({
           );
         } catch (error) {
           showError(
-            "Bruger kunne ikke genaktiveres",
+            "Brugeren kunne ikke genaktiveres",
             error instanceof Error
               ? error.message
-              : "Kunne ikke genaktivere bruger.",
+              : "Kunne ikke genaktivere brugeren i denne biograf.",
           );
         }
       },

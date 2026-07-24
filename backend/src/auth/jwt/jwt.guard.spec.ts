@@ -1,14 +1,42 @@
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtGuard } from './jwt.guard';
 
-function createContext(request: Record<string, any>) {
+function createContext(
+  request: Record<string, any>,
+) {
   return {
     switchToHttp: () => ({
       getRequest: () => request,
     }),
   } as ExecutionContext;
+}
+
+function membership(
+  role: 'ADMIN' | 'EMPLOYEE',
+  permissions: Partial<{
+    canManageSchedule: boolean;
+    canManageUsers: boolean;
+    canManagePayroll: boolean;
+    canManageLeaveRequests: boolean;
+    canManageCinemaSettings: boolean;
+    canSendBroadcastMessages: boolean;
+  }> = {},
+) {
+  return {
+    role,
+    canManageSchedule: false,
+    canManageUsers: false,
+    canManagePayroll: false,
+    canManageLeaveRequests: false,
+    canManageCinemaSettings: false,
+    canSendBroadcastMessages: false,
+    ...permissions,
+  };
 }
 
 describe('JwtGuard', () => {
@@ -28,20 +56,24 @@ describe('JwtGuard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
     guard = new JwtGuard(
       jwtService as unknown as JwtService,
       prisma as unknown as PrismaService,
     );
   });
 
-  it('uses current database data for an active cinema session', async () => {
+  it('uses role and permissions from the active cinema membership', async () => {
     const request: Record<string, any> = {
-      headers: { authorization: 'Bearer valid-token' },
+      headers: {
+        authorization: 'Bearer valid-token',
+      },
     };
+
     jwtService.verifyAsync.mockResolvedValue({
       sub: 12,
       email: 'old@example.com',
-      role: 'ADMIN',
+      role: 'EMPLOYEE',
       cinemaId: 4,
       iat: 100,
       exp: 200,
@@ -52,25 +84,39 @@ describe('JwtGuard', () => {
       role: 'ADMIN',
       isActive: true,
     });
-    prisma.userCinemaMembership.findFirst.mockResolvedValue({ id: 44 });
+    prisma.userCinemaMembership.findFirst.mockResolvedValue(
+      membership('EMPLOYEE', {
+        canManageSchedule: true,
+      }),
+    );
 
     await expect(
       guard.canActivate(createContext(request)),
     ).resolves.toBe(true);
+
     expect(request.user).toEqual({
       sub: 12,
       email: 'current@example.com',
-      role: 'ADMIN',
+      role: 'EMPLOYEE',
       cinemaId: 4,
+      canManageSchedule: true,
+      canManageUsers: false,
+      canManagePayroll: false,
+      canManageLeaveRequests: false,
+      canManageCinemaSettings: false,
+      canSendBroadcastMessages: false,
       iat: 100,
       exp: 200,
     });
   });
 
-  it('rejects a deactivated user', async () => {
+  it('rejects a globally blocked account', async () => {
     const request = {
-      headers: { authorization: 'Bearer valid-token' },
+      headers: {
+        authorization: 'Bearer valid-token',
+      },
     };
+
     jwtService.verifyAsync.mockResolvedValue({
       sub: 12,
       role: 'ADMIN',
@@ -88,10 +134,13 @@ describe('JwtGuard', () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('rejects a token after the user role changes', async () => {
+  it('rejects a token after the cinema role changes', async () => {
     const request = {
-      headers: { authorization: 'Bearer valid-token' },
+      headers: {
+        authorization: 'Bearer valid-token',
+      },
     };
+
     jwtService.verifyAsync.mockResolvedValue({
       sub: 12,
       role: 'ADMIN',
@@ -103,16 +152,24 @@ describe('JwtGuard', () => {
       role: 'EMPLOYEE',
       isActive: true,
     });
+    prisma.userCinemaMembership.findFirst.mockResolvedValue(
+      membership('EMPLOYEE'),
+    );
 
     await expect(
       guard.canActivate(createContext(request)),
-    ).rejects.toThrow('Din brugerrolle er ændret. Log ind igen');
+    ).rejects.toThrow(
+      'Din rolle i den aktive biograf er ændret.\nLog ind igen',
+    );
   });
 
   it('rejects a removed cinema membership', async () => {
     const request = {
-      headers: { authorization: 'Bearer valid-token' },
+      headers: {
+        authorization: 'Bearer valid-token',
+      },
     };
+
     jwtService.verifyAsync.mockResolvedValue({
       sub: 12,
       role: 'EMPLOYEE',
@@ -124,19 +181,24 @@ describe('JwtGuard', () => {
       role: 'EMPLOYEE',
       isActive: true,
     });
-    prisma.userCinemaMembership.findFirst.mockResolvedValue(null);
+    prisma.userCinemaMembership.findFirst.mockResolvedValue(
+      null,
+    );
 
     await expect(
       guard.canActivate(createContext(request)),
     ).rejects.toThrow(
-      'Din biograftilknytning er ikke længere aktiv. Log ind igen',
+      'Din biograftilknytning er ikke længere aktiv.\nLog ind igen',
     );
   });
 
   it('allows an active MASTER without a cinema membership', async () => {
     const request: Record<string, any> = {
-      headers: { authorization: 'Bearer valid-token' },
+      headers: {
+        authorization: 'Bearer valid-token',
+      },
     };
+
     jwtService.verifyAsync.mockResolvedValue({
       sub: 1,
       email: 'master@example.com',
@@ -153,7 +215,15 @@ describe('JwtGuard', () => {
     await expect(
       guard.canActivate(createContext(request)),
     ).resolves.toBe(true);
-    expect(prisma.userCinemaMembership.findFirst).not.toHaveBeenCalled();
-    expect(request.user.cinemaId).toBeNull();
+
+    expect(
+      prisma.userCinemaMembership.findFirst,
+    ).not.toHaveBeenCalled();
+    expect(request.user).toMatchObject({
+      role: 'MASTER',
+      cinemaId: null,
+      canManageUsers: true,
+      canManagePayroll: true,
+    });
   });
 });

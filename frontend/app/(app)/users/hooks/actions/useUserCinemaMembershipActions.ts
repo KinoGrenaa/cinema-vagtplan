@@ -4,8 +4,41 @@ import { useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 
+import type {
+  CinemaMembershipEmploymentType,
+  CinemaMembershipRole,
+  UserCinemaMembershipSettings,
+  UserCinemaOption,
+} from "../../components/form/UserCinemaMembershipModal";
+import type { UserPermissionKey } from "../../helpers/core/userRolePermissions";
 import type { User } from "../../helpers/core/userTypes";
-import type { UserCinemaOption } from "../../components/form/UserCinemaMembershipModal";
+
+const ALL_PERMISSIONS = {
+  canManageSchedule: true,
+  canManageUsers: true,
+  canManagePayroll: true,
+  canManageLeaveRequests: true,
+  canManageCinemaSettings: true,
+  canSendBroadcastMessages: true,
+} as const;
+
+const NO_PERMISSIONS = {
+  canManageSchedule: false,
+  canManageUsers: false,
+  canManagePayroll: false,
+  canManageLeaveRequests: false,
+  canManageCinemaSettings: false,
+  canSendBroadcastMessages: false,
+} as const;
+
+function createDefaultSettings():
+  UserCinemaMembershipSettings {
+  return {
+    role: "EMPLOYEE",
+    employmentType: "HOURLY",
+    ...NO_PERMISSIONS,
+  };
+}
 
 type ManagedMembershipResponse = {
   user: {
@@ -13,10 +46,12 @@ type ManagedMembershipResponse = {
     cinemaId: number | null;
     defaultCinemaId: number | null;
   };
-  memberships: Array<{
-    cinemaId: number;
-    isPrimary: boolean;
-  }>;
+  memberships: Array<
+    UserCinemaMembershipSettings & {
+      cinemaId: number;
+      isPrimary: boolean;
+    }
+  >;
 };
 
 type UseUserCinemaMembershipActionsOptions = {
@@ -55,6 +90,12 @@ export function useUserCinemaMembershipActions({
   >([]);
   const [selectedCinemaIds, setSelectedCinemaIds] =
     useState<number[]>([]);
+  const [
+    membershipSettings,
+    setMembershipSettings,
+  ] = useState<
+    Record<number, UserCinemaMembershipSettings>
+  >({});
   const [primaryCinemaId, setPrimaryCinemaId] =
     useState<number | null>(null);
   const [defaultCinemaId, setDefaultCinemaId] =
@@ -69,6 +110,7 @@ export function useUserCinemaMembershipActions({
     setError("");
     setCinemas([]);
     setSelectedCinemaIds([]);
+    setMembershipSettings({});
     setPrimaryCinemaId(user.cinemaId ?? null);
     setDefaultCinemaId(null);
 
@@ -109,9 +151,12 @@ export function useUserCinemaMembershipActions({
           ? cinemasPayload
               .map((cinema) => ({
                 id: Number(cinema.id),
-                name: String(cinema.name ?? ""),
+                name: String(
+                  cinema.name ?? "",
+                ),
                 logoUrl:
-                  typeof cinema.logoUrl === "string"
+                  typeof cinema.logoUrl ===
+                  "string"
                     ? cinema.logoUrl
                     : null,
               }))
@@ -129,35 +174,57 @@ export function useUserCinemaMembershipActions({
               )
           : [];
 
-      const nextPrimaryCinemaId =
-        membershipsPayload.user.cinemaId ??
-        user.cinemaId ??
-        null;
       const membershipCinemaIds =
         membershipsPayload.memberships.map(
-          (membership) => membership.cinemaId,
+          (membership) =>
+            membership.cinemaId,
         );
-      const nextSelectedCinemaIds =
-        nextPrimaryCinemaId &&
-        !membershipCinemaIds.includes(
-          nextPrimaryCinemaId,
-        )
-          ? [
-              ...membershipCinemaIds,
-              nextPrimaryCinemaId,
-            ]
-          : membershipCinemaIds;
+      const nextSettings =
+        membershipsPayload.memberships.reduce<
+          Record<
+            number,
+            UserCinemaMembershipSettings
+          >
+        >((result, membership) => {
+          result[membership.cinemaId] = {
+            role: membership.role,
+            employmentType:
+              membership.employmentType,
+            canManageSchedule:
+              membership.canManageSchedule,
+            canManageUsers:
+              membership.canManageUsers,
+            canManagePayroll:
+              membership.canManagePayroll,
+            canManageLeaveRequests:
+              membership.canManageLeaveRequests,
+            canManageCinemaSettings:
+              membership.canManageCinemaSettings,
+            canSendBroadcastMessages:
+              membership.canSendBroadcastMessages,
+          };
+
+          return result;
+        }, {});
 
       setCinemas(nextCinemas);
-      setPrimaryCinemaId(nextPrimaryCinemaId);
+      setPrimaryCinemaId(
+        membershipsPayload.user.cinemaId ??
+          user.cinemaId ??
+          null,
+      );
       setDefaultCinemaId(
-        membershipsPayload.user.defaultCinemaId ??
-          nextSelectedCinemaIds[0] ??
+        membershipsPayload.user
+          .defaultCinemaId ??
+          membershipCinemaIds[0] ??
           null,
       );
       setSelectedCinemaIds(
-        Array.from(new Set(nextSelectedCinemaIds)),
+        Array.from(
+          new Set(membershipCinemaIds),
+        ),
       );
+      setMembershipSettings(nextSettings);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -173,6 +240,7 @@ export function useUserCinemaMembershipActions({
     setSelectedUser(null);
     setCinemas([]);
     setSelectedCinemaIds([]);
+    setMembershipSettings({});
     setPrimaryCinemaId(null);
     setDefaultCinemaId(null);
     setError("");
@@ -189,34 +257,116 @@ export function useUserCinemaMembershipActions({
   function toggleCinema(cinemaId: number) {
     setSelectedCinemaIds((current) => {
       const next = current.includes(cinemaId)
-        ? current.filter((id) => id !== cinemaId)
+        ? current.filter(
+            (id) => id !== cinemaId,
+          )
         : [...current, cinemaId];
 
-      setDefaultCinemaId((currentDefault) => {
-        if (next.length === 0) {
-          return null;
-        }
+      if (!current.includes(cinemaId)) {
+        setMembershipSettings(
+          (currentSettings) => ({
+            ...currentSettings,
+            [cinemaId]:
+              currentSettings[cinemaId] ??
+              createDefaultSettings(),
+          }),
+        );
+      }
 
-        if (
-          currentDefault !== null &&
-          next.includes(currentDefault)
-        ) {
-          return currentDefault;
-        }
+      setDefaultCinemaId(
+        (currentDefault) => {
+          if (next.length === 0) {
+            return null;
+          }
 
-        return next[0] ?? null;
-      });
+          if (
+            currentDefault !== null &&
+            next.includes(currentDefault)
+          ) {
+            return currentDefault;
+          }
+
+          return next[0] ?? null;
+        },
+      );
 
       return next;
     });
   }
 
-  function chooseDefaultCinema(cinemaId: number) {
-    if (!selectedCinemaIds.includes(cinemaId)) {
+  function chooseDefaultCinema(
+    cinemaId: number,
+  ) {
+    if (
+      !selectedCinemaIds.includes(cinemaId)
+    ) {
       return;
     }
 
     setDefaultCinemaId(cinemaId);
+  }
+
+  function changeMembershipRole(
+    cinemaId: number,
+    role: CinemaMembershipRole,
+  ) {
+    setMembershipSettings((current) => {
+      const existing =
+        current[cinemaId] ??
+        createDefaultSettings();
+
+      return {
+        ...current,
+        [cinemaId]: {
+          ...existing,
+          role,
+          ...(role === "ADMIN"
+            ? ALL_PERMISSIONS
+            : existing.role === "ADMIN"
+              ? NO_PERMISSIONS
+              : {}),
+        },
+      };
+    });
+  }
+
+  function changeEmploymentType(
+    cinemaId: number,
+    employmentType:
+      CinemaMembershipEmploymentType,
+  ) {
+    setMembershipSettings((current) => ({
+      ...current,
+      [cinemaId]: {
+        ...(current[cinemaId] ??
+          createDefaultSettings()),
+        employmentType,
+      },
+    }));
+  }
+
+  function toggleMembershipPermission(
+    cinemaId: number,
+    permission: UserPermissionKey,
+  ) {
+    setMembershipSettings((current) => {
+      const existing =
+        current[cinemaId] ??
+        createDefaultSettings();
+
+      if (existing.role === "ADMIN") {
+        return current;
+      }
+
+      return {
+        ...current,
+        [cinemaId]: {
+          ...existing,
+          [permission]:
+            !existing[permission],
+        },
+      };
+    });
   }
 
   async function saveMemberships() {
@@ -227,47 +377,34 @@ export function useUserCinemaMembershipActions({
     try {
       setSaving(true);
 
-      const membershipsResponse = await apiFetch(
-        `/users/${selectedUser.id}/cinema-memberships`,
+      const memberships =
+        selectedCinemaIds.map(
+          (cinemaId) => ({
+            cinemaId,
+            ...(membershipSettings[
+              cinemaId
+            ] ?? createDefaultSettings()),
+          }),
+        );
+
+      const response = await apiFetch(
+        `/users/${selectedUser.id}/cinema-memberships/configuration`,
         {
-          method: "PATCH",
+          method: "PUT",
           body: JSON.stringify({
-            cinemaIds: selectedCinemaIds,
+            memberships,
+            defaultCinemaId,
           }),
         },
       );
 
-      if (!membershipsResponse.ok) {
+      if (!response.ok) {
         throw new Error(
           await readErrorMessage(
-            membershipsResponse,
+            response,
             "Biograftilknytningerne kunne ikke gemmes.",
           ),
         );
-      }
-
-      if (
-        selectedCinemaIds.length > 0 &&
-        defaultCinemaId !== null
-      ) {
-        const defaultResponse = await apiFetch(
-          `/users/${selectedUser.id}/default-cinema`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({
-              cinemaId: defaultCinemaId,
-            }),
-          },
-        );
-
-        if (!defaultResponse.ok) {
-          throw new Error(
-            await readErrorMessage(
-              defaultResponse,
-              "Standardbiografen kunne ikke gemmes.",
-            ),
-          );
-        }
       }
 
       resetMembershipModal();
@@ -287,6 +424,7 @@ export function useUserCinemaMembershipActions({
     selectedUser,
     cinemas,
     selectedCinemaIds,
+    membershipSettings,
     primaryCinemaId,
     defaultCinemaId,
     loading,
@@ -296,6 +434,9 @@ export function useUserCinemaMembershipActions({
     closeMembershipModal,
     toggleCinema,
     chooseDefaultCinema,
+    changeMembershipRole,
+    changeEmploymentType,
+    toggleMembershipPermission,
     saveMemberships,
   };
 }

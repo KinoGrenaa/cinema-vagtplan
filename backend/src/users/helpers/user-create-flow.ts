@@ -1,4 +1,11 @@
-import { ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
+import {
+  CinemaRole,
+  EmploymentType as PrismaEmploymentType,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -10,11 +17,9 @@ import {
   UserRole,
 } from './user-service-helpers';
 import {
-  ensureUniqueUserEmail,
   getCreatePermissionData,
   validateRoleCinema,
 } from './user-service-data-helpers';
-import { syncPrimaryUserCinemaMembership } from './user-cinema-membership-sync';
 import { withUserDirectoryWriteLock } from './user-write-lock';
 
 export type CreateUserInput = {
@@ -34,13 +39,112 @@ export type CreateUserInput = {
   canSendBroadcastMessages?: boolean;
 };
 
+const membershipPermissionKeys = [
+  'canManageSchedule',
+  'canManageUsers',
+  'canManagePayroll',
+  'canManageLeaveRequests',
+  'canManageCinemaSettings',
+  'canSendBroadcastMessages',
+] as const;
+
+function toCinemaRole(
+  role: UserRole,
+): CinemaRole {
+  return role === 'ADMIN'
+    ? CinemaRole.ADMIN
+    : CinemaRole.EMPLOYEE;
+}
+
+function buildCinemaUserResponse(
+  user: Record<string, any>,
+  membership?: Record<string, any> | null,
+  cinemaId?: number | null,
+) {
+  const {
+    password: _password,
+    ...safeUser
+  } = user;
+
+  if (!membership || !cinemaId) {
+    return safeUser;
+  }
+
+  return {
+    ...safeUser,
+    role: membership.role,
+    employmentType:
+      membership.employmentType,
+    cinemaId,
+    isActive: membership.isActive,
+    deactivatedAt:
+      membership.deactivatedAt ?? null,
+    canManageSchedule:
+      membership.canManageSchedule,
+    canManageUsers:
+      membership.canManageUsers,
+    canManagePayroll:
+      membership.canManagePayroll,
+    canManageLeaveRequests:
+      membership.canManageLeaveRequests,
+    canManageCinemaSettings:
+      membership.canManageCinemaSettings,
+    canSendBroadcastMessages:
+      membership.canSendBroadcastMessages,
+    canManageAccount: true,
+  };
+}
+
+function buildMembershipData(
+  role: UserRole,
+  data: CreateUserInput,
+) {
+  const permissions = getCreatePermissionData(
+    role,
+    data,
+  );
+
+  return {
+    role: toCinemaRole(role),
+    employmentType:
+      (data.employmentType ??
+        'HOURLY') as PrismaEmploymentType,
+    ...permissions,
+    isActive: true,
+    deactivatedAt: null,
+  };
+}
+
+function buildLegacyUserData(
+  data: CreateUserInput,
+  role: UserRole,
+  cinemaId: number | null,
+  hashedPassword: string,
+) {
+  return {
+    email: data.email,
+    password: hashedPassword,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    phone: data.phone,
+    role,
+    employmentType:
+      data.employmentType ?? 'HOURLY',
+    cinemaId,
+    defaultCinemaId: cinemaId,
+    ...getCreatePermissionData(role, data),
+    isActive: true,
+    deactivatedAt: null,
+  };
+}
+
 export async function createUserFlow(
   prisma: PrismaService,
   auditLogsService: AuditLogsService,
   data: CreateUserInput,
   currentUser?: AuthUser,
 ) {
-  const role = data.role || 'EMPLOYEE';
+  const role = data.role ?? 'EMPLOYEE';
 
   if (currentUser) {
     ensureSameCinemaOrMaster(
@@ -63,7 +167,7 @@ export async function createUserFlow(
     10,
   );
 
-  const createdUser =
+  const result =
     await withUserDirectoryWriteLock(
       prisma,
       async (transaction) => {
@@ -74,57 +178,186 @@ export async function createUserFlow(
             data.cinemaId,
           );
 
-        await ensureUniqueUserEmail(
-          transaction,
-          data.email,
-          'Der findes allerede en bruger med denne email',
-        );
-
-        const user =
-          await transaction.user.create({
-            data: {
+        const existingUser =
+          await transaction.user.findUnique({
+            where: {
               email: data.email,
-              password: hashedPassword,
-              firstName: data.firstName,
-              lastName: data.lastName,
-              phone: data.phone,
-              role,
-              employmentType:
-                data.employmentType ||
-                'HOURLY',
-              cinemaId,
-              ...getCreatePermissionData(
-                role,
-                data,
-              ),
-              isActive: true,
-              deactivatedAt: null,
             },
           });
 
-        await syncPrimaryUserCinemaMembership(
-          transaction,
-          {
-            userId: user.id,
-            cinemaId: user.cinemaId,
-            isActive: user.isActive,
-          },
-        );
+        if (role === 'MASTER') {
+          if (existingUser) {
+            throw new BadRequestException(
+              'Der findes allerede en bruger med denne email',
+            );
+          }
 
-        return user;
+          const createdMaster =
+            await transaction.user.create({
+              data: buildLegacyUserData(
+                data,
+                role,
+                null,
+                hashedPassword,
+              ),
+            });
+
+          return {
+            action: 'CREATE_USER',
+            description:
+              `Oprettede MASTER-bruger ` +
+              `${createdMaster.firstName} ${createdMaster.lastName}`,
+            auditCinemaId: null,
+            user: buildCinemaUserResponse(
+              createdMaster,
+            ),
+          };
+        }
+
+        if (!cinemaId) {
+          throw new BadRequestException(
+            'Biograf skal være et gyldigt ID',
+          );
+        }
+
+        const membershipData =
+          buildMembershipData(role, data);
+
+        if (existingUser) {
+          if (existingUser.role === 'MASTER') {
+            throw new BadRequestException(
+              'MASTER-brugere kan ikke tilknyttes en almindelig biograf',
+            );
+          }
+
+          const existingMembership =
+            await transaction.userCinemaMembership.findUnique(
+              {
+                where: {
+                  userId_cinemaId: {
+                    userId: existingUser.id,
+                    cinemaId,
+                  },
+                },
+                select: {
+                  id: true,
+                  isActive: true,
+                },
+              },
+            );
+
+          if (existingMembership?.isActive) {
+            throw new BadRequestException(
+              'Brugeren er allerede tilknyttet denne biograf',
+            );
+          }
+
+          if (existingMembership) {
+            throw new BadRequestException(
+              'Brugeren findes allerede i denne biograf og skal genaktiveres',
+            );
+          }
+
+          const membership =
+            await transaction.userCinemaMembership.create(
+              {
+                data: {
+                  userId: existingUser.id,
+                  cinemaId,
+                  ...membershipData,
+                },
+              },
+            );
+
+          const accountUpdate: Record<
+            string,
+            unknown
+          > = {};
+
+          if (!existingUser.isActive) {
+            accountUpdate.isActive = true;
+            accountUpdate.deactivatedAt = null;
+          }
+
+          if (!existingUser.cinemaId) {
+            accountUpdate.cinemaId = cinemaId;
+          }
+
+          if (!existingUser.defaultCinemaId) {
+            accountUpdate.defaultCinemaId =
+              cinemaId;
+          }
+
+          const linkedUser =
+            Object.keys(accountUpdate).length > 0
+              ? await transaction.user.update({
+                  where: {
+                    id: existingUser.id,
+                  },
+                  data: accountUpdate,
+                })
+              : existingUser;
+
+          return {
+            action:
+              'LINK_EXISTING_USER_TO_CINEMA',
+            description:
+              `Tilknyttede eksisterende bruger ` +
+              `${linkedUser.firstName} ${linkedUser.lastName} ` +
+              `til biograf ${cinemaId}`,
+            auditCinemaId: cinemaId,
+            user: buildCinemaUserResponse(
+              linkedUser,
+              membership,
+              cinemaId,
+            ),
+          };
+        }
+
+        const createdUser =
+          await transaction.user.create({
+            data: buildLegacyUserData(
+              data,
+              role,
+              cinemaId,
+              hashedPassword,
+            ),
+          });
+
+        const membership =
+          await transaction.userCinemaMembership.create(
+            {
+              data: {
+                userId: createdUser.id,
+                cinemaId,
+                ...membershipData,
+              },
+            },
+          );
+
+        return {
+          action: 'CREATE_USER',
+          description:
+            `Oprettede bruger ` +
+            `${createdUser.firstName} ${createdUser.lastName}`,
+          auditCinemaId: cinemaId,
+          user: buildCinemaUserResponse(
+            createdUser,
+            membership,
+            cinemaId,
+          ),
+        };
       },
     );
 
   await auditLogsService.create({
-    action: 'CREATE_USER',
+    action: result.action,
     entityType: 'User',
-    entityId: createdUser.id,
-    description: `Oprettede bruger ${createdUser.firstName} ${createdUser.lastName}`,
-    userId: getActorUserId(
-      currentUser,
-    ),
-    cinemaId: createdUser.cinemaId,
+    entityId: result.user.id,
+    description: result.description,
+    userId: getActorUserId(currentUser),
+    cinemaId: result.auditCinemaId,
   });
 
-  return createdUser;
+  return result.user;
 }

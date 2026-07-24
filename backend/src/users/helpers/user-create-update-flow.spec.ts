@@ -2,6 +2,10 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import {
+  CinemaRole,
+  EmploymentType,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createUserFlow } from './user-create-flow';
 import {
@@ -44,21 +48,54 @@ function createPrisma(
   };
 }
 
+function membership(
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: 11,
+    userId: 9,
+    cinemaId: 7,
+    role: CinemaRole.EMPLOYEE,
+    employmentType:
+      EmploymentType.HOURLY,
+    isActive: true,
+    deactivatedAt: null,
+    canManageSchedule: false,
+    canManageUsers: false,
+    canManagePayroll: false,
+    canManageLeaveRequests: false,
+    canManageCinemaSettings: false,
+    canSendBroadcastMessages: false,
+    ...overrides,
+  };
+}
+
 describe('user create and update flows', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('validates cinema and email inside the create transaction', async () => {
+  it('creates a new global account and cinema-scoped membership in one transaction', async () => {
     const createdUser = {
       id: 9,
       email: 'anna@example.com',
       firstName: 'Anna',
       lastName: 'Andersen',
+      phone: null,
       role: 'EMPLOYEE',
+      employmentType: 'HOURLY',
       cinemaId: 7,
+      defaultCinemaId: 7,
       isActive: true,
+      deactivatedAt: null,
+      canManageSchedule: false,
+      canManageUsers: false,
+      canManagePayroll: false,
+      canManageLeaveRequests: false,
+      canManageCinemaSettings: false,
+      canSendBroadcastMessages: false,
     };
+    const createdMembership = membership();
     const transaction = {
       $executeRaw: jest
         .fn()
@@ -79,19 +116,14 @@ describe('user create and update flows', () => {
           .mockResolvedValue(
             createdUser,
           ),
-        updateMany: jest
-          .fn()
-          .mockResolvedValue({
-            count: 1,
-          }),
       },
       userCinemaMembership: {
-        upsert: jest
+        create: jest
           .fn()
-          .mockResolvedValue({
-            id: 1,
-          }),
-        updateMany: jest.fn(),
+          .mockResolvedValue(
+            createdMembership,
+          ),
+        findUnique: jest.fn(),
       },
     };
     const auditLogsService = {
@@ -109,8 +141,7 @@ describe('user create and update flows', () => {
         ) as never,
         auditLogsService as never,
         {
-          email:
-            'anna@example.com',
+          email: 'anna@example.com',
           password: 'password123',
           firstName: 'Anna',
           lastName: 'Andersen',
@@ -118,9 +149,16 @@ describe('user create and update flows', () => {
         },
         master,
       ),
-    ).resolves.toEqual(
-      createdUser,
-    );
+    ).resolves.toMatchObject({
+      id: 9,
+      email: 'anna@example.com',
+      role: CinemaRole.EMPLOYEE,
+      cinemaId: 7,
+      defaultCinemaId: 7,
+      employmentType:
+        EmploymentType.HOURLY,
+      isActive: true,
+    });
 
     expect(
       transaction.$executeRaw,
@@ -136,27 +174,170 @@ describe('user create and update flows', () => {
       },
     });
     expect(
-      transaction.user.findUnique,
-    ).toHaveBeenCalledWith({
-      where: {
-        email:
-          'anna@example.com',
-      },
-    });
-    expect(
       transaction.user.create,
     ).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        email:
-          'anna@example.com',
-        password:
-          'hashed-password',
+        email: 'anna@example.com',
+        password: 'hashed-password',
         cinemaId: 7,
+        defaultCinemaId: 7,
+      }),
+    });
+    expect(
+      transaction.userCinemaMembership.create,
+    ).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 9,
+        cinemaId: 7,
+        role: CinemaRole.EMPLOYEE,
+        employmentType:
+          EmploymentType.HOURLY,
+        isActive: true,
       }),
     });
   });
 
-  it('rejects a duplicate email before create', async () => {
+  it('automatically links an existing person to another cinema without overwriting profile data', async () => {
+    const existingUser = {
+      id: 9,
+      email: 'anna@example.com',
+      firstName: 'Anna',
+      lastName: 'Andersen',
+      phone: '12345678',
+      role: 'ADMIN',
+      employmentType: 'SALARIED',
+      cinemaId: 8,
+      defaultCinemaId: 8,
+      isActive: false,
+      deactivatedAt: new Date(
+        '2026-07-01T08:00:00.000Z',
+      ),
+      canManageSchedule: true,
+      canManageUsers: true,
+      canManagePayroll: true,
+      canManageLeaveRequests: true,
+      canManageCinemaSettings: true,
+      canSendBroadcastMessages: true,
+    };
+    const reactivatedAccount = {
+      ...existingUser,
+      isActive: true,
+      deactivatedAt: null,
+    };
+    const createdMembership = membership({
+      role: CinemaRole.EMPLOYEE,
+      employmentType:
+        EmploymentType.HOURLY,
+    });
+    const transaction = {
+      $executeRaw: jest
+        .fn()
+        .mockResolvedValue(1),
+      cinema: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({
+            id: 7,
+          }),
+      },
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue(
+            existingUser,
+          ),
+        create: jest.fn(),
+        update: jest
+          .fn()
+          .mockResolvedValue(
+            reactivatedAccount,
+          ),
+      },
+      userCinemaMembership: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue(null),
+        create: jest
+          .fn()
+          .mockResolvedValue(
+            createdMembership,
+          ),
+      },
+    };
+    const auditLogsService = {
+      create: jest
+        .fn()
+        .mockResolvedValue({
+          id: 1,
+        }),
+    };
+
+    await expect(
+      createUserFlow(
+        createPrisma(
+          transaction,
+        ) as never,
+        auditLogsService as never,
+        {
+          email: 'anna@example.com',
+          password: 'new-password',
+          firstName: 'Forkert',
+          lastName: 'Navn',
+          cinemaId: 7,
+          role: 'EMPLOYEE',
+          employmentType: 'HOURLY',
+        },
+        master,
+      ),
+    ).resolves.toMatchObject({
+      id: 9,
+      firstName: 'Anna',
+      lastName: 'Andersen',
+      phone: '12345678',
+      role: CinemaRole.EMPLOYEE,
+      cinemaId: 7,
+      defaultCinemaId: 8,
+      employmentType:
+        EmploymentType.HOURLY,
+      isActive: true,
+    });
+
+    expect(
+      transaction.user.create,
+    ).not.toHaveBeenCalled();
+    expect(
+      transaction.user.update,
+    ).toHaveBeenCalledWith({
+      where: {
+        id: 9,
+      },
+      data: {
+        isActive: true,
+        deactivatedAt: null,
+      },
+    });
+    expect(
+      transaction.userCinemaMembership.create,
+    ).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 9,
+        cinemaId: 7,
+        role: CinemaRole.EMPLOYEE,
+      }),
+    });
+    expect(
+      auditLogsService.create,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action:
+          'LINK_EXISTING_USER_TO_CINEMA',
+        entityId: 9,
+        cinemaId: 7,
+      }),
+    );
+  });
+
+  it('rejects an email that is already actively linked to the same cinema', async () => {
     const transaction = {
       $executeRaw: jest
         .fn()
@@ -172,7 +353,17 @@ describe('user create and update flows', () => {
         findUnique: jest
           .fn()
           .mockResolvedValue({
-            id: 8,
+            id: 9,
+            role: 'EMPLOYEE',
+          }),
+        create: jest.fn(),
+      },
+      userCinemaMembership: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({
+            id: 11,
+            isActive: true,
           }),
         create: jest.fn(),
       },
@@ -187,8 +378,7 @@ describe('user create and update flows', () => {
           create: jest.fn(),
         } as never,
         {
-          email:
-            'anna@example.com',
+          email: 'anna@example.com',
           password: 'password123',
           firstName: 'Anna',
           lastName: 'Andersen',
@@ -197,24 +387,15 @@ describe('user create and update flows', () => {
         master,
       ),
     ).rejects.toThrow(
-      BadRequestException,
+      'Brugeren er allerede tilknyttet denne biograf',
     );
 
     expect(
-      transaction.user.create,
+      transaction.userCinemaMembership.create,
     ).not.toHaveBeenCalled();
   });
 
-  it('locks and revalidates the target before administrator update', async () => {
-    const updatedUser = {
-      id: 9,
-      email: 'ny@example.com',
-      firstName: 'Anna',
-      lastName: 'Andersen',
-      role: 'EMPLOYEE',
-      cinemaId: 7,
-      isActive: true,
-    };
+  it('requires explicit reactivation when the same cinema membership is inactive', async () => {
     const transaction = {
       $executeRaw: jest
         .fn()
@@ -230,75 +411,49 @@ describe('user create and update flows', () => {
         findUnique: jest
           .fn()
           .mockResolvedValue({
-            ...updatedUser,
-            email:
-              'gammel@example.com',
+            id: 9,
+            role: 'EMPLOYEE',
           }),
-        findFirst: jest
-          .fn()
-          .mockResolvedValue(null),
-        update: jest
-          .fn()
-          .mockResolvedValue(
-            updatedUser,
-          ),
-        updateMany: jest
-          .fn()
-          .mockResolvedValue({
-            count: 1,
-          }),
+        create: jest.fn(),
       },
       userCinemaMembership: {
-        upsert: jest
+        findUnique: jest
           .fn()
           .mockResolvedValue({
-            id: 1,
+            id: 11,
+            isActive: false,
           }),
-        updateMany: jest.fn(),
+        create: jest.fn(),
       },
-    };
-    const auditLogsService = {
-      create: jest
-        .fn()
-        .mockResolvedValue({
-          id: 1,
-        }),
     };
 
     await expect(
-      updateUserFlow(
+      createUserFlow(
         createPrisma(
           transaction,
         ) as never,
-        auditLogsService as never,
-        9,
         {
-          email:
-            'ny@example.com',
+          create: jest.fn(),
+        } as never,
+        {
+          email: 'anna@example.com',
+          password: 'password123',
+          firstName: 'Anna',
+          lastName: 'Andersen',
+          cinemaId: 7,
         },
-        admin,
+        master,
       ),
-    ).resolves.toEqual(
-      updatedUser,
+    ).rejects.toThrow(
+      'Brugeren findes allerede i denne biograf og skal genaktiveres',
     );
 
     expect(
-      transaction.$executeRaw,
-    ).toHaveBeenCalledTimes(2);
-    expect(
-      transaction.user.findFirst,
-    ).toHaveBeenCalledWith({
-      where: {
-        email:
-          'ny@example.com',
-        id: {
-          not: 9,
-        },
-      },
-    });
+      transaction.userCinemaMembership.create,
+    ).not.toHaveBeenCalled();
   });
 
-  it('rejects cross-cinema update after the target is locked and reread', async () => {
+  it('rejects ordinary users on the legacy global update endpoint', async () => {
     const transaction = {
       $executeRaw: jest
         .fn()
@@ -308,12 +463,11 @@ describe('user create and update flows', () => {
           .fn()
           .mockResolvedValue({
             id: 9,
-            email:
-              'anna@example.com',
+            email: 'anna@example.com',
             firstName: 'Anna',
             lastName: 'Andersen',
             role: 'EMPLOYEE',
-            cinemaId: 8,
+            cinemaId: 7,
             isActive: true,
           }),
         update: jest.fn(),
@@ -332,11 +486,9 @@ describe('user create and update flows', () => {
         {
           firstName: 'Anne',
         },
-        admin,
+        master,
       ),
-    ).rejects.toThrow(
-      ForbiddenException,
-    );
+    ).rejects.toThrow(ForbiddenException);
 
     expect(
       transaction.user.update,
@@ -376,15 +528,11 @@ describe('user create and update flows', () => {
         ) as never,
         9,
         {
-          email:
-            'ny@example.com',
-          password:
-            'nyt-password',
+          email: 'ny@example.com',
+          password: 'nyt-password',
         },
       ),
-    ).resolves.toEqual(
-      updatedUser,
-    );
+    ).resolves.toEqual(updatedUser);
 
     expect(
       transaction.$executeRaw,
@@ -396,15 +544,12 @@ describe('user create and update flows', () => {
         id: 9,
       },
       data: {
-        email:
-          'ny@example.com',
+        email: 'ny@example.com',
         password:
           'hashed-password',
       },
     });
-    expect(
-      bcrypt.hash,
-    ).toHaveBeenCalled();
+    expect(bcrypt.hash).toHaveBeenCalled();
   });
 
   it('updates theme behind the per-user lock', async () => {

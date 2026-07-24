@@ -2,6 +2,12 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { UserCinemaDefaultController } from './user-cinema-default.controller';
+import { UserCinemaMembershipConfigurationController } from './user-cinema-membership-configuration.controller';
+import { UserCinemaMembershipConfigurationService } from './user-cinema-membership-configuration.service';
+import { UserCinemaMembershipStatusController } from './user-cinema-membership-status.controller';
+import { UserCinemaMembershipStatusService } from './user-cinema-membership-status.service';
+import { UserCinemaProfileController } from './user-cinema-profile.controller';
+import { UserCinemaProfileService } from './user-cinema-profile.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -18,8 +24,16 @@ import { UsersService } from './users.service';
   controllers: [
     UsersController,
     UserCinemaDefaultController,
+    UserCinemaMembershipConfigurationController,
+    UserCinemaMembershipStatusController,
+    UserCinemaProfileController,
   ],
-  providers: [UsersService],
+  providers: [
+    UsersService,
+    UserCinemaMembershipConfigurationService,
+    UserCinemaMembershipStatusService,
+    UserCinemaProfileService,
+  ],
   exports: [UsersService],
 })
 export class UsersModule {}

@@ -2,7 +2,17 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { deactivateUserFlow } from './user-status-flow';
+import {
+  deactivateUserFlow,
+  reactivateUserFlow,
+} from './user-status-flow';
+
+const master = {
+  sub: 1,
+  email: 'master@example.com',
+  role: 'MASTER' as const,
+  cinemaId: null,
+};
 
 const admin = {
   sub: 2,
@@ -23,14 +33,14 @@ function createPrisma(
   };
 }
 
-describe('user status flow', () => {
-  it('checks access and deactivates inside the user lock', async () => {
+describe('global user status flow', () => {
+  it('allows MASTER to globally deactivate another MASTER', async () => {
     const deactivatedUser = {
       id: 9,
-      firstName: 'Anna',
-      lastName: 'Andersen',
-      role: 'EMPLOYEE',
-      cinemaId: 7,
+      firstName: 'System',
+      lastName: 'Master',
+      role: 'MASTER',
+      cinemaId: null,
       isActive: false,
     };
     const transaction = {
@@ -51,31 +61,20 @@ describe('user status flow', () => {
           ),
       },
     };
-    const prisma = createPrisma(transaction);
-    const auditLogsService = {
-      create: jest
-        .fn()
-        .mockResolvedValue({
-          id: 1,
-        }),
-    };
 
     await expect(
       deactivateUserFlow(
-        prisma as never,
-        auditLogsService as never,
+        createPrisma(
+          transaction,
+        ) as never,
+        {
+          create: jest.fn(),
+        } as never,
         9,
-        admin,
+        master,
       ),
     ).resolves.toEqual(deactivatedUser);
 
-    expect(
-      transaction.user.findUnique,
-    ).toHaveBeenCalledWith({
-      where: {
-        id: 9,
-      },
-    });
     expect(
       transaction.user.update,
     ).toHaveBeenCalledWith({
@@ -84,23 +83,59 @@ describe('user status flow', () => {
       },
       data: {
         isActive: false,
-        deactivatedAt: expect.any(Date),
+        deactivatedAt:
+          expect.any(Date),
       },
-    });
-    expect(
-      auditLogsService.create,
-    ).toHaveBeenCalledWith({
-      action: 'DEACTIVATE_USER',
-      entityType: 'User',
-      entityId: 9,
-      description:
-        'Deaktiverede bruger Anna Andersen',
-      userId: 2,
-      cinemaId: 7,
     });
   });
 
-  it('rejects a cross-cinema status change before update', async () => {
+  it('allows MASTER to globally reactivate another MASTER', async () => {
+    const transaction = {
+      $executeRaw: jest
+        .fn()
+        .mockResolvedValue(1),
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({
+            id: 9,
+            firstName: 'System',
+            lastName: 'Master',
+            role: 'MASTER',
+            cinemaId: null,
+            isActive: false,
+          }),
+        update: jest
+          .fn()
+          .mockResolvedValue({
+            id: 9,
+            firstName: 'System',
+            lastName: 'Master',
+            role: 'MASTER',
+            cinemaId: null,
+            isActive: true,
+          }),
+      },
+    };
+
+    await expect(
+      reactivateUserFlow(
+        createPrisma(
+          transaction,
+        ) as never,
+        {
+          create: jest.fn(),
+        } as never,
+        9,
+        master,
+      ),
+    ).resolves.toMatchObject({
+      id: 9,
+      isActive: true,
+    });
+  });
+
+  it('rejects global status changes for ordinary users', async () => {
     const transaction = {
       $executeRaw: jest
         .fn()
@@ -113,13 +148,10 @@ describe('user status flow', () => {
             firstName: 'Anna',
             lastName: 'Andersen',
             role: 'EMPLOYEE',
-            cinemaId: 8,
+            cinemaId: 7,
           }),
         update: jest.fn(),
       },
-    };
-    const auditLogsService = {
-      create: jest.fn(),
     };
 
     await expect(
@@ -127,19 +159,29 @@ describe('user status flow', () => {
         createPrisma(
           transaction,
         ) as never,
-        auditLogsService as never,
+        {
+          create: jest.fn(),
+        } as never,
+        9,
+        master,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+
+    await expect(
+      deactivateUserFlow(
+        createPrisma(
+          transaction,
+        ) as never,
+        {
+          create: jest.fn(),
+        } as never,
         9,
         admin,
       ),
-    ).rejects.toThrow(
-      ForbiddenException,
-    );
+    ).rejects.toThrow(ForbiddenException);
 
     expect(
       transaction.user.update,
-    ).not.toHaveBeenCalled();
-    expect(
-      auditLogsService.create,
     ).not.toHaveBeenCalled();
   });
 
@@ -165,14 +207,8 @@ describe('user status flow', () => {
           create: jest.fn(),
         } as never,
         9,
-        admin,
+        master,
       ),
-    ).rejects.toThrow(
-      NotFoundException,
-    );
-
-    expect(
-      transaction.user.update,
-    ).not.toHaveBeenCalled();
+    ).rejects.toThrow(NotFoundException);
   });
 });

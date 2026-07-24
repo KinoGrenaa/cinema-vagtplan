@@ -10,6 +10,20 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { updateAuthDefaultCinemaFlow } from './helpers/auth-default-cinema-flow';
 
+type SessionRole =
+  | 'MASTER'
+  | 'ADMIN'
+  | 'EMPLOYEE';
+
+type SessionPermissions = {
+  canManageSchedule: boolean;
+  canManageUsers: boolean;
+  canManagePayroll: boolean;
+  canManageLeaveRequests: boolean;
+  canManageCinemaSettings: boolean;
+  canSendBroadcastMessages: boolean;
+};
+
 type SessionUser = {
   id: number;
   email: string;
@@ -26,6 +40,40 @@ type CinemaSummary = {
   logoUrl: string | null;
 };
 
+type SessionMembership =
+  SessionPermissions & {
+    cinemaId: number;
+    role: 'ADMIN' | 'EMPLOYEE';
+    cinema: CinemaSummary;
+  };
+
+const MASTER_PERMISSIONS: SessionPermissions = {
+  canManageSchedule: true,
+  canManageUsers: true,
+  canManagePayroll: true,
+  canManageLeaveRequests: true,
+  canManageCinemaSettings: true,
+  canSendBroadcastMessages: true,
+};
+
+const membershipSessionSelect = {
+  cinemaId: true,
+  role: true,
+  canManageSchedule: true,
+  canManageUsers: true,
+  canManagePayroll: true,
+  canManageLeaveRequests: true,
+  canManageCinemaSettings: true,
+  canSendBroadcastMessages: true,
+  cinema: {
+    select: {
+      id: true,
+      name: true,
+      logoUrl: true,
+    },
+  },
+} as const;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -36,13 +84,45 @@ export class AuthService {
 
   private async createSession(
     user: SessionUser,
-    cinemaId: number | null,
+    membership: SessionMembership | null,
     defaultCinema: CinemaSummary | null,
   ) {
+    const isMaster = user.role === 'MASTER';
+    const role: SessionRole = isMaster
+      ? 'MASTER'
+      : membership?.role ??
+        (() => {
+          throw new ForbiddenException(
+            'Din bruger har ingen aktiv biograftilknytning',
+          );
+        })();
+    const cinemaId = isMaster
+      ? null
+      : membership?.cinemaId ?? null;
+    const permissions = isMaster
+      ? MASTER_PERMISSIONS
+      : {
+          canManageSchedule:
+            membership?.canManageSchedule ?? false,
+          canManageUsers:
+            membership?.canManageUsers ?? false,
+          canManagePayroll:
+            membership?.canManagePayroll ?? false,
+          canManageLeaveRequests:
+            membership?.canManageLeaveRequests ??
+            false,
+          canManageCinemaSettings:
+            membership?.canManageCinemaSettings ??
+            false,
+          canSendBroadcastMessages:
+            membership?.canSendBroadcastMessages ??
+            false,
+        };
+
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role,
+      role,
       cinemaId,
     };
 
@@ -54,125 +134,128 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role,
+        role,
         cinemaId,
         defaultCinemaId:
           user.defaultCinemaId ?? null,
+        ...permissions,
       },
       defaultCinema,
     };
   }
 
-  private async findAccessibleDefaultCinema(
+  private findActiveMembership(
+    userId: number,
+    cinemaId: number,
+  ) {
+    return this.prisma.userCinemaMembership.findFirst({
+      where: {
+        userId,
+        cinemaId,
+        isActive: true,
+      },
+      select: membershipSessionSelect,
+    });
+  }
+
+  private async findAccessibleDefaultMembership(
     user: SessionUser,
-  ): Promise<CinemaSummary | null> {
+  ) {
     const defaultCinemaId =
       user.defaultCinemaId ?? null;
 
-    if (!defaultCinemaId) {
-      return null;
-    }
-
-    if (user.role === 'MASTER') {
-      return this.prisma.cinema.findUnique({
-        where: {
-          id: defaultCinemaId,
-        },
-        select: {
-          id: true,
-          name: true,
-          logoUrl: true,
-        },
-      });
-    }
-
-    const membership =
-      await this.prisma.userCinemaMembership.findFirst(
-        {
-          where: {
-            userId: user.id,
-            cinemaId: defaultCinemaId,
-            isActive: true,
-          },
-          select: {
-            cinema: {
-              select: {
-                id: true,
-                name: true,
-                logoUrl: true,
-              },
-            },
-          },
-        },
-      );
-
-    return membership?.cinema ?? null;
-  }
-
-  private async findPrimaryMembershipCinema(
-    user: SessionUser,
-  ): Promise<CinemaSummary | null> {
     if (
-      !user.cinemaId ||
+      !defaultCinemaId ||
       user.role === 'MASTER'
     ) {
       return null;
     }
 
-    const membership =
-      await this.prisma.userCinemaMembership.findFirst(
-        {
-          where: {
-            userId: user.id,
-            cinemaId: user.cinemaId,
-            isActive: true,
-          },
-          select: {
-            cinema: {
-              select: {
-                id: true,
-                name: true,
-                logoUrl: true,
-              },
-            },
-          },
-        },
-      );
-
-    return membership?.cinema ?? null;
+    return this.findActiveMembership(
+      user.id,
+      defaultCinemaId,
+    );
   }
 
-  private async resolveLoginCinema(
+  private async findFallbackMembership(
     user: SessionUser,
   ) {
-    const selectedDefaultCinema =
-      await this.findAccessibleDefaultCinema(
-        user,
-      );
+    if (
+      user.cinemaId &&
+      user.cinemaId !== user.defaultCinemaId
+    ) {
+      const formerPrimaryMembership =
+        await this.findActiveMembership(
+          user.id,
+          user.cinemaId,
+        );
 
+      if (formerPrimaryMembership) {
+        return formerPrimaryMembership;
+      }
+    }
+
+    return this.prisma.userCinemaMembership.findFirst({
+      where: {
+        userId: user.id,
+        isActive: true,
+      },
+      select: membershipSessionSelect,
+      orderBy: [
+        {
+          cinema: {
+            name: 'asc',
+          },
+        },
+        {
+          cinemaId: 'asc',
+        },
+      ],
+    });
+  }
+
+  private async resolveLoginMembership(
+    user: SessionUser,
+  ) {
     if (user.role === 'MASTER') {
+      const defaultCinemaId =
+        user.defaultCinemaId ?? null;
+      const defaultCinema = defaultCinemaId
+        ? await this.prisma.cinema.findUnique({
+            where: {
+              id: defaultCinemaId,
+            },
+            select: {
+              id: true,
+              name: true,
+              logoUrl: true,
+            },
+          })
+        : null;
+
       return {
-        sessionCinemaId: null,
-        defaultCinema:
-          selectedDefaultCinema,
+        membership: null,
+        defaultCinema,
       };
     }
 
-    if (selectedDefaultCinema) {
-      return {
-        sessionCinemaId:
-          selectedDefaultCinema.id,
-        defaultCinema:
-          selectedDefaultCinema,
-      };
-    }
-
-    const primaryCinema =
-      await this.findPrimaryMembershipCinema(
+    const defaultMembership =
+      await this.findAccessibleDefaultMembership(
         user,
       );
 
-    if (!primaryCinema) {
+    if (defaultMembership) {
+      return {
+        membership: defaultMembership,
+        defaultCinema:
+          defaultMembership.cinema,
+      };
+    }
+
+    const fallbackMembership =
+      await this.findFallbackMembership(user);
+
+    if (!fallbackMembership) {
       throw new ForbiddenException(
         'Din bruger har ingen aktiv biograftilknytning',
       );
@@ -180,20 +263,21 @@ export class AuthService {
 
     if (
       user.defaultCinemaId !==
-      primaryCinema.id
+      fallbackMembership.cinemaId
     ) {
       await updateAuthDefaultCinemaFlow(
         this.prisma,
         user.id,
-        primaryCinema.id,
+        fallbackMembership.cinemaId,
       );
       user.defaultCinemaId =
-        primaryCinema.id;
+        fallbackMembership.cinemaId;
     }
 
     return {
-      sessionCinemaId: primaryCinema.id,
-      defaultCinema: primaryCinema,
+      membership: fallbackMembership,
+      defaultCinema:
+        fallbackMembership.cinema,
     };
   }
 
@@ -214,15 +298,14 @@ export class AuthService {
 
     if (user.isActive === false) {
       throw new UnauthorizedException(
-        'Brugeren er deaktiveret. Kontakt en administrator.',
+        'Brugerkontoen er spærret.\nKontakt en systemadministrator.',
       );
     }
 
-    const passwordValid =
-      await bcrypt.compare(
-        password,
-        user.password,
-      );
+    const passwordValid = await bcrypt.compare(
+      password,
+      user.password,
+    );
 
     if (!passwordValid) {
       throw new UnauthorizedException(
@@ -231,13 +314,13 @@ export class AuthService {
     }
 
     const {
-      sessionCinemaId,
+      membership,
       defaultCinema,
-    } = await this.resolveLoginCinema(user);
+    } = await this.resolveLoginMembership(user);
 
     return this.createSession(
       user,
-      sessionCinemaId,
+      membership,
       defaultCinema,
     );
   }
@@ -246,26 +329,25 @@ export class AuthService {
     userId: number,
     cinemaId: number,
   ) {
-    const user =
-      await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          cinemaId: true,
-          defaultCinemaId: true,
-          isActive: true,
-        },
-      });
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        cinemaId: true,
+        defaultCinemaId: true,
+        isActive: true,
+      },
+    });
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException(
-        'Brugeren er deaktiveret eller findes ikke',
+        'Brugerkontoen er spærret eller findes ikke',
       );
     }
 
@@ -276,70 +358,52 @@ export class AuthService {
     }
 
     const membership =
-      await this.prisma.userCinemaMembership.findFirst(
-        {
-          where: {
-            userId,
-            cinemaId,
-            isActive: true,
-          },
-          select: {
-            cinema: {
-              select: {
-                id: true,
-                name: true,
-                logoUrl: true,
-              },
-            },
-          },
-        },
+      await this.findActiveMembership(
+        userId,
+        cinemaId,
       );
 
     if (!membership) {
       throw new ForbiddenException(
-        'Din bruger har ikke et aktivt medlemskab af denne biograf',
+        'Din bruger har ikke en aktiv tilknytning til denne biograf',
       );
     }
 
-    const defaultCinema =
-      await this.findAccessibleDefaultCinema(
+    const defaultMembership =
+      await this.findAccessibleDefaultMembership(
         user,
       );
-    const session =
-      await this.createSession(
-        user,
-        cinemaId,
-        defaultCinema,
-      );
+    const session = await this.createSession(
+      user,
+      membership,
+      defaultMembership?.cinema ?? null,
+    );
 
     return {
       ...session,
-      selectedCinema:
-        membership.cinema,
+      selectedCinema: membership.cinema,
       isPrimaryCinema:
         user.cinemaId === cinemaId,
       isDefaultCinema:
-        user.defaultCinemaId ===
-        cinemaId,
+        user.defaultCinemaId === cinemaId,
     };
   }
 
   async getDefaultCinemaOptions(
     userId: number,
   ) {
-    const user =
-      await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          id: true,
-          role: true,
-          cinemaId: true,
-          defaultCinemaId: true,
-          isActive: true,
-        },
-      });
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        role: true,
+        cinemaId: true,
+        defaultCinemaId: true,
+        isActive: true,
+      },
+    });
 
     if (!user) {
       throw new NotFoundException(
@@ -349,7 +413,7 @@ export class AuthService {
 
     if (!user.isActive) {
       throw new UnauthorizedException(
-        'Brugeren er deaktiveret',
+        'Brugerkontoen er spærret',
       );
     }
 
@@ -389,8 +453,7 @@ export class AuthService {
               },
             )
           ).map(
-            (membership) =>
-              membership.cinema,
+            (membership) => membership.cinema,
           );
 
     return {
@@ -403,8 +466,7 @@ export class AuthService {
       cinemas: cinemas.map((cinema) => ({
         ...cinema,
         isDefault:
-          cinema.id ===
-          user.defaultCinemaId,
+          cinema.id === user.defaultCinemaId,
         isHomeCinema:
           cinema.id === user.cinemaId,
       })),
@@ -421,8 +483,6 @@ export class AuthService {
       cinemaId,
     );
 
-    return this.getDefaultCinemaOptions(
-      userId,
-    );
+    return this.getDefaultCinemaOptions(userId);
   }
 }

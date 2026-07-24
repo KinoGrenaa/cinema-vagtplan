@@ -1,11 +1,12 @@
-import { ForbiddenException } from '@nestjs/common';
+import {
+  ForbiddenException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
   EmploymentType,
-  ensureCanModifyTargetUser,
   getActorUserId,
   UserRole,
 } from './user-service-helpers';
@@ -14,9 +15,7 @@ import {
   buildUserUpdateData,
   ensureUniqueUserEmail,
   findRequiredUser,
-  validateRoleCinema,
 } from './user-service-data-helpers';
-import { syncPrimaryUserCinemaMembership } from './user-cinema-membership-sync';
 import {
   lockUserWrite,
   withUserDirectoryWriteLock,
@@ -86,20 +85,22 @@ export async function updateUserFlow(
           userId,
         );
 
-        if (currentUser) {
-          ensureCanModifyTargetUser(
-            currentUser,
-            user,
+        if (
+          currentUser?.role !== 'MASTER' ||
+          user.role !== 'MASTER'
+        ) {
+          throw new ForbiddenException(
+            'Almindelige brugere redigeres i den valgte biograf',
           );
+        }
 
-          if (
-            currentUser.role !== 'MASTER' &&
-            data.role === 'MASTER'
-          ) {
-            throw new ForbiddenException(
-              'Kun master kan oprette eller tildele master-rolle',
-            );
-          }
+        if (
+          data.role !== undefined &&
+          data.role !== 'MASTER'
+        ) {
+          throw new ForbiddenException(
+            'MASTER-rollen kan ikke ændres til en biografrolle',
+          );
         }
 
         if (data.email) {
@@ -111,21 +112,11 @@ export async function updateUserFlow(
           );
         }
 
-        const nextRole =
-          data.role || user.role;
-        const nextCinemaId =
-          await validateRoleCinema(
-            transaction,
-            nextRole,
-            nextRole === 'MASTER'
-              ? null
-              : user.cinemaId,
-          );
         const updateData =
           buildUserUpdateData(
             data,
-            nextRole,
-            nextCinemaId,
+            'MASTER',
+            null,
           );
 
         if (hashedPassword !== undefined) {
@@ -133,38 +124,26 @@ export async function updateUserFlow(
             hashedPassword;
         }
 
-        const nextUser =
-          await transaction.user.update({
-            where: {
-              id: userId,
-            },
-            data: updateData,
-          });
-
-        await syncPrimaryUserCinemaMembership(
-          transaction,
-          {
-            userId: nextUser.id,
-            cinemaId:
-              nextUser.cinemaId,
-            isActive:
-              nextUser.isActive,
+        return transaction.user.update({
+          where: {
+            id: userId,
           },
-        );
-
-        return nextUser;
+          data: updateData,
+        });
       },
     );
 
   await auditLogsService.create({
-    action: 'UPDATE_USER',
+    action: 'UPDATE_MASTER_USER',
     entityType: 'User',
     entityId: updatedUser.id,
-    description: `Opdaterede bruger ${updatedUser.firstName} ${updatedUser.lastName}`,
+    description:
+      `Opdaterede MASTER-bruger ` +
+      `${updatedUser.firstName} ${updatedUser.lastName}`,
     userId: getActorUserId(
       currentUser,
     ),
-    cinemaId: updatedUser.cinemaId,
+    cinemaId: null,
   });
 
   return updatedUser;
@@ -191,7 +170,6 @@ export async function updateOwnProfileFlow(
         transaction,
         id,
       );
-
       await findRequiredUser(
         transaction,
         userId,
@@ -207,9 +185,7 @@ export async function updateOwnProfileFlow(
       }
 
       const updateData =
-        buildOwnProfileUpdateData(
-          data,
-        );
+        buildOwnProfileUpdateData(data);
 
       if (hashedPassword !== undefined) {
         updateData.password =
@@ -234,10 +210,7 @@ export async function updateThemeFlow(
   return withUserWriteLock(
     prisma,
     id,
-    (
-      transaction,
-      userId,
-    ) =>
+    (transaction, userId) =>
       transaction.user.update({
         where: {
           id: userId,

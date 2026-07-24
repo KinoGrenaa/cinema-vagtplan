@@ -190,6 +190,9 @@ export default function UsersPage() {
             selectedCinemaIds={
               cinemaMembershipActions.selectedCinemaIds
             }
+            membershipSettings={
+              cinemaMembershipActions.membershipSettings
+            }
             primaryCinemaId={
               cinemaMembershipActions.primaryCinemaId
             }
@@ -208,6 +211,15 @@ export default function UsersPage() {
             }
             onChooseDefaultCinema={
               cinemaMembershipActions.chooseDefaultCinema
+            }
+            onChangeMembershipRole={
+              cinemaMembershipActions.changeMembershipRole
+            }
+            onChangeEmploymentType={
+              cinemaMembershipActions.changeEmploymentType
+            }
+            onToggleMembershipPermission={
+              cinemaMembershipActions.toggleMembershipPermission
             }
             onClose={
               cinemaMembershipActions.closeMembershipModal

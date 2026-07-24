@@ -13,6 +13,11 @@ enum Role {
   EMPLOYEE
 }
 
+enum CinemaRole {
+  ADMIN
+  EMPLOYEE
+}
+
 enum EmploymentType {
   HOURLY
   SALARIED
@@ -243,19 +248,32 @@ model User {
 
 
 model UserCinemaMembership {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cinemaId  Int
-  cinema    Cinema   @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                         Int            @id @default(autoincrement())
+  userId                     Int
+  user                       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cinemaId                   Int
+  cinema                     Cinema         @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  role                       CinemaRole     @default(EMPLOYEE)
+  isActive                   Boolean        @default(true)
+  deactivatedAt              DateTime?
+  employmentType             EmploymentType @default(HOURLY)
+  hireDate                   DateTime?
+  employeeNumber             String?
+  payrollEmployeeId          String?
+  canManageSchedule          Boolean        @default(false)
+  canManageUsers             Boolean        @default(false)
+  canManagePayroll           Boolean        @default(false)
+  canManageLeaveRequests     Boolean        @default(false)
+  canManageCinemaSettings    Boolean        @default(false)
+  canSendBroadcastMessages   Boolean        @default(false)
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
 
   @@unique([userId, cinemaId])
   @@index([userId])
   @@index([cinemaId])
   @@index([isActive])
+  @@index([cinemaId, isActive, role])
 }
 
 model WorkType {
