@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  toast,
+} from "sonner";
+
 import { useEffect, useMemo, useState } from "react";
 import type {
   LeaveRequest,
@@ -14,6 +18,11 @@ import {
   useScheduleJobFunctions,
   type ScheduleJobFunction,
 } from "../../hooks/data/useScheduleJobFunctions";
+import {
+  buildUnassignedJobFunctionShift,
+  formatJobFunctionShiftDuration,
+  getJobFunctionShiftDurationMinutes,
+} from "../../helpers/derived/scheduleJobFunctionShift";
 
 type AiScheduleData = ReturnType<typeof useScheduleAi>;
 
@@ -222,10 +231,15 @@ type ScheduleShiftsPanelProps = {
   canManageShifts: boolean;
   needsMasterCinemaSelection: boolean;
   onOpenStaffingRequest: () => void;
-  onOpenCreateShiftModal: (
-    workTypeId?: number,
-    presetStartMinutes?: number,
-  ) => void;
+  onCreateUnassignedShift: (
+    input: {
+      startTime: string;
+      endTime: string;
+      note: string;
+      userId: null;
+      workTypeId: number;
+    },
+  ) => Promise<void>;
   onPreviousDay: () => void;
   onToday: () => void;
   onDateChange: (
@@ -278,7 +292,7 @@ export default function ScheduleShiftsPanel({
   canManageShifts,
   needsMasterCinemaSelection,
   onOpenStaffingRequest,
-  onOpenCreateShiftModal,
+  onCreateUnassignedShift,
   onPreviousDay,
   onToday,
   onDateChange,
@@ -304,6 +318,16 @@ export default function ScheduleShiftsPanel({
     isPlacingJobFunction,
     setIsPlacingJobFunction,
   ] = useState(false);
+  const [
+    isCreatingJobFunctionShift,
+    setIsCreatingJobFunctionShift,
+  ] = useState(false);
+  const [
+    placementError,
+    setPlacementError,
+  ] = useState<string | null>(
+    null,
+  );
 
   const approvedLeaveConflicts =
     useMemo(
@@ -352,6 +376,12 @@ export default function ScheduleShiftsPanel({
   const selectedWorkTypeId =
     selectedJobFunction
       ? getWorkTypeId(
+          selectedJobFunction,
+        )
+      : null;
+  const selectedDurationMinutes =
+    selectedJobFunction
+      ? getJobFunctionShiftDurationMinutes(
           selectedJobFunction,
         )
       : null;
@@ -405,30 +435,57 @@ export default function ScheduleShiftsPanel({
     );
   }
 
-  function handleOpenJobFunctionForm() {
-    if (!selectedWorkTypeId) {
-      return;
-    }
-
-    setIsPlacingJobFunction(false);
-    onOpenCreateShiftModal(
-      selectedWorkTypeId,
-    );
-  }
-
-  function handleCreateAtTime(
+  async function handleCreateAtTime(
     hour: number,
     minute: number,
   ) {
-    if (!selectedWorkTypeId) {
+    if (
+      !selectedWorkTypeId ||
+      !selectedJobFunction ||
+      isCreatingJobFunctionShift
+    ) {
       return;
     }
 
-    setIsPlacingJobFunction(false);
-    onOpenCreateShiftModal(
-      selectedWorkTypeId,
-      hour * 60 + minute,
+    setPlacementError(null);
+    setIsCreatingJobFunctionShift(
+      true,
     );
+
+    try {
+      await onCreateUnassignedShift(
+        buildUnassignedJobFunctionShift({
+          selectedDate,
+          startMinutes:
+            hour * 60 + minute,
+          workTypeId:
+            selectedWorkTypeId,
+          jobFunction:
+            selectedJobFunction,
+        }),
+      );
+
+      setIsPlacingJobFunction(
+        false,
+      );
+      toast.success(
+        `${selectedJobFunction.name} er oprettet som untildelt vagt`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Vagten kunne ikke oprettes.";
+
+      setPlacementError(message);
+      toast.error(
+        "Vagten kunne ikke oprettes",
+      );
+    } finally {
+      setIsCreatingJobFunctionShift(
+        false,
+      );
+    }
   }
 
   return (
@@ -648,9 +705,10 @@ export default function ScheduleShiftsPanel({
                         ),
                       );
                       setIsPlacingJobFunction(
-                        false,
-                      );
-                    }}
+                  false,
+                );
+                setPlacementError(null);
+              }}
                     disabled={
                       jobFunctionsLoading ||
                       availableJobFunctions.length ===
@@ -706,32 +764,21 @@ export default function ScheduleShiftsPanel({
                       handleToggleJobFunctionPlacement
                     }
                     disabled={
-                      jobFunctionsLoading ||
-                      !selectedWorkTypeId
-                    }
+                jobFunctionsLoading ||
+                !selectedWorkTypeId ||
+                isCreatingJobFunctionShift
+              }
                     className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
                       isPlacingJobFunction
                         ? "bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500"
                         : "bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
                     }`}
                   >
-                    {isPlacingJobFunction
-                      ? "Annuller placering"
-                      : "Placér på tidslinjen"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={
-                      handleOpenJobFunctionForm
-                    }
-                    disabled={
-                      jobFunctionsLoading ||
-                      !selectedWorkTypeId
-                    }
-                    className="rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-950 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:bg-gray-950 dark:text-blue-100 dark:hover:bg-blue-950/60"
-                  >
-                    Åbn vagtformular
+                    {isCreatingJobFunctionShift
+                ? "Opretter..."
+                : isPlacingJobFunction
+                  ? "Annuller placering"
+                  : "Placér untildelt vagt"}
                   </button>
                 </div>
               </div>
@@ -740,15 +787,28 @@ export default function ScheduleShiftsPanel({
                 selectedJobFunction && (
                   <p className="mt-2 rounded-lg bg-blue-100 px-3 py-2 text-xs font-semibold text-blue-950 dark:bg-blue-950/60 dark:text-blue-100">
                     Klik på et tomt
-                    tidspunkt i
-                    tidslinjen for at
-                    placere {
-                      selectedJobFunction.name
-                    }. Starttiden
-                    snapper til nærmeste
-                    kvarter.
+                tidspunkt i tidslinjen
+                for straks at oprette {
+                  selectedJobFunction.name
+                } som untildelt vagt.
+                Starttiden snapper til
+                nærmeste kvarter
+                {selectedDurationMinutes
+                  ? ` · Varighed: ${formatJobFunctionShiftDuration(
+                      selectedDurationMinutes,
+                    )}`
+                  : ""}.
                   </p>
                 )}
+          {placementError && (
+            <p
+              role="alert"
+              className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100"
+            >
+              {placementError}
+            </p>
+          )}
+
 
               {missingWorkTypeCount >
                 0 && (
@@ -785,10 +845,16 @@ export default function ScheduleShiftsPanel({
                 null
               : null
           }
+        createDurationMinutes={
+          isPlacingJobFunction
+            ? selectedDurationMinutes
+            : null
+        }
           onCreateAtTime={
-            isPlacingJobFunction
-              ? handleCreateAtTime
-              : undefined
+            isPlacingJobFunction &&
+          !isCreatingJobFunctionShift
+            ? handleCreateAtTime
+            : undefined
           }
           onSelectShift={
             canManageShifts

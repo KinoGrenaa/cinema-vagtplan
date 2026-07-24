@@ -88,7 +88,7 @@ export default function SchedulePage() {
     setUserId,
     workTypeId,
     setWorkTypeId,
-    openCreateShiftModal,
+
     hideShiftFormModal,
     closeShiftFormModal,
     resetShiftFormForDate,
@@ -277,7 +277,9 @@ export default function SchedulePage() {
               onOpenRegisterTimeModal={openRegisterTimeModal}
               onOpenManualTimeModal={openManualTimeModal}
               onOpenStaffingRequest={() => openStaffingRequestModal(null)}
-              onOpenCreateShiftModal={openCreateShiftModal}
+              onCreateUnassignedShift={
+              createShift
+            }
               onPreviousDay={() => changeDate(-1)}
               onToday={goToToday}
               onDateChange={goToDate}

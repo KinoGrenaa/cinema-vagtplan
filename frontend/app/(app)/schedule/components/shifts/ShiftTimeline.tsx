@@ -23,6 +23,8 @@ type ShiftTimelineProps = {
   users: User[];
   selectedDate: string;
   createAtTimeLabel?: string | null;
+  createDurationMinutes?:
+    number | null;
   onCreateAtTime?: (
     hour: number,
     minute: number,
@@ -148,6 +150,38 @@ function formatMinutes(totalMinutes: number) {
     2,
     "0",
   )}:${String(minute).padStart(2, "0")}`;
+}
+
+function formatCreationRange(
+  startMinutes: number,
+  durationMinutes:
+    | number
+    | null
+    | undefined,
+) {
+  if (!durationMinutes) {
+    return formatMinutes(
+      startMinutes,
+    );
+  }
+
+  const endMinutes =
+    startMinutes +
+    durationMinutes;
+  const endDayOffset =
+    Math.floor(
+      endMinutes / DAY_MINUTES,
+    );
+  const normalizedEnd =
+    endMinutes % DAY_MINUTES;
+
+  return (
+    `${formatMinutes(startMinutes)}–` +
+    `${formatMinutes(normalizedEnd)}` +
+    (endDayOffset > 0
+      ? " (+1 dag)"
+      : "")
+  );
 }
 
 function clampMinutes(value: number) {
@@ -375,6 +409,7 @@ function ShiftTimeline({
   users,
   selectedDate,
   createAtTimeLabel,
+  createDurationMinutes,
   onCreateAtTime,
   onSelectShift,
   onMoveShift,
@@ -707,9 +742,10 @@ function ShiftTimeline({
                   >
                     {createAtTimeLabel ||
                       "Jobfunktion"}{" "}
-                    · {formatMinutes(
-                      creationPreviewMinutes,
-                    )}
+                    · {formatCreationRange(
+                creationPreviewMinutes,
+                createDurationMinutes,
+              )}
                   </div>
                 </div>
               )}

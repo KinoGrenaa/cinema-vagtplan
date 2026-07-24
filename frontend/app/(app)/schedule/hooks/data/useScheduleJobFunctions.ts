@@ -18,6 +18,21 @@ export type ScheduleJobFunction = {
     name: string;
     isActive?: boolean;
   } | null;
+  dayPeriod?: {
+    id: number;
+    name: string;
+    startMinute: number;
+    endMinute: number;
+  } | null;
+  timingRule?: {
+    startAnchor?: string;
+    startFixedMinute?: number | null;
+    fallbackStartMinute?: number | null;
+    endAnchor?: string;
+    endFixedMinute?: number | null;
+    fallbackEndMinute?: number | null;
+    isActive?: boolean;
+  } | null;
 };
 
 function getSelectedMasterCinemaId() {
