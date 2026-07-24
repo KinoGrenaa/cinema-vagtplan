@@ -1,64 +1,276 @@
-import { useCallback, useState } from "react";
+"use client";
 
-import { useConfirm } from "@/app/hooks/useConfirm";
-import { useMessages } from "../../../../hooks/useMessages";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 
+import {
+  useConfirm,
+} from "@/app/hooks/useConfirm";
+
+import {
+  useMessages,
+} from "../../../../hooks/useMessages";
 import {
   getErrorMessage,
   type ErrorDialogState,
 } from "../../helpers/core/inboxMessageHelpers";
+import {
+  parseInboxMessageTarget,
+  type InboxMessageTargetState,
+} from "../../helpers/core/inboxMessageTarget";
 
 export function useInboxMessagesPage() {
-  const confirmDialog = useConfirm();
+  const confirmDialog =
+    useConfirm();
+  const pathname =
+    usePathname();
+  const router =
+    useRouter();
+  const searchParams =
+    useSearchParams();
 
-  const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
-    null,
-  );
-  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
-    open: false,
-    title: "",
-    description: "",
-  });
-
-  const showErrorDialog = useCallback((title: string, description: string) => {
-    setErrorDialog({
-      open: true,
-      title,
-      description,
-    });
-  }, []);
-
-  const closeErrorDialog = useCallback(() => {
-    setErrorDialog({
+  const [
+    expandedMessageId,
+    setExpandedMessageId,
+  ] = useState<
+    number | null
+  >(null);
+  const [
+    errorDialog,
+    setErrorDialog,
+  ] =
+    useState<ErrorDialogState>({
       open: false,
       title: "",
       description: "",
     });
-  }, []);
+  const focusedMessageRef =
+    useRef<number | null>(null);
 
-  const handleMessagesError = useCallback(
-    (message: string) => {
-      showErrorDialog("Kunne ikke hente beskeder", message);
-    },
-    [showErrorDialog],
-  );
+  const messageTarget =
+    parseInboxMessageTarget(
+      searchParams.get(
+        "messageId",
+      ),
+    );
 
-  const { loading, sortedMessages, markAsRead, archive } = useMessages({
+  const showErrorDialog =
+    useCallback(
+      (
+        title: string,
+        description: string,
+      ) => {
+        setErrorDialog({
+          open: true,
+          title,
+          description,
+        });
+      },
+      [],
+    );
+
+  const closeErrorDialog =
+    useCallback(() => {
+      setErrorDialog({
+        open: false,
+        title: "",
+        description: "",
+      });
+    }, []);
+
+  const handleMessagesError =
+    useCallback(
+      (message: string) => {
+        showErrorDialog(
+          "Kunne ikke hente beskeder",
+          message,
+        );
+      },
+      [showErrorDialog],
+    );
+
+  const {
+    loading,
+    sortedMessages,
+    markAsRead,
+    archive,
+  } = useMessages({
     mode: "inbox",
-    onError: handleMessagesError,
+    onError:
+      handleMessagesError,
   });
 
-  function handleOpenMessage(messageId: number, isExpanded: boolean) {
-    const message = sortedMessages.find((current) => current.id === messageId);
+  const targetState:
+    InboxMessageTargetState =
+      messageTarget.invalid
+        ? "invalid"
+        : !messageTarget.messageId
+          ? "idle"
+          : loading
+            ? "loading"
+            : sortedMessages.some(
+                  (message) =>
+                    message.id ===
+                    messageTarget.messageId,
+                )
+              ? "found"
+              : "missing";
 
-    if (!isExpanded && message && !message.isRead) {
-      markAsRead(messageId);
+  useEffect(() => {
+    const messageId =
+      messageTarget.messageId;
+
+    if (
+      !messageId ||
+      loading
+    ) {
+      return;
     }
 
-    setExpandedMessageId(isExpanded ? null : messageId);
+    const message =
+      sortedMessages.find(
+        (current) =>
+          current.id ===
+          messageId,
+      );
+
+    if (!message) {
+      focusedMessageRef.current =
+        null;
+      return;
+    }
+
+    setExpandedMessageId(
+      messageId,
+    );
+
+    if (!message.isRead) {
+      void markAsRead(
+        messageId,
+      );
+    }
+
+    if (
+      focusedMessageRef.current ===
+      messageId
+    ) {
+      return;
+    }
+
+    focusedMessageRef.current =
+      messageId;
+
+    const timeoutId =
+      window.setTimeout(() => {
+        const element =
+          document.getElementById(
+            `inbox-message-${messageId}`,
+          );
+
+        if (!element) {
+          return;
+        }
+
+        element.focus({
+          preventScroll: true,
+        });
+
+        const reduceMotion =
+          window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+
+        element.scrollIntoView({
+          behavior: reduceMotion
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
+      }, 100);
+
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
+  }, [
+    loading,
+    markAsRead,
+    messageTarget.messageId,
+    sortedMessages,
+  ]);
+
+  const clearMessageTarget =
+    useCallback(() => {
+      const params =
+        new URLSearchParams(
+          searchParams.toString(),
+        );
+
+      params.delete(
+        "messageId",
+      );
+
+      const query =
+        params.toString();
+
+      router.replace(
+        query
+          ? `${pathname}?${query}`
+          : pathname,
+        {
+          scroll: false,
+        },
+      );
+
+      focusedMessageRef.current =
+        null;
+    }, [
+      pathname,
+      router,
+      searchParams,
+    ]);
+
+  function handleOpenMessage(
+    messageId: number,
+    isExpanded: boolean,
+  ) {
+    const message =
+      sortedMessages.find(
+        (current) =>
+          current.id ===
+          messageId,
+      );
+
+    if (
+      !isExpanded &&
+      message &&
+      !message.isRead
+    ) {
+      void markAsRead(
+        messageId,
+      );
+    }
+
+    setExpandedMessageId(
+      isExpanded
+        ? null
+        : messageId,
+    );
   }
 
-  function handleArchive(messageId: number) {
+  function handleArchive(
+    messageId: number,
+  ) {
     confirmDialog.confirm({
       title: "Arkiver besked",
       description:
@@ -68,10 +280,24 @@ export function useInboxMessagesPage() {
       confirmVariant: "primary",
       onConfirm: async () => {
         try {
-          await archive(messageId);
+          await archive(
+            messageId,
+          );
 
-          if (expandedMessageId === messageId) {
-            setExpandedMessageId(null);
+          if (
+            expandedMessageId ===
+            messageId
+          ) {
+            setExpandedMessageId(
+              null,
+            );
+          }
+
+          if (
+            messageTarget.messageId ===
+            messageId
+          ) {
+            clearMessageTarget();
           }
         } catch (error) {
           showErrorDialog(
@@ -91,9 +317,13 @@ export function useInboxMessagesPage() {
     loading,
     sortedMessages,
     expandedMessageId,
+    focusedMessageId:
+      messageTarget.messageId,
+    targetState,
     errorDialog,
     handleOpenMessage,
     handleArchive,
+    clearMessageTarget,
     closeErrorDialog,
   };
 }
