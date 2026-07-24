@@ -1,21 +1,56 @@
 "use client";
 
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import Link from "next/link";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
-import { useConfirm } from "@/app/hooks/useConfirm";
-import { useInfoModal } from "@/app/hooks/useInfoModal";
+import {
+  useConfirm,
+} from "@/app/hooks/useConfirm";
+import {
+  useInfoModal,
+} from "@/app/hooks/useInfoModal";
 
 import ShiftTradesHeader from "./components/layout/ShiftTradesHeader";
+import ShiftTradeTargetNotice from "./components/layout/ShiftTradeTargetNotice";
 import ShiftTradesHistorySection from "./components/list/ShiftTradesHistorySection";
 import ShiftTradesOpenSection from "./components/list/ShiftTradesOpenSection";
-import { useShiftTradeActions } from "./hooks/actions/useShiftTradeActions";
-import { useShiftTradesData } from "./hooks/data/useShiftTradesData";
+import {
+  parseShiftTradeTarget,
+  type ShiftTradeTargetState,
+} from "./helpers/core/shiftTradeTarget";
+import {
+  useShiftTradeActions,
+} from "./hooks/actions/useShiftTradeActions";
+import {
+  useShiftTradesData,
+} from "./hooks/data/useShiftTradesData";
 
 export default function ShiftTradesPage() {
-  const confirmModal = useConfirm();
-  const infoDialog = useInfoModal();
+  const confirmModal =
+    useConfirm();
+  const infoDialog =
+    useInfoModal();
+  const pathname =
+    usePathname();
+  const router =
+    useRouter();
+  const searchParams =
+    useSearchParams();
+  const focusedTradeRef =
+    useRef<number | null>(null);
+
   const {
     user,
     apiFetch,
@@ -28,9 +63,14 @@ export default function ShiftTradesPage() {
     historyTrades,
     hasShiftConflict,
     needsMasterCinemaSelection,
-  } = useShiftTradesData({ infoDialog });
+  } = useShiftTradesData({
+    infoDialog,
+  });
 
-  const { acceptTrade, rejectTrade } = useShiftTradeActions({
+  const {
+    acceptTrade,
+    rejectTrade,
+  } = useShiftTradeActions({
     apiFetch,
     user,
     confirmModal,
@@ -38,6 +78,137 @@ export default function ShiftTradesPage() {
     fetchTrades,
     setMessage,
   });
+
+  const tradeTarget =
+    parseShiftTradeTarget(
+      searchParams.get(
+        "tradeId",
+      ),
+    );
+
+  const visibleTradeIds =
+    useMemo(
+      () =>
+        new Set(
+          [
+            ...directTrades,
+            ...poolTrades,
+            ...historyTrades,
+          ].map(
+            (trade) =>
+              trade.id,
+          ),
+        ),
+      [
+        directTrades,
+        historyTrades,
+        poolTrades,
+      ],
+    );
+
+  const targetState:
+    ShiftTradeTargetState =
+      tradeTarget.invalid
+        ? "invalid"
+        : !tradeTarget.tradeId
+          ? "idle"
+          : loading
+            ? "loading"
+            : visibleTradeIds.has(
+                  tradeTarget.tradeId,
+                )
+              ? "found"
+              : "missing";
+
+  useEffect(() => {
+    const tradeId =
+      tradeTarget.tradeId;
+
+    if (
+      !tradeId ||
+      targetState !== "found"
+    ) {
+      focusedTradeRef.current =
+        null;
+      return;
+    }
+
+    if (
+      focusedTradeRef.current ===
+      tradeId
+    ) {
+      return;
+    }
+
+    focusedTradeRef.current =
+      tradeId;
+
+    const timeoutId =
+      window.setTimeout(() => {
+        const element =
+          document.getElementById(
+            `shift-trade-${tradeId}`,
+          );
+
+        if (!element) {
+          return;
+        }
+
+        element.focus({
+          preventScroll: true,
+        });
+
+        const reduceMotion =
+          window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+
+        element.scrollIntoView({
+          behavior: reduceMotion
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
+      }, 100);
+
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
+  }, [
+    targetState,
+    tradeTarget.tradeId,
+  ]);
+
+  const clearTradeTarget =
+    useCallback(() => {
+      const params =
+        new URLSearchParams(
+          searchParams.toString(),
+        );
+
+      params.delete("tradeId");
+
+      const query =
+        params.toString();
+
+      router.replace(
+        query
+          ? `${pathname}?${query}`
+          : pathname,
+        {
+          scroll: false,
+        },
+      );
+
+      focusedTradeRef.current =
+        null;
+    }, [
+      pathname,
+      router,
+      searchParams,
+    ]);
 
   if (loading) {
     return (
@@ -57,7 +228,9 @@ export default function ShiftTradesPage() {
                 Henter vagtbytter
               </p>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Vagtpuljen og dine direkte tilbud indlæses.
+                Vagtpuljen og dine
+                direkte tilbud
+                indlæses.
               </p>
             </div>
           </div>
@@ -66,20 +239,26 @@ export default function ShiftTradesPage() {
     );
   }
 
-  if (needsMasterCinemaSelection) {
+  if (
+    needsMasterCinemaSelection
+  ) {
     return (
       <main className="min-h-screen bg-gray-100 px-4 py-8 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:px-8">
         <div className="mx-auto max-w-5xl">
           <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm transition-colors dark:border-amber-900/70 dark:bg-amber-950/35">
             <p className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-              Ingen aktiv biograf valgt
+              Ingen aktiv biograf
+              valgt
             </p>
             <h1 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
-              Vælg en biograf for at se vagtpuljen
+              Vælg en biograf for at
+              se vagtpuljen
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-700 dark:text-gray-300">
-              Som MASTER skal du vælge en aktiv biograf, før vagtbytter kan
-              vises eller behandles.
+              Som MASTER skal du vælge
+              en aktiv biograf, før
+              vagtbytter kan vises
+              eller behandles.
             </p>
             <Link
               href="/master"
@@ -97,48 +276,109 @@ export default function ShiftTradesPage() {
     <>
       <main className="min-h-screen bg-gray-100 px-4 py-8 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:px-8">
         <div className="mx-auto max-w-5xl space-y-6">
-          <ShiftTradesHeader message={message} />
+          <ShiftTradesHeader
+            message={message}
+          />
+
+          <ShiftTradeTargetNotice
+            state={targetState}
+            tradeId={
+              tradeTarget.tradeId
+            }
+            onClear={
+              clearTradeTarget
+            }
+          />
 
           <ShiftTradesOpenSection
             title="Direkte tilbud"
             trades={directTrades}
             emptyText="Du har ingen direkte vagtbytter lige nu."
-            onAccept={acceptTrade}
-            onReject={rejectTrade}
-            hasShiftConflict={hasShiftConflict}
+            onAccept={
+              acceptTrade
+            }
+            onReject={
+              rejectTrade
+            }
+            hasShiftConflict={
+              hasShiftConflict
+            }
+            focusedTradeId={
+              tradeTarget.tradeId
+            }
           />
 
           <ShiftTradesOpenSection
             title="Åbne vagter i puljen"
             trades={poolTrades}
             emptyText="Der er ingen åbne vagter i vagtpuljen lige nu."
-            onAccept={acceptTrade}
-            hasShiftConflict={hasShiftConflict}
+            onAccept={
+              acceptTrade
+            }
+            hasShiftConflict={
+              hasShiftConflict
+            }
+            focusedTradeId={
+              tradeTarget.tradeId
+            }
           />
 
-          <ShiftTradesHistorySection trades={historyTrades} />
+          <ShiftTradesHistorySection
+            trades={
+              historyTrades
+            }
+            focusedTradeId={
+              tradeTarget.tradeId
+            }
+          />
         </div>
       </main>
 
       <ConfirmModal
-        open={confirmModal.open}
-        title={confirmModal.title}
-        description={confirmModal.description}
-        confirmText={confirmModal.confirmText}
-        cancelText={confirmModal.cancelText}
-        confirmVariant={confirmModal.confirmVariant}
-        loading={confirmModal.loading}
-        onConfirm={confirmModal.handleConfirm}
-        onCancel={confirmModal.handleCancel}
+        open={
+          confirmModal.open
+        }
+        title={
+          confirmModal.title
+        }
+        description={
+          confirmModal.description
+        }
+        confirmText={
+          confirmModal.confirmText
+        }
+        cancelText={
+          confirmModal.cancelText
+        }
+        confirmVariant={
+          confirmModal.confirmVariant
+        }
+        loading={
+          confirmModal.loading
+        }
+        onConfirm={
+          confirmModal.handleConfirm
+        }
+        onCancel={
+          confirmModal.handleCancel
+        }
       />
 
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
-        description={infoDialog.description}
-        buttonText={infoDialog.buttonText}
-        variant={infoDialog.variant}
-        onClose={infoDialog.close}
+        description={
+          infoDialog.description
+        }
+        buttonText={
+          infoDialog.buttonText
+        }
+        variant={
+          infoDialog.variant
+        }
+        onClose={
+          infoDialog.close
+        }
       />
     </>
   );
