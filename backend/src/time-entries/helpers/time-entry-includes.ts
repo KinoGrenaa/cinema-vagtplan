@@ -1,4 +1,8 @@
 import {
+  PayrollAdjustmentStatus,
+} from '@prisma/client';
+
+import {
   getCinemaDeviationSelect,
 } from './time-entry-deviation';
 
@@ -14,9 +18,14 @@ const payrollPeriodContextSelect = {
   endDate: true,
 } as const;
 
-const pendingPayrollAdjustmentsInclude = {
+const payrollAdjustmentsInclude = {
   where: {
-    status: 'PENDING',
+    status: {
+      in: [
+        PayrollAdjustmentStatus.PENDING,
+        PayrollAdjustmentStatus.INCLUDED,
+      ] as PayrollAdjustmentStatus[],
+    },
   },
   orderBy: {
     createdAt: 'desc',
@@ -24,9 +33,15 @@ const pendingPayrollAdjustmentsInclude = {
   select: {
     id: true,
     type: true,
+    status: true,
     minutesDelta: true,
+    exportedMinutes: true,
+    adjustedMinutes: true,
+    previousMinutes: true,
+    newMinutes: true,
     reason: true,
     createdAt: true,
+    includedAt: true,
     originalPayrollPeriod: {
       select:
         payrollPeriodContextSelect,
@@ -34,6 +49,13 @@ const pendingPayrollAdjustmentsInclude = {
     settlementPayrollPeriod: {
       select:
         payrollPeriodContextSelect,
+    },
+    createdByUser: {
+      select: {
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
     },
   },
 } as const;
@@ -68,7 +90,7 @@ export function getTimeEntryResponseInclude() {
         payrollPeriodContextSelect,
     },
     payrollAdjustments:
-      pendingPayrollAdjustmentsInclude,
+      payrollAdjustmentsInclude,
   } as const;
 }
 

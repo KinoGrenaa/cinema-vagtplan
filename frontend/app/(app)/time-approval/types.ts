@@ -1,3 +1,7 @@
+import type {
+  PayrollAdjustmentHistoryItem,
+} from "../../components/time-entries/PayrollAdjustmentHistoryPanel";
+
 export type TimeEntryStatus =
   | "PENDING"
   | "NEEDS_CHANGES"
@@ -60,6 +64,8 @@ export type TimeEntry = {
     reason: string;
     createdAt: string;
   }[];
+  payrollAdjustmentHistory?:
+    PayrollAdjustmentHistoryItem[];
   payrollExportContext?:
     PayrollExportContext | null;
   deviation?: TimeEntryDeviation;

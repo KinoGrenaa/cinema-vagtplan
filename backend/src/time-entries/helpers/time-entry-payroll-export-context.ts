@@ -6,10 +6,28 @@ type PayrollPeriodContext = {
 };
 
 type PayrollAdjustmentContext = {
+  id: number;
+  type: string;
+  status: string;
+  minutesDelta: number;
+  exportedMinutes: number;
+  adjustedMinutes: number;
+  previousMinutes?:
+    number | null;
+  newMinutes?:
+    number | null;
+  reason: string;
+  createdAt: Date;
+  includedAt?: Date | null;
   originalPayrollPeriod?:
     PayrollPeriodContext | null;
   settlementPayrollPeriod?:
     PayrollPeriodContext | null;
+  createdByUser?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
 };
 
 function toPeriodSummary(
@@ -42,20 +60,70 @@ function findExportedPeriod(
   ) ?? null;
 }
 
+function toAdjustmentHistoryItem(
+  adjustment:
+    PayrollAdjustmentContext,
+) {
+  return {
+    id: adjustment.id,
+    type: adjustment.type,
+    status: adjustment.status,
+    minutesDelta:
+      adjustment.minutesDelta,
+    exportedMinutes:
+      adjustment.exportedMinutes,
+    adjustedMinutes:
+      adjustment.adjustedMinutes,
+    previousMinutes:
+      adjustment.previousMinutes ??
+      null,
+    newMinutes:
+      adjustment.newMinutes ??
+      null,
+    reason: adjustment.reason,
+    createdAt:
+      adjustment.createdAt,
+    includedAt:
+      adjustment.includedAt ??
+      null,
+    originalPayrollPeriod:
+      toPeriodSummary(
+        adjustment
+          .originalPayrollPeriod,
+      ),
+    settlementPayrollPeriod:
+      toPeriodSummary(
+        adjustment
+          .settlementPayrollPeriod,
+      ),
+    createdByUser:
+      adjustment.createdByUser ??
+      null,
+  };
+}
+
 export function withTimeEntryPayrollExportContext<
   T extends Record<string, any>,
 >(entry: T) {
+  const adjustmentHistory =
+    (
+      Array.isArray(
+        entry.payrollAdjustments,
+      )
+        ? entry.payrollAdjustments
+        : []
+    ) as PayrollAdjustmentContext[];
+
   const pendingAdjustments =
-    Array.isArray(
-      entry.payrollAdjustments,
-    )
-      ? entry.payrollAdjustments
-      : [];
+    adjustmentHistory.filter(
+      (adjustment) =>
+        adjustment.status ===
+        'PENDING',
+    );
 
   const newestAdjustment =
-    pendingAdjustments[0] as
-      | PayrollAdjustmentContext
-      | undefined;
+    pendingAdjustments[0] ??
+    adjustmentHistory[0];
 
   const originalPayrollPeriod =
     findExportedPeriod([
@@ -65,9 +133,19 @@ export function withTimeEntryPayrollExportContext<
       entry.originalPayrollPeriod,
     ]);
 
+  const baseEntry = {
+    ...entry,
+    payrollAdjustments:
+      pendingAdjustments,
+    payrollAdjustmentHistory:
+      adjustmentHistory.map(
+        toAdjustmentHistoryItem,
+      ),
+  };
+
   if (!originalPayrollPeriod) {
     return {
-      ...entry,
+      ...baseEntry,
       payrollExportContext: null,
     };
   }
@@ -79,7 +157,7 @@ export function withTimeEntryPayrollExportContext<
     null;
 
   return {
-    ...entry,
+    ...baseEntry,
     payrollExportContext: {
       originalPayrollPeriod:
         toPeriodSummary(

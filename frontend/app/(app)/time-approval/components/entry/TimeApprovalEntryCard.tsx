@@ -7,7 +7,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 
-import PayrollAdjustmentNotice from "../../../../components/time-entries/PayrollAdjustmentNotice";
+import PayrollAdjustmentHistoryPanel from "../../../../components/time-entries/PayrollAdjustmentHistoryPanel";
 
 import {
   parseTimeApprovalEntryTarget,
@@ -250,11 +250,10 @@ export default function TimeApprovalEntryCard({
             />
           )}
 
-          <PayrollAdjustmentNotice
-            adjustments={
-              entry.payrollAdjustments
+          <PayrollAdjustmentHistoryPanel
+            items={
+              entry.payrollAdjustmentHistory
             }
-            audience="manager"
           />
 
           <div className="grid gap-2 text-sm">

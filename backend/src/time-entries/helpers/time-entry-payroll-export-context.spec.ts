@@ -28,6 +28,41 @@ const openPeriod = {
     ),
 };
 
+function adjustment(
+  overrides:
+    Record<string, unknown> = {},
+) {
+  return {
+    id: 8,
+    type:
+      'EDIT_AFTER_EXPORT',
+    status: 'PENDING',
+    minutesDelta: 90,
+    exportedMinutes: 360,
+    adjustedMinutes: 450,
+    previousMinutes: 360,
+    newMinutes: 450,
+    reason:
+      'EDIT_AFTER_EXPORT',
+    createdAt:
+      new Date(
+        '2026-07-24T08:00:00.000Z',
+      ),
+    includedAt: null,
+    originalPayrollPeriod:
+      exportedPeriod,
+    settlementPayrollPeriod:
+      openPeriod,
+    createdByUser: {
+      firstName: 'Admin',
+      lastName: 'Test',
+      email:
+        'admin@example.com',
+    },
+    ...overrides,
+  };
+}
+
 describe(
   'time entry payroll export context',
   () => {
@@ -40,6 +75,8 @@ describe(
           payrollAdjustments: [],
         }),
       ).toMatchObject({
+        payrollAdjustments: [],
+        payrollAdjustmentHistory: [],
         payrollExportContext: {
           originalPayrollPeriod: {
             id: 4,
@@ -54,54 +91,110 @@ describe(
       });
     });
 
-    it('uses pending adjustment periods when an adjustment already exists', () => {
+    it('keeps only pending items in the compact notice and every item in history', () => {
+      const pending =
+        adjustment();
+      const included =
+        adjustment({
+          id: 9,
+          status: 'INCLUDED',
+          minutesDelta: -30,
+          includedAt:
+            new Date(
+              '2026-08-21T09:00:00.000Z',
+            ),
+        });
+
+      const result =
+        withTimeEntryPayrollExportContext({
+          id: 11,
+          payrollPeriod:
+            openPeriod,
+          payrollAdjustments: [
+            pending,
+            included,
+          ],
+        });
+
+      expect(
+        result.payrollAdjustments,
+      ).toEqual([
+        pending,
+      ]);
+      expect(
+        result.payrollAdjustmentHistory,
+      ).toEqual([
+        expect.objectContaining({
+          id: 8,
+          status: 'PENDING',
+          originalPayrollPeriod: {
+            id: 4,
+            startDate:
+              exportedPeriod.startDate,
+            endDate:
+              exportedPeriod.endDate,
+          },
+          settlementPayrollPeriod: {
+            id: 5,
+            startDate:
+              openPeriod.startDate,
+            endDate:
+              openPeriod.endDate,
+          },
+        }),
+        expect.objectContaining({
+          id: 9,
+          status: 'INCLUDED',
+          includedAt:
+            new Date(
+              '2026-08-21T09:00:00.000Z',
+            ),
+        }),
+      ]);
+      expect(
+        result.payrollExportContext,
+      ).toMatchObject({
+        originalPayrollPeriod: {
+          id: 4,
+        },
+        adjustmentPayrollPeriod: {
+          id: 5,
+        },
+        hasPendingAdjustment:
+          true,
+      });
+    });
+
+    it('uses an included adjustment when no pending adjustment exists', () => {
       expect(
         withTimeEntryPayrollExportContext({
           id: 11,
           payrollPeriod:
             openPeriod,
           payrollAdjustments: [
-            {
-              id: 8,
-              originalPayrollPeriod:
-                exportedPeriod,
-              settlementPayrollPeriod:
-                openPeriod,
-            },
+            adjustment({
+              status: 'INCLUDED',
+              includedAt:
+                new Date(
+                  '2026-08-21T09:00:00.000Z',
+                ),
+            }),
           ],
         }),
       ).toMatchObject({
+        payrollAdjustments: [],
+        payrollAdjustmentHistory: [
+          {
+            id: 8,
+            status: 'INCLUDED',
+          },
+        ],
         payrollExportContext: {
           originalPayrollPeriod: {
             id: 4,
-          },
-          adjustmentPayrollPeriod: {
-            id: 5,
           },
           hasPendingAdjustment:
-            true,
-        },
-      });
-    });
-
-    it('uses the original period on adjustment entries', () => {
-      expect(
-        withTimeEntryPayrollExportContext({
-          id: 11,
-          originalPayrollPeriod:
-            exportedPeriod,
-          adjustmentPayrollPeriod:
-            openPeriod,
-          payrollAdjustments: [],
-        }),
-      ).toMatchObject({
-        payrollExportContext: {
-          originalPayrollPeriod: {
-            id: 4,
-          },
-          adjustmentPayrollPeriod: {
-            id: 5,
-          },
+            false,
         },
       });
     });
@@ -115,6 +208,7 @@ describe(
           payrollAdjustments: [],
         }),
       ).toMatchObject({
+        payrollAdjustmentHistory: [],
         payrollExportContext: null,
       });
     });

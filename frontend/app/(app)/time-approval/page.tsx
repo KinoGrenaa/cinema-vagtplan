@@ -317,6 +317,10 @@ export default function TimeApprovalPage() {
         onClose={closeHistory}
         revisions={historyItems}
         currentStatus={historyEntry?.status}
+        payrollAdjustments={
+          historyEntry
+            ?.payrollAdjustmentHistory
+        }
       />
 
       <PayrollAdjustmentConfirmationModal
