@@ -82,6 +82,7 @@ async function readLoginError(response: Response) {
   }
 
   const normalizedMessage = serverMessage.toLowerCase();
+
   const isWrongCredentials =
     response.status === 400 ||
     response.status === 401 ||
@@ -112,10 +113,14 @@ export default function HomePage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
-  const { login, loading: authLoading, token, user } =
-    useAuth();
-  const infoDialog = useInfoModal();
 
+  const {
+    login,
+    loading: authLoading,
+    token,
+    user,
+  } = useAuth();
+  const infoDialog = useInfoModal();
   const isAuthenticated = Boolean(token && user);
 
   useEffect(() => {
@@ -166,7 +171,6 @@ export default function HomePage() {
         data.user.role,
         data.defaultCinema,
       );
-
       window.location.href = "/dashboard";
     } catch {
       infoDialog.showError(
@@ -180,20 +184,20 @@ export default function HomePage() {
 
   return (
     <>
-      <main className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-10 rounded-xl shadow-lg w-full max-w-md">
-          <h1 className="text-3xl font-bold mb-6 text-center">
+      <main className="flex min-h-screen items-center justify-center bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-10 shadow-lg transition-colors dark:border-gray-800 dark:bg-gray-900">
+          <h1 className="mb-6 text-center text-3xl font-bold text-gray-950 dark:text-white">
             Cinema Vagtplan
           </h1>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block mb-1 font-medium">
+              <label className="mb-1 block font-medium">
                 Email
               </label>
               <input
                 type="email"
-                className="w-full border rounded-lg px-4 py-2"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
                 value={email}
                 onChange={(event) =>
                   setEmail(event.target.value)
@@ -202,12 +206,12 @@ export default function HomePage() {
             </div>
 
             <div>
-              <label className="block mb-1 font-medium">
-                Password
+              <label className="mb-1 block font-medium">
+                Adgangskode
               </label>
               <input
                 type="password"
-                className="w-full border rounded-lg px-4 py-2"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
                 value={password}
                 onChange={(event) =>
                   setPassword(event.target.value)
@@ -218,7 +222,7 @@ export default function HomePage() {
             <button
               type="submit"
               disabled={loginLoading}
-              className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 disabled:bg-gray-400"
+              className="w-full rounded-lg bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:text-gray-700 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
             >
               {loginLoading ? "Logger ind..." : "Log ind"}
             </button>

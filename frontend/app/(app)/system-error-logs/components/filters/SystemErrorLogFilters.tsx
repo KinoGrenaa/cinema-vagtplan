@@ -73,7 +73,6 @@ export default function SystemErrorLogFilters({
         >
           Aktive
         </button>
-
         <button
           type="button"
           onClick={onShowNew}
@@ -84,7 +83,6 @@ export default function SystemErrorLogFilters({
         >
           Nye
         </button>
-
         <button
           type="button"
           onClick={onShowCritical}
@@ -95,7 +93,6 @@ export default function SystemErrorLogFilters({
         >
           Kritiske
         </button>
-
         <button
           type="button"
           onClick={onShowAll}
@@ -113,27 +110,23 @@ export default function SystemErrorLogFilters({
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Status
           </label>
-
           <select
             value={statusFilter}
             onChange={(event) =>
               onStatusFilterChange(
-                event.target
-                  .value as StatusFilter,
+                event.target.value as StatusFilter,
               )
             }
             className={fieldClass}
           >
-            {statusOptions.map(
-              (option) => (
-                <option
-                  key={option.label}
-                  value={option.value}
-                >
-                  {option.label}
-                </option>
-              ),
-            )}
+            {statusOptions.map((option) => (
+              <option
+                key={option.label}
+                value={option.value}
+              >
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -141,27 +134,23 @@ export default function SystemErrorLogFilters({
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Niveau
           </label>
-
           <select
             value={severityFilter}
             onChange={(event) =>
               onSeverityFilterChange(
-                event.target
-                  .value as SeverityFilter,
+                event.target.value as SeverityFilter,
               )
             }
             className={fieldClass}
           >
-            {severityOptions.map(
-              (option) => (
-                <option
-                  key={option.label}
-                  value={option.value}
-                >
-                  {option.label}
-                </option>
-              ),
-            )}
+            {severityOptions.map((option) => (
+              <option
+                key={option.label}
+                value={option.value}
+              >
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -169,15 +158,11 @@ export default function SystemErrorLogFilters({
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Biograf-ID
           </label>
-
           <input
             value={cinemaIdFilter}
             onChange={(event) =>
               onCinemaIdFilterChange(
-                event.target.value.replace(
-                  /\D/g,
-                  "",
-                ),
+                event.target.value.replace(/\D/g, ""),
               )
             }
             inputMode="numeric"
@@ -190,7 +175,6 @@ export default function SystemErrorLogFilters({
           <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Correlation-id
           </label>
-
           <input
             value={correlationIdFilter}
             onChange={(event) =>
@@ -207,7 +191,7 @@ export default function SystemErrorLogFilters({
           <button
             type="button"
             onClick={onReset}
-            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
+            className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Nulstil filter
           </button>

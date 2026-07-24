@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ChevronDown, Menu, X } from "lucide-react";
-
 import { useRealtimeBadges } from "@/app/hooks/useRealtimeBadges";
 import { useAuth } from "@/app/providers/AuthProvider";
 import {
@@ -379,7 +378,6 @@ export default function AppMenu() {
                       }
 
                       const childActive = child.href === pathname;
-
                       return (
                         <Link
                           key={child.href}
@@ -407,7 +405,7 @@ export default function AppMenu() {
           <button
             type="button"
             onClick={logout}
-            className="w-full rounded-2xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-200 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
+            className="w-full rounded-2xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-200 active:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
           >
             Log ud
           </button>
