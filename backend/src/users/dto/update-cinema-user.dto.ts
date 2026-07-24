@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -29,6 +30,18 @@ export class UpdateCinemaUserDto {
 
   @IsEnum(EmploymentType)
   employmentType: EmploymentType;
+
+  @IsOptional()
+  @IsDateString()
+  hireDate?: string | null;
+
+  @IsOptional()
+  @IsString()
+  employeeNumber?: string | null;
+
+  @IsOptional()
+  @IsString()
+  payrollEmployeeId?: string | null;
 
   @IsBoolean()
   canManageSchedule: boolean;

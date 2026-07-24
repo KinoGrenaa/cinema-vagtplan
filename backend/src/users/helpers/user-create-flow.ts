@@ -30,6 +30,9 @@ export type CreateUserInput = {
   phone?: string;
   role?: UserRole;
   employmentType?: EmploymentType;
+  hireDate?: string | null;
+  employeeNumber?: string | null;
+  payrollEmployeeId?: string | null;
   cinemaId?: number | null;
   canManageSchedule?: boolean;
   canManageUsers?: boolean;
@@ -75,6 +78,12 @@ function buildCinemaUserResponse(
     role: membership.role,
     employmentType:
       membership.employmentType,
+    hireDate:
+      membership.hireDate ?? null,
+    employeeNumber:
+      membership.employeeNumber ?? null,
+    payrollEmployeeId:
+      membership.payrollEmployeeId ?? null,
     cinemaId,
     isActive: membership.isActive,
     deactivatedAt:
@@ -95,6 +104,20 @@ function buildCinemaUserResponse(
   };
 }
 
+function normalizeOptionalText(
+  value: string | null | undefined,
+) {
+  const normalized = value?.trim() ?? '';
+
+  return normalized || null;
+}
+
+function normalizeOptionalDate(
+  value: string | null | undefined,
+) {
+  return value ? new Date(value) : null;
+}
+
 function buildMembershipData(
   role: UserRole,
   data: CreateUserInput,
@@ -109,6 +132,15 @@ function buildMembershipData(
     employmentType:
       (data.employmentType ??
         'HOURLY') as PrismaEmploymentType,
+    hireDate: normalizeOptionalDate(
+      data.hireDate,
+    ),
+    employeeNumber: normalizeOptionalText(
+      data.employeeNumber,
+    ),
+    payrollEmployeeId: normalizeOptionalText(
+      data.payrollEmployeeId,
+    ),
     ...permissions,
     isActive: true,
     deactivatedAt: null,
@@ -130,6 +162,15 @@ function buildLegacyUserData(
     role,
     employmentType:
       data.employmentType ?? 'HOURLY',
+    hireDate: normalizeOptionalDate(
+      data.hireDate,
+    ),
+    employeeNumber: normalizeOptionalText(
+      data.employeeNumber,
+    ),
+    payrollEmployeeId: normalizeOptionalText(
+      data.payrollEmployeeId,
+    ),
     cinemaId,
     defaultCinemaId: cinemaId,
     ...getCreatePermissionData(role, data),

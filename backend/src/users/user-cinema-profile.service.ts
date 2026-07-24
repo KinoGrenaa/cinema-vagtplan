@@ -55,6 +55,28 @@ function resolveCinemaId(
   return actor.cinemaId;
 }
 
+function normalizeOptionalText(
+  value: string | null | undefined,
+) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const normalized = value?.trim() ?? '';
+
+  return normalized || null;
+}
+
+function normalizeOptionalDate(
+  value: string | null | undefined,
+) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value ? new Date(value) : null;
+}
+
 function getMembershipData(
   body: UpdateCinemaUserDto,
 ) {
@@ -79,6 +101,15 @@ function getMembershipData(
   return {
     role: body.role,
     employmentType: body.employmentType,
+    hireDate: normalizeOptionalDate(
+      body.hireDate,
+    ),
+    employeeNumber: normalizeOptionalText(
+      body.employeeNumber,
+    ),
+    payrollEmployeeId: normalizeOptionalText(
+      body.payrollEmployeeId,
+    ),
     ...permissions,
   };
 }
@@ -210,6 +241,9 @@ export class UserCinemaProfileService {
               select: {
                 role: true,
                 employmentType: true,
+                hireDate: true,
+                employeeNumber: true,
+                payrollEmployeeId: true,
                 isActive: true,
                 deactivatedAt: true,
                 canManageSchedule: true,
@@ -245,6 +279,12 @@ export class UserCinemaProfileService {
       role: result.membership.role,
       employmentType:
         result.membership.employmentType,
+      hireDate:
+        result.membership.hireDate,
+      employeeNumber:
+        result.membership.employeeNumber,
+      payrollEmployeeId:
+        result.membership.payrollEmployeeId,
       isActive:
         result.membership.isActive,
       deactivatedAt:

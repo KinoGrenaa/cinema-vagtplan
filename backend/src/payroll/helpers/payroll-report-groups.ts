@@ -7,12 +7,17 @@ export function createPayrollReportEmployeeGroup(
   userId: number,
   user: PayrollReportUser,
 ): PayrollReportEmployeeGroup {
+  const membership =
+    user.cinemaMemberships?.[0] ?? null;
+
   return {
     userId,
     name: `${user.firstName} ${user.lastName}`,
     email: user.email,
-    employeeNumber: user.employeeNumber,
-    payrollEmployeeId: user.payrollEmployeeId,
+    employeeNumber:
+      membership?.employeeNumber ?? null,
+    payrollEmployeeId:
+      membership?.payrollEmployeeId ?? null,
     totalHours: 0,
     adjustmentHours: 0,
     deviationCount: 0,
@@ -23,12 +28,18 @@ export function createPayrollReportEmployeeGroup(
 }
 
 export function getOrCreatePayrollReportEmployeeGroup(
-  grouped: Map<number, PayrollReportEmployeeGroup>,
+  grouped: Map<any, any>,
   userId: number,
   user: PayrollReportUser,
 ) {
   if (!grouped.has(userId)) {
-    grouped.set(userId, createPayrollReportEmployeeGroup(userId, user));
+    grouped.set(
+      userId,
+      createPayrollReportEmployeeGroup(
+        userId,
+        user,
+      ),
+    );
   }
 
   return grouped.get(userId);

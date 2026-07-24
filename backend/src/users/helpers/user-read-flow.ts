@@ -30,6 +30,9 @@ async function findCinemaUsers(
         select: {
           role: true,
           employmentType: true,
+          hireDate: true,
+          employeeNumber: true,
+          payrollEmployeeId: true,
           isActive: true,
           deactivatedAt: true,
           canManageSchedule: true,
@@ -67,6 +70,11 @@ async function findCinemaUsers(
         role: membership.role,
         employmentType:
           membership.employmentType,
+        hireDate: membership.hireDate,
+        employeeNumber:
+          membership.employeeNumber,
+        payrollEmployeeId:
+          membership.payrollEmployeeId,
         isActive: membership.isActive,
         deactivatedAt:
           membership.deactivatedAt,

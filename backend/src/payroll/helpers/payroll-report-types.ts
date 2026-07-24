@@ -7,8 +7,11 @@ export type PayrollReportUser = {
   firstName: string;
   lastName: string;
   email: string;
-  employeeNumber: string | null;
-  payrollEmployeeId: string | null;
+  cinemaMemberships?: Array<{
+    hireDate: Date | null;
+    employeeNumber: string | null;
+    payrollEmployeeId: string | null;
+  }>;
 };
 
 export type PayrollReportEmployeeGroup = {

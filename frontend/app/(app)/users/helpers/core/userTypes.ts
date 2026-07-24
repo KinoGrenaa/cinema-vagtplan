@@ -22,6 +22,9 @@ export type User = {
   phone?: string | null;
   role: UserRole;
   employmentType?: EmploymentType;
+  hireDate?: string | null;
+  employeeNumber?: string | null;
+  payrollEmployeeId?: string | null;
   isActive?: boolean;
   deactivatedAt?: string | null;
   canManageSchedule?: boolean;
@@ -47,6 +50,9 @@ export type UserFormData = {
   phone?: string;
   role: UserRole;
   employmentType: EmploymentType;
+  hireDate: string;
+  employeeNumber: string;
+  payrollEmployeeId: string;
   canManageSchedule: boolean;
   canManageUsers: boolean;
   canManagePayroll: boolean;
@@ -63,6 +69,9 @@ export const emptyUser: UserFormData = {
   phone: "",
   role: "EMPLOYEE",
   employmentType: "HOURLY",
+  hireDate: "",
+  employeeNumber: "",
+  payrollEmployeeId: "",
   canManageSchedule: false,
   canManageUsers: false,
   canManagePayroll: false,

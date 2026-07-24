@@ -146,6 +146,15 @@ export function useUserFormActions({
             employmentType:
               normalizedNewUser.employmentType ||
               "HOURLY",
+            hireDate:
+              normalizedNewUser.hireDate ||
+              null,
+            employeeNumber:
+              normalizedNewUser.employeeNumber.trim() ||
+              null,
+            payrollEmployeeId:
+              normalizedNewUser.payrollEmployeeId.trim() ||
+              null,
             cinemaId:
               normalizedNewUser.role ===
               "MASTER"
@@ -218,6 +227,15 @@ export function useUserFormActions({
             employmentType:
               normalizedEditingUser.employmentType ||
               "HOURLY",
+            hireDate:
+              normalizedEditingUser.hireDate ||
+              null,
+            employeeNumber:
+              normalizedEditingUser.employeeNumber?.trim() ||
+              null,
+            payrollEmployeeId:
+              normalizedEditingUser.payrollEmployeeId?.trim() ||
+              null,
             canManageSchedule:
               normalizedEditingUser.canManageSchedule ||
               false,
