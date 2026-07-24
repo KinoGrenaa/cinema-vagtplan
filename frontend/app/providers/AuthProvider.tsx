@@ -157,6 +157,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           </div>
         </div>
       </BaseModal>
+
+      <style jsx global>{`
+        button:not(:disabled):not([class*="active:"]):active {
+          translate: 0 1px;
+          filter: brightness(0.94);
+        }
+
+        button:not([class*="focus-visible:"]):not([class*="focus:"]):focus-visible {
+          outline: 2px solid rgb(37 99 235);
+          outline-offset: 2px;
+        }
+
+        .dark
+          button:not([class*="focus-visible:"]):not([class*="focus:"]):focus-visible {
+          outline-color: rgb(96 165 250);
+        }
+
+        button:disabled:not([class*="disabled:"]):not(
+            [class*="cursor-not-allowed"]
+          ):not([class*="opacity-"]) {
+          cursor: not-allowed;
+          opacity: 0.55;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          button:not(:disabled):not([class*="active:"]):active {
+            translate: none;
+          }
+        }
+      `}</style>
     </AuthContext.Provider>
   );
 }
