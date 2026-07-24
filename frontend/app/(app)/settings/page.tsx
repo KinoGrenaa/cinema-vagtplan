@@ -55,21 +55,32 @@ export default function SettingsPage() {
     );
   }
 
+  const showDefaultCinemaSection =
+    currentUser.role === "MASTER"
+      ? Boolean(
+          defaultCinemaOptions &&
+            defaultCinemaOptions.cinemas.length > 1,
+        )
+      : !cinemaMembershipsLoading &&
+        cinemaMemberships.length > 1;
+
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-4xl space-y-6">
         <SettingsHeader />
 
-        <DefaultCinemaSection
-          options={defaultCinemaOptions}
-          selectedCinemaId={selectedDefaultCinemaId}
-          loading={defaultCinemaLoading}
-          saving={defaultCinemaSaving}
-          error={defaultCinemaError}
-          message={defaultCinemaMessage}
-          onSelectedCinemaIdChange={setSelectedDefaultCinemaId}
-          onSave={saveDefaultCinema}
-        />
+        {showDefaultCinemaSection && (
+          <DefaultCinemaSection
+            options={defaultCinemaOptions}
+            selectedCinemaId={selectedDefaultCinemaId}
+            loading={defaultCinemaLoading}
+            saving={defaultCinemaSaving}
+            error={defaultCinemaError}
+            message={defaultCinemaMessage}
+            onSelectedCinemaIdChange={setSelectedDefaultCinemaId}
+            onSave={saveDefaultCinema}
+          />
+        )}
 
         {currentUser.role !== "MASTER" && (
           <CinemaMembershipsSection

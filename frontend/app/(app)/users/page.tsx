@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-
 import PermissionGuard from "@/app/components/access/PermissionGuard";
+
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
@@ -28,7 +28,8 @@ import styles from "./UsersPageContent.module.css";
 export default function UsersPage() {
   const confirmDialog = useConfirm();
   const infoDialog = useInfoModal();
-  const [showInactive, setShowInactive] = useState(false);
+  const [showInactive, setShowInactive] =
+    useState(false);
 
   const {
     users,
@@ -71,7 +72,10 @@ export default function UsersPage() {
     },
   });
 
-  const { deactivateUser, reactivateUser } = useUserStatusActions({
+  const {
+    deactivateUser,
+    reactivateUser,
+  } = useUserStatusActions({
     setUsers,
     confirm: confirmDialog.confirm,
     showError: (title, description) => {
@@ -79,32 +83,43 @@ export default function UsersPage() {
     },
   });
 
-  const cinemaMembershipActions = useUserCinemaMembershipActions({
-    showError: (title, description) => {
-      infoDialog.showError(title, description);
-    },
-  });
+  const cinemaMembershipActions =
+    useUserCinemaMembershipActions({
+      showError: (title, description) => {
+        infoDialog.showError(title, description);
+      },
+    });
 
-  const masterUserActions = useMasterUserActions({
-    setMasterUsers,
-    confirm: confirmDialog.confirm,
-    showError: (title, description) => {
-      infoDialog.showError(title, description);
-    },
-  });
+  const masterUserActions =
+    useMasterUserActions({
+      setMasterUsers,
+      confirm: confirmDialog.confirm,
+      showError: (title, description) => {
+        infoDialog.showError(title, description);
+      },
+    });
 
   const visibleUsers = showInactive
     ? users
-    : users.filter((user) => user.isActive !== false);
-  const currentUserId = currentUser?.id ?? currentUser?.sub ?? null;
+    : users.filter(
+        (user) => user.isActive !== false,
+      );
+  const currentUserId =
+    currentUser?.id ?? currentUser?.sub ?? null;
 
   if (loading) {
     return (
       <PermissionGuard permission="canManageUsers">
         <main className={styles.page}>
           <div className={styles.content}>
-            <div className={styles.loadingCard} role="status">
-              <span className={styles.spinner} aria-hidden="true" />
+            <div
+              className={styles.loadingCard}
+              role="status"
+            >
+              <span
+                className={styles.spinner}
+                aria-hidden="true"
+              />
               <span>Indlæser brugere...</span>
             </div>
           </div>
@@ -120,11 +135,15 @@ export default function UsersPage() {
           <UsersHeader
             showInactive={showInactive}
             setShowInactive={setShowInactive}
-            needsMasterCinemaSelection={needsMasterCinemaSelection}
+            needsMasterCinemaSelection={
+              needsMasterCinemaSelection
+            }
             onCreateClick={openCreateUserModal}
           />
 
-          {needsMasterCinemaSelection && <UsersMasterCinemaRequired />}
+          {needsMasterCinemaSelection && (
+            <UsersMasterCinemaRequired />
+          )}
 
           {showCreate && (
             <UserModal
@@ -154,29 +173,58 @@ export default function UsersPage() {
               form={masterUserActions.form}
               saving={masterUserActions.saving}
               onChange={masterUserActions.setForm}
-              onClose={masterUserActions.closeModal}
+              onClose={
+                masterUserActions.closeModal
+              }
               onSave={masterUserActions.save}
             />
           )}
 
           <UserCinemaMembershipModal
-            user={cinemaMembershipActions.selectedUser}
-            cinemas={cinemaMembershipActions.cinemas}
-            selectedCinemaIds={cinemaMembershipActions.selectedCinemaIds}
-            primaryCinemaId={cinemaMembershipActions.primaryCinemaId}
-            defaultCinemaId={cinemaMembershipActions.defaultCinemaId}
-            loading={cinemaMembershipActions.loading}
-            saving={cinemaMembershipActions.saving}
+            user={
+              cinemaMembershipActions.selectedUser
+            }
+            cinemas={
+              cinemaMembershipActions.cinemas
+            }
+            selectedCinemaIds={
+              cinemaMembershipActions.selectedCinemaIds
+            }
+            primaryCinemaId={
+              cinemaMembershipActions.primaryCinemaId
+            }
+            defaultCinemaId={
+              cinemaMembershipActions.defaultCinemaId
+            }
+            loading={
+              cinemaMembershipActions.loading
+            }
+            saving={
+              cinemaMembershipActions.saving
+            }
             error={cinemaMembershipActions.error}
-            onToggleCinema={cinemaMembershipActions.toggleCinema}
-            onClose={cinemaMembershipActions.closeMembershipModal}
-            onSave={cinemaMembershipActions.saveMemberships}
+            onToggleCinema={
+              cinemaMembershipActions.toggleCinema
+            }
+            onChooseDefaultCinema={
+              cinemaMembershipActions.chooseDefaultCinema
+            }
+            onClose={
+              cinemaMembershipActions.closeMembershipModal
+            }
+            onSave={
+              cinemaMembershipActions.saveMemberships
+            }
           />
 
           <UsersTable
             visibleUsers={visibleUsers}
-            needsMasterCinemaSelection={needsMasterCinemaSelection}
-            canManageCinemaMemberships={currentUser?.role === "MASTER"}
+            needsMasterCinemaSelection={
+              needsMasterCinemaSelection
+            }
+            canManageCinemaMemberships={
+              currentUser?.role === "MASTER"
+            }
             onEdit={openEditUserModal}
             onManageCinemaMemberships={
               cinemaMembershipActions.openMembershipModal
@@ -191,10 +239,16 @@ export default function UsersPage() {
               loading={loadingMasterUsers}
               currentUserId={currentUserId}
               showInactive={showInactive}
-              onCreate={masterUserActions.openCreate}
+              onCreate={
+                masterUserActions.openCreate
+              }
               onEdit={masterUserActions.openEdit}
-              onDeactivate={masterUserActions.deactivate}
-              onReactivate={masterUserActions.reactivate}
+              onDeactivate={
+                masterUserActions.deactivate
+              }
+              onReactivate={
+                masterUserActions.reactivate
+              }
             />
           )}
 
@@ -204,9 +258,13 @@ export default function UsersPage() {
             description={confirmDialog.description}
             confirmText={confirmDialog.confirmText}
             cancelText={confirmDialog.cancelText}
-            confirmVariant={confirmDialog.confirmVariant}
+            confirmVariant={
+              confirmDialog.confirmVariant
+            }
             loading={confirmDialog.loading}
-            onConfirm={confirmDialog.handleConfirm}
+            onConfirm={
+              confirmDialog.handleConfirm
+            }
             onCancel={confirmDialog.handleCancel}
           />
 

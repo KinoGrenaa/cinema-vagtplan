@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -10,6 +9,7 @@ import { findUserCinemaMemberships } from './helpers/user-cinema-membership-read
 import {
   findManagedUserCinemaMemberships,
   updateManagedUserCinemaMemberships,
+  updateManagedUserDefaultCinema,
 } from './helpers/user-cinema-membership-management';
 import {
   findAllUsers,
@@ -68,7 +68,10 @@ export class UsersService {
   }
 
   async findOwnCinemaMemberships(id: number) {
-    return findUserCinemaMemberships(this.prisma, id);
+    return findUserCinemaMemberships(
+      this.prisma,
+      id,
+    );
   }
 
   async findManagedCinemaMemberships(id: number) {
@@ -88,6 +91,20 @@ export class UsersService {
       this.auditLogsService,
       id,
       cinemaIds,
+      currentUser,
+    );
+  }
+
+  async updateManagedDefaultCinema(
+    id: number,
+    cinemaId: number,
+    currentUser: AuthUser,
+  ) {
+    return updateManagedUserDefaultCinema(
+      this.prisma,
+      this.auditLogsService,
+      id,
+      cinemaId,
       currentUser,
     );
   }
@@ -118,7 +135,10 @@ export class UsersService {
     );
   }
 
-  async deleteUser(id: number, currentUser?: AuthUser) {
+  async deleteUser(
+    id: number,
+    currentUser?: AuthUser,
+  ) {
     return deactivateUserFlow(
       this.prisma,
       this.auditLogsService,
@@ -143,10 +163,21 @@ export class UsersService {
     id: number,
     data: UpdateOwnProfileInput,
   ) {
-    return updateOwnProfileFlow(this.prisma, id, data);
+    return updateOwnProfileFlow(
+      this.prisma,
+      id,
+      data,
+    );
   }
 
-  async updateTheme(id: number, theme: string) {
-    return updateThemeFlow(this.prisma, id, theme);
+  async updateTheme(
+    id: number,
+    theme: string,
+  ) {
+    return updateThemeFlow(
+      this.prisma,
+      id,
+      theme,
+    );
   }
 }

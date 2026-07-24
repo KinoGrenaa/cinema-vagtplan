@@ -39,8 +39,7 @@ export default function CinemaMembershipsSection({
 }: CinemaMembershipsSectionProps) {
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900">
-      <h2 className="text-2xl font-bold">Mine biograftilknytninger</h2>
-
+      <h2 className="text-2xl font-bold">Mine biografer</h2>
       <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-slate-300">
         Den aktive biograf bestemmer, hvilke data og
         realtime-opdateringer du arbejder med i denne session.
@@ -103,21 +102,13 @@ export default function CinemaMembershipsSection({
                       <h3 className="truncate text-lg font-bold">
                         {membership.cinema.name}
                       </h3>
-
                       <div className="mt-2 flex flex-wrap gap-2">
                         {isCurrent && (
                           <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
                             Aktiv nu
                           </span>
                         )}
-
-                        {membership.isHomeCinema && (
-                          <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-800 dark:bg-slate-700 dark:text-slate-100">
-                            Hjemmebiograf
-                          </span>
-                        )}
                       </div>
-
                       <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
                         Biograf-ID: {membership.cinemaId}
                       </p>

@@ -20,14 +20,19 @@ type ManagedMembershipResponse = {
 };
 
 type UseUserCinemaMembershipActionsOptions = {
-  showError: (title: string, description: string) => void;
+  showError: (
+    title: string,
+    description: string,
+  ) => void;
 };
 
 async function readErrorMessage(
   response: Response,
   fallback: string,
 ) {
-  const payload = await response.json().catch(() => null);
+  const payload = await response
+    .json()
+    .catch(() => null);
 
   if (typeof payload?.message === "string") {
     return payload.message;
@@ -71,7 +76,9 @@ export function useUserCinemaMembershipActions({
       const [cinemasResponse, membershipsResponse] =
         await Promise.all([
           apiFetch("/cinemas"),
-          apiFetch(`/users/${user.id}/cinema-memberships`),
+          apiFetch(
+            `/users/${user.id}/cinema-memberships`,
+          ),
         ]);
 
       if (!cinemasResponse.ok) {
@@ -92,32 +99,35 @@ export function useUserCinemaMembershipActions({
         );
       }
 
-      const cinemasPayload = await cinemasResponse.json();
+      const cinemasPayload =
+        await cinemasResponse.json();
       const membershipsPayload =
         (await membershipsResponse.json()) as ManagedMembershipResponse;
 
-      const nextCinemas: UserCinemaOption[] = Array.isArray(
-        cinemasPayload,
-      )
-        ? cinemasPayload
-            .map((cinema) => ({
-              id: Number(cinema.id),
-              name: String(cinema.name ?? ""),
-              logoUrl:
-                typeof cinema.logoUrl === "string"
-                  ? cinema.logoUrl
-                  : null,
-            }))
-            .filter(
-              (cinema) =>
-                Number.isInteger(cinema.id) &&
-                cinema.id > 0 &&
-                cinema.name.trim() !== "",
-            )
-            .sort((first, second) =>
-              first.name.localeCompare(second.name, "da"),
-            )
-        : [];
+      const nextCinemas: UserCinemaOption[] =
+        Array.isArray(cinemasPayload)
+          ? cinemasPayload
+              .map((cinema) => ({
+                id: Number(cinema.id),
+                name: String(cinema.name ?? ""),
+                logoUrl:
+                  typeof cinema.logoUrl === "string"
+                    ? cinema.logoUrl
+                    : null,
+              }))
+              .filter(
+                (cinema) =>
+                  Number.isInteger(cinema.id) &&
+                  cinema.id > 0 &&
+                  cinema.name.trim() !== "",
+              )
+              .sort((first, second) =>
+                first.name.localeCompare(
+                  second.name,
+                  "da",
+                ),
+              )
+          : [];
 
       const nextPrimaryCinemaId =
         membershipsPayload.user.cinemaId ??
@@ -129,14 +139,21 @@ export function useUserCinemaMembershipActions({
         );
       const nextSelectedCinemaIds =
         nextPrimaryCinemaId &&
-        !membershipCinemaIds.includes(nextPrimaryCinemaId)
-          ? [...membershipCinemaIds, nextPrimaryCinemaId]
+        !membershipCinemaIds.includes(
+          nextPrimaryCinemaId,
+        )
+          ? [
+              ...membershipCinemaIds,
+              nextPrimaryCinemaId,
+            ]
           : membershipCinemaIds;
 
       setCinemas(nextCinemas);
       setPrimaryCinemaId(nextPrimaryCinemaId);
       setDefaultCinemaId(
-        membershipsPayload.user.defaultCinemaId ?? null,
+        membershipsPayload.user.defaultCinemaId ??
+          nextSelectedCinemaIds[0] ??
+          null,
       );
       setSelectedCinemaIds(
         Array.from(new Set(nextSelectedCinemaIds)),
@@ -170,15 +187,36 @@ export function useUserCinemaMembershipActions({
   }
 
   function toggleCinema(cinemaId: number) {
-    if (cinemaId === primaryCinemaId) {
+    setSelectedCinemaIds((current) => {
+      const next = current.includes(cinemaId)
+        ? current.filter((id) => id !== cinemaId)
+        : [...current, cinemaId];
+
+      setDefaultCinemaId((currentDefault) => {
+        if (next.length === 0) {
+          return null;
+        }
+
+        if (
+          currentDefault !== null &&
+          next.includes(currentDefault)
+        ) {
+          return currentDefault;
+        }
+
+        return next[0] ?? null;
+      });
+
+      return next;
+    });
+  }
+
+  function chooseDefaultCinema(cinemaId: number) {
+    if (!selectedCinemaIds.includes(cinemaId)) {
       return;
     }
 
-    setSelectedCinemaIds((current) =>
-      current.includes(cinemaId)
-        ? current.filter((id) => id !== cinemaId)
-        : [...current, cinemaId],
-    );
+    setDefaultCinemaId(cinemaId);
   }
 
   async function saveMemberships() {
@@ -189,7 +227,7 @@ export function useUserCinemaMembershipActions({
     try {
       setSaving(true);
 
-      const response = await apiFetch(
+      const membershipsResponse = await apiFetch(
         `/users/${selectedUser.id}/cinema-memberships`,
         {
           method: "PATCH",
@@ -199,13 +237,37 @@ export function useUserCinemaMembershipActions({
         },
       );
 
-      if (!response.ok) {
+      if (!membershipsResponse.ok) {
         throw new Error(
           await readErrorMessage(
-            response,
+            membershipsResponse,
             "Biograftilknytningerne kunne ikke gemmes.",
           ),
         );
+      }
+
+      if (
+        selectedCinemaIds.length > 0 &&
+        defaultCinemaId !== null
+      ) {
+        const defaultResponse = await apiFetch(
+          `/users/${selectedUser.id}/default-cinema`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              cinemaId: defaultCinemaId,
+            }),
+          },
+        );
+
+        if (!defaultResponse.ok) {
+          throw new Error(
+            await readErrorMessage(
+              defaultResponse,
+              "Standardbiografen kunne ikke gemmes.",
+            ),
+          );
+        }
       }
 
       resetMembershipModal();
@@ -233,6 +295,7 @@ export function useUserCinemaMembershipActions({
     openMembershipModal,
     closeMembershipModal,
     toggleCinema,
+    chooseDefaultCinema,
     saveMemberships,
   };
 }

@@ -67,9 +67,7 @@ async function findMembershipTarget(
 
 function formatManagedMemberships(
   user: Awaited<
-    ReturnType<
-      typeof findMembershipTarget
-    >
+    ReturnType<typeof findMembershipTarget>
   >,
 ) {
   return {
@@ -79,8 +77,7 @@ function formatManagedMemberships(
       lastName: user.lastName,
       role: user.role,
       cinemaId: user.cinemaId,
-      defaultCinemaId:
-        user.defaultCinemaId,
+      defaultCinemaId: user.defaultCinemaId,
       isActive: user.isActive,
     },
     memberships: user.cinemaMemberships
@@ -88,19 +85,13 @@ function formatManagedMemberships(
         id: membership.id,
         cinemaId: membership.cinemaId,
         isPrimary:
-          membership.cinemaId ===
-          user.cinemaId,
+          membership.cinemaId === user.cinemaId,
         createdAt: membership.createdAt,
         cinema: membership.cinema,
       }))
       .sort((first, second) => {
-        if (
-          first.isPrimary !==
-          second.isPrimary
-        ) {
-          return first.isPrimary
-            ? -1
-            : 1;
+        if (first.isPrimary !== second.isPrimary) {
+          return first.isPrimary ? -1 : 1;
         }
 
         return first.cinema.name.localeCompare(
@@ -129,10 +120,36 @@ function normalizeManagedCinemaIds(
         ),
       ),
     ),
-  ).sort(
-    (first, second) =>
-      first - second,
-  );
+  ).sort((first, second) => first - second);
+}
+
+function resolveNextAccountCinemaId(
+  user: Awaited<
+    ReturnType<typeof findMembershipTarget>
+  >,
+  normalizedCinemaIds: number[],
+) {
+  if (normalizedCinemaIds.length === 0) {
+    return null;
+  }
+
+  if (
+    user.cinemaId &&
+    normalizedCinemaIds.includes(user.cinemaId)
+  ) {
+    return user.cinemaId;
+  }
+
+  if (
+    user.defaultCinemaId &&
+    normalizedCinemaIds.includes(
+      user.defaultCinemaId,
+    )
+  ) {
+    return user.defaultCinemaId;
+  }
+
+  return normalizedCinemaIds[0] ?? null;
 }
 
 async function applyManagedMemberships(
@@ -140,11 +157,10 @@ async function applyManagedMemberships(
   userId: number,
   normalizedCinemaIds: number[],
 ) {
-  const user =
-    await findMembershipTarget(
-      transaction,
-      userId,
-    );
+  const user = await findMembershipTarget(
+    transaction,
+    userId,
+  );
 
   if (user.role === 'MASTER') {
     throw new BadRequestException(
@@ -152,112 +168,95 @@ async function applyManagedMemberships(
     );
   }
 
-  if (!user.cinemaId) {
-    throw new BadRequestException(
-      'Brugeren mangler en hjemmebiograf',
-    );
-  }
-
-  if (
-    !normalizedCinemaIds.includes(
-      user.cinemaId,
-    )
-  ) {
-    throw new BadRequestException(
-      'Brugerens hjemmebiograf skal forblive et aktivt medlemskab',
-    );
-  }
-
-  const cinemas =
-    await transaction.cinema.findMany({
-      where: {
-        id: {
-          in: normalizedCinemaIds,
-        },
+  const cinemas = await transaction.cinema.findMany({
+    where: {
+      id: {
+        in: normalizedCinemaIds,
       },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
 
-  if (
-    cinemas.length !==
-    normalizedCinemaIds.length
-  ) {
+  if (cinemas.length !== normalizedCinemaIds.length) {
     throw new BadRequestException(
       'En eller flere valgte biografer findes ikke',
     );
   }
 
-  const shouldResetDefaultCinema =
-    user.defaultCinemaId !== null &&
-    !normalizedCinemaIds.includes(
-      user.defaultCinemaId,
-    );
-
-  await transaction.userCinemaMembership.updateMany(
-    {
-      where: {
-        userId,
-        cinemaId: {
-          notIn: normalizedCinemaIds,
-        },
-        isActive: true,
-      },
-      data: {
-        isActive: false,
-      },
-    },
+  const nextCinemaId = resolveNextAccountCinemaId(
+    user,
+    normalizedCinemaIds,
   );
+  const nextDefaultCinemaId =
+    user.defaultCinemaId !== null &&
+    normalizedCinemaIds.includes(
+      user.defaultCinemaId,
+    )
+      ? user.defaultCinemaId
+      : nextCinemaId;
+  const defaultCinemaChanged =
+    user.defaultCinemaId !== nextDefaultCinemaId;
+
+  await transaction.userCinemaMembership.updateMany({
+    where: {
+      userId,
+      isActive: true,
+      ...(normalizedCinemaIds.length > 0
+        ? {
+            cinemaId: {
+              notIn: normalizedCinemaIds,
+            },
+          }
+        : {}),
+    },
+    data: {
+      isActive: false,
+    },
+  });
 
   for (const cinemaId of normalizedCinemaIds) {
-    await transaction.userCinemaMembership.upsert(
-      {
-        where: {
-          userId_cinemaId: {
-            userId,
-            cinemaId,
-          },
-        },
-        create: {
+    await transaction.userCinemaMembership.upsert({
+      where: {
+        userId_cinemaId: {
           userId,
           cinemaId,
-          isActive: true,
-        },
-        update: {
-          isActive: true,
         },
       },
-    );
-  }
-
-  if (shouldResetDefaultCinema) {
-    await transaction.user.update({
-      where: {
-        id: userId,
+      create: {
+        userId,
+        cinemaId,
+        isActive: true,
       },
-      data: {
-        defaultCinemaId:
-          user.cinemaId,
+      update: {
+        isActive: true,
       },
     });
   }
 
-  const updatedUser =
-    await findMembershipTarget(
-      transaction,
-      userId,
-    );
+  await transaction.user.update({
+    where: {
+      id: userId,
+    },
+    data: {
+      cinemaId: nextCinemaId,
+      defaultCinemaId: nextDefaultCinemaId,
+    },
+  });
+
+  const updatedUser = await findMembershipTarget(
+    transaction,
+    userId,
+  );
 
   return {
-    formatted:
-      formatManagedMemberships(
-        updatedUser,
-      ),
+    formatted: formatManagedMemberships(updatedUser),
     user,
     cinemas,
-    shouldResetDefaultCinema,
+    defaultCinemaChanged,
+    auditCinemaId: nextCinemaId ?? user.cinemaId,
   };
 }
 
@@ -265,11 +264,10 @@ export async function findManagedUserCinemaMemberships(
   prisma: PrismaService,
   userId: number,
 ) {
-  const user =
-    await findMembershipTarget(
-      prisma,
-      userId,
-    );
+  const user = await findMembershipTarget(
+    prisma,
+    userId,
+  );
 
   return formatManagedMemberships(user);
 }
@@ -282,49 +280,132 @@ export async function updateManagedUserCinemaMemberships(
   currentUser: AuthUser,
 ) {
   const normalizedCinemaIds =
-    normalizeManagedCinemaIds(
-      cinemaIds,
-    );
-  const result =
-    await withUserWriteLock(
-      prisma,
-      userId,
-      (
+    normalizeManagedCinemaIds(cinemaIds);
+
+  const result = await withUserWriteLock(
+    prisma,
+    userId,
+    (transaction, lockedUserId) =>
+      applyManagedMemberships(
         transaction,
         lockedUserId,
-      ) =>
-        applyManagedMemberships(
-          transaction,
-          lockedUserId,
-          normalizedCinemaIds,
-        ),
+        normalizedCinemaIds,
+      ),
+  );
+
+  const cinemaNames = result.cinemas
+    .map((cinema) => cinema.name)
+    .sort((first, second) =>
+      first.localeCompare(second, 'da'),
     );
 
   await auditLogsService.create({
-    action:
-      'UPDATE_USER_CINEMA_MEMBERSHIPS',
+    action: 'UPDATE_USER_CINEMA_MEMBERSHIPS',
     entityType: 'User',
     entityId: result.user.id,
     description:
       `Opdaterede biograftilknytninger for ${result.user.firstName} ${result.user.lastName}: ` +
-      `${result.cinemas
-        .map((cinema) => cinema.name)
-        .sort((first, second) =>
-          first.localeCompare(
-            second,
-            'da',
-          ),
-        )
-        .join(', ')}` +
       `${
-        result.shouldResetDefaultCinema
-          ? '. Standardbiograf blev nulstillet til hjemmebiografen.'
+        cinemaNames.length > 0
+          ? cinemaNames.join(', ')
+          : 'ingen aktive biografer'
+      }` +
+      `${
+        result.defaultCinemaChanged
+          ? '. Standardbiograf blev opdateret automatisk.'
           : ''
       }`,
-    userId: getActorUserId(
-      currentUser,
-    ),
-    cinemaId: result.user.cinemaId,
+    userId: getActorUserId(currentUser),
+    cinemaId: result.auditCinemaId,
+  });
+
+  return result.formatted;
+}
+
+export async function updateManagedUserDefaultCinema(
+  prisma: PrismaService,
+  auditLogsService: AuditLogsService,
+  userId: number,
+  cinemaIdValue: unknown,
+  currentUser: AuthUser,
+) {
+  const cinemaId = parseRequiredPositiveInteger(
+    cinemaIdValue,
+    'Standardbiograf skal være et gyldigt ID',
+  );
+
+  const result = await withUserWriteLock(
+    prisma,
+    userId,
+    async (transaction, lockedUserId) => {
+      const user = await findMembershipTarget(
+        transaction,
+        lockedUserId,
+      );
+
+      if (user.role === 'MASTER') {
+        throw new BadRequestException(
+          'MASTER-brugere bruger MASTER-panelets biografvalg',
+        );
+      }
+
+      const membership =
+        await transaction.userCinemaMembership.findFirst({
+          where: {
+            userId: lockedUserId,
+            cinemaId,
+            isActive: true,
+          },
+          select: {
+            id: true,
+            cinema: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        });
+
+      if (!membership) {
+        throw new BadRequestException(
+          'Standardbiografen skal være en aktiv biograftilknytning',
+        );
+      }
+
+      await transaction.user.update({
+        where: {
+          id: lockedUserId,
+        },
+        data: {
+          defaultCinemaId: cinemaId,
+        },
+      });
+
+      const updatedUser =
+        await findMembershipTarget(
+          transaction,
+          lockedUserId,
+        );
+
+      return {
+        formatted:
+          formatManagedMemberships(updatedUser),
+        user,
+        cinema: membership.cinema,
+      };
+    },
+  );
+
+  await auditLogsService.create({
+    action: 'UPDATE_USER_DEFAULT_CINEMA',
+    entityType: 'User',
+    entityId: result.user.id,
+    description:
+      `Ændrede standardbiograf for ${result.user.firstName} ${result.user.lastName} ` +
+      `til ${result.cinema.name}.`,
+    userId: getActorUserId(currentUser),
+    cinemaId: result.cinema.id,
   });
 
   return result.formatted;

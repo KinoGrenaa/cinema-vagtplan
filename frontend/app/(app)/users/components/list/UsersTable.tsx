@@ -36,7 +36,9 @@ export default function UsersTable({
             <th className="p-4">Rolle</th>
             <th className="p-4">Ansættelse</th>
             <th className="p-4">Status</th>
-            <th className="p-4 text-right">Handlinger</th>
+            <th className="p-4 text-right">
+              Handlinger
+            </th>
           </tr>
         </thead>
 
@@ -80,9 +82,6 @@ export default function UsersTable({
                     {!user.isHomeCinema && (
                       <div className="mt-1 text-xs font-normal text-purple-700 dark:text-purple-300">
                         Tilknyttet denne biograf
-                        {user.cinema?.name
-                          ? ` · Hjemmebiograf: ${user.cinema.name}`
-                          : ""}
                       </div>
                     )}
                   </td>
@@ -99,6 +98,7 @@ export default function UsersTable({
                       user.employmentType,
                     )}
                   </td>
+
                   <td className="p-4">
                     {user.isActive === false ? (
                       <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
@@ -147,7 +147,8 @@ export default function UsersTable({
                         </>
                       ) : (
                         <span className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
-                          Administreres af hjemmebiografen
+                          Kontooplysninger administreres
+                          af en anden biograf
                         </span>
                       )}
 
@@ -156,7 +157,9 @@ export default function UsersTable({
                           <button
                             type="button"
                             onClick={() =>
-                              onManageCinemaMemberships(user)
+                              onManageCinemaMemberships(
+                                user,
+                              )
                             }
                             className="rounded-lg bg-purple-700 px-3 py-2 text-sm text-white hover:bg-purple-800"
                           >

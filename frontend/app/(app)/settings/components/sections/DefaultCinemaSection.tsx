@@ -31,7 +31,6 @@ export default function DefaultCinemaSection({
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900">
       <h2 className="text-2xl font-bold">Standardbiograf</h2>
-
       <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-slate-300">
         Standardbiografen vælges automatisk ved dit næste login. Den
         aktive biograf i den nuværende session ændres ikke.
@@ -62,7 +61,6 @@ export default function DefaultCinemaSection({
               <span className="mb-2 block text-sm font-semibold">
                 Vælg standard
               </span>
-
               <select
                 value={selectedCinemaId ?? ""}
                 onChange={(event) =>
@@ -78,11 +76,9 @@ export default function DefaultCinemaSection({
                 {options.allowNoDefault && (
                   <option value="">Ingen standard</option>
                 )}
-
                 {options.cinemas.map((cinema) => (
                   <option key={cinema.id} value={cinema.id}>
                     {cinema.name}
-                    {cinema.isHomeCinema ? " · Hjemmebiograf" : ""}
                   </option>
                 ))}
               </select>
@@ -103,7 +99,7 @@ export default function DefaultCinemaSection({
           <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
             {options.role === "MASTER"
               ? "Vælger du Ingen standard, starter næste login uden aktiv biograf. Du vælger derefter biograf i MASTER-panelet."
-              : "Du kan kun vælge blandt dine aktive biograftilknytninger. Din hjemmebiograf ændres ikke."}
+              : "Du kan kun vælge blandt dine aktive biograftilknytninger."}
           </div>
 
           {message && (
