@@ -1,4 +1,6 @@
-import { PrismaService } from '../../prisma/prisma.service';
+import {
+  PrismaService,
+} from '../../prisma/prisma.service';
 
 export async function createNotificationForStaffingRequest(
   prisma: PrismaService,
@@ -20,23 +22,26 @@ export async function createNotificationForStaffingRequest(
   }
 
   const notification = {
-    title: 'Ny bemandingsforespørgsel',
+    title:
+      'Ny bemandingsforespørgsel',
     message:
       request.message ||
       'Der er brug for ekstra bemanding.\nKan du tage en vagt?',
     type: 'STAFFING_REQUEST',
-    linkUrl: '/staffing-requests',
+    linkUrl:
+      `/staffing-requests?requestId=${request.id}`,
   };
 
   if (request.targetUserId) {
     await prisma.notification.create({
       data: {
-        cinemaId: request.cinemaId,
-        userId: request.targetUserId,
+        cinemaId:
+          request.cinemaId,
+        userId:
+          request.targetUserId,
         ...notification,
       },
     });
-
     return;
   }
 
@@ -46,7 +51,8 @@ export async function createNotificationForStaffingRequest(
         isActive: true,
         cinemaMemberships: {
           some: {
-            cinemaId: request.cinemaId,
+            cinemaId:
+              request.cinemaId,
             isActive: true,
           },
         },
@@ -56,15 +62,20 @@ export async function createNotificationForStaffingRequest(
       },
     });
 
-  if (staffUsers.length === 0) {
+  if (
+    staffUsers.length === 0
+  ) {
     return;
   }
 
   await prisma.notification.createMany({
-    data: staffUsers.map((staffUser) => ({
-      cinemaId: request.cinemaId,
-      userId: staffUser.id,
-      ...notification,
-    })),
+    data: staffUsers.map(
+      (staffUser) => ({
+        cinemaId:
+          request.cinemaId,
+        userId: staffUser.id,
+        ...notification,
+      }),
+    ),
   });
 }

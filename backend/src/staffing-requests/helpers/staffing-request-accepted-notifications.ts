@@ -1,12 +1,16 @@
 import {
   CinemaRole,
 } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
 
-type StaffingNotificationPrisma = Pick<
+import {
   PrismaService,
-  'user' | 'notification'
->;
+} from '../../prisma/prisma.service';
+
+type StaffingNotificationPrisma =
+  Pick<
+    PrismaService,
+    'user' | 'notification'
+  >;
 
 export function buildAcceptedStaffingRequestAdminFilter(
   cinemaId: number,
@@ -24,7 +28,8 @@ export function buildAcceptedStaffingRequestAdminFilter(
 }
 
 export async function createStaffingRequestAcceptedNotifications(
-  prisma: StaffingNotificationPrisma,
+  prisma:
+    StaffingNotificationPrisma,
   cinemaId: number,
   requestId: number,
   acceptedByEmail: string,
@@ -54,7 +59,8 @@ export async function createStaffingRequestAcceptedNotifications(
         `${acceptedByEmail} accepterede ` +
         `bemandingsforespørgsel #${requestId}`,
       type: 'STAFFING_ACCEPTED',
-      linkUrl: '/staffing-requests',
+      linkUrl:
+        `/staffing-requests?requestId=${requestId}`,
     })),
   });
 }

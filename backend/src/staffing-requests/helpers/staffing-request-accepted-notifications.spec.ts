@@ -1,7 +1,10 @@
 import {
   CinemaRole,
 } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+
+import {
+  PrismaService,
+} from '../../prisma/prisma.service';
 import {
   buildAcceptedStaffingRequestAdminFilter,
   createStaffingRequestAcceptedNotifications,
@@ -34,7 +37,8 @@ describe(
           some: {
             cinemaId: 7,
             isActive: true,
-            role: CinemaRole.ADMIN,
+            role:
+              CinemaRole.ADMIN,
           },
         },
       });
@@ -87,7 +91,7 @@ describe(
             type:
               'STAFFING_ACCEPTED',
             linkUrl:
-              '/staffing-requests',
+              '/staffing-requests?requestId=31',
           },
           {
             cinemaId: 7,
@@ -99,7 +103,7 @@ describe(
             type:
               'STAFFING_ACCEPTED',
             linkUrl:
-              '/staffing-requests',
+              '/staffing-requests?requestId=31',
           },
         ],
       });
