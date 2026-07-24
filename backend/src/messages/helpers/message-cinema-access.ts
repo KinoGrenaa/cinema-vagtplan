@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type MessageActor = {
@@ -19,7 +18,10 @@ function parsePositiveId(
 ) {
   const parsed = Number(value);
 
-  if (!Number.isInteger(parsed) || parsed <= 0) {
+  if (
+    !Number.isInteger(parsed) ||
+    parsed <= 0
+  ) {
     throw new BadRequestException(message);
   }
 
@@ -50,10 +52,11 @@ export async function resolveMessageActorContext(
     actor?.sub ?? actor?.id,
     'Bruger skal være et gyldigt ID',
   );
-  const requestedCinemaId = parseOptionalPositiveId(
-    selectedCinemaId,
-    'Biograf skal være et gyldigt ID',
-  );
+  const requestedCinemaId =
+    parseOptionalPositiveId(
+      selectedCinemaId,
+      'Biograf skal være et gyldigt ID',
+    );
 
   if (actor?.role === 'MASTER') {
     if (!requestedCinemaId) {
@@ -62,18 +65,17 @@ export async function resolveMessageActorContext(
       );
     }
 
-    const master = await prisma.user.findFirst({
-      where: {
-        id: userId,
-        role: 'MASTER',
-        isActive: true,
-      },
-      select: {
-        id: true,
-        role: true,
-        canSendBroadcastMessages: true,
-      },
-    });
+    const master =
+      await prisma.user.findFirst({
+        where: {
+          id: userId,
+          role: 'MASTER',
+          isActive: true,
+        },
+        select: {
+          id: true,
+        },
+      });
 
     if (!master) {
       throw new ForbiddenException(
@@ -81,14 +83,15 @@ export async function resolveMessageActorContext(
       );
     }
 
-    const cinema = await prisma.cinema.findUnique({
-      where: {
-        id: requestedCinemaId,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const cinema =
+      await prisma.cinema.findUnique({
+        where: {
+          id: requestedCinemaId,
+        },
+        select: {
+          id: true,
+        },
+      });
 
     if (!cinema) {
       throw new NotFoundException(
@@ -99,16 +102,16 @@ export async function resolveMessageActorContext(
     return {
       userId,
       cinemaId: requestedCinemaId,
-      role: master.role,
-      canSendBroadcastMessages:
-        master.canSendBroadcastMessages,
+      role: 'MASTER',
+      canSendBroadcastMessages: true,
     };
   }
 
-  const sessionCinemaId = parseOptionalPositiveId(
-    actor?.cinemaId,
-    'Brugerens biograf skal være et gyldigt ID',
-  );
+  const sessionCinemaId =
+    parseOptionalPositiveId(
+      actor?.cinemaId,
+      'Brugerens biograf skal være et gyldigt ID',
+    );
 
   if (!sessionCinemaId) {
     throw new BadRequestException(
@@ -129,42 +132,53 @@ export async function resolveMessageActorContext(
     where: {
       id: userId,
       isActive: true,
-      role: {
-        not: 'MASTER',
-      },
-      OR: [
-        {
+      cinemaMemberships: {
+        some: {
           cinemaId: sessionCinemaId,
+          isActive: true,
         },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId: sessionCinemaId,
-              isActive: true,
-            },
-          },
-        },
-      ],
+      },
     },
     select: {
       id: true,
-      role: true,
-      canSendBroadcastMessages: true,
+      cinemaMemberships: {
+        where: {
+          cinemaId: sessionCinemaId,
+          isActive: true,
+        },
+        select: {
+          role: true,
+          canSendBroadcastMessages: true,
+        },
+        take: 1,
+      },
     },
   });
 
-  if (!user) {
+  const membership =
+    user?.cinemaMemberships[0];
+
+  if (!user || !membership) {
     throw new ForbiddenException(
       'Du er ikke længere aktivt tilknyttet denne biograf.',
+    );
+  }
+
+  if (
+    actor.role &&
+    actor.role !== membership.role
+  ) {
+    throw new ForbiddenException(
+      'Din rolle i denne biograf er ændret. Log ind igen.',
     );
   }
 
   return {
     userId,
     cinemaId: sessionCinemaId,
-    role: user.role,
+    role: membership.role,
     canSendBroadcastMessages:
-      user.canSendBroadcastMessages,
+      membership.canSendBroadcastMessages,
   };
 }
 
@@ -175,21 +189,11 @@ export function getActiveMessageReceiverWhere(
   return {
     id: receiverId,
     isActive: true,
-    role: {
-      not: 'MASTER' as const,
-    },
-    OR: [
-      {
+    cinemaMemberships: {
+      some: {
         cinemaId,
+        isActive: true,
       },
-      {
-        cinemaMemberships: {
-          some: {
-            cinemaId,
-            isActive: true,
-          },
-        },
-      },
-    ],
+    },
   };
 }

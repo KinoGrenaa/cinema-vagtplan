@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
@@ -48,22 +47,12 @@ function getActiveCinemaUserFilter(
   return {
     id: userId,
     isActive: true,
-    role: {
-      not: 'MASTER' as const,
-    },
-    OR: [
-      {
+    cinemaMemberships: {
+      some: {
         cinemaId,
+        isActive: true,
       },
-      {
-        cinemaMemberships: {
-          some: {
-            cinemaId,
-            isActive: true,
-          },
-        },
-      },
-    ],
+    },
   };
 }
 
@@ -106,15 +95,16 @@ export async function ensureStaffingRequestTargetUserExists({
     return;
   }
 
-  const targetUser = await prisma.user.findFirst({
-    where: getActiveCinemaUserFilter(
-      targetUserId,
-      cinemaId,
-    ),
-    select: {
-      id: true,
-    },
-  });
+  const targetUser =
+    await prisma.user.findFirst({
+      where: getActiveCinemaUserFilter(
+        targetUserId,
+        cinemaId,
+      ),
+      select: {
+        id: true,
+      },
+    });
 
   if (!targetUser) {
     throw new NotFoundException(
@@ -127,7 +117,8 @@ export async function resolveStaffingRequestShift({
   prisma,
   cinemaId,
   shiftId,
-}: ResolveStaffingRequestShiftParams): Promise<StaffingRequestShift | null> {
+}: ResolveStaffingRequestShiftParams):
+  Promise<StaffingRequestShift | null> {
   const shift = shiftId
     ? await prisma.shift.findFirst({
         where: {
@@ -155,9 +146,12 @@ export async function resolveStaffingRequestWorkTypeId({
   cinemaId,
   dto,
   shift,
-}: ResolveStaffingRequestWorkTypeIdParams): Promise<number> {
+}: ResolveStaffingRequestWorkTypeIdParams):
+  Promise<number> {
   const requestedWorkTypeId =
-    shift?.workTypeId ?? dto.workTypeId ?? null;
+    shift?.workTypeId ??
+    dto.workTypeId ??
+    null;
 
   if (!requestedWorkTypeId) {
     throw new BadRequestException(
@@ -165,12 +159,13 @@ export async function resolveStaffingRequestWorkTypeId({
     );
   }
 
-  const workType = await prisma.workType.findFirst({
-    where: {
-      id: requestedWorkTypeId,
-      cinemaId,
-    },
-  });
+  const workType =
+    await prisma.workType.findFirst({
+      where: {
+        id: requestedWorkTypeId,
+        cinemaId,
+      },
+    });
 
   if (!workType) {
     throw new NotFoundException(

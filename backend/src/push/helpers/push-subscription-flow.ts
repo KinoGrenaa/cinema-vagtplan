@@ -1,38 +1,37 @@
-import { ForbiddenException } from "@nestjs/common";
+import {
+  ForbiddenException,
+} from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import type { SavePushSubscriptionInput } from "./push-types";
-import { normalizePushSubscriptionInput } from "./push-validation";
+import type {
+  SavePushSubscriptionInput,
+} from "./push-types";
+import {
+  normalizePushSubscriptionInput,
+} from "./push-validation";
 
 export async function savePushSubscription(
   prisma: PrismaService,
   input: SavePushSubscriptionInput,
 ) {
-  const data = normalizePushSubscriptionInput(input);
-  const activeUser = await prisma.user.findFirst({
-    where: {
-      id: data.userId,
-      isActive: true,
-      role: {
-        not: "MASTER",
-      },
-      OR: [
-        {
-          cinemaId: data.cinemaId,
-        },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId: data.cinemaId,
-              isActive: true,
-            },
+  const data =
+    normalizePushSubscriptionInput(input);
+
+  const activeUser =
+    await prisma.user.findFirst({
+      where: {
+        id: data.userId,
+        isActive: true,
+        cinemaMemberships: {
+          some: {
+            cinemaId: data.cinemaId,
+            isActive: true,
           },
         },
-      ],
-    },
-    select: {
-      id: true,
-    },
-  });
+      },
+      select: {
+        id: true,
+      },
+    });
 
   if (!activeUser) {
     throw new ForbiddenException(

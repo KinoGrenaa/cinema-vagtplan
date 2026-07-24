@@ -1,16 +1,18 @@
 import {
   ForbiddenException,
   NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+} from "@nestjs/common";
+import {
+  PrismaService,
+} from "../../prisma/prisma.service";
 import {
   AuthUser,
   getRequiredPositiveShiftId,
-} from './shift-service-helpers';
+} from "./shift-service-helpers";
 
 type ShiftUserAccessPrismaClient = Pick<
   PrismaService,
-  'user' | 'cinema'
+  "user" | "cinema"
 >;
 
 export async function ensureShiftActorHasCinemaAccess(
@@ -21,45 +23,49 @@ export async function ensureShiftActorHasCinemaAccess(
   const actorUserId =
     getRequiredPositiveShiftId(
       user?.sub,
-      'Brugeren kunne ikke identificeres',
+      "Brugeren kunne ikke identificeres",
     );
-  const cinemaId = getRequiredPositiveShiftId(
-    cinemaIdValue,
-    'Biograf skal være et gyldigt ID',
-  );
-  const actor = await prisma.user.findUnique({
-    where: {
-      id: actorUserId,
-    },
-    select: {
-      id: true,
-      role: true,
-      isActive: true,
-      cinemaId: true,
-      cinemaMemberships: {
-        where: {
-          cinemaId,
-          isActive: true,
-        },
-        select: {
-          id: true,
-        },
-        take: 1,
-      },
-    },
-  });
+  const cinemaId =
+    getRequiredPositiveShiftId(
+      cinemaIdValue,
+      "Biograf skal være et gyldigt ID",
+    );
 
-  if (
-    !actor ||
-    !actor.isActive ||
-    actor.role !== user.role
-  ) {
+  const actor =
+    await prisma.user.findUnique({
+      where: {
+        id: actorUserId,
+      },
+      select: {
+        id: true,
+        role: true,
+        isActive: true,
+        cinemaMemberships: {
+          where: {
+            cinemaId,
+            isActive: true,
+          },
+          select: {
+            role: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+  if (!actor || !actor.isActive) {
     throw new ForbiddenException(
-      'Din session er ikke længere gyldig. Log ind igen.',
+      "Din session er ikke længere gyldig.\nLog ind igen.",
     );
   }
 
-  if (user.role === 'MASTER') {
+  if (user.role === "MASTER") {
+    if (actor.role !== "MASTER") {
+      throw new ForbiddenException(
+        "Din session er ikke længere gyldig.\nLog ind igen.",
+      );
+    }
+
     const cinema =
       await prisma.cinema.findUnique({
         where: {
@@ -72,20 +78,22 @@ export async function ensureShiftActorHasCinemaAccess(
 
     if (!cinema) {
       throw new NotFoundException(
-        'Biografen blev ikke fundet',
+        "Biografen blev ikke fundet",
       );
     }
 
     return;
   }
 
-  const hasCinemaAccess =
-    actor.cinemaId === cinemaId ||
-    actor.cinemaMemberships.length > 0;
+  const membership =
+    actor.cinemaMemberships[0];
 
-  if (!hasCinemaAccess) {
+  if (
+    !membership ||
+    membership.role !== user.role
+  ) {
     throw new ForbiddenException(
-      'Du er ikke længere aktivt tilknyttet denne biograf',
+      "Du er ikke længere aktivt tilknyttet denne biograf",
     );
   }
 }
@@ -95,43 +103,37 @@ export async function ensureShiftUserHasCinemaAccess(
   userIdValue: number,
   cinemaIdValue: number,
 ) {
-  const userId = getRequiredPositiveShiftId(
-    userIdValue,
-    'Medarbejder skal være et gyldigt ID',
-  );
-  const cinemaId = getRequiredPositiveShiftId(
-    cinemaIdValue,
-    'Biograf skal være et gyldigt ID',
-  );
-  const shiftUser = await prisma.user.findFirst({
-    where: {
-      id: userId,
-      isActive: true,
-      role: {
-        not: 'MASTER',
-      },
-      OR: [
-        {
-          cinemaId,
-        },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId,
-              isActive: true,
-            },
+  const userId =
+    getRequiredPositiveShiftId(
+      userIdValue,
+      "Medarbejder skal være et gyldigt ID",
+    );
+  const cinemaId =
+    getRequiredPositiveShiftId(
+      cinemaIdValue,
+      "Biograf skal være et gyldigt ID",
+    );
+
+  const shiftUser =
+    await prisma.user.findFirst({
+      where: {
+        id: userId,
+        isActive: true,
+        cinemaMemberships: {
+          some: {
+            cinemaId,
+            isActive: true,
           },
         },
-      ],
-    },
-    select: {
-      id: true,
-    },
-  });
+      },
+      select: {
+        id: true,
+      },
+    });
 
   if (!shiftUser) {
     throw new ForbiddenException(
-      'Medarbejderen er ikke aktivt tilknyttet denne biograf',
+      "Medarbejderen er ikke aktivt tilknyttet denne biograf",
     );
   }
 }

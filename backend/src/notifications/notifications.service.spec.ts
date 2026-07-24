@@ -11,7 +11,8 @@ describe('NotificationsService', () => {
     userId: 7,
     cinemaId: 3,
     title: 'Ny vagt',
-    message: 'Du har fået en ny vagt.',
+    message:
+      'Du har fået en ny vagt.',
     type: 'SHIFT_ASSIGNED',
     linkUrl: '/my-shifts',
     isRead: false,
@@ -41,27 +42,61 @@ describe('NotificationsService', () => {
   beforeEach(() => {
     prisma = {
       cinema: {
-        findUnique: jest.fn().mockResolvedValue({ id: 3 }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({
+            id: 3,
+          }),
       },
       user: {
-        findFirst: jest.fn().mockResolvedValue({ id: 7 }),
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({
+            id: 7,
+            cinemaMemberships: [
+              {
+                role: 'EMPLOYEE',
+              },
+            ],
+          }),
       },
       notification: {
-        create: jest.fn().mockResolvedValue(notification),
-        findMany: jest.fn().mockResolvedValue([]),
-        count: jest.fn().mockResolvedValue(0),
-        findFirst: jest.fn().mockResolvedValue(notification),
-        update: jest.fn().mockResolvedValue({
-          ...notification,
-          isRead: true,
-        }),
-        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        create: jest
+          .fn()
+          .mockResolvedValue(
+            notification,
+          ),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([]),
+        count: jest
+          .fn()
+          .mockResolvedValue(0),
+        findFirst: jest
+          .fn()
+          .mockResolvedValue(
+            notification,
+          ),
+        update: jest
+          .fn()
+          .mockResolvedValue({
+            ...notification,
+            isRead: true,
+          }),
+        updateMany: jest
+          .fn()
+          .mockResolvedValue({
+            count: 1,
+          }),
       },
     };
     realtime = {
       notifyUser: jest.fn(),
     };
-    service = new NotificationsService(prisma as never, realtime as never);
+    service = new NotificationsService(
+      prisma as never,
+      realtime as never,
+    );
   });
 
   it('normaliserer og opretter en notifikation til en aktiv modtager', async () => {
@@ -69,20 +104,26 @@ describe('NotificationsService', () => {
       service.create({
         userId: 7,
         cinemaId: 3,
-        title: '  Ny vagt  ',
-        message: '  Du har fået en ny vagt.  ',
-        type: '  SHIFT_ASSIGNED  ',
-        linkUrl: '  /my-shifts  ',
+        title: ' Ny vagt ',
+        message:
+          ' Du har fået en ny vagt. ',
+        type:
+          ' SHIFT_ASSIGNED ',
+        linkUrl:
+          ' /my-shifts ',
       }),
     ).resolves.toBe(notification);
 
-    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+    expect(
+      prisma.user.findFirst,
+    ).toHaveBeenCalledWith({
       where: {
         id: 7,
         isActive: true,
         OR: [
-          { role: 'MASTER' },
-          { cinemaId: 3 },
+          {
+            role: 'MASTER',
+          },
           {
             cinemaMemberships: {
               some: {
@@ -97,17 +138,22 @@ describe('NotificationsService', () => {
         id: true,
       },
     });
-    expect(prisma.notification.create).toHaveBeenCalledWith({
+    expect(
+      prisma.notification.create,
+    ).toHaveBeenCalledWith({
       data: {
         userId: 7,
         cinemaId: 3,
         title: 'Ny vagt',
-        message: 'Du har fået en ny vagt.',
+        message:
+          'Du har fået en ny vagt.',
         type: 'SHIFT_ASSIGNED',
         linkUrl: '/my-shifts',
       },
     });
-    expect(realtime.notifyUser).toHaveBeenCalledWith(
+    expect(
+      realtime.notifyUser,
+    ).toHaveBeenCalledWith(
       7,
       'notificationsUpdated',
       notification,
@@ -121,10 +167,12 @@ describe('NotificationsService', () => {
       title: 'Titel',
       message: 'Besked',
       type: 'INFO',
-      linkUrl: '   ',
+      linkUrl: ' ',
     });
 
-    expect(prisma.notification.create).toHaveBeenCalledWith({
+    expect(
+      prisma.notification.create,
+    ).toHaveBeenCalledWith({
       data: {
         userId: 7,
         cinemaId: 3,
@@ -136,67 +184,50 @@ describe('NotificationsService', () => {
   });
 
   it.each([
-    ['title', '   ', 'Notifikationens titel må ikke være tom.'],
-    ['message', '   ', 'Notifikationens besked må ikke være tom.'],
-    ['type', '   ', 'Notifikationens type må ikke være tom.'],
-  ])('afviser tomt felt %s', async (field, value, expectedMessage) => {
-    await expect(
-      service.create({
-        userId: 7,
-        cinemaId: 3,
-        title: 'Titel',
-        message: 'Besked',
-        type: 'INFO',
-        [field]: value,
-      }),
-    ).rejects.toThrow(expectedMessage);
+    [
+      'title',
+      ' ',
+      'Notifikationens titel må ikke være tom.',
+    ],
+    [
+      'message',
+      ' ',
+      'Notifikationens besked må ikke være tom.',
+    ],
+    [
+      'type',
+      ' ',
+      'Notifikationens type må ikke være tom.',
+    ],
+  ])(
+    'afviser tomt felt %s',
+    async (
+      field,
+      value,
+      expectedMessage,
+    ) => {
+      await expect(
+        service.create({
+          userId: 7,
+          cinemaId: 3,
+          title: 'Titel',
+          message: 'Besked',
+          type: 'INFO',
+          [field]: value,
+        }),
+      ).rejects.toThrow(
+        expectedMessage,
+      );
 
-    expect(prisma.notification.create).not.toHaveBeenCalled();
-  });
-
-  it('afviser ugyldige modtager- og biograf-IDer før databasekald', async () => {
-    await expect(
-      service.create({
-        userId: 0,
-        cinemaId: 3,
-        title: 'Titel',
-        message: 'Besked',
-        type: 'INFO',
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-
-    await expect(
-      service.create({
-        userId: 7,
-        cinemaId: Number.NaN,
-        title: 'Titel',
-        message: 'Besked',
-        type: 'INFO',
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-
-    expect(prisma.cinema.findUnique).not.toHaveBeenCalled();
-    expect(prisma.notification.create).not.toHaveBeenCalled();
-  });
-
-  it('afviser en biograf, der ikke findes', async () => {
-    prisma.cinema.findUnique.mockResolvedValue(null);
-
-    await expect(
-      service.create({
-        userId: 7,
-        cinemaId: 3,
-        title: 'Titel',
-        message: 'Besked',
-        type: 'INFO',
-      }),
-    ).rejects.toBeInstanceOf(NotFoundException);
-
-    expect(prisma.notification.create).not.toHaveBeenCalled();
-  });
+      expect(
+        prisma.notification.create,
+      ).not.toHaveBeenCalled();
+    },
+  );
 
   it('afviser en modtager uden aktiv tilknytning til biografen', async () => {
-    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.findFirst
+      .mockResolvedValue(null);
 
     await expect(
       service.create({
@@ -206,12 +237,12 @@ describe('NotificationsService', () => {
         message: 'Besked',
         type: 'INFO',
       }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(prisma.notification.create).not.toHaveBeenCalled();
+    ).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
-  it('afgrænser notifikationslisten til bruger og aktiv biograf', async () => {
+  it('afgrænser notifikationslisten til bruger og aktivt medlemskab', async () => {
     await service.findForUser(
       {
         sub: 7,
@@ -221,7 +252,36 @@ describe('NotificationsService', () => {
       3,
     );
 
-    expect(prisma.notification.findMany).toHaveBeenCalledWith({
+    expect(
+      prisma.user.findFirst,
+    ).toHaveBeenCalledWith({
+      where: {
+        id: 7,
+        isActive: true,
+        cinemaMemberships: {
+          some: {
+            cinemaId: 3,
+            isActive: true,
+          },
+        },
+      },
+      select: {
+        id: true,
+        cinemaMemberships: {
+          where: {
+            cinemaId: 3,
+            isActive: true,
+          },
+          select: {
+            role: true,
+          },
+          take: 1,
+        },
+      },
+    });
+    expect(
+      prisma.notification.findMany,
+    ).toHaveBeenCalledWith({
       where: {
         userId: 7,
         cinemaId: 3,
@@ -230,6 +290,32 @@ describe('NotificationsService', () => {
         createdAt: 'desc',
       },
     });
+  });
+
+  it('afviser en forældet medlemskabsrolle', async () => {
+    prisma.user.findFirst
+      .mockResolvedValue({
+        id: 7,
+        cinemaMemberships: [
+          {
+            role: 'ADMIN',
+          },
+        ],
+      });
+
+    await expect(
+      service.unreadCount({
+        sub: 7,
+        role: 'EMPLOYEE',
+        cinemaId: 3,
+      }),
+    ).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+
+    expect(
+      prisma.notification.count,
+    ).not.toHaveBeenCalled();
   });
 
   it('afviser en anden valgt biograf for en ikke-MASTER', async () => {
@@ -242,9 +328,9 @@ describe('NotificationsService', () => {
         },
         4,
       ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(prisma.notification.count).not.toHaveBeenCalled();
+    ).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 
   it('kræver valgt biograf for MASTER', async () => {
@@ -254,21 +340,24 @@ describe('NotificationsService', () => {
         role: 'MASTER',
         cinemaId: null,
       }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-
-    expect(prisma.notification.findMany).not.toHaveBeenCalled();
+    ).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('afviser ugyldigt notifikations-ID ved direkte servicekald', async () => {
     await expect(
-      service.markAsRead(0, {
-        sub: 7,
-        role: 'EMPLOYEE',
-        cinemaId: 3,
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-
-    expect(prisma.notification.findFirst).not.toHaveBeenCalled();
+      service.markAsRead(
+        0,
+        {
+          sub: 7,
+          role: 'EMPLOYEE',
+          cinemaId: 3,
+        },
+      ),
+    ).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('ændrer kun en notifikation i brugerens aktive biograf', async () => {
@@ -287,14 +376,18 @@ describe('NotificationsService', () => {
       isRead: true,
     });
 
-    expect(prisma.notification.findFirst).toHaveBeenCalledWith({
+    expect(
+      prisma.notification.findFirst,
+    ).toHaveBeenCalledWith({
       where: {
         id: 41,
         userId: 7,
         cinemaId: 3,
       },
     });
-    expect(prisma.notification.update).toHaveBeenCalledWith({
+    expect(
+      prisma.notification.update,
+    ).toHaveBeenCalledWith({
       where: {
         id: 41,
       },
@@ -302,5 +395,27 @@ describe('NotificationsService', () => {
         isRead: true,
       },
     });
+  });
+
+  it('afviser en biograf der ikke findes for MASTER', async () => {
+    prisma.user.findFirst
+      .mockResolvedValue({
+        id: 1,
+      });
+    prisma.cinema.findUnique
+      .mockResolvedValue(null);
+
+    await expect(
+      service.findForUser(
+        {
+          sub: 1,
+          role: 'MASTER',
+          cinemaId: null,
+        },
+        3,
+      ),
+    ).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

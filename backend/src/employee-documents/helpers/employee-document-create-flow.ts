@@ -1,6 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
-
 import {
   type AuthUser,
   resolveEmployeeDocumentCinemaId,
@@ -20,36 +22,42 @@ export async function createEmployeeDocument(
   user: AuthUser,
   data: CreateEmployeeDocumentData,
 ) {
-  const cinemaId = resolveEmployeeDocumentCinemaId(user, data.cinemaId);
+  const cinemaId =
+    resolveEmployeeDocumentCinemaId(
+      user,
+      data.cinemaId,
+    );
 
-  if (user.role === 'EMPLOYEE' && data.userId !== user.sub) {
+  if (
+    user.role === 'EMPLOYEE' &&
+    data.userId !== user.sub
+  ) {
     throw new ForbiddenException(
       'Du kan kun uploade dokumenter til dig selv',
     );
   }
 
-  const targetUser = await prisma.user.findFirst({
-    where: {
-      id: data.userId,
-      OR: [
-        { cinemaId },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId,
-              isActive: true,
-            },
+  const targetUser =
+    await prisma.user.findFirst({
+      where: {
+        id: data.userId,
+        isActive: true,
+        cinemaMemberships: {
+          some: {
+            cinemaId,
+            isActive: true,
           },
         },
-      ],
-    },
-    select: {
-      id: true,
-    },
-  });
+      },
+      select: {
+        id: true,
+      },
+    });
 
   if (!targetUser) {
-    throw new NotFoundException('Brugeren blev ikke fundet i denne biograf');
+    throw new NotFoundException(
+      'Brugeren blev ikke fundet i denne biograf',
+    );
   }
 
   return prisma.employeeDocument.create({

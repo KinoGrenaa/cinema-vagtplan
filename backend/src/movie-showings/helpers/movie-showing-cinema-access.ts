@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type MovieShowingsRequestUser = {
@@ -14,7 +13,11 @@ export type MovieShowingsRequestUser = {
 };
 
 function parsePositiveInteger(
-  value: number | string | null | undefined,
+  value:
+    | number
+    | string
+    | null
+    | undefined,
 ) {
   const numericValue = Number(value);
 
@@ -36,9 +39,8 @@ export async function resolveMovieShowingsCinemaId(
   const userId = parsePositiveInteger(
     user.sub ?? user.id,
   );
-  const selectedCinema = parsePositiveInteger(
-    selectedCinemaId,
-  );
+  const selectedCinema =
+    parsePositiveInteger(selectedCinemaId);
 
   if (!userId) {
     throw new ForbiddenException(
@@ -87,7 +89,7 @@ export async function resolveMovieShowingsCinemaId(
 
     if (!activeMaster) {
       throw new ForbiddenException(
-        'Din session er ikke længere gyldig. Log ind igen.',
+        'Din session er ikke længere gyldig.\nLog ind igen.',
       );
     }
 
@@ -100,9 +102,8 @@ export async function resolveMovieShowingsCinemaId(
     return selectedCinema;
   }
 
-  const sessionCinemaId = parsePositiveInteger(
-    user.cinemaId,
-  );
+  const sessionCinemaId =
+    parsePositiveInteger(user.cinemaId);
 
   if (!sessionCinemaId) {
     throw new ForbiddenException(
@@ -119,36 +120,40 @@ export async function resolveMovieShowingsCinemaId(
     );
   }
 
-  const activeUser = await prisma.user.findFirst({
-    where: {
-      id: userId,
-      isActive: true,
-      role: {
-        not: 'MASTER',
-      },
-      OR: [
-        {
-          cinemaId: sessionCinemaId,
-        },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId: sessionCinemaId,
-              isActive: true,
-            },
+  const activeUser =
+    await prisma.user.findFirst({
+      where: {
+        id: userId,
+        isActive: true,
+        cinemaMemberships: {
+          some: {
+            cinemaId: sessionCinemaId,
+            isActive: true,
           },
         },
-      ],
-    },
-    select: {
-      id: true,
-      role: true,
-    },
-  });
+      },
+      select: {
+        id: true,
+        cinemaMemberships: {
+          where: {
+            cinemaId: sessionCinemaId,
+            isActive: true,
+          },
+          select: {
+            role: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+  const membership =
+    activeUser?.cinemaMemberships[0];
 
   if (
     !activeUser ||
-    activeUser.role !== user.role
+    !membership ||
+    membership.role !== user.role
   ) {
     throw new ForbiddenException(
       'Du er ikke længere aktivt tilknyttet denne biograf.',

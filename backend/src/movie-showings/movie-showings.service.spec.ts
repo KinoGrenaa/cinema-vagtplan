@@ -1,15 +1,26 @@
 import { MovieShowingsService } from './movie-showings.service';
 
+function createActiveMovieShowingUser() {
+  return {
+    id: 7,
+    role: 'ADMIN',
+    cinemaMemberships: [
+      {
+        role: 'EMPLOYEE',
+      },
+    ],
+  };
+}
+
 describe('MovieShowingsService', () => {
   it('bruger eksklusive døgnkanter og stabil sortering', async () => {
     const prisma = {
       user: {
         findFirst: jest
           .fn()
-          .mockResolvedValue({
-            id: 7,
-            role: 'EMPLOYEE',
-          }),
+          .mockResolvedValue(
+            createActiveMovieShowingUser(),
+          ),
       },
       cinema: {
         findUnique: jest.fn(),
@@ -66,10 +77,9 @@ describe('MovieShowingsService', () => {
       user: {
         findFirst: jest
           .fn()
-          .mockResolvedValue({
-            id: 7,
-            role: 'EMPLOYEE',
-          }),
+          .mockResolvedValue(
+            createActiveMovieShowingUser(),
+          ),
       },
       cinema: {
         findUnique: jest.fn(),

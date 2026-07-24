@@ -1,4 +1,6 @@
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  PrismaService,
+} from "../prisma/prisma.service";
 
 export type RealtimeSocketUser = {
   id: number;
@@ -27,15 +29,16 @@ export async function canJoinRealtimeCinema(
   user: RealtimeSocketUser,
   cinemaId: number,
 ) {
-  if (user.role === 'MASTER') {
-    const cinema = await prisma.cinema.findUnique({
-      where: {
-        id: cinemaId,
-      },
-      select: {
-        id: true,
-      },
-    });
+  if (user.role === "MASTER") {
+    const cinema =
+      await prisma.cinema.findUnique({
+        where: {
+          id: cinemaId,
+        },
+        select: {
+          id: true,
+        },
+      });
 
     return Boolean(cinema);
   }
@@ -44,31 +47,22 @@ export async function canJoinRealtimeCinema(
     return false;
   }
 
-  const activeUser = await prisma.user.findFirst({
-    where: {
-      id: user.id,
-      isActive: true,
-      role: {
-        not: 'MASTER',
-      },
-      OR: [
-        {
-          cinemaId,
-        },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId,
-              isActive: true,
-            },
+  const activeUser =
+    await prisma.user.findFirst({
+      where: {
+        id: user.id,
+        isActive: true,
+        cinemaMemberships: {
+          some: {
+            cinemaId,
+            isActive: true,
           },
         },
-      ],
-    },
-    select: {
-      id: true,
-    },
-  });
+      },
+      select: {
+        id: true,
+      },
+    });
 
   return Boolean(activeUser);
 }

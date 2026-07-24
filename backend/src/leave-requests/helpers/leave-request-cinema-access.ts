@@ -1,5 +1,6 @@
-import { ForbiddenException } from '@nestjs/common';
-
+import {
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
@@ -13,22 +14,12 @@ export function getActiveLeaveCinemaUserWhere(
   return {
     id: userId,
     isActive: true,
-    role: {
-      not: 'MASTER' as const,
-    },
-    OR: [
-      {
+    cinemaMemberships: {
+      some: {
         cinemaId,
+        isActive: true,
       },
-      {
-        cinemaMemberships: {
-          some: {
-            cinemaId,
-            isActive: true,
-          },
-        },
-      },
-    ],
+    },
   };
 }
 

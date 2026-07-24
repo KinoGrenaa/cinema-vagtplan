@@ -25,9 +25,14 @@ type ActionableShiftTrade = {
 export function resolveShiftTradeActorUserId(
   actor: ShiftTradeActor,
 ) {
-  const userId = Number(actor?.sub ?? actor?.id);
+  const userId = Number(
+    actor?.sub ?? actor?.id,
+  );
 
-  if (!Number.isInteger(userId) || userId <= 0) {
+  if (
+    !Number.isInteger(userId) ||
+    userId <= 0
+  ) {
     throw new ForbiddenException(
       'Brugeren kunne ikke identificeres',
     );
@@ -40,7 +45,8 @@ export async function resolveShiftTradeActorContext(
   prisma: PrismaService,
   actor: ShiftTradeActor,
 ) {
-  const userId = resolveShiftTradeActorUserId(actor);
+  const userId =
+    resolveShiftTradeActorUserId(actor);
   const cinemaId = Number(actor?.cinemaId);
 
   if (actor?.role === 'MASTER') {
@@ -64,15 +70,15 @@ export async function resolveShiftTradeActorContext(
     },
     select: {
       id: true,
+      role: true,
       isActive: true,
-      cinemaId: true,
       cinemaMemberships: {
         where: {
           cinemaId,
           isActive: true,
         },
         select: {
-          id: true,
+          role: true,
         },
         take: 1,
       },
@@ -87,17 +93,31 @@ export async function resolveShiftTradeActorContext(
 
   if (!user.isActive) {
     throw new ForbiddenException(
-      'Brugeren er deaktiveret',
+      'Brugerkontoen er spærret',
     );
   }
 
-  const hasCinemaAccess =
-    user.cinemaId === cinemaId ||
-    user.cinemaMemberships.length > 0;
+  if (user.role === 'MASTER') {
+    throw new ForbiddenException(
+      'MASTER kan ikke håndtere personlige vagtbytter',
+    );
+  }
 
-  if (!hasCinemaAccess) {
+  const membership =
+    user.cinemaMemberships[0];
+
+  if (!membership) {
     throw new ForbiddenException(
       'Brugeren er ikke aktivt tilknyttet denne biograf',
+    );
+  }
+
+  if (
+    actor.role &&
+    actor.role !== membership.role
+  ) {
+    throw new ForbiddenException(
+      'Din rolle i denne biograf er ændret. Log ind igen.',
     );
   }
 
@@ -111,13 +131,17 @@ export function ensureShiftTradeCanBeAccepted(
   trade: ActionableShiftTrade,
   actorUserId: number,
 ) {
-  if (trade.status !== ShiftTradeStatus.OPEN) {
+  if (
+    trade.status !== ShiftTradeStatus.OPEN
+  ) {
     throw new ForbiddenException(
       'Vagtbyttet er ikke længere åbent',
     );
   }
 
-  if (trade.offeredByUserId === actorUserId) {
+  if (
+    trade.offeredByUserId === actorUserId
+  ) {
     throw new ForbiddenException(
       'Du kan ikke acceptere din egen vagt',
     );
@@ -137,19 +161,25 @@ export function ensureShiftTradeCanBeRejected(
   trade: ActionableShiftTrade,
   actorUserId: number,
 ) {
-  if (trade.status !== ShiftTradeStatus.OPEN) {
+  if (
+    trade.status !== ShiftTradeStatus.OPEN
+  ) {
     throw new ForbiddenException(
       'Vagtbyttet er ikke længere åbent',
     );
   }
 
-  if (trade.type !== ShiftTradeType.DIRECT) {
+  if (
+    trade.type !== ShiftTradeType.DIRECT
+  ) {
     throw new ForbiddenException(
       'Vagtpuljer kan ikke afvises',
     );
   }
 
-  if (trade.targetUserId !== actorUserId) {
+  if (
+    trade.targetUserId !== actorUserId
+  ) {
     throw new ForbiddenException(
       'Denne vagt er ikke sendt til dig',
     );

@@ -1,4 +1,6 @@
-import { ForbiddenException } from '@nestjs/common';
+import {
+  ForbiddenException,
+} from '@nestjs/common';
 import {
   ShiftTradeStatus,
   ShiftTradeType,
@@ -16,17 +18,19 @@ const actor = {
 function createActorUser() {
   return {
     id: 8,
+    role: 'ADMIN',
     isActive: true,
-    cinemaId: 1,
     cinemaMemberships: [
       {
-        id: 44,
+        role: 'EMPLOYEE',
       },
     ],
   };
 }
 
-function createTrade(overrides = {}) {
+function createTrade(
+  overrides = {},
+) {
   return {
     id: 12,
     shiftId: 21,
@@ -39,7 +43,9 @@ function createTrade(overrides = {}) {
   };
 }
 
-function createUpdatedTrade(overrides = {}) {
+function createUpdatedTrade(
+  overrides = {},
+) {
   return {
     ...createTrade(overrides),
     shift: {},
@@ -56,21 +62,30 @@ describe('shift trade status flows', () => {
       shiftTrade: {
         findFirst: jest
           .fn()
-          .mockResolvedValue(createTrade()),
+          .mockResolvedValue(
+            createTrade(),
+          ),
         updateMany: jest
           .fn()
-          .mockResolvedValue({ count: 0 }),
+          .mockResolvedValue({
+            count: 0,
+          }),
       },
     };
     const prisma = {
       user: {
         findUnique: jest
           .fn()
-          .mockResolvedValue(createActorUser()),
+          .mockResolvedValue(
+            createActorUser(),
+          ),
       },
       $transaction: jest.fn(
-        async (callback: (client: any) => unknown) =>
-          callback(tx),
+        async (
+          callback: (
+            client: any,
+          ) => unknown,
+        ) => callback(tx),
       ),
     };
 
@@ -95,10 +110,14 @@ describe('shift trade status flows', () => {
       shiftTrade: {
         findFirst: jest
           .fn()
-          .mockResolvedValue(createTrade()),
+          .mockResolvedValue(
+            createTrade(),
+          ),
         updateMany: jest
           .fn()
-          .mockResolvedValue({ count: 1 }),
+          .mockResolvedValue({
+            count: 1,
+          }),
       },
       shift: {
         findFirst: jest
@@ -107,10 +126,12 @@ describe('shift trade status flows', () => {
             id: 21,
             userId: 4,
             startTime: new Date(
-              Date.now() + 60 * 60 * 1000,
+              Date.now() +
+                60 * 60 * 1000,
             ),
             endTime: new Date(
-              Date.now() + 2 * 60 * 60 * 1000,
+              Date.now() +
+                2 * 60 * 60 * 1000,
             ),
           })
           .mockResolvedValueOnce(null),
@@ -118,18 +139,25 @@ describe('shift trade status flows', () => {
       leaveRequest: {
         findFirst: jest
           .fn()
-          .mockResolvedValue({ id: 77 }),
+          .mockResolvedValue({
+            id: 77,
+          }),
       },
     };
     const prisma = {
       user: {
         findUnique: jest
           .fn()
-          .mockResolvedValue(createActorUser()),
+          .mockResolvedValue(
+            createActorUser(),
+          ),
       },
       $transaction: jest.fn(
-        async (callback: (client: any) => unknown) =>
-          callback(tx),
+        async (
+          callback: (
+            client: any,
+          ) => unknown,
+        ) => callback(tx),
       ),
     };
 
@@ -156,7 +184,8 @@ describe('shift trade status flows', () => {
           .fn()
           .mockResolvedValue(
             createTrade({
-              type: ShiftTradeType.POOL,
+              type:
+                ShiftTradeType.POOL,
               targetUserId: null,
             }),
           ),
@@ -166,11 +195,16 @@ describe('shift trade status flows', () => {
       user: {
         findUnique: jest
           .fn()
-          .mockResolvedValue(createActorUser()),
+          .mockResolvedValue(
+            createActorUser(),
+          ),
       },
       $transaction: jest.fn(
-        async (callback: (client: any) => unknown) =>
-          callback(tx),
+        async (
+          callback: (
+            client: any,
+          ) => unknown,
+        ) => callback(tx),
       ),
     };
 
@@ -191,9 +225,11 @@ describe('shift trade status flows', () => {
   });
 
   it('annullerer kun i den aktive biograf og kun én gang', async () => {
-    const updatedTrade = createUpdatedTrade({
-      status: ShiftTradeStatus.CANCELLED,
-    });
+    const updatedTrade =
+      createUpdatedTrade({
+        status:
+          ShiftTradeStatus.CANCELLED,
+      });
     const tx = {
       shiftTrade: {
         findFirst: jest
@@ -205,21 +241,30 @@ describe('shift trade status flows', () => {
           ),
         updateMany: jest
           .fn()
-          .mockResolvedValue({ count: 1 }),
+          .mockResolvedValue({
+            count: 1,
+          }),
         findUnique: jest
           .fn()
-          .mockResolvedValue(updatedTrade),
+          .mockResolvedValue(
+            updatedTrade,
+          ),
       },
     };
     const prisma = {
       user: {
         findUnique: jest
           .fn()
-          .mockResolvedValue(createActorUser()),
+          .mockResolvedValue(
+            createActorUser(),
+          ),
       },
       $transaction: jest.fn(
-        async (callback: (client: any) => unknown) =>
-          callback(tx),
+        async (
+          callback: (
+            client: any,
+          ) => unknown,
+        ) => callback(tx),
       ),
     };
     const realtime = {
@@ -230,7 +275,8 @@ describe('shift trade status flows', () => {
       cancelShiftTrade(
         {
           prisma: prisma as never,
-          realtime: realtime as never,
+          realtime:
+            realtime as never,
         },
         12,
         actor,
@@ -245,7 +291,9 @@ describe('shift trade status flows', () => {
         cinemaId: 2,
       },
     });
-    expect(realtime.notifyCinema).toHaveBeenCalled();
+    expect(
+      realtime.notifyCinema,
+    ).toHaveBeenCalled();
   });
 
   it('afviser MASTER ved personlige statusændringer', async () => {
@@ -266,6 +314,8 @@ describe('shift trade status flows', () => {
           cinemaId: 2,
         },
       ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
   });
 });

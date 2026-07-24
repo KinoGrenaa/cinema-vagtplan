@@ -16,7 +16,9 @@ import {
   normalizeShiftTradeCreateInput,
   ShiftTradeCreateInput,
 } from './shift-trade-input';
-import { shiftTradeInclude } from './shift-trade-service-helpers';
+import {
+  shiftTradeInclude,
+} from './shift-trade-service-helpers';
 
 type ShiftTradeCreateFlowDeps = {
   prisma: PrismaService;
@@ -35,19 +37,12 @@ function getActiveCinemaUserFilter(
     role: {
       not: 'MASTER' as const,
     },
-    OR: [
-      {
+    cinemaMemberships: {
+      some: {
         cinemaId,
+        isActive: true,
       },
-      {
-        cinemaMemberships: {
-          some: {
-            cinemaId,
-            isActive: true,
-          },
-        },
-      },
-    ],
+    },
   };
 }
 
@@ -63,11 +58,13 @@ export async function createShiftTrade(
   } = deps;
   const data =
     normalizeShiftTradeCreateInput(input);
-  const cinema = await prisma.cinema.findUnique({
-    where: {
-      id: data.cinemaId,
-    },
-  });
+
+  const cinema =
+    await prisma.cinema.findUnique({
+      where: {
+        id: data.cinemaId,
+      },
+    });
 
   if (!cinema) {
     throw new NotFoundException(
@@ -93,15 +90,16 @@ export async function createShiftTrade(
     );
   }
 
-  const offeredByUser = await prisma.user.findFirst({
-    where: getActiveCinemaUserFilter(
-      data.offeredByUserId,
-      data.cinemaId,
-    ),
-    select: {
-      id: true,
-    },
-  });
+  const offeredByUser =
+    await prisma.user.findFirst({
+      where: getActiveCinemaUserFilter(
+        data.offeredByUserId,
+        data.cinemaId,
+      ),
+      select: {
+        id: true,
+      },
+    });
 
   if (!offeredByUser) {
     throw new ForbiddenException(
@@ -110,15 +108,16 @@ export async function createShiftTrade(
   }
 
   if (data.targetUserId) {
-    const targetUser = await prisma.user.findFirst({
-      where: getActiveCinemaUserFilter(
-        data.targetUserId,
-        data.cinemaId,
-      ),
-      select: {
-        id: true,
-      },
-    });
+    const targetUser =
+      await prisma.user.findFirst({
+        where: getActiveCinemaUserFilter(
+          data.targetUserId,
+          data.cinemaId,
+        ),
+        select: {
+          id: true,
+        },
+      });
 
     if (!targetUser) {
       throw new ForbiddenException(
@@ -138,17 +137,18 @@ export async function createShiftTrade(
         `,
       );
 
-      const shift = await tx.shift.findFirst({
-        where: {
-          id: data.shiftId,
-          cinemaId: data.cinemaId,
-        },
-        select: {
-          id: true,
-          userId: true,
-          startTime: true,
-        },
-      });
+      const shift =
+        await tx.shift.findFirst({
+          where: {
+            id: data.shiftId,
+            cinemaId: data.cinemaId,
+          },
+          select: {
+            id: true,
+            userId: true,
+            startTime: true,
+          },
+        });
 
       if (!shift) {
         throw new NotFoundException(
@@ -157,14 +157,17 @@ export async function createShiftTrade(
       }
 
       if (
-        shift.userId !== data.offeredByUserId
+        shift.userId !==
+        data.offeredByUserId
       ) {
         throw new ForbiddenException(
           'Du kan kun bytte dine egne vagter',
         );
       }
 
-      if (shift.startTime <= new Date()) {
+      if (
+        shift.startTime <= new Date()
+      ) {
         throw new ForbiddenException(
           'Vagten er allerede startet',
         );
@@ -174,7 +177,8 @@ export async function createShiftTrade(
         await tx.shiftTrade.findFirst({
           where: {
             shiftId: data.shiftId,
-            status: ShiftTradeStatus.OPEN,
+            status:
+              ShiftTradeStatus.OPEN,
           },
           select: {
             id: true,
@@ -228,6 +232,7 @@ export async function createShiftTrade(
       type: 'SHIFT_DIRECT',
       linkUrl: '/my-shifts',
     });
+
     await push.sendToUserInCinema(
       trade.targetUserId,
       trade.cinemaId,

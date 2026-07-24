@@ -1,9 +1,15 @@
-import { NotFoundException } from '@nestjs/common';
-
+import {
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export async function findAllCinemas(prisma: PrismaService) {
-  const [cinemas, activeUserCounts] = await Promise.all([
+export async function findAllCinemas(
+  prisma: PrismaService,
+) {
+  const [
+    cinemas,
+    memberships,
+  ] = await Promise.all([
     prisma.cinema.findMany({
       orderBy: {
         name: 'asc',
@@ -11,46 +17,81 @@ export async function findAllCinemas(prisma: PrismaService) {
       include: {
         _count: {
           select: {
-            users: true,
             shifts: true,
             workTypes: true,
           },
         },
       },
     }),
-    prisma.user.groupBy({
-      by: ['cinemaId'],
+    prisma.userCinemaMembership.findMany({
       where: {
-        cinemaId: {
-          not: null,
+        user: {
+          role: {
+            not: 'MASTER',
+          },
         },
-        isActive: true,
       },
-      _count: {
-        id: true,
+      select: {
+        cinemaId: true,
+        isActive: true,
+        user: {
+          select: {
+            isActive: true,
+          },
+        },
       },
     }),
   ]);
 
-  const activeUserCountByCinemaId = new Map(
-    activeUserCounts.flatMap((item) =>
-      item.cinemaId
-        ? [[item.cinemaId, item._count.id] as const]
-        : [],
-    ),
-  );
+  const membershipCounts =
+    new Map<
+      number,
+      {
+        total: number;
+        active: number;
+      }
+    >();
+
+  for (const membership of memberships) {
+    const counts =
+      membershipCounts.get(
+        membership.cinemaId,
+      ) ?? {
+        total: 0,
+        active: 0,
+      };
+
+    counts.total += 1;
+
+    if (
+      membership.isActive &&
+      membership.user.isActive
+    ) {
+      counts.active += 1;
+    }
+
+    membershipCounts.set(
+      membership.cinemaId,
+      counts,
+    );
+  }
 
   return cinemas.map((cinema) => {
-    const activeUserCount =
-      activeUserCountByCinemaId.get(cinema.id) ?? 0;
+    const counts =
+      membershipCounts.get(cinema.id) ?? {
+        total: 0,
+        active: 0,
+      };
 
     return {
       ...cinema,
-      activeUserCount,
-      inactiveUserCount: Math.max(
-        0,
-        cinema._count.users - activeUserCount,
-      ),
+      _count: {
+        ...cinema._count,
+        users: counts.total,
+      },
+      activeUserCount: counts.active,
+      inactiveUserCount:
+        counts.total - counts.active,
     };
   });
 }
@@ -59,12 +100,17 @@ export async function findCinemaByIdOrThrow(
   prisma: PrismaService,
   id: number,
 ) {
-  const cinema = await prisma.cinema.findUnique({
-    where: { id },
-  });
+  const cinema =
+    await prisma.cinema.findUnique({
+      where: {
+        id,
+      },
+    });
 
   if (!cinema) {
-    throw new NotFoundException('Biograf blev ikke fundet');
+    throw new NotFoundException(
+      'Biograf blev ikke fundet',
+    );
   }
 
   return cinema;

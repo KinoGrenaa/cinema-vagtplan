@@ -4,15 +4,16 @@ export async function createNotificationForStaffingRequest(
   prisma: PrismaService,
   requestId: number,
 ) {
-  const request = await prisma.staffingRequest.findUnique({
-    where: {
-      id: requestId,
-    },
-    include: {
-      targetUser: true,
-      requestedByUser: true,
-    },
-  });
+  const request =
+    await prisma.staffingRequest.findUnique({
+      where: {
+        id: requestId,
+      },
+      include: {
+        targetUser: true,
+        requestedByUser: true,
+      },
+    });
 
   if (!request) {
     return;
@@ -39,30 +40,21 @@ export async function createNotificationForStaffingRequest(
     return;
   }
 
-  const staffUsers = await prisma.user.findMany({
-    where: {
-      role: {
-        in: ['ADMIN', 'EMPLOYEE'],
-      },
-      isActive: true,
-      OR: [
-        {
-          cinemaId: request.cinemaId,
-        },
-        {
-          cinemaMemberships: {
-            some: {
-              cinemaId: request.cinemaId,
-              isActive: true,
-            },
+  const staffUsers =
+    await prisma.user.findMany({
+      where: {
+        isActive: true,
+        cinemaMemberships: {
+          some: {
+            cinemaId: request.cinemaId,
+            isActive: true,
           },
         },
-      ],
-    },
-    select: {
-      id: true,
-    },
-  });
+      },
+      select: {
+        id: true,
+      },
+    });
 
   if (staffUsers.length === 0) {
     return;

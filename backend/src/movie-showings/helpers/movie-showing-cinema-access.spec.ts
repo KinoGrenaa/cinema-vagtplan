@@ -14,7 +14,11 @@ describe('resolveMovieShowingsCinemaId', () => {
           .fn()
           .mockResolvedValue({
             id: 7,
-            role: 'EMPLOYEE',
+            cinemaMemberships: [
+              {
+                role: 'EMPLOYEE',
+              },
+            ],
           }),
       },
       cinema: {
@@ -35,24 +39,63 @@ describe('resolveMovieShowingsCinemaId', () => {
 
     expect(
       prisma.user.findFirst,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: 7,
-          isActive: true,
-          OR: expect.arrayContaining([
-            expect.objectContaining({
-              cinemaMemberships:
-                expect.objectContaining({
-                  some: {
-                    cinemaId: 2,
-                    isActive: true,
-                  },
-                }),
-            }),
-          ]),
-        }),
-      }),
+    ).toHaveBeenCalledWith({
+      where: {
+        id: 7,
+        isActive: true,
+        cinemaMemberships: {
+          some: {
+            cinemaId: 2,
+            isActive: true,
+          },
+        },
+      },
+      select: {
+        id: true,
+        cinemaMemberships: {
+          where: {
+            cinemaId: 2,
+            isActive: true,
+          },
+          select: {
+            role: true,
+          },
+          take: 1,
+        },
+      },
+    });
+  });
+
+  it('afviser en session med forældet rolle', async () => {
+    const prisma = {
+      user: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({
+            id: 7,
+            cinemaMemberships: [
+              {
+                role: 'ADMIN',
+              },
+            ],
+          }),
+      },
+      cinema: {
+        findUnique: jest.fn(),
+      },
+    };
+
+    await expect(
+      resolveMovieShowingsCinemaId(
+        prisma as never,
+        {
+          sub: 7,
+          role: 'EMPLOYEE',
+          cinemaId: 2,
+        },
+      ),
+    ).rejects.toBeInstanceOf(
+      ForbiddenException,
     );
   });
 
