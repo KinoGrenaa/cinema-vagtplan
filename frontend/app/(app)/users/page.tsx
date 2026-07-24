@@ -193,9 +193,6 @@ export default function UsersPage() {
             membershipSettings={
               cinemaMembershipActions.membershipSettings
             }
-            primaryCinemaId={
-              cinemaMembershipActions.primaryCinemaId
-            }
             defaultCinemaId={
               cinemaMembershipActions.defaultCinemaId
             }

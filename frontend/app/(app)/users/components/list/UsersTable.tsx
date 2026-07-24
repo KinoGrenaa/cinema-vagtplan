@@ -78,12 +78,6 @@ export default function UsersTable({
                         Bruger-ID {user.id}
                       </div>
                     )}
-
-                    {!user.isHomeCinema && (
-                      <div className="mt-1 text-xs font-normal text-purple-700 dark:text-purple-300">
-                        Tilknyttet denne biograf
-                      </div>
-                    )}
                   </td>
 
                   <td className="p-4">{user.email}</td>

@@ -7,7 +7,6 @@ export type CurrentUser = {
 export type CinemaMembership = {
   id: number;
   cinemaId: number;
-  isHomeCinema: boolean;
   createdAt: string;
   cinema: {
     id: number;

@@ -42,18 +42,19 @@ describe(
       expect(seed).toContain(
         'role: CinemaRole.ADMIN',
       );
-      const userUpsertSection =
+
+      const globalUserSeed =
         seed.slice(
           seed.indexOf(
-            'prisma.user.upsert',
+            'const admin =',
           ),
           seed.indexOf(
-            'prisma.userCinemaMembership.upsert',
+            'await prisma.userCinemaMembership.upsert',
           ),
         );
 
       expect(
-        userUpsertSection,
+        globalUserSeed,
       ).not.toContain(
         'cinemaId:',
       );
@@ -75,7 +76,13 @@ describe(
       );
     });
 
-    it('beregner medlemskabslistens gamle hjemmebiograf-alias fra standardbiografen', () => {
+    it('sorterer medlemskaber efter standardbiograf uden kompatibilitetsflag', () => {
+      const removedFlag = [
+        'is',
+        'Home',
+        'Cinema',
+      ].join('');
+
       expect(
         membershipRead,
       ).toContain(
@@ -90,6 +97,11 @@ describe(
         membershipRead,
       ).not.toContain(
         'user.cinemaId',
+      );
+      expect(
+        membershipRead,
+      ).not.toContain(
+        removedFlag,
       );
     });
   },

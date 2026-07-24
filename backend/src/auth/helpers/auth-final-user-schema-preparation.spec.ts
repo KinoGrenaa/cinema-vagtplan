@@ -43,21 +43,47 @@ describe(
       );
     });
 
-    it('beregner gamle API-aliaser fra standardbiografen', () => {
+    it('returnerer kun standardbiografens felter', () => {
+      const removedAliases = [
+        [
+          'home',
+          'CinemaId',
+        ].join(''),
+        [
+          'is',
+          'Home',
+          'Cinema',
+        ].join(''),
+        [
+          'is',
+          'Primary',
+          'Cinema',
+        ].join(''),
+      ];
+
+      for (
+        const alias of
+        removedAliases
+      ) {
+        expect(
+          authService,
+        ).not.toContain(alias);
+      }
+
       expect(
         authService,
       ).toContain(
-        'homeCinemaId:\n        user.defaultCinemaId',
+        'defaultCinemaId:',
       );
       expect(
         authService,
       ).toContain(
-        'isHomeCinema:\n          cinema.id === user.defaultCinemaId',
+        'isDefaultCinema:',
       );
       expect(
         authService,
       ).toContain(
-        'isPrimaryCinema:\n        user.defaultCinemaId === cinemaId',
+        'isDefault:',
       );
     });
 

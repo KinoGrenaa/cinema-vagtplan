@@ -34,7 +34,6 @@ export type User = {
   canManageCinemaSettings?: boolean;
   canSendBroadcastMessages?: boolean;
   cinemaId?: number | null;
-  isHomeCinema?: boolean;
   canManageAccount?: boolean;
   cinema?: {
     id: number;

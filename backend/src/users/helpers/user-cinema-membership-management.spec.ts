@@ -182,17 +182,14 @@ describe(
       ).resolves.toMatchObject({
         user: {
           id: 9,
-          cinemaId: 7,
           defaultCinemaId: 7,
         },
         memberships: [
           {
             cinemaId: 7,
-            isPrimary: true,
           },
           {
             cinemaId: 9,
-            isPrimary: false,
           },
         ],
       });

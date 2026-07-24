@@ -42,14 +42,12 @@ function createDefaultSettings():
 
 type ManagedMembershipResponse = {
   user: {
-    id: number;
-    cinemaId: number | null;
-    defaultCinemaId: number | null;
+    id: number;defaultCinemaId: number | null;
   };
   memberships: Array<
     UserCinemaMembershipSettings & {
       cinemaId: number;
-      isPrimary: boolean;
+
     }
   >;
 };
@@ -96,9 +94,7 @@ export function useUserCinemaMembershipActions({
   ] = useState<
     Record<number, UserCinemaMembershipSettings>
   >({});
-  const [primaryCinemaId, setPrimaryCinemaId] =
-    useState<number | null>(null);
-  const [defaultCinemaId, setDefaultCinemaId] =
+const [defaultCinemaId, setDefaultCinemaId] =
     useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -111,8 +107,7 @@ export function useUserCinemaMembershipActions({
     setCinemas([]);
     setSelectedCinemaIds([]);
     setMembershipSettings({});
-    setPrimaryCinemaId(user.cinemaId ?? null);
-    setDefaultCinemaId(null);
+setDefaultCinemaId(null);
 
     try {
       const [cinemasResponse, membershipsResponse] =
@@ -208,12 +203,7 @@ export function useUserCinemaMembershipActions({
         }, {});
 
       setCinemas(nextCinemas);
-      setPrimaryCinemaId(
-        membershipsPayload.user.cinemaId ??
-          user.cinemaId ??
-          null,
-      );
-      setDefaultCinemaId(
+setDefaultCinemaId(
         membershipsPayload.user
           .defaultCinemaId ??
           membershipCinemaIds[0] ??
@@ -241,8 +231,7 @@ export function useUserCinemaMembershipActions({
     setCinemas([]);
     setSelectedCinemaIds([]);
     setMembershipSettings({});
-    setPrimaryCinemaId(null);
-    setDefaultCinemaId(null);
+setDefaultCinemaId(null);
     setError("");
   }
 
@@ -425,7 +414,7 @@ export function useUserCinemaMembershipActions({
     cinemas,
     selectedCinemaIds,
     membershipSettings,
-    primaryCinemaId,
+
     defaultCinemaId,
     loading,
     saving,

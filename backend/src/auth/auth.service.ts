@@ -365,10 +365,6 @@ export class AuthService {
     return {
       ...session,
       selectedCinema: membership.cinema,
-      // Midlertidigt API-alias:
-      // Der findes ikke længere en hjemmebiograf.
-      isPrimaryCinema:
-        user.defaultCinemaId === cinemaId,
       isDefaultCinema:
         user.defaultCinemaId === cinemaId,
     };
@@ -442,10 +438,6 @@ export class AuthService {
 
     return {
       role: user.role,
-      // Midlertidigt API-alias:
-      // homeCinemaId følger standardbiografen.
-      homeCinemaId:
-        user.defaultCinemaId,
       defaultCinemaId:
         user.defaultCinemaId,
       allowNoDefault:
@@ -453,9 +445,6 @@ export class AuthService {
       cinemas: cinemas.map((cinema) => ({
         ...cinema,
         isDefault:
-          cinema.id === user.defaultCinemaId,
-        // Midlertidigt API-alias.
-        isHomeCinema:
           cinema.id === user.defaultCinemaId,
       })),
     };

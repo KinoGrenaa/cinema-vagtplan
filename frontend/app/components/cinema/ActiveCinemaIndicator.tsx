@@ -198,12 +198,11 @@ function MasterActiveCinemaIndicator() {
   );
 }
 
-function getCinemaOptionLabel(cinema: ActiveCinemaOption) {
-  const markers: string[] = [];
-  if (cinema.isHomeCinema) markers.push("Hjemmebiograf");
-  if (cinema.isDefault) markers.push("Standardbiograf");
-  return markers.length > 0
-    ? `${cinema.name} · ${markers.join(" · ")}`
+function getCinemaOptionLabel(
+  cinema: ActiveCinemaOption,
+) {
+  return cinema.isDefault
+    ? `${cinema.name} · Standardbiograf`
     : cinema.name;
 }
 

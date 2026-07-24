@@ -91,11 +91,6 @@ function formatManagedMemberships(
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
-      // Midlertidig API-kompatibilitet:
-      // Der findes ikke længere en
-      // særskilt hjemmebiograf.
-      cinemaId:
-        user.defaultCinemaId,
       defaultCinemaId:
         user.defaultCinemaId,
       isActive: user.isActive,
@@ -121,12 +116,6 @@ function formatManagedMemberships(
             membership.canManageCinemaSettings,
           canSendBroadcastMessages:
             membership.canSendBroadcastMessages,
-          // Midlertidig API-kompatibilitet:
-          // "isPrimary" følger nu alene
-          // standardbiografen.
-          isPrimary:
-            membership.cinemaId ===
-            user.defaultCinemaId,
           createdAt:
             membership.createdAt,
           cinema:
@@ -134,11 +123,18 @@ function formatManagedMemberships(
         }))
         .sort(
           (first, second) => {
+            const firstIsDefault =
+              first.cinemaId ===
+              user.defaultCinemaId;
+            const secondIsDefault =
+              second.cinemaId ===
+              user.defaultCinemaId;
+
             if (
-              first.isPrimary !==
-              second.isPrimary
+              firstIsDefault !==
+              secondIsDefault
             ) {
-              return first.isPrimary
+              return firstIsDefault
                 ? -1
                 : 1;
             }

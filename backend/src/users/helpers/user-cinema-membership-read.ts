@@ -49,25 +49,19 @@ export async function findUserCinemaMemberships(
   }
 
   return user.cinemaMemberships
-    .map((membership) => ({
-      id: membership.id,
-      cinemaId:
-        membership.cinemaId,
-      // Midlertidigt API-alias:
-      // Der findes ikke længere en hjemmebiograf.
-      isHomeCinema:
-        membership.cinemaId ===
-        user.defaultCinemaId,
-      createdAt:
-        membership.createdAt,
-      cinema: membership.cinema,
-    }))
     .sort((first, second) => {
+      const firstIsDefault =
+        first.cinemaId ===
+        user.defaultCinemaId;
+      const secondIsDefault =
+        second.cinemaId ===
+        user.defaultCinemaId;
+
       if (
-        first.isHomeCinema !==
-        second.isHomeCinema
+        firstIsDefault !==
+        secondIsDefault
       ) {
-        return first.isHomeCinema
+        return firstIsDefault
           ? -1
           : 1;
       }
@@ -76,5 +70,13 @@ export async function findUserCinemaMemberships(
         second.cinema.name,
         'da',
       );
-    });
+    })
+    .map((membership) => ({
+      id: membership.id,
+      cinemaId:
+        membership.cinemaId,
+      createdAt:
+        membership.createdAt,
+      cinema: membership.cinema,
+    }));
 }

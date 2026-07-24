@@ -40,7 +40,6 @@ type UserCinemaMembershipModalProps = {
     number,
     UserCinemaMembershipSettings
   >;
-  primaryCinemaId: number | null;
   defaultCinemaId: number | null;
   loading: boolean;
   saving: boolean;

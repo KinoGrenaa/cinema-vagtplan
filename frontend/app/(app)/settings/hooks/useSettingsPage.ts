@@ -17,7 +17,6 @@ import type { CinemaMembership } from "../helpers/settingsTypes";
 
 export type DefaultCinemaOptions = {
   role: "MASTER" | "ADMIN" | "EMPLOYEE";
-  homeCinemaId: number | null;
   defaultCinemaId: number | null;
   allowNoDefault: boolean;
   cinemas: Array<{
@@ -25,7 +24,6 @@ export type DefaultCinemaOptions = {
     name: string;
     logoUrl?: string | null;
     isDefault: boolean;
-    isHomeCinema: boolean;
   }>;
 };
 
