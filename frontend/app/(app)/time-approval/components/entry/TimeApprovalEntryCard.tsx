@@ -1,5 +1,17 @@
+"use client";
+
+import {
+  useEffect,
+} from "react";
+import {
+  useSearchParams,
+} from "next/navigation";
+
 import PayrollAdjustmentNotice from "../../../../components/time-entries/PayrollAdjustmentNotice";
 
+import {
+  parseTimeApprovalEntryTarget,
+} from "../../helpers/core/timeApprovalEntryTarget";
 import type {
   PayrollExportContext,
   TimeEntry,
@@ -137,6 +149,61 @@ export default function TimeApprovalEntryCard({
   onSendBackForChanges,
   onVoid,
 }: Props) {
+  const searchParams =
+    useSearchParams();
+  const entryTarget =
+    parseTimeApprovalEntryTarget(
+      searchParams.get(
+        "entryId",
+      ),
+    );
+  const isFocused =
+    entryTarget.entryId ===
+    entry.id;
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
+    const timeoutId =
+      window.setTimeout(() => {
+        const element =
+          document.getElementById(
+            `time-entry-${entry.id}`,
+          );
+
+        if (!element) {
+          return;
+        }
+
+        element.focus({
+          preventScroll: true,
+        });
+
+        const reduceMotion =
+          window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+
+        element.scrollIntoView({
+          behavior: reduceMotion
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
+      }, 100);
+
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
+  }, [
+    entry.id,
+    isFocused,
+  ]);
+
   const hasDetails = Boolean(
     entry.deviation?.hasDeviation ||
       entry.clockInNote ||
@@ -146,7 +213,20 @@ export default function TimeApprovalEntryCard({
   );
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
+    <div
+      id={`time-entry-${entry.id}`}
+      tabIndex={-1}
+      aria-label={
+        isFocused
+          ? "Fremhævet tidsregistrering"
+          : undefined
+      }
+      className={`rounded-2xl border bg-white p-6 shadow-sm outline-none transition-colors dark:bg-gray-900 ${
+        isFocused
+          ? "border-blue-500 ring-4 ring-blue-500/60 ring-offset-4 ring-offset-white dark:border-blue-400 dark:ring-blue-400/60 dark:ring-offset-gray-950"
+          : "border-gray-200 dark:border-gray-800"
+      }`}
+    >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1 space-y-4">
           <div>

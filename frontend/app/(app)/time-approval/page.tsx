@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import AdminGuard from "@/app/components/access/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
@@ -14,6 +22,10 @@ import { useInputModal } from "@/app/hooks/useInputModal";
 import { useAuth } from "@/app/providers/AuthProvider";
 import TimeApprovalFilterModal from "./components/filters/TimeApprovalFilterModal";
 import TimeApprovalContent from "./components/layout/TimeApprovalContent";
+import TimeApprovalEntryFocusNotice from "./components/layout/TimeApprovalEntryFocusNotice";
+import {
+  parseTimeApprovalEntryTarget,
+} from "./helpers/core/timeApprovalEntryTarget";
 import PayrollAdjustmentConfirmationModal from "./components/modals/PayrollAdjustmentConfirmationModal";
 import { useTimeApprovalActions } from "./hooks/actions/useTimeApprovalActions";
 import { useTimeApprovalData } from "./hooks/data/useTimeApprovalData";
@@ -37,6 +49,9 @@ function getSelectedMasterCinemaId() {
 
 export default function TimeApprovalPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams =
+    useSearchParams();
   const { user } = useAuth();
   const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
     string | null
@@ -71,6 +86,54 @@ export default function TimeApprovalPage() {
     infoDialog,
     enabled: !needsMasterCinemaSelection,
   });
+
+  const entryTarget =
+    parseTimeApprovalEntryTarget(
+      searchParams.get(
+        "entryId",
+      ),
+    );
+
+  const entryFocusState =
+    entryTarget.invalid
+      ? "invalid"
+      : !entryTarget.entryId
+        ? "idle"
+        : loading
+          ? "loading"
+          : entries.some(
+                (entry) =>
+                  entry.id ===
+                  entryTarget.entryId,
+              )
+            ? "found"
+            : "missing";
+
+  const clearEntryFocus =
+    useCallback(() => {
+      const params =
+        new URLSearchParams(
+          searchParams.toString(),
+        );
+
+      params.delete("entryId");
+
+      const query =
+        params.toString();
+
+      router.replace(
+        query
+          ? `${pathname}?${query}`
+          : pathname,
+        {
+          scroll: false,
+        },
+      );
+    }, [
+      pathname,
+      router,
+      searchParams,
+    ]);
 
   const {
     showFilterModal,
@@ -161,6 +224,24 @@ export default function TimeApprovalPage() {
           </div>
         ) : (
           <>
+            <TimeApprovalEntryFocusNotice
+
+              state={entryFocusState}
+
+              entryId={
+
+                entryTarget.entryId
+
+              }
+
+              onClear={
+
+                clearEntryFocus
+
+              }
+
+            />
+
             <TimeApprovalContent
               loading={loading}
               entriesCount={entries.length}
