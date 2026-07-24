@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import BaseModal from "../BaseModal";
 
 type Props = {
@@ -8,9 +9,7 @@ type Props = {
   clockIn: string;
   clockOut?: string | null;
   loading?: boolean;
-
   onClose: () => void;
-
   onSave: (data: {
     clockIn: string;
     clockOut?: string | null;
@@ -74,23 +73,21 @@ export default function TimeEntryEditModal({
       <div className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium">Clock ind</label>
-
           <input
             type="datetime-local"
             value={newClockIn}
-            onChange={(e) => setNewClockIn(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+            onChange={(event) => setNewClockIn(event.target.value)}
+            className="w-full rounded-xl border border-gray-300 px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-800 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
           />
         </div>
 
         <div>
           <label className="mb-1 block text-sm font-medium">Clock ud</label>
-
           <input
             type="datetime-local"
             value={newClockOut}
-            onChange={(e) => setNewClockOut(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+            onChange={(event) => setNewClockOut(event.target.value)}
+            className="w-full rounded-xl border border-gray-300 px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-800 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
           />
         </div>
 
@@ -98,12 +95,11 @@ export default function TimeEntryEditModal({
           <label className="mb-1 block text-sm font-medium">
             Intern note om rettelsen
           </label>
-
           <textarea
             value={adminNote}
-            onChange={(e) => setAdminNote(e.target.value)}
+            onChange={(event) => setAdminNote(event.target.value)}
             rows={4}
-            className="w-full rounded-xl border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800"
+            className="w-full rounded-xl border border-gray-300 px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-800 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
           />
         </div>
 
@@ -115,18 +111,20 @@ export default function TimeEntryEditModal({
 
         <div className="flex justify-end gap-2">
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-xl border border-gray-300 px-4 py-2"
+            disabled={loading}
+            className="rounded-xl border border-gray-300 bg-white px-4 py-2 font-medium text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Annuller
           </button>
-
           <button
+            type="button"
             disabled={loading}
             onClick={handleSave}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-xl bg-blue-700 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           >
-            Gem ændringer
+            {loading ? "Gemmer..." : "Gem ændringer"}
           </button>
         </div>
       </div>

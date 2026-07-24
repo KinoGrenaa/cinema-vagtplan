@@ -113,7 +113,7 @@ export function UserModal({
                   ),
                 )
               }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
             >
               <option value="EMPLOYEE">Medarbejder</option>
               <option value="ADMIN">Admin</option>
@@ -130,7 +130,7 @@ export function UserModal({
                   employmentType: event.target.value as EmploymentType,
                 })
               }
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
             >
               <option value="HOURLY">Timelønnet</option>
               <option value="SALARIED">Fastlønnet</option>
@@ -144,14 +144,14 @@ export function UserModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-gray-200 px-4 py-2 text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+            className="rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-900 transition hover:bg-gray-300 active:bg-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-600 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Annuller
           </button>
           <button
             type="button"
             onClick={onSave}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            className="rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           >
             Gem
           </button>
@@ -252,7 +252,7 @@ function Input({
         onPointerDown={allowManualInput}
         onKeyDown={allowManualInput}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
       />
     </label>
   );
@@ -292,9 +292,7 @@ function PermissionFields({
             >
               <input
                 type="checkbox"
-                checked={
-                  requiredByRole || Boolean(user[permission.key])
-                }
+                checked={requiredByRole || Boolean(user[permission.key])}
                 disabled={requiredByRole}
                 onChange={(event) => {
                   if (requiredByRole) return;
@@ -304,7 +302,7 @@ function PermissionFields({
                     [permission.key]: event.target.checked,
                   });
                 }}
-                className="mt-0.5 h-4 w-4 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-80"
+                className="mt-0.5 h-4 w-4 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-80 dark:focus-visible:ring-blue-400"
               />
               <span className="min-w-0 text-sm">
                 <span>{permission.label}</span>

@@ -45,9 +45,7 @@ export default function UserCinemaMembershipModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
       <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
         <div className="border-b border-gray-200 p-6 dark:border-gray-800">
-          <h2 className="text-xl font-bold">
-            Biograftilknytninger
-          </h2>
+          <h2 className="text-xl font-bold">Biograftilknytninger</h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {userName} · Bruger-ID {user.id}
           </p>
@@ -55,8 +53,8 @@ export default function UserCinemaMembershipModal({
 
         <div className="max-h-[65vh] overflow-y-auto p-6">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Vælg de biografer, brugeren må skifte imellem.
-            Hjemmebiografen kan ikke fjernes her.
+            Vælg de biografer, brugeren må skifte imellem. Hjemmebiografen kan
+            ikke fjernes her.
           </p>
 
           {loading ? (
@@ -72,9 +70,7 @@ export default function UserCinemaMembershipModal({
               {cinemas.map((cinema) => {
                 const isPrimary = cinema.id === primaryCinemaId;
                 const isDefault = cinema.id === defaultCinemaId;
-                const isSelected = selectedCinemaIds.includes(
-                  cinema.id,
-                );
+                const isSelected = selectedCinemaIds.includes(cinema.id);
 
                 return (
                   <label
@@ -90,14 +86,11 @@ export default function UserCinemaMembershipModal({
                       checked={isSelected}
                       disabled={isPrimary || saving}
                       onChange={() => onToggleCinema(cinema.id)}
-                      className="h-5 w-5 rounded border-gray-300"
+                      className="h-5 w-5 rounded border-gray-300 accent-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:accent-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
                     />
-
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold">
-                          {cinema.name}
-                        </span>
+                        <span className="font-semibold">{cinema.name}</span>
                         {isPrimary && (
                           <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-100">
                             Hjemmebiograf
@@ -131,7 +124,7 @@ export default function UserCinemaMembershipModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded-xl border border-gray-300 px-4 py-2 font-semibold hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            className="rounded-xl border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Annuller
           </button>
@@ -144,7 +137,7 @@ export default function UserCinemaMembershipModal({
               Boolean(error) ||
               selectedCinemaIds.length === 0
             }
-            className="rounded-xl bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-blue-700 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
           >
             {saving ? "Gemmer..." : "Gem tilknytninger"}
           </button>
