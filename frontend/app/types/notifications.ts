@@ -13,18 +13,15 @@ export type NotificationRelationIds = {
   relatedMessageId?: number | null;
 };
 
-export type Notification = NotificationRelationIds & {
-  id: number;
-
-  title: string;
-  message: string;
-
-  type: NotificationType;
-
-  isRead: boolean;
-
-  createdAt: string;
-
-  userId: number;
-  cinemaId: number;
-};
+export type Notification =
+  NotificationRelationIds & {
+    id: number;
+    title: string;
+    message: string;
+    type: NotificationType;
+    isRead: boolean;
+    createdAt: string;
+    userId: number;
+    cinemaId: number;
+    linkUrl?: string | null;
+  };
