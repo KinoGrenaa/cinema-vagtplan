@@ -22,8 +22,9 @@ describe('createShiftFlow', () => {
         lastName: 'Andersen',
       },
     };
+
     const tx = {
-      $queryRaw: jest.fn(),
+      $executeRaw: jest.fn(),
       workType: {
         findFirst: jest
           .fn()
@@ -51,6 +52,7 @@ describe('createShiftFlow', () => {
           .mockResolvedValue(null),
       },
     };
+
     const prisma = {
       $transaction: jest.fn(
         async (
@@ -58,14 +60,17 @@ describe('createShiftFlow', () => {
         ) => callback(tx),
       ),
     };
+
     const realtimeGateway = {
       notifyCinema: jest.fn(),
     };
+
     const pushService = {
       sendToUserInCinema: jest
         .fn()
         .mockResolvedValue({ sent: 1 }),
     };
+
     const auditLogsService = {
       create: jest
         .fn()
@@ -93,7 +98,7 @@ describe('createShiftFlow', () => {
             '2026-08-10T08:00:00.000Z',
           endTime:
             '2026-08-10T12:00:00.000Z',
-          note: '  Kasse  ',
+          note: ' Kasse ',
           cinemaId: 2,
           userId: 7,
           workTypeId: 3,
@@ -101,10 +106,11 @@ describe('createShiftFlow', () => {
       }),
     ).resolves.toBe(shift);
 
-    expect(tx.$queryRaw).toHaveBeenCalled();
+    expect(tx.$executeRaw).toHaveBeenCalled();
     expect(
       tx.shift.findFirst,
     ).toHaveBeenCalled();
+
     expect(tx.shift.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -114,6 +120,7 @@ describe('createShiftFlow', () => {
         }),
       }),
     );
+
     expect(
       pushService.sendToUserInCinema,
     ).toHaveBeenCalledWith(
