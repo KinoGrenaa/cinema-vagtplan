@@ -42,15 +42,6 @@ export type CreateUserInput = {
   canSendBroadcastMessages?: boolean;
 };
 
-const membershipPermissionKeys = [
-  'canManageSchedule',
-  'canManageUsers',
-  'canManagePayroll',
-  'canManageLeaveRequests',
-  'canManageCinemaSettings',
-  'canSendBroadcastMessages',
-] as const;
-
 function toCinemaRole(
   role: UserRole,
 ): CinemaRole {
@@ -85,7 +76,8 @@ function buildCinemaUserResponse(
     payrollEmployeeId:
       membership.payrollEmployeeId ?? null,
     cinemaId,
-    isActive: membership.isActive,
+    isActive:
+      membership.isActive,
     deactivatedAt:
       membership.deactivatedAt ?? null,
     canManageSchedule:
@@ -107,7 +99,8 @@ function buildCinemaUserResponse(
 function normalizeOptionalText(
   value: string | null | undefined,
 ) {
-  const normalized = value?.trim() ?? '';
+  const normalized =
+    value?.trim() ?? '';
 
   return normalized || null;
 }
@@ -115,42 +108,48 @@ function normalizeOptionalText(
 function normalizeOptionalDate(
   value: string | null | undefined,
 ) {
-  return value ? new Date(value) : null;
+  return value
+    ? new Date(value)
+    : null;
 }
 
 function buildMembershipData(
   role: UserRole,
   data: CreateUserInput,
 ) {
-  const permissions = getCreatePermissionData(
-    role,
-    data,
-  );
+  const permissions =
+    getCreatePermissionData(
+      role,
+      data,
+    );
 
   return {
     role: toCinemaRole(role),
     employmentType:
       (data.employmentType ??
         'HOURLY') as PrismaEmploymentType,
-    hireDate: normalizeOptionalDate(
-      data.hireDate,
-    ),
-    employeeNumber: normalizeOptionalText(
-      data.employeeNumber,
-    ),
-    payrollEmployeeId: normalizeOptionalText(
-      data.payrollEmployeeId,
-    ),
+    hireDate:
+      normalizeOptionalDate(
+        data.hireDate,
+      ),
+    employeeNumber:
+      normalizeOptionalText(
+        data.employeeNumber,
+      ),
+    payrollEmployeeId:
+      normalizeOptionalText(
+        data.payrollEmployeeId,
+      ),
     ...permissions,
     isActive: true,
     deactivatedAt: null,
   };
 }
 
-function buildLegacyUserData(
+function buildAccountData(
   data: CreateUserInput,
   role: UserRole,
-  cinemaId: number | null,
+  defaultCinemaId: number | null,
   hashedPassword: string,
 ) {
   return {
@@ -160,20 +159,7 @@ function buildLegacyUserData(
     lastName: data.lastName,
     phone: data.phone,
     role,
-    employmentType:
-      data.employmentType ?? 'HOURLY',
-    hireDate: normalizeOptionalDate(
-      data.hireDate,
-    ),
-    employeeNumber: normalizeOptionalText(
-      data.employeeNumber,
-    ),
-    payrollEmployeeId: normalizeOptionalText(
-      data.payrollEmployeeId,
-    ),
-    cinemaId,
-    defaultCinemaId: cinemaId,
-    ...getCreatePermissionData(role, data),
+    defaultCinemaId,
     isActive: true,
     deactivatedAt: null,
   };
@@ -181,11 +167,13 @@ function buildLegacyUserData(
 
 export async function createUserFlow(
   prisma: PrismaService,
-  auditLogsService: AuditLogsService,
+  auditLogsService:
+    AuditLogsService,
   data: CreateUserInput,
   currentUser?: AuthUser,
 ) {
-  const role = data.role ?? 'EMPLOYEE';
+  const role =
+    data.role ?? 'EMPLOYEE';
 
   if (currentUser) {
     ensureSameCinemaOrMaster(
@@ -203,10 +191,11 @@ export async function createUserFlow(
     }
   }
 
-  const hashedPassword = await bcrypt.hash(
-    data.password,
-    10,
-  );
+  const hashedPassword =
+    await bcrypt.hash(
+      data.password,
+      10,
+    );
 
   const result =
     await withUserDirectoryWriteLock(
@@ -235,7 +224,7 @@ export async function createUserFlow(
 
           const createdMaster =
             await transaction.user.create({
-              data: buildLegacyUserData(
+              data: buildAccountData(
                 data,
                 role,
                 null,
@@ -249,9 +238,10 @@ export async function createUserFlow(
               `Oprettede MASTER-bruger ` +
               `${createdMaster.firstName} ${createdMaster.lastName}`,
             auditCinemaId: null,
-            user: buildCinemaUserResponse(
-              createdMaster,
-            ),
+            user:
+              buildCinemaUserResponse(
+                createdMaster,
+              ),
           };
         }
 
@@ -262,10 +252,16 @@ export async function createUserFlow(
         }
 
         const membershipData =
-          buildMembershipData(role, data);
+          buildMembershipData(
+            role,
+            data,
+          );
 
         if (existingUser) {
-          if (existingUser.role === 'MASTER') {
+          if (
+            existingUser.role ===
+            'MASTER'
+          ) {
             throw new BadRequestException(
               'MASTER-brugere kan ikke tilknyttes en almindelig biograf',
             );
@@ -276,7 +272,8 @@ export async function createUserFlow(
               {
                 where: {
                   userId_cinemaId: {
-                    userId: existingUser.id,
+                    userId:
+                      existingUser.id,
                     cinemaId,
                   },
                 },
@@ -287,7 +284,9 @@ export async function createUserFlow(
               },
             );
 
-          if (existingMembership?.isActive) {
+          if (
+            existingMembership?.isActive
+          ) {
             throw new BadRequestException(
               'Brugeren er allerede tilknyttet denne biograf',
             );
@@ -303,41 +302,27 @@ export async function createUserFlow(
             await transaction.userCinemaMembership.create(
               {
                 data: {
-                  userId: existingUser.id,
+                  userId:
+                    existingUser.id,
                   cinemaId,
                   ...membershipData,
                 },
               },
             );
 
-          const accountUpdate: Record<
-            string,
-            unknown
-          > = {};
-
-          if (!existingUser.isActive) {
-            accountUpdate.isActive = true;
-            accountUpdate.deactivatedAt = null;
-          }
-
-          if (!existingUser.cinemaId) {
-            accountUpdate.cinemaId = cinemaId;
-          }
-
-          if (!existingUser.defaultCinemaId) {
-            accountUpdate.defaultCinemaId =
-              cinemaId;
-          }
-
           const linkedUser =
-            Object.keys(accountUpdate).length > 0
-              ? await transaction.user.update({
+            existingUser.defaultCinemaId
+              ? existingUser
+              : await transaction.user.update({
                   where: {
-                    id: existingUser.id,
+                    id:
+                      existingUser.id,
                   },
-                  data: accountUpdate,
-                })
-              : existingUser;
+                  data: {
+                    defaultCinemaId:
+                      cinemaId,
+                  },
+                });
 
           return {
             action:
@@ -347,17 +332,18 @@ export async function createUserFlow(
               `${linkedUser.firstName} ${linkedUser.lastName} ` +
               `til biograf ${cinemaId}`,
             auditCinemaId: cinemaId,
-            user: buildCinemaUserResponse(
-              linkedUser,
-              membership,
-              cinemaId,
-            ),
+            user:
+              buildCinemaUserResponse(
+                linkedUser,
+                membership,
+                cinemaId,
+              ),
           };
         }
 
         const createdUser =
           await transaction.user.create({
-            data: buildLegacyUserData(
+            data: buildAccountData(
               data,
               role,
               cinemaId,
@@ -369,7 +355,8 @@ export async function createUserFlow(
           await transaction.userCinemaMembership.create(
             {
               data: {
-                userId: createdUser.id,
+                userId:
+                  createdUser.id,
                 cinemaId,
                 ...membershipData,
               },
@@ -382,11 +369,12 @@ export async function createUserFlow(
             `Oprettede bruger ` +
             `${createdUser.firstName} ${createdUser.lastName}`,
           auditCinemaId: cinemaId,
-          user: buildCinemaUserResponse(
-            createdUser,
-            membership,
-            cinemaId,
-          ),
+          user:
+            buildCinemaUserResponse(
+              createdUser,
+              membership,
+              cinemaId,
+            ),
         };
       },
     );
@@ -395,9 +383,12 @@ export async function createUserFlow(
     action: result.action,
     entityType: 'User',
     entityId: result.user.id,
-    description: result.description,
-    userId: getActorUserId(currentUser),
-    cinemaId: result.auditCinemaId,
+    description:
+      result.description,
+    userId:
+      getActorUserId(currentUser),
+    cinemaId:
+      result.auditCinemaId,
   });
 
   return result.user;

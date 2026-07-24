@@ -9,8 +9,12 @@ import {
 } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
-import type { UserCinemaMembershipConfigurationDto } from './dto/replace-user-cinema-memberships.dto';
-import { findManagedUserCinemaMemberships } from './helpers/user-cinema-membership-management';
+import type {
+  UserCinemaMembershipConfigurationDto,
+} from './dto/replace-user-cinema-memberships.dto';
+import {
+  findManagedUserCinemaMemberships,
+} from './helpers/user-cinema-membership-management';
 import {
   AuthUser,
   getActorUserId,
@@ -20,7 +24,8 @@ import { withUserWriteLock } from './helpers/user-write-lock';
 type NormalizedMembershipConfiguration = {
   cinemaId: number;
   role: CinemaRole;
-  employmentType: EmploymentType;
+  employmentType:
+    EmploymentType;
   canManageSchedule: boolean;
   canManageUsers: boolean;
   canManagePayroll: boolean;
@@ -42,19 +47,24 @@ function normalizeConfigurations(
   configurations:
     UserCinemaMembershipConfigurationDto[],
 ) {
-  if (!Array.isArray(configurations)) {
+  if (
+    !Array.isArray(configurations)
+  ) {
     throw new BadRequestException(
       'Biograftilknytninger skal være en liste',
     );
   }
 
-  if (configurations.length > 1000) {
+  if (
+    configurations.length > 1000
+  ) {
     throw new BadRequestException(
       'Der er valgt for mange biografer',
     );
   }
 
-  const cinemaIds = new Set<number>();
+  const cinemaIds =
+    new Set<number>();
 
   return configurations.map(
     (
@@ -72,13 +82,18 @@ function normalizeConfigurations(
       }
 
       if (
-        cinemaIds.has(configuration.cinemaId)
+        cinemaIds.has(
+          configuration.cinemaId,
+        )
       ) {
         throw new BadRequestException(
           'Den samme biograf må kun vælges én gang',
         );
       }
-      cinemaIds.add(configuration.cinemaId);
+
+      cinemaIds.add(
+        configuration.cinemaId,
+      );
 
       if (
         configuration.role !==
@@ -103,7 +118,8 @@ function normalizeConfigurations(
       }
 
       const permissions =
-        configuration.role === CinemaRole.ADMIN
+        configuration.role ===
+        CinemaRole.ADMIN
           ? ADMIN_PERMISSIONS
           : {
               canManageSchedule:
@@ -133,8 +149,10 @@ function normalizeConfigurations(
             };
 
       return {
-        cinemaId: configuration.cinemaId,
-        role: configuration.role,
+        cinemaId:
+          configuration.cinemaId,
+        role:
+          configuration.role,
         employmentType:
           configuration.employmentType,
         ...permissions,
@@ -146,7 +164,8 @@ function normalizeConfigurations(
 @Injectable()
 export class UserCinemaMembershipConfigurationService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma:
+      PrismaService,
     private readonly auditLogsService:
       AuditLogsService,
   ) {}
@@ -155,18 +174,23 @@ export class UserCinemaMembershipConfigurationService {
     userId: number,
     configurations:
       UserCinemaMembershipConfigurationDto[],
-    requestedDefaultCinemaId: number | null,
+    requestedDefaultCinemaId:
+      number | null,
     currentUser: AuthUser,
   ) {
     const normalized =
-      normalizeConfigurations(configurations);
-    const cinemaIds = normalized.map(
-      (configuration) =>
-        configuration.cinemaId,
-    );
+      normalizeConfigurations(
+        configurations,
+      );
+    const cinemaIds =
+      normalized.map(
+        (configuration) =>
+          configuration.cinemaId,
+      );
 
     if (
-      requestedDefaultCinemaId !== null &&
+      requestedDefaultCinemaId !==
+        null &&
       !cinemaIds.includes(
         requestedDefaultCinemaId,
       )
@@ -176,158 +200,189 @@ export class UserCinemaMembershipConfigurationService {
       );
     }
 
-    const result = await withUserWriteLock(
-      this.prisma,
-      userId,
-      async (transaction, lockedUserId) => {
-        const user =
-          await transaction.user.findUnique({
-            where: {
-              id: lockedUserId,
-            },
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              role: true,
-              cinemaId: true,
-              defaultCinemaId: true,
-            },
-          });
-
-        if (!user) {
-          throw new NotFoundException(
-            'Bruger blev ikke fundet',
-          );
-        }
-
-        if (user.role === 'MASTER') {
-          throw new BadRequestException(
-            'MASTER-brugere bruger MASTER-panelets biografvalg',
-          );
-        }
-
-        const cinemas =
-          await transaction.cinema.findMany({
-            where: {
-              id: {
-                in: cinemaIds,
-              },
-            },
-            select: {
-              id: true,
-              name: true,
-            },
-          });
-
-        if (cinemas.length !== cinemaIds.length) {
-          throw new BadRequestException(
-            'En eller flere valgte biografer findes ikke',
-          );
-        }
-
-        await transaction.userCinemaMembership.updateMany(
-          {
-            where: {
-              userId: lockedUserId,
-              isActive: true,
-              ...(cinemaIds.length > 0
-                ? {
-                    cinemaId: {
-                      notIn: cinemaIds,
-                    },
-                  }
-                : {}),
-            },
-            data: {
-              isActive: false,
-              deactivatedAt: new Date(),
-            },
-          },
-        );
-
-        for (const configuration of normalized) {
-          await transaction.userCinemaMembership.upsert(
-            {
-              where: {
-                userId_cinemaId: {
-                  userId: lockedUserId,
-                  cinemaId:
-                    configuration.cinemaId,
+    const result =
+      await withUserWriteLock(
+        this.prisma,
+        userId,
+        async (
+          transaction,
+          lockedUserId,
+        ) => {
+          const user =
+            await transaction.user.findUnique(
+              {
+                where: {
+                  id: lockedUserId,
+                },
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  role: true,
+                  defaultCinemaId: true,
                 },
               },
-              create: {
-                userId: lockedUserId,
-                ...configuration,
-                isActive: true,
-                deactivatedAt: null,
+            );
+
+          if (!user) {
+            throw new NotFoundException(
+              'Bruger blev ikke fundet',
+            );
+          }
+
+          if (
+            user.role === 'MASTER'
+          ) {
+            throw new BadRequestException(
+              'MASTER-brugere bruger MASTER-panelets biografvalg',
+            );
+          }
+
+          const cinemas =
+            await transaction.cinema.findMany(
+              {
+                where: {
+                  id: {
+                    in: cinemaIds,
+                  },
+                },
+                select: {
+                  id: true,
+                  name: true,
+                },
               },
-              update: {
-                ...configuration,
+            );
+
+          if (
+            cinemas.length !==
+            cinemaIds.length
+          ) {
+            throw new BadRequestException(
+              'En eller flere valgte biografer findes ikke',
+            );
+          }
+
+          await transaction.userCinemaMembership.updateMany(
+            {
+              where: {
+                userId:
+                  lockedUserId,
                 isActive: true,
-                deactivatedAt: null,
+                ...(cinemaIds.length > 0
+                  ? {
+                      cinemaId: {
+                        notIn:
+                          cinemaIds,
+                      },
+                    }
+                  : {}),
+              },
+              data: {
+                isActive: false,
+                deactivatedAt:
+                  new Date(),
               },
             },
           );
-        }
 
-        const nextCinemaId =
-          cinemaIds.length === 0
-            ? null
-            : user.cinemaId &&
-                cinemaIds.includes(user.cinemaId)
-              ? user.cinemaId
+          for (
+            const configuration of
+            normalized
+          ) {
+            await transaction.userCinemaMembership.upsert(
+              {
+                where: {
+                  userId_cinemaId: {
+                    userId:
+                      lockedUserId,
+                    cinemaId:
+                      configuration.cinemaId,
+                  },
+                },
+                create: {
+                  userId:
+                    lockedUserId,
+                  ...configuration,
+                  isActive: true,
+                  deactivatedAt:
+                    null,
+                },
+                update: {
+                  ...configuration,
+                  isActive: true,
+                  deactivatedAt:
+                    null,
+                },
+              },
+            );
+          }
+
+          const nextDefaultCinemaId =
+            cinemaIds.length === 0
+              ? null
               : requestedDefaultCinemaId ??
-                cinemaIds[0] ??
-                null;
-        const nextDefaultCinemaId =
-          cinemaIds.length === 0
-            ? null
-            : requestedDefaultCinemaId ??
-              (user.defaultCinemaId &&
-              cinemaIds.includes(
-                user.defaultCinemaId,
-              )
-                ? user.defaultCinemaId
-                : nextCinemaId);
+                (user.defaultCinemaId &&
+                cinemaIds.includes(
+                  user.defaultCinemaId,
+                )
+                  ? user.defaultCinemaId
+                  : cinemaIds[0] ??
+                    null);
 
-        await transaction.user.update({
-          where: {
-            id: lockedUserId,
-          },
-          data: {
-            cinemaId: nextCinemaId,
-            defaultCinemaId:
-              nextDefaultCinemaId,
-          },
-        });
+          if (
+            user.defaultCinemaId !==
+            nextDefaultCinemaId
+          ) {
+            await transaction.user.update(
+              {
+                where: {
+                  id:
+                    lockedUserId,
+                },
+                data: {
+                  defaultCinemaId:
+                    nextDefaultCinemaId,
+                },
+              },
+            );
+          }
 
-        return {
-          user,
-          cinemas,
-          nextCinemaId,
-        };
-      },
-    );
+          return {
+            user,
+            cinemas,
+            nextDefaultCinemaId,
+          };
+        },
+      );
 
-    const cinemaDescription = normalized
-      .map((configuration) => {
-        const cinema = result.cinemas.find(
-          (item) =>
-            item.id === configuration.cinemaId,
-        );
-        const role =
-          configuration.role ===
-          CinemaRole.ADMIN
-            ? 'ADMIN'
-            : 'EMPLOYEE';
+    const cinemaDescription =
+      normalized
+        .map((configuration) => {
+          const cinema =
+            result.cinemas.find(
+              (item) =>
+                item.id ===
+                configuration.cinemaId,
+            );
+          const role =
+            configuration.role ===
+            CinemaRole.ADMIN
+              ? 'ADMIN'
+              : 'EMPLOYEE';
 
-        return `${cinema?.name ?? configuration.cinemaId} (${role})`;
-      })
-      .sort((first, second) =>
-        first.localeCompare(second, 'da'),
-      )
-      .join(', ');
+          return `${
+            cinema?.name ??
+            configuration.cinemaId
+          } (${role})`;
+        })
+        .sort(
+          (first, second) =>
+            first.localeCompare(
+              second,
+              'da',
+            ),
+        )
+        .join(', ');
 
     await this.auditLogsService.create({
       action:
@@ -339,10 +394,10 @@ export class UserCinemaMembershipConfigurationService {
         `${result.user.firstName} ${result.user.lastName}: ` +
         (cinemaDescription ||
           'ingen aktive biografer'),
-      userId: getActorUserId(currentUser),
+      userId:
+        getActorUserId(currentUser),
       cinemaId:
-        result.nextCinemaId ??
-        result.user.cinemaId,
+        result.nextDefaultCinemaId,
     });
 
     return findManagedUserCinemaMemberships(

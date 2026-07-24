@@ -87,12 +87,24 @@ function formatMembershipUser(
   };
 }
 
+const membershipStatusSelect = {
+  role: true,
+  employmentType: true,
+  isActive: true,
+  deactivatedAt: true,
+  canManageSchedule: true,
+  canManageUsers: true,
+  canManagePayroll: true,
+  canManageLeaveRequests: true,
+  canManageCinemaSettings: true,
+  canSendBroadcastMessages: true,
+} as const;
+
 @Injectable()
 export class UserCinemaMembershipStatusService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly auditLogsService:
-      AuditLogsService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
   async deactivate(
@@ -108,7 +120,10 @@ export class UserCinemaMembershipStatusService {
     const result = await withUserWriteLock(
       this.prisma,
       userId,
-      async (transaction, lockedUserId) => {
+      async (
+        transaction,
+        lockedUserId,
+      ) => {
         const user =
           await transaction.user.findUnique({
             where: {
@@ -121,7 +136,6 @@ export class UserCinemaMembershipStatusService {
               lastName: true,
               phone: true,
               role: true,
-              cinemaId: true,
               defaultCinemaId: true,
             },
           });
@@ -139,26 +153,18 @@ export class UserCinemaMembershipStatusService {
         }
 
         const membership =
-          await transaction.userCinemaMembership.findUnique({
-            where: {
-              userId_cinemaId: {
-                userId: lockedUserId,
-                cinemaId,
+          await transaction.userCinemaMembership.findUnique(
+            {
+              where: {
+                userId_cinemaId: {
+                  userId: lockedUserId,
+                  cinemaId,
+                },
               },
+              select:
+                membershipStatusSelect,
             },
-            select: {
-              role: true,
-              employmentType: true,
-              isActive: true,
-              deactivatedAt: true,
-              canManageSchedule: true,
-              canManageUsers: true,
-              canManagePayroll: true,
-              canManageLeaveRequests: true,
-              canManageCinemaSettings: true,
-              canSendBroadcastMessages: true,
-            },
-          });
+          );
 
         if (!membership) {
           throw new NotFoundException(
@@ -173,73 +179,65 @@ export class UserCinemaMembershipStatusService {
         }
 
         const updatedMembership =
-          await transaction.userCinemaMembership.update({
-            where: {
-              userId_cinemaId: {
-                userId: lockedUserId,
-                cinemaId,
+          await transaction.userCinemaMembership.update(
+            {
+              where: {
+                userId_cinemaId: {
+                  userId:
+                    lockedUserId,
+                  cinemaId,
+                },
               },
+              data: {
+                isActive: false,
+                deactivatedAt:
+                  new Date(),
+              },
+              select:
+                membershipStatusSelect,
             },
-            data: {
-              isActive: false,
-              deactivatedAt: new Date(),
-            },
-            select: {
-              role: true,
-              employmentType: true,
-              isActive: true,
-              deactivatedAt: true,
-              canManageSchedule: true,
-              canManageUsers: true,
-              canManagePayroll: true,
-              canManageLeaveRequests: true,
-              canManageCinemaSettings: true,
-              canSendBroadcastMessages: true,
-            },
-          });
-
-        const activeMemberships =
-          await transaction.userCinemaMembership.findMany({
-            where: {
-              userId: lockedUserId,
-              isActive: true,
-            },
-            select: {
-              cinemaId: true,
-            },
-            orderBy: {
-              cinemaId: 'asc',
-            },
-          });
-        const activeCinemaIds =
-          activeMemberships.map(
-            (item) => item.cinemaId,
           );
 
+        const activeMemberships =
+          await transaction.userCinemaMembership.findMany(
+            {
+              where: {
+                userId:
+                  lockedUserId,
+                isActive: true,
+              },
+              select: {
+                cinemaId: true,
+              },
+              orderBy: {
+                cinemaId: 'asc',
+              },
+            },
+          );
+
+        const activeCinemaIds =
+          activeMemberships.map(
+            (item) =>
+              item.cinemaId,
+          );
         const nextDefaultCinemaId =
           user.defaultCinemaId &&
           activeCinemaIds.includes(
             user.defaultCinemaId,
           )
             ? user.defaultCinemaId
-            : activeCinemaIds[0] ?? null;
-        const nextLegacyCinemaId =
-          user.cinemaId &&
-          activeCinemaIds.includes(user.cinemaId)
-            ? user.cinemaId
-            : nextDefaultCinemaId;
+            : activeCinemaIds[0] ??
+              null;
 
         if (
           nextDefaultCinemaId !==
-            user.defaultCinemaId ||
-          nextLegacyCinemaId !== user.cinemaId
+          user.defaultCinemaId
         ) {
           await transaction.user.update({
             where: {
               id: lockedUserId,
             },
             data: {
-              cinemaId: nextLegacyCinemaId,
               defaultCinemaId:
                 nextDefaultCinemaId,
             },
@@ -248,7 +246,8 @@ export class UserCinemaMembershipStatusService {
 
         return {
           user,
-          membership: updatedMembership,
+          membership:
+            updatedMembership,
           defaultCinemaId:
             nextDefaultCinemaId,
         };
@@ -258,7 +257,8 @@ export class UserCinemaMembershipStatusService {
     await this.auditLogsService.create({
       action:
         'DEACTIVATE_USER_CINEMA_MEMBERSHIP',
-      entityType: 'UserCinemaMembership',
+      entityType:
+        'UserCinemaMembership',
       entityId: result.user.id,
       description:
         `Deaktiverede ${result.user.firstName} ` +
@@ -288,7 +288,10 @@ export class UserCinemaMembershipStatusService {
     const result = await withUserWriteLock(
       this.prisma,
       userId,
-      async (transaction, lockedUserId) => {
+      async (
+        transaction,
+        lockedUserId,
+      ) => {
         const user =
           await transaction.user.findUnique({
             where: {
@@ -301,7 +304,6 @@ export class UserCinemaMembershipStatusService {
               lastName: true,
               phone: true,
               role: true,
-              cinemaId: true,
               defaultCinemaId: true,
             },
           });
@@ -319,26 +321,18 @@ export class UserCinemaMembershipStatusService {
         }
 
         const membership =
-          await transaction.userCinemaMembership.findUnique({
-            where: {
-              userId_cinemaId: {
-                userId: lockedUserId,
-                cinemaId,
+          await transaction.userCinemaMembership.findUnique(
+            {
+              where: {
+                userId_cinemaId: {
+                  userId: lockedUserId,
+                  cinemaId,
+                },
               },
+              select:
+                membershipStatusSelect,
             },
-            select: {
-              role: true,
-              employmentType: true,
-              isActive: true,
-              deactivatedAt: true,
-              canManageSchedule: true,
-              canManageUsers: true,
-              canManagePayroll: true,
-              canManageLeaveRequests: true,
-              canManageCinemaSettings: true,
-              canSendBroadcastMessages: true,
-            },
-          });
+          );
 
         if (!membership) {
           throw new NotFoundException(
@@ -353,78 +347,47 @@ export class UserCinemaMembershipStatusService {
         }
 
         const updatedMembership =
-          await transaction.userCinemaMembership.update({
-            where: {
-              userId_cinemaId: {
-                userId: lockedUserId,
-                cinemaId,
+          await transaction.userCinemaMembership.update(
+            {
+              where: {
+                userId_cinemaId: {
+                  userId:
+                    lockedUserId,
+                  cinemaId,
+                },
               },
+              data: {
+                isActive: true,
+                deactivatedAt: null,
+              },
+              select:
+                membershipStatusSelect,
             },
-            data: {
-              isActive: true,
-              deactivatedAt: null,
-            },
-            select: {
-              role: true,
-              employmentType: true,
-              isActive: true,
-              deactivatedAt: true,
-              canManageSchedule: true,
-              canManageUsers: true,
-              canManagePayroll: true,
-              canManageLeaveRequests: true,
-              canManageCinemaSettings: true,
-              canSendBroadcastMessages: true,
-            },
-          });
-
-        const activeMemberships =
-          await transaction.userCinemaMembership.findMany({
-            where: {
-              userId: lockedUserId,
-              isActive: true,
-            },
-            select: {
-              cinemaId: true,
-            },
-            orderBy: {
-              cinemaId: 'asc',
-            },
-          });
-        const activeCinemaIds =
-          activeMemberships.map(
-            (item) => item.cinemaId,
           );
 
         const nextDefaultCinemaId =
-          user.defaultCinemaId &&
-          activeCinemaIds.includes(
-            user.defaultCinemaId,
-          )
-            ? user.defaultCinemaId
-            : cinemaId;
-        const nextLegacyCinemaId =
-          user.cinemaId &&
-          activeCinemaIds.includes(user.cinemaId)
-            ? user.cinemaId
-            : cinemaId;
+          user.defaultCinemaId ??
+          cinemaId;
 
-        await transaction.user.update({
-          where: {
-            id: lockedUserId,
-          },
-          data: {
-            isActive: true,
-            deactivatedAt: null,
-            cinemaId: nextLegacyCinemaId,
-            defaultCinemaId:
-              nextDefaultCinemaId,
-          },
-        });
+        if (
+          nextDefaultCinemaId !==
+          user.defaultCinemaId
+        ) {
+          await transaction.user.update({
+            where: {
+              id: lockedUserId,
+            },
+            data: {
+              defaultCinemaId:
+                nextDefaultCinemaId,
+            },
+          });
+        }
 
         return {
           user,
-          membership: updatedMembership,
+          membership:
+            updatedMembership,
           defaultCinemaId:
             nextDefaultCinemaId,
         };
@@ -434,7 +397,8 @@ export class UserCinemaMembershipStatusService {
     await this.auditLogsService.create({
       action:
         'REACTIVATE_USER_CINEMA_MEMBERSHIP',
-      entityType: 'UserCinemaMembership',
+      entityType:
+        'UserCinemaMembership',
       entityId: result.user.id,
       description:
         `Genaktiverede ${result.user.firstName} ` +

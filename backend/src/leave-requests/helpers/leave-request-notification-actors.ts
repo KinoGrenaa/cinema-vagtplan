@@ -1,3 +1,4 @@
+import { CinemaRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { formatUserName } from './leave-request-formatting';
 
@@ -19,33 +20,20 @@ export async function getLeaveManagers(
             },
           }
         : {}),
-      AND: [
-        {
+      cinemaMemberships: {
+        some: {
+          cinemaId,
+          isActive: true,
           OR: [
             {
-              role: 'ADMIN',
+              role: CinemaRole.ADMIN,
             },
             {
               canManageLeaveRequests: true,
             },
           ],
         },
-        {
-          OR: [
-            {
-              cinemaId,
-            },
-            {
-              cinemaMemberships: {
-                some: {
-                  cinemaId,
-                  isActive: true,
-                },
-              },
-            },
-          ],
-        },
-      ],
+      },
     },
     select: {
       id: true,
