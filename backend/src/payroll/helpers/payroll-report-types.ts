@@ -62,6 +62,8 @@ export type PayrollReportEmployeeGroup = {
     originalPayrollPeriodStartDate: string;
     originalPayrollPeriodEndDate: string;
     settlementPayrollPeriodId: number | null;
+    settlementPayrollPeriodStartDate: string | null;
+    settlementPayrollPeriodEndDate: string | null;
     payrollCode: string;
     exportCode: string;
     payrollName: string;
