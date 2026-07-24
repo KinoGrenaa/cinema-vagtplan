@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+
 import type { CurrentUser } from "../../../shared/types";
 import BaseModal from "../components/modals/BaseModal";
 import { SESSION_EXPIRED_EVENT } from "../lib/api";
@@ -134,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
+
       <BaseModal
         open={sessionExpiredOpen}
         title="Din session er udløbet"
@@ -148,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={goToLoginAfterSessionExpired}
-              className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white transition hover:bg-blue-700"
+              className="rounded-xl bg-blue-700 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
             >
               Log ind igen
             </button>

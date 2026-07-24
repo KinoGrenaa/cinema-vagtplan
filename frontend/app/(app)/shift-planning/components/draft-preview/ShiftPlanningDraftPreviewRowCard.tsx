@@ -37,7 +37,6 @@ export function ShiftPlanningDraftPreviewRowCard({
               row.dateKey,
             )}
           </p>
-
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             {row.template
               ? formatTemplateLabel(
@@ -45,14 +44,12 @@ export function ShiftPlanningDraftPreviewRowCard({
                 )
               : "Skabelon mangler ugedagsdata"}
           </p>
-
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {row.requiredCount} vagter
             {row.emptyCount > 0
               ? ` · ${row.emptyCount} tomme`
               : ""}
           </p>
-
           {(row.warning ||
             !row.hasTemplateDay) && (
             <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
@@ -71,7 +68,7 @@ export function ShiftPlanningDraftPreviewRowCard({
         <button
           type="button"
           onClick={onOpen}
-          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
+          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:active:bg-gray-800 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
         >
           {openActionLabel}
         </button>
