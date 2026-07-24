@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -22,12 +21,17 @@ export class UpdateUserDto {
   phone?: string;
 
   @IsOptional()
-  @IsEnum(['MASTER', 'ADMIN', 'EMPLOYEE'])
-  role?: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
+  @IsEnum([
+    'MASTER',
+  ])
+  role?: 'MASTER';
 
   @IsOptional()
   @IsString()
-  @MinLength(8, { message: 'Adgangskode skal være mindst 8 tegn.' })
+  @MinLength(8, {
+    message:
+      'Adgangskode skal være mindst 8 tegn.',
+  })
   password?: string;
 
   @IsOptional()
@@ -46,41 +50,10 @@ export class UpdateUserDto {
   emergencyPhone?: string;
 
   @IsOptional()
-  hireDate?: string | null;
-
-  @IsOptional()
   @IsString()
   skills?: string;
 
   @IsOptional()
   @IsString()
   notes?: string;
-
-  @IsOptional()
-  @IsEnum(['HOURLY', 'SALARIED'])
-  employmentType?: 'HOURLY' | 'SALARIED';
-
-  @IsOptional()
-  @IsBoolean()
-  canManageSchedule?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  canManageUsers?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  canManagePayroll?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  canManageLeaveRequests?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  canManageCinemaSettings?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  canSendBroadcastMessages?: boolean;
 }

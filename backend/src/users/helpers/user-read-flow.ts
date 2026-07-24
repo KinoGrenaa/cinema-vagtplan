@@ -21,8 +21,23 @@ async function findCinemaUsers(
         },
       },
     },
-    include: {
-      cinema: true,
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      profileImage: true,
+      address: true,
+      birthDate: true,
+      emergencyPhone: true,
+      skills: true,
+      notes: true,
+      theme: true,
+      createdAt: true,
+      defaultCinemaId: true,
+      isActive: true,
+      deactivatedAt: true,
       cinemaMemberships: {
         where: {
           cinemaId,
@@ -41,6 +56,13 @@ async function findCinemaUsers(
           canManageLeaveRequests: true,
           canManageCinemaSettings: true,
           canSendBroadcastMessages: true,
+          cinema: {
+            select: {
+              id: true,
+              name: true,
+              logoUrl: true,
+            },
+          },
         },
         take: 1,
       },
@@ -60,13 +82,18 @@ async function findCinemaUsers(
 
     const {
       cinemaMemberships: _memberships,
-      ...globalUser
+      ...account
     } = user;
+    const accountIsActive =
+      account.isActive;
+    const membershipIsActive =
+      membership.isActive;
 
     return [
       {
-        ...globalUser,
+        ...account,
         cinemaId,
+        cinema: membership.cinema,
         role: membership.role,
         employmentType:
           membership.employmentType,
@@ -75,9 +102,13 @@ async function findCinemaUsers(
           membership.employeeNumber,
         payrollEmployeeId:
           membership.payrollEmployeeId,
-        isActive: membership.isActive,
+        isActive:
+          accountIsActive &&
+          membershipIsActive,
         deactivatedAt:
-          membership.deactivatedAt,
+          !accountIsActive
+            ? account.deactivatedAt
+            : membership.deactivatedAt,
         canManageSchedule:
           membership.canManageSchedule,
         canManageUsers:
@@ -93,6 +124,56 @@ async function findCinemaUsers(
         canManageAccount: true,
       },
     ];
+  });
+}
+
+async function findGlobalUsers(
+  prisma: PrismaService,
+) {
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      profileImage: true,
+      address: true,
+      birthDate: true,
+      emergencyPhone: true,
+      skills: true,
+      notes: true,
+      theme: true,
+      role: true,
+      createdAt: true,
+      isActive: true,
+      deactivatedAt: true,
+      defaultCinemaId: true,
+      defaultCinema: {
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+        },
+      },
+    },
+    orderBy: {
+      firstName: 'asc',
+    },
+  });
+
+  return users.map((user) => {
+    const {
+      defaultCinema,
+      ...account
+    } = user;
+
+    return {
+      ...account,
+      cinemaId:
+        user.defaultCinemaId,
+      cinema: defaultCinema,
+    };
   });
 }
 
@@ -114,14 +195,7 @@ export async function findAllUsers(
       );
     }
 
-    return prisma.user.findMany({
-      include: {
-        cinema: true,
-      },
-      orderBy: {
-        firstName: 'asc',
-      },
-    });
+    return findGlobalUsers(prisma);
   }
 
   if (!currentUser.cinemaId) {
@@ -174,7 +248,6 @@ export async function findUserOwnProfile(
       lastName: true,
       phone: true,
       role: true,
-      cinemaId: true,
       defaultCinemaId: true,
       profileImage: true,
       address: true,
@@ -190,5 +263,10 @@ export async function findUserOwnProfile(
     );
   }
 
-  return user;
+  return {
+    ...user,
+    // Midlertidig API-kompatibilitet.
+    // Den aktive session har fortsat sit eget cinemaId.
+    cinemaId: user.defaultCinemaId,
+  };
 }

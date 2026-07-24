@@ -138,7 +138,6 @@ model Cinema {
   movieShowings                     MovieShowing[]
   leaveRequests                     LeaveRequest[]
   shiftTrades                       ShiftTrade[]
-  users                             User[]                @relation("UserPrimaryCinema")
   defaultCinemaUsers                User[]                @relation("UserDefaultCinema")
   userCinemaMemberships             UserCinemaMembership[]
   workTypes                         WorkType[]
@@ -195,7 +194,6 @@ model User {
   address                     String?
   birthDate                   DateTime?
   emergencyPhone              String?
-  hireDate                    DateTime?
   skills                      String?
   notes                       String?
   theme                       String                       @default("light")
@@ -203,17 +201,6 @@ model User {
   createdAt                   DateTime                     @default(now())
   isActive                    Boolean                      @default(true)
   deactivatedAt               DateTime?
-  employeeNumber              String?
-  payrollEmployeeId           String?
-  employmentType              EmploymentType               @default(HOURLY)
-  canManageSchedule           Boolean                      @default(false)
-  canManageUsers              Boolean                      @default(false)
-  canManagePayroll            Boolean                      @default(false)
-  canManageLeaveRequests      Boolean                      @default(false)
-  canManageCinemaSettings     Boolean                      @default(false)
-  canSendBroadcastMessages    Boolean                      @default(false)
-  cinemaId                    Int?
-  cinema                      Cinema?                      @relation("UserPrimaryCinema", fields: [cinemaId], references: [id])
   defaultCinemaId             Int?
   defaultCinema               Cinema?                      @relation("UserDefaultCinema", fields: [defaultCinemaId], references: [id], onDelete: SetNull)
   cinemaMemberships           UserCinemaMembership[]

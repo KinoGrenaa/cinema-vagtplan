@@ -6,7 +6,6 @@ import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
-  EmploymentType,
   getActorUserId,
   UserRole,
 } from './user-service-helpers';
@@ -28,21 +27,13 @@ export type UpdateUserInput = {
   lastName?: string;
   phone?: string;
   role?: UserRole;
-  employmentType?: EmploymentType;
   password?: string;
   profileImage?: string;
   address?: string;
   birthDate?: string | null;
   emergencyPhone?: string;
-  hireDate?: string | null;
   skills?: string;
   notes?: string;
-  canManageSchedule?: boolean;
-  canManageUsers?: boolean;
-  canManagePayroll?: boolean;
-  canManageLeaveRequests?: boolean;
-  canManageCinemaSettings?: boolean;
-  canSendBroadcastMessages?: boolean;
 };
 
 export type UpdateOwnProfileInput = {
@@ -76,17 +67,20 @@ export async function updateUserFlow(
     await withUserDirectoryWriteLock(
       prisma,
       async (transaction) => {
-        const userId = await lockUserWrite(
-          transaction,
-          id,
-        );
-        const user = await findRequiredUser(
-          transaction,
-          userId,
-        );
+        const userId =
+          await lockUserWrite(
+            transaction,
+            id,
+          );
+        const user =
+          await findRequiredUser(
+            transaction,
+            userId,
+          );
 
         if (
-          currentUser?.role !== 'MASTER' ||
+          currentUser?.role !==
+            'MASTER' ||
           user.role !== 'MASTER'
         ) {
           throw new ForbiddenException(
@@ -113,13 +107,12 @@ export async function updateUserFlow(
         }
 
         const updateData =
-          buildUserUpdateData(
-            data,
-            'MASTER',
-            null,
-          );
+          buildUserUpdateData(data);
 
-        if (hashedPassword !== undefined) {
+        if (
+          hashedPassword !==
+          undefined
+        ) {
           updateData.password =
             hashedPassword;
         }
@@ -140,9 +133,8 @@ export async function updateUserFlow(
     description:
       `Opdaterede MASTER-bruger ` +
       `${updatedUser.firstName} ${updatedUser.lastName}`,
-    userId: getActorUserId(
-      currentUser,
-    ),
+    userId:
+      getActorUserId(currentUser),
     cinemaId: null,
   });
 
@@ -166,10 +158,11 @@ export async function updateOwnProfileFlow(
   return withUserDirectoryWriteLock(
     prisma,
     async (transaction) => {
-      const userId = await lockUserWrite(
-        transaction,
-        id,
-      );
+      const userId =
+        await lockUserWrite(
+          transaction,
+          id,
+        );
       await findRequiredUser(
         transaction,
         userId,
@@ -187,7 +180,9 @@ export async function updateOwnProfileFlow(
       const updateData =
         buildOwnProfileUpdateData(data);
 
-      if (hashedPassword !== undefined) {
+      if (
+        hashedPassword !== undefined
+      ) {
         updateData.password =
           hashedPassword;
       }

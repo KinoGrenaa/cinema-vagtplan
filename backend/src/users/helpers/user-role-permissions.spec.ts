@@ -21,61 +21,65 @@ const allPermissionsEnabled = {
   canSendBroadcastMessages: true,
 };
 
-describe('rolebaserede brugerrettigheder', () => {
-  it('tvinger alle rettigheder til aktiv for ADMIN ved oprettelse', () => {
-    expect(
-      getCreatePermissionData('ADMIN', allPermissionsDisabled),
-    ).toEqual(allPermissionsEnabled);
-  });
+describe(
+  'rolebaserede brugerrettigheder',
+  () => {
+    it('tvinger alle rettigheder til aktiv for ADMIN-medlemskab ved oprettelse', () => {
+      expect(
+        getCreatePermissionData(
+          'ADMIN',
+          allPermissionsDisabled,
+        ),
+      ).toEqual(
+        allPermissionsEnabled,
+      );
+    });
 
-  it('bevarer valgfrie ekstra rettigheder for EMPLOYEE', () => {
-    expect(
-      getCreatePermissionData('EMPLOYEE', {
+    it('bevarer valgfrie ekstra rettigheder for EMPLOYEE-medlemskab', () => {
+      expect(
+        getCreatePermissionData(
+          'EMPLOYEE',
+          {
+            ...allPermissionsDisabled,
+            canSendBroadcastMessages:
+              true,
+          },
+        ),
+      ).toEqual({
         ...allPermissionsDisabled,
-        canSendBroadcastMessages: true,
-      }),
-    ).toEqual({
-      ...allPermissionsDisabled,
-      canSendBroadcastMessages: true,
+        canSendBroadcastMessages:
+          true,
+      });
     });
-  });
 
-  it('tvinger alle rettigheder til aktiv ved ændring til ADMIN', () => {
-    expect(
-      buildUserUpdateData(
-        {
-          role: 'ADMIN',
-          ...allPermissionsDisabled,
-        },
-        'ADMIN',
-        1,
-      ),
-    ).toMatchObject({
-      role: 'ADMIN',
-      cinemaId: 1,
-      ...allPermissionsEnabled,
+    it('skriver ikke gamle biograf- eller rettighedsfelter ved global MASTER-opdatering', () => {
+      expect(
+        buildUserUpdateData({
+          email:
+            'master@example.com',
+          firstName: 'System',
+          lastName: 'Master',
+          role: 'MASTER',
+          ...({
+            cinemaId: 1,
+            employmentType:
+              'SALARIED',
+            hireDate:
+              '2026-01-01',
+            employeeNumber:
+              'MASTER-1',
+            payrollEmployeeId:
+              'PAYROLL-1',
+            ...allPermissionsEnabled,
+          } as any),
+        }),
+      ).toEqual({
+        email:
+          'master@example.com',
+        firstName: 'System',
+        lastName: 'Master',
+        role: 'MASTER',
+      });
     });
-  });
-
-  it('fjerner tidligere rollekrav ved ændring til EMPLOYEE, men accepterer ekstra tilvalg', () => {
-    expect(
-      buildUserUpdateData(
-        {
-          role: 'EMPLOYEE',
-          canSendBroadcastMessages: true,
-        },
-        'EMPLOYEE',
-        1,
-      ),
-    ).toMatchObject({
-      role: 'EMPLOYEE',
-      cinemaId: 1,
-      canManageSchedule: false,
-      canManageUsers: false,
-      canManagePayroll: false,
-      canManageLeaveRequests: false,
-      canManageCinemaSettings: false,
-      canSendBroadcastMessages: true,
-    });
-  });
-});
+  },
+);

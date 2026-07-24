@@ -1,4 +1,6 @@
-import { EmploymentType, UserRole } from './user-service-helpers';
+import {
+  UserRole,
+} from './user-service-helpers';
 
 export type UserPermissionInput = {
   canManageSchedule?: boolean;
@@ -9,18 +11,16 @@ export type UserPermissionInput = {
   canSendBroadcastMessages?: boolean;
 };
 
-export type UserUpdateInput = UserPermissionInput & {
+export type UserUpdateInput = {
   email?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
   role?: UserRole;
-  employmentType?: EmploymentType;
   profileImage?: string;
   address?: string;
   birthDate?: string | null;
   emergencyPhone?: string;
-  hireDate?: string | null;
   skills?: string;
   notes?: string;
 };

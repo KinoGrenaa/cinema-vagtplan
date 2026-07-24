@@ -137,7 +137,7 @@ export const scheduleTemplateInclude: Prisma.ScheduleTemplateInclude =
                     email: true,
                     role: true,
                     isActive: true,
-                    cinemaId: true,
+
                   },
                 },
               },
@@ -194,7 +194,7 @@ export const scheduleTemplateDayInclude: Prisma.ScheduleTemplateDayInclude =
                 email: true,
                 role: true,
                 isActive: true,
-                cinemaId: true,
+
               },
             },
           },
@@ -239,7 +239,7 @@ export const scheduleTemplateJobFunctionInclude: Prisma.ScheduleTemplateJobFunct
             email: true,
             role: true,
             isActive: true,
-            cinemaId: true,
+
           },
         },
       },

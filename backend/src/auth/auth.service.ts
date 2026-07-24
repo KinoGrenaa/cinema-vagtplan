@@ -30,7 +30,6 @@ type SessionUser = {
   firstName: string;
   lastName: string;
   role: string;
-  cinemaId: number | null;
   defaultCinemaId?: number | null;
 };
 
@@ -180,21 +179,6 @@ export class AuthService {
   private async findFallbackMembership(
     user: SessionUser,
   ) {
-    if (
-      user.cinemaId &&
-      user.cinemaId !== user.defaultCinemaId
-    ) {
-      const formerPrimaryMembership =
-        await this.findActiveMembership(
-          user.id,
-          user.cinemaId,
-        );
-
-      if (formerPrimaryMembership) {
-        return formerPrimaryMembership;
-      }
-    }
-
     return this.prisma.userCinemaMembership.findFirst({
       where: {
         userId: user.id,
@@ -339,7 +323,6 @@ export class AuthService {
         firstName: true,
         lastName: true,
         role: true,
-        cinemaId: true,
         defaultCinemaId: true,
         isActive: true,
       },
@@ -382,8 +365,10 @@ export class AuthService {
     return {
       ...session,
       selectedCinema: membership.cinema,
+      // Midlertidigt API-alias:
+      // Der findes ikke længere en hjemmebiograf.
       isPrimaryCinema:
-        user.cinemaId === cinemaId,
+        user.defaultCinemaId === cinemaId,
       isDefaultCinema:
         user.defaultCinemaId === cinemaId,
     };
@@ -399,7 +384,6 @@ export class AuthService {
       select: {
         id: true,
         role: true,
-        cinemaId: true,
         defaultCinemaId: true,
         isActive: true,
       },
@@ -458,7 +442,10 @@ export class AuthService {
 
     return {
       role: user.role,
-      homeCinemaId: user.cinemaId,
+      // Midlertidigt API-alias:
+      // homeCinemaId følger standardbiografen.
+      homeCinemaId:
+        user.defaultCinemaId,
       defaultCinemaId:
         user.defaultCinemaId,
       allowNoDefault:
@@ -467,8 +454,9 @@ export class AuthService {
         ...cinema,
         isDefault:
           cinema.id === user.defaultCinemaId,
+        // Midlertidigt API-alias.
         isHomeCinema:
-          cinema.id === user.cinemaId,
+          cinema.id === user.defaultCinemaId,
       })),
     };
   }

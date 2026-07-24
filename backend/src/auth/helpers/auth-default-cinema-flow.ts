@@ -31,7 +31,6 @@ export async function updateAuthDefaultCinemaFlow(
           select: {
             id: true,
             role: true,
-            cinemaId: true,
             isActive: true,
           },
         });
