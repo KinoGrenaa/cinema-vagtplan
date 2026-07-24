@@ -18,14 +18,10 @@ type JobFunctionFormState = {
 
 type ScheduleTemplateJobFunctionFormProps = {
   form: JobFunctionFormState;
-  setForm: Dispatch<
-    SetStateAction<JobFunctionFormState>
-  >;
+  setForm: Dispatch<SetStateAction<JobFunctionFormState>>;
   jobFunctions: JobFunction[];
   saving: boolean;
-  onSubmit: (
-    event: FormEvent,
-  ) => void | Promise<void>;
+  onSubmit: (event: FormEvent) => void | Promise<void>;
 };
 
 const fieldClass =
@@ -46,42 +42,28 @@ export default function ScheduleTemplateJobFunctionForm({
       >
         <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
           Jobfunktion
-
           <select
             value={form.jobFunctionId}
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                jobFunctionId:
-                  event.target.value,
+                jobFunctionId: event.target.value,
               }))
             }
             className={fieldClass}
-            disabled={
-              saving ||
-              jobFunctions.length === 0
-            }
+            disabled={saving || jobFunctions.length === 0}
           >
-            <option value="">
-              Vælg jobfunktion
-            </option>
-
-            {jobFunctions.map(
-              (jobFunction) => (
-                <option
-                  key={jobFunction.id}
-                  value={jobFunction.id}
-                >
-                  {jobFunction.name}
-                </option>
-              ),
-            )}
+            <option value="">Vælg jobfunktion</option>
+            {jobFunctions.map((jobFunction) => (
+              <option key={jobFunction.id} value={jobFunction.id}>
+                {jobFunction.name}
+              </option>
+            ))}
           </select>
         </label>
 
         <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
           Antal vagter
-
           <input
             type="number"
             min="1"
@@ -90,8 +72,7 @@ export default function ScheduleTemplateJobFunctionForm({
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                requiredCount:
-                  event.target.value,
+                requiredCount: event.target.value,
               }))
             }
             className={fieldClass}
@@ -101,7 +82,6 @@ export default function ScheduleTemplateJobFunctionForm({
 
         <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
           Sortering
-
           <input
             type="number"
             min="0"
@@ -109,8 +89,7 @@ export default function ScheduleTemplateJobFunctionForm({
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                sortOrder:
-                  event.target.value,
+                sortOrder: event.target.value,
               }))
             }
             className={fieldClass}
@@ -120,14 +99,12 @@ export default function ScheduleTemplateJobFunctionForm({
 
         <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 lg:col-span-3">
           Note
-
           <input
             value={form.note}
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                note:
-                  event.target.value,
+                note: event.target.value,
               }))
             }
             className={fieldClass}
@@ -138,24 +115,17 @@ export default function ScheduleTemplateJobFunctionForm({
 
         <button
           type="submit"
-          className="rounded-2xl bg-green-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-green-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-green-200 disabled:text-green-800 lg:col-span-3 dark:bg-green-600 dark:hover:bg-green-500 dark:focus-visible:ring-green-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-green-950 dark:disabled:text-green-400"
-          disabled={
-            saving ||
-            jobFunctions.length === 0
-          }
+          className="rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-800 lg:col-span-3 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-blue-950 dark:disabled:text-blue-400"
+          disabled={saving || jobFunctions.length === 0}
         >
-          {saving
-            ? "Tilføjer..."
-            : "Tilføj jobfunktion"}
+          {saving ? "Tilføjer..." : "Tilføj jobfunktion"}
         </button>
       </form>
 
       {jobFunctions.length === 0 && (
         <p className="mt-3 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-          Der er ingen aktive
-          jobfunktioner. Opret eller
-          aktivér jobfunktioner før
-          skabelonen kan bemandes.
+          Der er ingen aktive jobfunktioner. Opret eller aktivér jobfunktioner
+          før skabelonen kan bemandes.
         </p>
       )}
     </>

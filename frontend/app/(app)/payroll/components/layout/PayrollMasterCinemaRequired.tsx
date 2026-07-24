@@ -25,7 +25,7 @@ export default function PayrollMasterCinemaRequired({
               <button
                 type="button"
                 onClick={onChooseCinema}
-                className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:hover:bg-amber-500 dark:focus-visible:ring-amber-400 dark:focus-visible:ring-offset-gray-950"
+                className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-700 active:bg-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:hover:bg-amber-500 dark:active:bg-amber-400 dark:focus-visible:ring-amber-400 dark:focus-visible:ring-offset-gray-950"
               >
                 Vælg biograf
               </button>

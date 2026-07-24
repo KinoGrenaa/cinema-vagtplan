@@ -74,7 +74,7 @@ export default function MyTimeSummaryCards({
           <button
             type="button"
             onClick={onShowNeedsChangesEntries}
-            className="mt-4 rounded-xl bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:bg-orange-500 dark:text-gray-950 dark:hover:bg-orange-400 dark:focus-visible:ring-orange-400 dark:focus-visible:ring-offset-gray-900"
+            className="mt-4 rounded-xl bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-700 active:bg-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:bg-orange-500 dark:text-gray-950 dark:hover:bg-orange-400 dark:active:bg-orange-300 dark:focus-visible:ring-orange-400 dark:focus-visible:ring-offset-gray-900"
           >
             Vis registreringer
           </button>
