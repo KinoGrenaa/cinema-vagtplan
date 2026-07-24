@@ -22,9 +22,9 @@ type Props = {
   onEdit: (entry: TimeEntry) => void;
   onOpenHistory: (entry: TimeEntry) => void;
   onApprove: (entry: TimeEntry) => void;
-  onUnapprove: (id: number) => void;
+  onUnapprove: (entry: TimeEntry) => void;
   onSendBackForChanges: (id: number) => void;
-  onVoid: (id: number) => void;
+  onVoid: (entry: TimeEntry) => void;
 };
 
 export default function TimeApprovalUserGroup({

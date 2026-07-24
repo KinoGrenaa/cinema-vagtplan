@@ -1,21 +1,21 @@
-import type { TimeEntry } from "../../types";
+"use client";
 
-import {
-  formatDateTime,
-} from "../../utils";
+import type {
+  PayrollPeriodSummary,
+  TimeEntry,
+} from "../../types";
 
-export type PayrollPeriodInfo = {
-  id: number;
-  startDate: string;
-  endDate: string;
-};
+export type PayrollPeriodInfo =
+  PayrollPeriodSummary;
 
 export type PayrollApprovalConflict = {
   code?: string;
   title?: string;
   message?: string;
-  originalPayrollPeriod?: PayrollPeriodInfo | null;
-  adjustmentPayrollPeriod?: PayrollPeriodInfo | null;
+  originalPayrollPeriod?:
+    PayrollPeriodInfo | null;
+  adjustmentPayrollPeriod?:
+    PayrollPeriodInfo | null;
 };
 
 export type PayrollAdjustmentEditData = {
@@ -27,44 +27,132 @@ export type PayrollAdjustmentEditData = {
 export type PayrollAdjustmentConfirmation =
   | {
       entry: TimeEntry;
-      details: PayrollApprovalConflict;
+      details:
+        PayrollApprovalConflict;
       action: "APPROVE";
     }
   | {
       entry: TimeEntry;
-      details: PayrollApprovalConflict;
+      details:
+        PayrollApprovalConflict;
       action: "EDIT";
-      editData: PayrollAdjustmentEditData;
+      editData:
+        PayrollAdjustmentEditData;
     }
   | {
-      entryId: number;
-      details: PayrollApprovalConflict;
+      entry: TimeEntry;
+      details:
+        PayrollApprovalConflict;
       action: "UNAPPROVE";
     }
   | {
-      entryId: number;
+      entry: TimeEntry;
       adminNote: string;
-      details: PayrollApprovalConflict;
+      details:
+        PayrollApprovalConflict;
       action: "VOID";
     };
 
-type PayrollAdjustmentConfirmationModalProps = {
-  confirmation: PayrollAdjustmentConfirmation | null;
+type Props = {
+  confirmation:
+    PayrollAdjustmentConfirmation | null;
   loading: boolean;
   onCancel: () => void;
-  onConfirm: () => void | Promise<void>;
+  onConfirm:
+    () => void | Promise<void>;
 };
 
-function formatPayrollPeriod(
-  period?: PayrollPeriodInfo | null,
-) {
-  if (!period) return "-";
+const dateFormatter =
+  new Intl.DateTimeFormat(
+    "da-DK",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone:
+        "Europe/Copenhagen",
+    },
+  );
 
-  return `${formatDateTime(
-    period.startDate,
-  )} – ${formatDateTime(
-    period.endDate,
+const timeFormatter =
+  new Intl.DateTimeFormat(
+    "da-DK",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone:
+        "Europe/Copenhagen",
+    },
+  );
+
+function formatPayrollPeriod(
+  period?:
+    PayrollPeriodInfo | null,
+) {
+  if (!period) {
+    return "Ikke fastlagt endnu";
+  }
+
+  return `${dateFormatter.format(
+    new Date(period.startDate),
+  )} – ${dateFormatter.format(
+    new Date(period.endDate),
   )}`;
+}
+
+function getActionContent(
+  action:
+    PayrollAdjustmentConfirmation["action"],
+  loading: boolean,
+) {
+  if (action === "VOID") {
+    return {
+      consequence:
+        "Registreringen afvises, og de allerede eksporterede timer modregnes som en efterregulering.",
+      confirmText: loading
+        ? "Afviser..."
+        : "Afvis og opret modregning",
+      buttonClass:
+        "bg-red-700 hover:bg-red-800 active:bg-red-900 focus-visible:ring-red-600 disabled:bg-red-200 disabled:text-red-700 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400 dark:disabled:bg-red-950 dark:disabled:text-red-400",
+    };
+  }
+
+  if (action === "UNAPPROVE") {
+    return {
+      consequence:
+        "Godkendelsen fjernes, og de allerede eksporterede timer modregnes som en efterregulering.",
+      confirmText: loading
+        ? "Fjerner godkendelse..."
+        : "Fjern godkendelse og opret modregning",
+      buttonClass:
+        "bg-red-700 hover:bg-red-800 active:bg-red-900 focus-visible:ring-red-600 disabled:bg-red-200 disabled:text-red-700 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400 dark:disabled:bg-red-950 dark:disabled:text-red-400",
+    };
+  }
+
+  if (action === "EDIT") {
+    return {
+      consequence:
+        "Rettelsen gemmes, og forskellen føres som en efterregulering.",
+      confirmText: loading
+        ? "Gemmer..."
+        : "Gem rettelse som efterregulering",
+      buttonClass:
+        "bg-blue-700 hover:bg-blue-800 active:bg-blue-900 focus-visible:ring-blue-600 disabled:bg-blue-200 disabled:text-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:disabled:bg-blue-950 dark:disabled:text-blue-400",
+    };
+  }
+
+  return {
+    consequence:
+      "Godkendelsen registreres som en efterregulering i en senere lønperiode.",
+    confirmText: loading
+      ? "Godkender..."
+      : "Godkend som efterregulering",
+    buttonClass:
+      "bg-green-700 hover:bg-green-800 active:bg-green-900 focus-visible:ring-green-600 disabled:bg-green-200 disabled:text-green-700 dark:bg-green-600 dark:hover:bg-green-500 dark:active:bg-green-400 dark:focus-visible:ring-green-400 dark:disabled:bg-green-950 dark:disabled:text-green-400",
+  };
 }
 
 export default function PayrollAdjustmentConfirmationModal({
@@ -72,111 +160,145 @@ export default function PayrollAdjustmentConfirmationModal({
   loading,
   onCancel,
   onConfirm,
-}: PayrollAdjustmentConfirmationModalProps) {
+}: Props) {
   if (!confirmation) {
     return null;
   }
 
-  const isEdit = confirmation.action === "EDIT";
-  const isUnapprove =
-    confirmation.action === "UNAPPROVE";
-  const isVoid = confirmation.action === "VOID";
-
-  const description = isVoid
-    ? "Denne godkendte tidsregistrering er allerede med i en eksporteret lønperiode."
-    : isUnapprove
-      ? "Denne tidsregistrering er allerede med i en eksporteret lønperiode."
-      : isEdit
-        ? "Denne tidsregistrering er allerede med i en eksporteret lønperiode."
-        : "Denne tidsregistrering tilhører en lønperiode, der allerede er eksporteret.";
-
-  const consequence = isVoid
-    ? "Hvis du fortsætter, afvises registreringen, og de eksporterede timer modregnes som en efterregulering."
-    : isUnapprove
-      ? "Hvis du fortsætter, fjernes godkendelsen, og de eksporterede timer modregnes som en efterregulering."
-      : isEdit
-        ? "Hvis du fortsætter, gemmes rettelsen og oprettes som en efterregulering."
-        : "Hvis du fortsætter, bliver registreringen markeret som efterregulering.";
-
-  const confirmText = loading
-    ? isVoid
-      ? "Afviser..."
-      : isUnapprove
-        ? "Fjerner godkendelse..."
-        : isEdit
-          ? "Gemmer..."
-          : "Godkender..."
-    : isVoid
-      ? "Afvis og opret modregning"
-      : isUnapprove
-        ? "Fjern godkendelse og opret modregning"
-        : isEdit
-          ? "Gem rettelse som efterregulering"
-          : "Godkend som efterregulering";
-
-  const confirmButtonClass =
-    isUnapprove || isVoid
-      ? "bg-red-700 hover:bg-red-800 active:bg-red-900 focus-visible:ring-red-600 disabled:bg-red-200 disabled:text-red-700 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400 dark:disabled:bg-red-950 dark:disabled:text-red-400"
-      : isEdit
-        ? "bg-blue-700 hover:bg-blue-800 active:bg-blue-900 focus-visible:ring-blue-600 disabled:bg-blue-200 disabled:text-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:disabled:bg-blue-950 dark:disabled:text-blue-400"
-        : "bg-green-700 hover:bg-green-800 active:bg-green-900 focus-visible:ring-green-600 disabled:bg-green-200 disabled:text-green-700 dark:bg-green-600 dark:hover:bg-green-500 dark:active:bg-green-400 dark:focus-visible:ring-green-400 dark:disabled:bg-green-950 dark:disabled:text-green-400";
+  const context =
+    confirmation.entry
+      .payrollExportContext;
+  const originalPeriod =
+    confirmation.details
+      .originalPayrollPeriod ??
+    context?.originalPayrollPeriod ??
+    null;
+  const adjustmentPeriod =
+    confirmation.details
+      .adjustmentPayrollPeriod ??
+    context?.adjustmentPayrollPeriod ??
+    null;
+  const actionContent =
+    getActionContent(
+      confirmation.action,
+      loading,
+    );
+  const employeeName =
+    `${confirmation.entry.user.firstName} ` +
+    confirmation.entry.user.lastName;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-2xl transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
-        <h2 className="text-xl font-semibold text-gray-950 dark:text-white">
-          Lønperioden er allerede eksporteret
-        </h2>
-
-        <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-          {description}
-        </p>
-
-        <div className="mt-5 space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Oprindelig lønperiode
-            </p>
-            <p className="mt-1 text-sm font-medium text-gray-950 dark:text-white">
-              {formatPayrollPeriod(
-                confirmation.details.originalPayrollPeriod,
-              )}
-            </p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="payroll-adjustment-title"
+    >
+      <div className="w-full max-w-xl rounded-2xl border border-amber-300 bg-white p-6 shadow-2xl dark:border-amber-800 dark:bg-gray-900">
+        <div className="flex items-start gap-3">
+          <div
+            aria-hidden="true"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xl dark:bg-amber-950/60"
+          >
+            ⚠
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Efterreguleres i lønperioden
-            </p>
-            <p className="mt-1 text-sm font-medium text-gray-950 dark:text-white">
-              {formatPayrollPeriod(
-                confirmation.details.adjustmentPayrollPeriod,
-              )}
+            <h2
+              id="payroll-adjustment-title"
+              className="text-xl font-bold text-gray-950 dark:text-white"
+            >
+              Lønperioden er allerede
+              eksporteret
+            </h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Kontrollér perioderne, før
+              du fortsætter. Handlingen
+              påvirker en allerede
+              eksporteret løn.
             </p>
           </div>
         </div>
 
-        <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-100">
-          {consequence}
-        </p>
+        <dl className="mt-6 grid gap-3 rounded-xl bg-gray-50 p-4 text-sm dark:bg-gray-800/70 sm:grid-cols-2">
+          <div>
+            <dt className="font-semibold text-gray-600 dark:text-gray-300">
+              Medarbejder
+            </dt>
+            <dd className="mt-1 font-medium text-gray-950 dark:text-white">
+              {employeeName}
+            </dd>
+          </div>
+
+          <div>
+            <dt className="font-semibold text-gray-600 dark:text-gray-300">
+              Registrering
+            </dt>
+            <dd className="mt-1 font-medium text-gray-950 dark:text-white">
+              {timeFormatter.format(
+                new Date(
+                  confirmation.entry
+                    .clockIn,
+                ),
+              )}
+            </dd>
+          </div>
+
+          <div>
+            <dt className="font-semibold text-gray-600 dark:text-gray-300">
+              Oprindelig lønperiode
+            </dt>
+            <dd className="mt-1 font-medium text-gray-950 dark:text-white">
+              {formatPayrollPeriod(
+                originalPeriod,
+              )}
+            </dd>
+          </div>
+
+          <div>
+            <dt className="font-semibold text-gray-600 dark:text-gray-300">
+              Efterreguleres i
+            </dt>
+            <dd className="mt-1 font-medium text-gray-950 dark:text-white">
+              {formatPayrollPeriod(
+                adjustmentPeriod,
+              )}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100">
+          {actionContent.consequence}
+        </div>
+
+        {context
+          ?.hasPendingAdjustment && (
+          <p className="mt-3 text-sm font-semibold text-amber-800 dark:text-amber-300">
+            Der findes allerede en
+            ventende efterregulering på
+            registreringen.
+          </p>
+        )}
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:focus-visible:ring-offset-gray-900"
           >
             Annuller
           </button>
 
           <button
             type="button"
-            onClick={() => void onConfirm()}
+            onClick={() =>
+              void onConfirm()
+            }
             disabled={loading}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed dark:focus-visible:ring-offset-gray-900 ${confirmButtonClass}`}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed dark:focus-visible:ring-offset-gray-900 ${actionContent.buttonClass}`}
           >
-            {confirmText}
+            {actionContent.confirmText}
           </button>
         </div>
       </div>

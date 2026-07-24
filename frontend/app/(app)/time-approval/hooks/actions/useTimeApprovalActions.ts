@@ -1,53 +1,118 @@
 "use client";
 
-import { useState } from "react";
-import { toast } from "sonner";
+import {
+  useState,
+} from "react";
+import {
+  toast,
+} from "sonner";
 
-import { apiFetch } from "@/app/lib/api";
+import {
+  apiFetch,
+} from "@/app/lib/api";
+
 import type {
   PayrollAdjustmentConfirmation,
   PayrollAdjustmentEditData,
+  PayrollApprovalConflict,
 } from "../../components/modals/PayrollAdjustmentConfirmationModal";
 import {
   getPayrollConflictDetails,
   getSelectedCinemaQuery,
 } from "../../helpers/core/timeApprovalRequests";
-import type { TimeEntry } from "../../types";
-import { formatDateTime, readErrorMessage } from "../../utils";
+import type {
+  TimeEntry,
+} from "../../types";
+import {
+  formatDateTime,
+  readErrorMessage,
+} from "../../utils";
 
 type InfoDialog = {
-  showError: (title: string, description: string) => void;
+  showError:
+    (
+      title: string,
+      description: string,
+    ) => void;
 };
 
 type InputDialog = {
-  prompt: (input: any) => void;
+  prompt:
+    (input: any) => void;
 };
 
 type ConfirmDialog = {
-  confirm: (input: any) => void;
+  confirm:
+    (input: any) => void;
 };
 
-type SaveEditData = PayrollAdjustmentEditData;
+type SaveEditData =
+  PayrollAdjustmentEditData;
 
-type UseTimeApprovalActionsOptions = {
+type Options = {
   inputDialog: InputDialog;
   infoDialog: InfoDialog;
   errorDialog: ConfirmDialog;
-  fetchEntries: () => Promise<unknown>;
+  fetchEntries:
+    () => Promise<unknown>;
 };
+
+function hasExportedPayrollContext(
+  entry: TimeEntry,
+) {
+  return Boolean(
+    entry.payrollExportContext
+      ?.requiresConfirmation,
+  );
+}
+
+function getEntryPayrollDetails(
+  entry: TimeEntry,
+): PayrollApprovalConflict {
+  const context =
+    entry.payrollExportContext;
+
+  return {
+    code:
+      "PAYROLL_PERIOD_EXPORTED",
+    title:
+      "Lønperioden er allerede eksporteret",
+    message:
+      "Handlingen kræver bekræftelse og føres som efterregulering.",
+    originalPayrollPeriod:
+      context
+        ?.originalPayrollPeriod ??
+      null,
+    adjustmentPayrollPeriod:
+      context
+        ?.adjustmentPayrollPeriod ??
+      null,
+  };
+}
 
 export function useTimeApprovalActions({
   inputDialog,
   infoDialog,
   errorDialog,
   fetchEntries,
-}: UseTimeApprovalActionsOptions) {
-  const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
+}: Options) {
+  const [
+    editEntry,
+    setEditEntry,
+  ] = useState<TimeEntry | null>(
+    null,
+  );
+  const [
+    savingEdit,
+    setSavingEdit,
+  ] = useState(false);
   const [
     payrollAdjustmentConfirmation,
     setPayrollAdjustmentConfirmation,
-  ] = useState<PayrollAdjustmentConfirmation | null>(null);
+  ] =
+    useState<
+      PayrollAdjustmentConfirmation | null
+    >(null);
   const [
     confirmingPayrollAdjustment,
     setConfirmingPayrollAdjustment,
@@ -55,31 +120,51 @@ export function useTimeApprovalActions({
 
   async function submitEdit(
     data: SaveEditData,
-    confirmPayrollAdjustment: boolean,
+    confirmPayrollAdjustment:
+      boolean,
   ) {
-    if (!editEntry) return false;
+    if (!editEntry) {
+      return false;
+    }
 
     try {
       setSavingEdit(true);
-      const response = await apiFetch(
-        `/time-entries/${editEntry.id}${getSelectedCinemaQuery()}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            ...data,
-            confirmPayrollAdjustment,
-          }),
-        },
-      );
+
+      const response =
+        await apiFetch(
+          `/time-entries/${editEntry.id}${getSelectedCinemaQuery()}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              ...data,
+              confirmPayrollAdjustment,
+            }),
+          },
+        );
 
       if (!response.ok) {
-        if (response.status === 401) return false;
+        if (
+          response.status === 401
+        ) {
+          return false;
+        }
 
-        if (response.status === 409) {
-          const payload = await response.json().catch(() => null);
-          const details = getPayrollConflictDetails(payload);
+        if (
+          response.status === 409
+        ) {
+          const payload =
+            await response
+              .json()
+              .catch(() => null);
+          const details =
+            getPayrollConflictDetails(
+              payload,
+            );
 
-          if (details.code === "PAYROLL_PERIOD_LOCKED") {
+          if (
+            details.code ===
+            "PAYROLL_PERIOD_LOCKED"
+          ) {
             infoDialog.showError(
               "Lønperioden er låst",
               details.message ||
@@ -88,39 +173,52 @@ export function useTimeApprovalActions({
             return false;
           }
 
-          if (details.code === "PAYROLL_PERIOD_EXPORTED") {
-            setPayrollAdjustmentConfirmation({
-              entry: editEntry,
-              details,
-              action: "EDIT",
-              editData: data,
-            });
+          if (
+            details.code ===
+            "PAYROLL_PERIOD_EXPORTED"
+          ) {
+            setPayrollAdjustmentConfirmation(
+              {
+                entry: editEntry,
+                details,
+                action: "EDIT",
+                editData: data,
+              },
+            );
             return false;
           }
         }
 
-        const message = await readErrorMessage(
-          response,
-          "Kunne ikke redigere timeregistrering",
+        const message =
+          await readErrorMessage(
+            response,
+            "Kunne ikke redigere timeregistrering",
+          );
+
+        infoDialog.showError(
+          "Kunne ikke gemme rettelsen",
+          message,
         );
-        infoDialog.showError("Kunne ikke gemme rettelsen", message);
         return false;
       }
 
       await fetchEntries();
       setEditEntry(null);
+
       toast.success(
         confirmPayrollAdjustment
           ? "Timeregistrering opdateret som efterregulering"
           : "Timeregistrering opdateret",
       );
+
       return true;
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke gemme rettelsen",
-        error instanceof Error && error.message
+        error instanceof Error &&
+          error.message
           ? error.message
-          : "Der opstod en fejl, da rettelsen skulle gemmes. Prøv igen.",
+          : "Der opstod en fejl, da rettelsen skulle gemmes.\nPrøv igen.",
       );
       return false;
     } finally {
@@ -128,30 +226,55 @@ export function useTimeApprovalActions({
     }
   }
 
-  async function saveEdit(data: SaveEditData) {
-    if (!editEntry) return;
+  async function saveEdit(
+    data: SaveEditData,
+  ) {
+    if (!editEntry) {
+      return;
+    }
 
     const hasChanges =
-      data.clockIn !== editEntry.clockIn ||
-      (data.clockOut ?? null) !== (editEntry.clockOut ?? null);
+      data.clockIn !==
+        editEntry.clockIn ||
+      (data.clockOut ?? null) !==
+        (editEntry.clockOut ??
+          null);
 
     if (!hasChanges) {
       errorDialog.confirm({
         title: "Ingen ændringer",
-        description: "Der er ikke foretaget nogen ændringer i tidsregistreringen.",
+        description:
+          "Der er ikke foretaget nogen ændringer i tidsregistreringen.",
         confirmText: "OK",
-        onConfirm: async () => {},
+        onConfirm:
+          async () => {},
       });
       return;
     }
 
-    const employeeName = `${editEntry.user.firstName} ${editEntry.user.lastName}`;
-    const oldTime = `${formatDateTime(editEntry.clockIn)} - ${
-      editEntry.clockOut ? formatDateTime(editEntry.clockOut) : "-"
-    }`;
-    const newTime = `${formatDateTime(data.clockIn)} - ${
-      data.clockOut ? formatDateTime(data.clockOut) : "-"
-    }`;
+    const employeeName =
+      `${editEntry.user.firstName} ` +
+      editEntry.user.lastName;
+    const oldTime =
+      `${formatDateTime(
+        editEntry.clockIn,
+      )} - ${
+        editEntry.clockOut
+          ? formatDateTime(
+              editEntry.clockOut,
+            )
+          : "-"
+      }`;
+    const newTime =
+      `${formatDateTime(
+        data.clockIn,
+      )} - ${
+        data.clockOut
+          ? formatDateTime(
+              data.clockOut,
+            )
+          : "-"
+      }`;
 
     errorDialog.confirm({
       title: "Bekræft rettelse",
@@ -168,14 +291,34 @@ export function useTimeApprovalActions({
         newTime,
         "",
         "Ændringen gemmes i historikken.",
-        "",
-        "Hvis registreringen allerede indgår i en eksporteret lønperiode, får du en ekstra bekræftelse med perioderne.",
       ].join("\n"),
       confirmText: "Gem rettelse",
       cancelText: "Annuller",
       confirmVariant: "primary",
       onConfirm: async () => {
-        await submitEdit(data, false);
+        if (
+          hasExportedPayrollContext(
+            editEntry,
+          )
+        ) {
+          setPayrollAdjustmentConfirmation(
+            {
+              entry: editEntry,
+              details:
+                getEntryPayrollDetails(
+                  editEntry,
+                ),
+              action: "EDIT",
+              editData: data,
+            },
+          );
+          return;
+        }
+
+        await submitEdit(
+          data,
+          false,
+        );
       },
     });
   }
@@ -183,29 +326,70 @@ export function useTimeApprovalActions({
   async function approve(
     entry: TimeEntry,
     options?: {
-      confirmPayrollAdjustment?: boolean;
+      confirmPayrollAdjustment?:
+        boolean;
     },
   ) {
-    try {
-      const response = await apiFetch(
-        `/time-entries/${entry.id}/approve${getSelectedCinemaQuery()}`,
+    const confirmsAdjustment =
+      options
+        ?.confirmPayrollAdjustment ??
+      false;
+
+    if (
+      !confirmsAdjustment &&
+      hasExportedPayrollContext(
+        entry,
+      )
+    ) {
+      setPayrollAdjustmentConfirmation(
         {
-          method: "PATCH",
-          body: JSON.stringify({
-            confirmPayrollAdjustment:
-              options?.confirmPayrollAdjustment ?? false,
-          }),
+          entry,
+          details:
+            getEntryPayrollDetails(
+              entry,
+            ),
+          action: "APPROVE",
         },
       );
+      return false;
+    }
+
+    try {
+      const response =
+        await apiFetch(
+          `/time-entries/${entry.id}/approve${getSelectedCinemaQuery()}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              confirmPayrollAdjustment:
+                confirmsAdjustment,
+            }),
+          },
+        );
 
       if (!response.ok) {
-        if (response.status === 401) return false;
+        if (
+          response.status === 401
+        ) {
+          return false;
+        }
 
-        if (response.status === 409) {
-          const payload = await response.json().catch(() => null);
-          const details = getPayrollConflictDetails(payload);
+        if (
+          response.status === 409
+        ) {
+          const payload =
+            await response
+              .json()
+              .catch(() => null);
+          const details =
+            getPayrollConflictDetails(
+              payload,
+            );
 
-          if (details.code === "PAYROLL_PERIOD_LOCKED") {
+          if (
+            details.code ===
+            "PAYROLL_PERIOD_LOCKED"
+          ) {
             infoDialog.showError(
               "Lønperioden er låst",
               details.message ||
@@ -214,12 +398,17 @@ export function useTimeApprovalActions({
             return false;
           }
 
-          if (details.code === "PAYROLL_PERIOD_EXPORTED") {
-            setPayrollAdjustmentConfirmation({
-              entry,
-              details,
-              action: "APPROVE",
-            });
+          if (
+            details.code ===
+            "PAYROLL_PERIOD_EXPORTED"
+          ) {
+            setPayrollAdjustmentConfirmation(
+              {
+                entry,
+                details,
+                action: "APPROVE",
+              },
+            );
             return false;
           }
         }
@@ -233,13 +422,24 @@ export function useTimeApprovalActions({
       }
 
       await fetchEntries();
-      if (options?.confirmPayrollAdjustment) {
-        toast.success("Timeregistrering godkendt som efterregulering");
-      } else if (entry.deviation?.hasDeviation) {
-        toast.success("Timeregistrering med afvigelse er godkendt");
+
+      if (confirmsAdjustment) {
+        toast.success(
+          "Timeregistrering godkendt som efterregulering",
+        );
+      } else if (
+        entry.deviation
+          ?.hasDeviation
+      ) {
+        toast.success(
+          "Timeregistrering med afvigelse er godkendt",
+        );
       } else {
-        toast.success("Timeregistrering godkendt");
+        toast.success(
+          "Timeregistrering godkendt",
+        );
       }
+
       return true;
     } catch (error) {
       infoDialog.showError(
@@ -253,36 +453,80 @@ export function useTimeApprovalActions({
   }
 
   async function unapprove(
-    id: number,
+    entry: TimeEntry,
     options?: {
-      confirmPayrollAdjustment?: boolean;
+      confirmPayrollAdjustment?:
+        boolean;
     },
   ) {
-    try {
-      const response = await apiFetch(
-        `/time-entries/${id}/unapprove${getSelectedCinemaQuery()}`,
+    const confirmsAdjustment =
+      options
+        ?.confirmPayrollAdjustment ??
+      false;
+
+    if (
+      !confirmsAdjustment &&
+      hasExportedPayrollContext(
+        entry,
+      )
+    ) {
+      setPayrollAdjustmentConfirmation(
         {
-          method: "PATCH",
-          body: JSON.stringify({
-            confirmPayrollAdjustment:
-              options?.confirmPayrollAdjustment ?? false,
-          }),
+          entry,
+          details:
+            getEntryPayrollDetails(
+              entry,
+            ),
+          action: "UNAPPROVE",
         },
       );
+      return false;
+    }
+
+    try {
+      const response =
+        await apiFetch(
+          `/time-entries/${entry.id}/unapprove${getSelectedCinemaQuery()}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              confirmPayrollAdjustment:
+                confirmsAdjustment,
+            }),
+          },
+        );
 
       if (!response.ok) {
-        if (response.status === 401) return false;
+        if (
+          response.status === 401
+        ) {
+          return false;
+        }
 
-        if (response.status === 409) {
-          const payload = await response.json().catch(() => null);
-          const details = getPayrollConflictDetails(payload);
+        if (
+          response.status === 409
+        ) {
+          const payload =
+            await response
+              .json()
+              .catch(() => null);
+          const details =
+            getPayrollConflictDetails(
+              payload,
+            );
 
-          if (details.code === "PAYROLL_PERIOD_EXPORTED") {
-            setPayrollAdjustmentConfirmation({
-              entryId: id,
-              details,
-              action: "UNAPPROVE",
-            });
+          if (
+            details.code ===
+            "PAYROLL_PERIOD_EXPORTED"
+          ) {
+            setPayrollAdjustmentConfirmation(
+              {
+                entry,
+                details,
+                action:
+                  "UNAPPROVE",
+              },
+            );
             return false;
           }
         }
@@ -297,7 +541,7 @@ export function useTimeApprovalActions({
 
       await fetchEntries();
       toast.success(
-        options?.confirmPayrollAdjustment
+        confirmsAdjustment
           ? "Godkendelse fjernet og modregning oprettet"
           : "Godkendelse fjernet",
       );
@@ -314,67 +558,120 @@ export function useTimeApprovalActions({
   }
 
   async function confirmPayrollAdjustmentApproval() {
-    if (!payrollAdjustmentConfirmation) return;
+    if (
+      !payrollAdjustmentConfirmation
+    ) {
+      return;
+    }
 
-    const confirmation = payrollAdjustmentConfirmation;
+    const confirmation =
+      payrollAdjustmentConfirmation;
 
     try {
-      setConfirmingPayrollAdjustment(true);
+      setConfirmingPayrollAdjustment(
+        true,
+      );
 
-      if (confirmation.action === "EDIT") {
-        const updated = await submitEdit(confirmation.editData, true);
+      if (
+        confirmation.action ===
+        "EDIT"
+      ) {
+        const updated =
+          await submitEdit(
+            confirmation.editData,
+            true,
+          );
+
         if (updated) {
-          setPayrollAdjustmentConfirmation(null);
+          setPayrollAdjustmentConfirmation(
+            null,
+          );
         }
         return;
       }
 
-      if (confirmation.action === "UNAPPROVE") {
-        const unapproved = await unapprove(confirmation.entryId, {
-          confirmPayrollAdjustment: true,
-        });
+      if (
+        confirmation.action ===
+        "UNAPPROVE"
+      ) {
+        const unapproved =
+          await unapprove(
+            confirmation.entry,
+            {
+              confirmPayrollAdjustment:
+                true,
+            },
+          );
+
         if (unapproved) {
-          setPayrollAdjustmentConfirmation(null);
+          setPayrollAdjustmentConfirmation(
+            null,
+          );
         }
         return;
       }
 
-      if (confirmation.action === "VOID") {
-        const voided = await submitVoid(
-          confirmation.entryId,
-          confirmation.adminNote,
-          true,
-        );
+      if (
+        confirmation.action ===
+        "VOID"
+      ) {
+        const voided =
+          await submitVoid(
+            confirmation.entry,
+            confirmation.adminNote,
+            true,
+          );
+
         if (voided) {
-          setPayrollAdjustmentConfirmation(null);
+          setPayrollAdjustmentConfirmation(
+            null,
+          );
         }
         return;
       }
 
-      const approved = await approve(confirmation.entry, {
-        confirmPayrollAdjustment: true,
-      });
+      const approved =
+        await approve(
+          confirmation.entry,
+          {
+            confirmPayrollAdjustment:
+              true,
+          },
+        );
+
       if (approved) {
-        setPayrollAdjustmentConfirmation(null);
+        setPayrollAdjustmentConfirmation(
+          null,
+        );
       }
     } finally {
-      setConfirmingPayrollAdjustment(false);
+      setConfirmingPayrollAdjustment(
+        false,
+      );
     }
   }
 
-  function sendBackForChanges(id: number) {
+  function sendBackForChanges(
+    id: number,
+  ) {
     inputDialog.prompt({
-      title: "Send retur til rettelse",
+      title:
+        "Send retur til rettelse",
       description:
-        "Skriv hvorfor tidsregistreringen skal rettes. Beskeden vises til medarbejderen.",
-      label: "Besked til medarbejderen",
+        "Skriv hvorfor tidsregistreringen skal rettes.\nBeskeden vises til medarbejderen.",
+      label:
+        "Besked til medarbejderen",
       placeholder:
         "Fx forkert mødetid, manglende fyraften eller manglende note...",
       confirmText: "Send retur",
       cancelText: "Annuller",
       required: true,
-      onConfirm: async (value: string) => {
-        const adminNote = value.trim();
+      onConfirm: async (
+        value: string,
+      ) => {
+        const adminNote =
+          value.trim();
+
         if (!adminNote) {
           infoDialog.showError(
             "Besked mangler",
@@ -384,35 +681,52 @@ export function useTimeApprovalActions({
         }
 
         try {
-          const response = await apiFetch(
-            `/time-entries/${id}/reject${getSelectedCinemaQuery()}`,
-            {
-              method: "PATCH",
-              body: JSON.stringify({
-                adminNote,
-              }),
-            },
-          );
+          const response =
+            await apiFetch(
+              `/time-entries/${id}/reject${getSelectedCinemaQuery()}`,
+              {
+                method:
+                  "PATCH",
+                body:
+                  JSON.stringify({
+                    adminNote,
+                  }),
+              },
+            );
 
           if (!response.ok) {
-            if (response.status === 401) return;
+            if (
+              response.status ===
+              401
+            ) {
+              return;
+            }
 
-            const message = await readErrorMessage(
-              response,
-              "Kunne ikke sende timeregistrering retur",
+            const message =
+              await readErrorMessage(
+                response,
+                "Kunne ikke sende timeregistrering retur",
+              );
+
+            infoDialog.showError(
+              "Kan ikke sendes retur",
+              message,
             );
-            infoDialog.showError("Kan ikke sendes retur", message);
             return;
           }
 
           await fetchEntries();
-          toast.success("Timeregistrering sendt retur til rettelse");
+          toast.success(
+            "Timeregistrering sendt retur til rettelse",
+          );
         } catch (error) {
           infoDialog.showError(
             "Kan ikke sendes retur",
-            error instanceof Error && error.message
+            error instanceof
+                Error &&
+              error.message
               ? error.message
-              : "Der opstod en fejl, da timeregistreringen skulle sendes retur. Prøv igen.",
+              : "Der opstod en fejl, da timeregistreringen skulle sendes retur.\nPrøv igen.",
           );
         }
       },
@@ -420,44 +734,65 @@ export function useTimeApprovalActions({
   }
 
   async function submitVoid(
-    id: number,
+    entry: TimeEntry,
     adminNote: string,
-    confirmPayrollAdjustment: boolean,
+    confirmPayrollAdjustment:
+      boolean,
   ) {
     try {
-      const response = await apiFetch(
-        `/time-entries/${id}/void${getSelectedCinemaQuery()}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            adminNote,
-            confirmPayrollAdjustment,
-          }),
-        },
-      );
+      const response =
+        await apiFetch(
+          `/time-entries/${entry.id}/void${getSelectedCinemaQuery()}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              adminNote,
+              confirmPayrollAdjustment,
+            }),
+          },
+        );
 
       if (!response.ok) {
-        if (response.status === 401) return false;
+        if (
+          response.status === 401
+        ) {
+          return false;
+        }
 
-        if (response.status === 409) {
-          const payload = await response.json().catch(() => null);
-          const details = getPayrollConflictDetails(payload);
+        if (
+          response.status === 409
+        ) {
+          const payload =
+            await response
+              .json()
+              .catch(() => null);
+          const details =
+            getPayrollConflictDetails(
+              payload,
+            );
 
-          if (details.code === "PAYROLL_PERIOD_EXPORTED") {
-            setPayrollAdjustmentConfirmation({
-              entryId: id,
-              adminNote,
-              details,
-              action: "VOID",
-            });
+          if (
+            details.code ===
+            "PAYROLL_PERIOD_EXPORTED"
+          ) {
+            setPayrollAdjustmentConfirmation(
+              {
+                entry,
+                adminNote,
+                details,
+                action: "VOID",
+              },
+            );
             return false;
           }
         }
 
-        const message = await readErrorMessage(
-          response,
-          "Kunne ikke annullere tidsregistrering",
-        );
+        const message =
+          await readErrorMessage(
+            response,
+            "Kunne ikke annullere tidsregistrering",
+          );
+
         infoDialog.showError(
           "Kunne ikke annullere tidsregistrering",
           message,
@@ -475,27 +810,35 @@ export function useTimeApprovalActions({
     } catch (error) {
       infoDialog.showError(
         "Kunne ikke annullere tidsregistrering",
-        error instanceof Error && error.message
+        error instanceof Error &&
+          error.message
           ? error.message
-          : "Der opstod en fejl, da tidsregistreringen skulle annulleres. Prøv igen.",
+          : "Der opstod en fejl, da tidsregistreringen skulle annulleres.\nPrøv igen.",
       );
       return false;
     }
   }
 
-  function voidEntry(id: number) {
+  function voidEntry(
+    entry: TimeEntry,
+  ) {
     inputDialog.prompt({
       title: "Afvis registrering",
       description:
-        "Denne tidsregistrering markeres som afvist og kommer ikke med i løn. Den slettes ikke fra historikken.",
+        "Denne tidsregistrering markeres som afvist og kommer ikke med i løn.\nDen slettes ikke fra historikken.",
       label: "Intern note",
       placeholder:
         "Fx fejlregistrering, dobbeltregistrering eller registrering der ikke skal lønbehandles...",
-      confirmText: "Afvis registrering",
+      confirmText:
+        "Afvis registrering",
       cancelText: "Annuller",
       required: true,
-      onConfirm: async (value: string) => {
-        const adminNote = value.trim();
+      onConfirm: async (
+        value: string,
+      ) => {
+        const adminNote =
+          value.trim();
+
         if (!adminNote) {
           infoDialog.showError(
             "Intern note mangler",
@@ -504,11 +847,33 @@ export function useTimeApprovalActions({
           return;
         }
 
-        await submitVoid(id, adminNote, false);
+        if (
+          hasExportedPayrollContext(
+            entry,
+          )
+        ) {
+          setPayrollAdjustmentConfirmation(
+            {
+              entry,
+              adminNote,
+              details:
+                getEntryPayrollDetails(
+                  entry,
+                ),
+              action: "VOID",
+            },
+          );
+          return;
+        }
+
+        await submitVoid(
+          entry,
+          adminNote,
+          false,
+        );
       },
     });
   }
-
 
   return {
     editEntry,

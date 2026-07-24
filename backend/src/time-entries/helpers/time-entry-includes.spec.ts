@@ -5,11 +5,35 @@ import {
 } from './time-entry-includes';
 
 describe('time entry includes', () => {
-  it('includes pending payroll adjustments in normal entry responses', () => {
+  it('includes exported payroll context in normal entry responses', () => {
     expect(
       getTimeEntryResponseInclude(),
     ).toEqual(
       expect.objectContaining({
+        payrollPeriod: {
+          select: {
+            id: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+        originalPayrollPeriod: {
+          select: {
+            id: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+        adjustmentPayrollPeriod: {
+          select: {
+            id: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
         payrollAdjustments: {
           where: {
             status: 'PENDING',
@@ -17,12 +41,18 @@ describe('time entry includes', () => {
           orderBy: {
             createdAt: 'desc',
           },
-          select: {
-            id: true,
-            minutesDelta: true,
-            reason: true,
-            createdAt: true,
-          },
+          select:
+            expect.objectContaining({
+              id: true,
+              type: true,
+              minutesDelta: true,
+              reason: true,
+              createdAt: true,
+              originalPayrollPeriod:
+                expect.any(Object),
+              settlementPayrollPeriod:
+                expect.any(Object),
+            }),
         },
       }),
     );

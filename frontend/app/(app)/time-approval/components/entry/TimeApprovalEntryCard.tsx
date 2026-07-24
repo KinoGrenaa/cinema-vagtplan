@@ -1,36 +1,129 @@
 import PayrollAdjustmentNotice from "../../../../components/time-entries/PayrollAdjustmentNotice";
-import type { TimeEntry } from "../../types";
-import { formatDateTime } from "../../utils";
+
+import type {
+  PayrollExportContext,
+  TimeEntry,
+} from "../../types";
+import {
+  formatDateTime,
+} from "../../utils";
 import DeviationPanel from "./DeviationPanel";
 import TimeApprovalEntryActions from "./TimeApprovalEntryActions";
 import TimeApprovalEntryNotes from "./TimeApprovalEntryNotes";
 
-type TimeApprovalEntryCardProps = {
+type Props = {
   entry: TimeEntry;
   isExpanded: boolean;
-  onToggleDetails: (entryId: number) => void;
-  onEdit: (entry: TimeEntry) => void;
-  onOpenHistory: (entry: TimeEntry) => void;
-  onApprove: (entry: TimeEntry) => void;
-  onUnapprove: (entryId: number) => void;
-  onSendBackForChanges: (
-    entryId: number,
-  ) => void;
-  onVoid: (entryId: number) => void;
+  onToggleDetails:
+    (entryId: number) => void;
+  onEdit:
+    (entry: TimeEntry) => void;
+  onOpenHistory:
+    (entry: TimeEntry) => void;
+  onApprove:
+    (entry: TimeEntry) => void;
+  onUnapprove:
+    (entry: TimeEntry) => void;
+  onSendBackForChanges:
+    (entryId: number) => void;
+  onVoid:
+    (entry: TimeEntry) => void;
 };
 
-function getHours(entry: TimeEntry) {
-  if (!entry.clockOut) return "-";
+const payrollPeriodFormatter =
+  new Intl.DateTimeFormat(
+    "da-DK",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone:
+        "Europe/Copenhagen",
+    },
+  );
 
-  const start = new Date(entry.clockIn);
-  const end = new Date(entry.clockOut);
+function getHours(entry: TimeEntry) {
+  if (!entry.clockOut) {
+    return "-";
+  }
+
+  const start =
+    new Date(entry.clockIn);
+  const end =
+    new Date(entry.clockOut);
   const hours =
-    (end.getTime() - start.getTime()) /
+    (end.getTime() -
+      start.getTime()) /
     1000 /
     60 /
     60;
 
   return hours.toFixed(2);
+}
+
+function formatPayrollPeriod(
+  period: {
+    startDate: string;
+    endDate: string;
+  },
+) {
+  return `${payrollPeriodFormatter.format(
+    new Date(period.startDate),
+  )} – ${payrollPeriodFormatter.format(
+    new Date(period.endDate),
+  )}`;
+}
+
+function PayrollExportWarning({
+  context,
+}: {
+  context:
+    PayrollExportContext;
+}) {
+  return (
+    <div
+      role="status"
+      className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-amber-200 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-950 dark:bg-amber-800 dark:text-amber-50">
+          Eksporteret lønperiode
+        </span>
+
+        {context.hasPendingAdjustment && (
+          <span className="rounded-full border border-amber-400 px-2.5 py-1 text-xs font-semibold dark:border-amber-700">
+            Efterregulering findes
+          </span>
+        )}
+      </div>
+
+      <p className="mt-3 text-sm font-semibold">
+        Registreringen indgår i
+        lønperioden{" "}
+        {formatPayrollPeriod(
+          context.originalPayrollPeriod,
+        )}
+        .
+      </p>
+
+      <p className="mt-1 text-sm">
+        Godkendelse, rettelse,
+        fjernelse af godkendelse eller
+        afvisning kræver en ekstra
+        bekræftelse. Forskellen føres
+        som efterregulering.
+      </p>
+
+      {context.adjustmentPayrollPeriod && (
+        <p className="mt-2 text-xs font-medium">
+          Efterreguleres i:{" "}
+          {formatPayrollPeriod(
+            context.adjustmentPayrollPeriod,
+          )}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function TimeApprovalEntryCard({
@@ -43,7 +136,7 @@ export default function TimeApprovalEntryCard({
   onUnapprove,
   onSendBackForChanges,
   onVoid,
-}: TimeApprovalEntryCardProps) {
+}: Props) {
   const hasDetails = Boolean(
     entry.deviation?.hasDeviation ||
       entry.clockInNote ||
@@ -58,13 +151,24 @@ export default function TimeApprovalEntryCard({
         <div className="min-w-0 flex-1 space-y-4">
           <div>
             <h3 className="text-lg font-semibold">
-              {formatDateTime(entry.clockIn)}
+              {formatDateTime(
+                entry.clockIn,
+              )}
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {entry.shift?.workType?.name ||
+              {entry.shift
+                ?.workType?.name ||
                 "Manuel registrering"}
             </p>
           </div>
+
+          {entry.payrollExportContext && (
+            <PayrollExportWarning
+              context={
+                entry.payrollExportContext
+              }
+            />
+          )}
 
           <PayrollAdjustmentNotice
             adjustments={
@@ -78,37 +182,48 @@ export default function TimeApprovalEntryCard({
               <span className="font-semibold">
                 Arbejdstype:
               </span>{" "}
-              {entry.shift?.workType?.name ||
+              {entry.shift
+                ?.workType?.name ||
                 "-"}
             </div>
+
             <div>
               <span className="font-semibold">
                 Mødt:
               </span>{" "}
-              {formatDateTime(entry.clockIn)}
+              {formatDateTime(
+                entry.clockIn,
+              )}
             </div>
+
             <div>
               <span className="font-semibold">
                 Gået hjem:
               </span>{" "}
-              {formatDateTime(entry.clockOut)}
+              {formatDateTime(
+                entry.clockOut,
+              )}
             </div>
+
             <div>
               <span className="font-semibold">
                 Timer:
               </span>{" "}
               {getHours(entry)}
             </div>
+
             <div className="pt-2">
               <button
                 type="button"
                 onClick={() =>
-                  onToggleDetails(entry.id)
+                  onToggleDetails(
+                    entry.id,
+                  )
                 }
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
                   hasDetails
-                    ? "bg-amber-100 text-amber-900 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/50"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                    ? "bg-amber-100 text-amber-900 hover:bg-amber-200 focus-visible:ring-amber-500 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/50 dark:focus-visible:ring-amber-400"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 focus-visible:ring-gray-500 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-400"
                 }`}
               >
                 {hasDetails
@@ -118,8 +233,11 @@ export default function TimeApprovalEntryCard({
             </div>
 
             {isExpanded && (
-              <DeviationPanel entry={entry} />
+              <DeviationPanel
+                entry={entry}
+              />
             )}
+
             <TimeApprovalEntryNotes
               entry={entry}
             />
@@ -129,9 +247,13 @@ export default function TimeApprovalEntryCard({
         <TimeApprovalEntryActions
           entry={entry}
           onEdit={onEdit}
-          onOpenHistory={onOpenHistory}
+          onOpenHistory={
+            onOpenHistory
+          }
           onApprove={onApprove}
-          onUnapprove={onUnapprove}
+          onUnapprove={
+            onUnapprove
+          }
           onSendBackForChanges={
             onSendBackForChanges
           }

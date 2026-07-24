@@ -1,8 +1,17 @@
-import { getCinemaDeviationSelect } from './time-entry-deviation';
+import {
+  getCinemaDeviationSelect,
+} from './time-entry-deviation';
 
 const payrollPeriodStatusSelect = {
   id: true,
   status: true,
+} as const;
+
+const payrollPeriodContextSelect = {
+  id: true,
+  status: true,
+  startDate: true,
+  endDate: true,
 } as const;
 
 const pendingPayrollAdjustmentsInclude = {
@@ -14,9 +23,18 @@ const pendingPayrollAdjustmentsInclude = {
   },
   select: {
     id: true,
+    type: true,
     minutesDelta: true,
     reason: true,
     createdAt: true,
+    originalPayrollPeriod: {
+      select:
+        payrollPeriodContextSelect,
+    },
+    settlementPayrollPeriod: {
+      select:
+        payrollPeriodContextSelect,
+    },
   },
 } as const;
 
@@ -25,7 +43,8 @@ export function getTimeEntryResponseInclude() {
     user: true,
     payrollType: true,
     cinema: {
-      select: getCinemaDeviationSelect(),
+      select:
+        getCinemaDeviationSelect(),
     },
     shift: {
       include: {
@@ -36,6 +55,18 @@ export function getTimeEntryResponseInclude() {
         },
       },
     },
+    payrollPeriod: {
+      select:
+        payrollPeriodContextSelect,
+    },
+    originalPayrollPeriod: {
+      select:
+        payrollPeriodContextSelect,
+    },
+    adjustmentPayrollPeriod: {
+      select:
+        payrollPeriodContextSelect,
+    },
     payrollAdjustments:
       pendingPayrollAdjustmentsInclude,
   } as const;
@@ -44,7 +75,8 @@ export function getTimeEntryResponseInclude() {
 export function getOpenTimeEntryInclude() {
   return {
     cinema: {
-      select: getCinemaDeviationSelect(),
+      select:
+        getCinemaDeviationSelect(),
     },
     shift: {
       include: {
@@ -58,7 +90,8 @@ export function getShiftWithWorkTypeAndCinemaInclude() {
   return {
     workType: true,
     cinema: {
-      select: getCinemaDeviationSelect(),
+      select:
+        getCinemaDeviationSelect(),
     },
   } as const;
 }
@@ -66,7 +99,8 @@ export function getShiftWithWorkTypeAndCinemaInclude() {
 export function getTimeEntryWithCinemaShiftInclude() {
   return {
     cinema: {
-      select: getCinemaDeviationSelect(),
+      select:
+        getCinemaDeviationSelect(),
     },
     shift: true,
   } as const;
@@ -76,10 +110,12 @@ export function getTimeEntryWithUserCinemaInclude() {
   return {
     user: true,
     cinema: {
-      select: getCinemaDeviationSelect(),
+      select:
+        getCinemaDeviationSelect(),
     },
     payrollPeriod: {
-      select: payrollPeriodStatusSelect,
+      select:
+        payrollPeriodStatusSelect,
     },
   } as const;
 }

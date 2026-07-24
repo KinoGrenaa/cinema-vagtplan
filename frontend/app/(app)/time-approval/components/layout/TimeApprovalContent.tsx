@@ -35,9 +35,9 @@ type Props = {
   onEdit: Dispatch<SetStateAction<TimeEntry | null>>;
   onOpenHistory: (entry: TimeEntry) => void;
   onApprove: (entry: TimeEntry) => void;
-  onUnapprove: (entryId: number) => void;
+  onUnapprove: (entry: TimeEntry) => void;
   onSendBackForChanges: (entryId: number) => void;
-  onVoid: (entryId: number) => void;
+  onVoid: (entry: TimeEntry) => void;
 };
 
 export default function TimeApprovalContent({
