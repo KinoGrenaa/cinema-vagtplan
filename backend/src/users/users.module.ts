@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
+import { MasterUsersController } from './master-users.controller';
+import { MasterUsersService } from './master-users.service';
 import { UserCinemaDefaultController } from './user-cinema-default.controller';
 import { UserCinemaMembershipConfigurationController } from './user-cinema-membership-configuration.controller';
 import { UserCinemaMembershipConfigurationService } from './user-cinema-membership-configuration.service';
@@ -23,6 +25,7 @@ import { UsersService } from './users.service';
   ],
   controllers: [
     UsersController,
+    MasterUsersController,
     UserCinemaDefaultController,
     UserCinemaMembershipConfigurationController,
     UserCinemaMembershipStatusController,
@@ -30,6 +33,7 @@ import { UsersService } from './users.service';
   ],
   providers: [
     UsersService,
+    MasterUsersService,
     UserCinemaMembershipConfigurationService,
     UserCinemaMembershipStatusService,
     UserCinemaProfileService,

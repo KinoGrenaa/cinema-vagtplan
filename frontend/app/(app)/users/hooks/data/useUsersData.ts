@@ -49,7 +49,6 @@ export function useUsersData({
     setSelectedMasterCinemaName(storedMasterCinemaName);
 
     void fetchUsers(storedUser, storedMasterCinemaId);
-
     if (storedUser?.role === "MASTER") {
       void fetchMasterUsers();
     } else {
@@ -99,23 +98,14 @@ export function useUsersData({
     try {
       setLoadingMasterUsers(true);
 
-      const response = await apiFetch("/users");
+      const response = await apiFetch("/users/masters");
 
       if (!response.ok) {
         throw new Error(await getErrorMessage(response));
       }
 
-      const data = normalizeUsers(await response.json());
-
       setMasterUsers(
-        data
-          .filter((user) => user.role === "MASTER")
-          .sort((first, second) =>
-            `${first.firstName} ${first.lastName}`.localeCompare(
-              `${second.firstName} ${second.lastName}`,
-              "da",
-            ),
-          ),
+        normalizeUsers(await response.json()),
       );
     } catch (error) {
       setMasterUsers([]);
