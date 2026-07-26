@@ -111,11 +111,20 @@ export async function getPayrollAuditHistoryData(
         lte: end,
       },
     },
-    include: {
+    select: {
+      id: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      lockedAt: true,
+      lockedByUserId: true,
+      exportedAt: true,
+      exportedByUserId: true,
+      unlockedAt: true,
+      unlockedByUserId: true,
+      unlockNote: true,
       originalPayrollAdjustments: {
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         select: {
           ...auditAdjustmentSelect,
           settlementPayrollPeriod: {
@@ -128,9 +137,7 @@ export async function getPayrollAuditHistoryData(
         },
       },
       settlementPayrollAdjustments: {
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         select: {
           ...auditAdjustmentSelect,
           originalPayrollPeriod: {
@@ -143,9 +150,7 @@ export async function getPayrollAuditHistoryData(
         },
       },
     },
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
   });
 
   return periods.map((period) => {
@@ -154,7 +159,6 @@ export async function getPayrollAuditHistoryData(
       startDate: period.startDate,
       endDate: period.endDate,
     };
-
     const adjustments = [
       ...period.originalPayrollAdjustments.map((adjustment) =>
         mapAuditAdjustment(
@@ -173,10 +177,15 @@ export async function getPayrollAuditHistoryData(
         ),
       ),
     ];
-
     const uniqueAdjustments = Array.from(
-      new Map(adjustments.map((adjustment) => [adjustment.id, adjustment])).values(),
-    ).sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+      new Map(
+        adjustments.map((adjustment) => [adjustment.id, adjustment]),
+      ).values(),
+    ).sort(
+      (left, right) =>
+        right.createdAt.getTime() - left.createdAt.getTime() ||
+        right.id - left.id,
+    );
 
     return {
       id: period.id,
