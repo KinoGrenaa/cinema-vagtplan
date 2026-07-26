@@ -1,4 +1,5 @@
 import {
+  getMyShiftNotificationLink,
   getShiftTradeNotificationLink,
   getStaffingRequestNotificationLink,
 } from './notification-deep-links';
@@ -6,6 +7,16 @@ import {
 describe(
   'notification deep links',
   () => {
+    it('bygger et konkret link til vagten', () => {
+      expect(
+        getMyShiftNotificationLink(
+          17,
+        ),
+      ).toBe(
+        '/my-shifts?shiftId=17',
+      );
+    });
+
     it('bygger et konkret link til vagtbyttet', () => {
       expect(
         getShiftTradeNotificationLink(
@@ -34,6 +45,14 @@ describe(
     ])(
       'afviser ugyldigt ID %s',
       (value) => {
+        expect(() =>
+          getMyShiftNotificationLink(
+            value,
+          ),
+        ).toThrow(
+          'Vagt-ID skal være et positivt heltal',
+        );
+
         expect(() =>
           getShiftTradeNotificationLink(
             value,

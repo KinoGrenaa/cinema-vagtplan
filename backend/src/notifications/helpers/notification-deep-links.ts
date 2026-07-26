@@ -14,6 +14,18 @@ function requirePositiveId(
   return value;
 }
 
+export function getMyShiftNotificationLink(
+  shiftId: number,
+) {
+  return (
+    '/my-shifts?shiftId=' +
+    requirePositiveId(
+      shiftId,
+      'Vagt-ID',
+    )
+  );
+}
+
 export function getShiftTradeNotificationLink(
   tradeId: number,
 ) {

@@ -13,6 +13,9 @@ import {
   PrismaService,
 } from '../../prisma/prisma.service';
 import {
+  getMyShiftNotificationLink,
+} from '../../notifications/helpers/notification-deep-links';
+import {
   PushService,
 } from '../../push/push.service';
 import {
@@ -244,7 +247,10 @@ export async function updateShiftFlow({
             startTime,
             endTime,
           )}`,
-        url: '/my-shifts',
+        url:
+          getMyShiftNotificationLink(
+            shift.id,
+          ),
       },
     );
   }
