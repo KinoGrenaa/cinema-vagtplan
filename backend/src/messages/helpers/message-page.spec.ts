@@ -4,6 +4,7 @@ import {
   buildInboxMessageTargetWhere,
   buildInboxMessageWhere,
   buildMessagePage,
+  buildSentMessageWhere,
   DEFAULT_MESSAGE_PAGE_SIZE,
   MAX_MESSAGE_PAGE_SIZE,
   normalizeMessagePageLimit,
@@ -75,6 +76,23 @@ describe(
           },
         ],
         id: 31,
+      });
+    });
+
+    it('bygger adgangsfilter til aktive sendte beskeder', () => {
+      expect(
+        buildSentMessageWhere(
+          9,
+          7,
+          50,
+        ),
+      ).toEqual({
+        cinemaId: 7,
+        senderId: 9,
+        archivedAt: null,
+        id: {
+          lt: 50,
+        },
       });
     });
 

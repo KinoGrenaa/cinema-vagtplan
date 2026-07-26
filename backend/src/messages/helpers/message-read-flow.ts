@@ -7,8 +7,10 @@ import {
   buildInboxMessageTargetWhere,
   buildInboxMessageWhere,
   buildMessagePage,
+  buildSentMessageWhere,
   type ArchivedMessagePageOptions,
   type InboxMessagePageOptions,
+  type SentMessagePageOptions,
   normalizeMessagePageLimit,
 } from './message-page';
 import {
@@ -107,6 +109,40 @@ export async function findSentMessagesForUser(
       createdAt: 'desc',
     },
   });
+}
+
+export async function findSentMessagePageForUser(
+  prisma: PrismaService,
+  userId: number,
+  cinemaId: number,
+  options:
+    SentMessagePageOptions = {},
+) {
+  const limit =
+    normalizeMessagePageLimit(
+      options.limit,
+    );
+
+  const rows =
+    await prisma.message.findMany({
+      where:
+        buildSentMessageWhere(
+          userId,
+          cinemaId,
+          options.beforeId,
+        ),
+      include: messageInclude,
+      orderBy: {
+        id: 'desc',
+      },
+      take: limit + 1,
+    });
+
+  return buildMessagePage(
+    rows,
+    limit,
+    null,
+  );
 }
 
 export async function findArchivedMessagesForUser(

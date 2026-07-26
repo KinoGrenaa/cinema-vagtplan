@@ -13,7 +13,7 @@ import type {
 import {
   archiveMessage,
   fetchInboxMessagePage,
-  fetchSentMessages,
+  fetchSentMessagePage,
   markMessageAsRead,
 } from "../services/messagesService";
 import {
@@ -120,13 +120,17 @@ export function useMessages(
           }
 
           if (mode === "sent") {
-            const data =
-              await fetchSentMessages();
+            const page =
+              await fetchSentMessagePage();
 
-            setMessages(data);
-            setHasMore(false);
+            setMessages(
+              page.items,
+            );
+            setHasMore(
+              page.hasMore,
+            );
             setNextBeforeId(
-              null,
+              page.nextBeforeId,
             );
             return;
           }
@@ -186,7 +190,6 @@ export function useMessages(
   const loadMore =
     useCallback(async () => {
       if (
-        mode !== "inbox" ||
         !hasMore ||
         !nextBeforeId ||
         loadingMore
@@ -198,10 +201,15 @@ export function useMessages(
         setLoadingMore(true);
 
         const page =
-          await fetchInboxMessagePage({
-            beforeId:
-              nextBeforeId,
-          });
+          mode === "sent"
+            ? await fetchSentMessagePage({
+                beforeId:
+                  nextBeforeId,
+              })
+            : await fetchInboxMessagePage({
+                beforeId:
+                  nextBeforeId,
+              });
 
         setMessages(
           (current) =>
@@ -220,7 +228,9 @@ export function useMessages(
         onError?.(
           getErrorMessage(
             error,
-            "Ældre beskeder kunne ikke hentes.",
+            mode === "sent"
+              ? "Ældre sendte beskeder kunne ikke hentes."
+              : "Ældre beskeder kunne ikke hentes.",
           ),
         );
       } finally {

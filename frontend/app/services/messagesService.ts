@@ -21,6 +21,13 @@ export type InboxMessagePage = {
     number | null;
 };
 
+export type SentMessagePage = {
+  items: Message[];
+  hasMore: boolean;
+  nextBeforeId:
+    number | null;
+};
+
 export type ArchiveSection =
   | "received"
   | "sent";
@@ -191,6 +198,80 @@ export async function fetchInboxMessagePage(
       ),
     target:
       data.target ?? null,
+    hasMore:
+      Boolean(data.hasMore),
+    nextBeforeId:
+      Number.isInteger(
+        data.nextBeforeId,
+      )
+        ? data.nextBeforeId
+        : null,
+  };
+}
+
+export async function fetchSentMessagePage(
+  options: {
+    limit?: number;
+    beforeId?:
+      number | null;
+  } = {},
+): Promise<SentMessagePage> {
+  const params =
+    new URLSearchParams();
+
+  params.set(
+    "limit",
+    String(
+      options.limit ?? 50,
+    ),
+  );
+
+  if (options.beforeId) {
+    params.set(
+      "beforeId",
+      String(
+        options.beforeId,
+      ),
+    );
+  }
+
+  const response =
+    await apiFetch(
+      `/messages/sent/page?${params.toString()}`,
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(
+        response,
+        "Kunne ikke hente sendte beskeder",
+      ),
+    );
+  }
+
+  const data =
+    await safeJson<SentMessagePage>(
+      response,
+    );
+
+  if (
+    !data ||
+    !Array.isArray(
+      data.items,
+    )
+  ) {
+    return {
+      items: [],
+      hasMore: false,
+      nextBeforeId: null,
+    };
+  }
+
+  return {
+    items:
+      sortMessages(
+        data.items,
+      ),
     hasMore:
       Boolean(data.hasMore),
     nextBeforeId:

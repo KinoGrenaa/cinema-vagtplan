@@ -144,6 +144,38 @@ export class MessagesController {
   }
 
   @UseGuards(JwtGuard)
+  @Get('sent/page')
+  getSentMessagePage(
+    @Req() req: any,
+    @Query('cinemaId')
+    cinemaId?: string,
+    @Query('limit')
+    limit?: string,
+    @Query('beforeId')
+    beforeId?: string,
+  ) {
+    return this.messagesService.findSentPageForUser(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+      {
+        limit:
+          parseOptionalPositiveIntegerQuery(
+            limit,
+            'Antal beskeder skal være et gyldigt tal',
+          ),
+        beforeId:
+          parseOptionalPositiveIntegerQuery(
+            beforeId,
+            'Beskedcursor skal være et gyldigt ID',
+          ),
+      },
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Get('sent')
   getSentMessages(
     @Req() req: any,

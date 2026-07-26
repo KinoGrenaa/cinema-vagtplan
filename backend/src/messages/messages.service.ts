@@ -21,12 +21,14 @@ import {
 import {
   type ArchivedMessagePageOptions,
   type InboxMessagePageOptions,
+  type SentMessagePageOptions,
 } from './helpers/message-page';
 import {
   findArchivedMessagePageForUser,
   findArchivedMessagesForUser,
   findInboxMessagePageForUser,
   findMessagesForUser,
+  findSentMessagePageForUser,
   findSentMessagesForUser,
   getUnreadMessageCount,
 } from './helpers/message-read-flow';
@@ -132,6 +134,28 @@ export class MessagesService {
       this.prisma,
       context.userId,
       context.cinemaId,
+    );
+  }
+
+  async findSentPageForUser(
+    actor: MessageActor,
+    selectedCinemaId?:
+      number | null,
+    options:
+      SentMessagePageOptions = {},
+  ) {
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
+
+    return findSentMessagePageForUser(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
+      options,
     );
   }
 

@@ -13,6 +13,11 @@ export type InboxMessagePageOptions = {
   targetId?: number;
 };
 
+export type SentMessagePageOptions = {
+  limit?: number;
+  beforeId?: number;
+};
+
 export type ArchiveMessageSection =
   | 'received'
   | 'sent';
@@ -102,6 +107,25 @@ export function buildInboxMessageTargetWhere(
       cinemaId,
     ),
     id: targetId,
+  };
+}
+
+export function buildSentMessageWhere(
+  userId: number,
+  cinemaId: number,
+  beforeId?: number,
+): Prisma.MessageWhereInput {
+  return {
+    cinemaId,
+    senderId: userId,
+    archivedAt: null,
+    ...(beforeId
+      ? {
+          id: {
+            lt: beforeId,
+          },
+        }
+      : {}),
   };
 }
 

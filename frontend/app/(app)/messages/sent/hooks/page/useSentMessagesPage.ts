@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { useConfirm } from "@/app/hooks/useConfirm";
-import { useMessages } from "../../../../../hooks/useMessages";
+import {
+  useConfirm,
+} from "@/app/hooks/useConfirm";
+import {
+  useMessages,
+} from "../../../../../hooks/useMessages";
 
 import {
   getErrorMessage,
@@ -14,101 +23,202 @@ type ErrorDialogState = {
   description: string;
 };
 
-const initialErrorDialog: ErrorDialogState = {
-  open: false,
-  title: "",
-  description: "",
-};
+const initialErrorDialog:
+  ErrorDialogState = {
+    open: false,
+    title: "",
+    description: "",
+  };
 
 export function useSentMessagesPage() {
-  const confirmDialog = useConfirm();
+  const confirmDialog =
+    useConfirm();
 
-  const [expandedDateKeys, setExpandedDateKeys] = useState<string[]>([]);
-  const [expandedMessageId, setExpandedMessageId] = useState<number | null>(
-    null,
-  );
-  const [errorDialog, setErrorDialog] =
-    useState<ErrorDialogState>(initialErrorDialog);
+  const [
+    expandedDateKeys,
+    setExpandedDateKeys,
+  ] =
+    useState<string[]>([]);
+  const [
+    expandedMessageId,
+    setExpandedMessageId,
+  ] =
+    useState<number | null>(
+      null,
+    );
+  const [
+    errorDialog,
+    setErrorDialog,
+  ] =
+    useState<ErrorDialogState>(
+      initialErrorDialog,
+    );
 
-  const showErrorDialog = useCallback((title: string, description: string) => {
-    setErrorDialog({
-      open: true,
-      title,
-      description,
-    });
-  }, []);
+  const showErrorDialog =
+    useCallback(
+      (
+        title: string,
+        description: string,
+      ) => {
+        setErrorDialog({
+          open: true,
+          title,
+          description,
+        });
+      },
+      [],
+    );
 
-  const closeErrorDialog = useCallback(() => {
-    setErrorDialog(initialErrorDialog);
-  }, []);
+  const closeErrorDialog =
+    useCallback(() => {
+      setErrorDialog(
+        initialErrorDialog,
+      );
+    }, []);
 
-  const handleMessagesError = useCallback(
-    (message: string) => {
-      showErrorDialog("Kunne ikke hente sendte beskeder", message);
-    },
-    [showErrorDialog],
-  );
+  const handleMessagesError =
+    useCallback(
+      (message: string) => {
+        showErrorDialog(
+          "Kunne ikke hente sendte beskeder",
+          message,
+        );
+      },
+      [showErrorDialog],
+    );
 
-  const { loading, sortedMessages, archive } = useMessages({
+  const {
+    loading,
+    loadingMore,
+    hasMore,
+    sortedMessages,
+    loadMore,
+    archive,
+  } = useMessages({
     mode: "sent",
-    onError: handleMessagesError,
+    onError:
+      handleMessagesError,
   });
 
-  const groupedMessages = useMemo(() => {
-    return groupMessagesBySentDate(sortedMessages);
-  }, [sortedMessages]);
+  const groupedMessages =
+    useMemo(() => {
+      return groupMessagesBySentDate(
+        sortedMessages,
+      );
+    }, [sortedMessages]);
 
   useEffect(() => {
-    setExpandedDateKeys((current) => {
-      const validKeys = groupedMessages.map((group) => group.dateKey);
+    setExpandedDateKeys(
+      (current) => {
+        const validKeys =
+          groupedMessages.map(
+            (group) =>
+              group.dateKey,
+          );
 
-      if (validKeys.length === 0) {
-        return [];
-      }
+        if (
+          validKeys.length ===
+          0
+        ) {
+          return [];
+        }
 
-      const currentValidKeys = current.filter((dateKey) =>
-        validKeys.includes(dateKey),
-      );
-      const latestDateKey = validKeys[0];
-      const nextKeys = currentValidKeys.includes(latestDateKey)
-        ? currentValidKeys
-        : [latestDateKey, ...currentValidKeys];
+        const currentValidKeys =
+          current.filter(
+            (dateKey) =>
+              validKeys.includes(
+                dateKey,
+              ),
+          );
+        const latestDateKey =
+          validKeys[0];
+        const nextKeys =
+          currentValidKeys.includes(
+            latestDateKey,
+          )
+            ? currentValidKeys
+            : [
+                latestDateKey,
+                ...currentValidKeys,
+              ];
+        const isUnchanged =
+          nextKeys.length ===
+            current.length &&
+          nextKeys.every(
+            (
+              dateKey,
+              index,
+            ) =>
+              dateKey ===
+              current[index],
+          );
 
-      const isUnchanged =
-        nextKeys.length === current.length &&
-        nextKeys.every((dateKey, index) => dateKey === current[index]);
-
-      return isUnchanged ? current : nextKeys;
-    });
+        return isUnchanged
+          ? current
+          : nextKeys;
+      },
+    );
   }, [groupedMessages]);
 
-  function toggleDateGroup(dateKey: string) {
-    setExpandedDateKeys((current) =>
-      current.includes(dateKey)
-        ? current.filter((currentDateKey) => currentDateKey !== dateKey)
-        : [dateKey, ...current],
+  function toggleDateGroup(
+    dateKey: string,
+  ) {
+    setExpandedDateKeys(
+      (current) =>
+        current.includes(
+          dateKey,
+        )
+          ? current.filter(
+              (
+                currentDateKey,
+              ) =>
+                currentDateKey !==
+                dateKey,
+            )
+          : [
+              dateKey,
+              ...current,
+            ],
     );
   }
 
-  function toggleMessage(messageId: number) {
-    setExpandedMessageId((current) =>
-      current === messageId ? null : messageId,
+  function toggleMessage(
+    messageId: number,
+  ) {
+    setExpandedMessageId(
+      (current) =>
+        current ===
+        messageId
+          ? null
+          : messageId,
     );
   }
 
-  function handleArchive(messageId: number) {
+  function handleArchive(
+    messageId: number,
+  ) {
     confirmDialog.confirm({
       title: "Arkiver besked",
-      description: "Vil du arkivere denne besked?",
+      description:
+        "Vil du arkivere denne besked?",
       confirmText: "Arkiver",
-      cancelText: "Annuller",
-      confirmVariant: "primary",
+      cancelText:
+        "Annuller",
+      confirmVariant:
+        "primary",
       onConfirm: async () => {
         try {
-          await archive(messageId);
+          await archive(
+            messageId,
+          );
 
-          if (expandedMessageId === messageId) {
-            setExpandedMessageId(null);
+          if (
+            expandedMessageId ===
+            messageId
+          ) {
+            setExpandedMessageId(
+              null,
+            );
           }
         } catch (error) {
           showErrorDialog(
@@ -125,12 +235,15 @@ export function useSentMessagesPage() {
 
   return {
     loading,
+    loadingMore,
+    hasMore,
     sortedMessages,
     groupedMessages,
     expandedDateKeys,
     expandedMessageId,
     errorDialog,
     confirmDialog,
+    loadMore,
     toggleDateGroup,
     toggleMessage,
     handleArchive,
