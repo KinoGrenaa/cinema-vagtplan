@@ -1,50 +1,77 @@
 "use client";
 
-import { useCallback, useState } from "react";
-
+import {
+  useCallback,
+  useState,
+} from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
-import { useNotifications } from "@/app/hooks/useNotifications";
+import {
+  useNotifications,
+} from "@/app/hooks/useNotifications";
 import NotificationsHeader from "./components/layout/NotificationsHeader";
 import NotificationsOverview from "./components/overview/NotificationsOverview";
-import type { ErrorDialogState } from "./helpers/core/notificationTypes";
-import { useNotificationsExtraData } from "./hooks/data/useNotificationsExtraData";
-import { useNotificationGroups } from "./hooks/groups/useNotificationGroups";
+import type {
+  ErrorDialogState,
+} from "./helpers/core/notificationTypes";
+import {
+  useNotificationsExtraData,
+} from "./hooks/data/useNotificationsExtraData";
+import {
+  useNotificationGroups,
+} from "./hooks/groups/useNotificationGroups";
 import styles from "./NotificationsPage.module.css";
 
 export default function NotificationsPage() {
-  const [errorDialog, setErrorDialog] = useState<ErrorDialogState>({
+  const [
+    errorDialog,
+    setErrorDialog,
+  ] = useState<ErrorDialogState>({
     open: false,
     title: "",
     description: "",
   });
 
-  const showError = useCallback((title: string, description: string) => {
-    setErrorDialog({
-      open: true,
-      title,
-      description,
-    });
-  }, []);
+  const showError =
+    useCallback(
+      (
+        title: string,
+        description: string,
+      ) => {
+        setErrorDialog({
+          open: true,
+          title,
+          description,
+        });
+      },
+      [],
+    );
 
-  const handleNotificationError = useCallback(
-    (message: string) => {
-      showError("Kunne ikke opdatere notifikationer", message);
-    },
-    [showError],
-  );
+  const handleNotificationError =
+    useCallback(
+      (message: string) => {
+        showError(
+          "Kunne ikke opdatere notifikationer",
+          message,
+        );
+      },
+      [showError],
+    );
 
   const {
     notifications,
     unreadCount,
-    loading: notificationsLoading,
+    unreadOnly,
+    loading:
+      notificationsLoading,
     loadingMore,
     hasMore,
-    loadNotifications,
     markAsRead,
     markAllAsRead,
-  loadMore,
+    loadMore,
+    toggleUnreadOnly,
   } = useNotifications({
-    onError: handleNotificationError,
+    onError:
+      handleNotificationError,
   });
 
   const {
@@ -75,15 +102,19 @@ export default function NotificationsPage() {
     unreadMessages,
     directTrades,
     poolTrades,
-    messagesEnabled: moduleAccess.messages,
-    shiftTradesEnabled: moduleAccess.shiftTrades,
+    messagesEnabled:
+      moduleAccess.messages,
+    shiftTradesEnabled:
+      moduleAccess.shiftTrades,
   });
 
   function closeErrorDialog() {
-    setErrorDialog((current) => ({
-      ...current,
-      open: false,
-    }));
+    setErrorDialog(
+      (current) => ({
+        ...current,
+        open: false,
+      }),
+    );
   }
 
   async function handleMarkNotificationAsRead(
@@ -98,7 +129,10 @@ export default function NotificationsPage() {
     await markAllAsRead();
   }
 
-  const loading = authLoading || notificationsLoading || extraLoading;
+  const loading =
+    authLoading ||
+    notificationsLoading ||
+    extraLoading;
 
   if (loading) {
     return (
@@ -107,21 +141,32 @@ export default function NotificationsPage() {
       >
         <div className="mx-auto max-w-5xl">
           <div
-            className={styles.loadingCard}
+            className={
+              styles.loadingCard
+            }
             role="status"
             aria-live="polite"
           >
-            Indlæser notifikationer...
+            Indlæser
+            notifikationer...
           </div>
         </div>
 
         <InfoModal
-          open={errorDialog.open}
-          title={errorDialog.title}
-          description={errorDialog.description}
+          open={
+            errorDialog.open
+          }
+          title={
+            errorDialog.title
+          }
+          description={
+            errorDialog.description
+          }
           variant="error"
           buttonText="OK"
-          onClose={closeErrorDialog}
+          onClose={
+            closeErrorDialog
+          }
         />
       </main>
     );
@@ -133,22 +178,54 @@ export default function NotificationsPage() {
     >
       <div className="mx-auto max-w-5xl space-y-6">
         <NotificationsHeader
-          totalCount={totalCount}
-          activeCategory={activeCategory}
-          unreadCount={unreadCount}
-          onMarkAllNotificationsAsRead={handleMarkAllNotificationsAsRead}
+          totalCount={
+            totalCount
+          }
+          activeCategory={
+            activeCategory
+          }
+          unreadCount={
+            unreadCount
+          }
+          onMarkAllNotificationsAsRead={
+            handleMarkAllNotificationsAsRead
+          }
         />
 
         <NotificationsOverview
-          activeCategory={activeCategory}
-          activeCategoryLabel={activeCategoryLabel}
-          activeCount={activeCount}
-          activeGroups={activeGroups}
-          categories={visibleCategories}
-          categoryCounts={categoryCounts}
-          expandedDateKeys={expandedDateKeys}
-          notificationsCount={notifications.length}
-          unreadCount={unreadCount}
+          activeCategory={
+            activeCategory
+          }
+          activeCategoryLabel={
+            activeCategoryLabel
+          }
+          activeCount={
+            activeCount
+          }
+          activeGroups={
+            activeGroups
+          }
+          categories={
+            visibleCategories
+          }
+          categoryCounts={
+            categoryCounts
+          }
+          expandedDateKeys={
+            expandedDateKeys
+          }
+          notificationsCount={
+            notifications.length
+          }
+          unreadCount={
+            unreadCount
+          }
+          unreadOnly={
+            unreadOnly
+          }
+          onToggleUnreadOnly={
+            toggleUnreadOnly
+          }
           hasMore={hasMore}
           loadingMore={
             loadingMore
@@ -156,19 +233,31 @@ export default function NotificationsPage() {
           onLoadMore={
             loadMore
           }
-          onSwitchCategory={switchCategory}
-          onToggleDateGroup={toggleDateGroup}
-          onMarkNotificationAsRead={handleMarkNotificationAsRead}
+          onSwitchCategory={
+            switchCategory
+          }
+          onToggleDateGroup={
+            toggleDateGroup
+          }
+          onMarkNotificationAsRead={
+            handleMarkNotificationAsRead
+          }
         />
       </div>
 
       <InfoModal
         open={errorDialog.open}
-        title={errorDialog.title}
-        description={errorDialog.description}
+        title={
+          errorDialog.title
+        }
+        description={
+          errorDialog.description
+        }
         variant="error"
         buttonText="OK"
-        onClose={closeErrorDialog}
+        onClose={
+          closeErrorDialog
+        }
       />
     </main>
   );

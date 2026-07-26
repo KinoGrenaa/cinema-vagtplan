@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import {
+  parseOptionalBooleanQuery,
   parseOptionalPositiveIntegerQuery,
   parseRequiredPositiveInteger,
 } from '../common/query-validation';
@@ -19,6 +20,7 @@ export class NotificationsController {
   constructor(
     private notificationsService: NotificationsService,
   ) {}
+
   @UseGuards(JwtGuard)
   @Get('page')
   getPageForUser(
@@ -26,6 +28,7 @@ export class NotificationsController {
     @Query('cinemaId') cinemaId?: string,
     @Query('limit') limit?: string,
     @Query('beforeId') beforeId?: string,
+    @Query('unreadOnly') unreadOnly?: string,
   ) {
     return this.notificationsService.findPageForUser(
       req.user,
@@ -44,10 +47,14 @@ export class NotificationsController {
             beforeId,
             'Notifikationscursor skal være et gyldigt ID',
           ),
+        unreadOnly:
+          parseOptionalBooleanQuery(
+            unreadOnly,
+            'Ulæst-filter skal være true eller false',
+          ),
       },
     );
   }
-
 
   @UseGuards(JwtGuard)
   @Get()

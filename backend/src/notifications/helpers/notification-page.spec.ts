@@ -1,5 +1,6 @@
 import {
   buildNotificationPage,
+  buildNotificationPageWhere,
   DEFAULT_NOTIFICATION_PAGE_SIZE,
   MAX_NOTIFICATION_PAGE_SIZE,
   normalizeNotificationPageLimit,
@@ -24,6 +25,38 @@ describe(
       ).toBe(
         MAX_NOTIFICATION_PAGE_SIZE,
       );
+    });
+
+    it('bygger standardfilteret for brugeren og biografen', () => {
+      expect(
+        buildNotificationPageWhere(
+          9,
+          7,
+        ),
+      ).toEqual({
+        userId: 9,
+        cinemaId: 7,
+      });
+    });
+
+    it('bygger cursor- og ulæstfilter', () => {
+      expect(
+        buildNotificationPageWhere(
+          9,
+          7,
+          {
+            beforeId: 50,
+            unreadOnly: true,
+          },
+        ),
+      ).toEqual({
+        userId: 9,
+        cinemaId: 7,
+        isRead: false,
+        id: {
+          lt: 50,
+        },
+      });
     });
 
     it('bygger næste cursor når der er flere rækker', () => {

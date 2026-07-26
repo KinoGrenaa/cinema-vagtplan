@@ -6,6 +6,7 @@ export const MAX_NOTIFICATION_PAGE_SIZE =
 export type NotificationPageOptions = {
   limit?: number;
   beforeId?: number;
+  unreadOnly?: boolean;
 };
 
 export type NotificationPageResult<
@@ -37,6 +38,30 @@ export function normalizeNotificationPageLimit(
     value,
     MAX_NOTIFICATION_PAGE_SIZE,
   );
+}
+
+export function buildNotificationPageWhere(
+  userId: number,
+  cinemaId: number,
+  options:
+    NotificationPageOptions = {},
+) {
+  return {
+    userId,
+    cinemaId,
+    ...(options.unreadOnly
+      ? {
+          isRead: false,
+        }
+      : {}),
+    ...(options.beforeId
+      ? {
+          id: {
+            lt: options.beforeId,
+          },
+        }
+      : {}),
+  };
 }
 
 export function buildNotificationPage<

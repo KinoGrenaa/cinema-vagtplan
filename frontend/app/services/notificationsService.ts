@@ -108,6 +108,7 @@ export async function fetchNotificationPage(
   options: {
     limit?: number;
     beforeId?: number | null;
+    unreadOnly?: boolean;
   } = {},
 ): Promise<NotificationPage> {
   const params =
@@ -130,6 +131,13 @@ export async function fetchNotificationPage(
       String(
         options.beforeId,
       ),
+    );
+  }
+
+  if (options.unreadOnly) {
+    params.set(
+      "unreadOnly",
+      "true",
     );
   }
 

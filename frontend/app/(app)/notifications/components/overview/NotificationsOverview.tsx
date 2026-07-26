@@ -42,6 +42,9 @@ type Props = {
   expandedDateKeys: string[];
   notificationsCount: number;
   unreadCount: number;
+  unreadOnly: boolean;
+  onToggleUnreadOnly:
+    () => void;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore:
@@ -101,6 +104,8 @@ export default function NotificationsOverview({
   expandedDateKeys,
   notificationsCount,
   unreadCount,
+  unreadOnly,
+  onToggleUnreadOnly,
   hasMore,
   loadingMore,
   onLoadMore,
@@ -177,9 +182,35 @@ export default function NotificationsOverview({
       <p className="mt-5 text-sm text-gray-600 dark:text-gray-300">
         {activeCategory ===
         "system"
-          ? `Viser ${notificationsCount} hentede systemnotifikationer · ${unreadCount} ulæste`
+          ? unreadOnly
+            ? `Viser ${notificationsCount} hentede ulæste systemnotifikationer · ${unreadCount} ulæste i alt`
+            : `Viser ${notificationsCount} hentede systemnotifikationer · ${unreadCount} ulæste`
           : `Viser ${activeCount} ${activeCategoryLabel.toLowerCase()}.`}
       </p>
+
+      {activeCategory ===
+        "system" && (
+        <div className="mt-3">
+          <button
+            type="button"
+            aria-pressed={
+              unreadOnly
+            }
+            onClick={
+              onToggleUnreadOnly
+            }
+            className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950 ${
+              unreadOnly
+                ? "border-blue-700 bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900 dark:border-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400"
+                : "border-gray-300 bg-white text-gray-800 hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+            }`}
+          >
+            {unreadOnly
+              ? "Vis alle"
+              : "Kun ulæste"}
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 space-y-4">
         {activeCount === 0 && (
@@ -416,7 +447,9 @@ export default function NotificationsOverview({
             >
               {loadingMore
                 ? "Henter..."
-                : "Hent ældre notifikationer"}
+                : unreadOnly
+                  ? "Hent ældre ulæste"
+                  : "Hent ældre notifikationer"}
             </button>
           </div>
         )}

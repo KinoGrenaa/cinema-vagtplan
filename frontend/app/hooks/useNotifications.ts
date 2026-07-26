@@ -124,6 +124,10 @@ export function useNotifications(
       [],
     );
   const [
+    unreadOnly,
+    setUnreadOnly,
+  ] = useState(false);
+  const [
     unreadCount,
     setUnreadCount,
   ] = useState(0);
@@ -216,6 +220,9 @@ export function useNotifications(
             await Promise.all([
               fetchNotificationPage(
                 activeCinemaId,
+                {
+                  unreadOnly,
+                },
               ),
               fetchUnreadNotificationCount(
                 activeCinemaId,
@@ -255,6 +262,7 @@ export function useNotifications(
         activeCinemaId,
         authLoading,
         onError,
+        unreadOnly,
         user,
       ],
     );
@@ -279,6 +287,7 @@ export function useNotifications(
             {
               beforeId:
                 nextBeforeId,
+              unreadOnly,
             },
           );
 
@@ -311,6 +320,7 @@ export function useNotifications(
       loadingMore,
       nextBeforeId,
       onError,
+      unreadOnly,
     ]);
 
   useEffect(() => {
@@ -349,18 +359,24 @@ export function useNotifications(
         try {
           setNotifications(
             (current) =>
-              current.map(
-                (
-                  notification,
-                ) =>
-                  notification.id ===
-                  notificationId
-                    ? {
-                        ...notification,
-                        isRead: true,
-                      }
-                    : notification,
-              ),
+              unreadOnly
+                ? current.filter(
+                    (notification) =>
+                      notification.id !==
+                      notificationId,
+                  )
+                : current.map(
+                    (
+                      notification,
+                    ) =>
+                      notification.id ===
+                      notificationId
+                        ? {
+                            ...notification,
+                            isRead: true,
+                          }
+                        : notification,
+                  ),
           );
 
           if (wasUnread) {
@@ -397,8 +413,17 @@ export function useNotifications(
         notifications,
         onError,
         unreadCount,
+        unreadOnly,
       ],
     );
+
+  const toggleUnreadOnly =
+    useCallback(() => {
+      setUnreadOnly(
+        (current) =>
+          !current,
+      );
+    }, []);
 
   const markAllAsRead =
     useCallback(async () => {
@@ -410,20 +435,33 @@ export function useNotifications(
         notifications;
       const previousUnreadCount =
         unreadCount;
+      const previousHasMore =
+        hasMore;
+      const previousNextBeforeId =
+        nextBeforeId;
 
       try {
         setNotifications(
           (current) =>
-            current.map(
-              (
-                notification,
-              ) => ({
-                ...notification,
-                isRead: true,
-              }),
-            ),
+            unreadOnly
+              ? []
+              : current.map(
+                  (
+                    notification,
+                  ) => ({
+                    ...notification,
+                    isRead: true,
+                  }),
+                ),
         );
         setUnreadCount(0);
+
+        if (unreadOnly) {
+          setHasMore(false);
+          setNextBeforeId(
+            null,
+          );
+        }
 
         await markAllNotificationsAsRead(
           activeCinemaId,
@@ -441,12 +479,21 @@ export function useNotifications(
         setUnreadCount(
           previousUnreadCount,
         );
+        setHasMore(
+          previousHasMore,
+        );
+        setNextBeforeId(
+          previousNextBeforeId,
+        );
       }
     }, [
       activeCinemaId,
+      hasMore,
+      nextBeforeId,
       notifications,
       onError,
       unreadCount,
+      unreadOnly,
     ]);
 
   return {
@@ -456,9 +503,11 @@ export function useNotifications(
     loadingMore,
     notifications,
     unreadCount,
+    unreadOnly,
     hasMore,
     loadNotifications,
     loadMore,
+    toggleUnreadOnly,
     markAsRead,
     markAllAsRead,
   };

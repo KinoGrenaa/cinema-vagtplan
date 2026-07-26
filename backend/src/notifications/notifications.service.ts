@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
   buildNotificationPage,
+  buildNotificationPageWhere,
   normalizeNotificationPageLimit,
   type NotificationPageOptions,
 } from './helpers/notification-page';
@@ -226,17 +227,12 @@ export class NotificationsService {
 
     const rows =
       await this.prisma.notification.findMany({
-        where: {
-          userId: context.userId,
-          cinemaId: context.cinemaId,
-          ...(options.beforeId
-            ? {
-                id: {
-                  lt: options.beforeId,
-                },
-              }
-            : {}),
-        },
+        where:
+          buildNotificationPageWhere(
+            context.userId,
+            context.cinemaId,
+            options,
+          ),
         orderBy: {
           id: 'desc',
         },
