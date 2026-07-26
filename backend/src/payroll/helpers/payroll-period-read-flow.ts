@@ -14,7 +14,6 @@ export async function getPayrollPeriodWithTimeEntries(
   selectedCinemaId?: number | null,
 ) {
   ensurePayrollAccess(user);
-
   const { start, end } = getPeriodDates(startDate, endDate);
 
   return prisma.payrollPeriod.findFirst({
@@ -22,9 +21,6 @@ export async function getPayrollPeriodWithTimeEntries(
       ...getPayrollCinemaFilter(user, selectedCinemaId),
       startDate: start,
       endDate: end,
-    },
-    include: {
-      timeEntries: true,
     },
   });
 }
