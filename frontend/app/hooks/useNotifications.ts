@@ -3,21 +3,28 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 
-import { useAuth } from "../providers/AuthProvider";
 import {
-  fetchNotifications,
+  useAuth,
+} from "../providers/AuthProvider";
+import {
+  fetchNotificationPage,
+  fetchUnreadNotificationCount,
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "../services/notificationsService";
-import type { Notification } from "../types/notifications";
-import { useRealtimeCore } from "./useRealtimeCore";
+import type {
+  Notification,
+} from "../types/notifications";
+import {
+  useRealtimeCore,
+} from "./useRealtimeCore";
 
 type UseNotificationsInput = {
-  onError?: (message: string) => void;
+  onError?:
+    (message: string) => void;
 };
 
 function getErrorMessage(
@@ -26,7 +33,8 @@ function getErrorMessage(
 ) {
   if (
     error instanceof Error &&
-    error.message.trim().length > 0
+    error.message.trim().length >
+      0
   ) {
     return error.message;
   }
@@ -35,40 +43,115 @@ function getErrorMessage(
 }
 
 function getSelectedMasterCinemaId() {
-  if (typeof window === "undefined") {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
     return null;
   }
 
-  const storedCinemaId = Number(
-    window.localStorage.getItem(
-      "masterSelectedCinemaId",
-    ),
-  );
+  const storedCinemaId =
+    Number(
+      window.localStorage.getItem(
+        "masterSelectedCinemaId",
+      ),
+    );
 
-  return Number.isInteger(storedCinemaId) &&
+  return Number.isInteger(
+    storedCinemaId,
+  ) &&
     storedCinemaId > 0
     ? storedCinemaId
     : null;
 }
 
-export function useNotifications(
-  input: UseNotificationsInput = {},
+function mergeNotifications(
+  current:
+    Notification[],
+  incoming:
+    Notification[],
 ) {
-  const { onError } = input;
-  const { user, loading: authLoading } = useAuth();
-  const [selectedMasterCinemaId, setSelectedMasterCinemaId] =
-    useState<number | null>(() =>
-      getSelectedMasterCinemaId(),
+  const byId =
+    new Map<number, Notification>();
+
+  for (const notification of [
+    ...current,
+    ...incoming,
+  ]) {
+    byId.set(
+      notification.id,
+      notification,
     );
-  const [notifications, setNotifications] = useState<
-    Notification[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+  }
+
+  return [
+    ...byId.values(),
+  ].sort(
+    (left, right) =>
+      new Date(
+        right.createdAt,
+      ).getTime() -
+      new Date(
+        left.createdAt,
+      ).getTime(),
+  );
+}
+
+export function useNotifications(
+  input:
+    UseNotificationsInput = {},
+) {
+  const {
+    onError,
+  } = input;
+  const {
+    user,
+    loading: authLoading,
+  } = useAuth();
+  const [
+    selectedMasterCinemaId,
+    setSelectedMasterCinemaId,
+  ] =
+    useState<number | null>(
+      () =>
+        getSelectedMasterCinemaId(),
+    );
+  const [
+    notifications,
+    setNotifications,
+  ] =
+    useState<Notification[]>(
+      [],
+    );
+  const [
+    unreadCount,
+    setUnreadCount,
+  ] = useState(0);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+  const [
+    loadingMore,
+    setLoadingMore,
+  ] = useState(false);
+  const [
+    hasMore,
+    setHasMore,
+  ] = useState(false);
+  const [
+    nextBeforeId,
+    setNextBeforeId,
+  ] =
+    useState<number | null>(
+      null,
+    );
 
   const activeCinemaId =
     user?.role === "MASTER"
       ? selectedMasterCinemaId
-      : user?.cinemaId ?? null;
+      : user?.cinemaId ??
+        null;
 
   useEffect(() => {
     function handleMasterCinemaChanged() {
@@ -98,48 +181,137 @@ export function useNotifications(
     };
   }, []);
 
-  const loadNotifications = useCallback(
-    async (showLoading = true) => {
-      if (authLoading) {
-        return;
-      }
+  const loadNotifications =
+    useCallback(
+      async (
+        showLoading = true,
+      ) => {
+        if (authLoading) {
+          return;
+        }
 
-      if (!user || !activeCinemaId) {
-        setNotifications([]);
-        setLoading(false);
+        if (
+          !user ||
+          !activeCinemaId
+        ) {
+          setNotifications([]);
+          setUnreadCount(0);
+          setHasMore(false);
+          setNextBeforeId(
+            null,
+          );
+          setLoading(false);
+          return;
+        }
+
+        try {
+          if (showLoading) {
+            setLoading(true);
+          }
+
+          const [
+            page,
+            count,
+          ] =
+            await Promise.all([
+              fetchNotificationPage(
+                activeCinemaId,
+              ),
+              fetchUnreadNotificationCount(
+                activeCinemaId,
+              ),
+            ]);
+
+          setNotifications(
+            page.items,
+          );
+          setUnreadCount(count);
+          setHasMore(
+            page.hasMore,
+          );
+          setNextBeforeId(
+            page.nextBeforeId,
+          );
+        } catch (error) {
+          onError?.(
+            getErrorMessage(
+              error,
+              "Der opstod en fejl under hentning af notifikationer.",
+            ),
+          );
+          setNotifications([]);
+          setUnreadCount(0);
+          setHasMore(false);
+          setNextBeforeId(
+            null,
+          );
+        } finally {
+          if (showLoading) {
+            setLoading(false);
+          }
+        }
+      },
+      [
+        activeCinemaId,
+        authLoading,
+        onError,
+        user,
+      ],
+    );
+
+  const loadMore =
+    useCallback(async () => {
+      if (
+        !activeCinemaId ||
+        !hasMore ||
+        !nextBeforeId ||
+        loadingMore
+      ) {
         return;
       }
 
       try {
-        if (showLoading) {
-          setLoading(true);
-        }
+        setLoadingMore(true);
 
-        const data =
-          await fetchNotifications(activeCinemaId);
+        const page =
+          await fetchNotificationPage(
+            activeCinemaId,
+            {
+              beforeId:
+                nextBeforeId,
+            },
+          );
 
-        setNotifications(data);
+        setNotifications(
+          (current) =>
+            mergeNotifications(
+              current,
+              page.items,
+            ),
+        );
+        setHasMore(
+          page.hasMore,
+        );
+        setNextBeforeId(
+          page.nextBeforeId,
+        );
       } catch (error) {
         onError?.(
           getErrorMessage(
             error,
-            "Der opstod en fejl under hentning af notifikationer.",
+            "Ældre notifikationer kunne ikke hentes.",
           ),
         );
-        setNotifications([]);
       } finally {
-        if (showLoading) {
-          setLoading(false);
-        }
+        setLoadingMore(false);
       }
-    },
-    [
+    }, [
       activeCinemaId,
-      authLoading,
+      hasMore,
+      loadingMore,
+      nextBeforeId,
       onError,
-      user,
-    ],
-  );
+    ]);
 
   useEffect(() => {
     void loadNotifications();
@@ -147,98 +319,146 @@ export function useNotifications(
 
   useRealtimeCore({
     onNotification: () =>
-      void loadNotifications(false),
+      void loadNotifications(
+        false,
+      ),
   });
 
-  const unreadCount = useMemo(() => {
-    return notifications.filter(
-      (notification) => !notification.isRead,
-    ).length;
-  }, [notifications]);
+  const markAsRead =
+    useCallback(
+      async (
+        notificationId:
+          number,
+      ) => {
+        if (!activeCinemaId) {
+          return;
+        }
 
-  const markAsRead = useCallback(
-    async (notificationId: number) => {
+        const previousNotifications =
+          notifications;
+        const previousUnreadCount =
+          unreadCount;
+        const wasUnread =
+          notifications.some(
+            (notification) =>
+              notification.id ===
+                notificationId &&
+              !notification.isRead,
+          );
+
+        try {
+          setNotifications(
+            (current) =>
+              current.map(
+                (
+                  notification,
+                ) =>
+                  notification.id ===
+                  notificationId
+                    ? {
+                        ...notification,
+                        isRead: true,
+                      }
+                    : notification,
+              ),
+          );
+
+          if (wasUnread) {
+            setUnreadCount(
+              (current) =>
+                Math.max(
+                  0,
+                  current - 1,
+                ),
+            );
+          }
+
+          await markNotificationAsRead(
+            notificationId,
+            activeCinemaId,
+          );
+        } catch (error) {
+          onError?.(
+            getErrorMessage(
+              error,
+              "Der opstod en fejl under markering af notifikation som læst.",
+            ),
+          );
+          setNotifications(
+            previousNotifications,
+          );
+          setUnreadCount(
+            previousUnreadCount,
+          );
+        }
+      },
+      [
+        activeCinemaId,
+        notifications,
+        onError,
+        unreadCount,
+      ],
+    );
+
+  const markAllAsRead =
+    useCallback(async () => {
       if (!activeCinemaId) {
         return;
       }
 
-      const previousNotifications = notifications;
+      const previousNotifications =
+        notifications;
+      const previousUnreadCount =
+        unreadCount;
 
       try {
-        setNotifications((current) =>
-          current.map((notification) =>
-            notification.id === notificationId
-              ? {
-                  ...notification,
-                  isRead: true,
-                }
-              : notification,
-          ),
+        setNotifications(
+          (current) =>
+            current.map(
+              (
+                notification,
+              ) => ({
+                ...notification,
+                isRead: true,
+              }),
+            ),
         );
+        setUnreadCount(0);
 
-        await markNotificationAsRead(
-          notificationId,
+        await markAllNotificationsAsRead(
           activeCinemaId,
         );
       } catch (error) {
         onError?.(
           getErrorMessage(
             error,
-            "Der opstod en fejl under markering af notifikation som læst.",
+            "Der opstod en fejl under markering af alle notifikationer som læst.",
           ),
         );
-        setNotifications(previousNotifications);
-        await loadNotifications(false);
+        setNotifications(
+          previousNotifications,
+        );
+        setUnreadCount(
+          previousUnreadCount,
+        );
       }
-    },
-    [
+    }, [
       activeCinemaId,
-      loadNotifications,
       notifications,
       onError,
-    ],
-  );
-
-  const markAllAsRead = useCallback(async () => {
-    if (!activeCinemaId) {
-      return;
-    }
-
-    const previousNotifications = notifications;
-
-    try {
-      setNotifications((current) =>
-        current.map((notification) => ({
-          ...notification,
-          isRead: true,
-        })),
-      );
-
-      await markAllNotificationsAsRead(
-        activeCinemaId,
-      );
-    } catch (error) {
-      onError?.(
-        getErrorMessage(
-          error,
-          "Der opstod en fejl under markering af alle notifikationer som læst.",
-        ),
-      );
-      setNotifications(previousNotifications);
-      await loadNotifications(false);
-    }
-  }, [
-    activeCinemaId,
-    loadNotifications,
-    notifications,
-    onError,
-  ]);
+      unreadCount,
+    ]);
 
   return {
-    loading: loading || authLoading,
+    loading:
+      loading ||
+      authLoading,
+    loadingMore,
     notifications,
     unreadCount,
+    hasMore,
     loadNotifications,
+    loadMore,
     markAsRead,
     markAllAsRead,
   };

@@ -19,6 +19,35 @@ export class NotificationsController {
   constructor(
     private notificationsService: NotificationsService,
   ) {}
+  @UseGuards(JwtGuard)
+  @Get('page')
+  getPageForUser(
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+    @Query('limit') limit?: string,
+    @Query('beforeId') beforeId?: string,
+  ) {
+    return this.notificationsService.findPageForUser(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+      {
+        limit:
+          parseOptionalPositiveIntegerQuery(
+            limit,
+            'Antal notifikationer skal være et gyldigt tal',
+          ),
+        beforeId:
+          parseOptionalPositiveIntegerQuery(
+            beforeId,
+            'Notifikationscursor skal være et gyldigt ID',
+          ),
+      },
+    );
+  }
+
 
   @UseGuards(JwtGuard)
   @Get()

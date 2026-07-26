@@ -42,6 +42,10 @@ type Props = {
   expandedDateKeys: string[];
   notificationsCount: number;
   unreadCount: number;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore:
+    () => Promise<unknown>;
   onSwitchCategory:
     (
       category:
@@ -97,6 +101,9 @@ export default function NotificationsOverview({
   expandedDateKeys,
   notificationsCount,
   unreadCount,
+  hasMore,
+  loadingMore,
+  onLoadMore,
   onSwitchCategory,
   onToggleDateGroup,
   onMarkNotificationAsRead,
@@ -170,7 +177,7 @@ export default function NotificationsOverview({
       <p className="mt-5 text-sm text-gray-600 dark:text-gray-300">
         {activeCategory ===
         "system"
-          ? `Viser ${notificationsCount} systemnotifikationer · ${unreadCount} ulæste`
+          ? `Viser ${notificationsCount} hentede systemnotifikationer · ${unreadCount} ulæste`
           : `Viser ${activeCount} ${activeCategoryLabel.toLowerCase()}.`}
       </p>
 
@@ -391,6 +398,27 @@ export default function NotificationsOverview({
               </section>
             );
           },
+        )}
+
+        {activeCategory ===
+          "system" &&
+          hasMore && (
+          <div className="pt-2 text-center">
+            <button
+              type="button"
+              onClick={() =>
+                void onLoadMore()
+              }
+              disabled={
+                loadingMore
+              }
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+            >
+              {loadingMore
+                ? "Henter..."
+                : "Hent ældre notifikationer"}
+            </button>
+          </div>
         )}
       </div>
     </>

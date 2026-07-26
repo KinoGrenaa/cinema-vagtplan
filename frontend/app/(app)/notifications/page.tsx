@@ -37,9 +37,12 @@ export default function NotificationsPage() {
     notifications,
     unreadCount,
     loading: notificationsLoading,
+    loadingMore,
+    hasMore,
     loadNotifications,
     markAsRead,
     markAllAsRead,
+  loadMore,
   } = useNotifications({
     onError: handleNotificationError,
   });
@@ -83,14 +86,16 @@ export default function NotificationsPage() {
     }));
   }
 
-  async function handleMarkNotificationAsRead(notificationId: number) {
-    await markAsRead(notificationId);
-    await loadNotifications();
+  async function handleMarkNotificationAsRead(
+    notificationId: number,
+  ) {
+    await markAsRead(
+      notificationId,
+    );
   }
 
   async function handleMarkAllNotificationsAsRead() {
     await markAllAsRead();
-    await loadNotifications();
   }
 
   const loading = authLoading || notificationsLoading || extraLoading;
@@ -144,6 +149,13 @@ export default function NotificationsPage() {
           expandedDateKeys={expandedDateKeys}
           notificationsCount={notifications.length}
           unreadCount={unreadCount}
+          hasMore={hasMore}
+          loadingMore={
+            loadingMore
+          }
+          onLoadMore={
+            loadMore
+          }
           onSwitchCategory={switchCategory}
           onToggleDateGroup={toggleDateGroup}
           onMarkNotificationAsRead={handleMarkNotificationAsRead}

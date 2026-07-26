@@ -6,6 +6,11 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import {
+  buildNotificationPage,
+  normalizeNotificationPageLimit,
+  type NotificationPageOptions,
+} from './helpers/notification-page';
 
 type NotificationActor = {
   sub?: number;
@@ -202,6 +207,48 @@ export class NotificationsService {
 
     return notification;
   }
+  async findPageForUser(
+    actor: NotificationActor,
+    selectedCinemaId?:
+      number | null,
+    options:
+      NotificationPageOptions = {},
+  ) {
+    const context =
+      await this.resolveNotificationContext(
+        actor,
+        selectedCinemaId,
+      );
+    const limit =
+      normalizeNotificationPageLimit(
+        options.limit,
+      );
+
+    const rows =
+      await this.prisma.notification.findMany({
+        where: {
+          userId: context.userId,
+          cinemaId: context.cinemaId,
+          ...(options.beforeId
+            ? {
+                id: {
+                  lt: options.beforeId,
+                },
+              }
+            : {}),
+        },
+        orderBy: {
+          id: 'desc',
+        },
+        take: limit + 1,
+      });
+
+    return buildNotificationPage(
+      rows,
+      limit,
+    );
+  }
+
 
   async findForUser(
     actor: NotificationActor,
