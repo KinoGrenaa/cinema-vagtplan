@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import PermissionGuard from "@/app/components/access/PermissionGuard";
-
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
-
 import MasterUserFormModal from "./components/form/MasterUserFormModal";
 import UserCinemaMembershipModal from "./components/form/UserCinemaMembershipModal";
 import {
@@ -18,6 +16,7 @@ import UsersHeader from "./components/layout/UsersHeader";
 import UsersMasterCinemaRequired from "./components/layout/UsersMasterCinemaRequired";
 import MasterUsersSection from "./components/list/MasterUsersSection";
 import UsersTable from "./components/list/UsersTable";
+import type { UserListSort } from "./helpers/core/userTypes";
 import { useMasterUserActions } from "./hooks/actions/useMasterUserActions";
 import { useUserCinemaMembershipActions } from "./hooks/actions/useUserCinemaMembershipActions";
 import { useUserFormActions } from "./hooks/actions/useUserFormActions";
@@ -30,19 +29,36 @@ export default function UsersPage() {
   const infoDialog = useInfoModal();
   const [showInactive, setShowInactive] =
     useState(false);
+  const [searchQuery, setSearchQuery] =
+    useState("");
+  const [sort, setSort] =
+    useState<UserListSort>("NAME");
 
   const {
     users,
-    setUsers,
     masterUsers,
     setMasterUsers,
     currentUser,
     selectedMasterCinemaId,
+    total,
+    hasMore,
     loading,
+    loadingMore,
     loadingMasterUsers,
+    refreshUsers,
+    loadMoreUsers,
   } = useUsersData({
-    showError: (title, description) => {
-      infoDialog.showError(title, description);
+    showInactive,
+    searchQuery,
+    sort,
+    showError: (
+      title,
+      description,
+    ) => {
+      infoDialog.showError(
+        title,
+        description,
+      );
     },
   });
 
@@ -66,9 +82,15 @@ export default function UsersPage() {
     currentUser,
     selectedMasterCinemaId,
     needsMasterCinemaSelection,
-    setUsers,
-    showError: (title, description) => {
-      infoDialog.showError(title, description);
+    refreshUsers,
+    showError: (
+      title,
+      description,
+    ) => {
+      infoDialog.showError(
+        title,
+        description,
+      );
     },
   });
 
@@ -76,36 +98,60 @@ export default function UsersPage() {
     deactivateUser,
     reactivateUser,
   } = useUserStatusActions({
-    setUsers,
-    confirm: confirmDialog.confirm,
-    showError: (title, description) => {
-      infoDialog.showError(title, description);
+    refreshUsers,
+    confirm:
+      confirmDialog.confirm,
+    showError: (
+      title,
+      description,
+    ) => {
+      infoDialog.showError(
+        title,
+        description,
+      );
     },
   });
 
   const cinemaMembershipActions =
     useUserCinemaMembershipActions({
-      showError: (title, description) => {
-        infoDialog.showError(title, description);
+      showError: (
+        title,
+        description,
+      ) => {
+        infoDialog.showError(
+          title,
+          description,
+        );
       },
     });
 
   const masterUserActions =
     useMasterUserActions({
       setMasterUsers,
-      confirm: confirmDialog.confirm,
-      showError: (title, description) => {
-        infoDialog.showError(title, description);
+      confirm:
+        confirmDialog.confirm,
+      showError: (
+        title,
+        description,
+      ) => {
+        infoDialog.showError(
+          title,
+          description,
+        );
       },
     });
 
-  const visibleUsers = showInactive
-    ? users
-    : users.filter(
-        (user) => user.isActive !== false,
-      );
+  const visibleUsers =
+    showInactive
+      ? users
+      : users.filter(
+          (user) =>
+            user.isActive !== false,
+        );
   const currentUserId =
-    currentUser?.id ?? currentUser?.sub ?? null;
+    currentUser?.id ??
+    currentUser?.sub ??
+    null;
 
   if (loading) {
     return (
@@ -120,7 +166,9 @@ export default function UsersPage() {
                 className={styles.spinner}
                 aria-hidden="true"
               />
-              <span>Indlæser brugere...</span>
+              <span>
+                Indlæser brugere...
+              </span>
             </div>
           </div>
         </main>
@@ -133,12 +181,27 @@ export default function UsersPage() {
       <main className={styles.page}>
         <div className={styles.content}>
           <UsersHeader
-            showInactive={showInactive}
-            setShowInactive={setShowInactive}
+            showInactive={
+              showInactive
+            }
+            setShowInactive={
+              setShowInactive
+            }
+            searchQuery={
+              searchQuery
+            }
+            setSearchQuery={
+              setSearchQuery
+            }
+            sort={sort}
+            setSort={setSort}
+            total={total}
             needsMasterCinemaSelection={
               needsMasterCinemaSelection
             }
-            onCreateClick={openCreateUserModal}
+            onCreateClick={
+              openCreateUserModal
+            }
           />
 
           {needsMasterCinemaSelection && (
@@ -150,7 +213,9 @@ export default function UsersPage() {
               title="Opret bruger"
               user={newUser}
               setUser={setNewUser}
-              onClose={closeCreateUserModal}
+              onClose={
+                closeCreateUserModal
+              }
               onSave={createUser}
               showPassword
             />
@@ -159,7 +224,9 @@ export default function UsersPage() {
           {editingUser && (
             <EditUserModal
               user={editingUser}
-              setUser={setEditingUser}
+              setUser={
+                setEditingUser
+              }
               onClose={() => {
                 setEditingUser(null);
               }}
@@ -169,14 +236,24 @@ export default function UsersPage() {
 
           {masterUserActions.mode && (
             <MasterUserFormModal
-              mode={masterUserActions.mode}
-              form={masterUserActions.form}
-              saving={masterUserActions.saving}
-              onChange={masterUserActions.setForm}
+              mode={
+                masterUserActions.mode
+              }
+              form={
+                masterUserActions.form
+              }
+              saving={
+                masterUserActions.saving
+              }
+              onChange={
+                masterUserActions.setForm
+              }
               onClose={
                 masterUserActions.closeModal
               }
-              onSave={masterUserActions.save}
+              onSave={
+                masterUserActions.save
+              }
             />
           )}
 
@@ -202,7 +279,9 @@ export default function UsersPage() {
             saving={
               cinemaMembershipActions.saving
             }
-            error={cinemaMembershipActions.error}
+            error={
+              cinemaMembershipActions.error
+            }
             onToggleCinema={
               cinemaMembershipActions.toggleCinema
             }
@@ -227,31 +306,57 @@ export default function UsersPage() {
           />
 
           <UsersTable
-            visibleUsers={visibleUsers}
+            visibleUsers={
+              visibleUsers
+            }
+            total={total}
+            hasMore={hasMore}
+            loadingMore={
+              loadingMore
+            }
             needsMasterCinemaSelection={
               needsMasterCinemaSelection
             }
             canManageCinemaMemberships={
-              currentUser?.role === "MASTER"
+              currentUser?.role ===
+              "MASTER"
             }
-            onEdit={openEditUserModal}
+            onEdit={
+              openEditUserModal
+            }
             onManageCinemaMemberships={
               cinemaMembershipActions.openMembershipModal
             }
-            onDeactivate={deactivateUser}
-            onReactivate={reactivateUser}
+            onDeactivate={
+              deactivateUser
+            }
+            onReactivate={
+              reactivateUser
+            }
+            onLoadMore={
+              loadMoreUsers
+            }
           />
 
-          {currentUser?.role === "MASTER" && (
+          {currentUser?.role ===
+            "MASTER" && (
             <MasterUsersSection
               users={masterUsers}
-              loading={loadingMasterUsers}
-              currentUserId={currentUserId}
-              showInactive={showInactive}
+              loading={
+                loadingMasterUsers
+              }
+              currentUserId={
+                currentUserId
+              }
+              showInactive={
+                showInactive
+              }
               onCreate={
                 masterUserActions.openCreate
               }
-              onEdit={masterUserActions.openEdit}
+              onEdit={
+                masterUserActions.openEdit
+              }
               onDeactivate={
                 masterUserActions.deactivate
               }
@@ -262,28 +367,50 @@ export default function UsersPage() {
           )}
 
           <ConfirmModal
-            open={confirmDialog.open}
-            title={confirmDialog.title}
-            description={confirmDialog.description}
-            confirmText={confirmDialog.confirmText}
-            cancelText={confirmDialog.cancelText}
+            open={
+              confirmDialog.open
+            }
+            title={
+              confirmDialog.title
+            }
+            description={
+              confirmDialog.description
+            }
+            confirmText={
+              confirmDialog.confirmText
+            }
+            cancelText={
+              confirmDialog.cancelText
+            }
             confirmVariant={
               confirmDialog.confirmVariant
             }
-            loading={confirmDialog.loading}
+            loading={
+              confirmDialog.loading
+            }
             onConfirm={
               confirmDialog.handleConfirm
             }
-            onCancel={confirmDialog.handleCancel}
+            onCancel={
+              confirmDialog.handleCancel
+            }
           />
 
           <InfoModal
             open={infoDialog.open}
             title={infoDialog.title}
-            description={infoDialog.description}
-            buttonText={infoDialog.buttonText}
-            variant={infoDialog.variant}
-            onClose={infoDialog.close}
+            description={
+              infoDialog.description
+            }
+            buttonText={
+              infoDialog.buttonText
+            }
+            variant={
+              infoDialog.variant
+            }
+            onClose={
+              infoDialog.close
+            }
           />
         </div>
       </main>

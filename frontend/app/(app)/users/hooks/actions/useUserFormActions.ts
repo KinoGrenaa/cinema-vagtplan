@@ -1,20 +1,14 @@
 "use client";
 
-import {
-  type Dispatch,
-  type SetStateAction,
-  useState,
-} from "react";
+import { useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
-
 import {
   getActiveCinemaId,
   getEditableUser,
   getErrorMessage,
   getStoredCurrentUser,
   getStoredMasterCinemaId,
-  normalizeUser,
 } from "../../helpers/core/userHelpers";
 import { withRequiredRolePermissions } from "../../helpers/core/userRolePermissions";
 import {
@@ -28,9 +22,7 @@ type UseUserFormActionsOptions = {
   currentUser: CurrentUser | null;
   selectedMasterCinemaId: number | null;
   needsMasterCinemaSelection: boolean;
-  setUsers: Dispatch<
-    SetStateAction<User[]>
-  >;
+  refreshUsers: () => Promise<void>;
   showError: (
     title: string,
     description: string,
@@ -41,7 +33,7 @@ export function useUserFormActions({
   currentUser,
   selectedMasterCinemaId,
   needsMasterCinemaSelection,
-  setUsers,
+  refreshUsers,
   showError,
 }: UseUserFormActionsOptions) {
   const [showCreate, setShowCreate] =
@@ -55,19 +47,15 @@ export function useUserFormActions({
     if (!newUser.firstName.trim()) {
       return "Fornavn mangler.";
     }
-
     if (!newUser.lastName.trim()) {
       return "Efternavn mangler.";
     }
-
     if (!newUser.email.trim()) {
       return "Email mangler.";
     }
-
     if (!newUser.email.includes("@")) {
       return "Indtast en gyldig emailadresse.";
     }
-
     if (
       !newUser.password ||
       newUser.password.length < 8
@@ -117,7 +105,8 @@ export function useUserFormActions({
       ) {
         showError(
           "Biograf skal vælges",
-          userForRequest.role === "MASTER"
+          userForRequest.role ===
+            "MASTER"
             ? "Gå til MASTER-panelet og vælg hvilken biograf brugeren skal oprettes i."
             : "Din bruger er ikke tilknyttet en biograf.\nKontakt en administrator.",
         );
@@ -170,13 +159,7 @@ export function useUserFormActions({
         );
       }
 
-      const createdUser =
-        (await response.json()) as User;
-
-      setUsers((previous) => [
-        ...previous,
-        normalizeUser(createdUser),
-      ]);
+      await refreshUsers();
       setShowCreate(false);
       resetNewUser();
     } catch (error) {
@@ -264,16 +247,7 @@ export function useUserFormActions({
         );
       }
 
-      const updatedUser =
-        (await response.json()) as User;
-
-      setUsers((previous) =>
-        previous.map((user) =>
-          user.id === updatedUser.id
-            ? normalizeUser(updatedUser)
-            : user,
-        ),
-      );
+      await refreshUsers();
       setEditingUser(null);
     } catch (error) {
       showError(
@@ -286,7 +260,9 @@ export function useUserFormActions({
   }
 
   function resetNewUser() {
-    setNewUser({ ...emptyUser });
+    setNewUser({
+      ...emptyUser,
+    });
   }
 
   function closeCreateUserModal() {

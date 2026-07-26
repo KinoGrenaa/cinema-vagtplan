@@ -41,6 +41,19 @@ export type User = {
   } | null;
 };
 
+export type UserListSort =
+  | "NAME"
+  | "NEWEST"
+  | "OLDEST";
+
+export type UserPage = {
+  items: User[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+};
+
 export type UserFormData = {
   firstName: string;
   lastName: string;

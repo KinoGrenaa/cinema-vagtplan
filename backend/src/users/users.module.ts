@@ -10,6 +10,8 @@ import { UserCinemaMembershipStatusController } from './user-cinema-membership-s
 import { UserCinemaMembershipStatusService } from './user-cinema-membership-status.service';
 import { UserCinemaProfileController } from './user-cinema-profile.controller';
 import { UserCinemaProfileService } from './user-cinema-profile.service';
+import { UserListController } from './user-list.controller';
+import { UserListService } from './user-list.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -26,6 +28,7 @@ import { UsersService } from './users.service';
   controllers: [
     UsersController,
     MasterUsersController,
+    UserListController,
     UserCinemaDefaultController,
     UserCinemaMembershipConfigurationController,
     UserCinemaMembershipStatusController,
@@ -34,6 +37,7 @@ import { UsersService } from './users.service';
   providers: [
     UsersService,
     MasterUsersService,
+    UserListService,
     UserCinemaMembershipConfigurationService,
     UserCinemaMembershipStatusService,
     UserCinemaProfileService,
