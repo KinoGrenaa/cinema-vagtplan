@@ -17,6 +17,9 @@ import { cancelShiftTrade } from './helpers/shift-trade-cancel-flow';
 import { createShiftTrade } from './helpers/shift-trade-create-flow';
 import { rejectShiftTrade } from './helpers/shift-trade-reject-flow';
 import {
+  findShiftTradeNotificationOverview,
+} from './helpers/shift-trade-notification-overview';
+import {
   getShiftTradeCinemaFilter,
   resolveShiftTradeCinemaId,
   shiftTradeInclude,
@@ -136,6 +139,28 @@ export class ShiftTradesService {
         approvedLeaveConflict,
       };
     });
+  }
+
+  async getNotificationOverview(
+    user: any,
+    selectedCinemaId?:
+      number | null,
+  ) {
+    const cinemaId =
+      resolveShiftTradeCinemaId(
+        user,
+        selectedCinemaId,
+      );
+    const userId =
+      resolveShiftTradeActorUserId(
+        user,
+      );
+
+    return findShiftTradeNotificationOverview(
+      this.prisma,
+      userId,
+      cinemaId,
+    );
   }
 
   async getPoolCount(

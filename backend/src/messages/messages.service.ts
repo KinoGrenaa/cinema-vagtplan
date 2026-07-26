@@ -19,6 +19,9 @@ import {
   resolveMessageActorContext,
 } from './helpers/message-cinema-access';
 import {
+  findUnreadMessagesForNotifications,
+} from './helpers/message-notification-overview';
+import {
   type ArchivedMessagePageOptions,
   type InboxMessagePageOptions,
   type SentMessagePageOptions,
@@ -74,6 +77,25 @@ export class MessagesService {
         senderCanSendBroadcastMessages:
           context.canSendBroadcastMessages,
       },
+    );
+  }
+
+  async findNotificationOverviewForUser(
+    actor: MessageActor,
+    selectedCinemaId?:
+      number | null,
+  ) {
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
+
+    return findUnreadMessagesForNotifications(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
     );
   }
 

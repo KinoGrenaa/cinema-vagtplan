@@ -3,14 +3,21 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 
-import { useApi } from "@/app/hooks/useApi";
-import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
-import { useAuth } from "@/app/providers/AuthProvider";
-import { useCinemaModules } from "@/app/providers/CinemaModulesProvider";
+import {
+  useApi,
+} from "@/app/hooks/useApi";
+import {
+  useRealtimeCore,
+} from "@/app/hooks/useRealtimeCore";
+import {
+  useAuth,
+} from "@/app/providers/AuthProvider";
+import {
+  useCinemaModules,
+} from "@/app/providers/CinemaModulesProvider";
 
 import {
   getErrorMessage,
@@ -28,8 +35,18 @@ type UseNotificationsExtraDataParams = {
   ) => void;
 };
 
+type ShiftTradeNotificationOverview = {
+  directTrades:
+    ShiftTrade[];
+  poolTrades:
+    ShiftTrade[];
+};
+
 function getSelectedMasterCinemaId() {
-  if (typeof window === "undefined") {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
     return undefined;
   }
 
@@ -68,36 +85,28 @@ function getMasterCinemaQuery(
   )}`;
 }
 
-function getMessagesEndpoint(
+function getOverviewEndpoint(
+  path: string,
   user: any,
 ) {
   const cinemaQuery =
     getMasterCinemaQuery(user);
 
-  if (cinemaQuery === undefined) {
+  if (
+    cinemaQuery === undefined
+  ) {
     return undefined;
   }
 
-  return `/messages${cinemaQuery}`;
-}
-
-function getShiftTradesEndpoint(
-  user: any,
-) {
-  const cinemaQuery =
-    getMasterCinemaQuery(user);
-
-  if (cinemaQuery === undefined) {
-    return undefined;
-  }
-
-  return `/shift-trades${cinemaQuery}`;
+  return `${path}${cinemaQuery}`;
 }
 
 export function useNotificationsExtraData({
   showError,
 }: UseNotificationsExtraDataParams) {
-  const { apiFetch } = useApi();
+  const {
+    apiFetch,
+  } = useApi();
   const {
     user,
     loading: authLoading,
@@ -108,135 +117,184 @@ export function useNotificationsExtraData({
   } = useCinemaModules();
 
   const messagesEnabled =
-    isModuleEnabled("MESSAGES");
+    isModuleEnabled(
+      "MESSAGES",
+    );
   const shiftTradesEnabled =
-    isModuleEnabled("SHIFT_TRADES");
+    isModuleEnabled(
+      "SHIFT_TRADES",
+    );
 
-  const [messages, setMessages] =
+  const [
+    unreadMessages,
+    setUnreadMessages,
+  ] =
     useState<Message[]>([]);
   const [
-    shiftTrades,
-    setShiftTrades,
-  ] = useState<ShiftTrade[]>([]);
+    directTrades,
+    setDirectTrades,
+  ] =
+    useState<ShiftTrade[]>([]);
+  const [
+    poolTrades,
+    setPoolTrades,
+  ] =
+    useState<ShiftTrade[]>([]);
   const [
     extraLoading,
     setExtraLoading,
   ] = useState(true);
 
-  const fetchExtraData = useCallback(
-    async (
-      showErrorDialog = true,
-    ) => {
-      if (!user) {
-        setMessages([]);
-        setShiftTrades([]);
-        setExtraLoading(false);
-        return;
-      }
+  const fetchExtraData =
+    useCallback(
+      async (
+        showErrorDialog = true,
+      ) => {
+        if (!user) {
+          setUnreadMessages([]);
+          setDirectTrades([]);
+          setPoolTrades([]);
+          setExtraLoading(false);
+          return;
+        }
 
-      try {
-        setExtraLoading(true);
+        try {
+          setExtraLoading(true);
 
-        const messagesEndpoint =
-          messagesEnabled
-            ? getMessagesEndpoint(user)
-            : undefined;
-        const shiftTradesEndpoint =
-          shiftTradesEnabled
-            ? getShiftTradesEndpoint(
-                user,
-              )
-            : undefined;
+          const messagesEndpoint =
+            messagesEnabled
+              ? getOverviewEndpoint(
+                  "/messages/notification-overview",
+                  user,
+                )
+              : undefined;
+          const shiftTradesEndpoint =
+            shiftTradesEnabled
+              ? getOverviewEndpoint(
+                  "/shift-trades/notification-overview",
+                  user,
+                )
+              : undefined;
 
-        const [
-          messagesResponse,
-          tradesResponse,
-        ] = await Promise.all([
-          messagesEndpoint
-            ? apiFetch(messagesEndpoint)
-            : Promise.resolve(
-                undefined,
+          const [
+            messagesResponse,
+            tradesResponse,
+          ] =
+            await Promise.all([
+              messagesEndpoint
+                ? apiFetch(
+                    messagesEndpoint,
+                  )
+                : Promise.resolve(
+                    undefined,
+                  ),
+              shiftTradesEndpoint
+                ? apiFetch(
+                    shiftTradesEndpoint,
+                  )
+                : Promise.resolve(
+                    undefined,
+                  ),
+            ]);
+
+          if (
+            messagesResponse &&
+            !messagesResponse.ok
+          ) {
+            throw new Error(
+              await readErrorMessage(
+                messagesResponse,
+                "Kunne ikke hente ulæste beskeder.",
               ),
-          shiftTradesEndpoint
-            ? apiFetch(
-                shiftTradesEndpoint,
-              )
-            : Promise.resolve(
-                undefined,
+            );
+          }
+
+          if (
+            tradesResponse &&
+            !tradesResponse.ok
+          ) {
+            throw new Error(
+              await readErrorMessage(
+                tradesResponse,
+                "Kunne ikke hente aktive vagtbytter.",
               ),
-        ]);
+            );
+          }
 
-        if (
-          messagesResponse &&
-          !messagesResponse.ok
-        ) {
-          throw new Error(
-            await readErrorMessage(
-              messagesResponse,
-              "Kunne ikke hente ulæste beskeder.",
-            ),
+          const [
+            messagesData,
+            tradesData,
+          ] =
+            await Promise.all([
+              messagesResponse
+                ? messagesResponse.json()
+                : Promise.resolve(
+                    [],
+                  ),
+              tradesResponse
+                ? tradesResponse.json()
+                : Promise.resolve({
+                    directTrades: [],
+                    poolTrades: [],
+                  }),
+            ]);
+
+          setUnreadMessages(
+            Array.isArray(
+              messagesData,
+            )
+              ? messagesData
+              : [],
           );
-        }
 
-        if (
-          tradesResponse &&
-          !tradesResponse.ok
-        ) {
-          throw new Error(
-            await readErrorMessage(
-              tradesResponse,
-              "Kunne ikke hente vagtbytter.",
-            ),
+          const normalizedTrades =
+            tradesData as
+              Partial<ShiftTradeNotificationOverview>;
+
+          setDirectTrades(
+            Array.isArray(
+              normalizedTrades
+                .directTrades,
+            )
+              ? normalizedTrades
+                  .directTrades
+              : [],
           );
-        }
-
-        const [
-          messagesData,
-          tradesData,
-        ] = await Promise.all([
-          messagesResponse
-            ? messagesResponse.json()
-            : Promise.resolve([]),
-          tradesResponse
-            ? tradesResponse.json()
-            : Promise.resolve([]),
-        ]);
-
-        setMessages(
-          Array.isArray(messagesData)
-            ? messagesData
-            : [],
-        );
-        setShiftTrades(
-          Array.isArray(tradesData)
-            ? tradesData
-            : [],
-        );
-      } catch (error) {
-        if (showErrorDialog) {
-          showError(
-            "Kunne ikke hente notifikationsoversigt",
-            getErrorMessage(
-              error,
-              "Der opstod en uventet fejl under hentning af notifikationsoversigten.",
-            ),
+          setPoolTrades(
+            Array.isArray(
+              normalizedTrades
+                .poolTrades,
+            )
+              ? normalizedTrades
+                  .poolTrades
+              : [],
           );
-        }
+        } catch (error) {
+          if (showErrorDialog) {
+            showError(
+              "Kunne ikke hente notifikationsoversigt",
+              getErrorMessage(
+                error,
+                "Der opstod en uventet fejl under hentning af notifikationsoversigten.",
+              ),
+            );
+          }
 
-        setMessages([]);
-        setShiftTrades([]);
-      } finally {
-        setExtraLoading(false);
-      }
-    },
-    [
-      apiFetch,
-      messagesEnabled,
-      shiftTradesEnabled,
-      showError,
-      user,
-    ],
-  );
+          setUnreadMessages([]);
+          setDirectTrades([]);
+          setPoolTrades([]);
+        } finally {
+          setExtraLoading(false);
+        }
+      },
+      [
+        apiFetch,
+        messagesEnabled,
+        shiftTradesEnabled,
+        showError,
+        user,
+      ],
+    );
 
   useEffect(() => {
     if (
@@ -247,11 +305,14 @@ export function useNotificationsExtraData({
     }
 
     if (!user) {
-      window.location.href = "/";
+      window.location.href =
+        "/";
       return;
     }
 
-    void fetchExtraData(true);
+    void fetchExtraData(
+      true,
+    );
   }, [
     authLoading,
     fetchExtraData,
@@ -261,13 +322,16 @@ export function useNotificationsExtraData({
 
   const refreshExtraDataSilently =
     useCallback(() => {
-      void fetchExtraData(false);
+      void fetchExtraData(
+        false,
+      );
     }, [fetchExtraData]);
 
   useRealtimeCore({
-    onMessage: messagesEnabled
-      ? refreshExtraDataSilently
-      : undefined,
+    onMessage:
+      messagesEnabled
+        ? refreshExtraDataSilently
+        : undefined,
     onShiftUpdated:
       shiftTradesEnabled
         ? refreshExtraDataSilently
@@ -278,92 +342,6 @@ export function useNotificationsExtraData({
         : undefined,
   });
 
-  const unreadMessages = useMemo(
-    () => {
-      if (
-        !user ||
-        !messagesEnabled
-      ) {
-        return [];
-      }
-
-      return messages.filter(
-        (message) => {
-          const isUnread =
-            !message.readAt;
-          const isForMe =
-            message.isBroadcast ||
-            message.receiver?.id ===
-              user.id ||
-            !message.receiver;
-
-          return (
-            isUnread && isForMe
-          );
-        },
-      );
-    },
-    [
-      messages,
-      messagesEnabled,
-      user,
-    ],
-  );
-
-  const directTrades = useMemo(
-    () => {
-      if (
-        !user ||
-        !shiftTradesEnabled
-      ) {
-        return [];
-      }
-
-      return shiftTrades.filter(
-        (trade) =>
-          trade.status === "OPEN" &&
-          trade.type === "DIRECT" &&
-          trade.targetUserId ===
-            user.id &&
-          new Date(
-            trade.shift.startTime,
-          ) > new Date(),
-      );
-    },
-    [
-      shiftTrades,
-      shiftTradesEnabled,
-      user,
-    ],
-  );
-
-  const poolTrades = useMemo(
-    () => {
-      if (
-        !user ||
-        !shiftTradesEnabled
-      ) {
-        return [];
-      }
-
-      return shiftTrades.filter(
-        (trade) =>
-          trade.status === "OPEN" &&
-          trade.type === "POOL" &&
-          trade.offeredByUserId !==
-            user.id &&
-          new Date(
-            trade.shift.startTime,
-          ) > new Date(),
-      );
-    },
-    [
-      shiftTrades,
-      shiftTradesEnabled,
-      user,
-    ],
-  );
-
   return {
     authLoading:
       authLoading ||
@@ -373,7 +351,8 @@ export function useNotificationsExtraData({
     directTrades,
     poolTrades,
     moduleAccess: {
-      messages: messagesEnabled,
+      messages:
+        messagesEnabled,
       shiftTrades:
         shiftTradesEnabled,
     },

@@ -48,6 +48,22 @@ export class MessagesController {
   }
 
   @UseGuards(JwtGuard)
+  @Get('notification-overview')
+  getNotificationOverview(
+    @Req() req: any,
+    @Query('cinemaId')
+    cinemaId?: string,
+  ) {
+    return this.messagesService.findNotificationOverviewForUser(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Get('page')
   getInboxPage(
     @Req() req: any,

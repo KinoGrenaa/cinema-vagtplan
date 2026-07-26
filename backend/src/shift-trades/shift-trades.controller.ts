@@ -41,6 +41,21 @@ export class ShiftTradesController {
     private readonly shiftTradesService: ShiftTradesService,
   ) {}
 
+  @Get('notification-overview')
+  getNotificationOverview(
+    @Req() req: any,
+    @Query('cinemaId')
+    cinemaId?: string,
+  ) {
+    return this.shiftTradesService.getNotificationOverview(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+
   @Get('pool-count')
   getPoolCount(
     @Req() req: any,
