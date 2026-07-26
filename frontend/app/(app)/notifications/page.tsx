@@ -4,10 +4,16 @@ import {
   useCallback,
   useState,
 } from "react";
+
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
+import {
+  useConfirm,
+} from "@/app/hooks/useConfirm";
 import {
   useNotifications,
 } from "@/app/hooks/useNotifications";
+
 import NotificationsHeader from "./components/layout/NotificationsHeader";
 import NotificationsOverview from "./components/overview/NotificationsOverview";
 import type {
@@ -22,6 +28,8 @@ import {
 import styles from "./NotificationsPage.module.css";
 
 export default function NotificationsPage() {
+  const confirmDialog =
+    useConfirm();
   const [
     errorDialog,
     setErrorDialog,
@@ -45,7 +53,6 @@ export default function NotificationsPage() {
       },
       [],
     );
-
   const handleNotificationError =
     useCallback(
       (message: string) => {
@@ -64,16 +71,17 @@ export default function NotificationsPage() {
     loading:
       notificationsLoading,
     loadingMore,
+    clearingRead,
     hasMore,
     markAsRead,
     markAllAsRead,
+    clearRead,
     loadMore,
     toggleUnreadOnly,
   } = useNotifications({
     onError:
       handleNotificationError,
   });
-
   const {
     authLoading,
     extraLoading,
@@ -84,7 +92,6 @@ export default function NotificationsPage() {
   } = useNotificationsExtraData({
     showError,
   });
-
   const {
     activeCategory,
     expandedDateKeys,
@@ -129,6 +136,24 @@ export default function NotificationsPage() {
     await markAllAsRead();
   }
 
+  function handleClearReadNotifications() {
+    confirmDialog.confirm({
+      title:
+        "Ryd læste systemnotifikationer",
+      description:
+        "Alle dine læste systemnotifikationer i den aktive biograf slettes permanent. Ulæste notifikationer og auditloggen berøres ikke.",
+      confirmText:
+        "Ryd læste",
+      cancelText:
+        "Annuller",
+      confirmVariant:
+        "danger",
+      onConfirm: async () => {
+        await clearRead();
+      },
+    });
+  }
+
   const loading =
     authLoading ||
     notificationsLoading ||
@@ -151,7 +176,6 @@ export default function NotificationsPage() {
             notifikationer...
           </div>
         </div>
-
         <InfoModal
           open={
             errorDialog.open
@@ -187,11 +211,16 @@ export default function NotificationsPage() {
           unreadCount={
             unreadCount
           }
+          clearingRead={
+            clearingRead
+          }
           onMarkAllNotificationsAsRead={
             handleMarkAllNotificationsAsRead
           }
+          onClearReadNotifications={
+            handleClearReadNotifications
+          }
         />
-
         <NotificationsOverview
           activeCategory={
             activeCategory
@@ -244,6 +273,32 @@ export default function NotificationsPage() {
           }
         />
       </div>
+
+      <ConfirmModal
+        open={confirmDialog.open}
+        title={confirmDialog.title}
+        description={
+          confirmDialog.description
+        }
+        confirmText={
+          confirmDialog.confirmText
+        }
+        cancelText={
+          confirmDialog.cancelText
+        }
+        confirmVariant={
+          confirmDialog.confirmVariant
+        }
+        loading={
+          confirmDialog.loading
+        }
+        onConfirm={
+          confirmDialog.handleConfirm
+        }
+        onCancel={
+          confirmDialog.handleCancel
+        }
+      />
 
       <InfoModal
         open={errorDialog.open}

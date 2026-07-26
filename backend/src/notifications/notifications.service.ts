@@ -7,6 +7,9 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import {
+  buildReadNotificationDeleteWhere,
+} from './helpers/notification-cleanup';
+import {
   buildNotificationPage,
   buildNotificationPageWhere,
   normalizeNotificationPageLimit,
@@ -329,6 +332,26 @@ export class NotificationsService {
       },
     });
   }
+  async clearRead(
+    actor: NotificationActor,
+    selectedCinemaId?:
+      number | null,
+  ) {
+    const context =
+      await this.resolveNotificationContext(
+        actor,
+        selectedCinemaId,
+      );
+
+    return this.prisma.notification.deleteMany({
+      where:
+        buildReadNotificationDeleteWhere(
+          context.userId,
+          context.cinemaId,
+        ),
+    });
+  }
+
 
   async markAllAsRead(
     actor: NotificationActor,

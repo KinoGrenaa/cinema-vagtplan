@@ -10,6 +10,7 @@ import {
   useAuth,
 } from "../providers/AuthProvider";
 import {
+  clearReadNotifications,
   fetchNotificationPage,
   fetchUnreadNotificationCount,
   markAllNotificationsAsRead,
@@ -138,6 +139,10 @@ export function useNotifications(
   const [
     loadingMore,
     setLoadingMore,
+  ] = useState(false);
+  const [
+    clearingRead,
+    setClearingRead,
   ] = useState(false);
   const [
     hasMore,
@@ -417,6 +422,43 @@ export function useNotifications(
       ],
     );
 
+  const clearRead =
+    useCallback(async () => {
+      if (!activeCinemaId) {
+        return 0;
+      }
+
+      try {
+        setClearingRead(true);
+
+        const count =
+          await clearReadNotifications(
+            activeCinemaId,
+          );
+
+        await loadNotifications(
+          false,
+        );
+
+        return count;
+      } catch (error) {
+        onError?.(
+          getErrorMessage(
+            error,
+            "Der opstod en fejl under oprydning af læste notifikationer.",
+          ),
+        );
+
+        throw error;
+      } finally {
+        setClearingRead(false);
+      }
+    }, [
+      activeCinemaId,
+      loadNotifications,
+      onError,
+    ]);
+
   const toggleUnreadOnly =
     useCallback(() => {
       setUnreadOnly(
@@ -501,12 +543,14 @@ export function useNotifications(
       loading ||
       authLoading,
     loadingMore,
+    clearingRead,
     notifications,
     unreadCount,
     unreadOnly,
     hasMore,
     loadNotifications,
     loadMore,
+    clearRead,
     toggleUnreadOnly,
     markAsRead,
     markAllAsRead,

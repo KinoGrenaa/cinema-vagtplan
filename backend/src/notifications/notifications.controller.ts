@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -88,6 +89,21 @@ export class NotificationsController {
         ),
     };
   }
+  @UseGuards(JwtGuard)
+  @Delete('read')
+  clearRead(
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.notificationsService.clearRead(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+
 
   @UseGuards(JwtGuard)
   @Patch('read-all')

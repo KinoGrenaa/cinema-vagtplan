@@ -293,3 +293,36 @@ export async function markAllNotificationsAsRead(
     );
   }
 }
+
+
+export async function clearReadNotifications(
+  cinemaId: number,
+): Promise<number> {
+  const response =
+    await apiFetch(
+      `/notifications/read?${getCinemaQuery(
+        cinemaId,
+      )}`,
+      {
+        method: "DELETE",
+      },
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(
+        response,
+        "Kunne ikke rydde læste notifikationer",
+      ),
+    );
+  }
+
+  const data =
+    await safeJson<{
+      count?: number;
+    }>(response);
+
+  return Number(
+    data?.count || 0,
+  );
+}
