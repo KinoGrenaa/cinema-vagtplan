@@ -709,6 +709,9 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id])
   cinemaId  Int
   cinema    Cinema   @relation(fields: [cinemaId], references: [id])
+
+  @@index([userId, cinemaId, id])
+  @@index([userId, cinemaId, isRead, id])
 }
 
 model AuditLog {
