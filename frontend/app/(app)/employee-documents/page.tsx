@@ -23,10 +23,22 @@ export default function EmployeeDocumentsPage() {
     documents,
     selectedUserId,
     setSelectedUserId,
+    searchQuery,
+    setSearchQuery,
+    typeFilter,
+    setTypeFilter,
+    sort,
+    setSort,
+    summary,
+    documentTotal,
+    filteredTotal,
+    hasMore,
     loading,
+    loadingMore,
     activeCinemaId,
     needsMasterCinemaSelection,
     fetchDocuments,
+    loadMoreDocuments,
   } = useEmployeeDocumentsData({
     infoDialog,
   });
@@ -49,7 +61,10 @@ export default function EmployeeDocumentsPage() {
   });
 
   const selectedUser = useMemo(
-    () => users.find((user) => user.id === selectedUserId) ?? null,
+    () =>
+      users.find(
+        (user) => user.id === selectedUserId,
+      ) ?? null,
     [selectedUserId, users],
   );
 
@@ -64,13 +79,12 @@ export default function EmployeeDocumentsPage() {
           <EmployeeDocumentsHeader
             employeeCount={users.length}
             selectedEmployeeName={selectedUserName}
-            documentCount={documents.length}
+            documentCount={documentTotal}
           />
 
           {needsMasterCinemaSelection && (
             <EmployeeDocumentsMasterCinemaRequired />
           )}
-
           <EmployeeDocumentUploadForm
             users={users}
             selectedUserId={selectedUserId}
@@ -80,20 +94,31 @@ export default function EmployeeDocumentsPage() {
             file={file}
             setFile={setFile}
             uploading={uploading}
-            needsMasterCinemaSelection={needsMasterCinemaSelection}
+            needsMasterCinemaSelection={
+              needsMasterCinemaSelection
+            }
             onSubmit={handleUpload}
           />
-
           <EmployeeDocumentsListSection
             documents={documents}
             loading={loading}
+            loadingMore={loadingMore}
             selectedUserId={selectedUserId}
             selectedUserName={selectedUserName}
+            searchQuery={searchQuery}
+            typeFilter={typeFilter}
+            sort={sort}
+            summary={summary}
+            filteredTotal={filteredTotal}
+            hasMore={hasMore}
+            onSearchQueryChange={setSearchQuery}
+            onTypeFilterChange={setTypeFilter}
+            onSortChange={setSort}
+            onLoadMore={loadMoreDocuments}
             onDelete={handleDelete}
           />
         </div>
       </main>
-
       <ConfirmModal
         open={confirmDialog.open}
         title={confirmDialog.title}
@@ -105,7 +130,6 @@ export default function EmployeeDocumentsPage() {
         onConfirm={confirmDialog.handleConfirm}
         onCancel={confirmDialog.handleCancel}
       />
-
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}

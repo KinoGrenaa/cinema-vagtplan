@@ -1,28 +1,39 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import {
-  filterAndSortDocuments,
   formatDocumentDate,
   formatDocumentDateTime,
   getDocumentCategory,
   getDocumentCategoryIcon,
   getDocumentCategoryLabel,
   getDocumentCategoryStyle,
-  getDocumentSummary,
   getDocumentUrl,
 } from "../../helpers/core/employeeDocumentHelpers";
 import type {
   EmployeeDocument,
   EmployeeDocumentSort,
+  EmployeeDocumentSummary,
   EmployeeDocumentTypeFilter,
 } from "../../helpers/core/employeeDocumentTypes";
 
 type EmployeeDocumentsListSectionProps = {
   documents: EmployeeDocument[];
   loading: boolean;
+  loadingMore: boolean;
   selectedUserId: number | null;
   selectedUserName: string | null;
+  searchQuery: string;
+  typeFilter: EmployeeDocumentTypeFilter;
+  sort: EmployeeDocumentSort;
+  summary: EmployeeDocumentSummary;
+  filteredTotal: number;
+  hasMore: boolean;
+  onSearchQueryChange: (value: string) => void;
+  onTypeFilterChange: (
+    value: EmployeeDocumentTypeFilter,
+  ) => void;
+  onSortChange: (value: EmployeeDocumentSort) => void;
+  onLoadMore: () => void;
   onDelete: (id: number) => void;
 };
 
@@ -32,28 +43,21 @@ const filterControlClassName =
 export default function EmployeeDocumentsListSection({
   documents,
   loading,
+  loadingMore,
   selectedUserId,
   selectedUserName,
+  searchQuery,
+  typeFilter,
+  sort,
+  summary,
+  filteredTotal,
+  hasMore,
+  onSearchQueryChange,
+  onTypeFilterChange,
+  onSortChange,
+  onLoadMore,
   onDelete,
 }: EmployeeDocumentsListSectionProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] =
-    useState<EmployeeDocumentTypeFilter>("ALL");
-  const [sort, setSort] = useState<EmployeeDocumentSort>("NEWEST");
-
-  useEffect(() => {
-    setSearchQuery("");
-    setTypeFilter("ALL");
-    setSort("NEWEST");
-  }, [selectedUserId]);
-
-  const visibleDocuments = useMemo(
-    () => filterAndSortDocuments(documents, searchQuery, typeFilter, sort),
-    [documents, searchQuery, sort, typeFilter],
-  );
-
-  const summary = useMemo(() => getDocumentSummary(documents), [documents]);
-
   if (!selectedUserId) {
     return (
       <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm transition-colors dark:border-gray-700 dark:bg-gray-900">
@@ -88,7 +92,6 @@ export default function EmployeeDocumentsListSection({
                 : "Dokumenter for den valgte medarbejder"}
             </p>
           </div>
-
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
             <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200">
               {summary.total} i alt
@@ -104,13 +107,14 @@ export default function EmployeeDocumentsListSection({
             </span>
           </div>
         </div>
-
         {summary.latestCreatedAt && (
           <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-            Seneste upload: {formatDocumentDateTime(summary.latestCreatedAt)}
+            Seneste upload:{" "}
+            {formatDocumentDateTime(
+              summary.latestCreatedAt,
+            )}
           </p>
         )}
-
         <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_220px]">
           <label>
             <span className="mb-1 block text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -119,12 +123,13 @@ export default function EmployeeDocumentsListSection({
             <input
               type="search"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) =>
+                onSearchQueryChange(event.target.value)
+              }
               placeholder="Søg på titel eller filnavn"
               className={filterControlClassName}
             />
           </label>
-
           <label>
             <span className="mb-1 block text-sm font-semibold text-gray-700 dark:text-gray-200">
               Filtype
@@ -132,7 +137,10 @@ export default function EmployeeDocumentsListSection({
             <select
               value={typeFilter}
               onChange={(event) =>
-                setTypeFilter(event.target.value as EmployeeDocumentTypeFilter)
+                onTypeFilterChange(
+                  event.target
+                    .value as EmployeeDocumentTypeFilter,
+                )
               }
               className={filterControlClassName}
             >
@@ -143,7 +151,6 @@ export default function EmployeeDocumentsListSection({
               <option value="OTHER">Andre filer</option>
             </select>
           </label>
-
           <label>
             <span className="mb-1 block text-sm font-semibold text-gray-700 dark:text-gray-200">
               Sortering
@@ -151,13 +158,22 @@ export default function EmployeeDocumentsListSection({
             <select
               value={sort}
               onChange={(event) =>
-                setSort(event.target.value as EmployeeDocumentSort)
+                onSortChange(
+                  event.target
+                    .value as EmployeeDocumentSort,
+                )
               }
               className={filterControlClassName}
             >
-              <option value="NEWEST">Nyeste først</option>
-              <option value="OLDEST">Ældste først</option>
-              <option value="TITLE">Titel A–Å</option>
+              <option value="NEWEST">
+                Nyeste først
+              </option>
+              <option value="OLDEST">
+                Ældste først
+              </option>
+              <option value="TITLE">
+                Titel A–Å
+              </option>
             </select>
           </label>
         </div>
@@ -171,7 +187,7 @@ export default function EmployeeDocumentsListSection({
           <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center text-sm font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-950/60 dark:text-gray-300">
             Indlæser dokumenter...
           </div>
-        ) : documents.length === 0 ? (
+        ) : summary.total === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center dark:border-gray-700 dark:bg-gray-950/60">
             <h3 className="font-bold text-gray-950 dark:text-white">
               Ingen dokumenter endnu
@@ -180,7 +196,7 @@ export default function EmployeeDocumentsListSection({
               Upload det første dokument ovenfor.
             </p>
           </div>
-        ) : visibleDocuments.length === 0 ? (
+        ) : filteredTotal === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center dark:border-gray-700 dark:bg-gray-950/60">
             <h3 className="font-bold text-gray-950 dark:text-white">
               Ingen dokumenter matcher
@@ -190,73 +206,111 @@ export default function EmployeeDocumentsListSection({
             </p>
           </div>
         ) : (
-          <div className="grid gap-3">
-            {visibleDocuments.map((document) => {
-              const category = getDocumentCategory(document);
-              const documentUrl = getDocumentUrl(document.fileUrl);
+          <>
+            <div className="grid gap-3">
+              {documents.map((document) => {
+                const category =
+                  getDocumentCategory(document);
+                const documentUrl =
+                  getDocumentUrl(document.fileUrl);
 
-              return (
-                <article
-                  key={document.id}
-                  className="rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:border-gray-300 hover:bg-white hover:shadow-sm dark:border-gray-800 dark:bg-gray-950/55 dark:hover:border-gray-700 dark:hover:bg-gray-950"
-                >
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <div
-                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-xs font-black ${getDocumentCategoryStyle(
-                          category,
-                        )}`}
-                        aria-hidden="true"
-                      >
-                        {getDocumentCategoryIcon(category)}
-                      </div>
-
-                      <div className="min-w-0">
-                        <h3 className="truncate text-base font-bold text-gray-950 dark:text-white">
-                          {document.title}
-                        </h3>
-                        <p className="mt-1 truncate text-sm text-gray-600 dark:text-gray-300">
-                          {document.fileName}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
-                          <span>{getDocumentCategoryLabel(category)}</span>
-                          <span aria-hidden="true">·</span>
-                          <span>
-                            Uploadet {formatDocumentDate(document.createdAt)}
-                          </span>
+                return (
+                  <article
+                    key={document.id}
+                    className="rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:border-gray-300 hover:bg-white hover:shadow-sm dark:border-gray-800 dark:bg-gray-950/55 dark:hover:border-gray-700 dark:hover:bg-gray-950"
+                  >
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-xs font-black ${getDocumentCategoryStyle(
+                            category,
+                          )}`}
+                          aria-hidden="true"
+                        >
+                          {getDocumentCategoryIcon(
+                            category,
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-base font-bold text-gray-950 dark:text-white">
+                            {document.title}
+                          </h3>
+                          <p className="mt-1 truncate text-sm text-gray-600 dark:text-gray-300">
+                            {document.fileName}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>
+                              {getDocumentCategoryLabel(
+                                category,
+                              )}
+                            </span>
+                            <span aria-hidden="true">
+                              ·
+                            </span>
+                            <span>
+                              Uploadet{" "}
+                              {formatDocumentDate(
+                                document.createdAt,
+                              )}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex flex-wrap gap-2 xl:justify-end">
+                        <a
+                          href={documentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
+                        >
+                          Åbn
+                        </a>
+                        <a
+                          href={documentUrl}
+                          download={document.fileName}
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
+                        >
+                          Download
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onDelete(document.id)
+                          }
+                          className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 active:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400 dark:focus-visible:ring-offset-gray-950"
+                        >
+                          Slet
+                        </button>
+                      </div>
                     </div>
+                  </article>
+                );
+              })}
+            </div>
 
-                    <div className="flex flex-wrap gap-2 xl:justify-end">
-                      <a
-                        href={documentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
-                      >
-                        Åbn
-                      </a>
-                      <a
-                        href={documentUrl}
-                        download={document.fileName}
-                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-950"
-                      >
-                        Download
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(document.id)}
-                        className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 active:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400 dark:focus-visible:ring-offset-gray-950"
-                      >
-                        Slet
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+            <div className="mt-5 flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Viser {documents.length} af{" "}
+                {filteredTotal} matchende dokumenter
+              </p>
+              {hasMore ? (
+                <button
+                  type="button"
+                  onClick={onLoadMore}
+                  disabled={loadingMore}
+                  className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 active:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-800 dark:bg-blue-950/45 dark:text-blue-200 dark:hover:bg-blue-950/70 dark:active:bg-blue-900"
+                >
+                  {loadingMore
+                    ? "Henter dokumenter..."
+                    : "Hent flere dokumenter"}
+                </button>
+              ) : (
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Alle matchende dokumenter er vist
+                </span>
+              )}
+            </div>
+          </>
         )}
       </div>
     </section>

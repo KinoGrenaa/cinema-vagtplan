@@ -44,3 +44,13 @@ export type EmployeeDocumentSummary = {
   office: number;
   latestCreatedAt: string | null;
 };
+
+export type EmployeeDocumentPage = {
+  items: EmployeeDocument[];
+  page: number;
+  pageSize: number;
+  total: number;
+  filteredTotal: number;
+  hasMore: boolean;
+  summary: EmployeeDocumentSummary;
+};

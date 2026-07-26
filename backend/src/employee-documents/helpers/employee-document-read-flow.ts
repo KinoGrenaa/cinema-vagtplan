@@ -1,9 +1,9 @@
 import type { PrismaService } from '../../prisma/prisma.service';
-
 import {
   type AuthUser,
   resolveEmployeeDocumentCinemaId,
 } from './employee-document-access';
+import { EMPLOYEE_DOCUMENT_PAGE_SIZE } from './employee-document-list-query';
 
 export function findEmployeeDocumentsForUser(
   prisma: PrismaService,
@@ -19,8 +19,14 @@ export function findEmployeeDocumentsForUser(
       cinemaId,
       userId: targetUserId,
     },
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: [
+      {
+        createdAt: 'desc',
+      },
+      {
+        id: 'desc',
+      },
+    ],
+    take: EMPLOYEE_DOCUMENT_PAGE_SIZE,
   });
 }
