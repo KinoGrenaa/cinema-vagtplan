@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { TimeEntriesController } from './time-entries.controller';
-import { TimeEntriesService } from './time-entries.service';
-import { RealtimeModule } from '../realtime/realtime.module';
 import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { PayrollModule } from '../payroll/payroll.module';
+import { RealtimeModule } from '../realtime/realtime.module';
+import { MyTimeEntriesController } from './my-time-entries.controller';
+import { TimeEntriesController } from './time-entries.controller';
+import { TimeEntriesService } from './time-entries.service';
 
 @Module({
   imports: [
@@ -16,7 +17,10 @@ import { PayrollModule } from '../payroll/payroll.module';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [TimeEntriesController],
+  controllers: [
+    TimeEntriesController,
+    MyTimeEntriesController,
+  ],
   providers: [TimeEntriesService],
 })
 export class TimeEntriesModule {}
