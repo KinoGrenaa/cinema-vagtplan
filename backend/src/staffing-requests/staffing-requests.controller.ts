@@ -9,20 +9,31 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtGuard } from '../auth/jwt/jwt.guard';
+
+import {
+  JwtGuard,
+} from '../auth/jwt/jwt.guard';
 import {
   parseOptionalPositiveIntegerQuery,
   parseRequiredPositiveInteger,
 } from '../common/query-validation';
-import { CreateStaffingRequestDto } from './dto/create-staffing-request.dto';
-import { StaffingRequestsService } from './staffing-requests.service';
+import {
+  CreateStaffingRequestDto,
+} from './dto/create-staffing-request.dto';
+import {
+  StaffingRequestsService,
+} from './staffing-requests.service';
 
 type AuthRequest = {
   user: {
     sub: number;
     email: string;
-    role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
-    cinemaId: number | null;
+    role:
+      | 'MASTER'
+      | 'ADMIN'
+      | 'EMPLOYEE';
+    cinemaId:
+      number | null;
   };
 };
 
@@ -48,13 +59,53 @@ function parseOptionalBodyId(
 @Controller('staffing-requests')
 export class StaffingRequestsController {
   constructor(
-    private readonly staffingRequestsService: StaffingRequestsService,
+    private readonly staffingRequestsService:
+      StaffingRequestsService,
   ) {}
+
+  @Get('page')
+  findPage(
+    @Req() req: AuthRequest,
+    @Query('cinemaId')
+    cinemaId?: string,
+    @Query('limit')
+    limit?: string,
+    @Query('beforeId')
+    beforeId?: string,
+    @Query('targetId')
+    targetId?: string,
+  ) {
+    return this.staffingRequestsService.findPage(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+      {
+        limit:
+          parseOptionalPositiveIntegerQuery(
+            limit,
+            'Antal forespørgsler skal være et gyldigt tal',
+          ),
+        beforeId:
+          parseOptionalPositiveIntegerQuery(
+            beforeId,
+            'Historikcursor skal være et gyldigt ID',
+          ),
+        targetId:
+          parseOptionalPositiveIntegerQuery(
+            targetId,
+            'Målrettet bemandingsforespørgsel skal være et gyldigt ID',
+          ),
+      },
+    );
+  }
 
   @Get()
   findAll(
     @Req() req: AuthRequest,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.staffingRequestsService.findAll(
       req.user,
@@ -68,7 +119,8 @@ export class StaffingRequestsController {
   @Get('mine')
   findMine(
     @Req() req: AuthRequest,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.staffingRequestsService.findMine(
       req.user,
@@ -82,16 +134,19 @@ export class StaffingRequestsController {
   @Post()
   create(
     @Req() req: AuthRequest,
-    @Body() dto: CreateStaffingRequestDto,
+    @Body()
+    dto:
+      CreateStaffingRequestDto,
   ) {
     return this.staffingRequestsService.create(
       req.user,
       {
         ...dto,
-        cinemaId: parseOptionalBodyId(
-          dto.cinemaId,
-          'Biograf skal være et gyldigt ID',
-        ),
+        cinemaId:
+          parseOptionalBodyId(
+            dto.cinemaId,
+            'Biograf skal være et gyldigt ID',
+          ),
       },
     );
   }
@@ -99,8 +154,10 @@ export class StaffingRequestsController {
   @Patch(':id/accept')
   accept(
     @Req() req: AuthRequest,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
+    @Param('id')
+    id: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.staffingRequestsService.accept(
       req.user,
@@ -118,8 +175,10 @@ export class StaffingRequestsController {
   @Patch(':id/reject')
   reject(
     @Req() req: AuthRequest,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
+    @Param('id')
+    id: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.staffingRequestsService.reject(
       req.user,
@@ -137,8 +196,10 @@ export class StaffingRequestsController {
   @Patch(':id/cancel')
   cancel(
     @Req() req: AuthRequest,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
+    @Param('id')
+    id: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.staffingRequestsService.cancel(
       req.user,

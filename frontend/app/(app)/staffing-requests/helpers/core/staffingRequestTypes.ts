@@ -1,8 +1,15 @@
 export type StaffingRequestStatus =
-  "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED";
+  | "PENDING"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "EXPIRED"
+  | "CANCELLED";
 
 export type StaffingRequestType =
-  "EXTRA_SHIFT" | "EMERGENCY" | "REPLACEMENT" | "OVERTIME";
+  | "EXTRA_SHIFT"
+  | "EMERGENCY"
+  | "REPLACEMENT"
+  | "OVERTIME";
 
 export type StaffingRequestUser = {
   id?: number;
@@ -12,18 +19,27 @@ export type StaffingRequestUser = {
 
 export type StaffingRequest = {
   id: number;
-  type: StaffingRequestType;
-  status: StaffingRequestStatus;
+  type:
+    StaffingRequestType;
+  status:
+    StaffingRequestStatus;
   priority: number;
-  message?: string | null;
+  message?:
+    string | null;
   aiGenerated: boolean;
   createdAt: string;
-  requestStartTime?: string | null;
-  requestEndTime?: string | null;
-  acceptedAt?: string | null;
-  rejectedAt?: string | null;
-  requestedByUser?: StaffingRequestUser | null;
-  targetUser?: StaffingRequestUser | null;
+  requestStartTime?:
+    string | null;
+  requestEndTime?:
+    string | null;
+  acceptedAt?:
+    string | null;
+  rejectedAt?:
+    string | null;
+  requestedByUser?:
+    StaffingRequestUser | null;
+  targetUser?:
+    StaffingRequestUser | null;
   shift?: {
     startTime: string;
     endTime: string;
@@ -37,7 +53,35 @@ export type StaffingRequest = {
 };
 
 export type GroupedStaffingRequests = {
-  emergency: StaffingRequest[];
-  pending: StaffingRequest[];
-  completed: StaffingRequest[];
+  emergency:
+    StaffingRequest[];
+  pending:
+    StaffingRequest[];
+  completed:
+    StaffingRequest[];
+};
+
+export type StaffingRequestPageResponse = {
+  pending:
+    StaffingRequest[];
+  completed: {
+    items:
+      StaffingRequest[];
+    hasMore:
+      boolean;
+    nextBeforeId:
+      number | null;
+    totalCount:
+      number;
+  };
+  counts: {
+    emergency:
+      number;
+    pending:
+      number;
+    completed:
+      number;
+  };
+  target:
+    StaffingRequest | null;
 };

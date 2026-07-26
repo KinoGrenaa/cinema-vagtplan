@@ -25,10 +25,18 @@ type Props = {
     StaffingRequest[];
   completedRequestsCount:
     number;
+  completedRequestsLoadedCount:
+    number;
+  completedRequestsHasMore:
+    boolean;
+  loadingMoreCompleted:
+    boolean;
   showCompletedRequests:
     boolean;
   onToggleCompletedRequests:
     () => void;
+  onLoadMoreCompleted:
+    () => Promise<unknown>;
   userRole?: string;
   currentUserId:
     number | null;
@@ -75,7 +83,10 @@ function getTypeClasses(
   type:
     StaffingRequest["type"],
 ) {
-  if (type === "EMERGENCY") {
+  if (
+    type ===
+    "EMERGENCY"
+  ) {
     return "border-red-200 bg-red-50 text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200";
   }
 
@@ -86,8 +97,12 @@ export default function StaffingRequestsListSection({
   requests,
   visibleRequests,
   completedRequestsCount,
+  completedRequestsLoadedCount,
+  completedRequestsHasMore,
+  loadingMoreCompleted,
   showCompletedRequests,
   onToggleCompletedRequests,
+  onLoadMoreCompleted,
   userRole,
   currentUserId,
   isManager,
@@ -134,7 +149,9 @@ export default function StaffingRequestsListSection({
       );
   }, [focusedRequestId]);
 
-  if (requests.length === 0) {
+  if (
+    requests.length === 0
+  ) {
     return (
       <EmptyState text="Ingen bemandingsforespørgsler fundet." />
     );
@@ -147,14 +164,20 @@ export default function StaffingRequestsListSection({
     >
       {visibleRequests.length ===
       0 ? (
-        <EmptyState text="Ingen afventende bemandingsforespørgsler." />
+        <EmptyState
+          text={
+            showCompletedRequests
+              ? "Ingen bemandingsforespørgsler at vise."
+              : "Ingen afventende bemandingsforespørgsler."
+          }
+        />
       ) : null}
 
       {visibleRequests.map(
         (request) => {
           const targetUserId =
-            request.targetUser?.id ??
-            null;
+            request.targetUser
+              ?.id ?? null;
           const isPending =
             request.status ===
             "PENDING";
@@ -226,7 +249,6 @@ export default function StaffingRequestsListSection({
                           request.priority
                         }
                       </span>
-
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
                           request.status,
@@ -236,7 +258,6 @@ export default function StaffingRequestsListSection({
                           request.status,
                         )}
                       </span>
-
                       <span
                         className={`rounded-full border px-3 py-1 text-xs font-bold ${getTypeClasses(
                           request.type,
@@ -246,13 +267,11 @@ export default function StaffingRequestsListSection({
                           request.type,
                         )}
                       </span>
-
                       {request.aiGenerated ? (
                         <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800 dark:bg-purple-950/50 dark:text-purple-200">
                           AI
                         </span>
                       ) : null}
-
                       {isFocused ? (
                         <span className="rounded-full bg-blue-700 px-3 py-1 text-xs font-bold text-white dark:bg-blue-500">
                           Fra notifikation
@@ -407,7 +426,7 @@ export default function StaffingRequestsListSection({
 
       {completedRequestsCount >
       0 ? (
-        <div className="pt-2">
+        <div className="space-y-3 pt-2">
           <button
             type="button"
             onClick={
@@ -422,6 +441,40 @@ export default function StaffingRequestsListSection({
               ? "Skjul behandlede"
               : `Vis behandlede (${completedRequestsCount})`}
           </button>
+
+          {showCompletedRequests ? (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Viser{" "}
+                {
+                  completedRequestsLoadedCount
+                }{" "}
+                af{" "}
+                {
+                  completedRequestsCount
+                }{" "}
+                behandlede
+                forespørgsler.
+              </p>
+
+              {completedRequestsHasMore ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void onLoadMoreCompleted()
+                  }
+                  disabled={
+                    loadingMoreCompleted
+                  }
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+                >
+                  {loadingMoreCompleted
+                    ? "Henter..."
+                    : "Hent ældre behandlede"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

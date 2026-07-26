@@ -13,22 +13,22 @@ import {
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import {
+  useApi,
+} from "@/app/hooks/useApi";
+import {
   useConfirm,
 } from "@/app/hooks/useConfirm";
 import {
   useInfoModal,
 } from "@/app/hooks/useInfoModal";
 import {
-  useApi,
-} from "@/app/hooks/useApi";
-import {
   useAuth,
 } from "@/app/providers/AuthProvider";
 
+import StaffingRequestsListSection from "./components/list/StaffingRequestsListSection";
 import StaffingRequestsHeader from "./components/layout/StaffingRequestsHeader";
 import StaffingRequestsMasterCinemaRequired from "./components/layout/StaffingRequestsMasterCinemaRequired";
 import StaffingRequestTargetNotice from "./components/layout/StaffingRequestTargetNotice";
-import StaffingRequestsListSection from "./components/list/StaffingRequestsListSection";
 import StaffingRequestsSummaryCards from "./components/overview/StaffingRequestsSummaryCards";
 import {
   parseStaffingRequestTarget,
@@ -62,15 +62,28 @@ export default function StaffingRequestsPage() {
   const searchParams =
     useSearchParams();
 
+  const requestTarget =
+    parseStaffingRequestTarget(
+      searchParams.get(
+        "requestId",
+      ),
+    );
+
   const {
     activeCinemaId,
     currentUserId,
     fetchRequests,
-    groupedRequests,
     isManager,
     loading,
+    loadingMoreCompleted,
     needsMasterCinemaSelection,
     requests,
+    completedRequests,
+    emergencyCount,
+    pendingCount,
+    completedCount,
+    completedHasMore,
+    loadMoreCompleted,
     setShowCompletedRequests,
     showCompletedRequests,
     visibleRequests,
@@ -79,6 +92,8 @@ export default function StaffingRequestsPage() {
     apiFetch,
     showError:
       infoDialog.showError,
+    targetRequestId:
+      requestTarget.requestId,
   });
 
   const {
@@ -93,13 +108,6 @@ export default function StaffingRequestsPage() {
     showError:
       infoDialog.showError,
   });
-
-  const requestTarget =
-    parseStaffingRequestTarget(
-      searchParams.get(
-        "requestId",
-      ),
-    );
 
   const targetRequest =
     useMemo(
@@ -160,7 +168,6 @@ export default function StaffingRequestsPage() {
       params.delete(
         "requestId",
       );
-
       const query =
         params.toString();
 
@@ -264,16 +271,13 @@ export default function StaffingRequestsPage() {
             <>
               <StaffingRequestsSummaryCards
                 emergencyCount={
-                  groupedRequests
-                    .emergency.length
+                  emergencyCount
                 }
                 pendingCount={
-                  groupedRequests
-                    .pending.length
+                  pendingCount
                 }
                 completedCount={
-                  groupedRequests
-                    .completed.length
+                  completedCount
                 }
               />
 
@@ -285,8 +289,16 @@ export default function StaffingRequestsPage() {
                   focusedVisibleRequests
                 }
                 completedRequestsCount={
-                  groupedRequests
-                    .completed.length
+                  completedCount
+                }
+                completedRequestsLoadedCount={
+                  completedRequests.length
+                }
+                completedRequestsHasMore={
+                  completedHasMore
+                }
+                loadingMoreCompleted={
+                  loadingMoreCompleted
                 }
                 showCompletedRequests={
                   showCompletedRequests
@@ -296,6 +308,9 @@ export default function StaffingRequestsPage() {
                     (current) =>
                       !current,
                   )
+                }
+                onLoadMoreCompleted={
+                  loadMoreCompleted
                 }
                 userRole={
                   user?.role
