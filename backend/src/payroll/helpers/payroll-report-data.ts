@@ -15,7 +15,6 @@ const unresolvedTimeEntryStatuses = [
   'PENDING',
   'NEEDS_CHANGES',
 ] as const;
-
 function getPayrollUserInclude(cinemaId: number) {
   return {
     include: {
@@ -33,7 +32,6 @@ function getPayrollUserInclude(cinemaId: number) {
     },
   } as const;
 }
-
 export async function buildPayrollReportData(
   prisma: PrismaService,
   user: PayrollAuthUser,
@@ -43,7 +41,6 @@ export async function buildPayrollReportData(
   selectedCinemaId?: number | null,
 ) {
   ensurePayrollAccess(user);
-
   const periodDates = getPeriodDates(
     startDate,
     endDate,
@@ -60,7 +57,6 @@ export async function buildPayrollReportData(
     getPayrollUserInclude(
       cinemaFilter.cinemaId,
     );
-
   const entries = await prisma.timeEntry.findMany({
     where: {
       ...cinemaFilter,
@@ -89,9 +85,6 @@ export async function buildPayrollReportData(
     },
     include: {
       user: payrollUserInclude,
-      payrollPeriod: true,
-      originalPayrollPeriod: true,
-      adjustmentPayrollPeriod: true,
       payrollType: true,
       shift: {
         include: {
@@ -107,7 +100,6 @@ export async function buildPayrollReportData(
       clockIn: 'asc',
     },
   });
-
   const payrollAdjustments =
     await prisma.payrollAdjustment.findMany({
       where: {
@@ -161,7 +153,6 @@ export async function buildPayrollReportData(
         createdAt: 'asc',
       },
     });
-
   const pendingCount =
     await prisma.timeEntry.count({
       where: {
@@ -182,7 +173,6 @@ export async function buildPayrollReportData(
         },
       },
     });
-
   const voidedCount =
     await prisma.timeEntry.count({
       where: {
@@ -202,7 +192,6 @@ export async function buildPayrollReportData(
         status: 'VOIDED',
       },
     });
-
   return buildPayrollReportResult(
     entries,
     payrollAdjustments,
