@@ -14,6 +14,7 @@ import { usePayrollExport } from "./actions/usePayrollExport";
 import { usePayrollFilters } from "./filters/usePayrollFilters";
 import { usePayrollPeriodActions } from "./actions/usePayrollPeriodActions";
 import { usePayrollStats } from "./derived/usePayrollStats";
+
 export function usePayrollPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -42,7 +43,9 @@ export function usePayrollPage() {
     voidedCount,
     period,
     auditHistory,
+    auditHistoryLoading,
     loading,
+    ensurePayrollHistory,
     refreshPayroll,
     refreshPayrollReport,
   } = usePayrollData({
@@ -55,6 +58,7 @@ export function usePayrollPage() {
       infoDialog.showError(title, description);
     },
   });
+
   useRealtimeCore({
     onTimeEntry: () => {
       if (payrollDataEnabled) {
@@ -117,15 +121,18 @@ export function usePayrollPage() {
       refreshPayroll,
       startDate,
     });
+
   return {
     adjustmentCount,
     auditHistory,
+    auditHistoryLoading,
     cinemaSettings,
     closeExportModal,
     confirmDialog,
     dailyHoursData,
     employeeLoadData,
     endDate,
+    ensurePayrollHistory,
     eveningHours,
     expandedEmployeeIds,
     exportModalOpen,

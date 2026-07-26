@@ -1,5 +1,4 @@
 import type { usePayrollPage } from "../../hooks/usePayrollPage";
-
 import PayrollModals from "../modals/PayrollModals";
 import PayrollAttentionTable from "../overview/PayrollAttentionTable";
 import PayrollPeriodStatus from "../overview/PayrollPeriodStatus";
@@ -7,7 +6,6 @@ import PayrollSummaryCards from "../overview/PayrollSummaryCards";
 import PayrollAdjustmentsSection from "../report/PayrollAdjustmentsSection";
 import PayrollAdvancedAnalysisSection from "../report/PayrollAdvancedAnalysisSection";
 import PayrollEmployeesSection from "../report/PayrollEmployeesSection";
-
 import PayrollHeader from "./PayrollHeader";
 import styles from "./PayrollPageContent.module.css";
 
@@ -23,12 +21,14 @@ export default function PayrollPageContent({
   const {
     adjustmentCount,
     auditHistory,
+    auditHistoryLoading,
     cinemaSettings,
     closeExportModal,
     confirmDialog,
     dailyHoursData,
     employeeLoadData,
     endDate,
+    ensurePayrollHistory,
     eveningHours,
     expandedEmployeeIds,
     exportModalOpen,
@@ -94,7 +94,6 @@ export default function PayrollPageContent({
             onSetUserId={setUserId}
             onToggleAdvancedFilters={toggleAdvancedFilters}
           />
-
           <PayrollPeriodStatus
             period={period}
             totalHours={totalHours}
@@ -109,7 +108,6 @@ export default function PayrollPageContent({
             onOpenExportModal={openExportModal}
             onOpenTimeApproval={handleOpenTimeApproval}
           />
-
           <PayrollSummaryCards
             adjustmentCount={adjustmentCount}
             eveningHours={eveningHours}
@@ -124,24 +122,23 @@ export default function PayrollPageContent({
           {overtimeWarnings.length > 0 && (
             <PayrollAttentionTable overtimeWarnings={overtimeWarnings} />
           )}
-
           <PayrollEmployeesSection
             expandedEmployeeIds={expandedEmployeeIds}
             loading={loading}
             report={report}
             onToggleEmployeeGroup={toggleEmployeeGroup}
           />
-
           <PayrollAdjustmentsSection employees={payrollAdjustmentEmployees} />
           <PayrollAdvancedAnalysisSection
             auditHistory={auditHistory}
+            auditHistoryLoading={auditHistoryLoading}
             dailyHoursData={dailyHoursData}
             employeeLoadData={employeeLoadData}
             payrollDistributionData={payrollDistributionData}
+            onShowAnalysis={ensurePayrollHistory}
           />
         </div>
       </div>
-
       <PayrollModals
         confirmDialog={confirmDialog}
         exportModalOpen={exportModalOpen}

@@ -14,6 +14,7 @@ import {
   fetchPayrollReport,
   fetchUsers,
 } from "../../services/payrollService";
+
 type Props = {
   startDate: string;
   endDate: string;
@@ -30,6 +31,7 @@ function getErrorDescription(error: unknown, fallback: string) {
 
   return fallback;
 }
+
 export function usePayrollData({
   startDate,
   endDate,
@@ -47,10 +49,15 @@ export function usePayrollData({
   const [adjustmentCount, setAdjustmentCount] = useState(0);
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
   const [auditHistory, setAuditHistory] = useState<PayrollAuditHistory[]>([]);
+  const [auditHistoryLoading, setAuditHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const reportRequestIdRef = useRef(0);
   const periodRequestIdRef = useRef(0);
   const auditHistoryRequestIdRef = useRef(0);
+  const auditHistoryLoadedRef = useRef(false);
+  const auditHistoryLoadingRef = useRef(false);
+  const auditHistoryRequestedRef = useRef(false);
 
   function isLatestReportRequest(requestId: number) {
     return reportRequestIdRef.current === requestId;
@@ -64,10 +71,23 @@ export function usePayrollData({
     return auditHistoryRequestIdRef.current === requestId;
   }
 
+  function resetPayrollHistory(resetRequested: boolean) {
+    auditHistoryRequestIdRef.current += 1;
+    auditHistoryLoadedRef.current = false;
+    auditHistoryLoadingRef.current = false;
+
+    if (resetRequested) {
+      auditHistoryRequestedRef.current = false;
+    }
+
+    setAuditHistory([]);
+    setAuditHistoryLoading(false);
+  }
+
   function resetPayrollData() {
     reportRequestIdRef.current += 1;
     periodRequestIdRef.current += 1;
-    auditHistoryRequestIdRef.current += 1;
+    resetPayrollHistory(true);
     setCinemaSettings(null);
     setUsers([]);
     setReport([]);
@@ -75,9 +95,9 @@ export function usePayrollData({
     setVoidedCount(0);
     setAdjustmentCount(0);
     setPeriod(null);
-    setAuditHistory([]);
     setLoading(false);
   }
+
   async function loadCinemaSettings() {
     try {
       const data = await fetchCinemaPayrollSettings();
@@ -96,6 +116,7 @@ export function usePayrollData({
       );
     }
   }
+
   async function loadUsers() {
     try {
       const data = await fetchUsers();
@@ -147,6 +168,7 @@ export function usePayrollData({
       }
     }
   }
+
   async function loadPeriod(requestId: number) {
     try {
       const data = await fetchPayrollPeriod({
@@ -172,6 +194,9 @@ export function usePayrollData({
   }
 
   async function loadAuditHistory(requestId: number) {
+    auditHistoryLoadingRef.current = true;
+    setAuditHistoryLoading(true);
+
     try {
       const data = await fetchPayrollAuditHistory({
         startDate,
@@ -180,10 +205,12 @@ export function usePayrollData({
 
       if (!isLatestAuditHistoryRequest(requestId)) return;
 
+      auditHistoryLoadedRef.current = true;
       setAuditHistory(data);
     } catch (error) {
       if (!isLatestAuditHistoryRequest(requestId)) return;
 
+      auditHistoryLoadedRef.current = false;
       setAuditHistory([]);
       onError?.(
         "Kunne ikke hente lønhistorik",
@@ -192,6 +219,11 @@ export function usePayrollData({
           "Der opstod en fejl, da lønhistorikken skulle hentes. Prøv igen.",
         ),
       );
+    } finally {
+      if (isLatestAuditHistoryRequest(requestId)) {
+        auditHistoryLoadingRef.current = false;
+        setAuditHistoryLoading(false);
+      }
     }
   }
 
@@ -222,17 +254,37 @@ export function usePayrollData({
     await loadAuditHistory(requestId);
   }
 
+  async function ensurePayrollHistory() {
+    if (!enabled) return;
+
+    auditHistoryRequestedRef.current = true;
+
+    if (
+      auditHistoryLoadedRef.current ||
+      auditHistoryLoadingRef.current
+    ) {
+      return;
+    }
+
+    await refreshPayrollHistory();
+  }
+
   async function refreshPayroll() {
     if (!enabled) {
       resetPayrollData();
       return;
     }
 
-    await Promise.all([
+    const refreshes = [
       refreshPayrollReport(),
       refreshPayrollPeriod(),
-      refreshPayrollHistory(),
-    ]);
+    ];
+
+    if (auditHistoryRequestedRef.current) {
+      refreshes.push(refreshPayrollHistory());
+    }
+
+    await Promise.all(refreshes);
   }
 
   useEffect(() => {
@@ -254,9 +306,16 @@ export function usePayrollData({
   useEffect(() => {
     if (!enabled) return;
 
+    const historyWasRequested = auditHistoryRequestedRef.current;
+
+    resetPayrollHistory(false);
     refreshPayrollPeriod();
-    refreshPayrollHistory();
+
+    if (historyWasRequested) {
+      refreshPayrollHistory();
+    }
   }, [enabled, startDate, endDate]);
+
   return {
     cinemaSettings,
     users,
@@ -266,7 +325,9 @@ export function usePayrollData({
     adjustmentCount,
     period,
     auditHistory,
+    auditHistoryLoading,
     loading,
+    ensurePayrollHistory,
     refreshPayroll,
     refreshPayrollReport,
   };

@@ -66,9 +66,11 @@ type AuditHistoryItem = {
 
 type PayrollAdvancedAnalysisSectionProps = {
   auditHistory: AuditHistoryItem[];
+  auditHistoryLoading: boolean;
   dailyHoursData: DailyHoursDataItem[];
   employeeLoadData: EmployeeLoadDataItem[];
   payrollDistributionData: PayrollDistributionDataItem[];
+  onShowAnalysis: () => void;
 };
 
 const PAYROLL_DISTRIBUTION_COLORS = [
@@ -168,14 +170,26 @@ function getAdjustmentDeltaClasses(minutes: number) {
 
 export default function PayrollAdvancedAnalysisSection({
   auditHistory,
+  auditHistoryLoading,
   dailyHoursData,
   employeeLoadData,
   payrollDistributionData,
+  onShowAnalysis,
 }: PayrollAdvancedAnalysisSectionProps) {
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState(false);
   const periodsWithAdjustments = auditHistory.filter(
     (item) => (item.adjustments?.length ?? 0) > 0,
   );
+
+  function toggleAdvancedAnalysis() {
+    const nextValue = !showAdvancedAnalysis;
+
+    setShowAdvancedAnalysis(nextValue);
+
+    if (nextValue) {
+      onShowAnalysis();
+    }
+  }
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -191,8 +205,9 @@ export default function PayrollAdvancedAnalysisSection({
         </div>
         <button
           type="button"
-          onClick={() => setShowAdvancedAnalysis((value) => !value)}
+          onClick={toggleAdvancedAnalysis}
           className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+          aria-expanded={showAdvancedAnalysis}
         >
           {showAdvancedAnalysis ? "Skjul analyse" : "Vis analyse"}
         </button>
@@ -293,7 +308,16 @@ export default function PayrollAdvancedAnalysisSection({
 
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950/40">
             <h3 className="mb-4 text-lg font-bold">Lønhistorik</h3>
-            {auditHistory.length === 0 ? (
+
+            {auditHistoryLoading ? (
+              <div
+                className="text-sm text-gray-500 dark:text-gray-400"
+                role="status"
+                aria-live="polite"
+              >
+                Henter lønhistorik...
+              </div>
+            ) : auditHistory.length === 0 ? (
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 Ingen historik for perioden.
               </div>
@@ -357,9 +381,9 @@ export default function PayrollAdvancedAnalysisSection({
                       </p>
                     </div>
 
-                    {periodsWithAdjustments.map((period) => (
+                    {periodsWithAdjustments.map((historyPeriod) => (
                       <div
-                        key={`audit-adjustments-${period.id}`}
+                        key={`audit-adjustments-${historyPeriod.id}`}
                         className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
                       >
                         <div className="flex flex-col gap-1 border-b border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800 dark:bg-gray-950/50">
@@ -369,94 +393,104 @@ export default function PayrollAdvancedAnalysisSection({
                             </div>
                             <div className="text-sm text-gray-600 dark:text-gray-400">
                               {formatAuditPeriod(
-                                period.startDate,
-                                period.endDate,
+                                historyPeriod.startDate,
+                                historyPeriod.endDate,
                               )}
                             </div>
                           </div>
                           <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                            {period.adjustments?.length ?? 0} stk.
+                            {historyPeriod.adjustments?.length ?? 0} stk.
                           </div>
                         </div>
 
                         <div className="divide-y divide-gray-200 dark:divide-gray-800">
-                          {(period.adjustments ?? []).map((adjustment) => (
-                            <article
-                              key={adjustment.id}
-                              className="space-y-3 p-4"
-                            >
-                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <div className="font-semibold text-gray-900 dark:text-gray-100">
-                                      {adjustment.employeeName}
+                          {(historyPeriod.adjustments ?? []).map(
+                            (adjustment) => (
+                              <article
+                                key={adjustment.id}
+                                className="space-y-3 p-4"
+                              >
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <div className="font-semibold text-gray-900 dark:text-gray-100">
+                                        {adjustment.employeeName}
+                                      </div>
+                                      <span
+                                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getAdjustmentRelationClasses(
+                                          adjustment.relation,
+                                        )}`}
+                                      >
+                                        {getAdjustmentRelationLabel(
+                                          adjustment.relation,
+                                        )}
+                                      </span>
                                     </div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                                      {ADJUSTMENT_TYPE_LABELS[
+                                        adjustment.type
+                                      ] ?? adjustment.type}
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
                                     <span
-                                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getAdjustmentRelationClasses(
-                                        adjustment.relation,
+                                      className={`text-sm font-bold ${getAdjustmentDeltaClasses(
+                                        adjustment.minutesDelta,
                                       )}`}
                                     >
-                                      {getAdjustmentRelationLabel(
-                                        adjustment.relation,
+                                      {formatSignedMinutes(
+                                        adjustment.minutesDelta,
+                                      )}
+                                    </span>
+                                    <span
+                                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getAdjustmentStatusClasses(
+                                        adjustment.status,
+                                      )}`}
+                                    >
+                                      {getAdjustmentStatusLabel(
+                                        adjustment.status,
                                       )}
                                     </span>
                                   </div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    {ADJUSTMENT_TYPE_LABELS[adjustment.type] ??
-                                      adjustment.type}
-                                  </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span
-                                    className={`text-sm font-bold ${getAdjustmentDeltaClasses(
-                                      adjustment.minutesDelta,
-                                    )}`}
-                                  >
-                                    {formatSignedMinutes(
-                                      adjustment.minutesDelta,
-                                    )}
-                                  </span>
-                                  <span
-                                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getAdjustmentStatusClasses(
-                                      adjustment.status,
-                                    )}`}
-                                  >
-                                    {getAdjustmentStatusLabel(adjustment.status)}
-                                  </span>
-                                </div>
-                              </div>
 
-                              <p className="text-sm text-gray-700 dark:text-gray-300">
-                                {adjustment.reason}
-                              </p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                  {adjustment.reason}
+                                </p>
 
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                                <span>
-                                  Oprettet {formatAuditDateTime(adjustment.createdAt)}
-                                  {adjustment.createdByName
-                                    ? ` af ${adjustment.createdByName}`
-                                    : ""}
-                                </span>
-                                <span>
-                                  Oprindelig periode {formatAuditPeriod(
-                                    adjustment.originalPayrollPeriodStartDate,
-                                    adjustment.originalPayrollPeriodEndDate,
-                                  )}
-                                </span>
-                                {adjustment.settlementPayrollPeriodStartDate &&
-                                adjustment.settlementPayrollPeriodEndDate ? (
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                                   <span>
-                                    Afregnes i {formatAuditPeriod(
-                                      adjustment.settlementPayrollPeriodStartDate,
-                                      adjustment.settlementPayrollPeriodEndDate,
+                                    Oprettet{" "}
+                                    {formatAuditDateTime(adjustment.createdAt)}
+                                    {adjustment.createdByName
+                                      ? ` af ${adjustment.createdByName}`
+                                      : ""}
+                                  </span>
+                                  <span>
+                                    Oprindelig periode{" "}
+                                    {formatAuditPeriod(
+                                      adjustment.originalPayrollPeriodStartDate,
+                                      adjustment.originalPayrollPeriodEndDate,
                                     )}
                                   </span>
-                                ) : (
-                                  <span>Afregningsperiode ikke fastlagt</span>
-                                )}
-                              </div>
-                            </article>
-                          ))}
+                                  {adjustment.settlementPayrollPeriodStartDate &&
+                                  adjustment.settlementPayrollPeriodEndDate ? (
+                                    <span>
+                                      Afregnes i{" "}
+                                      {formatAuditPeriod(
+                                        adjustment.settlementPayrollPeriodStartDate,
+                                        adjustment.settlementPayrollPeriodEndDate,
+                                      )}
+                                    </span>
+                                  ) : (
+                                    <span>
+                                      Afregningsperiode ikke fastlagt
+                                    </span>
+                                  )}
+                                </div>
+                              </article>
+                            ),
+                          )}
                         </div>
                       </div>
                     ))}
