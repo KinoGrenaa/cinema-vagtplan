@@ -1,9 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
+import {
+  DEFAULT_NOTIFICATION_PAGE_SIZE,
+} from './helpers/notification-page';
 import { NotificationsController } from './notifications.controller';
 
 describe('NotificationsController', () => {
   let service: {
-    findForUser: jest.Mock;
+    findPageForUser: jest.Mock;
     unreadCount: jest.Mock;
     markAllAsRead: jest.Mock;
     markAsRead: jest.Mock;
@@ -20,8 +23,16 @@ describe('NotificationsController', () => {
 
   beforeEach(() => {
     service = {
-      findForUser: jest.fn().mockResolvedValue([]),
-      unreadCount: jest.fn().mockResolvedValue(2),
+      findPageForUser: jest
+        .fn()
+        .mockResolvedValue({
+          items: [],
+          hasMore: false,
+          nextBeforeId: null,
+        }),
+      unreadCount: jest
+        .fn()
+        .mockResolvedValue(2),
       markAllAsRead: jest
         .fn()
         .mockResolvedValue({
@@ -40,12 +51,19 @@ describe('NotificationsController', () => {
     );
   });
 
-  it('videresender en valideret valgt biograf ved listekald', async () => {
+  it('videresender en valideret valgt biograf ved kompatibilitetskald', async () => {
     await controller.getForUser(req, '3');
 
     expect(
-      service.findForUser,
-    ).toHaveBeenCalledWith(req.user, 3);
+      service.findPageForUser,
+    ).toHaveBeenCalledWith(
+      req.user,
+      3,
+      {
+        limit:
+          DEFAULT_NOTIFICATION_PAGE_SIZE,
+      },
+    );
   });
 
   it('returnerer unread-count i controllerens responseformat', async () => {
@@ -140,7 +158,7 @@ describe('NotificationsController', () => {
       ).toThrow(BadRequestException);
 
       expect(
-        service.findForUser,
+        service.findPageForUser,
       ).not.toHaveBeenCalled();
     },
   );

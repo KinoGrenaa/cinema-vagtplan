@@ -14,6 +14,9 @@ import {
   parseOptionalPositiveIntegerQuery,
   parseRequiredPositiveInteger,
 } from '../common/query-validation';
+import {
+  DEFAULT_NOTIFICATION_PAGE_SIZE,
+} from './helpers/notification-page';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
@@ -63,13 +66,22 @@ export class NotificationsController {
     @Req() req: any,
     @Query('cinemaId') cinemaId?: string,
   ) {
-    return this.notificationsService.findForUser(
-      req.user,
+    const selectedCinemaId =
       parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',
-      ),
-    );
+      );
+
+    return this.notificationsService
+      .findPageForUser(
+        req.user,
+        selectedCinemaId,
+        {
+          limit:
+            DEFAULT_NOTIFICATION_PAGE_SIZE,
+        },
+      )
+      .then((page) => page.items);
   }
 
   @UseGuards(JwtGuard)
@@ -89,6 +101,7 @@ export class NotificationsController {
         ),
     };
   }
+
   @UseGuards(JwtGuard)
   @Delete('read')
   clearRead(
@@ -103,7 +116,6 @@ export class NotificationsController {
       ),
     );
   }
-
 
   @UseGuards(JwtGuard)
   @Patch('read-all')
