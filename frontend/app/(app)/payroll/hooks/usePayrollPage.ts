@@ -5,7 +5,6 @@ import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
 import { useRealtimeCore } from "@/app/hooks/useRealtimeCore";
 import { useAuth } from "@/app/providers/AuthProvider";
-
 import { usePayrollMasterCinema } from "./context/usePayrollMasterCinema";
 import { usePayrollAdvancedFilters } from "./ui/usePayrollAdvancedFilters";
 import { usePayrollEmployeeExpansion } from "./ui/usePayrollEmployeeExpansion";
@@ -15,7 +14,6 @@ import { usePayrollExport } from "./actions/usePayrollExport";
 import { usePayrollFilters } from "./filters/usePayrollFilters";
 import { usePayrollPeriodActions } from "./actions/usePayrollPeriodActions";
 import { usePayrollStats } from "./derived/usePayrollStats";
-
 export function usePayrollPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -25,7 +23,6 @@ export function usePayrollPage() {
 
   const { isMasterWithoutActiveCinema } = usePayrollMasterCinema(user);
   const payrollDataEnabled = Boolean(user) && !isMasterWithoutActiveCinema;
-
   const {
     startDate,
     endDate,
@@ -37,7 +34,6 @@ export function usePayrollPage() {
     previousPayrollPeriod,
     nextPayrollPeriod,
   } = usePayrollFilters();
-
   const {
     cinemaSettings,
     users,
@@ -48,6 +44,7 @@ export function usePayrollPage() {
     auditHistory,
     loading,
     refreshPayroll,
+    refreshPayrollReport,
   } = usePayrollData({
     startDate,
     endDate,
@@ -58,11 +55,10 @@ export function usePayrollPage() {
       infoDialog.showError(title, description);
     },
   });
-
   useRealtimeCore({
     onTimeEntry: () => {
       if (payrollDataEnabled) {
-        refreshPayroll();
+        refreshPayrollReport();
       }
     },
   });
@@ -83,7 +79,6 @@ export function usePayrollPage() {
     (sum, employee) => sum + (employee.adjustmentCount ?? 0),
     0,
   );
-
   const payrollAdjustmentEmployees = report
     .map((employee) => ({
       ...employee,
@@ -97,7 +92,6 @@ export function usePayrollPage() {
     userId,
     refreshPayroll,
   });
-
   const {
     exportModalOpen,
     openExportModal,
@@ -113,7 +107,6 @@ export function usePayrollPage() {
 
   const { expandedEmployeeIds, toggleEmployeeGroup } =
     usePayrollEmployeeExpansion();
-
   const { locking, lockPeriod, unlocking, unlockPeriod } =
     usePayrollPeriodActions({
       confirmDialog,
@@ -124,7 +117,6 @@ export function usePayrollPage() {
       refreshPayroll,
       startDate,
     });
-
   return {
     adjustmentCount,
     auditHistory,
