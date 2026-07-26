@@ -11,20 +11,25 @@ import {
 } from "next/navigation";
 
 import AdminGuard from "@/app/components/access/AdminGuard";
-import InfoModal from "@/app/components/modals/InfoModal";
 import LeaveRequestTargetNotice from "@/app/components/leave/LeaveRequestTargetNotice";
+import InfoModal from "@/app/components/modals/InfoModal";
 import {
   parseLeaveRequestTarget,
 } from "@/app/helpers/leaveRequestTarget";
-import { useInfoModal } from "@/app/hooks/useInfoModal";
+import {
+  useInfoModal,
+} from "@/app/hooks/useInfoModal";
 
 import LeaveApprovalHeader from "./components/layout/LeaveApprovalHeader";
 import LeaveApprovalRequestsSection from "./components/list/LeaveApprovalRequestsSection";
 import LeaveApprovalFilterModal from "./components/modals/LeaveApprovalFilterModal";
 import LeaveApprovalSummaryCards from "./components/overview/LeaveApprovalSummaryCards";
-import { makeDateGroupExpansionKey } from "./helpers/core/leaveApprovalHelpers";
-import { useLeaveApprovalData } from "./hooks/data/useLeaveApprovalData";
-import { useLeaveApprovalFilters } from "./hooks/filters/useLeaveApprovalFilters";
+import {
+  makeDateGroupExpansionKey,
+} from "./helpers/core/leaveApprovalHelpers";
+import {
+  useLeaveApprovalData,
+} from "./hooks/data/useLeaveApprovalData";
 
 export default function LeaveApprovalPage() {
   const pathname =
@@ -39,19 +44,18 @@ export default function LeaveApprovalPage() {
         "requestId",
       ),
     );
-
-  const infoDialog = useInfoModal();
+  const infoDialog =
+    useInfoModal();
 
   const {
     requests,
+    totalCount,
     loading,
+    loadingMore,
+    hasMore,
     needsMasterCinemaSelection,
     updateStatus,
-  } = useLeaveApprovalData(
-    infoDialog,
-  );
-
-  const {
+    loadMore,
     showFilterModal,
     draftStatusFilters,
     draftStartDateFilter,
@@ -75,8 +79,8 @@ export default function LeaveApprovalPage() {
     showOnlyPending,
     toggleUserGroup,
     toggleDateGroup,
-  } = useLeaveApprovalFilters(
-    requests,
+  } = useLeaveApprovalData(
+    infoDialog,
     requestTarget.requestId,
   );
 
@@ -105,7 +109,6 @@ export default function LeaveApprovalPage() {
       params.delete(
         "requestId",
       );
-
       const query =
         params.toString();
 
@@ -125,37 +128,44 @@ export default function LeaveApprovalPage() {
 
   useEffect(() => {
     if (
-      targetState !== "found" ||
+      targetState !==
+        "found" ||
       !requestTarget.requestId
     ) {
       return;
     }
 
     const timeoutId =
-      window.setTimeout(() => {
-        const element =
-          document.getElementById(
-            `leave-approval-request-${requestTarget.requestId}`,
-          );
+      window.setTimeout(
+        () => {
+          const element =
+            document.getElementById(
+              `leave-approval-request-${requestTarget.requestId}`,
+            );
 
-        if (!element) {
-          return;
-        }
+          if (!element) {
+            return;
+          }
 
-        element.focus({
-          preventScroll: true,
-        });
-        element.scrollIntoView({
-          behavior: window
-            .matchMedia(
-              "(prefers-reduced-motion: reduce)",
-            )
-            .matches
-            ? "auto"
-            : "smooth",
-          block: "center",
-        });
-      }, 100);
+          element.focus({
+            preventScroll:
+              true,
+          });
+          element.scrollIntoView({
+            behavior:
+              window
+                .matchMedia(
+                  "(prefers-reduced-motion: reduce)",
+                )
+                .matches
+                ? "auto"
+                : "smooth",
+            block:
+              "center",
+          });
+        },
+        100,
+      );
 
     return () =>
       window.clearTimeout(
@@ -211,14 +221,14 @@ export default function LeaveApprovalPage() {
           {needsMasterCinemaSelection && (
             <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm transition-colors dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-100">
               <h2 className="text-lg font-semibold">
-                Ingen aktiv biograf valgt
+                Ingen aktiv biograf
+                valgt
               </h2>
-
               <p className="mt-2 text-sm text-amber-900 dark:text-amber-100/90">
                 Vælg en biograf i
-                MASTER-panelet, før du
-                kan se eller behandle
-                fravær.
+                MASTER-panelet, før
+                du kan se eller
+                behandle fravær.
               </p>
             </section>
           )}
@@ -242,7 +252,18 @@ export default function LeaveApprovalPage() {
           {!needsMasterCinemaSelection &&
             !loading && (
               <LeaveApprovalRequestsSection
-                requests={requests}
+                requests={
+                  requests
+                }
+                totalCount={
+                  totalCount
+                }
+                hasMore={
+                  hasMore
+                }
+                loadingMore={
+                  loadingMore
+                }
                 focusedRequestId={
                   requestTarget.requestId
                 }
@@ -272,6 +293,9 @@ export default function LeaveApprovalPage() {
                     ),
                   )
                 }
+                onLoadMore={
+                  loadMore
+                }
                 onToggleUserGroup={
                   toggleUserGroup
                 }
@@ -286,7 +310,9 @@ export default function LeaveApprovalPage() {
         </div>
 
         <LeaveApprovalFilterModal
-          open={showFilterModal}
+          open={
+            showFilterModal
+          }
           activeFilterCount={
             activeFilterCount
           }
@@ -308,9 +334,15 @@ export default function LeaveApprovalPage() {
           onEndDateFilterChange={
             setDraftEndDateFilter
           }
-          onApply={applyFilter}
-          onReset={resetFilter}
-          onClose={closeFilterModal}
+          onApply={
+            applyFilter
+          }
+          onReset={
+            resetFilter
+          }
+          onClose={
+            closeFilterModal
+          }
         />
 
         <InfoModal
@@ -325,7 +357,9 @@ export default function LeaveApprovalPage() {
           variant={
             infoDialog.variant
           }
-          onClose={infoDialog.close}
+          onClose={
+            infoDialog.close
+          }
         />
       </main>
     </AdminGuard>

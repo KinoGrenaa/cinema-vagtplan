@@ -11,48 +11,76 @@ import type {
 import LeaveApprovalRequestCard from "./LeaveApprovalRequestCard";
 
 type LeaveApprovalRequestsSectionProps = {
-  requests: LeaveRequest[];
+  requests:
+    LeaveRequest[];
+  totalCount: number;
+  hasMore: boolean;
+  loadingMore: boolean;
   focusedRequestId:
     number | null;
-  visibleRequests: LeaveRequest[];
+  visibleRequests:
+    LeaveRequest[];
   groupedRequests:
     GroupedLeaveRequests[];
-  statusFilterSummary: string;
-  dateFilterSummary: string;
-  expandedUserIds: number[];
-  isDateGroupExpanded: (
-    userId: number,
-    dateKey: string,
-  ) => boolean;
-  onToggleUserGroup: (
-    userId: number,
-  ) => void;
-  onToggleDateGroup: (
-    userId: number,
-    dateKey: string,
-  ) => void;
-  onUpdateStatus: (
-    requestId: number,
-    status: LeaveStatus,
-  ) => void;
+  statusFilterSummary:
+    string;
+  dateFilterSummary:
+    string;
+  expandedUserIds:
+    number[];
+  isDateGroupExpanded:
+    (
+      userId: number,
+      dateKey: string,
+    ) => boolean;
+  onLoadMore:
+    () => Promise<unknown>;
+  onToggleUserGroup:
+    (
+      userId: number,
+    ) => void;
+  onToggleDateGroup:
+    (
+      userId: number,
+      dateKey: string,
+    ) => void;
+  onUpdateStatus:
+    (
+      requestId: number,
+      status:
+        LeaveStatus,
+    ) => void;
 };
 
 function getStatusBadge(
-  status: LeaveStatus,
+  status:
+    LeaveStatus,
 ) {
-  if (status === "APPROVED") {
+  if (
+    status ===
+    "APPROVED"
+  ) {
     return "border-green-200 bg-green-100 text-green-900 dark:border-green-900 dark:bg-green-950/50 dark:text-green-100";
   }
 
-  if (status === "REJECTED") {
+  if (
+    status ===
+    "REJECTED"
+  ) {
     return "border-red-200 bg-red-100 text-red-900 dark:border-red-900 dark:bg-red-950/50 dark:text-red-100";
   }
 
-  if (status === "CANCELLED") {
+  if (
+    status ===
+    "CANCELLED"
+  ) {
     return "border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200";
   }
 
-  if (status === "EXPIRED") {
+  if (
+    status ===
+    "EXPIRED"
+  ) {
     return "border-slate-200 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
   }
 
@@ -60,13 +88,19 @@ function getStatusBadge(
 }
 
 function getStatusCountsForRequests(
-  requests: LeaveRequest[],
+  requests:
+    LeaveRequest[],
 ) {
   return requests.reduce(
-    (counts, request) => ({
+    (
+      counts,
+      request,
+    ) => ({
       ...counts,
       [request.status]:
-        counts[request.status] + 1,
+        counts[
+          request.status
+        ] + 1,
     }),
     {
       PENDING: 0,
@@ -82,7 +116,8 @@ function getStatusCountsForRequests(
 }
 
 function getStatusSummaryParts(
-  requests: LeaveRequest[],
+  requests:
+    LeaveRequest[],
 ) {
   const counts =
     getStatusCountsForRequests(
@@ -91,37 +126,48 @@ function getStatusSummaryParts(
 
   return [
     {
-      label: "Afventer",
-      count: counts.PENDING,
+      label:
+        "Afventer",
+      count:
+        counts.PENDING,
       status:
         "PENDING" as const,
     },
     {
-      label: "Godkendt",
-      count: counts.APPROVED,
+      label:
+        "Godkendt",
+      count:
+        counts.APPROVED,
       status:
         "APPROVED" as const,
     },
     {
-      label: "Afvist",
-      count: counts.REJECTED,
+      label:
+        "Afvist",
+      count:
+        counts.REJECTED,
       status:
         "REJECTED" as const,
     },
     {
-      label: "Annulleret",
-      count: counts.CANCELLED,
+      label:
+        "Annulleret",
+      count:
+        counts.CANCELLED,
       status:
         "CANCELLED" as const,
     },
     {
-      label: "Udløbet",
-      count: counts.EXPIRED,
+      label:
+        "Udløbet",
+      count:
+        counts.EXPIRED,
       status:
         "EXPIRED" as const,
     },
   ].filter(
-    (item) => item.count > 0,
+    (item) =>
+      item.count > 0,
   );
 }
 
@@ -130,6 +176,9 @@ const groupButtonClass =
 
 export default function LeaveApprovalRequestsSection({
   requests,
+  totalCount,
+  hasMore,
+  loadingMore,
   focusedRequestId,
   visibleRequests,
   groupedRequests,
@@ -137,6 +186,7 @@ export default function LeaveApprovalRequestsSection({
   dateFilterSummary,
   expandedUserIds,
   isDateGroupExpanded,
+  onLoadMore,
   onToggleUserGroup,
   onToggleDateGroup,
   onUpdateStatus,
@@ -148,11 +198,10 @@ export default function LeaveApprovalRequestsSection({
           <h2 className="text-2xl font-bold text-gray-950 dark:text-white">
             Ansøgninger
           </h2>
-
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             Viser{" "}
             {visibleRequests.length} af{" "}
-            {requests.length}{" "}
+            {totalCount}{" "}
             ansøgninger.
           </p>
         </div>
@@ -170,10 +219,10 @@ export default function LeaveApprovalRequestsSection({
             Ingen
             fraværsansøgninger
           </h3>
-
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Ingen ansøgninger matcher
-            det valgte filter.
+            Ingen ansøgninger
+            matcher det valgte
+            filter.
           </p>
         </div>
       ) : (
@@ -191,7 +240,9 @@ export default function LeaveApprovalRequestsSection({
 
               return (
                 <div
-                  key={group.userId}
+                  key={
+                    group.userId
+                  }
                   className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
                 >
                   <button
@@ -210,44 +261,54 @@ export default function LeaveApprovalRequestsSection({
                       <div className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">
                         {isExpanded ? (
                           <ChevronDown
-                            size={18}
+                            size={
+                              18
+                            }
                           />
                         ) : (
                           <ChevronRight
-                            size={18}
+                            size={
+                              18
+                            }
                           />
                         )}
-
-                        {group.userName}
+                        {
+                          group.userName
+                        }
                       </div>
-
                       <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                         {
-                          group.requests
+                          group
+                            .requests
                             .length
                         }{" "}
                         ansøgning
-                        {group.requests
-                          .length === 1
+                        {group
+                          .requests
+                          .length ===
+                        1
                           ? ""
                           : "er"}
                       </div>
                     </div>
-
                     <div className="text-right text-sm text-gray-600 dark:text-gray-400">
                       {groupStatusSummary
                         .map(
                           (item) =>
                             `${item.label}: ${item.count}`,
                         )
-                        .join(" · ")}
+                        .join(
+                          " · ",
+                        )}
                     </div>
                   </button>
 
                   {isExpanded && (
                     <div className="space-y-3 border-t border-gray-200 p-4 dark:border-gray-800">
                       {group.dateGroups.map(
-                        (dateGroup) => {
+                        (
+                          dateGroup,
+                        ) => {
                           const isDateExpanded =
                             isDateGroupExpanded(
                               group.userId,
@@ -293,12 +354,10 @@ export default function LeaveApprovalRequestsSection({
                                         }
                                       />
                                     )}
-
                                     {
                                       dateGroup.title
                                     }
                                   </div>
-
                                   <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                                     {
                                       dateGroup
@@ -314,7 +373,6 @@ export default function LeaveApprovalRequestsSection({
                                       : "er"}
                                   </div>
                                 </div>
-
                                 <div className="flex flex-wrap gap-2 md:justify-end">
                                   {statusSummary.map(
                                     (
@@ -374,6 +432,25 @@ export default function LeaveApprovalRequestsSection({
                 </div>
               );
             },
+          )}
+
+          {hasMore && (
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() =>
+                  void onLoadMore()
+                }
+                disabled={
+                  loadingMore
+                }
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+              >
+                {loadingMore
+                  ? "Henter..."
+                  : "Hent ældre ansøgninger"}
+              </button>
+            </div>
           )}
         </div>
       )}

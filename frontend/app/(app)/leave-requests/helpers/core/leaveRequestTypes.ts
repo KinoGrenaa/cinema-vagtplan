@@ -41,3 +41,17 @@ export type LeaveRequest = {
     lastName: string;
   };
 };
+
+export type LeaveRequestPageResponse = {
+  items: LeaveRequest[];
+  hasMore: boolean;
+  nextBeforeId:
+    number | null;
+  totalCount: number;
+  statusCounts: Record<
+    LeaveStatus,
+    number
+  >;
+  target:
+    LeaveRequest | null;
+};

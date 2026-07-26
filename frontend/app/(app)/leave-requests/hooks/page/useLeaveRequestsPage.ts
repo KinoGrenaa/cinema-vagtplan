@@ -1,75 +1,129 @@
-import { useInfoModal } from "@/app/hooks/useInfoModal";
+import {
+  useInfoModal,
+} from "@/app/hooks/useInfoModal";
 
-import { useLeaveRequestCancel } from "../actions/useLeaveRequestCancel";
-import { useLeaveRequestEmployeeOptions } from "../form/useLeaveRequestEmployeeOptions";
-import { useLeaveRequestFilters } from "../filters/useLeaveRequestFilters";
-import { useLeaveRequestForm } from "../form/useLeaveRequestForm";
-import { useLeaveRequestsData } from "../data/useLeaveRequestsData";
+import {
+  useLeaveRequestCancel,
+} from "../actions/useLeaveRequestCancel";
+import {
+  useLeaveRequestsData,
+} from "../data/useLeaveRequestsData";
+import {
+  useLeaveRequestEmployeeOptions,
+} from "../form/useLeaveRequestEmployeeOptions";
+import {
+  useLeaveRequestForm,
+} from "../form/useLeaveRequestForm";
 
 export function useLeaveRequestsPage(
   focusedRequestId?:
     number | null,
 ) {
-  const infoDialog = useInfoModal();
+  const infoDialog =
+    useInfoModal();
 
-  const {
-    activeCinemaId,
-    currentUser,
-    currentUserId,
-    fetchRequests,
-    isMasterWithoutOwnCinema,
-    requests,
-  } = useLeaveRequestsData({
-    showError: (title, description) =>
-      infoDialog.showError(title, description ?? ""),
-  });
-
-  const employeeSelection = useLeaveRequestEmployeeOptions({
-    activeCinemaId,
-    currentUser,
-    showError: (title, description) =>
-      infoDialog.showError(title, description ?? ""),
-  });
-
-  const form = useLeaveRequestForm({
-    activeCinemaId,
-    canCreateForEmployees: employeeSelection.canCreateForEmployees,
-    currentUserId,
-    employeeOptions: employeeSelection.employeeOptions,
-    fetchRequests,
-    isMasterWithoutOwnCinema,
-    showError: (title, description) =>
-      infoDialog.showError(title, description ?? ""),
-    showInfo: (title, description) =>
-      infoDialog.show({
-        title,
-        description,
-        variant: "success",
-        buttonText: "OK",
-      }),
-  });
-
-  const cancel = useLeaveRequestCancel({
-    fetchRequests,
-    setSuccess: form.setSuccess,
-    showError: (title, description) =>
-      infoDialog.showError(title, description ?? ""),
-  });
-
-  const filters =
-    useLeaveRequestFilters(
-      requests,
+  const data =
+    useLeaveRequestsData({
       focusedRequestId,
-    );
+      showError:
+        (
+          title,
+          description,
+        ) =>
+          infoDialog.showError(
+            title,
+            description ??
+              "",
+          ),
+    });
+
+  const employeeSelection =
+    useLeaveRequestEmployeeOptions({
+      activeCinemaId:
+        data.activeCinemaId,
+      currentUser:
+        data.currentUser,
+      showError:
+        (
+          title,
+          description,
+        ) =>
+          infoDialog.showError(
+            title,
+            description ??
+              "",
+          ),
+    });
+
+  const form =
+    useLeaveRequestForm({
+      activeCinemaId:
+        data.activeCinemaId,
+      canCreateForEmployees:
+        employeeSelection.canCreateForEmployees,
+      currentUserId:
+        data.currentUserId,
+      employeeOptions:
+        employeeSelection.employeeOptions,
+      fetchRequests:
+        data.fetchRequests,
+      isMasterWithoutOwnCinema:
+        data.isMasterWithoutOwnCinema,
+      showError:
+        (
+          title,
+          description,
+        ) =>
+          infoDialog.showError(
+            title,
+            description ??
+              "",
+          ),
+      showInfo:
+        (
+          title,
+          description,
+        ) =>
+          infoDialog.show({
+            title,
+            description,
+            variant:
+              "success",
+            buttonText:
+              "OK",
+          }),
+    });
+
+  const cancel =
+    useLeaveRequestCancel({
+      fetchRequests:
+        data.fetchRequests,
+      setSuccess:
+        form.setSuccess,
+      showError:
+        (
+          title,
+          description,
+        ) =>
+          infoDialog.showError(
+            title,
+            description ??
+              "",
+          ),
+    });
 
   return {
     cancel,
-    currentUserId,
+    currentUserId:
+      data.currentUserId,
     employeeSelection,
-    filters,
+    filters:
+      data.filters,
     form,
     infoDialog,
-    isMasterWithoutOwnCinema,
-    requests,
+    isMasterWithoutOwnCinema:
+      data.isMasterWithoutOwnCinema,
+    requests:
+      data.requests,
   };
 }
