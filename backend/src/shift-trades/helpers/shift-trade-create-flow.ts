@@ -9,6 +9,9 @@ import {
   ShiftTradeType,
 } from '@prisma/client';
 import { NotificationsService } from '../../notifications/notifications.service';
+import {
+  getShiftTradeNotificationLink,
+} from '../../notifications/helpers/notification-deep-links';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
@@ -230,7 +233,10 @@ export async function createShiftTrade(
       message:
         'Du har fået tilbudt en vagt direkte',
       type: 'SHIFT_DIRECT',
-      linkUrl: '/my-shifts',
+      linkUrl:
+        getShiftTradeNotificationLink(
+          trade.id,
+        ),
     });
 
     await push.sendToUserInCinema(
@@ -240,7 +246,10 @@ export async function createShiftTrade(
         title: 'Ny direkte vagt',
         body:
           'Du har fået tilbudt en vagt direkte',
-        url: '/my-shifts',
+        url:
+          getShiftTradeNotificationLink(
+            trade.id,
+          ),
       },
     );
   }

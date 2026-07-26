@@ -8,6 +8,9 @@ import {
   StaffingRequestStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  getStaffingRequestNotificationLink,
+} from '../../notifications/helpers/notification-deep-links';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
   ensureAiRequestActorAccess,
@@ -280,7 +283,9 @@ export async function createAiEmergencyStaffingRequests({
         message,
         type: 'STAFFING_REQUEST',
         linkUrl:
-          '/staffing-requests',
+          getStaffingRequestNotificationLink(
+            request.id,
+          ),
       },
     });
   }

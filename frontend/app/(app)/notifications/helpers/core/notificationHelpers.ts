@@ -13,11 +13,22 @@ import type {
 
 export const notificationTypeLabels: Record<Notification["type"], string> = {
   SHIFT_TRADE: "Vagtbytte",
+  SHIFT_DIRECT: "Direkte vagtbytte",
+  SHIFT_ASSIGNED: "Ny vagt",
   SHIFT_ACCEPTED: "Vagtbytte accepteret",
   SHIFT_REJECTED: "Vagtbytte afvist",
   NEW_MESSAGE: "Ny besked",
   TIME_ENTRY: "Tidsregistrering",
-  STAFFING_ALERT: "Bemandsadvarsel",
+  STAFFING_ALERT: "Bemandingsadvarsel",
+  STAFFING_REQUEST: "Bemandingsforespørgsel",
+  STAFFING_ACCEPTED: "Bemanding accepteret",
+  LEAVE_REQUEST_CREATED: "Ny fraværsansøgning",
+  LEAVE_REQUEST_APPROVED: "Fravær godkendt",
+  LEAVE_REQUEST_REJECTED: "Fravær afvist",
+  LEAVE_REQUEST_CANCELLED_BY_EMPLOYEE:
+    "Fravær annulleret af medarbejder",
+  LEAVE_REQUEST_CANCELLED_BY_ADMIN:
+    "Fravær annulleret af leder",
   SYSTEM: "System",
 };
 

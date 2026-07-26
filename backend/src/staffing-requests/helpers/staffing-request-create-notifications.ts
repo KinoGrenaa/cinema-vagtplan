@@ -1,6 +1,9 @@
 import {
   PrismaService,
 } from '../../prisma/prisma.service';
+import {
+  getStaffingRequestNotificationLink,
+} from '../../notifications/helpers/notification-deep-links';
 
 export async function createNotificationForStaffingRequest(
   prisma: PrismaService,
@@ -29,7 +32,9 @@ export async function createNotificationForStaffingRequest(
       'Der er brug for ekstra bemanding.\nKan du tage en vagt?',
     type: 'STAFFING_REQUEST',
     linkUrl:
-      `/staffing-requests?requestId=${request.id}`,
+      getStaffingRequestNotificationLink(
+        request.id,
+      ),
   };
 
   if (request.targetUserId) {

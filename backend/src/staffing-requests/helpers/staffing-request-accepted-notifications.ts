@@ -5,6 +5,9 @@ import {
 import {
   PrismaService,
 } from '../../prisma/prisma.service';
+import {
+  getStaffingRequestNotificationLink,
+} from '../../notifications/helpers/notification-deep-links';
 
 type StaffingNotificationPrisma =
   Pick<
@@ -60,7 +63,9 @@ export async function createStaffingRequestAcceptedNotifications(
         `bemandingsforespørgsel #${requestId}`,
       type: 'STAFFING_ACCEPTED',
       linkUrl:
-        `/staffing-requests?requestId=${requestId}`,
+        getStaffingRequestNotificationLink(
+          requestId,
+        ),
     })),
   });
 }

@@ -7,6 +7,9 @@ import {
   ShiftTradeStatus,
 } from '@prisma/client';
 import { NotificationsService } from '../../notifications/notifications.service';
+import {
+  getShiftTradeNotificationLink,
+} from '../../notifications/helpers/notification-deep-links';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
@@ -218,7 +221,10 @@ export async function acceptShiftTrade(
     message:
       'Din tilbudte vagt blev accepteret',
     type: 'SHIFT_ACCEPTED',
-    linkUrl: '/my-shifts',
+    linkUrl:
+      getShiftTradeNotificationLink(
+        updatedTrade.id,
+      ),
   });
   await push.sendToUserInCinema(
     updatedTrade.offeredByUserId,
@@ -227,7 +233,10 @@ export async function acceptShiftTrade(
       title: 'Vagt accepteret',
       body:
         'Din tilbudte vagt blev accepteret',
-      url: '/my-shifts',
+      url:
+        getShiftTradeNotificationLink(
+          updatedTrade.id,
+        ),
     },
   );
   realtime.notifyCinema(
