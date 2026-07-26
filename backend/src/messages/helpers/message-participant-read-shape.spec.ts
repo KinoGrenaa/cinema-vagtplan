@@ -29,7 +29,10 @@ describe('message participant read shape', () => {
   it('bruger det præcise deltagerselect i den paginerede indbakke', async () => {
     const prisma = {
       message: {
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany:
+          jest.fn().mockResolvedValue(
+            [],
+          ),
         findFirst: jest.fn(),
       },
     };
@@ -55,7 +58,14 @@ describe('message participant read shape', () => {
   it('bruger samme deltagerselect i notifikationsoversigten', async () => {
     const prisma = {
       message: {
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany:
+          jest.fn().mockResolvedValue(
+            [],
+          ),
+        count:
+          jest.fn().mockResolvedValue(
+            0,
+          ),
       },
     };
 

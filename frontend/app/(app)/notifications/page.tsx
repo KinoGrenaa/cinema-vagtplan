@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useState,
@@ -13,7 +14,6 @@ import {
 import {
   useNotifications,
 } from "@/app/hooks/useNotifications";
-
 import NotificationsHeader from "./components/layout/NotificationsHeader";
 import NotificationsOverview from "./components/overview/NotificationsOverview";
 import type {
@@ -53,6 +53,7 @@ export default function NotificationsPage() {
       },
       [],
     );
+
   const handleNotificationError =
     useCallback(
       (message: string) => {
@@ -82,16 +83,19 @@ export default function NotificationsPage() {
     onError:
       handleNotificationError,
   });
+
   const {
     authLoading,
     extraLoading,
     unreadMessages,
+    unreadMessageCount,
     directTrades,
     poolTrades,
     moduleAccess,
   } = useNotificationsExtraData({
     showError,
   });
+
   const {
     activeCategory,
     expandedDateKeys,
@@ -107,6 +111,7 @@ export default function NotificationsPage() {
     notifications,
     unreadCount,
     unreadMessages,
+    unreadMessageCount,
     directTrades,
     poolTrades,
     messagesEnabled:
@@ -196,6 +201,12 @@ export default function NotificationsPage() {
     );
   }
 
+  const messageOverviewIsLimited =
+    activeCategory ===
+      "messages" &&
+    unreadMessageCount >
+      unreadMessages.length;
+
   return (
     <main
       className={`${styles.page} min-h-screen p-4 text-gray-900 transition-colors dark:text-gray-100 md:p-8`}
@@ -272,6 +283,24 @@ export default function NotificationsPage() {
             handleMarkNotificationAsRead
           }
         />
+
+        {messageOverviewIsLimited && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
+            <p>
+              Viser de{" "}
+              {unreadMessages.length}{" "}
+              nyeste af{" "}
+              {unreadMessageCount}{" "}
+              ulæste beskeder.
+            </p>
+            <Link
+              href="/messages"
+              className="rounded-xl bg-blue-700 px-4 py-2 text-center font-semibold text-white transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
+            >
+              Åbn hele indbakken
+            </Link>
+          </div>
+        )}
       </div>
 
       <ConfirmModal
@@ -299,7 +328,6 @@ export default function NotificationsPage() {
           confirmDialog.handleCancel
         }
       />
-
       <InfoModal
         open={errorDialog.open}
         title={

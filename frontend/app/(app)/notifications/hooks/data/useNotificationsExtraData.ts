@@ -18,7 +18,6 @@ import {
 import {
   useCinemaModules,
 } from "@/app/providers/CinemaModulesProvider";
-
 import {
   getErrorMessage,
   readErrorMessage,
@@ -33,6 +32,12 @@ type UseNotificationsExtraDataParams = {
     title: string,
     description: string,
   ) => void;
+};
+
+type MessageNotificationOverview = {
+  items?: Message[];
+  total?: number;
+  hasMore?: boolean;
 };
 
 type ShiftTradeNotificationOverview = {
@@ -101,6 +106,45 @@ function getOverviewEndpoint(
   return `${path}${cinemaQuery}`;
 }
 
+function normalizeMessageOverview(
+  value: unknown,
+) {
+  if (Array.isArray(value)) {
+    return {
+      items:
+        value as Message[],
+      total:
+        value.length,
+    };
+  }
+
+  const overview =
+    value as
+      | Partial<MessageNotificationOverview>
+      | null
+      | undefined;
+  const items =
+    Array.isArray(
+      overview?.items,
+    )
+      ? overview.items
+      : [];
+  const total =
+    typeof overview?.total ===
+      "number" &&
+    Number.isInteger(
+      overview.total,
+    ) &&
+    overview.total >= 0
+      ? overview.total
+      : items.length;
+
+  return {
+    items,
+    total,
+  };
+}
+
 export function useNotificationsExtraData({
   showError,
 }: UseNotificationsExtraDataParams) {
@@ -131,6 +175,11 @@ export function useNotificationsExtraData({
   ] =
     useState<Message[]>([]);
   const [
+    unreadMessageCount,
+    setUnreadMessageCount,
+  ] =
+    useState(0);
+  const [
     directTrades,
     setDirectTrades,
   ] =
@@ -152,6 +201,7 @@ export function useNotificationsExtraData({
       ) => {
         if (!user) {
           setUnreadMessages([]);
+          setUnreadMessageCount(0);
           setDirectTrades([]);
           setPoolTrades([]);
           setExtraLoading(false);
@@ -228,9 +278,10 @@ export function useNotificationsExtraData({
             await Promise.all([
               messagesResponse
                 ? messagesResponse.json()
-                : Promise.resolve(
-                    [],
-                  ),
+                : Promise.resolve({
+                    items: [],
+                    total: 0,
+                  }),
               tradesResponse
                 ? tradesResponse.json()
                 : Promise.resolve({
@@ -239,18 +290,20 @@ export function useNotificationsExtraData({
                   }),
             ]);
 
-          setUnreadMessages(
-            Array.isArray(
+          const normalizedMessages =
+            normalizeMessageOverview(
               messagesData,
-            )
-              ? messagesData
-              : [],
+            );
+          setUnreadMessages(
+            normalizedMessages.items,
+          );
+          setUnreadMessageCount(
+            normalizedMessages.total,
           );
 
           const normalizedTrades =
             tradesData as
               Partial<ShiftTradeNotificationOverview>;
-
           setDirectTrades(
             Array.isArray(
               normalizedTrades
@@ -281,6 +334,7 @@ export function useNotificationsExtraData({
           }
 
           setUnreadMessages([]);
+          setUnreadMessageCount(0);
           setDirectTrades([]);
           setPoolTrades([]);
         } finally {
@@ -348,6 +402,7 @@ export function useNotificationsExtraData({
       modulesLoading,
     extraLoading,
     unreadMessages,
+    unreadMessageCount,
     directTrades,
     poolTrades,
     moduleAccess: {

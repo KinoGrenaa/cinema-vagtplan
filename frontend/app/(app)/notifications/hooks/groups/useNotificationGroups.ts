@@ -22,6 +22,7 @@ type UseNotificationGroupsParams = {
   notifications: Notification[];
   unreadCount: number;
   unreadMessages: Message[];
+  unreadMessageCount: number;
   directTrades: ShiftTrade[];
   poolTrades: ShiftTrade[];
   messagesEnabled: boolean;
@@ -32,6 +33,7 @@ export function useNotificationGroups({
   notifications,
   unreadCount,
   unreadMessages,
+  unreadMessageCount,
   directTrades,
   poolTrades,
   messagesEnabled,
@@ -207,7 +209,7 @@ export function useNotificationGroups({
   }, [activeGroups]);
 
   const totalCount =
-    unreadMessages.length +
+    unreadMessageCount +
     unreadCount +
     directTrades.length +
     poolTrades.length;
@@ -218,7 +220,7 @@ export function useNotificationGroups({
   > = {
     system: unreadCount,
     messages:
-      unreadMessages.length,
+      unreadMessageCount,
     directTrades:
       directTrades.length,
     poolTrades:
