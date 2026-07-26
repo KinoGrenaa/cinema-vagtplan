@@ -3,6 +3,8 @@ import {
   PrismaService,
 } from '../../prisma/prisma.service';
 import {
+  buildArchivedMessageCounts,
+  buildArchivedMessageCountWhere,
   buildArchivedMessagePage,
   buildArchivedMessageWhere,
   buildInboxMessageTargetWhere,
@@ -194,22 +196,9 @@ export async function findArchivedMessagePageForUser(
     normalizeMessagePageLimit(
       options.limit,
     );
-  const receivedWhere =
-    buildArchivedMessageWhere(
-      userId,
-      cinemaId,
-      'received',
-    );
-  const sentWhere =
-    buildArchivedMessageWhere(
-      userId,
-      cinemaId,
-      'sent',
-    );
   const [
     rows,
-    receivedCount,
-    sentCount,
+    countGroups,
   ] = await Promise.all([
     prisma.message.findMany({
       where:
@@ -225,22 +214,28 @@ export async function findArchivedMessagePageForUser(
       },
       take: limit + 1,
     }),
-    prisma.message.count({
-      where: receivedWhere,
-    }),
-    prisma.message.count({
-      where: sentWhere,
+    prisma.message.groupBy({
+      by: [
+        'senderId',
+      ],
+      where:
+        buildArchivedMessageCountWhere(
+          userId,
+          cinemaId,
+        ),
+      _count: {
+        _all: true,
+      },
     }),
   ]);
 
   return buildArchivedMessagePage(
     rows,
     limit,
-    {
-      received:
-        receivedCount,
-      sent: sentCount,
-    },
+    buildArchivedMessageCounts(
+      countGroups,
+      userId,
+    ),
   );
 }
 

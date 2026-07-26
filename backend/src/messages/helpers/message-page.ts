@@ -28,7 +28,6 @@ export type ArchivedMessagePageOptions = {
   section:
     ArchiveMessageSection;
 };
-
 export type MessagePageResult<T> = {
   items: T[];
   target: T | null;
@@ -55,7 +54,6 @@ export function normalizeMessagePageLimit(
   ) {
     return DEFAULT_MESSAGE_PAGE_SIZE;
   }
-
   if (
     !Number.isInteger(value) ||
     value <= 0
@@ -68,7 +66,6 @@ export function normalizeMessagePageLimit(
     MAX_MESSAGE_PAGE_SIZE,
   );
 }
-
 export function buildInboxMessageWhere(
   userId: number,
   cinemaId: number,
@@ -95,7 +92,6 @@ export function buildInboxMessageWhere(
       : {}),
   };
 }
-
 export function buildInboxMessageTargetWhere(
   userId: number,
   cinemaId: number,
@@ -109,7 +105,6 @@ export function buildInboxMessageTargetWhere(
     id: targetId,
   };
 }
-
 export function buildSentMessageWhere(
   userId: number,
   cinemaId: number,
@@ -140,7 +135,6 @@ function buildArchivedMessageBaseWhere(
     recalledAt: null,
   };
 }
-
 export function buildArchivedMessageWhere(
   userId: number,
   cinemaId: number,
@@ -166,7 +160,6 @@ export function buildArchivedMessageWhere(
         : {}),
     };
   }
-
   return {
     ...base,
     senderId: {
@@ -190,6 +183,56 @@ export function buildArchivedMessageWhere(
   };
 }
 
+export function buildArchivedMessageCountWhere(
+  userId: number,
+  cinemaId: number,
+): Prisma.MessageWhereInput {
+  return {
+    ...buildArchivedMessageBaseWhere(
+      cinemaId,
+    ),
+    OR: [
+      {
+        senderId: userId,
+      },
+      {
+        receiverId: userId,
+      },
+      {
+        isBroadcast: true,
+      },
+    ],
+  };
+}
+
+export function buildArchivedMessageCounts(
+  countGroups: Array<{
+    senderId: number;
+    _count: {
+      _all: number;
+    };
+  }>,
+  userId: number,
+) {
+  return countGroups.reduce(
+    (counts, group) => {
+      if (group.senderId === userId) {
+        counts.sent +=
+          group._count._all;
+      } else {
+        counts.received +=
+          group._count._all;
+      }
+
+      return counts;
+    },
+    {
+      received: 0,
+      sent: 0,
+    },
+  );
+}
+
 export function buildMessagePage<T extends {
   id: number;
 }>(
@@ -201,7 +244,6 @@ export function buildMessagePage<T extends {
     rows.slice(0, limit);
   const hasMore =
     rows.length > limit;
-
   return {
     items,
     target,
@@ -232,7 +274,6 @@ export function buildArchivedMessagePage<
     rows.slice(0, limit);
   const hasMore =
     rows.length > limit;
-
   return {
     items,
     hasMore,
