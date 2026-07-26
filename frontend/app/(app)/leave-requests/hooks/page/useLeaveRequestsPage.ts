@@ -6,7 +6,10 @@ import { useLeaveRequestFilters } from "../filters/useLeaveRequestFilters";
 import { useLeaveRequestForm } from "../form/useLeaveRequestForm";
 import { useLeaveRequestsData } from "../data/useLeaveRequestsData";
 
-export function useLeaveRequestsPage() {
+export function useLeaveRequestsPage(
+  focusedRequestId?:
+    number | null,
+) {
   const infoDialog = useInfoModal();
 
   const {
@@ -53,7 +56,11 @@ export function useLeaveRequestsPage() {
       infoDialog.showError(title, description ?? ""),
   });
 
-  const filters = useLeaveRequestFilters(requests);
+  const filters =
+    useLeaveRequestFilters(
+      requests,
+      focusedRequestId,
+    );
 
   return {
     cancel,

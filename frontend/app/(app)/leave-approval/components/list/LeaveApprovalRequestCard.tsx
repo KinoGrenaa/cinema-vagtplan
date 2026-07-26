@@ -17,6 +17,8 @@ type LeaveDisplayDateRange = {
 
 type LeaveApprovalRequestCardProps = {
   request: LeaveRequest;
+  focusedRequestId:
+    number | null;
   onUpdateStatus: (
     requestId: number,
     status: LeaveStatus,
@@ -314,6 +316,7 @@ const actionButtonBase =
 
 export default function LeaveApprovalRequestCard({
   request,
+  focusedRequestId,
   onUpdateStatus,
 }: LeaveApprovalRequestCardProps) {
   const employeeName =
@@ -322,7 +325,22 @@ export default function LeaveApprovalRequestCard({
     formatCreatedBy(request);
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
+    <article
+      id={`leave-approval-request-${request.id}`}
+      tabIndex={-1}
+      aria-label={
+        request.id ===
+          focusedRequestId
+          ? "Fremhævet fraværsansøgning"
+          : undefined
+      }
+      className={`rounded-2xl border bg-white p-4 text-gray-900 shadow-sm outline-none transition-colors dark:bg-gray-900 dark:text-gray-100 ${
+        request.id ===
+        focusedRequestId
+          ? "border-blue-500 ring-4 ring-blue-500/60 ring-offset-4 ring-offset-gray-50 dark:border-blue-400 dark:ring-blue-400/60 dark:ring-offset-gray-950"
+          : "border-gray-200 dark:border-gray-800"
+      }`}
+    >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -345,6 +363,12 @@ export default function LeaveApprovalRequestCard({
                 request,
               )}
             </span>
+            {request.id ===
+              focusedRequestId && (
+              <span className="inline-flex rounded-full bg-blue-700 px-3 py-1 text-xs font-semibold text-white dark:bg-blue-500">
+                Fra notifikation
+              </span>
+            )}
           </div>
 
           <h3 className="mt-2 text-lg font-semibold text-gray-950 dark:text-white">

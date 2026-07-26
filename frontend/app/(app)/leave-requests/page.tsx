@@ -1,6 +1,19 @@
 "use client";
 
+import {
+  useCallback,
+} from "react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+
 import InfoModal from "@/app/components/modals/InfoModal";
+import LeaveRequestTargetNotice from "@/app/components/leave/LeaveRequestTargetNotice";
+import {
+  parseLeaveRequestTarget,
+} from "@/app/helpers/leaveRequestTarget";
 
 import LeaveRequestFormModal from "./components/form/LeaveRequestFormModal";
 import LeaveRequestsHeader from "./components/layout/LeaveRequestsHeader";
@@ -13,6 +26,19 @@ import LeaveRequestsSummaryCards from "./components/overview/LeaveRequestsSummar
 import { useLeaveRequestsPage } from "./hooks/page/useLeaveRequestsPage";
 
 export default function LeaveRequestsPage() {
+  const pathname =
+    usePathname();
+  const router =
+    useRouter();
+  const searchParams =
+    useSearchParams();
+  const requestTarget =
+    parseLeaveRequestTarget(
+      searchParams.get(
+        "requestId",
+      ),
+    );
+
   const {
     cancel,
     currentUserId,
@@ -21,7 +47,51 @@ export default function LeaveRequestsPage() {
     form,
     infoDialog,
     isMasterWithoutOwnCinema,
-  } = useLeaveRequestsPage();
+    requests,
+  } = useLeaveRequestsPage(
+    requestTarget.requestId,
+  );
+
+  const targetState =
+    requestTarget.invalid
+      ? "invalid"
+      : !requestTarget.requestId
+        ? "idle"
+        : requests.some(
+              (request) =>
+                request.id ===
+                requestTarget.requestId,
+            )
+          ? "found"
+          : "missing";
+
+  const clearRequestTarget =
+    useCallback(() => {
+      const params =
+        new URLSearchParams(
+          searchParams.toString(),
+        );
+
+      params.delete(
+        "requestId",
+      );
+
+      const query =
+        params.toString();
+
+      router.replace(
+        query
+          ? `${pathname}?${query}`
+          : pathname,
+        {
+          scroll: false,
+        },
+      );
+    }, [
+      pathname,
+      router,
+      searchParams,
+    ]);
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -35,6 +105,17 @@ export default function LeaveRequestsPage() {
 
         <LeaveRequestsSuccessMessage success={form.success} />
 
+        <LeaveRequestTargetNotice
+          state={targetState}
+          requestId={
+            requestTarget.requestId
+          }
+          audience="employee"
+          onClear={
+            clearRequestTarget
+          }
+        />
+
         {isMasterWithoutOwnCinema && <LeaveRequestsMasterNotice />}
 
         <LeaveRequestsSummaryCards
@@ -44,6 +125,9 @@ export default function LeaveRequestsPage() {
 
         <LeaveRequestsListSection
           currentUserId={currentUserId}
+          focusedRequestId={
+            requestTarget.requestId
+          }
           expandedGroupKeys={filters.expandedGroupKeys}
           filterSummary={filters.filterSummary}
           groupedRequests={filters.groupedRequests}

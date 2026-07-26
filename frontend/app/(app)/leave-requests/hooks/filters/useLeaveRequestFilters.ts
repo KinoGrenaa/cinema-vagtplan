@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   countLeaveStatuses,
@@ -16,7 +20,11 @@ import {
   type LeaveStatusFilters,
 } from "../../helpers/core/leaveRequestTypes";
 
-export function useLeaveRequestFilters(requests: LeaveRequest[]) {
+export function useLeaveRequestFilters(
+  requests: LeaveRequest[],
+  focusedRequestId?:
+    number | null,
+) {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [statusFilters, setStatusFilters] = useState<LeaveStatusFilters>(
     DEFAULT_STATUS_FILTERS,
@@ -41,6 +49,40 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
     );
   }, [requestsInDateRange, statusFilters]);
 
+  const focusedVisibleRequests =
+    useMemo(() => {
+      if (!focusedRequestId) {
+        return visibleRequests;
+      }
+
+      const focusedRequest =
+        requests.find(
+          (request) =>
+            request.id ===
+            focusedRequestId,
+        );
+
+      if (
+        !focusedRequest ||
+        visibleRequests.some(
+          (request) =>
+            request.id ===
+            focusedRequestId,
+        )
+      ) {
+        return visibleRequests;
+      }
+
+      return [
+        focusedRequest,
+        ...visibleRequests,
+      ];
+    }, [
+      focusedRequestId,
+      requests,
+      visibleRequests,
+    ]);
+
   const statusCounts = useMemo(
     () => countLeaveStatuses(requestsInDateRange),
     [requestsInDateRange],
@@ -57,7 +99,7 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
   const groupedRequests = useMemo(() => {
     const groups = new Map<string, LeaveRequest[]>();
 
-    for (const request of visibleRequests) {
+    for (const request of focusedVisibleRequests) {
       const key = getGroupKey(request);
       const existing = groups.get(key) || [];
       groups.set(key, [...existing, request]);
@@ -76,7 +118,44 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
           new Date(a.requests[0].startDate).getTime() -
           new Date(b.requests[0].startDate).getTime(),
       );
-  }, [visibleRequests]);
+  }, [focusedVisibleRequests]);
+
+  useEffect(() => {
+    if (!focusedRequestId) {
+      return;
+    }
+
+    const focusedRequest =
+      requests.find(
+        (request) =>
+          request.id ===
+          focusedRequestId,
+      );
+
+    if (!focusedRequest) {
+      return;
+    }
+
+    const focusedGroupKey =
+      getGroupKey(
+        focusedRequest,
+      );
+
+    setExpandedGroupKeys(
+      (current) =>
+        current.includes(
+          focusedGroupKey,
+        )
+          ? current
+          : [
+              ...current,
+              focusedGroupKey,
+            ],
+    );
+  }, [
+    focusedRequestId,
+    requests,
+  ]);
 
   function openFilterModal() {
     setDraftStatusFilters(statusFilters);
@@ -150,7 +229,9 @@ export function useLeaveRequestFilters(requests: LeaveRequest[]) {
     groupedRequests,
     showFilterModal,
     statusCounts,
-    visibleRequests,
+    visibleRequests:
+
+      focusedVisibleRequests,
     applyFilter,
     closeFilterModal,
     openFilterModal,

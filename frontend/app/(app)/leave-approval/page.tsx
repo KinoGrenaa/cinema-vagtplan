@@ -1,7 +1,21 @@
 "use client";
 
+import {
+  useCallback,
+  useEffect,
+} from "react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+
 import AdminGuard from "@/app/components/access/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
+import LeaveRequestTargetNotice from "@/app/components/leave/LeaveRequestTargetNotice";
+import {
+  parseLeaveRequestTarget,
+} from "@/app/helpers/leaveRequestTarget";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 
 import LeaveApprovalHeader from "./components/layout/LeaveApprovalHeader";
@@ -13,6 +27,19 @@ import { useLeaveApprovalData } from "./hooks/data/useLeaveApprovalData";
 import { useLeaveApprovalFilters } from "./hooks/filters/useLeaveApprovalFilters";
 
 export default function LeaveApprovalPage() {
+  const pathname =
+    usePathname();
+  const router =
+    useRouter();
+  const searchParams =
+    useSearchParams();
+  const requestTarget =
+    parseLeaveRequestTarget(
+      searchParams.get(
+        "requestId",
+      ),
+    );
+
   const infoDialog = useInfoModal();
 
   const {
@@ -50,7 +77,94 @@ export default function LeaveApprovalPage() {
     toggleDateGroup,
   } = useLeaveApprovalFilters(
     requests,
+    requestTarget.requestId,
   );
+
+  const targetState =
+    requestTarget.invalid
+      ? "invalid"
+      : !requestTarget.requestId
+        ? "idle"
+        : loading
+          ? "loading"
+          : requests.some(
+                (request) =>
+                  request.id ===
+                  requestTarget.requestId,
+              )
+            ? "found"
+            : "missing";
+
+  const clearRequestTarget =
+    useCallback(() => {
+      const params =
+        new URLSearchParams(
+          searchParams.toString(),
+        );
+
+      params.delete(
+        "requestId",
+      );
+
+      const query =
+        params.toString();
+
+      router.replace(
+        query
+          ? `${pathname}?${query}`
+          : pathname,
+        {
+          scroll: false,
+        },
+      );
+    }, [
+      pathname,
+      router,
+      searchParams,
+    ]);
+
+  useEffect(() => {
+    if (
+      targetState !== "found" ||
+      !requestTarget.requestId
+    ) {
+      return;
+    }
+
+    const timeoutId =
+      window.setTimeout(() => {
+        const element =
+          document.getElementById(
+            `leave-approval-request-${requestTarget.requestId}`,
+          );
+
+        if (!element) {
+          return;
+        }
+
+        element.focus({
+          preventScroll: true,
+        });
+        element.scrollIntoView({
+          behavior: window
+            .matchMedia(
+              "(prefers-reduced-motion: reduce)",
+            )
+            .matches
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
+      }, 100);
+
+    return () =>
+      window.clearTimeout(
+        timeoutId,
+      );
+  }, [
+    requestTarget.requestId,
+    targetState,
+  ]);
 
   return (
     <AdminGuard>
@@ -80,6 +194,17 @@ export default function LeaveApprovalPage() {
             }
             onResetFilter={
               resetFilter
+            }
+          />
+
+          <LeaveRequestTargetNotice
+            state={targetState}
+            requestId={
+              requestTarget.requestId
+            }
+            audience="manager"
+            onClear={
+              clearRequestTarget
             }
           />
 
@@ -118,6 +243,9 @@ export default function LeaveApprovalPage() {
             !loading && (
               <LeaveApprovalRequestsSection
                 requests={requests}
+                focusedRequestId={
+                  requestTarget.requestId
+                }
                 visibleRequests={
                   visibleRequests
                 }

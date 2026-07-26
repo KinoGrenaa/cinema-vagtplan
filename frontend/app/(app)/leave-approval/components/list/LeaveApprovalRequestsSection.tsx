@@ -12,6 +12,8 @@ import LeaveApprovalRequestCard from "./LeaveApprovalRequestCard";
 
 type LeaveApprovalRequestsSectionProps = {
   requests: LeaveRequest[];
+  focusedRequestId:
+    number | null;
   visibleRequests: LeaveRequest[];
   groupedRequests:
     GroupedLeaveRequests[];
@@ -128,6 +130,7 @@ const groupButtonClass =
 
 export default function LeaveApprovalRequestsSection({
   requests,
+  focusedRequestId,
   visibleRequests,
   groupedRequests,
   statusFilterSummary,
@@ -350,6 +353,9 @@ export default function LeaveApprovalRequestsSection({
                                         }
                                         request={
                                           request
+                                        }
+                                        focusedRequestId={
+                                          focusedRequestId
                                         }
                                         onUpdateStatus={
                                           onUpdateStatus

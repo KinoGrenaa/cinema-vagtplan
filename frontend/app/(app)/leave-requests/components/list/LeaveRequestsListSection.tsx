@@ -1,3 +1,9 @@
+"use client";
+
+import {
+  useEffect,
+} from "react";
+
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import {
@@ -17,6 +23,8 @@ type LeaveRequestGroup = {
 
 type LeaveRequestsListSectionProps = {
   currentUserId: number | null;
+  focusedRequestId:
+    number | null;
   expandedGroupKeys: string[];
   filterSummary: string;
   groupedRequests: LeaveRequestGroup[];
@@ -28,6 +36,7 @@ type LeaveRequestsListSectionProps = {
 
 export default function LeaveRequestsListSection({
   currentUserId,
+  focusedRequestId,
   expandedGroupKeys,
   filterSummary,
   groupedRequests,
@@ -36,6 +45,43 @@ export default function LeaveRequestsListSection({
   onSelectCancelRequest,
   onToggleGroup,
 }: LeaveRequestsListSectionProps) {
+  useEffect(() => {
+    if (!focusedRequestId) {
+      return;
+    }
+
+    const timeoutId =
+      window.setTimeout(() => {
+        const element =
+          document.getElementById(
+            `leave-request-${focusedRequestId}`,
+          );
+
+        if (!element) {
+          return;
+        }
+
+        element.focus({
+          preventScroll: true,
+        });
+        element.scrollIntoView({
+          behavior: window
+            .matchMedia(
+              "(prefers-reduced-motion: reduce)",
+            )
+            .matches
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
+      }, 100);
+
+    return () =>
+      window.clearTimeout(
+        timeoutId,
+      );
+  }, [focusedRequestId]);
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -108,7 +154,20 @@ export default function LeaveRequestsListSection({
                     {group.requests.map((request) => (
                       <article
                         key={request.id}
-                        className="rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100"
+                        id={`leave-request-${request.id}`}
+                        tabIndex={-1}
+                        aria-label={
+                          request.id ===
+                          focusedRequestId
+                            ? "Fremhævet fraværsansøgning"
+                            : undefined
+                        }
+                        className={`rounded-2xl border bg-white p-4 text-gray-900 shadow-sm outline-none transition-colors dark:bg-gray-900 dark:text-gray-100 ${
+                          request.id ===
+                          focusedRequestId
+                            ? "border-blue-500 ring-4 ring-blue-500/60 ring-offset-4 ring-offset-gray-50 dark:border-blue-400 dark:ring-blue-400/60 dark:ring-offset-gray-950"
+                            : "border-gray-200 dark:border-gray-800"
+                        }`}
                       >
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div>
@@ -123,6 +182,12 @@ export default function LeaveRequestsListSection({
                               >
                                 {getStatusDescription(request.status)}
                               </span>
+                              {request.id ===
+                                focusedRequestId && (
+                                <span className="inline-flex rounded-full bg-blue-700 px-3 py-1 text-xs font-semibold text-white dark:bg-blue-500">
+                                  Fra notifikation
+                                </span>
+                              )}
                             </div>
                             {request.status === "EXPIRED" && (
                               <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">

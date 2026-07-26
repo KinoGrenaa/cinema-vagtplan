@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { formatDateDK } from "@/app/utils/dateTime";
 
@@ -21,7 +25,11 @@ import type {
 } from "../../helpers/core/leaveApprovalTypes";
 import { DEFAULT_STATUS_FILTERS } from "../../helpers/core/leaveApprovalTypes";
 
-export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
+export function useLeaveApprovalFilters(
+  requests: LeaveRequest[],
+  focusedRequestId?:
+    number | null,
+) {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [statusFilters, setStatusFilters] = useState(DEFAULT_STATUS_FILTERS);
   const [draftStatusFilters, setDraftStatusFilters] = useState(
@@ -64,10 +72,44 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
     );
   }, [dateFilteredRequests, statusFilters]);
 
+  const focusedVisibleRequests =
+    useMemo(() => {
+      if (!focusedRequestId) {
+        return visibleRequests;
+      }
+
+      const focusedRequest =
+        requests.find(
+          (request) =>
+            request.id ===
+            focusedRequestId,
+        );
+
+      if (
+        !focusedRequest ||
+        visibleRequests.some(
+          (request) =>
+            request.id ===
+            focusedRequestId,
+        )
+      ) {
+        return visibleRequests;
+      }
+
+      return [
+        focusedRequest,
+        ...visibleRequests,
+      ];
+    }, [
+      focusedRequestId,
+      requests,
+      visibleRequests,
+    ]);
+
   const groupedRequests = useMemo(() => {
     const groups = new Map<number, LeaveRequest[]>();
 
-    for (const request of visibleRequests) {
+    for (const request of focusedVisibleRequests) {
       const existing = groups.get(request.user.id) || [];
       groups.set(request.user.id, [...existing, request]);
     }
@@ -107,7 +149,7 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
         };
       })
       .sort((a, b) => a.userName.localeCompare(b.userName, "da-DK"));
-  }, [visibleRequests]);
+  }, [focusedVisibleRequests]);
 
   const activeFilterCount = useMemo(() => {
     return getActiveFilterCount(statusFilters, startDateFilter, endDateFilter);
@@ -146,6 +188,60 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
 
     return "Alle datoer";
   }, [endDateFilter, startDateFilter]);
+
+  useEffect(() => {
+    if (!focusedRequestId) {
+      return;
+    }
+
+    const focusedRequest =
+      requests.find(
+        (request) =>
+          request.id ===
+          focusedRequestId,
+      );
+
+    if (!focusedRequest) {
+      return;
+    }
+
+    setExpandedUserIds(
+      (current) =>
+        current.includes(
+          focusedRequest.user.id,
+        )
+          ? current
+          : [
+              ...current,
+              focusedRequest.user.id,
+            ],
+    );
+
+    const focusedDateGroup =
+      getLeaveDateGroupMeta(
+        focusedRequest,
+      );
+    const expansionKey =
+      makeDateGroupExpansionKey(
+        focusedRequest.user.id,
+        focusedDateGroup.key,
+      );
+
+    setExpandedDateGroupKeys(
+      (current) =>
+        current.includes(
+          expansionKey,
+        )
+          ? current
+          : [
+              ...current,
+              expansionKey,
+            ],
+    );
+  }, [
+    focusedRequestId,
+    requests,
+  ]);
 
   function openFilterModal() {
     setDraftStatusFilters(statusFilters);
@@ -228,7 +324,9 @@ export function useLeaveApprovalFilters(requests: LeaveRequest[]) {
     setDraftEndDateFilter,
     expandedUserIds,
     expandedDateGroupKeys,
-    visibleRequests,
+    visibleRequests:
+
+      focusedVisibleRequests,
     groupedRequests,
     dateRangeStatusCounts,
     activeFilterCount,
