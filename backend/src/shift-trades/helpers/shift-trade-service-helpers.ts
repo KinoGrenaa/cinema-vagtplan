@@ -7,17 +7,42 @@ export type AuthUser = {
   cinemaId?: number | null;
 };
 
+export const shiftTradeParticipantSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+} as const;
+
 export const shiftTradeInclude = {
   shift: {
-    include: {
-      user: true,
-      workType: true,
+    select: {
+      id: true,
+      startTime: true,
+      endTime: true,
+      userId: true,
+      user: {
+        select: shiftTradeParticipantSelect,
+      },
+      workType: {
+        select: {
+          name: true,
+          color: true,
+        },
+      },
     },
   },
-  offeredByUser: true,
-  targetUser: true,
-  acceptedByUser: true,
-  rejectedByUser: true,
+  offeredByUser: {
+    select: shiftTradeParticipantSelect,
+  },
+  targetUser: {
+    select: shiftTradeParticipantSelect,
+  },
+  acceptedByUser: {
+    select: shiftTradeParticipantSelect,
+  },
+  rejectedByUser: {
+    select: shiftTradeParticipantSelect,
+  },
 } as const;
 
 function getPositiveId(
@@ -25,7 +50,6 @@ function getPositiveId(
   errorMessage: string,
 ) {
   const parsed = Number(value);
-
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new BadRequestException(errorMessage);
   }
@@ -48,7 +72,6 @@ export function resolveShiftTradeCinemaId(
     user?.cinemaId,
     'Brugeren er ikke tilknyttet en biograf.',
   );
-
   if (
     selectedCinemaId !== undefined &&
     selectedCinemaId !== null &&
