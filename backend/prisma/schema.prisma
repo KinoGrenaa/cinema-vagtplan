@@ -565,6 +565,9 @@ model Shift {
   trades           ShiftTrade[]
   timeEntries      TimeEntry[]
   staffingRequests StaffingRequest[]
+
+  @@index([cinemaId, startTime, id])
+  @@index([cinemaId, userId, startTime, endTime])
 }
 
 model MovieShowing {
@@ -593,6 +596,8 @@ model LeaveRequest {
   user            User        @relation(fields: [userId], references: [id])
   createdByUserId Int
   createdByUser   User        @relation("LeaveRequestCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([cinemaId, userId, status, startDate, endDate])
 }
 
 model ShiftTrade {
@@ -613,6 +618,11 @@ model ShiftTrade {
   cinemaId         Int
   cinema           Cinema           @relation(fields: [cinemaId], references: [id])
   type             ShiftTradeType   @default(POOL)
+
+  @@index([cinemaId, status, type, id])
+  @@index([cinemaId, status, offeredByUserId, id])
+  @@index([cinemaId, status, acceptedByUserId, id])
+  @@index([cinemaId, status, targetUserId, id])
 }
 
 model Message {
