@@ -16,14 +16,12 @@ import {
   getPayrollReferenceDateFilters,
   getPeriodDates,
 } from './payroll-periods';
-
 const unresolvedTimeEntryStatuses = [
   'PENDING',
   'NEEDS_CHANGES',
 ] as const;
 
 type PayrollResolutionOperation = 'EXPORT' | 'LOCK';
-
 export async function ensurePayrollEntriesApproved(
   prisma: PrismaService,
   user: PayrollAuthUser,
@@ -49,11 +47,15 @@ export async function ensurePayrollEntriesApproved(
         in: [...unresolvedTimeEntryStatuses],
       },
     },
-    include: {
-      user: true,
+    select: {
+      user: {
+        select: {
+          firstName: true,
+          lastName: true,
+        },
+      },
     },
   });
-
   if (unresolvedEntries.length > 0) {
     const names = unresolvedEntries
       .map(
@@ -69,7 +71,6 @@ export async function ensurePayrollEntriesApproved(
       operation === 'LOCK'
         ? 'låse lønperioden'
         : 'eksportere';
-
     throw new BadRequestException(
       `Kan ikke ${action}.
 Der findes ${unresolvedEntries.length} tidsregistreringer, som stadig er åbne, afventer godkendelse eller er sendt retur til rettelse: ${names}`,
@@ -89,7 +90,6 @@ export async function markPayrollPeriodAsExported(
   if (userId) {
     return;
   }
-
   if (!lockSnapshot) {
     throw new BadRequestException(
       'Lås lønperioden, før den eksporteres.',
@@ -106,7 +106,6 @@ export async function markPayrollPeriodAsExported(
     selectedCinemaId,
   ).cinemaId;
   const now = new Date();
-
   return prisma.$transaction(async (tx) => {
     const existingPeriod = await tx.payrollPeriod.findUnique({
       where: {
@@ -118,7 +117,6 @@ export async function markPayrollPeriodAsExported(
       existingPeriod,
       lockSnapshot,
     );
-
     const period = await tx.payrollPeriod.update({
       where: {
         id: existingPeriod!.id,
@@ -132,7 +130,6 @@ export async function markPayrollPeriodAsExported(
         unlockNote: null,
       },
     });
-
     const defaultPayrollType =
       await tx.payrollType.findFirst({
         where: {
@@ -166,13 +163,11 @@ export async function markPayrollPeriodAsExported(
         },
       },
     });
-
     for (const entry of entries) {
       const payrollType =
         entry.payrollType ||
         entry.shift?.workType?.payrollType ||
         defaultPayrollType;
-
       await tx.timeEntry.update({
         where: {
           id: entry.id,
@@ -187,7 +182,6 @@ export async function markPayrollPeriodAsExported(
         },
       });
     }
-
     await includePendingPayrollAdjustmentsInPeriod(tx, {
       cinemaId,
       payrollPeriodId: period.id,
