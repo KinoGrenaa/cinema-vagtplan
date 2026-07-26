@@ -15,7 +15,6 @@ import {
 import {
   useConfirm,
 } from "@/app/hooks/useConfirm";
-
 import {
   useMessages,
 } from "../../../../hooks/useMessages";
@@ -37,7 +36,6 @@ export function useInboxMessagesPage() {
     useRouter();
   const searchParams =
     useSearchParams();
-
   const [
     expandedMessageId,
     setExpandedMessageId,
@@ -100,11 +98,16 @@ export function useInboxMessagesPage() {
 
   const {
     loading,
+    loadingMore,
+    hasMore,
     sortedMessages,
+    loadMore,
     markAsRead,
     archive,
   } = useMessages({
     mode: "inbox",
+    targetMessageId:
+      messageTarget.messageId,
     onError:
       handleMessagesError,
   });
@@ -315,12 +318,15 @@ export function useInboxMessagesPage() {
   return {
     confirmDialog,
     loading,
+    loadingMore,
+    hasMore,
     sortedMessages,
     expandedMessageId,
     focusedMessageId:
       messageTarget.messageId,
     targetState,
     errorDialog,
+    loadMore,
     handleOpenMessage,
     handleArchive,
     clearMessageTarget,

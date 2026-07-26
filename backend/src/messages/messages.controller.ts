@@ -9,25 +9,34 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtGuard } from '../auth/jwt/jwt.guard';
+
+import {
+  JwtGuard,
+} from '../auth/jwt/jwt.guard';
 import {
   parseOptionalPositiveIntegerQuery,
   parseRequiredPositiveInteger,
 } from '../common/query-validation';
-import { CreateMessageDto } from './dto/create-message.dto';
-import { MessagesService } from './messages.service';
+import {
+  CreateMessageDto,
+} from './dto/create-message.dto';
+import {
+  MessagesService,
+} from './messages.service';
 
 @Controller('messages')
 export class MessagesController {
   constructor(
-    private readonly messagesService: MessagesService,
+    private readonly messagesService:
+      MessagesService,
   ) {}
 
   @UseGuards(JwtGuard)
   @Get('unread-count')
   getUnreadCount(
     @Req() req: any,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.getUnreadCount(
       req.user,
@@ -39,10 +48,50 @@ export class MessagesController {
   }
 
   @UseGuards(JwtGuard)
+  @Get('page')
+  getInboxPage(
+    @Req() req: any,
+    @Query('cinemaId')
+    cinemaId?: string,
+    @Query('limit')
+    limit?: string,
+    @Query('beforeId')
+    beforeId?: string,
+    @Query('targetId')
+    targetId?: string,
+  ) {
+    return this.messagesService.findInboxPageForUser(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+      {
+        limit:
+          parseOptionalPositiveIntegerQuery(
+            limit,
+            'Antal beskeder skal være et gyldigt tal',
+          ),
+        beforeId:
+          parseOptionalPositiveIntegerQuery(
+            beforeId,
+            'Beskedcursor skal være et gyldigt ID',
+          ),
+        targetId:
+          parseOptionalPositiveIntegerQuery(
+            targetId,
+            'Målbesked skal være et gyldigt ID',
+          ),
+      },
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Get('archive')
   getArchivedMessages(
     @Req() req: any,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.findArchivedForUser(
       req.user,
@@ -57,7 +106,8 @@ export class MessagesController {
   @Get('sent')
   getSentMessages(
     @Req() req: any,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.findSentForUser(
       req.user,
@@ -72,7 +122,8 @@ export class MessagesController {
   @Get()
   getMessages(
     @Req() req: any,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.findAllForUser(
       req.user,
@@ -87,8 +138,10 @@ export class MessagesController {
   @Post()
   createMessage(
     @Req() req: any,
-    @Body() body: CreateMessageDto,
-    @Query('cinemaId') cinemaId?: string,
+    @Body()
+    body: CreateMessageDto,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.create(
       req.user,
@@ -104,8 +157,10 @@ export class MessagesController {
   @Patch(':id/read')
   markAsRead(
     @Req() req: any,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
+    @Param('id')
+    id: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.markAsRead(
       parseRequiredPositiveInteger(
@@ -124,8 +179,10 @@ export class MessagesController {
   @Patch(':id/archive')
   archiveMessage(
     @Req() req: any,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
+    @Param('id')
+    id: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.archiveMessage(
       parseRequiredPositiveInteger(
@@ -144,8 +201,10 @@ export class MessagesController {
   @Patch(':id/unarchive')
   unarchiveMessage(
     @Req() req: any,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
+    @Param('id')
+    id: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.unarchiveMessage(
       parseRequiredPositiveInteger(
@@ -164,8 +223,10 @@ export class MessagesController {
   @Patch(':id/recall')
   recallMessage(
     @Req() req: any,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
+    @Param('id')
+    id: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.messagesService.recallMessage(
       parseRequiredPositiveInteger(

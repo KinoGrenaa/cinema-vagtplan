@@ -1,7 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+} from '@nestjs/common';
 
-import { PrismaService } from '../prisma/prisma.service';
-import { RealtimeGateway } from '../realtime/realtime.gateway';
+import {
+  PrismaService,
+} from '../prisma/prisma.service';
+import {
+  RealtimeGateway,
+} from '../realtime/realtime.gateway';
+import {
+  CreateMessageDto,
+} from './dto/create-message.dto';
 import {
   createMessage,
 } from './helpers/message-create-flow';
@@ -10,7 +19,11 @@ import {
   resolveMessageActorContext,
 } from './helpers/message-cinema-access';
 import {
+  type InboxMessagePageOptions,
+} from './helpers/message-page';
+import {
   findArchivedMessagesForUser,
+  findInboxMessagePageForUser,
   findMessagesForUser,
   findSentMessagesForUser,
   getUnreadMessageCount,
@@ -21,34 +34,39 @@ import {
   recallMessageForUser,
   unarchiveMessageForUser,
 } from './helpers/message-status-flow';
-import { CreateMessageDto } from './dto/create-message.dto';
 
 @Injectable()
 export class MessagesService {
   constructor(
     private prisma: PrismaService,
-    private realtime: RealtimeGateway,
+    private realtime:
+      RealtimeGateway,
   ) {}
 
   async create(
     actor: MessageActor,
     data: CreateMessageDto,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return createMessage(
       this.prisma,
       this.realtime,
       {
         ...data,
-        cinemaId: context.cinemaId,
-        senderId: context.userId,
-        senderRole: context.role,
+        cinemaId:
+          context.cinemaId,
+        senderId:
+          context.userId,
+        senderRole:
+          context.role,
         senderCanSendBroadcastMessages:
           context.canSendBroadcastMessages,
       },
@@ -57,13 +75,15 @@ export class MessagesService {
 
   async findAllForUser(
     actor: MessageActor,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return findMessagesForUser(
       this.prisma,
@@ -72,15 +92,39 @@ export class MessagesService {
     );
   }
 
+  async findInboxPageForUser(
+    actor: MessageActor,
+    selectedCinemaId?:
+      number | null,
+    options:
+      InboxMessagePageOptions = {},
+  ) {
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
+
+    return findInboxMessagePageForUser(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
+      options,
+    );
+  }
+
   async findSentForUser(
     actor: MessageActor,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return findSentMessagesForUser(
       this.prisma,
@@ -91,13 +135,15 @@ export class MessagesService {
 
   async findArchivedForUser(
     actor: MessageActor,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return findArchivedMessagesForUser(
       this.prisma,
@@ -109,13 +155,15 @@ export class MessagesService {
   async markAsRead(
     id: number,
     actor: MessageActor,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return markMessageAsRead(
       this.prisma,
@@ -128,13 +176,15 @@ export class MessagesService {
 
   async getUnreadCount(
     actor: MessageActor,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return getUnreadMessageCount(
       this.prisma,
@@ -146,13 +196,15 @@ export class MessagesService {
   async archiveMessage(
     id: number,
     actor: MessageActor,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return archiveMessageForUser(
       this.prisma,
@@ -166,13 +218,15 @@ export class MessagesService {
   async unarchiveMessage(
     id: number,
     actor: MessageActor,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return unarchiveMessageForUser(
       this.prisma,
@@ -186,13 +240,15 @@ export class MessagesService {
   async recallMessage(
     id: number,
     actor: MessageActor,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const context = await resolveMessageActorContext(
-      this.prisma,
-      actor,
-      selectedCinemaId,
-    );
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
 
     return recallMessageForUser(
       this.prisma,

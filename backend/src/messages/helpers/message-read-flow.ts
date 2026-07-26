@@ -1,5 +1,16 @@
-import { PrismaService } from '../../prisma/prisma.service';
-import { messageInclude } from './message-shared';
+import {
+  PrismaService,
+} from '../../prisma/prisma.service';
+import {
+  buildInboxMessageTargetWhere,
+  buildInboxMessageWhere,
+  buildMessagePage,
+  type InboxMessagePageOptions,
+  normalizeMessagePageLimit,
+} from './message-page';
+import {
+  messageInclude,
+} from './message-shared';
 
 export async function findMessagesForUser(
   prisma: PrismaService,
@@ -11,13 +22,70 @@ export async function findMessagesForUser(
       cinemaId,
       archivedAt: null,
       recalledAt: null,
-      OR: [{ receiverId: userId }, { isBroadcast: true }],
+      OR: [
+        {
+          receiverId: userId,
+        },
+        {
+          isBroadcast: true,
+        },
+      ],
     },
     include: messageInclude,
     orderBy: {
       createdAt: 'desc',
     },
   });
+}
+
+export async function findInboxMessagePageForUser(
+  prisma: PrismaService,
+  userId: number,
+  cinemaId: number,
+  options:
+    InboxMessagePageOptions = {},
+) {
+  const limit =
+    normalizeMessagePageLimit(
+      options.limit,
+    );
+
+  const [
+    rows,
+    target,
+  ] = await Promise.all([
+    prisma.message.findMany({
+      where:
+        buildInboxMessageWhere(
+          userId,
+          cinemaId,
+          options.beforeId,
+        ),
+      include: messageInclude,
+      orderBy: {
+        id: 'desc',
+      },
+      take: limit + 1,
+    }),
+    options.targetId
+      ? prisma.message.findFirst({
+          where:
+            buildInboxMessageTargetWhere(
+              userId,
+              cinemaId,
+              options.targetId,
+            ),
+          include:
+            messageInclude,
+        })
+      : Promise.resolve(null),
+  ]);
+
+  return buildMessagePage(
+    rows,
+    limit,
+    target,
+  );
 }
 
 export async function findSentMessagesForUser(
@@ -50,7 +118,17 @@ export async function findArchivedMessagesForUser(
         not: null,
       },
       recalledAt: null,
-      OR: [{ receiverId: userId }, { isBroadcast: true }, { senderId: userId }],
+      OR: [
+        {
+          receiverId: userId,
+        },
+        {
+          isBroadcast: true,
+        },
+        {
+          senderId: userId,
+        },
+      ],
     },
     include: messageInclude,
     orderBy: {
@@ -69,8 +147,19 @@ export async function getUnreadMessageCount(
       isRead: false,
       archivedAt: null,
       recalledAt: null,
-      ...(cinemaId ? { cinemaId } : {}),
-      OR: [{ receiverId: userId }, { isBroadcast: true }],
+      ...(cinemaId
+        ? {
+            cinemaId,
+          }
+        : {}),
+      OR: [
+        {
+          receiverId: userId,
+        },
+        {
+          isBroadcast: true,
+        },
+      ],
     },
   });
 }
