@@ -1,4 +1,6 @@
 import {
+  buildArchivedMessagePage,
+  buildArchivedMessageWhere,
   buildInboxMessageTargetWhere,
   buildInboxMessageWhere,
   buildMessagePage,
@@ -76,6 +78,54 @@ describe(
       });
     });
 
+    it('bygger adgangsfilter til sendte arkivbeskeder', () => {
+      expect(
+        buildArchivedMessageWhere(
+          9,
+          7,
+          'sent',
+          50,
+        ),
+      ).toEqual({
+        cinemaId: 7,
+        archivedAt: {
+          not: null,
+        },
+        recalledAt: null,
+        senderId: 9,
+        id: {
+          lt: 50,
+        },
+      });
+    });
+
+    it('udelukker egne udsendelser fra modtagne arkivbeskeder', () => {
+      expect(
+        buildArchivedMessageWhere(
+          9,
+          7,
+          'received',
+        ),
+      ).toEqual({
+        cinemaId: 7,
+        archivedAt: {
+          not: null,
+        },
+        recalledAt: null,
+        senderId: {
+          not: 9,
+        },
+        OR: [
+          {
+            receiverId: 9,
+          },
+          {
+            isBroadcast: true,
+          },
+        ],
+      });
+    });
+
     it('bygger side og bevarer en målrettet gammel besked', () => {
       expect(
         buildMessagePage(
@@ -109,6 +159,44 @@ describe(
         },
         hasMore: true,
         nextBeforeId: 11,
+      });
+    });
+
+    it('bygger arkivside med samlede fanetællere', () => {
+      expect(
+        buildArchivedMessagePage(
+          [
+            {
+              id: 12,
+            },
+            {
+              id: 11,
+            },
+            {
+              id: 10,
+            },
+          ],
+          2,
+          {
+            received: 8,
+            sent: 4,
+          },
+        ),
+      ).toEqual({
+        items: [
+          {
+            id: 12,
+          },
+          {
+            id: 11,
+          },
+        ],
+        hasMore: true,
+        nextBeforeId: 11,
+        counts: {
+          received: 8,
+          sent: 4,
+        },
       });
     });
   },

@@ -21,6 +21,27 @@ export type InboxMessagePage = {
     number | null;
 };
 
+export type ArchiveSection =
+  | "received"
+  | "sent";
+
+export type ArchivedMessage =
+  Message & {
+    archivedAt?:
+      string | null;
+  };
+
+export type ArchivedMessagePage = {
+  items: ArchivedMessage[];
+  hasMore: boolean;
+  nextBeforeId:
+    number | null;
+  counts: {
+    received: number;
+    sent: number;
+  };
+};
+
 async function readErrorMessage(
   response: Response,
   fallback: string,
@@ -73,8 +94,12 @@ async function safeJson<T>(
   }
 }
 
-function sortMessages(
-  messages: Message[],
+function sortMessages<
+  T extends {
+    createdAt: string;
+  },
+>(
+  messages: T[],
 ) {
   return [
     ...messages,
@@ -174,6 +199,102 @@ export async function fetchInboxMessagePage(
       )
         ? data.nextBeforeId
         : null,
+  };
+}
+
+export async function fetchArchivedMessagePage(
+  section:
+    ArchiveSection,
+  options: {
+    limit?: number;
+    beforeId?:
+      number | null;
+  } = {},
+): Promise<ArchivedMessagePage> {
+  const params =
+    new URLSearchParams();
+
+  params.set(
+    "section",
+    section,
+  );
+  params.set(
+    "limit",
+    String(
+      options.limit ?? 50,
+    ),
+  );
+
+  if (options.beforeId) {
+    params.set(
+      "beforeId",
+      String(
+        options.beforeId,
+      ),
+    );
+  }
+
+  const response =
+    await apiFetch(
+      `/messages/archive/page?${params.toString()}`,
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(
+        response,
+        "Kunne ikke hente arkiverede beskeder",
+      ),
+    );
+  }
+
+  const data =
+    await safeJson<ArchivedMessagePage>(
+      response,
+    );
+
+  if (
+    !data ||
+    !Array.isArray(
+      data.items,
+    )
+  ) {
+    return {
+      items: [],
+      hasMore: false,
+      nextBeforeId: null,
+      counts: {
+        received: 0,
+        sent: 0,
+      },
+    };
+  }
+
+  return {
+    items:
+      sortMessages(
+        data.items,
+      ),
+    hasMore:
+      Boolean(data.hasMore),
+    nextBeforeId:
+      Number.isInteger(
+        data.nextBeforeId,
+      )
+        ? data.nextBeforeId
+        : null,
+    counts: {
+      received:
+        Number(
+          data.counts
+            ?.received || 0,
+        ),
+      sent:
+        Number(
+          data.counts
+            ?.sent || 0,
+        ),
+    },
   };
 }
 

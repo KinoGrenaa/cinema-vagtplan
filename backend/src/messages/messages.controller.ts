@@ -87,6 +87,47 @@ export class MessagesController {
   }
 
   @UseGuards(JwtGuard)
+  @Get('archive/page')
+  getArchivedMessagePage(
+    @Req() req: any,
+    @Query('cinemaId')
+    cinemaId?: string,
+    @Query('section')
+    section?: string,
+    @Query('limit')
+    limit?: string,
+    @Query('beforeId')
+    beforeId?: string,
+  ) {
+    const normalizedSection =
+      section === 'sent'
+        ? 'sent'
+        : 'received';
+
+    return this.messagesService.findArchivedPageForUser(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+      {
+        section:
+          normalizedSection,
+        limit:
+          parseOptionalPositiveIntegerQuery(
+            limit,
+            'Antal beskeder skal være et gyldigt tal',
+          ),
+        beforeId:
+          parseOptionalPositiveIntegerQuery(
+            beforeId,
+            'Beskedcursor skal være et gyldigt ID',
+          ),
+      },
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Get('archive')
   getArchivedMessages(
     @Req() req: any,

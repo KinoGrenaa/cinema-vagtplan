@@ -2,9 +2,12 @@ import {
   PrismaService,
 } from '../../prisma/prisma.service';
 import {
+  buildArchivedMessagePage,
+  buildArchivedMessageWhere,
   buildInboxMessageTargetWhere,
   buildInboxMessageWhere,
   buildMessagePage,
+  type ArchivedMessagePageOptions,
   type InboxMessagePageOptions,
   normalizeMessagePageLimit,
 } from './message-page';
@@ -135,6 +138,68 @@ export async function findArchivedMessagesForUser(
       createdAt: 'desc',
     },
   });
+}
+
+export async function findArchivedMessagePageForUser(
+  prisma: PrismaService,
+  userId: number,
+  cinemaId: number,
+  options:
+    ArchivedMessagePageOptions,
+) {
+  const limit =
+    normalizeMessagePageLimit(
+      options.limit,
+    );
+  const receivedWhere =
+    buildArchivedMessageWhere(
+      userId,
+      cinemaId,
+      'received',
+    );
+  const sentWhere =
+    buildArchivedMessageWhere(
+      userId,
+      cinemaId,
+      'sent',
+    );
+
+  const [
+    rows,
+    receivedCount,
+    sentCount,
+  ] = await Promise.all([
+    prisma.message.findMany({
+      where:
+        buildArchivedMessageWhere(
+          userId,
+          cinemaId,
+          options.section,
+          options.beforeId,
+        ),
+      include: messageInclude,
+      orderBy: {
+        id: 'desc',
+      },
+      take: limit + 1,
+    }),
+    prisma.message.count({
+      where: receivedWhere,
+    }),
+    prisma.message.count({
+      where: sentWhere,
+    }),
+  ]);
+
+  return buildArchivedMessagePage(
+    rows,
+    limit,
+    {
+      received:
+        receivedCount,
+      sent: sentCount,
+    },
+  );
 }
 
 export async function getUnreadMessageCount(

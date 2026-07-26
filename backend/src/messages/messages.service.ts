@@ -19,9 +19,11 @@ import {
   resolveMessageActorContext,
 } from './helpers/message-cinema-access';
 import {
+  type ArchivedMessagePageOptions,
   type InboxMessagePageOptions,
 } from './helpers/message-page';
 import {
+  findArchivedMessagePageForUser,
   findArchivedMessagesForUser,
   findInboxMessagePageForUser,
   findMessagesForUser,
@@ -149,6 +151,28 @@ export class MessagesService {
       this.prisma,
       context.userId,
       context.cinemaId,
+    );
+  }
+
+  async findArchivedPageForUser(
+    actor: MessageActor,
+    selectedCinemaId:
+      number | null | undefined,
+    options:
+      ArchivedMessagePageOptions,
+  ) {
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
+
+    return findArchivedMessagePageForUser(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
+      options,
     );
   }
 
