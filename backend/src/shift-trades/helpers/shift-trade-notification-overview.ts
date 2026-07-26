@@ -10,6 +10,9 @@ import {
   shiftTradeInclude,
 } from './shift-trade-service-helpers';
 
+export const SHIFT_TRADE_NOTIFICATION_OVERVIEW_LIMIT =
+  50;
+
 export function buildShiftTradeNotificationWhere(
   userId: number,
   cinemaId: number,
@@ -38,27 +41,61 @@ export function buildShiftTradeNotificationWhere(
   };
 }
 
-export function splitShiftTradeNotificationOverview<
-  T extends {
-    type: ShiftTradeType;
-  },
->(
-  trades: T[],
-) {
-  return {
-    directTrades:
-      trades.filter(
-        (trade) =>
-          trade.type ===
-          ShiftTradeType.DIRECT,
-      ),
-    poolTrades:
-      trades.filter(
-        (trade) =>
-          trade.type ===
-          ShiftTradeType.POOL,
-      ),
+export function buildShiftTradeNotificationCategoryWhere(
+  userId: number,
+  cinemaId: number,
+  now: Date,
+  type: ShiftTradeType,
+): Prisma.ShiftTradeWhereInput {
+  const base = {
+    cinemaId,
+    status: 'OPEN' as const,
+    shift: {
+      startTime: {
+        gt: now,
+      },
+    },
+    type,
   };
+
+  if (type === ShiftTradeType.DIRECT) {
+    return {
+      ...base,
+      targetUserId: userId,
+    };
+  }
+
+  return {
+    ...base,
+    offeredByUserId: {
+      not: userId,
+    },
+  };
+}
+
+export function buildShiftTradeNotificationCounts(
+  groups: Array<{
+    type: ShiftTradeType;
+    _count: {
+      _all: number;
+    };
+  }>,
+) {
+  return groups.reduce(
+    (counts, group) => {
+      if (group.type === ShiftTradeType.DIRECT) {
+        counts.directTotal += group._count._all;
+      } else if (group.type === ShiftTradeType.POOL) {
+        counts.poolTotal += group._count._all;
+      }
+
+      return counts;
+    },
+    {
+      directTotal: 0,
+      poolTotal: 0,
+    },
+  );
 }
 
 export async function findShiftTradeNotificationOverview(
@@ -66,22 +103,72 @@ export async function findShiftTradeNotificationOverview(
   userId: number,
   cinemaId: number,
 ) {
-  const trades =
-    await prisma.shiftTrade.findMany({
+  const now = new Date();
+
+  const [
+    directTrades,
+    poolTrades,
+    countGroups,
+  ] = await Promise.all([
+    prisma.shiftTrade.findMany({
+      where:
+        buildShiftTradeNotificationCategoryWhere(
+          userId,
+          cinemaId,
+          now,
+          ShiftTradeType.DIRECT,
+        ),
+      include: shiftTradeInclude,
+      orderBy: [
+        {
+          createdAt: 'desc',
+        },
+        {
+          id: 'desc',
+        },
+      ],
+      take:
+        SHIFT_TRADE_NOTIFICATION_OVERVIEW_LIMIT,
+    }),
+    prisma.shiftTrade.findMany({
+      where:
+        buildShiftTradeNotificationCategoryWhere(
+          userId,
+          cinemaId,
+          now,
+          ShiftTradeType.POOL,
+        ),
+      include: shiftTradeInclude,
+      orderBy: [
+        {
+          createdAt: 'desc',
+        },
+        {
+          id: 'desc',
+        },
+      ],
+      take:
+        SHIFT_TRADE_NOTIFICATION_OVERVIEW_LIMIT,
+    }),
+    prisma.shiftTrade.groupBy({
+      by: ['type'],
       where:
         buildShiftTradeNotificationWhere(
           userId,
           cinemaId,
-          new Date(),
+          now,
         ),
-      include:
-        shiftTradeInclude,
-      orderBy: {
-        createdAt: 'desc',
+      _count: {
+        _all: true,
       },
-    });
+    }),
+  ]);
 
-  return splitShiftTradeNotificationOverview(
-    trades,
-  );
+  return {
+    directTrades,
+    poolTrades,
+    ...buildShiftTradeNotificationCounts(
+      countGroups,
+    ),
+  };
 }

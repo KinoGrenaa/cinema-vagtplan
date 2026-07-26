@@ -41,10 +41,10 @@ type MessageNotificationOverview = {
 };
 
 type ShiftTradeNotificationOverview = {
-  directTrades:
-    ShiftTrade[];
-  poolTrades:
-    ShiftTrade[];
+  directTrades?: ShiftTrade[];
+  poolTrades?: ShiftTrade[];
+  directTotal?: number;
+  poolTotal?: number;
 };
 
 function getSelectedMasterCinemaId() {
@@ -104,6 +104,53 @@ function getOverviewEndpoint(
   }
 
   return `${path}${cinemaQuery}`;
+}
+
+function normalizeShiftTradeOverview(
+  value: unknown,
+) {
+  const overview =
+    value as
+      | Partial<ShiftTradeNotificationOverview>
+      | null
+      | undefined;
+  const directTrades =
+    Array.isArray(
+      overview?.directTrades,
+    )
+      ? overview.directTrades
+      : [];
+  const poolTrades =
+    Array.isArray(
+      overview?.poolTrades,
+    )
+      ? overview.poolTrades
+      : [];
+  const directTotal =
+    typeof overview?.directTotal ===
+      "number" &&
+    Number.isInteger(
+      overview.directTotal,
+    ) &&
+    overview.directTotal >= 0
+      ? overview.directTotal
+      : directTrades.length;
+  const poolTotal =
+    typeof overview?.poolTotal ===
+      "number" &&
+    Number.isInteger(
+      overview.poolTotal,
+    ) &&
+    overview.poolTotal >= 0
+      ? overview.poolTotal
+      : poolTrades.length;
+
+  return {
+    directTrades,
+    poolTrades,
+    directTotal,
+    poolTotal,
+  };
 }
 
 function normalizeMessageOverview(
@@ -190,6 +237,14 @@ export function useNotificationsExtraData({
   ] =
     useState<ShiftTrade[]>([]);
   const [
+    directTradeCount,
+    setDirectTradeCount,
+  ] = useState(0);
+  const [
+    poolTradeCount,
+    setPoolTradeCount,
+  ] = useState(0);
+  const [
     extraLoading,
     setExtraLoading,
   ] = useState(true);
@@ -204,6 +259,8 @@ export function useNotificationsExtraData({
           setUnreadMessageCount(0);
           setDirectTrades([]);
           setPoolTrades([]);
+          setDirectTradeCount(0);
+          setPoolTradeCount(0);
           setExtraLoading(false);
           return;
         }
@@ -287,6 +344,8 @@ export function useNotificationsExtraData({
                 : Promise.resolve({
                     directTrades: [],
                     poolTrades: [],
+                    directTotal: 0,
+                    poolTotal: 0,
                   }),
             ]);
 
@@ -302,25 +361,20 @@ export function useNotificationsExtraData({
           );
 
           const normalizedTrades =
-            tradesData as
-              Partial<ShiftTradeNotificationOverview>;
+            normalizeShiftTradeOverview(
+              tradesData,
+            );
           setDirectTrades(
-            Array.isArray(
-              normalizedTrades
-                .directTrades,
-            )
-              ? normalizedTrades
-                  .directTrades
-              : [],
+            normalizedTrades.directTrades,
           );
           setPoolTrades(
-            Array.isArray(
-              normalizedTrades
-                .poolTrades,
-            )
-              ? normalizedTrades
-                  .poolTrades
-              : [],
+            normalizedTrades.poolTrades,
+          );
+          setDirectTradeCount(
+            normalizedTrades.directTotal,
+          );
+          setPoolTradeCount(
+            normalizedTrades.poolTotal,
           );
         } catch (error) {
           if (showErrorDialog) {
@@ -337,6 +391,8 @@ export function useNotificationsExtraData({
           setUnreadMessageCount(0);
           setDirectTrades([]);
           setPoolTrades([]);
+          setDirectTradeCount(0);
+          setPoolTradeCount(0);
         } finally {
           setExtraLoading(false);
         }
@@ -405,6 +461,8 @@ export function useNotificationsExtraData({
     unreadMessageCount,
     directTrades,
     poolTrades,
+    directTradeCount,
+    poolTradeCount,
     moduleAccess: {
       messages:
         messagesEnabled,
