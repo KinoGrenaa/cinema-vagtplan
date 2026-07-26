@@ -9,12 +9,16 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtGuard } from '../auth/jwt/jwt.guard';
+import {
+  JwtGuard,
+} from '../auth/jwt/jwt.guard';
 import {
   parseOptionalPositiveIntegerQuery,
   parseRequiredPositiveInteger,
 } from '../common/query-validation';
-import { ShiftTradesService } from './shift-trades.service';
+import {
+  ShiftTradesService,
+} from './shift-trades.service';
 
 function parseOptionalBodyId(
   value: unknown,
@@ -38,7 +42,8 @@ function parseOptionalBodyId(
 @UseGuards(JwtGuard)
 export class ShiftTradesController {
   constructor(
-    private readonly shiftTradesService: ShiftTradesService,
+    private readonly shiftTradesService:
+      ShiftTradesService,
   ) {}
 
   @Get('notification-overview')
@@ -56,10 +61,49 @@ export class ShiftTradesController {
     );
   }
 
+  @Get('page')
+  findPage(
+    @Req() req: any,
+    @Query('cinemaId')
+    cinemaId?: string,
+    @Query('limit')
+    limit?: string,
+    @Query('beforeId')
+    beforeId?: string,
+    @Query('targetId')
+    targetId?: string,
+  ) {
+    return this.shiftTradesService.findPage(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+      {
+        limit:
+          parseOptionalPositiveIntegerQuery(
+            limit,
+            'Antal historikposter skal være et gyldigt tal',
+          ),
+        beforeId:
+          parseOptionalPositiveIntegerQuery(
+            beforeId,
+            'Historikcursor skal være et gyldigt ID',
+          ),
+        targetId:
+          parseOptionalPositiveIntegerQuery(
+            targetId,
+            'Målrettet vagtbytte skal være et gyldigt ID',
+          ),
+      },
+    );
+  }
+
   @Get('pool-count')
   getPoolCount(
     @Req() req: any,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.shiftTradesService.getPoolCount(
       req.user,
@@ -73,7 +117,8 @@ export class ShiftTradesController {
   @Get('direct-count')
   getDirectCount(
     @Req() req: any,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.shiftTradesService.getDirectCount(
       req.user,
@@ -87,7 +132,8 @@ export class ShiftTradesController {
   @Get()
   findAll(
     @Req() req: any,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.shiftTradesService.findAll(
       req.user,
@@ -102,7 +148,8 @@ export class ShiftTradesController {
   create(
     @Req() req: any,
     @Body() body: any,
-    @Query('cinemaId') cinemaId?: string,
+    @Query('cinemaId')
+    cinemaId?: string,
   ) {
     return this.shiftTradesService.create(
       req.user,
@@ -112,12 +159,15 @@ export class ShiftTradesController {
             body?.shiftId,
             'Vagt skal være et gyldigt ID',
           ),
-        type: body?.type,
-        targetUserId: parseOptionalBodyId(
-          body?.targetUserId,
-          'Modtager skal være et gyldigt ID',
-        ),
-        message: body?.message,
+        type:
+          body?.type,
+        targetUserId:
+          parseOptionalBodyId(
+            body?.targetUserId,
+            'Modtager skal være et gyldigt ID',
+          ),
+        message:
+          body?.message,
       },
       parseOptionalPositiveIntegerQuery(
         cinemaId,
@@ -129,7 +179,8 @@ export class ShiftTradesController {
   @Patch(':id/accept')
   acceptTrade(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id')
+    id: string,
   ) {
     return this.shiftTradesService.acceptTrade(
       parseRequiredPositiveInteger(
@@ -143,7 +194,8 @@ export class ShiftTradesController {
   @Patch(':id/reject')
   rejectTrade(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id')
+    id: string,
   ) {
     return this.shiftTradesService.rejectTrade(
       parseRequiredPositiveInteger(
@@ -157,7 +209,8 @@ export class ShiftTradesController {
   @Patch(':id/cancel')
   cancelTrade(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id')
+    id: string,
   ) {
     return this.shiftTradesService.cancelTrade(
       parseRequiredPositiveInteger(

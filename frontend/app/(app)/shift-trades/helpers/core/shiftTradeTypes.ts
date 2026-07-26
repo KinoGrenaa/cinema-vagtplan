@@ -12,16 +12,33 @@ export type ApprovedLeaveConflict = {
 
 export type ShiftTrade = {
   id: number;
-  status: "OPEN" | "ACCEPTED" | "REJECTED" | "CANCELLED";
-  type: "POOL" | "DIRECT";
-  message?: string | null;
-  offeredByUserId: number;
-  acceptedByUserId?: number | null;
-  targetUserId?: number | null;
-  offeredByUser: User;
-  targetUser?: User | null;
-  acceptedByUser?: User | null;
-  approvedLeaveConflict?: ApprovedLeaveConflict | null;
+  status:
+    | "OPEN"
+    | "ACCEPTED"
+    | "REJECTED"
+    | "CANCELLED"
+    | "EXPIRED";
+  type:
+    | "POOL"
+    | "DIRECT";
+  message?:
+    string | null;
+  offeredByUserId:
+    number;
+  acceptedByUserId?:
+    number | null;
+  targetUserId?:
+    number | null;
+  offeredByUser:
+    User;
+  targetUser?:
+    User | null;
+  acceptedByUser?:
+    User | null;
+  approvedLeaveConflict?:
+    ApprovedLeaveConflict | null;
+  hasShiftConflict?:
+    boolean;
   shift: {
     id: number;
     startTime: string;
@@ -30,7 +47,27 @@ export type ShiftTrade = {
     user: User;
     workType: {
       name: string;
-      color?: string | null;
+      color?:
+        string | null;
     };
   };
+};
+
+export type ShiftTradePageResponse = {
+  directTrades:
+    ShiftTrade[];
+  poolTrades:
+    ShiftTrade[];
+  history: {
+    items:
+      ShiftTrade[];
+    hasMore:
+      boolean;
+    nextBeforeId:
+      number | null;
+    totalCount:
+      number;
+  };
+  target:
+    ShiftTrade | null;
 };

@@ -49,22 +49,36 @@ export default function ShiftTradesPage() {
   const searchParams =
     useSearchParams();
   const focusedTradeRef =
-    useRef<number | null>(null);
+    useRef<number | null>(
+      null,
+    );
+  const tradeTarget =
+    parseShiftTradeTarget(
+      searchParams.get(
+        "tradeId",
+      ),
+    );
 
   const {
     user,
     apiFetch,
     loading,
+    loadingMoreHistory,
     message,
     setMessage,
     fetchTrades,
+    loadMoreHistory,
     directTrades,
     poolTrades,
     historyTrades,
+    historyTotalCount,
+    historyHasMore,
     hasShiftConflict,
     needsMasterCinemaSelection,
   } = useShiftTradesData({
     infoDialog,
+    targetTradeId:
+      tradeTarget.tradeId,
   });
 
   const {
@@ -78,13 +92,6 @@ export default function ShiftTradesPage() {
     fetchTrades,
     setMessage,
   });
-
-  const tradeTarget =
-    parseShiftTradeTarget(
-      searchParams.get(
-        "tradeId",
-      ),
-    );
 
   const visibleTradeIds =
     useMemo(
@@ -105,7 +112,6 @@ export default function ShiftTradesPage() {
         poolTrades,
       ],
     );
-
   const targetState:
     ShiftTradeTargetState =
       tradeTarget.invalid
@@ -126,7 +132,8 @@ export default function ShiftTradesPage() {
 
     if (
       !tradeId ||
-      targetState !== "found"
+      targetState !==
+        "found"
     ) {
       focusedTradeRef.current =
         null;
@@ -164,9 +171,10 @@ export default function ShiftTradesPage() {
           ).matches;
 
         element.scrollIntoView({
-          behavior: reduceMotion
-            ? "auto"
-            : "smooth",
+          behavior:
+            reduceMotion
+              ? "auto"
+              : "smooth",
           block: "center",
         });
       }, 100);
@@ -188,7 +196,9 @@ export default function ShiftTradesPage() {
           searchParams.toString(),
         );
 
-      params.delete("tradeId");
+      params.delete(
+        "tradeId",
+      );
 
       const query =
         params.toString();
@@ -228,8 +238,9 @@ export default function ShiftTradesPage() {
                 Henter vagtbytter
               </p>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Vagtpuljen og dine
-                direkte tilbud
+                Vagtpuljen, dine
+                direkte tilbud og
+                den nyeste historik
                 indlæses.
               </p>
             </div>
@@ -326,6 +337,18 @@ export default function ShiftTradesPage() {
           <ShiftTradesHistorySection
             trades={
               historyTrades
+            }
+            totalCount={
+              historyTotalCount
+            }
+            hasMore={
+              historyHasMore
+            }
+            loadingMore={
+              loadingMoreHistory
+            }
+            onLoadMore={
+              loadMoreHistory
             }
             focusedTradeId={
               tradeTarget.tradeId
