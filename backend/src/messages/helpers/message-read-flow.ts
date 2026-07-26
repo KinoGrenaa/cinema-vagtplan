@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import {
   PrismaService,
 } from '../../prisma/prisma.service';
@@ -8,6 +9,7 @@ import {
   buildInboxMessageWhere,
   buildMessagePage,
   buildSentMessageWhere,
+  DEFAULT_MESSAGE_PAGE_SIZE,
   type ArchivedMessagePageOptions,
   type InboxMessagePageOptions,
   type SentMessagePageOptions,
@@ -16,6 +18,16 @@ import {
 import {
   messageInclude,
 } from './message-shared';
+
+const compatibilityMessageOrderBy: Prisma.MessageOrderByWithRelationInput[] =
+  [
+    {
+      createdAt: 'desc',
+    },
+    {
+      id: 'desc',
+    },
+  ];
 
 export async function findMessagesForUser(
   prisma: PrismaService,
@@ -37,9 +49,8 @@ export async function findMessagesForUser(
       ],
     },
     include: messageInclude,
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: compatibilityMessageOrderBy,
+    take: DEFAULT_MESSAGE_PAGE_SIZE,
   });
 }
 
@@ -54,7 +65,6 @@ export async function findInboxMessagePageForUser(
     normalizeMessagePageLimit(
       options.limit,
     );
-
   const [
     rows,
     target,
@@ -105,9 +115,8 @@ export async function findSentMessagesForUser(
       archivedAt: null,
     },
     include: messageInclude,
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: compatibilityMessageOrderBy,
+    take: DEFAULT_MESSAGE_PAGE_SIZE,
   });
 }
 
@@ -122,7 +131,6 @@ export async function findSentMessagePageForUser(
     normalizeMessagePageLimit(
       options.limit,
     );
-
   const rows =
     await prisma.message.findMany({
       where:
@@ -170,9 +178,8 @@ export async function findArchivedMessagesForUser(
       ],
     },
     include: messageInclude,
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: compatibilityMessageOrderBy,
+    take: DEFAULT_MESSAGE_PAGE_SIZE,
   });
 }
 
@@ -199,7 +206,6 @@ export async function findArchivedMessagePageForUser(
       cinemaId,
       'sent',
     );
-
   const [
     rows,
     receivedCount,
