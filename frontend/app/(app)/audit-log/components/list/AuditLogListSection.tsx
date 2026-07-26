@@ -14,6 +14,10 @@ type AuditLogListSectionProps = {
   groupedLogs: AuditLogGroup[];
   expandedDateKeys: string[];
   isMaster: boolean;
+  totalCount: number;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => Promise<unknown>;
   toggleDateGroup: (dateKey: string) => void;
 };
 
@@ -23,6 +27,10 @@ export default function AuditLogListSection({
   groupedLogs,
   expandedDateKeys,
   isMaster,
+  totalCount,
+  hasMore,
+  loadingMore,
+  onLoadMore,
   toggleDateGroup,
 }: AuditLogListSectionProps) {
   return (
@@ -31,7 +39,7 @@ export default function AuditLogListSection({
         aria-live="polite"
         className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:shadow-none"
       >
-        Viser {visibleLogs.length} af {logs.length} handlinger
+        Viser {visibleLogs.length} af {totalCount} handlinger
       </div>
 
       {groupedLogs.map((group) => {
@@ -147,6 +155,25 @@ export default function AuditLogListSection({
           </section>
         );
       })}
+      {hasMore && (
+        <div className="pt-2 text-center">
+          <button
+            type="button"
+            onClick={() =>
+              void onLoadMore()
+            }
+            disabled={
+              loadingMore
+            }
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:active:bg-slate-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-slate-950 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+          >
+            {loadingMore
+              ? "Henter..."
+              : "Hent ældre handlinger"}
+          </button>
+        </div>
+      )}
+
 
       {visibleLogs.length === 0 && (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">

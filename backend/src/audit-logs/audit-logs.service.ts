@@ -1,9 +1,18 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  Injectable,
+} from '@nestjs/common';
+import {
+  PrismaService,
+} from '../prisma/prisma.service';
+
 import {
   getAuditLogAccessWhere,
   type CurrentUser,
 } from './helpers/audit-log-access';
+import {
+  findAuditLogPage,
+  type AuditLogPageOptions,
+} from './helpers/audit-log-page';
 import {
   addSubjectUsers,
   auditLogSelect,
@@ -20,52 +29,105 @@ type AuditLogData = {
 
 @Injectable()
 export class AuditLogsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma:
+      PrismaService,
+  ) {}
 
-  async create(data: AuditLogData) {
+  async create(
+    data: AuditLogData,
+  ) {
     return this.prisma.auditLog.create({
       data: {
-        action: data.action,
-        entityType: data.entityType,
-        entityId: data.entityId,
-        description: data.description,
-        userId: data.userId,
-        cinemaId: data.cinemaId,
+        action:
+          data.action,
+        entityType:
+          data.entityType,
+        entityId:
+          data.entityId,
+        description:
+          data.description,
+        userId:
+          data.userId,
+        cinemaId:
+          data.cinemaId,
       },
     });
   }
 
-  async findAll(currentUser: CurrentUser, selectedCinemaId?: number | null) {
-    const logs = await this.prisma.auditLog.findMany({
-      where: getAuditLogAccessWhere(currentUser, selectedCinemaId),
-      select: auditLogSelect,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 500,
-    });
+  async findPage(
+    currentUser:
+      CurrentUser,
+    selectedCinemaId:
+      number | null | undefined,
+    options:
+      AuditLogPageOptions = {},
+  ) {
+    return findAuditLogPage(
+      this.prisma,
+      currentUser,
+      selectedCinemaId,
+      options,
+    );
+  }
 
-    return addSubjectUsers(this.prisma, logs);
+  async findAll(
+    currentUser:
+      CurrentUser,
+    selectedCinemaId?:
+      number | null,
+  ) {
+    const logs =
+      await this.prisma.auditLog.findMany({
+        where:
+          getAuditLogAccessWhere(
+            currentUser,
+            selectedCinemaId,
+          ),
+        select:
+          auditLogSelect,
+        orderBy: {
+          createdAt:
+            'desc',
+        },
+        take: 500,
+      });
+
+    return addSubjectUsers(
+      this.prisma,
+      logs,
+    );
   }
 
   async findByEntity(
-    currentUser: CurrentUser,
+    currentUser:
+      CurrentUser,
     entityType: string,
     entityId: number,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const logs = await this.prisma.auditLog.findMany({
-      where: {
-        ...getAuditLogAccessWhere(currentUser, selectedCinemaId),
-        entityType,
-        entityId,
-      },
-      select: auditLogSelect,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const logs =
+      await this.prisma.auditLog.findMany({
+        where: {
+          ...getAuditLogAccessWhere(
+            currentUser,
+            selectedCinemaId,
+          ),
+          entityType,
+          entityId,
+        },
+        select:
+          auditLogSelect,
+        orderBy: {
+          createdAt:
+            'desc',
+        },
+      });
 
-    return addSubjectUsers(this.prisma, logs);
+    return addSubjectUsers(
+      this.prisma,
+      logs,
+    );
   }
 }
