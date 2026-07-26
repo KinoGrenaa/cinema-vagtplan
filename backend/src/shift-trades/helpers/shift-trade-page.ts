@@ -12,10 +12,16 @@ import {
   shiftTradeInclude,
 } from './shift-trade-service-helpers';
 
-export const DEFAULT_SHIFT_TRADE_HISTORY_PAGE_SIZE =
+export const DEFAULT_SHIFT_TRADE_PAGE_SIZE =
   50;
-export const MAX_SHIFT_TRADE_HISTORY_PAGE_SIZE =
+export const MAX_SHIFT_TRADE_PAGE_SIZE =
   100;
+
+// Compatibility aliases for existing imports and tests.
+export const DEFAULT_SHIFT_TRADE_HISTORY_PAGE_SIZE =
+  DEFAULT_SHIFT_TRADE_PAGE_SIZE;
+export const MAX_SHIFT_TRADE_HISTORY_PAGE_SIZE =
+  MAX_SHIFT_TRADE_PAGE_SIZE;
 
 export type ShiftTradePageOptions = {
   limit?: number;
@@ -23,28 +29,32 @@ export type ShiftTradePageOptions = {
   targetId?: number;
 };
 
-export function normalizeShiftTradeHistoryPageLimit(
+export type ShiftTradeOpenPageOptions = {
+  type: ShiftTradeType;
+  limit?: number;
+  beforeId?: number;
+};
+
+export function normalizeShiftTradePageLimit(
   value?: number,
 ) {
   if (
     value === undefined ||
-    value === null
-  ) {
-    return DEFAULT_SHIFT_TRADE_HISTORY_PAGE_SIZE;
-  }
-
-  if (
+    value === null ||
     !Number.isInteger(value) ||
     value <= 0
   ) {
-    return DEFAULT_SHIFT_TRADE_HISTORY_PAGE_SIZE;
+    return DEFAULT_SHIFT_TRADE_PAGE_SIZE;
   }
 
   return Math.min(
     value,
-    MAX_SHIFT_TRADE_HISTORY_PAGE_SIZE,
+    MAX_SHIFT_TRADE_PAGE_SIZE,
   );
 }
+
+export const normalizeShiftTradeHistoryPageLimit =
+  normalizeShiftTradePageLimit;
 
 export function buildOpenShiftTradePageWhere(
   userId: number,
@@ -74,6 +84,51 @@ export function buildOpenShiftTradePageWhere(
         },
       },
     ],
+  };
+}
+
+export function buildOpenShiftTradeCategoryWhere(
+  userId: number,
+  cinemaId: number,
+  now: Date,
+  type: ShiftTradeType,
+  beforeId?: number,
+): Prisma.ShiftTradeWhereInput {
+  const base = {
+    cinemaId,
+    status:
+      ShiftTradeStatus.OPEN,
+    type,
+    shift: {
+      startTime: {
+        gt: now,
+      },
+    },
+    ...(beforeId
+      ? {
+          id: {
+            lt: beforeId,
+          },
+        }
+      : {}),
+  };
+
+  if (
+    type ===
+    ShiftTradeType.DIRECT
+  ) {
+    return {
+      ...base,
+      targetUserId:
+        userId,
+    };
+  }
+
+  return {
+    ...base,
+    offeredByUserId: {
+      not: userId,
+    },
   };
 }
 
@@ -170,7 +225,7 @@ export function buildShiftTradeTargetWhere(
   };
 }
 
-export function buildShiftTradeHistoryPage<
+export function buildShiftTradeCursorPage<
   T extends {
     id: number;
   },
@@ -195,6 +250,9 @@ export function buildShiftTradeHistoryPage<
         : null,
   };
 }
+
+export const buildShiftTradeHistoryPage =
+  buildShiftTradeCursorPage;
 
 type ShiftTradeWithShift = {
   id: number;
@@ -322,6 +380,71 @@ async function addOpenTradeConflicts<
   );
 }
 
+export async function findOpenShiftTradePage(
+  prisma: PrismaService,
+  userId: number,
+  cinemaId: number,
+  options: ShiftTradeOpenPageOptions,
+) {
+  const now = new Date();
+  const limit =
+    normalizeShiftTradePageLimit(
+      options.limit,
+    );
+  const where =
+    buildOpenShiftTradeCategoryWhere(
+      userId,
+      cinemaId,
+      now,
+      options.type,
+      options.beforeId,
+    );
+  const totalWhere =
+    buildOpenShiftTradeCategoryWhere(
+      userId,
+      cinemaId,
+      now,
+      options.type,
+    );
+
+  const [
+    rows,
+    totalCount,
+  ] = await Promise.all([
+    prisma.shiftTrade.findMany({
+      where,
+      include:
+        shiftTradeInclude,
+      orderBy: {
+        id: 'desc',
+      },
+      take: limit + 1,
+    }),
+    prisma.shiftTrade.count({
+      where: totalWhere,
+    }),
+  ]);
+
+  const page =
+    buildShiftTradeCursorPage(
+      rows,
+      limit,
+    );
+  const items =
+    await addOpenTradeConflicts(
+      prisma,
+      userId,
+      cinemaId,
+      page.items,
+    );
+
+  return {
+    ...page,
+    items,
+    totalCount,
+  };
+}
+
 export async function findShiftTradePage(
   prisma: PrismaService,
   userId: number,
@@ -331,28 +454,56 @@ export async function findShiftTradePage(
 ) {
   const now = new Date();
   const limit =
-    normalizeShiftTradeHistoryPageLimit(
+    normalizeShiftTradePageLimit(
       options.limit,
+    );
+  const directWhere =
+    buildOpenShiftTradeCategoryWhere(
+      userId,
+      cinemaId,
+      now,
+      ShiftTradeType.DIRECT,
+    );
+  const poolWhere =
+    buildOpenShiftTradeCategoryWhere(
+      userId,
+      cinemaId,
+      now,
+      ShiftTradeType.POOL,
     );
 
   const [
-    openTrades,
+    directRows,
+    poolRows,
+    directTotalCount,
+    poolTotalCount,
     historyRows,
     historyTotalCount,
     target,
   ] = await Promise.all([
     prisma.shiftTrade.findMany({
-      where:
-        buildOpenShiftTradePageWhere(
-          userId,
-          cinemaId,
-          now,
-        ),
+      where: directWhere,
       include:
         shiftTradeInclude,
       orderBy: {
-        createdAt: 'desc',
+        id: 'desc',
       },
+      take: limit + 1,
+    }),
+    prisma.shiftTrade.findMany({
+      where: poolWhere,
+      include:
+        shiftTradeInclude,
+      orderBy: {
+        id: 'desc',
+      },
+      take: limit + 1,
+    }),
+    prisma.shiftTrade.count({
+      where: directWhere,
+    }),
+    prisma.shiftTrade.count({
+      where: poolWhere,
     }),
     prisma.shiftTrade.findMany({
       where:
@@ -390,9 +541,22 @@ export async function findShiftTradePage(
       : Promise.resolve(null),
   ]);
 
+  const directPage =
+    buildShiftTradeCursorPage(
+      directRows,
+      limit,
+    );
+  const poolPage =
+    buildShiftTradeCursorPage(
+      poolRows,
+      limit,
+    );
   const openById =
     new Map(
-      openTrades.map(
+      [
+        ...directPage.items,
+        ...poolPage.items,
+      ].map(
         (trade) => [
           trade.id,
           trade,
@@ -429,21 +593,8 @@ export async function findShiftTradePage(
         ],
       ),
     );
-
-  const directTrades =
-    annotatedOpenTrades.filter(
-      (trade) =>
-        trade.type ===
-        ShiftTradeType.DIRECT,
-    );
-  const poolTrades =
-    annotatedOpenTrades.filter(
-      (trade) =>
-        trade.type ===
-        ShiftTradeType.POOL,
-    );
   const history =
-    buildShiftTradeHistoryPage(
+    buildShiftTradeCursorPage(
       historyRows.map(
         (trade) => ({
           ...trade,
@@ -457,8 +608,36 @@ export async function findShiftTradePage(
     );
 
   return {
-    directTrades,
-    poolTrades,
+    directTrades:
+      directPage.items.map(
+        (trade) =>
+          annotatedOpenById.get(
+            trade.id,
+          ) ?? trade,
+      ),
+    poolTrades:
+      poolPage.items.map(
+        (trade) =>
+          annotatedOpenById.get(
+            trade.id,
+          ) ?? trade,
+      ),
+    directPage: {
+      hasMore:
+        directPage.hasMore,
+      nextBeforeId:
+        directPage.nextBeforeId,
+      totalCount:
+        directTotalCount,
+    },
+    poolPage: {
+      hasMore:
+        poolPage.hasMore,
+      nextBeforeId:
+        poolPage.nextBeforeId,
+      totalCount:
+        poolTotalCount,
+    },
     history: {
       ...history,
       totalCount:

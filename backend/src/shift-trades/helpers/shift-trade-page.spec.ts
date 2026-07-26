@@ -4,12 +4,13 @@ import {
 } from '@prisma/client';
 
 import {
+  buildOpenShiftTradeCategoryWhere,
   buildOpenShiftTradePageWhere,
-  buildShiftTradeHistoryPage,
+  buildShiftTradeCursorPage,
   buildShiftTradeHistoryWhere,
   buildShiftTradeTargetWhere,
-  MAX_SHIFT_TRADE_HISTORY_PAGE_SIZE,
-  normalizeShiftTradeHistoryPageLimit,
+  MAX_SHIFT_TRADE_PAGE_SIZE,
+  normalizeShiftTradePageLimit,
 } from './shift-trade-page';
 
 describe(
@@ -20,17 +21,17 @@ describe(
         '2026-07-26T10:00:00.000Z',
       );
 
-    it('begrænser historikkens sidestørrelse', () => {
+    it('begrænser sidestørrelsen', () => {
       expect(
-        normalizeShiftTradeHistoryPageLimit(
+        normalizeShiftTradePageLimit(
           500,
         ),
       ).toBe(
-        MAX_SHIFT_TRADE_HISTORY_PAGE_SIZE,
+        MAX_SHIFT_TRADE_PAGE_SIZE,
       );
     });
 
-    it('henter kun relevante åbne fremtidige handler', () => {
+    it('bevarer det kombinerede åbne filter', () => {
       expect(
         buildOpenShiftTradePageWhere(
           9,
@@ -60,6 +61,58 @@ describe(
             },
           },
         ],
+      });
+    });
+
+    it('bygger direkte cursorfilter', () => {
+      expect(
+        buildOpenShiftTradeCategoryWhere(
+          9,
+          7,
+          now,
+          ShiftTradeType.DIRECT,
+          51,
+        ),
+      ).toEqual({
+        cinemaId: 7,
+        status:
+          ShiftTradeStatus.OPEN,
+        type:
+          ShiftTradeType.DIRECT,
+        shift: {
+          startTime: {
+            gt: now,
+          },
+        },
+        targetUserId: 9,
+        id: {
+          lt: 51,
+        },
+      });
+    });
+
+    it('bygger puljens cursorfilter', () => {
+      expect(
+        buildOpenShiftTradeCategoryWhere(
+          9,
+          7,
+          now,
+          ShiftTradeType.POOL,
+        ),
+      ).toEqual({
+        cinemaId: 7,
+        status:
+          ShiftTradeStatus.OPEN,
+        type:
+          ShiftTradeType.POOL,
+        shift: {
+          startTime: {
+            gt: now,
+          },
+        },
+        offeredByUserId: {
+          not: 9,
+        },
       });
     });
 
@@ -158,7 +211,7 @@ describe(
 
     it('bygger cursor og næste side', () => {
       expect(
-        buildShiftTradeHistoryPage(
+        buildShiftTradeCursorPage(
           [
             {
               id: 12,

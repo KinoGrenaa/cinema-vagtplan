@@ -17,6 +17,7 @@ import {
 
 import type {
   ShiftTrade,
+  ShiftTradeCursorPage,
   ShiftTradePageResponse,
 } from "../../helpers/core/shiftTradeTypes";
 
@@ -34,6 +35,10 @@ type UseShiftTradesDataArgs = {
   targetTradeId?:
     number | null;
 };
+
+type OpenTradeType =
+  | "DIRECT"
+  | "POOL";
 
 function mergeTrades(
   current:
@@ -64,6 +69,38 @@ function mergeTrades(
       right.id -
       left.id,
   );
+}
+
+function getPageMetadata(
+  value:
+    | Partial<
+        ShiftTradeCursorPage
+      >
+    | null
+    | undefined,
+  fallbackCount: number,
+) {
+  return {
+    totalCount:
+      Number.isInteger(
+        value?.totalCount,
+      )
+        ? Number(
+            value?.totalCount,
+          )
+        : fallbackCount,
+    hasMore:
+      Boolean(
+        value?.hasMore,
+      ),
+    nextBeforeId:
+      Number.isInteger(
+        value?.nextBeforeId,
+      )
+        ? value?.nextBeforeId ??
+          null
+        : null,
+  };
 }
 
 export function useShiftTradesData({
@@ -109,6 +146,39 @@ export function useShiftTradesData({
     useState<ShiftTrade[]>(
       [],
     );
+
+  const [
+    directTotalCount,
+    setDirectTotalCount,
+  ] = useState(0);
+  const [
+    directHasMore,
+    setDirectHasMore,
+  ] = useState(false);
+  const [
+    directNextBeforeId,
+    setDirectNextBeforeId,
+  ] =
+    useState<number | null>(
+      null,
+    );
+
+  const [
+    poolTotalCount,
+    setPoolTotalCount,
+  ] = useState(0);
+  const [
+    poolHasMore,
+    setPoolHasMore,
+  ] = useState(false);
+  const [
+    poolNextBeforeId,
+    setPoolNextBeforeId,
+  ] =
+    useState<number | null>(
+      null,
+    );
+
   const [
     historyTotalCount,
     setHistoryTotalCount,
@@ -124,10 +194,19 @@ export function useShiftTradesData({
     useState<number | null>(
       null,
     );
+
   const [
     loading,
     setLoading,
   ] = useState(true);
+  const [
+    loadingMoreDirect,
+    setLoadingMoreDirect,
+  ] = useState(false);
+  const [
+    loadingMorePool,
+    setLoadingMorePool,
+  ] = useState(false);
   const [
     loadingMoreHistory,
     setLoadingMoreHistory,
@@ -173,6 +252,27 @@ export function useShiftTradesData({
         : null;
     }, [user]);
 
+  const addCinemaQuery =
+    useCallback(
+      (
+        params:
+          URLSearchParams,
+      ) => {
+        const masterCinemaId =
+          getMasterCinemaId();
+
+        if (masterCinemaId) {
+          params.set(
+            "cinemaId",
+            String(
+              masterCinemaId,
+            ),
+          );
+        }
+      },
+      [getMasterCinemaId],
+    );
+
   const buildPageUrl =
     useCallback(
       (options: {
@@ -188,18 +288,9 @@ export function useShiftTradesData({
           "limit",
           "50",
         );
-
-        const masterCinemaId =
-          getMasterCinemaId();
-
-        if (masterCinemaId) {
-          params.set(
-            "cinemaId",
-            String(
-              masterCinemaId,
-            ),
-          );
-        }
+        addCinemaQuery(
+          params,
+        );
 
         if (
           options.beforeId
@@ -227,10 +318,55 @@ export function useShiftTradesData({
         return `/shift-trades/page?${params.toString()}`;
       },
       [
-        getMasterCinemaId,
+        addCinemaQuery,
         targetTradeId,
       ],
     );
+
+  const buildOpenPageUrl =
+    useCallback(
+      (
+        type:
+          OpenTradeType,
+        beforeId:
+          number,
+      ) => {
+        const params =
+          new URLSearchParams({
+            type,
+            limit: "50",
+            beforeId:
+              String(
+                beforeId,
+              ),
+          });
+        addCinemaQuery(
+          params,
+        );
+
+        return `/shift-trades/open-page?${params.toString()}`;
+      },
+      [addCinemaQuery],
+    );
+
+  const resetTrades =
+    useCallback(() => {
+      setDirectTrades([]);
+      setPoolTrades([]);
+      setHistoryTrades([]);
+      setDirectTotalCount(0);
+      setDirectHasMore(false);
+      setDirectNextBeforeId(null);
+      setPoolTotalCount(0);
+      setPoolHasMore(false);
+      setPoolNextBeforeId(null);
+      setHistoryTotalCount(0);
+      setHistoryHasMore(false);
+      setHistoryNextBeforeId(null);
+      setLoadingMoreDirect(false);
+      setLoadingMorePool(false);
+      setLoadingMoreHistory(false);
+    }, []);
 
   const fetchTrades =
     useCallback(
@@ -238,16 +374,7 @@ export function useShiftTradesData({
         showLoading = true,
       ) => {
         if (!user) {
-          setDirectTrades([]);
-          setPoolTrades([]);
-          setHistoryTrades([]);
-          setHistoryTotalCount(0);
-          setHistoryHasMore(
-            false,
-          );
-          setHistoryNextBeforeId(
-            null,
-          );
+          resetTrades();
           setNeedsMasterCinemaSelection(
             false,
           );
@@ -270,16 +397,7 @@ export function useShiftTradesData({
         if (
           shouldSelectMasterCinema
         ) {
-          setDirectTrades([]);
-          setPoolTrades([]);
-          setHistoryTrades([]);
-          setHistoryTotalCount(0);
-          setHistoryHasMore(
-            false,
-          );
-          setHistoryNextBeforeId(
-            null,
-          );
+          resetTrades();
           setLoading(false);
           return;
         }
@@ -360,6 +478,37 @@ export function useShiftTradesData({
                 )
               : nextHistoryTrades,
           );
+
+          const directPage =
+            getPageMetadata(
+              data.directPage,
+              nextDirectTrades.length,
+            );
+          setDirectTotalCount(
+            directPage.totalCount,
+          );
+          setDirectHasMore(
+            directPage.hasMore,
+          );
+          setDirectNextBeforeId(
+            directPage.nextBeforeId,
+          );
+
+          const poolPage =
+            getPageMetadata(
+              data.poolPage,
+              nextPoolTrades.length,
+            );
+          setPoolTotalCount(
+            poolPage.totalCount,
+          );
+          setPoolHasMore(
+            poolPage.hasMore,
+          );
+          setPoolNextBeforeId(
+            poolPage.nextBeforeId,
+          );
+
           setHistoryTotalCount(
             Number(
               data.history
@@ -383,16 +532,7 @@ export function useShiftTradesData({
               : null,
           );
         } catch (error) {
-          setDirectTrades([]);
-          setPoolTrades([]);
-          setHistoryTrades([]);
-          setHistoryTotalCount(0);
-          setHistoryHasMore(
-            false,
-          );
-          setHistoryNextBeforeId(
-            null,
-          );
+          resetTrades();
           showErrorRef.current(
             "Kunne ikke hente vagtbytter",
             error instanceof Error
@@ -409,7 +549,144 @@ export function useShiftTradesData({
         apiFetch,
         buildPageUrl,
         getMasterCinemaId,
+        resetTrades,
         user,
+      ],
+    );
+
+  const loadMoreOpenTrades =
+    useCallback(
+      async (
+        type:
+          OpenTradeType,
+      ) => {
+        const isDirect =
+          type ===
+          "DIRECT";
+        const hasMore =
+          isDirect
+            ? directHasMore
+            : poolHasMore;
+        const nextBeforeId =
+          isDirect
+            ? directNextBeforeId
+            : poolNextBeforeId;
+        const isLoading =
+          isDirect
+            ? loadingMoreDirect
+            : loadingMorePool;
+
+        if (
+          !hasMore ||
+          !nextBeforeId ||
+          isLoading
+        ) {
+          return;
+        }
+
+        try {
+          if (isDirect) {
+            setLoadingMoreDirect(
+              true,
+            );
+          } else {
+            setLoadingMorePool(
+              true,
+            );
+          }
+
+          const response =
+            await apiFetch(
+              buildOpenPageUrl(
+                type,
+                nextBeforeId,
+              ),
+            );
+
+          if (!response.ok) {
+            throw new Error(
+              "Flere åbne vagtbytter kunne ikke hentes.",
+            );
+          }
+
+          const data =
+            (await response.json()) as
+              Partial<ShiftTradeCursorPage>;
+          const nextItems =
+            Array.isArray(
+              data.items,
+            )
+              ? data.items
+              : [];
+          const page =
+            getPageMetadata(
+              data,
+              nextItems.length,
+            );
+
+          if (isDirect) {
+            setDirectTrades(
+              (current) =>
+                mergeTrades(
+                  current,
+                  nextItems,
+                ),
+            );
+            setDirectTotalCount(
+              page.totalCount,
+            );
+            setDirectHasMore(
+              page.hasMore,
+            );
+            setDirectNextBeforeId(
+              page.nextBeforeId,
+            );
+          } else {
+            setPoolTrades(
+              (current) =>
+                mergeTrades(
+                  current,
+                  nextItems,
+                ),
+            );
+            setPoolTotalCount(
+              page.totalCount,
+            );
+            setPoolHasMore(
+              page.hasMore,
+            );
+            setPoolNextBeforeId(
+              page.nextBeforeId,
+            );
+          }
+        } catch (error) {
+          showErrorRef.current(
+            "Kunne ikke hente flere vagtbytter",
+            error instanceof Error
+              ? error.message
+              : "Flere åbne vagtbytter kunne ikke hentes.",
+          );
+        } finally {
+          if (isDirect) {
+            setLoadingMoreDirect(
+              false,
+            );
+          } else {
+            setLoadingMorePool(
+              false,
+            );
+          }
+        }
+      },
+      [
+        apiFetch,
+        buildOpenPageUrl,
+        directHasMore,
+        directNextBeforeId,
+        loadingMoreDirect,
+        loadingMorePool,
+        poolHasMore,
+        poolNextBeforeId,
       ],
     );
 
@@ -534,13 +811,29 @@ export function useShiftTradesData({
       user ?? null,
     apiFetch,
     loading,
+    loadingMoreDirect,
+    loadingMorePool,
     loadingMoreHistory,
     message,
     setMessage,
     fetchTrades,
+    loadMoreDirect:
+      () =>
+        loadMoreOpenTrades(
+          "DIRECT",
+        ),
+    loadMorePool:
+      () =>
+        loadMoreOpenTrades(
+          "POOL",
+        ),
     loadMoreHistory,
     directTrades,
+    directTotalCount,
+    directHasMore,
     poolTrades,
+    poolTotalCount,
+    poolHasMore,
     historyTrades,
     historyTotalCount,
     historyHasMore,

@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
 } from "react";
-import Link from "next/link";
 import {
   usePathname,
   useRouter,
@@ -21,7 +21,6 @@ import {
 import {
   useInfoModal,
 } from "@/app/hooks/useInfoModal";
-
 import ShiftTradesHeader from "./components/layout/ShiftTradesHeader";
 import ShiftTradeTargetNotice from "./components/layout/ShiftTradeTargetNotice";
 import ShiftTradesHistorySection from "./components/list/ShiftTradesHistorySection";
@@ -63,13 +62,21 @@ export default function ShiftTradesPage() {
     user,
     apiFetch,
     loading,
+    loadingMoreDirect,
+    loadingMorePool,
     loadingMoreHistory,
     message,
     setMessage,
     fetchTrades,
+    loadMoreDirect,
+    loadMorePool,
     loadMoreHistory,
     directTrades,
+    directTotalCount,
+    directHasMore,
     poolTrades,
+    poolTotalCount,
+    poolHasMore,
     historyTrades,
     historyTotalCount,
     historyHasMore,
@@ -112,6 +119,7 @@ export default function ShiftTradesPage() {
         poolTrades,
       ],
     );
+
   const targetState:
     ShiftTradeTargetState =
       tradeTarget.invalid
@@ -238,10 +246,7 @@ export default function ShiftTradesPage() {
                 Henter vagtbytter
               </p>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Vagtpuljen, dine
-                direkte tilbud og
-                den nyeste historik
-                indlæses.
+                Vagtpuljen, dine direkte tilbud og den nyeste historik indlæses.
               </p>
             </div>
           </div>
@@ -258,18 +263,13 @@ export default function ShiftTradesPage() {
         <div className="mx-auto max-w-5xl">
           <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm transition-colors dark:border-amber-900/70 dark:bg-amber-950/35">
             <p className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-              Ingen aktiv biograf
-              valgt
+              Ingen aktiv biograf valgt
             </p>
             <h1 className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
-              Vælg en biograf for at
-              se vagtpuljen
+              Vælg en biograf for at se vagtpuljen
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-700 dark:text-gray-300">
-              Som MASTER skal du vælge
-              en aktiv biograf, før
-              vagtbytter kan vises
-              eller behandles.
+              Som MASTER skal du vælge en aktiv biograf, før vagtbytter kan vises eller behandles.
             </p>
             <Link
               href="/master"
@@ -304,12 +304,24 @@ export default function ShiftTradesPage() {
           <ShiftTradesOpenSection
             title="Direkte tilbud"
             trades={directTrades}
+            totalCount={
+              directTotalCount
+            }
+            hasMore={
+              directHasMore
+            }
+            loadingMore={
+              loadingMoreDirect
+            }
             emptyText="Du har ingen direkte vagtbytter lige nu."
             onAccept={
               acceptTrade
             }
             onReject={
               rejectTrade
+            }
+            onLoadMore={
+              loadMoreDirect
             }
             hasShiftConflict={
               hasShiftConflict
@@ -322,9 +334,21 @@ export default function ShiftTradesPage() {
           <ShiftTradesOpenSection
             title="Åbne vagter i puljen"
             trades={poolTrades}
+            totalCount={
+              poolTotalCount
+            }
+            hasMore={
+              poolHasMore
+            }
+            loadingMore={
+              loadingMorePool
+            }
             emptyText="Der er ingen åbne vagter i vagtpuljen lige nu."
             onAccept={
               acceptTrade
+            }
+            onLoadMore={
+              loadMorePool
             }
             hasShiftConflict={
               hasShiftConflict
@@ -386,7 +410,6 @@ export default function ShiftTradesPage() {
           confirmModal.handleCancel
         }
       />
-
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}

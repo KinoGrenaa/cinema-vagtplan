@@ -53,11 +53,30 @@ export type ShiftTrade = {
   };
 };
 
+export type ShiftTradeCursorPage = {
+  items:
+    ShiftTrade[];
+  hasMore:
+    boolean;
+  nextBeforeId:
+    number | null;
+  totalCount:
+    number;
+};
+
 export type ShiftTradePageResponse = {
   directTrades:
     ShiftTrade[];
   poolTrades:
     ShiftTrade[];
+  directPage?: Omit<
+    ShiftTradeCursorPage,
+    "items"
+  >;
+  poolPage?: Omit<
+    ShiftTradeCursorPage,
+    "items"
+  >;
   history: {
     items:
       ShiftTrade[];
