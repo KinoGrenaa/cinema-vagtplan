@@ -1,7 +1,6 @@
 import {
   Injectable,
 } from '@nestjs/common';
-
 import {
   NotificationsService,
 } from '../notifications/notifications.service';
@@ -21,13 +20,13 @@ import {
   createLeaveRequestFlow,
 } from './helpers/leave-request-create-flow';
 import {
+  DEFAULT_LEAVE_REQUEST_PAGE_SIZE,
   findLeaveRequestPage,
   type LeaveRequestPageOptions,
 } from './helpers/leave-request-page';
 import {
   AuthUser,
   LeaveStatus,
-  requireUserId,
   resolveLeaveCinemaId,
 } from './helpers/leave-request-service-helpers';
 import {
@@ -58,47 +57,18 @@ export class LeaveRequestsService {
       number | null,
     includeAll = false,
   ) {
-    const userId =
-      requireUserId(user);
-    const cinemaId =
-      resolveLeaveCinemaId(
+    const page =
+      await this.findPage(
         user,
         selectedCinemaId,
+        {
+          includeAll,
+          limit:
+            DEFAULT_LEAVE_REQUEST_PAGE_SIZE,
+        },
       );
-    const canViewAll =
-      includeAll &&
-      (user.role === 'ADMIN' ||
-        user.role === 'MASTER');
 
-    await ensureLeaveActorCinemaAccess(
-      this.prisma,
-      user,
-      cinemaId,
-    );
-    await this.leaveRequestExpiryService.expirePendingLeaveRequests(
-      {
-        cinemaId,
-      },
-    );
-
-    return this.prisma.leaveRequest.findMany({
-      where: {
-        cinemaId,
-        ...(canViewAll
-          ? {}
-          : {
-              userId,
-            }),
-      },
-      include: {
-        user: true,
-        createdByUser:
-          true,
-      },
-      orderBy: {
-        startDate: 'asc',
-      },
-    });
+    return page.items;
   }
 
   async findPage(
@@ -124,7 +94,6 @@ export class LeaveRequestsService {
         cinemaId,
       },
     );
-
     return findLeaveRequestPage(
       this.prisma,
       user,
