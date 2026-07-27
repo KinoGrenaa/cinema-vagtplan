@@ -63,6 +63,37 @@ export class StaffingRequestsController {
       StaffingRequestsService,
   ) {}
 
+  @Get('pending-page')
+  findPendingPage(
+    @Req() req: AuthRequest,
+    @Query('cinemaId')
+    cinemaId?: string,
+    @Query('limit')
+    limit?: string,
+    @Query('page')
+    page?: string,
+  ) {
+    return this.staffingRequestsService.findPendingPage(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+      {
+        limit:
+          parseOptionalPositiveIntegerQuery(
+            limit,
+            'Antal forespørgsler skal være et gyldigt tal',
+          ),
+        page:
+          parseOptionalPositiveIntegerQuery(
+            page,
+            'Side skal være et gyldigt positivt tal',
+          ),
+      },
+    );
+  }
+
   @Get('page')
   findPage(
     @Req() req: AuthRequest,

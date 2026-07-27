@@ -1,7 +1,6 @@
 import {
   Injectable,
 } from '@nestjs/common';
-
 import {
   PrismaService,
 } from '../prisma/prisma.service';
@@ -22,6 +21,8 @@ import {
   CreateStaffingRequestInput,
 } from './helpers/staffing-request-helpers';
 import {
+  findPendingStaffingRequestPage,
+  type PendingStaffingRequestPageOptions,
   type StaffingRequestPageOptions,
 } from './helpers/staffing-request-page';
 import {
@@ -66,6 +67,21 @@ export class StaffingRequestsService {
       StaffingRequestPageOptions = {},
   ) {
     return findStaffingRequestsPage(
+      this.prisma,
+      user,
+      selectedCinemaId,
+      options,
+    );
+  }
+
+  async findPendingPage(
+    user: AuthUser,
+    selectedCinemaId:
+      number | null | undefined,
+    options:
+      PendingStaffingRequestPageOptions = {},
+  ) {
+    return findPendingStaffingRequestPage(
       this.prisma,
       user,
       selectedCinemaId,

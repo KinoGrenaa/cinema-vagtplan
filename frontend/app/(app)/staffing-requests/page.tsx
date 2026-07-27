@@ -24,7 +24,7 @@ import {
 import {
   useAuth,
 } from "@/app/providers/AuthProvider";
-
+import StaffingPendingPaginationControl from "./components/list/StaffingPendingPaginationControl";
 import StaffingRequestsListSection from "./components/list/StaffingRequestsListSection";
 import StaffingRequestsHeader from "./components/layout/StaffingRequestsHeader";
 import StaffingRequestsMasterCinemaRequired from "./components/layout/StaffingRequestsMasterCinemaRequired";
@@ -41,8 +41,32 @@ import {
   useStaffingRequestActions,
 } from "./hooks/actions/useStaffingRequestActions";
 import {
+  usePendingStaffingRequestPages,
+} from "./hooks/data/usePendingStaffingRequestPages";
+import {
   useStaffingRequestsData,
 } from "./hooks/data/useStaffingRequestsData";
+
+function mergeRequests(
+  pendingRequests:
+    StaffingRequest[],
+  completedRequests:
+    StaffingRequest[],
+) {
+  return [
+    ...new Map(
+      [
+        ...pendingRequests,
+        ...completedRequests,
+      ].map(
+        (request) => [
+          request.id,
+          request,
+        ],
+      ),
+    ).values(),
+  ];
+}
 
 export default function StaffingRequestsPage() {
   const {
@@ -68,7 +92,6 @@ export default function StaffingRequestsPage() {
         "requestId",
       ),
     );
-
   const {
     activeCinemaId,
     currentUserId,
@@ -77,7 +100,8 @@ export default function StaffingRequestsPage() {
     loading,
     loadingMoreCompleted,
     needsMasterCinemaSelection,
-    requests,
+    pendingRequests:
+      initialPendingRequests,
     completedRequests,
     emergencyCount,
     pendingCount,
@@ -86,7 +110,6 @@ export default function StaffingRequestsPage() {
     loadMoreCompleted,
     setShowCompletedRequests,
     showCompletedRequests,
-    visibleRequests,
   } = useStaffingRequestsData({
     user,
     apiFetch,
@@ -95,6 +118,28 @@ export default function StaffingRequestsPage() {
     targetRequestId:
       requestTarget.requestId,
   });
+
+  const {
+    requests:
+      pendingRequests,
+    hasMore:
+      pendingHasMore,
+    loadingMore:
+      loadingMorePending,
+    loadMore:
+      loadMorePending,
+  } =
+    usePendingStaffingRequestPages({
+      apiFetch,
+      activeCinemaId,
+      initialRequests:
+        initialPendingRequests,
+      totalCount:
+        pendingCount,
+      needsMasterCinemaSelection,
+      showError:
+        infoDialog.showError,
+    });
 
   const {
     acceptRequest,
@@ -108,6 +153,35 @@ export default function StaffingRequestsPage() {
     showError:
       infoDialog.showError,
   });
+
+  const requests =
+    useMemo(
+      () =>
+        mergeRequests(
+          pendingRequests,
+          completedRequests,
+        ),
+      [
+        completedRequests,
+        pendingRequests,
+      ],
+    );
+
+  const visibleRequests =
+    useMemo(
+      () =>
+        showCompletedRequests
+          ? [
+              ...pendingRequests,
+              ...completedRequests,
+            ]
+          : pendingRequests,
+      [
+        completedRequests,
+        pendingRequests,
+        showCompletedRequests,
+      ],
+    );
 
   const targetRequest =
     useMemo(
@@ -278,6 +352,24 @@ export default function StaffingRequestsPage() {
                 }
                 completedCount={
                   completedCount
+                }
+              />
+
+              <StaffingPendingPaginationControl
+                loadedCount={
+                  pendingRequests.length
+                }
+                totalCount={
+                  pendingCount
+                }
+                hasMore={
+                  pendingHasMore
+                }
+                loadingMore={
+                  loadingMorePending
+                }
+                onLoadMore={
+                  loadMorePending
                 }
               />
 

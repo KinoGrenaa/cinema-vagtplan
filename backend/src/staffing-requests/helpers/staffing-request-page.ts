@@ -25,6 +25,11 @@ export type StaffingRequestPageOptions = {
   targetId?: number;
 };
 
+export type PendingStaffingRequestPageOptions = {
+  limit?: number;
+  page?: number;
+};
+
 export function normalizeStaffingRequestPageLimit(
   value?: number,
 ) {
@@ -46,6 +51,21 @@ export function normalizeStaffingRequestPageLimit(
     value,
     MAX_STAFFING_REQUEST_PAGE_SIZE,
   );
+}
+
+export function normalizeStaffingRequestPageNumber(
+  value?: number,
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    !Number.isInteger(value) ||
+    value <= 0
+  ) {
+    return 1;
+  }
+
+  return value;
 }
 
 export function buildStaffingRequestVisibilityWhere(
@@ -129,6 +149,20 @@ export function buildStaffingRequestTargetWhere(
   };
 }
 
+export const pendingStaffingRequestOrderBy:
+  Prisma.StaffingRequestOrderByWithRelationInput[] =
+  [
+    {
+      priority: 'desc',
+    },
+    {
+      createdAt: 'desc',
+    },
+    {
+      id: 'desc',
+    },
+  ];
+
 export function buildCompletedStaffingRequestPage<
   T extends {
     id: number;
@@ -152,6 +186,64 @@ export function buildCompletedStaffingRequestPage<
             items.length - 1
           ].id
         : null,
+  };
+}
+
+export async function findPendingStaffingRequestPage(
+  prisma: PrismaService,
+  user: AuthUser,
+  selectedCinemaId:
+    number | null | undefined,
+  options:
+    PendingStaffingRequestPageOptions = {},
+) {
+  const cinemaId =
+    resolveStaffingCinemaId(
+      user,
+      selectedCinemaId,
+    );
+  const limit =
+    normalizeStaffingRequestPageLimit(
+      options.limit,
+    );
+  const page =
+    normalizeStaffingRequestPageNumber(
+      options.page,
+    );
+  const where =
+    buildPendingStaffingRequestWhere(
+      user,
+      cinemaId,
+    );
+  const skip =
+    (page - 1) * limit;
+
+  const [
+    items,
+    totalCount,
+  ] = await Promise.all([
+    prisma.staffingRequest.findMany({
+      where,
+      include:
+        staffingRequestInclude,
+      orderBy:
+        pendingStaffingRequestOrderBy,
+      skip,
+      take: limit,
+    }),
+    prisma.staffingRequest.count({
+      where,
+    }),
+  ]);
+
+  return {
+    items,
+    page,
+    pageSize: limit,
+    totalCount,
+    hasMore:
+      skip + items.length <
+      totalCount,
   };
 }
 
@@ -204,19 +296,9 @@ export async function findStaffingRequestPage(
             pendingWhere,
           include:
             staffingRequestInclude,
-          orderBy: [
-            {
-              priority:
-                'desc',
-            },
-            {
-              createdAt:
-                'desc',
-            },
-            {
-              id: 'desc',
-            },
-          ],
+          orderBy:
+            pendingStaffingRequestOrderBy,
+          take: limit,
         }),
     prisma.staffingRequest.findMany({
       where:
@@ -259,6 +341,15 @@ export async function findStaffingRequestPage(
 
   return {
     pending,
+    pendingPage: {
+      page: 1,
+      pageSize: limit,
+      totalCount:
+        pendingCount,
+      hasMore:
+        pending.length <
+        pendingCount,
+    },
     completed: {
       ...buildCompletedStaffingRequestPage(
         completedRows,

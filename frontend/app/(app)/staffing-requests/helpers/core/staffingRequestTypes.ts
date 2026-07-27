@@ -61,9 +61,32 @@ export type GroupedStaffingRequests = {
     StaffingRequest[];
 };
 
+export type PendingStaffingRequestPageResponse = {
+  items:
+    StaffingRequest[];
+  page:
+    number;
+  pageSize:
+    number;
+  totalCount:
+    number;
+  hasMore:
+    boolean;
+};
+
 export type StaffingRequestPageResponse = {
   pending:
     StaffingRequest[];
+  pendingPage?: {
+    page:
+      number;
+    pageSize:
+      number;
+    totalCount:
+      number;
+    hasMore:
+      boolean;
+  };
   completed: {
     items:
       StaffingRequest[];
