@@ -25,38 +25,44 @@ export async function findMyShiftsStaticData(
   },
 ) {
   const [
-    users,
+    memberships,
     cinemaSettings,
   ] = await Promise.all([
-    prisma.user.findMany({
+    prisma.userCinemaMembership.findMany({
       where: {
-        id: {
+        cinemaId:
+          params.cinemaId,
+        isActive: true,
+        userId: {
           not:
             params.userId,
         },
-        role: {
-          not: 'MASTER',
-        },
-        isActive: true,
-        cinemaMemberships: {
-          some: {
-            cinemaId:
-              params.cinemaId,
-            isActive: true,
+        user: {
+          role: {
+            not: 'MASTER',
           },
+          isActive: true,
         },
       },
-      select:
-        myShiftsColleagueSelect,
+      select: {
+        user: {
+          select:
+            myShiftsColleagueSelect,
+        },
+      },
       orderBy: [
         {
-          firstName: 'asc',
+          user: {
+            firstName: 'asc',
+          },
         },
         {
-          lastName: 'asc',
+          user: {
+            lastName: 'asc',
+          },
         },
         {
-          id: 'asc',
+          userId: 'asc',
         },
       ],
     }),
@@ -76,7 +82,11 @@ export async function findMyShiftsStaticData(
   }
 
   return {
-    users,
+    users:
+      memberships.map(
+        (membership) =>
+          membership.user,
+      ),
     cinemaSettings,
   };
 }

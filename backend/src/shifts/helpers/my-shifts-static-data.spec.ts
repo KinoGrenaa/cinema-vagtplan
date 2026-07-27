@@ -7,7 +7,7 @@ import {
 describe(
   'my shifts static data',
   () => {
-    it('henter kun aktive kollegaer og to vagtbytteindstillinger', async () => {
+    it('henter aktive kollegaer fra aktive memberships', async () => {
       const users = [
         {
           id: 11,
@@ -22,10 +22,14 @@ describe(
           false,
       };
       const prisma = {
-        user: {
+        userCinemaMembership: {
           findMany:
             jest.fn().mockResolvedValue(
-              users,
+              users.map(
+                (user) => ({
+                  user,
+                }),
+              ),
             ),
         },
         cinema: {
@@ -50,34 +54,40 @@ describe(
       });
 
       expect(
-        prisma.user.findMany,
+        prisma.userCinemaMembership.findMany,
       ).toHaveBeenCalledWith({
         where: {
-          id: {
+          cinemaId: 7,
+          isActive: true,
+          userId: {
             not: 9,
           },
-          role: {
-            not: 'MASTER',
-          },
-          isActive: true,
-          cinemaMemberships: {
-            some: {
-              cinemaId: 7,
-              isActive: true,
+          user: {
+            role: {
+              not: 'MASTER',
             },
+            isActive: true,
           },
         },
-        select:
-          myShiftsColleagueSelect,
+        select: {
+          user: {
+            select:
+              myShiftsColleagueSelect,
+          },
+        },
         orderBy: [
           {
-            firstName: 'asc',
+            user: {
+              firstName: 'asc',
+            },
           },
           {
-            lastName: 'asc',
+            user: {
+              lastName: 'asc',
+            },
           },
           {
-            id: 'asc',
+            userId: 'asc',
           },
         ],
       });
