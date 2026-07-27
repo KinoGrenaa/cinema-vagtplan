@@ -16,18 +16,51 @@ export type CreateStaffingRequestInput = CreateStaffingRequestDto & {
   cinemaId?: number | null;
 };
 
+export const staffingRequestParticipantSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+} as const;
+
+export const staffingRequestWorkTypeSelect = {
+  id: true,
+  name: true,
+  color: true,
+} as const;
+
 export const staffingRequestInclude = {
-  cinema: true,
-  shift: {
-    include: {
-      user: true,
-      workType: true,
+  cinema: {
+    select: {
+      id: true,
+      name: true,
+      logoUrl: true,
     },
   },
-  workType: true,
-  requestedByUser: true,
-  targetUser: true,
-};
+  shift: {
+    select: {
+      id: true,
+      startTime: true,
+      endTime: true,
+      userId: true,
+      workTypeId: true,
+      user: {
+        select: staffingRequestParticipantSelect,
+      },
+      workType: {
+        select: staffingRequestWorkTypeSelect,
+      },
+    },
+  },
+  workType: {
+    select: staffingRequestWorkTypeSelect,
+  },
+  requestedByUser: {
+    select: staffingRequestParticipantSelect,
+  },
+  targetUser: {
+    select: staffingRequestParticipantSelect,
+  },
+} as const;
 
 const STAFFING_REQUEST_MESSAGE_MAX_LENGTH = 1000;
 
@@ -153,7 +186,6 @@ function normalizeOptionalPositiveId(
   message: string,
 ) {
   if (value === undefined || value === null) return undefined;
-
   if (!Number.isInteger(value) || value <= 0) {
     throw new BadRequestException(message);
   }
