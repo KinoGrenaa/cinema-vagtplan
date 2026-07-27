@@ -34,8 +34,14 @@ export async function ensureNoOverlappingShift(
         gt: params.startDate,
       },
     },
-    include: {
-      workType: true,
+    select: {
+      startTime: true,
+      endTime: true,
+      workType: {
+        select: {
+          name: true,
+        },
+      },
     },
   });
 
@@ -124,12 +130,14 @@ export async function analyzeAbsenceImpact(
       {
         leaveRequestId:
           params.leaveRequest.id,
-        userId: params.leaveRequest.userId,
+        userId:
+          params.leaveRequest.userId,
         cinemaId:
           params.leaveRequest.cinemaId,
         startDate:
           params.leaveRequest.startDate,
-        endDate: params.leaveRequest.endDate,
+        endDate:
+          params.leaveRequest.endDate,
       },
     );
   } catch (error) {
