@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
 } from "react";
-
 import type {
   useInfoModal,
 } from "@/app/hooks/useInfoModal";
@@ -39,6 +38,31 @@ type UseMyShiftsDataOptions = {
   focusedShiftId?:
     number | null;
 };
+
+type MyShiftMonthResponse = {
+  items?: Shift[];
+  target?: Shift | null;
+};
+
+function mergeShiftTarget(
+  items: Shift[],
+  target: Shift | null,
+) {
+  if (
+    !target ||
+    items.some(
+      (shift) =>
+        shift.id === target.id,
+    )
+  ) {
+    return items;
+  }
+
+  return [
+    target,
+    ...items,
+  ];
+}
 
 export function useMyShiftsData({
   infoDialog,
@@ -75,11 +99,11 @@ export function useMyShiftsData({
   const [
     selectedMonth,
     setSelectedMonth,
-  ] = useState(() => {
-    return dateToLocalMonthString(
+  ] = useState(() =>
+    dateToLocalMonthString(
       new Date(),
-    );
-  });
+    ),
+  );
   const [
     cinemaSettings,
     setCinemaSettings,
@@ -115,9 +139,26 @@ export function useMyShiftsData({
       }
 
       try {
+        const params =
+          new URLSearchParams({
+            month:
+              selectedMonth,
+          });
+
+        if (
+          focusedShiftId
+        ) {
+          params.set(
+            "targetId",
+            String(
+              focusedShiftId,
+            ),
+          );
+        }
+
         const response =
           await apiFetch(
-            "/shifts",
+            `/shifts/my-month?${params.toString()}`,
           );
 
         if (!response.ok) {
@@ -130,16 +171,26 @@ export function useMyShiftsData({
         }
 
         const data =
-          await response.json();
+          (await response.json()) as
+            MyShiftMonthResponse;
+        const items =
+          Array.isArray(
+            data.items,
+          )
+            ? data.items
+            : [];
+        const target =
+          data.target &&
+          typeof data.target ===
+            "object"
+            ? data.target
+            : null;
 
         setShifts(
-          Array.isArray(data)
-            ? data
-            : Array.isArray(
-                  data.shifts,
-                )
-              ? data.shifts
-              : [],
+          mergeShiftTarget(
+            items,
+            target,
+          ),
         );
       } catch (error) {
         setShifts([]);
@@ -152,7 +203,9 @@ export function useMyShiftsData({
       }
     }, [
       currentUser,
+      focusedShiftId,
       isMasterWithoutOwnCinema,
+      selectedMonth,
     ]);
 
   const fetchUsers =
@@ -182,7 +235,6 @@ export function useMyShiftsData({
 
         const data =
           await response.json();
-
         setUsers(
           Array.isArray(data)
             ? data
@@ -229,7 +281,6 @@ export function useMyShiftsData({
 
         const data =
           await response.json();
-
         setShiftTrades(
           Array.isArray(data)
             ? data
@@ -281,7 +332,6 @@ export function useMyShiftsData({
 
         const data =
           await response.json();
-
         setCinemaSettings({
           allowShiftTradePool:
             Boolean(
@@ -333,11 +383,8 @@ export function useMyShiftsData({
     ]);
 
   useEffect(() => {
-    const storedUser =
-      getStoredUser();
-
     setCurrentUser(
-      storedUser,
+      getStoredUser(),
     );
     setUserLoaded(true);
   }, []);
@@ -356,7 +403,6 @@ export function useMyShiftsData({
     }
 
     let active = true;
-
     setDataLoaded(false);
 
     void refreshData().finally(
@@ -399,17 +445,26 @@ export function useMyShiftsData({
       return;
     }
 
-    setSelectedMonth(
+    const targetMonth =
       dateToLocalMonthString(
         new Date(
           focusedShift.startTime,
         ),
-      ),
-    );
+      );
+
+    if (
+      targetMonth !==
+      selectedMonth
+    ) {
+      setSelectedMonth(
+        targetMonth,
+      );
+    }
   }, [
     currentUser,
     dataLoaded,
     focusedShiftId,
+    selectedMonth,
     shifts,
   ]);
 
@@ -466,21 +521,15 @@ export function useMyShiftsData({
       }
 
       return shifts.filter(
-        (shift) => {
-          const shiftMonth =
-            dateToLocalMonthString(
-              new Date(
-                shift.startTime,
-              ),
-            );
-
-          return (
-            shift.userId ===
-              currentUser.id &&
-            shiftMonth ===
-              selectedMonth
-          );
-        },
+        (shift) =>
+          shift.userId ===
+            currentUser.id &&
+          dateToLocalMonthString(
+            new Date(
+              shift.startTime,
+            ),
+          ) ===
+            selectedMonth,
       );
     }, [
       currentUser,
@@ -490,35 +539,29 @@ export function useMyShiftsData({
     ]);
 
   const totalHours =
-    useMemo(() => {
-      return myMonthShifts.reduce(
-        (
-          total,
-          shift,
-        ) => {
-          const start =
-            new Date(
-              shift.startTime,
-            );
-          const end =
-            new Date(
-              shift.endTime,
-            );
-
-          return (
+    useMemo(
+      () =>
+        myMonthShifts.reduce(
+          (
+            total,
+            shift,
+          ) =>
             total +
             (
-              end.getTime() -
-              start.getTime()
+              new Date(
+                shift.endTime,
+              ).getTime() -
+              new Date(
+                shift.startTime,
+              ).getTime()
             ) /
               1000 /
               60 /
-              60
-          );
-        },
-        0,
-      );
-    }, [myMonthShifts]);
+              60,
+          0,
+        ),
+      [myMonthShifts],
+    );
 
   function changeMonth(
     direction: number,
@@ -532,7 +575,6 @@ export function useMyShiftsData({
       date.getMonth() +
         direction,
     );
-
     setSelectedMonth(
       dateToLocalMonthString(
         date,
