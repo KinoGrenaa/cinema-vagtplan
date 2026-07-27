@@ -44,6 +44,26 @@ type MyShiftMonthResponse = {
   target?: Shift | null;
 };
 
+type MyShiftTradeOverviewResponse = {
+  offeredTrades?: ShiftTrade[];
+  directTrades?: ShiftTrade[];
+};
+
+function mergeShiftTrades(
+  groups: ShiftTrade[][],
+) {
+  return Array.from(
+    new Map(
+      groups
+        .flat()
+        .map((trade) => [
+          trade.id,
+          trade,
+        ]),
+    ).values(),
+  );
+}
+
 function mergeShiftTarget(
   items: Shift[],
   target: Shift | null,
@@ -265,9 +285,14 @@ export function useMyShiftsData({
       }
 
       try {
+        const params =
+          new URLSearchParams({
+            month:
+              selectedMonth,
+          });
         const response =
           await apiFetch(
-            "/shift-trades",
+            `/shift-trades/my-shifts-overview?${params.toString()}`,
           );
 
         if (!response.ok) {
@@ -280,11 +305,26 @@ export function useMyShiftsData({
         }
 
         const data =
-          await response.json();
+          (await response.json()) as
+            MyShiftTradeOverviewResponse;
+        const offeredTrades =
+          Array.isArray(
+            data.offeredTrades,
+          )
+            ? data.offeredTrades
+            : [];
+        const directTrades =
+          Array.isArray(
+            data.directTrades,
+          )
+            ? data.directTrades
+            : [];
+
         setShiftTrades(
-          Array.isArray(data)
-            ? data
-            : [],
+          mergeShiftTrades([
+            offeredTrades,
+            directTrades,
+          ]),
         );
       } catch (error) {
         setShiftTrades([]);
@@ -298,6 +338,7 @@ export function useMyShiftsData({
     }, [
       currentUser,
       isMasterWithoutOwnCinema,
+      selectedMonth,
     ]);
 
   const fetchCinemaSettings =
@@ -358,29 +399,52 @@ export function useMyShiftsData({
       isMasterWithoutOwnCinema,
     ]);
 
-  const refreshData =
+  const refreshDynamicData =
     useCallback(async () => {
       if (
         !currentUser ||
         isMasterWithoutOwnCinema
       ) {
+        setShifts([]);
+        setShiftTrades([]);
         return;
       }
 
       await Promise.all([
         fetchShifts(),
-        fetchUsers(),
         fetchShiftTrades(),
+      ]);
+    }, [
+      currentUser,
+      fetchShiftTrades,
+      fetchShifts,
+      isMasterWithoutOwnCinema,
+    ]);
+
+  const refreshStaticData =
+    useCallback(async () => {
+      if (
+        !currentUser ||
+        isMasterWithoutOwnCinema
+      ) {
+        setUsers([]);
+        setCinemaSettings(null);
+        return;
+      }
+
+      await Promise.all([
+        fetchUsers(),
         fetchCinemaSettings(),
       ]);
     }, [
       currentUser,
       fetchCinemaSettings,
-      fetchShiftTrades,
-      fetchShifts,
       fetchUsers,
       isMasterWithoutOwnCinema,
     ]);
+
+  const refreshData =
+    refreshDynamicData;
 
   useEffect(() => {
     setCurrentUser(
@@ -398,6 +462,8 @@ export function useMyShiftsData({
       !currentUser ||
       isMasterWithoutOwnCinema
     ) {
+      setShifts([]);
+      setShiftTrades([]);
       setDataLoaded(true);
       return;
     }
@@ -405,7 +471,7 @@ export function useMyShiftsData({
     let active = true;
     setDataLoaded(false);
 
-    void refreshData().finally(
+    void refreshDynamicData().finally(
       () => {
         if (active) {
           setDataLoaded(true);
@@ -419,7 +485,18 @@ export function useMyShiftsData({
   }, [
     currentUser,
     isMasterWithoutOwnCinema,
-    refreshData,
+    refreshDynamicData,
+    userLoaded,
+  ]);
+
+  useEffect(() => {
+    if (!userLoaded) {
+      return;
+    }
+
+    void refreshStaticData();
+  }, [
+    refreshStaticData,
     userLoaded,
   ]);
 
@@ -470,9 +547,13 @@ export function useMyShiftsData({
 
   useRealtimeShifts({
     onShiftsUpdated:
-      refreshData,
+      () => {
+        void fetchShifts();
+      },
     onShiftTradesUpdated:
-      refreshData,
+      () => {
+        void refreshDynamicData();
+      },
   });
 
   function getOpenTradeForShift(
