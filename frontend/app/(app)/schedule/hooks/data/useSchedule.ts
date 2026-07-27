@@ -93,6 +93,11 @@ type ScheduleTimeEntry = {
   clockOut?: string | null;
 };
 
+type ScheduleStaticDataResponse = {
+  users?: User[];
+  workTypes?: WorkType[];
+};
+
 type ScheduleErrorHandler = (
   title: string,
   description: string,
@@ -349,7 +354,7 @@ export function useSchedule(
   const canManageShifts =
     isAdmin;
 
-  const fetchUsers =
+  const fetchStaticData =
     useCallback(
       async ({
         reportError = true,
@@ -358,6 +363,7 @@ export function useSchedule(
           needsMasterCinemaSelection
         ) {
           setUsers([]);
+          setWorkTypes([]);
           return true;
         }
 
@@ -365,92 +371,20 @@ export function useSchedule(
           const response =
             await apiFetch(
               appendActiveCinemaId(
-                "/users",
+                "/shifts/schedule-static-data",
               ),
             );
 
           if (!response.ok) {
             setUsers([]);
-
-            if (reportError) {
-              reportBackgroundError(
-                "Medarbejdere kunne ikke hentes",
-                await readErrorMessage(
-                  response,
-                  "Kunne ikke hente medarbejdere.",
-                ),
-              );
-            }
-
-            return false;
-          }
-
-          const data =
-            await response.json();
-          const usersArray:
-            User[] =
-            Array.isArray(data)
-              ? data
-              : Array.isArray(
-                    data.users,
-                  )
-                ? data.users
-                : [];
-
-          setUsers(
-            usersArray,
-          );
-          return true;
-        } catch {
-          setUsers([]);
-
-          if (reportError) {
-            reportBackgroundError(
-              "Medarbejdere kunne ikke hentes",
-              "Der opstod en fejl, da medarbejdere skulle hentes.",
-            );
-          }
-
-          return false;
-        }
-      },
-      [
-        apiFetch,
-        appendActiveCinemaId,
-        needsMasterCinemaSelection,
-        reportBackgroundError,
-      ],
-    );
-
-  const fetchWorkTypes =
-    useCallback(
-      async ({
-        reportError = true,
-      }: BackgroundFetchOptions = {}) => {
-        if (
-          needsMasterCinemaSelection
-        ) {
-          setWorkTypes([]);
-          return true;
-        }
-
-        try {
-          const response =
-            await apiFetch(
-              appendActiveCinemaId(
-                "/work-types",
-              ),
-            );
-
-          if (!response.ok) {
             setWorkTypes([]);
 
             if (reportError) {
               reportBackgroundError(
-                "Vagttyper kunne ikke hentes",
+                "Vagtplanens stamdata kunne ikke hentes",
                 await readErrorMessage(
                   response,
-                  "Kunne ikke hente vagttyper.",
+                  "Kunne ikke hente medarbejdere og vagttyper.",
                 ),
               );
             }
@@ -459,28 +393,33 @@ export function useSchedule(
           }
 
           const data =
-            await response.json();
-          const workTypesArray:
-            WorkType[] =
-            Array.isArray(data)
-              ? data
-              : Array.isArray(
-                    data.workTypes,
-                  )
-                ? data.workTypes
-                : [];
+            (await response.json()) as
+              ScheduleStaticDataResponse;
 
-          setWorkTypes(
-            workTypesArray,
+          setUsers(
+            Array.isArray(
+              data.users,
+            )
+              ? data.users
+              : [],
           );
+          setWorkTypes(
+            Array.isArray(
+              data.workTypes,
+            )
+              ? data.workTypes
+              : [],
+          );
+
           return true;
         } catch {
+          setUsers([]);
           setWorkTypes([]);
 
           if (reportError) {
             reportBackgroundError(
-              "Vagttyper kunne ikke hentes",
-              "Der opstod en fejl, da vagttyper skulle hentes.",
+              "Vagtplanens stamdata kunne ikke hentes",
+              "Der opstod en fejl, da medarbejdere og vagttyper skulle hentes.",
             );
           }
 
@@ -867,12 +806,10 @@ export function useSchedule(
       return;
     }
 
-    void fetchUsers();
-    void fetchWorkTypes();
+    void fetchStaticData();
   }, [
     authLoading,
-    fetchUsers,
-    fetchWorkTypes,
+    fetchStaticData,
     user,
   ]);
 
