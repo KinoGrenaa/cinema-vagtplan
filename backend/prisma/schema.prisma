@@ -567,6 +567,7 @@ model Shift {
   staffingRequests StaffingRequest[]
 
   @@index([cinemaId, startTime, id])
+  @@index([cinemaId, endTime, startTime, id])
   @@index([cinemaId, userId, startTime, endTime])
 }
 
@@ -581,6 +582,9 @@ model MovieShowing {
   createdAt DateTime @default(now())
   cinemaId  Int
   cinema    Cinema   @relation(fields: [cinemaId], references: [id])
+
+  @@index([cinemaId, startTime, id])
+  @@index([cinemaId, endTime, startTime, id])
 }
 
 model LeaveRequest {
