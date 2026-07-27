@@ -1,40 +1,68 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+} from '@nestjs/common';
 
-import { AuditLogsService } from '../audit-logs/audit-logs.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { PushService } from '../push/push.service';
-import { RealtimeGateway } from '../realtime/realtime.gateway';
-import { checkShiftConflicts } from './helpers/shift-conflict-checks';
-import { createShiftFlow } from './helpers/shift-create-flow';
-import { deleteShiftFlow } from './helpers/shift-delete-flow';
+import {
+  AuditLogsService,
+} from '../audit-logs/audit-logs.service';
+import {
+  PrismaService,
+} from '../prisma/prisma.service';
+import {
+  PushService,
+} from '../push/push.service';
+import {
+  RealtimeGateway,
+} from '../realtime/realtime.gateway';
+import {
+  checkShiftConflicts,
+} from './helpers/shift-conflict-checks';
+import {
+  createShiftFlow,
+} from './helpers/shift-create-flow';
+import {
+  deleteShiftFlow,
+} from './helpers/shift-delete-flow';
+import {
+  findScheduleShiftsForDay,
+} from './helpers/schedule-shift-read';
 import {
   AuthUser,
   ShiftWriteData,
   formatShiftTime as formatShiftTimeHelper,
-  getCopenhagenDayRange,
   resolveShiftCinemaId,
 } from './helpers/shift-service-helpers';
-import { updateShiftFlow } from './helpers/shift-update-flow';
-import { ensureShiftActorHasCinemaAccess } from './helpers/shift-user-access';
+import {
+  updateShiftFlow,
+} from './helpers/shift-update-flow';
+import {
+  ensureShiftActorHasCinemaAccess,
+} from './helpers/shift-user-access';
 
 @Injectable()
 export class ShiftsService {
   constructor(
-    private prisma: PrismaService,
-    private realtimeGateway: RealtimeGateway,
-    private pushService: PushService,
-    private auditLogsService: AuditLogsService,
+    private prisma:
+      PrismaService,
+    private realtimeGateway:
+      RealtimeGateway,
+    private pushService:
+      PushService,
+    private auditLogsService:
+      AuditLogsService,
   ) {}
 
   async findAll(
     user: AuthUser,
     date?: string,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const cinemaId = resolveShiftCinemaId(
-      user,
-      selectedCinemaId,
-    );
+    const cinemaId =
+      resolveShiftCinemaId(
+        user,
+        selectedCinemaId,
+      );
 
     await ensureShiftActorHasCinemaAccess(
       this.prisma,
@@ -42,30 +70,18 @@ export class ShiftsService {
       cinemaId,
     );
 
-    const where: any = {
-      cinemaId,
-    };
-
     if (date) {
-      const { start, end } =
-        getCopenhagenDayRange(date);
-
-      where.AND = [
-        {
-          startTime: {
-            lt: end,
-          },
-        },
-        {
-          endTime: {
-            gt: start,
-          },
-        },
-      ];
+      return findScheduleShiftsForDay(
+        this.prisma,
+        cinemaId,
+        date,
+      );
     }
 
     return this.prisma.shift.findMany({
-      where,
+      where: {
+        cinemaId,
+      },
       include: {
         user: true,
         workType: true,
@@ -103,10 +119,11 @@ export class ShiftsService {
     user: AuthUser,
     data: ShiftWriteData,
   ) {
-    const cinemaId = resolveShiftCinemaId(
-      user,
-      data.cinemaId,
-    );
+    const cinemaId =
+      resolveShiftCinemaId(
+        user,
+        data.cinemaId,
+      );
 
     await ensureShiftActorHasCinemaAccess(
       this.prisma,
@@ -115,10 +132,14 @@ export class ShiftsService {
     );
 
     return createShiftFlow({
-      prisma: this.prisma,
-      realtimeGateway: this.realtimeGateway,
-      pushService: this.pushService,
-      auditLogsService: this.auditLogsService,
+      prisma:
+        this.prisma,
+      realtimeGateway:
+        this.realtimeGateway,
+      pushService:
+        this.pushService,
+      auditLogsService:
+        this.auditLogsService,
       formatShiftTime: (
         startTime,
         endTime,
@@ -137,10 +158,11 @@ export class ShiftsService {
     id: number,
     data: ShiftWriteData,
   ) {
-    const cinemaId = resolveShiftCinemaId(
-      user,
-      data.cinemaId,
-    );
+    const cinemaId =
+      resolveShiftCinemaId(
+        user,
+        data.cinemaId,
+      );
 
     await ensureShiftActorHasCinemaAccess(
       this.prisma,
@@ -149,10 +171,14 @@ export class ShiftsService {
     );
 
     return updateShiftFlow({
-      prisma: this.prisma,
-      realtimeGateway: this.realtimeGateway,
-      pushService: this.pushService,
-      auditLogsService: this.auditLogsService,
+      prisma:
+        this.prisma,
+      realtimeGateway:
+        this.realtimeGateway,
+      pushService:
+        this.pushService,
+      auditLogsService:
+        this.auditLogsService,
       formatShiftTime: (
         startTime,
         endTime,
@@ -170,12 +196,14 @@ export class ShiftsService {
   async deleteShift(
     user: AuthUser,
     id: number,
-    selectedCinemaId?: number | null,
+    selectedCinemaId?:
+      number | null,
   ) {
-    const cinemaId = resolveShiftCinemaId(
-      user,
-      selectedCinemaId,
-    );
+    const cinemaId =
+      resolveShiftCinemaId(
+        user,
+        selectedCinemaId,
+      );
 
     await ensureShiftActorHasCinemaAccess(
       this.prisma,
@@ -184,10 +212,14 @@ export class ShiftsService {
     );
 
     return deleteShiftFlow({
-      prisma: this.prisma,
-      realtimeGateway: this.realtimeGateway,
-      pushService: this.pushService,
-      auditLogsService: this.auditLogsService,
+      prisma:
+        this.prisma,
+      realtimeGateway:
+        this.realtimeGateway,
+      pushService:
+        this.pushService,
+      auditLogsService:
+        this.auditLogsService,
       formatShiftTime: (
         startTime,
         endTime,
