@@ -598,6 +598,10 @@ model LeaveRequest {
   createdByUser   User        @relation("LeaveRequestCreatedBy", fields: [createdByUserId], references: [id])
 
   @@index([cinemaId, userId, status, startDate, endDate])
+  @@index([cinemaId, status, id])
+  @@index([cinemaId, userId, status, id])
+  @@index([cinemaId, status, startDate, endDate, id])
+  @@index([status, startDate, id])
 }
 
 model ShiftTrade {
