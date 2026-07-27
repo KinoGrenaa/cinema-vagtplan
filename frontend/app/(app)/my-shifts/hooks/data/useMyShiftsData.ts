@@ -19,7 +19,6 @@ import {
 } from "@/app/utils/dateTime";
 import {
   getStoredUser,
-  hasOwnCinema,
   readErrorMessage,
 } from "../../helpers/core/myShiftsHelpers";
 import type {
@@ -47,6 +46,11 @@ type MyShiftMonthResponse = {
 type MyShiftTradeOverviewResponse = {
   offeredTrades?: ShiftTrade[];
   directTrades?: ShiftTrade[];
+};
+
+type MyShiftsStaticDataResponse = {
+  users?: User[];
+  cinemaSettings?: CinemaSettings | null;
 };
 
 function mergeShiftTrades(
@@ -228,52 +232,6 @@ export function useMyShiftsData({
       selectedMonth,
     ]);
 
-  const fetchUsers =
-    useCallback(async () => {
-      if (
-        !currentUser ||
-        isMasterWithoutOwnCinema
-      ) {
-        setUsers([]);
-        return;
-      }
-
-      try {
-        const response =
-          await apiFetch(
-            "/users",
-          );
-
-        if (!response.ok) {
-          throw new Error(
-            await readErrorMessage(
-              response,
-              "Kollegaer kunne ikke hentes.",
-            ),
-          );
-        }
-
-        const data =
-          await response.json();
-        setUsers(
-          Array.isArray(data)
-            ? data
-            : [],
-        );
-      } catch (error) {
-        setUsers([]);
-        showErrorRef.current(
-          "Kollegaer kunne ikke hentes",
-          error instanceof Error
-            ? error.message
-            : "Der opstod en fejl ved hentning af kollegaer.",
-        );
-      }
-    }, [
-      currentUser,
-      isMasterWithoutOwnCinema,
-    ]);
-
   const fetchShiftTrades =
     useCallback(async () => {
       if (
@@ -341,15 +299,13 @@ export function useMyShiftsData({
       selectedMonth,
     ]);
 
-  const fetchCinemaSettings =
+  const fetchStaticData =
     useCallback(async () => {
       if (
         !currentUser ||
-        isMasterWithoutOwnCinema ||
-        !hasOwnCinema(
-          currentUser,
-        )
+        isMasterWithoutOwnCinema
       ) {
+        setUsers([]);
         setCinemaSettings(
           null,
         );
@@ -359,39 +315,59 @@ export function useMyShiftsData({
       try {
         const response =
           await apiFetch(
-            `/cinemas/${currentUser.cinemaId}`,
+            "/shifts/my-static-data",
           );
 
         if (!response.ok) {
           throw new Error(
             await readErrorMessage(
               response,
-              "Biografindstillinger kunne ikke hentes.",
+              "Kollegaer og vagtbytteindstillinger kunne ikke hentes.",
             ),
           );
         }
 
         const data =
-          await response.json();
-        setCinemaSettings({
-          allowShiftTradePool:
-            Boolean(
-              data.allowShiftTradePool,
-            ),
-          allowShiftTradeDirect:
-            Boolean(
-              data.allowShiftTradeDirect,
-            ),
-        });
+          (await response.json()) as
+            MyShiftsStaticDataResponse;
+
+        setUsers(
+          Array.isArray(
+            data.users,
+          )
+            ? data.users
+            : [],
+        );
+        setCinemaSettings(
+          data.cinemaSettings &&
+          typeof data.cinemaSettings ===
+            "object"
+            ? {
+                allowShiftTradePool:
+                  Boolean(
+                    data
+                      .cinemaSettings
+                      .allowShiftTradePool,
+                  ),
+                allowShiftTradeDirect:
+                  Boolean(
+                    data
+                      .cinemaSettings
+                      .allowShiftTradeDirect,
+                  ),
+              }
+            : null,
+        );
       } catch (error) {
+        setUsers([]);
         setCinemaSettings(
           null,
         );
         showErrorRef.current(
-          "Biografindstillinger kunne ikke hentes",
+          "Sidedata kunne ikke hentes",
           error instanceof Error
             ? error.message
-            : "Der opstod en fejl ved hentning af biografindstillinger.",
+            : "Der opstod en fejl ved hentning af kollegaer og vagtbytteindstillinger.",
         );
       }
     }, [
@@ -422,26 +398,7 @@ export function useMyShiftsData({
     ]);
 
   const refreshStaticData =
-    useCallback(async () => {
-      if (
-        !currentUser ||
-        isMasterWithoutOwnCinema
-      ) {
-        setUsers([]);
-        setCinemaSettings(null);
-        return;
-      }
-
-      await Promise.all([
-        fetchUsers(),
-        fetchCinemaSettings(),
-      ]);
-    }, [
-      currentUser,
-      fetchCinemaSettings,
-      fetchUsers,
-      isMasterWithoutOwnCinema,
-    ]);
+    fetchStaticData;
 
   const refreshData =
     refreshDynamicData;
