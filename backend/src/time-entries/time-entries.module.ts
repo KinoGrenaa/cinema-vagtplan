@@ -4,6 +4,8 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 import { PayrollModule } from '../payroll/payroll.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MyTimeEntriesController } from './my-time-entries.controller';
+import { ScheduleTimeEntriesController } from './schedule-time-entries.controller';
+import { ScheduleTimeEntriesService } from './schedule-time-entries.service';
 import { TimeApprovalEntriesController } from './time-approval-entries.controller';
 import { TimeEntriesController } from './time-entries.controller';
 import { TimeEntriesService } from './time-entries.service';
@@ -15,14 +17,20 @@ import { TimeEntriesService } from './time-entries.service';
     PayrollModule,
     JwtModule.register({
       secret: 'super-secret-key-change-later',
-      signOptions: { expiresIn: '7d' },
+      signOptions: {
+        expiresIn: '7d',
+      },
     }),
   ],
   controllers: [
     TimeEntriesController,
     MyTimeEntriesController,
     TimeApprovalEntriesController,
+    ScheduleTimeEntriesController,
   ],
-  providers: [TimeEntriesService],
+  providers: [
+    TimeEntriesService,
+    ScheduleTimeEntriesService,
+  ],
 })
 export class TimeEntriesModule {}

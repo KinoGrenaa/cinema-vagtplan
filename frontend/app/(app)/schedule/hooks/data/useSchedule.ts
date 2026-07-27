@@ -619,7 +619,7 @@ export function useSchedule(
           const response =
             await apiFetch(
               appendActiveCinemaId(
-                "/time-entries/me",
+                `/time-entries/schedule-day?date=${selectedDate}`,
               ),
             );
 
@@ -673,6 +673,7 @@ export function useSchedule(
         appendActiveCinemaId,
         isGlobalMaster,
         reportBackgroundError,
+        selectedDate,
         user,
       ],
     );
