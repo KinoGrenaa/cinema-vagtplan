@@ -6,6 +6,12 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  buildCopenhagenDateTimeFromMinute,
+  getCopenhagenDateKey,
+  getCopenhagenMinuteOfDay,
+  getCopenhagenMonthInstantRange,
+} from './shift-planning-time-zone';
 
 type AuthUser = {
   sub?: number;
@@ -206,11 +212,11 @@ type MovieShowingTimingData = {
 };
 
 function getMinuteOfDay(value: Date) {
-  return value.getUTCHours() * 60 + value.getUTCMinutes();
+  return getCopenhagenMinuteOfDay(value);
 }
 
 function getDateKeyFromDateTime(value: Date) {
-  return value.toISOString().slice(0, 10);
+  return getCopenhagenDateKey(value);
 }
 
 function normalizeRangeEnd(startMinute: number, endMinute: number) {
@@ -472,31 +478,17 @@ function buildDraftItemInterval(row: any): DraftValidationInterval {
     };
   }
 
-  const start = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      0,
-      plannedStartMinute,
-      0,
-      0,
-    ),
+  const start = buildCopenhagenDateTimeFromMinute(
+    date,
+    plannedStartMinute,
   );
   const normalizedEndMinute =
     plannedEndMinute <= plannedStartMinute
       ? plannedEndMinute + 24 * 60
       : plannedEndMinute;
-  const end = new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      0,
-      normalizedEndMinute,
-      0,
-      0,
-    ),
+  const end = buildCopenhagenDateTimeFromMinute(
+    date,
+    normalizedEndMinute,
   );
 
   return {
@@ -519,17 +511,7 @@ function buildDateTimeFromMinute(dateValue: unknown, minuteValue: unknown) {
     return null;
   }
 
-  return new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      0,
-      minute,
-      0,
-      0,
-    ),
-  );
+  return buildCopenhagenDateTimeFromMinute(date, minute);
 }
 
 function getJobFunctionWorkTypeBlockReason(row: any) {
@@ -955,6 +937,7 @@ export class ShiftPlanningDraftsService {
     const note = parseOptionalNote(data?.note);
     const actorUserId = getActorUserId(user);
     const { start, end } = getMonthRange(year, month);
+    const movieRange = getCopenhagenMonthInstantRange(year, month);
     const monthPlanDays = await this.prisma.monthPlanDay.findMany({
       where: {
         cinemaId,
@@ -1010,8 +993,8 @@ export class ShiftPlanningDraftsService {
       where: {
         cinemaId,
         startTime: {
-          gte: start,
-          lt: end,
+          gte: movieRange.start,
+          lt: movieRange.end,
         },
       },
       orderBy: [{ startTime: 'asc' }, { id: 'asc' }],

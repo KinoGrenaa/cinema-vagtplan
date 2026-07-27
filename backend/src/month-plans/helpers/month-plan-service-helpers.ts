@@ -35,7 +35,8 @@ export type MonthPlanDbClient =
 
 const MONTH_PLAN_LOCK_NAMESPACE = 1_296_808_012;
 const MAX_MONTH_PLAN_TEXT_LENGTH = 5_000;
-const MAX_MONTH_PLAN_COUNT = 2_147_483_647;
+const MAX_POSTGRES_INTEGER = 2_147_483_647;
+const MAX_MONTH_PLAN_COUNT = MAX_POSTGRES_INTEGER;
 const MAX_DATE_TIME_INPUT_LENGTH = 64;
 const ISO_DATE_TIME_WITH_ZONE =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-](\d{2}):(\d{2}))$/;
@@ -185,7 +186,7 @@ export function resolveMonthPlanCinemaId(
       return parseStrictInteger(
         providedCinemaId,
         1,
-        Number.MAX_SAFE_INTEGER,
+        MAX_POSTGRES_INTEGER,
         'Vælg en biograf, før du administrerer månedsplanen.',
       );
     } catch {
@@ -200,7 +201,7 @@ export function resolveMonthPlanCinemaId(
       return parseStrictInteger(
         user.cinemaId,
         1,
-        Number.MAX_SAFE_INTEGER,
+        MAX_POSTGRES_INTEGER,
         'Ingen biograf er knyttet til din bruger.',
       );
     } catch {
@@ -471,12 +472,19 @@ export async function withMonthPlanCinemaLock<T>(
     transaction: MonthPlanDbClient,
   ) => Promise<T>,
 ) {
+  const lockCinemaId = parseStrictInteger(
+    cinemaId,
+    1,
+    MAX_POSTGRES_INTEGER,
+    'Biograf-ID ligger uden for det tilladte interval.',
+  );
+
   return prisma.$transaction(
     async (transaction) => {
       await transaction.$executeRaw`
         SELECT pg_advisory_xact_lock(
-          ${MONTH_PLAN_LOCK_NAMESPACE},
-          ${cinemaId}
+          CAST(${MONTH_PLAN_LOCK_NAMESPACE} AS integer),
+          CAST(${lockCinemaId} AS integer)
         )
       `;
 

@@ -12,6 +12,10 @@ import { checkShiftConflicts } from '../shifts/helpers/shift-conflict-checks';
 import { ensureShiftUserHasCinemaAccess } from '../shifts/helpers/shift-user-access';
 
 import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
+import {
+  buildCopenhagenDateTimeFromMinute,
+  getCopenhagenDayInstantRange,
+} from './shift-planning-time-zone';
 
 type AuthUser = {
   sub?: number;
@@ -132,17 +136,7 @@ function toIsoDateOnly(date: Date) {
 }
 
 function buildDateTimeFromMinute(date: Date, minute: number) {
-  return new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      0,
-      minute,
-      0,
-      0,
-    ),
-  );
+  return buildCopenhagenDateTimeFromMinute(date, minute);
 }
 
 function buildShiftTimes(
@@ -337,10 +331,11 @@ function getDateRangeForDateKey(dateKey: string) {
     throw new BadRequestException('Kladdeposten har en ugyldig dato.');
   }
 
-  const start = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
-
-  return { start, end };
+  try {
+    return getCopenhagenDayInstantRange(dateKey);
+  } catch {
+    throw new BadRequestException('Kladdeposten har en ugyldig dato.');
+  }
 }
 
 async function refreshMonthPlanCountsForDateKeys(

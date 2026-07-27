@@ -41,6 +41,7 @@ describe('month plan service helpers', () => {
     '1e2',
     '1.5',
     '-1',
+    '2147483648',
     '9007199254740992',
   ])('rejects invalid MASTER cinema %p', (value) => {
     expect(() =>
@@ -59,6 +60,7 @@ describe('month plan service helpers', () => {
     0,
     -1,
     1.5,
+    2_147_483_648,
     Number.MAX_SAFE_INTEGER + 1,
   ])('rejects invalid ADMIN cinema %p', (cinemaId) => {
     expect(() =>
@@ -227,8 +229,49 @@ describe('month plan service helpers', () => {
     expect(
       transaction.$executeRaw,
     ).toHaveBeenCalledTimes(1);
+
+    const [queryParts, namespace, lockedCinemaId] =
+      transaction.$executeRaw.mock.calls[0];
+    const query = queryParts.join('VALUE');
+
+    expect(query).toContain(
+      'CAST(VALUE AS integer)',
+    );
+    expect(
+      query.match(/CAST\(VALUE AS integer\)/g),
+    ).toHaveLength(2);
+    expect(namespace).toBe(1_296_808_012);
+    expect(lockedCinemaId).toBe(7);
     expect(action).toHaveBeenCalledWith(
       transaction,
     );
   });
+
+  it.each([
+    0,
+    -1,
+    1.5,
+    2_147_483_648,
+  ])(
+    'rejects advisory lock cinema ID %p outside the PostgreSQL integer range',
+    async (cinemaId) => {
+      const prisma = {
+        $transaction: jest.fn(),
+      };
+      const action = jest.fn();
+
+      await expect(
+        withMonthPlanCinemaLock(
+          prisma as never,
+          cinemaId,
+          action,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(
+        prisma.$transaction,
+      ).not.toHaveBeenCalled();
+      expect(action).not.toHaveBeenCalled();
+    },
+  );
 });
