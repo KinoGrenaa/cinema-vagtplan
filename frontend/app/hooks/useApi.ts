@@ -4,6 +4,10 @@ import {
   useCallback,
 } from "react";
 
+import {
+  fetchWithGetCoalescing,
+} from "@/app/lib/apiRequest";
+
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL!;
 
@@ -13,30 +17,39 @@ const MASTER_SELECTED_CINEMA_ID_KEY =
 function getMasterSelectedCinemaId() {
   try {
     const savedUser =
-      localStorage.getItem("user");
+      localStorage.getItem(
+        "user",
+      );
 
     if (!savedUser) {
       return null;
     }
 
-    const user = JSON.parse(
-      savedUser,
-    ) as {
-      role?: string;
-    };
+    const user =
+      JSON.parse(
+        savedUser,
+      ) as {
+        role?: string;
+      };
 
-    if (user.role !== "MASTER") {
+    if (
+      user.role !==
+      "MASTER"
+    ) {
       return null;
     }
 
-    const cinemaId = Number(
-      localStorage.getItem(
-        MASTER_SELECTED_CINEMA_ID_KEY,
-      ),
-    );
+    const cinemaId =
+      Number(
+        localStorage.getItem(
+          MASTER_SELECTED_CINEMA_ID_KEY,
+        ),
+      );
 
     if (
-      !Number.isInteger(cinemaId) ||
+      !Number.isInteger(
+        cinemaId,
+      ) ||
       cinemaId <= 0
     ) {
       return null;
@@ -49,57 +62,69 @@ function getMasterSelectedCinemaId() {
 }
 
 export function useApi() {
-  const apiFetch = useCallback(
-    (
-      endpoint: string,
-      options: RequestInit = {},
-    ) => {
-      const token =
-        localStorage.getItem(
-          "token",
+  const apiFetch =
+    useCallback(
+      (
+        endpoint: string,
+        options:
+          RequestInit = {},
+      ) => {
+        const token =
+          localStorage.getItem(
+            "token",
+          );
+        const headers =
+          new Headers(
+            options.headers ||
+              {},
+          );
+        const isFormDataBody =
+          typeof FormData !==
+            "undefined" &&
+          options.body instanceof
+            FormData;
+
+        if (
+          !headers.has(
+            "Content-Type",
+          ) &&
+          !isFormDataBody
+        ) {
+          headers.set(
+            "Content-Type",
+            "application/json",
+          );
+        }
+
+        if (token) {
+          headers.set(
+            "Authorization",
+            `Bearer ${token}`,
+          );
+        }
+
+        const masterCinemaId =
+          getMasterSelectedCinemaId();
+
+        if (masterCinemaId) {
+          headers.set(
+            "X-Cinema-Id",
+            String(
+              masterCinemaId,
+            ),
+          );
+        }
+
+        return fetchWithGetCoalescing(
+          `${API_URL}${endpoint}`,
+          {
+            ...options,
+            headers,
+          },
         );
-      const headers = new Headers(
-        options.headers || {},
-      );
-
-      if (
-        !headers.has(
-          "Content-Type",
-        )
-      ) {
-        headers.set(
-          "Content-Type",
-          "application/json",
-        );
-      }
-
-      if (token) {
-        headers.set(
-          "Authorization",
-          `Bearer ${token}`,
-        );
-      }
-
-      const masterCinemaId =
-        getMasterSelectedCinemaId();
-
-      if (masterCinemaId) {
-        headers.set(
-          "X-Cinema-Id",
-          String(masterCinemaId),
-        );
-      }
-
-      return fetch(
-        `${API_URL}${endpoint}`,
-        {
-          ...options,
-          headers,
-        },
-      );
-    },
-    [],
-  );
+      },
+      [],
+    );
 
   return {
     apiFetch,

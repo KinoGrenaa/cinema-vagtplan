@@ -14,6 +14,7 @@ import { useScheduleStaffingRequest } from "./hooks/actions/useScheduleStaffingR
 import { useScheduleTimeRegistration } from "./hooks/actions/useScheduleTimeRegistration";
 import { useSchedule } from "./hooks/data/useSchedule";
 import { useScheduleLeaveOverlay } from "./hooks/data/useScheduleLeaveOverlay";
+import { useScheduleMovieOverlay } from "./hooks/data/useScheduleMovieOverlay";
 import AiScheduleFeatures from "./components/ai/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
@@ -46,8 +47,7 @@ export default function SchedulePage() {
     shifts,
     users,
     workTypes,
-    movieShowings,
-    refreshDayData,
+    refreshShifts,
     createShift,
     updateShift,
     deleteShift,
@@ -65,6 +65,13 @@ export default function SchedulePage() {
   const {
     leaveRequests,
   } = useScheduleLeaveOverlay({
+    selectedDate,
+    onError: infoDialog.showError,
+  });
+
+  const {
+    movieShowings,
+  } = useScheduleMovieOverlay({
     selectedDate,
     onError: infoDialog.showError,
   });
@@ -219,10 +226,16 @@ export default function SchedulePage() {
   }
 
   useRealtimeShifts({
-    onShiftsUpdated: () =>
-      refreshDayData({ showErrors: false, showLoading: false }),
-    onShiftTradesUpdated: () =>
-      refreshDayData({ showErrors: false, showLoading: false }),
+    onShiftsUpdated: () => {
+      void refreshShifts({
+        reportError: false,
+      });
+    },
+    onShiftTradesUpdated: () => {
+      void refreshShifts({
+        reportError: false,
+      });
+    },
     enableToasts: false,
   });
 

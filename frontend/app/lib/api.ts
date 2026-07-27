@@ -1,3 +1,7 @@
+import {
+  fetchWithGetCoalescing,
+} from "./apiRequest";
+
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:3001";
@@ -31,30 +35,39 @@ function getMasterSelectedCinemaId() {
 
   try {
     const savedUser =
-      localStorage.getItem("user");
+      localStorage.getItem(
+        "user",
+      );
 
     if (!savedUser) {
       return null;
     }
 
-    const user = JSON.parse(
-      savedUser,
-    ) as {
-      role?: string;
-    };
+    const user =
+      JSON.parse(
+        savedUser,
+      ) as {
+        role?: string;
+      };
 
-    if (user.role !== "MASTER") {
+    if (
+      user.role !==
+      "MASTER"
+    ) {
       return null;
     }
 
-    const cinemaId = Number(
-      localStorage.getItem(
-        MASTER_SELECTED_CINEMA_ID_KEY,
-      ),
-    );
+    const cinemaId =
+      Number(
+        localStorage.getItem(
+          MASTER_SELECTED_CINEMA_ID_KEY,
+        ),
+      );
 
     if (
-      !Number.isInteger(cinemaId) ||
+      !Number.isInteger(
+        cinemaId,
+      ) ||
       cinemaId <= 0
     ) {
       return null;
@@ -68,21 +81,26 @@ function getMasterSelectedCinemaId() {
 
 export async function apiFetch(
   endpoint: string,
-  options: RequestInit = {},
+  options:
+    RequestInit = {},
 ) {
   const token =
-    typeof window !== "undefined"
+    typeof window !==
+    "undefined"
       ? localStorage.getItem(
           "token",
         )
       : null;
-  const headers = new Headers(
-    options.headers || {},
-  );
+  const headers =
+    new Headers(
+      options.headers ||
+        {},
+    );
   const isFormDataBody =
     typeof FormData !==
       "undefined" &&
-    options.body instanceof FormData;
+    options.body instanceof
+      FormData;
 
   if (
     !headers.has(
@@ -109,19 +127,25 @@ export async function apiFetch(
   if (masterCinemaId) {
     headers.set(
       "X-Cinema-Id",
-      String(masterCinemaId),
+      String(
+        masterCinemaId,
+      ),
     );
   }
 
-  const response = await fetch(
-    `${API_URL}${endpoint}`,
-    {
-      ...options,
-      headers,
-    },
-  );
+  const response =
+    await fetchWithGetCoalescing(
+      `${API_URL}${endpoint}`,
+      {
+        ...options,
+        headers,
+      },
+    );
 
-  if (response.status === 401) {
+  if (
+    response.status ===
+    401
+  ) {
     notifySessionExpired();
   }
 

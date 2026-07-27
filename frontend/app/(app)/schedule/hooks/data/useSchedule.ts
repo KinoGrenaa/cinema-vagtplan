@@ -1,26 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useApi } from "@/app/hooks/useApi";
-import { useAuth } from "@/app/providers/AuthProvider";
-import { localDateTimeToISOString } from "@/app/utils/dateTime";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  useApi,
+} from "@/app/hooks/useApi";
+import {
+  useAuth,
+} from "@/app/providers/AuthProvider";
+import {
+  localDateTimeToISOString,
+} from "@/app/utils/dateTime";
 
 import type {
   Shift,
   User,
   WorkType,
-  LeaveRequest,
 } from "../../../../../../shared/types";
-
-type MovieShowing = {
-  id: number;
-  title: string;
-  hall: string;
-  startTime: string;
-  endTime: string;
-  soldSeats: number;
-  freeSeats: number;
-};
 
 type CreateShiftInput = {
   startTime: string;
@@ -82,12 +84,19 @@ type OpenTimeEntry = {
 type ScheduleTimeEntry = {
   id: number;
   shiftId?: number | null;
-  status: "PENDING" | "APPROVED" | "NEEDS_CHANGES" | "VOIDED";
+  status:
+    | "PENDING"
+    | "APPROVED"
+    | "NEEDS_CHANGES"
+    | "VOIDED";
   clockIn: string;
   clockOut?: string | null;
 };
 
-type ScheduleErrorHandler = (title: string, description: string) => void;
+type ScheduleErrorHandler = (
+  title: string,
+  description: string,
+) => void;
 
 type UseScheduleOptions = {
   onError?: ScheduleErrorHandler;
@@ -102,31 +111,65 @@ type RefreshDayDataOptions = {
   showLoading?: boolean;
 };
 
-const MASTER_SELECTED_CINEMA_ID_KEY = "masterSelectedCinemaId";
+const MASTER_SELECTED_CINEMA_ID_KEY =
+  "masterSelectedCinemaId";
 
 function getSelectedMasterCinemaId() {
-  if (typeof window === "undefined") return null;
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return null;
+  }
 
-  const cinemaId = Number(localStorage.getItem(MASTER_SELECTED_CINEMA_ID_KEY));
+  const cinemaId =
+    Number(
+      localStorage.getItem(
+        MASTER_SELECTED_CINEMA_ID_KEY,
+      ),
+    );
 
-  if (!Number.isInteger(cinemaId) || cinemaId <= 0) {
+  if (
+    !Number.isInteger(
+      cinemaId,
+    ) ||
+    cinemaId <= 0
+  ) {
     return null;
   }
 
   return cinemaId;
 }
 
-function appendCinemaId(endpoint: string, cinemaId: number | null) {
-  if (!cinemaId) return endpoint;
+function appendCinemaId(
+  endpoint: string,
+  cinemaId: number | null,
+) {
+  if (!cinemaId) {
+    return endpoint;
+  }
 
-  const separator = endpoint.includes("?") ? "&" : "?";
+  const separator =
+    endpoint.includes("?")
+      ? "&"
+      : "?";
+
   return `${endpoint}${separator}cinemaId=${cinemaId}`;
 }
 
-async function readErrorMessage(response: Response, fallback: string) {
-  const payload = await response.json().catch(() => null);
+async function readErrorMessage(
+  response: Response,
+  fallback: string,
+) {
+  const payload =
+    await response
+      .json()
+      .catch(() => null);
 
-  if (typeof payload?.message === "string") {
+  if (
+    typeof payload?.message ===
+    "string"
+  ) {
     return payload.message;
   }
 
@@ -135,42 +178,73 @@ async function readErrorMessage(response: Response, fallback: string) {
 
 export function useSchedule(
   selectedDate: string,
-  options: UseScheduleOptions = {},
+  options:
+    UseScheduleOptions = {},
 ) {
-  const { apiFetch } = useApi();
-  const onErrorRef = useRef<ScheduleErrorHandler | undefined>(options.onError);
+  const {
+    apiFetch,
+  } = useApi();
+  const onErrorRef =
+    useRef<
+      | ScheduleErrorHandler
+      | undefined
+    >(options.onError);
 
   useEffect(() => {
-    onErrorRef.current = options.onError;
+    onErrorRef.current =
+      options.onError;
   }, [options.onError]);
 
-  const reportBackgroundError = useCallback(
-    (title: string, description: string) => {
-      onErrorRef.current?.(title, description);
-    },
-    [],
-  );
+  const reportBackgroundError =
+    useCallback(
+      (
+        title: string,
+        description: string,
+      ) => {
+        onErrorRef.current?.(
+          title,
+          description,
+        );
+      },
+      [],
+    );
 
-  const { user, loading: authLoading, isAdmin } = useAuth();
-  const [selectedMasterCinemaId, setSelectedMasterCinemaId] = useState<
-    number | null
-  >(null);
+  const {
+    user,
+    loading: authLoading,
+    isAdmin,
+  } = useAuth();
+  const [
+    selectedMasterCinemaId,
+    setSelectedMasterCinemaId,
+  ] =
+    useState<number | null>(
+      null,
+    );
 
   useEffect(() => {
     function updateSelectedCinema() {
-      setSelectedMasterCinemaId(getSelectedMasterCinemaId());
+      setSelectedMasterCinemaId(
+        getSelectedMasterCinemaId(),
+      );
     }
 
     updateSelectedCinema();
 
-    window.addEventListener("storage", updateSelectedCinema);
+    window.addEventListener(
+      "storage",
+      updateSelectedCinema,
+    );
     window.addEventListener(
       "masterSelectedCinemaChanged",
       updateSelectedCinema,
     );
 
     return () => {
-      window.removeEventListener("storage", updateSelectedCinema);
+      window.removeEventListener(
+        "storage",
+        updateSelectedCinema,
+      );
       window.removeEventListener(
         "masterSelectedCinemaChanged",
         updateSelectedCinema,
@@ -178,779 +252,1142 @@ export function useSchedule(
     };
   }, []);
 
-  const activeCinemaId = useMemo(() => {
-    if (!user) return null;
+  const activeCinemaId =
+    useMemo(() => {
+      if (!user) {
+        return null;
+      }
 
-    if (user.role === "MASTER" && !user.cinemaId) {
-      return selectedMasterCinemaId;
-    }
+      if (
+        user.role ===
+          "MASTER" &&
+        !user.cinemaId
+      ) {
+        return selectedMasterCinemaId;
+      }
 
-    return user.cinemaId ?? null;
-  }, [selectedMasterCinemaId, user]);
+      return (
+        user.cinemaId ??
+        null
+      );
+    }, [
+      selectedMasterCinemaId,
+      user,
+    ]);
 
   const needsMasterCinemaSelection =
-    user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
+    user?.role ===
+      "MASTER" &&
+    !user.cinemaId &&
+    !selectedMasterCinemaId;
 
-  const isGlobalMaster = user?.role === "MASTER" && !user.cinemaId;
+  const isGlobalMaster =
+    user?.role ===
+      "MASTER" &&
+    !user.cinemaId;
 
-  const appendActiveCinemaId = useCallback(
-    (endpoint: string) => {
-      if (user?.role === "MASTER" && !user.cinemaId) {
-        return appendCinemaId(endpoint, activeCinemaId);
-      }
+  const appendActiveCinemaId =
+    useCallback(
+      (
+        endpoint: string,
+      ) => {
+        if (
+          user?.role ===
+            "MASTER" &&
+          !user.cinemaId
+        ) {
+          return appendCinemaId(
+            endpoint,
+            activeCinemaId,
+          );
+        }
 
-      return endpoint;
-    },
-    [activeCinemaId, user],
-  );
+        return endpoint;
+      },
+      [
+        activeCinemaId,
+        user,
+      ],
+    );
 
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
-  const [movieShowings, setMovieShowings] = useState<MovieShowing[]>([]);
+  const [
+    shifts,
+    setShifts,
+  ] =
+    useState<Shift[]>([]);
+  const [
+    users,
+    setUsers,
+  ] =
+    useState<User[]>([]);
+  const [
+    workTypes,
+    setWorkTypes,
+  ] =
+    useState<WorkType[]>(
+      [],
+    );
+  const [
+    openTimeEntry,
+    setOpenTimeEntry,
+  ] =
+    useState<
+      OpenTimeEntry | null
+    >(null);
+  const [
+    timeEntries,
+    setTimeEntries,
+  ] =
+    useState<
+      ScheduleTimeEntry[]
+    >([]);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [openTimeEntry, setOpenTimeEntry] = useState<OpenTimeEntry | null>(
-    null,
-  );
-  const [timeEntries, setTimeEntries] = useState<ScheduleTimeEntry[]>([]);
+  const canManageShifts =
+    isAdmin;
 
-  const [loading, setLoading] = useState(true);
+  const fetchUsers =
+    useCallback(
+      async ({
+        reportError = true,
+      }: BackgroundFetchOptions = {}) => {
+        if (
+          needsMasterCinemaSelection
+        ) {
+          setUsers([]);
+          return true;
+        }
 
-  const canManageShifts = isAdmin;
+        try {
+          const response =
+            await apiFetch(
+              appendActiveCinemaId(
+                "/users",
+              ),
+            );
 
-  const fetchUsers = useCallback(
-    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (needsMasterCinemaSelection) {
-        setUsers([]);
-        return true;
-      }
-      try {
-        const response = await apiFetch(appendActiveCinemaId("/users"));
+          if (!response.ok) {
+            setUsers([]);
 
-        if (!response.ok) {
+            if (reportError) {
+              reportBackgroundError(
+                "Medarbejdere kunne ikke hentes",
+                await readErrorMessage(
+                  response,
+                  "Kunne ikke hente medarbejdere.",
+                ),
+              );
+            }
+
+            return false;
+          }
+
+          const data =
+            await response.json();
+          const usersArray:
+            User[] =
+            Array.isArray(data)
+              ? data
+              : Array.isArray(
+                    data.users,
+                  )
+                ? data.users
+                : [];
+
+          setUsers(
+            usersArray,
+          );
+          return true;
+        } catch {
           setUsers([]);
 
           if (reportError) {
             reportBackgroundError(
               "Medarbejdere kunne ikke hentes",
-              await readErrorMessage(
-                response,
-                "Kunne ikke hente medarbejdere.",
-              ),
+              "Der opstod en fejl, da medarbejdere skulle hentes.",
             );
           }
 
           return false;
         }
+      },
+      [
+        apiFetch,
+        appendActiveCinemaId,
+        needsMasterCinemaSelection,
+        reportBackgroundError,
+      ],
+    );
 
-        const data = await response.json();
-
-        const usersArray: User[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data.users)
-            ? data.users
-            : [];
-
-        setUsers(usersArray);
-        return true;
-      } catch {
-        setUsers([]);
-
-        if (reportError) {
-          reportBackgroundError(
-            "Medarbejdere kunne ikke hentes",
-            "Der opstod en fejl, da medarbejdere skulle hentes.",
-          );
+  const fetchWorkTypes =
+    useCallback(
+      async ({
+        reportError = true,
+      }: BackgroundFetchOptions = {}) => {
+        if (
+          needsMasterCinemaSelection
+        ) {
+          setWorkTypes([]);
+          return true;
         }
 
-        return false;
-      }
-    },
-    [
-      apiFetch,
-      appendActiveCinemaId,
-      needsMasterCinemaSelection,
-      reportBackgroundError,
-    ],
-  );
+        try {
+          const response =
+            await apiFetch(
+              appendActiveCinemaId(
+                "/work-types",
+              ),
+            );
 
-  const fetchWorkTypes = useCallback(
-    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (needsMasterCinemaSelection) {
-        setWorkTypes([]);
-        return true;
-      }
-      try {
-        const response = await apiFetch(appendActiveCinemaId("/work-types"));
+          if (!response.ok) {
+            setWorkTypes([]);
 
-        if (!response.ok) {
+            if (reportError) {
+              reportBackgroundError(
+                "Vagttyper kunne ikke hentes",
+                await readErrorMessage(
+                  response,
+                  "Kunne ikke hente vagttyper.",
+                ),
+              );
+            }
+
+            return false;
+          }
+
+          const data =
+            await response.json();
+          const workTypesArray:
+            WorkType[] =
+            Array.isArray(data)
+              ? data
+              : Array.isArray(
+                    data.workTypes,
+                  )
+                ? data.workTypes
+                : [];
+
+          setWorkTypes(
+            workTypesArray,
+          );
+          return true;
+        } catch {
           setWorkTypes([]);
 
           if (reportError) {
             reportBackgroundError(
               "Vagttyper kunne ikke hentes",
-              await readErrorMessage(response, "Kunne ikke hente vagttyper."),
+              "Der opstod en fejl, da vagttyper skulle hentes.",
             );
           }
 
           return false;
         }
+      },
+      [
+        apiFetch,
+        appendActiveCinemaId,
+        needsMasterCinemaSelection,
+        reportBackgroundError,
+      ],
+    );
 
-        const data = await response.json();
-
-        const workTypesArray: WorkType[] = Array.isArray(data)
-          ? data
-          : Array.isArray(data.workTypes)
-            ? data.workTypes
-            : [];
-
-        setWorkTypes(workTypesArray);
-        return true;
-      } catch {
-        setWorkTypes([]);
-
-        if (reportError) {
-          reportBackgroundError(
-            "Vagttyper kunne ikke hentes",
-            "Der opstod en fejl, da vagttyper skulle hentes.",
-          );
+  const fetchShifts =
+    useCallback(
+      async ({
+        reportError = true,
+      }: BackgroundFetchOptions = {}) => {
+        if (
+          needsMasterCinemaSelection
+        ) {
+          setShifts([]);
+          return true;
         }
 
-        return false;
-      }
-    },
-    [
-      apiFetch,
-      appendActiveCinemaId,
-      needsMasterCinemaSelection,
-      reportBackgroundError,
-    ],
-  );
+        try {
+          const response =
+            await apiFetch(
+              appendActiveCinemaId(
+                `/shifts?date=${selectedDate}`,
+              ),
+            );
 
-  const fetchShifts = useCallback(
-    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (needsMasterCinemaSelection) {
-        setShifts([]);
-        return true;
-      }
-      try {
-        const response = await apiFetch(
-          appendActiveCinemaId(`/shifts?date=${selectedDate}`),
-        );
+          if (!response.ok) {
+            setShifts([]);
 
-        if (!response.ok) {
+            if (reportError) {
+              reportBackgroundError(
+                "Vagter kunne ikke hentes",
+                await readErrorMessage(
+                  response,
+                  "Kunne ikke hente vagter.",
+                ),
+              );
+            }
+
+            return false;
+          }
+
+          const data =
+            await response.json();
+          const shiftsArray:
+            Shift[] =
+            Array.isArray(data)
+              ? data
+              : [];
+
+          setShifts(
+            shiftsArray,
+          );
+          return true;
+        } catch {
           setShifts([]);
 
           if (reportError) {
             reportBackgroundError(
               "Vagter kunne ikke hentes",
-              await readErrorMessage(response, "Kunne ikke hente vagter."),
+              "Der opstod en fejl, da vagter skulle hentes.",
             );
           }
 
           return false;
         }
+      },
+      [
+        apiFetch,
+        appendActiveCinemaId,
+        needsMasterCinemaSelection,
+        reportBackgroundError,
+        selectedDate,
+      ],
+    );
 
-        const data = await response.json();
-
-        const shiftsArray: Shift[] = Array.isArray(data) ? data : [];
-
-        setShifts(shiftsArray);
-        return true;
-      } catch {
-        setShifts([]);
-
-        if (reportError) {
-          reportBackgroundError(
-            "Vagter kunne ikke hentes",
-            "Der opstod en fejl, da vagter skulle hentes.",
+  const fetchOpenTimeEntry =
+    useCallback(
+      async ({
+        reportError = true,
+      }: BackgroundFetchOptions = {}) => {
+        if (
+          !user ||
+          isGlobalMaster
+        ) {
+          setOpenTimeEntry(
+            null,
           );
-        }
-
-        return false;
-      }
-    },
-    [
-      apiFetch,
-      appendActiveCinemaId,
-      needsMasterCinemaSelection,
-      reportBackgroundError,
-      selectedDate,
-    ],
-  );
-
-  const fetchMovieShowings = useCallback(
-    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (needsMasterCinemaSelection) {
-        setMovieShowings([]);
-        return true;
-      }
-
-      try {
-        const response = await fetch("/mock/movie-showings.json");
-
-        if (!response.ok) {
-          setMovieShowings([]);
-
-          if (reportError) {
-            reportBackgroundError(
-              "Filmprogram kunne ikke hentes",
-              "Kunne ikke hente filmprogrammet.",
-            );
-          }
-
-          return false;
-        }
-
-        const data = await response.json();
-
-        const movieShowingsArray: MovieShowing[] = Array.isArray(data)
-          ? data
-          : [];
-
-        setMovieShowings(movieShowingsArray);
-        return true;
-      } catch {
-        setMovieShowings([]);
-
-        if (reportError) {
-          reportBackgroundError(
-            "Filmprogram kunne ikke hentes",
-            "Der opstod en fejl, da filmprogrammet skulle hentes.",
-          );
-        }
-
-        return false;
-      }
-    },
-    [needsMasterCinemaSelection, reportBackgroundError],
-  );
-
-  const fetchLeaveRequests = useCallback(
-    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (needsMasterCinemaSelection) {
-        setLeaveRequests([]);
-        return true;
-      }
-      try {
-        const response = await apiFetch(
-          appendActiveCinemaId("/leave-requests"),
-        );
-
-        if (!response.ok) {
-          setLeaveRequests([]);
-
-          if (reportError) {
-            reportBackgroundError(
-              "Fravær kunne ikke hentes",
-              await readErrorMessage(response, "Kunne ikke hente fravær."),
-            );
-          }
-
-          return false;
-        }
-
-        const data = await response.json();
-
-        const leaveRequestsArray: LeaveRequest[] = Array.isArray(data)
-          ? data
-          : [];
-
-        setLeaveRequests(leaveRequestsArray);
-        return true;
-      } catch {
-        setLeaveRequests([]);
-
-        if (reportError) {
-          reportBackgroundError(
-            "Fravær kunne ikke hentes",
-            "Der opstod en fejl, da fravær skulle hentes.",
-          );
-        }
-
-        return false;
-      }
-    },
-    [
-      apiFetch,
-      appendActiveCinemaId,
-      needsMasterCinemaSelection,
-      reportBackgroundError,
-    ],
-  );
-
-  const fetchOpenTimeEntry = useCallback(
-    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (!user || isGlobalMaster) {
-        setOpenTimeEntry(null);
-        return true;
-      }
-
-      try {
-        const response = await apiFetch(
-          appendActiveCinemaId(`/time-entries/open?userId=${user.id}`),
-        );
-
-        if (response.status === 404 || response.status === 204) {
-          setOpenTimeEntry(null);
           return true;
         }
 
-        if (!response.ok) {
-          setOpenTimeEntry(null);
+        try {
+          const response =
+            await apiFetch(
+              appendActiveCinemaId(
+                `/time-entries/open?userId=${user.id}`,
+              ),
+            );
+
+          if (
+            response.status ===
+              404 ||
+            response.status ===
+              204
+          ) {
+            setOpenTimeEntry(
+              null,
+            );
+            return true;
+          }
+
+          if (!response.ok) {
+            setOpenTimeEntry(
+              null,
+            );
+
+            if (reportError) {
+              reportBackgroundError(
+                "Åben tidsregistrering kunne ikke hentes",
+                await readErrorMessage(
+                  response,
+                  "Kunne ikke hente åben tidsregistrering.",
+                ),
+              );
+            }
+
+            return false;
+          }
+
+          const text =
+            await response.text();
+
+          if (!text.trim()) {
+            setOpenTimeEntry(
+              null,
+            );
+            return true;
+          }
+
+          const data =
+            JSON.parse(
+              text,
+            );
+
+          setOpenTimeEntry(
+            data ?? null,
+          );
+          return true;
+        } catch {
+          setOpenTimeEntry(
+            null,
+          );
 
           if (reportError) {
             reportBackgroundError(
               "Åben tidsregistrering kunne ikke hentes",
-              await readErrorMessage(
-                response,
-                "Kunne ikke hente åben tidsregistrering.",
-              ),
+              "Der opstod en fejl, da åben tidsregistrering skulle hentes.",
             );
           }
 
           return false;
         }
+      },
+      [
+        apiFetch,
+        appendActiveCinemaId,
+        isGlobalMaster,
+        reportBackgroundError,
+        user,
+      ],
+    );
 
-        const text = await response.text();
-
-        if (!text.trim()) {
-          setOpenTimeEntry(null);
+  const fetchMyTimeEntries =
+    useCallback(
+      async ({
+        reportError = true,
+      }: BackgroundFetchOptions = {}) => {
+        if (
+          !user ||
+          isGlobalMaster
+        ) {
+          setTimeEntries(
+            [],
+          );
           return true;
         }
 
-        const data = JSON.parse(text);
-        setOpenTimeEntry(data ?? null);
-        return true;
-      } catch {
-        setOpenTimeEntry(null);
+        try {
+          const response =
+            await apiFetch(
+              appendActiveCinemaId(
+                "/time-entries/me",
+              ),
+            );
 
-        if (reportError) {
-          reportBackgroundError(
-            "Åben tidsregistrering kunne ikke hentes",
-            "Der opstod en fejl, da åben tidsregistrering skulle hentes.",
+          if (!response.ok) {
+            setTimeEntries(
+              [],
+            );
+
+            if (reportError) {
+              reportBackgroundError(
+                "Tidsregistreringer kunne ikke hentes",
+                await readErrorMessage(
+                  response,
+                  "Kunne ikke hente tidsregistreringer.",
+                ),
+              );
+            }
+
+            return false;
+          }
+
+          const data =
+            await response.json();
+          const entriesArray:
+            ScheduleTimeEntry[] =
+            Array.isArray(data)
+              ? data
+              : [];
+
+          setTimeEntries(
+            entriesArray,
           );
-        }
-
-        return false;
-      }
-    },
-    [
-      apiFetch,
-      appendActiveCinemaId,
-      isGlobalMaster,
-      reportBackgroundError,
-      user,
-    ],
-  );
-
-  const fetchMyTimeEntries = useCallback(
-    async ({ reportError = true }: BackgroundFetchOptions = {}) => {
-      if (!user || isGlobalMaster) {
-        setTimeEntries([]);
-        return true;
-      }
-
-      try {
-        const response = await apiFetch(
-          appendActiveCinemaId("/time-entries/me"),
-        );
-
-        if (!response.ok) {
-          setTimeEntries([]);
+          return true;
+        } catch {
+          setTimeEntries(
+            [],
+          );
 
           if (reportError) {
             reportBackgroundError(
               "Tidsregistreringer kunne ikke hentes",
-              await readErrorMessage(
-                response,
-                "Kunne ikke hente tidsregistreringer.",
-              ),
+              "Der opstod en fejl, da tidsregistreringer skulle hentes.",
             );
           }
 
           return false;
         }
+      },
+      [
+        apiFetch,
+        appendActiveCinemaId,
+        isGlobalMaster,
+        reportBackgroundError,
+        user,
+      ],
+    );
 
-        const data = await response.json();
+  const refreshShifts =
+    useCallback(
+      async ({
+        reportError = true,
+      }: BackgroundFetchOptions = {}) =>
+        fetchShifts({
+          reportError,
+        }),
+      [fetchShifts],
+    );
 
-        const entriesArray: ScheduleTimeEntry[] = Array.isArray(data)
-          ? data
-          : [];
+  const refreshTimeData =
+    useCallback(
+      async ({
+        reportError = true,
+      }: BackgroundFetchOptions = {}) => {
+        const results =
+          await Promise.all([
+            fetchOpenTimeEntry({
+              reportError: false,
+            }),
+            fetchMyTimeEntries({
+              reportError: false,
+            }),
+          ]);
 
-        setTimeEntries(entriesArray);
-        return true;
-      } catch {
-        setTimeEntries([]);
+        const success =
+          results.every(
+            Boolean,
+          );
 
-        if (reportError) {
+        if (
+          reportError &&
+          !success
+        ) {
           reportBackgroundError(
-            "Tidsregistreringer kunne ikke hentes",
-            "Der opstod en fejl, da tidsregistreringer skulle hentes.",
+            "Tidsregistreringsdata kunne ikke hentes",
+            "Åben tidsregistrering eller dine tidsregistreringer kunne ikke hentes.",
           );
         }
 
-        return false;
-      }
-    },
-    [
-      apiFetch,
-      appendActiveCinemaId,
-      isGlobalMaster,
-      reportBackgroundError,
-      user,
-    ],
-  );
+        return success;
+      },
+      [
+        fetchMyTimeEntries,
+        fetchOpenTimeEntry,
+        reportBackgroundError,
+      ],
+    );
 
-  const refreshDayData = useCallback(
-    async ({
-      showErrors = true,
-      showLoading = true,
-    }: RefreshDayDataOptions = {}) => {
-      if (showLoading) {
-        setLoading(true);
-      }
-
-      try {
-        const dataFetches = [
-          {
-            label: "vagter",
-            run: () => fetchShifts({ reportError: false }),
-          },
-          {
-            label: "filmprogram",
-            run: () => fetchMovieShowings({ reportError: false }),
-          },
-          {
-            label: "fravær",
-            run: () => fetchLeaveRequests({ reportError: false }),
-          },
-          {
-            label: "åben tidsregistrering",
-            run: () => fetchOpenTimeEntry({ reportError: false }),
-          },
-          {
-            label: "mine tidsregistreringer",
-            run: () => fetchMyTimeEntries({ reportError: false }),
-          },
-        ];
-
-        const results = await Promise.all(
-          dataFetches.map((item) => item.run()),
-        );
-
-        const failedFetches = dataFetches
-          .filter((_, index) => !results[index])
-          .map((item) => item.label);
-
-        if (showErrors && failedFetches.length > 0) {
-          reportBackgroundError(
-            "Vagtplandata kunne ikke hentes",
-            `Følgende data kunne ikke hentes: ${failedFetches.join(
-              ", ",
-            )}. Prøv at opdatere siden.`,
-          );
-        }
-      } finally {
+  const refreshDayData =
+    useCallback(
+      async ({
+        showErrors = true,
+        showLoading = true,
+      }: RefreshDayDataOptions = {}) => {
         if (showLoading) {
-          setLoading(false);
+          setLoading(true);
         }
-      }
-    },
-    [
-      fetchShifts,
-      fetchMovieShowings,
-      fetchLeaveRequests,
-      fetchOpenTimeEntry,
-      fetchMyTimeEntries,
-      reportBackgroundError,
-    ],
-  );
+
+        try {
+          const [
+            shiftsOk,
+            timeDataOk,
+          ] =
+            await Promise.all([
+              refreshShifts({
+                reportError:
+                  false,
+              }),
+              refreshTimeData({
+                reportError:
+                  false,
+              }),
+            ]);
+
+          if (
+            showErrors &&
+            (!shiftsOk ||
+              !timeDataOk)
+          ) {
+            const failed =
+              [
+                !shiftsOk
+                  ? "vagter"
+                  : null,
+                !timeDataOk
+                  ? "tidsregistreringer"
+                  : null,
+              ].filter(
+                (
+                  value,
+                ): value is string =>
+                  Boolean(
+                    value,
+                  ),
+              );
+
+            reportBackgroundError(
+              "Vagtplandata kunne ikke hentes",
+              `Følgende data kunne ikke hentes: ${failed.join(
+                ", ",
+              )}. Prøv at opdatere siden.`,
+            );
+          }
+        } finally {
+          if (showLoading) {
+            setLoading(false);
+          }
+        }
+      },
+      [
+        refreshShifts,
+        refreshTimeData,
+        reportBackgroundError,
+      ],
+    );
 
   useEffect(() => {
-    if (authLoading) return;
-
-    if (!user) {
-      window.location.href = "/";
+    if (authLoading) {
       return;
     }
 
-    fetchUsers();
-    fetchWorkTypes();
-  }, [authLoading, fetchUsers, fetchWorkTypes, user]);
+    if (!user) {
+      window.location.href =
+        "/";
+      return;
+    }
+
+    void fetchUsers();
+    void fetchWorkTypes();
+  }, [
+    authLoading,
+    fetchUsers,
+    fetchWorkTypes,
+    user,
+  ]);
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (
+      authLoading ||
+      !user
+    ) {
+      return;
+    }
 
-    refreshDayData();
-  }, [authLoading, refreshDayData, user]);
+    void refreshDayData();
+  }, [
+    authLoading,
+    refreshDayData,
+    user,
+  ]);
 
-  const createShift = useCallback(
-    async (input: CreateShiftInput) => {
-      if (needsMasterCinemaSelection || !activeCinemaId) {
-        throw new Error("Vælg en biograf, før du opretter vagter.");
-      }
+  const createShift =
+    useCallback(
+      async (
+        input:
+          CreateShiftInput,
+      ) => {
+        if (
+          needsMasterCinemaSelection ||
+          !activeCinemaId
+        ) {
+          throw new Error(
+            "Vælg en biograf, før du opretter vagter.",
+          );
+        }
 
-      const response = await apiFetch("/shifts", {
-        method: "POST",
-        body: JSON.stringify({
-          ...input,
-          ...(user?.role === "MASTER" && !user.cinemaId
-            ? { cinemaId: activeCinemaId }
-            : {}),
-        }),
-      });
+        const response =
+          await apiFetch(
+            "/shifts",
+            {
+              method:
+                "POST",
+              body:
+                JSON.stringify(
+                  {
+                    ...input,
+                    ...(user?.role ===
+                      "MASTER" &&
+                    !user.cinemaId
+                      ? {
+                          cinemaId:
+                            activeCinemaId,
+                        }
+                      : {}),
+                  },
+                ),
+            },
+          );
 
-      if (!response.ok) {
-        const data = await response.json();
+        if (!response.ok) {
+          const data =
+            await response.json();
 
-        throw new Error(data.message || "Kunne ikke oprette vagt");
-      }
+          throw new Error(
+            data.message ||
+              "Kunne ikke oprette vagt",
+          );
+        }
 
-      await refreshDayData();
-    },
-    [
-      activeCinemaId,
-      apiFetch,
-      needsMasterCinemaSelection,
-      refreshDayData,
-      user,
-    ],
-  );
+        await refreshShifts();
+      },
+      [
+        activeCinemaId,
+        apiFetch,
+        needsMasterCinemaSelection,
+        refreshShifts,
+        user,
+      ],
+    );
 
-  const updateShift = useCallback(
-    async (shiftId: number, input: UpdateShiftInput) => {
-      if (needsMasterCinemaSelection || !activeCinemaId) {
-        throw new Error("Vælg en biograf, før du redigerer vagter.");
-      }
+  const updateShift =
+    useCallback(
+      async (
+        shiftId: number,
+        input:
+          UpdateShiftInput,
+      ) => {
+        if (
+          needsMasterCinemaSelection ||
+          !activeCinemaId
+        ) {
+          throw new Error(
+            "Vælg en biograf, før du redigerer vagter.",
+          );
+        }
 
-      const response = await apiFetch(`/shifts/${shiftId}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          ...input,
-          ...(user?.role === "MASTER" && !user.cinemaId
-            ? { cinemaId: activeCinemaId }
-            : {}),
-        }),
-      });
+        const response =
+          await apiFetch(
+            `/shifts/${shiftId}`,
+            {
+              method:
+                "PATCH",
+              body:
+                JSON.stringify(
+                  {
+                    ...input,
+                    ...(user?.role ===
+                      "MASTER" &&
+                    !user.cinemaId
+                      ? {
+                          cinemaId:
+                            activeCinemaId,
+                        }
+                      : {}),
+                  },
+                ),
+            },
+          );
 
-      if (!response.ok) {
-        const data = await response.json();
+        if (!response.ok) {
+          const data =
+            await response.json();
 
-        throw new Error(data.message || "Kunne ikke opdatere vagt");
-      }
+          throw new Error(
+            data.message ||
+              "Kunne ikke opdatere vagt",
+          );
+        }
 
-      await refreshDayData();
-    },
-    [
-      activeCinemaId,
-      apiFetch,
-      needsMasterCinemaSelection,
-      refreshDayData,
-      user,
-    ],
-  );
+        await refreshShifts();
+      },
+      [
+        activeCinemaId,
+        apiFetch,
+        needsMasterCinemaSelection,
+        refreshShifts,
+        user,
+      ],
+    );
 
-  const deleteShift = useCallback(
-    async (shiftId: number) => {
-      if (needsMasterCinemaSelection || !activeCinemaId) {
-        throw new Error("Vælg en biograf, før du sletter vagter.");
-      }
+  const deleteShift =
+    useCallback(
+      async (
+        shiftId: number,
+      ) => {
+        if (
+          needsMasterCinemaSelection ||
+          !activeCinemaId
+        ) {
+          throw new Error(
+            "Vælg en biograf, før du sletter vagter.",
+          );
+        }
 
-      const response = await apiFetch(
-        user?.role === "MASTER" && !user.cinemaId
-          ? appendCinemaId(`/shifts/${shiftId}`, activeCinemaId)
-          : `/shifts/${shiftId}`,
-        {
-          method: "DELETE",
-        },
-      );
+        const response =
+          await apiFetch(
+            user?.role ===
+                "MASTER" &&
+              !user.cinemaId
+              ? appendCinemaId(
+                  `/shifts/${shiftId}`,
+                  activeCinemaId,
+                )
+              : `/shifts/${shiftId}`,
+            {
+              method:
+                "DELETE",
+            },
+          );
 
-      if (!response.ok) {
-        throw new Error("Kunne ikke slette vagt");
-      }
+        if (!response.ok) {
+          throw new Error(
+            "Kunne ikke slette vagt",
+          );
+        }
 
-      await refreshDayData();
-    },
-    [
-      activeCinemaId,
-      apiFetch,
-      needsMasterCinemaSelection,
-      refreshDayData,
-      user,
-    ],
-  );
+        await refreshShifts();
+      },
+      [
+        activeCinemaId,
+        apiFetch,
+        needsMasterCinemaSelection,
+        refreshShifts,
+        user,
+      ],
+    );
 
-  const offerShiftTrade = useCallback(
-    async (shift: Shift) => {
-      if (!user) return;
+  const offerShiftTrade =
+    useCallback(
+      async (
+        shift: Shift,
+      ) => {
+        if (!user) {
+          return;
+        }
 
-      if (!activeCinemaId) {
-        throw new Error("Vælg en biograf, før du sender vagten i byttepuljen.");
-      }
+        if (!activeCinemaId) {
+          throw new Error(
+            "Vælg en biograf, før du sender vagten i byttepuljen.",
+          );
+        }
 
-      const shiftUserId = (shift as Shift & { userId?: number | null }).userId;
+        const shiftUserId =
+          (
+            shift as
+              Shift & {
+                userId?:
+                  | number
+                  | null;
+              }
+          ).userId;
 
-      if (!shiftUserId) {
-        throw new Error("Vagten er ikke tildelt en medarbejder endnu.");
-      }
+        if (!shiftUserId) {
+          throw new Error(
+            "Vagten er ikke tildelt en medarbejder endnu.",
+          );
+        }
 
-      const response = await apiFetch("/shift-trades", {
-        method: "POST",
-        body: JSON.stringify({
-          shiftId: shift.id,
-          offeredByUserId: shiftUserId,
-          cinemaId: activeCinemaId,
-          message: "",
-        }),
-      });
+        const response =
+          await apiFetch(
+            "/shift-trades",
+            {
+              method:
+                "POST",
+              body:
+                JSON.stringify(
+                  {
+                    shiftId:
+                      shift.id,
+                    offeredByUserId:
+                      shiftUserId,
+                    cinemaId:
+                      activeCinemaId,
+                    message: "",
+                  },
+                ),
+            },
+          );
 
-      if (!response.ok) {
-        throw new Error("Kunne ikke sende vagten i byttepuljen");
-      }
+        if (!response.ok) {
+          throw new Error(
+            "Kunne ikke sende vagten i byttepuljen",
+          );
+        }
 
-      await refreshDayData();
-    },
-    [activeCinemaId, apiFetch, refreshDayData, user],
-  );
+        await refreshShifts();
+      },
+      [
+        activeCinemaId,
+        apiFetch,
+        refreshShifts,
+        user,
+      ],
+    );
 
-  const createStaffingRequest = useCallback(
-    async (input: CreateStaffingRequestInput) => {
-      if (needsMasterCinemaSelection || !activeCinemaId) {
-        throw new Error(
-          "Vælg en biograf, før du sender bemandingsforespørgsler.",
+  const createStaffingRequest =
+    useCallback(
+      async (
+        input:
+          CreateStaffingRequestInput,
+      ) => {
+        if (
+          needsMasterCinemaSelection ||
+          !activeCinemaId
+        ) {
+          throw new Error(
+            "Vælg en biograf, før du sender bemandingsforespørgsler.",
+          );
+        }
+
+        const response =
+          await apiFetch(
+            "/staffing-requests",
+            {
+              method:
+                "POST",
+              body:
+                JSON.stringify(
+                  {
+                    shiftId:
+                      input.shiftId ??
+                      null,
+                    targetUserId:
+                      input.targetUserId ??
+                      null,
+                    type:
+                      input.type,
+                    priority:
+                      input.priority,
+                    message:
+                      input.message.trim(),
+                    requestStartTime:
+                      input.requestStartTime ??
+                      null,
+                    requestEndTime:
+                      input.requestEndTime ??
+                      null,
+                    workTypeId:
+                      input.workTypeId ??
+                      null,
+                    cinemaId:
+                      activeCinemaId,
+                  },
+                ),
+            },
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(
+              response,
+              "Kunne ikke sende bemandingsforespørgsel.",
+            ),
+          );
+        }
+      },
+      [
+        activeCinemaId,
+        apiFetch,
+        needsMasterCinemaSelection,
+      ],
+    );
+
+  const clockIn =
+    useCallback(
+      async (
+        shiftId?:
+          | number
+          | null,
+        clockInTime?:
+          string,
+        note?:
+          string,
+      ) => {
+        if (!user) {
+          return;
+        }
+
+        if (!activeCinemaId) {
+          throw new Error(
+            "Vælg en biograf, før du registrerer tid.",
+          );
+        }
+
+        const response =
+          await apiFetch(
+            "/time-entries/clock-in",
+            {
+              method:
+                "POST",
+              body:
+                JSON.stringify(
+                  {
+                    userId:
+                      user.id,
+                    cinemaId:
+                      activeCinemaId,
+                    shiftId:
+                      shiftId ??
+                      null,
+                    clockIn:
+                      clockInTime
+                        ? localDateTimeToISOString(
+                            clockInTime,
+                          )
+                        : undefined,
+                    note,
+                  },
+                ),
+            },
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Kunne ikke clocke ind",
+          );
+        }
+
+        setOpenTimeEntry(
+          data ?? null,
         );
-      }
+        await refreshTimeData();
+      },
+      [
+        activeCinemaId,
+        apiFetch,
+        refreshTimeData,
+        user,
+      ],
+    );
 
-      const response = await apiFetch("/staffing-requests", {
-        method: "POST",
-        body: JSON.stringify({
-          shiftId: input.shiftId ?? null,
-          targetUserId: input.targetUserId ?? null,
-          type: input.type,
-          priority: input.priority,
-          message: input.message.trim(),
-          requestStartTime: input.requestStartTime ?? null,
-          requestEndTime: input.requestEndTime ?? null,
-          workTypeId: input.workTypeId ?? null,
-          cinemaId: activeCinemaId,
-        }),
-      });
+  const clockOut =
+    useCallback(
+      async (
+        clockOutTime?:
+          string,
+        note?:
+          string,
+      ) => {
+        if (!openTimeEntry) {
+          throw new Error(
+            "Der er ingen åben tidsregistrering",
+          );
+        }
 
-      if (!response.ok) {
-        throw new Error(
-          await readErrorMessage(
-            response,
-            "Kunne ikke sende bemandingsforespørgsel.",
-          ),
+        const response =
+          await apiFetch(
+            `/time-entries/${openTimeEntry.id}/clock-out`,
+            {
+              method:
+                "PATCH",
+              body:
+                JSON.stringify(
+                  {
+                    clockOut:
+                      clockOutTime
+                        ? localDateTimeToISOString(
+                            clockOutTime,
+                          )
+                        : undefined,
+                    note,
+                  },
+                ),
+            },
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Kunne ikke clocke ud",
+          );
+        }
+
+        setOpenTimeEntry(
+          null,
         );
-      }
+        await refreshTimeData();
+      },
+      [
+        apiFetch,
+        openTimeEntry,
+        refreshTimeData,
+      ],
+    );
 
-      await refreshDayData({ showErrors: false, showLoading: false });
-    },
-    [
-      activeCinemaId,
-      apiFetch,
-      needsMasterCinemaSelection,
-      refreshDayData,
-    ],
-  );
+  const submitManualTime =
+    useCallback(
+      async (
+        input:
+          ManualTimeInput,
+      ) => {
+        if (!user) {
+          return;
+        }
 
-  const clockIn = useCallback(
-    async (shiftId?: number | null, clockInTime?: string, note?: string) => {
-      if (!user) return;
+        if (!activeCinemaId) {
+          throw new Error(
+            "Vælg en biograf, før du registrerer tid.",
+          );
+        }
 
-      if (!activeCinemaId) {
-        throw new Error("Vælg en biograf, før du registrerer tid.");
-      }
+        const response =
+          await apiFetch(
+            "/time-entries/manual",
+            {
+              method:
+                "POST",
+              body:
+                JSON.stringify(
+                  {
+                    userId:
+                      user.id,
+                    cinemaId:
+                      activeCinemaId,
+                    shiftId:
+                      input.shiftId ??
+                      null,
+                    clockIn:
+                      localDateTimeToISOString(
+                        input.clockIn,
+                      ),
+                    clockOut:
+                      localDateTimeToISOString(
+                        input.clockOut,
+                      ),
+                    note:
+                      input.note,
+                  },
+                ),
+            },
+          );
 
-      const response = await apiFetch("/time-entries/clock-in", {
-        method: "POST",
-        body: JSON.stringify({
-          userId: user.id,
-          cinemaId: activeCinemaId,
-          shiftId: shiftId ?? null,
-          clockIn: clockInTime
-            ? localDateTimeToISOString(clockInTime)
-            : undefined,
-          note,
-        }),
-      });
+        const data =
+          await response.json();
 
-      const data = await response.json();
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Kunne ikke registrere timer",
+          );
+        }
 
-      if (!response.ok) {
-        throw new Error(data.message || "Kunne ikke clocke ind");
-      }
-
-      setOpenTimeEntry(data ?? null);
-      await refreshDayData();
-    },
-    [activeCinemaId, apiFetch, refreshDayData, user],
-  );
-
-  const clockOut = useCallback(
-    async (clockOutTime?: string, note?: string) => {
-      if (!openTimeEntry) {
-        throw new Error("Der er ingen åben tidsregistrering");
-      }
-
-      const response = await apiFetch(
-        `/time-entries/${openTimeEntry.id}/clock-out`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            clockOut: clockOutTime
-              ? localDateTimeToISOString(clockOutTime)
-              : undefined,
-            note,
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Kunne ikke clocke ud");
-      }
-
-      setOpenTimeEntry(null);
-      await refreshDayData();
-    },
-    [apiFetch, openTimeEntry, refreshDayData],
-  );
-
-  const submitManualTime = useCallback(
-    async (input: ManualTimeInput) => {
-      if (!user) return;
-
-      if (!activeCinemaId) {
-        throw new Error("Vælg en biograf, før du registrerer tid.");
-      }
-
-      const response = await apiFetch("/time-entries/manual", {
-        method: "POST",
-        body: JSON.stringify({
-          userId: user.id,
-          cinemaId: activeCinemaId,
-          shiftId: input.shiftId ?? null,
-          clockIn: localDateTimeToISOString(input.clockIn),
-          clockOut: localDateTimeToISOString(input.clockOut),
-          note: input.note,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Kunne ikke registrere timer");
-      }
-
-      await refreshDayData();
-    },
-    [activeCinemaId, apiFetch, refreshDayData, user],
-  );
+        await refreshTimeData();
+      },
+      [
+        activeCinemaId,
+        apiFetch,
+        refreshTimeData,
+        user,
+      ],
+    );
 
   return {
     user,
@@ -961,18 +1398,17 @@ export function useSchedule(
     shifts,
     users,
     workTypes,
-    movieShowings,
-    leaveRequests,
 
     setUsers,
     setWorkTypes,
 
     refreshDayData,
+    refreshShifts,
+    refreshTimeData,
 
     createShift,
     updateShift,
     deleteShift,
-
     offerShiftTrade,
     createStaffingRequest,
 

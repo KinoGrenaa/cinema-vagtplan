@@ -17,12 +17,19 @@ import {
 import {
   useAuth,
 } from "@/app/providers/AuthProvider";
-import type {
-  LeaveRequest,
-} from "../../../../../../shared/types";
 
 const MASTER_SELECTED_CINEMA_ID_KEY =
   "masterSelectedCinemaId";
+
+export type ScheduleMovieShowing = {
+  id: number;
+  title: string;
+  hall: string;
+  startTime: string;
+  endTime: string;
+  soldSeats: number;
+  freeSeats: number;
+};
 
 type Params = {
   selectedDate: string;
@@ -67,10 +74,10 @@ async function readErrorMessage(
   return typeof payload?.message ===
     "string"
     ? payload.message
-    : "Fraværsoverlayet kunne ikke hentes.";
+    : "Filmprogrammet kunne ikke hentes.";
 }
 
-export function useScheduleLeaveOverlay({
+export function useScheduleMovieOverlay({
   selectedDate,
   onError,
 }: Params) {
@@ -97,11 +104,11 @@ export function useScheduleLeaveOverlay({
       null,
     );
   const [
-    leaveRequests,
-    setLeaveRequests,
+    movieShowings,
+    setMovieShowings,
   ] =
     useState<
-      LeaveRequest[]
+      ScheduleMovieShowing[]
     >([]);
 
   useEffect(() => {
@@ -156,7 +163,7 @@ export function useScheduleLeaveOverlay({
       user,
     ]);
 
-  const fetchLeaveRequests =
+  const fetchMovieShowings =
     useCallback(
       async (
         reportError = true,
@@ -165,7 +172,7 @@ export function useScheduleLeaveOverlay({
           !user ||
           !activeCinemaId
         ) {
-          setLeaveRequests(
+          setMovieShowings(
             [],
           );
           return;
@@ -193,7 +200,7 @@ export function useScheduleLeaveOverlay({
         try {
           const response =
             await apiFetch(
-              `/leave-requests/schedule-day?${params.toString()}`,
+              `/movie-showings?${params.toString()}`,
             );
 
           if (
@@ -209,7 +216,7 @@ export function useScheduleLeaveOverlay({
           const data =
             await response.json();
 
-          setLeaveRequests(
+          setMovieShowings(
             Array.isArray(
               data,
             )
@@ -217,16 +224,16 @@ export function useScheduleLeaveOverlay({
               : [],
           );
         } catch (error) {
-          setLeaveRequests(
+          setMovieShowings(
             [],
           );
 
           if (reportError) {
             onErrorRef.current(
-              "Fravær kunne ikke hentes",
+              "Filmprogram kunne ikke hentes",
               error instanceof Error
                 ? error.message
-                : "Fraværsoverlayet kunne ikke hentes.",
+                : "Filmprogrammet kunne ikke hentes.",
             );
           }
         }
@@ -246,12 +253,12 @@ export function useScheduleLeaveOverlay({
       return;
     }
 
-    void fetchLeaveRequests(
+    void fetchMovieShowings(
       true,
     );
   }, [
     authLoading,
-    fetchLeaveRequests,
+    fetchMovieShowings,
   ]);
 
   useRealtimeCore({
@@ -260,17 +267,17 @@ export function useScheduleLeaveOverlay({
         user &&
         activeCinemaId,
       ),
-    onLeaveRequestUpdated:
+    onMovieShowingUpdated:
       () => {
-        void fetchLeaveRequests(
+        void fetchMovieShowings(
           false,
         );
       },
   });
 
   return {
-    leaveRequests,
-    refreshLeaveRequests:
-      fetchLeaveRequests,
+    movieShowings,
+    refreshMovieShowings:
+      fetchMovieShowings,
   };
 }
