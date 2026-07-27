@@ -923,6 +923,11 @@ model StaffingRequest {
   @@index([status])
   @@index([type])
   @@index([createdAt])
+  @@index([cinemaId, status, priority, createdAt, id])
+  @@index([cinemaId, status, type, id])
+  @@index([cinemaId, requestedByUserId, status, id])
+  @@index([cinemaId, targetUserId, status, id])
+  @@index([cinemaId, shiftId, status, id])
 }
 
 model StaffingAiProfile {
