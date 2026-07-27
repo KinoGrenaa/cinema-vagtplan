@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-
 import StaffingRequestModal from "./components/staffing/StaffingRequestModal";
 import {
   ManualTimeRegistrationModal,
@@ -14,6 +13,7 @@ import { useScheduleShiftTimelineActions } from "./hooks/actions/useScheduleShif
 import { useScheduleStaffingRequest } from "./hooks/actions/useScheduleStaffingRequest";
 import { useScheduleTimeRegistration } from "./hooks/actions/useScheduleTimeRegistration";
 import { useSchedule } from "./hooks/data/useSchedule";
+import { useScheduleLeaveOverlay } from "./hooks/data/useScheduleLeaveOverlay";
 import AiScheduleFeatures from "./components/ai/AiScheduleFeatures";
 import { useRealtimeShifts } from "@/app/hooks/useRealtimeShifts";
 import {
@@ -47,7 +47,6 @@ export default function SchedulePage() {
     users,
     workTypes,
     movieShowings,
-    leaveRequests,
     refreshDayData,
     createShift,
     updateShift,
@@ -60,6 +59,13 @@ export default function SchedulePage() {
     clockOut,
     submitManualTime: submitManualTimeEntry,
   } = useSchedule(selectedDate, {
+    onError: infoDialog.showError,
+  });
+
+  const {
+    leaveRequests,
+  } = useScheduleLeaveOverlay({
+    selectedDate,
     onError: infoDialog.showError,
   });
 
@@ -88,7 +94,6 @@ export default function SchedulePage() {
     setUserId,
     workTypeId,
     setWorkTypeId,
-
     hideShiftFormModal,
     closeShiftFormModal,
     resetShiftFormForDate,
@@ -112,7 +117,6 @@ export default function SchedulePage() {
 
   useEffect(() => {
     if (scheduleDateQueryApplied.current) return;
-
     scheduleDateQueryApplied.current = true;
 
     const queryDate = new URLSearchParams(window.location.search).get("date");
@@ -238,7 +242,6 @@ export default function SchedulePage() {
 
   function goToDate(nextDate: string) {
     if (!nextDate) return;
-
     setSelectedDate(nextDate);
     resetShiftFormForDate(nextDate);
   }
@@ -277,9 +280,7 @@ export default function SchedulePage() {
               onOpenRegisterTimeModal={openRegisterTimeModal}
               onOpenManualTimeModal={openManualTimeModal}
               onOpenStaffingRequest={() => openStaffingRequestModal(null)}
-              onCreateUnassignedShift={
-              createShift
-            }
+              onCreateUnassignedShift={createShift}
               onPreviousDay={() => changeDate(-1)}
               onToday={goToToday}
               onDateChange={goToDate}
@@ -289,7 +290,6 @@ export default function SchedulePage() {
               onChangeShiftUser={handleChangeShiftUser}
               onResizeShift={handleResizeShift}
             />
-
             <ScheduleShiftFormModal
               open={showShiftFormModal}
               selectedShift={selectedShift}
@@ -309,10 +309,11 @@ export default function SchedulePage() {
               onDelete={handleDelete}
               onCancel={closeShiftFormModal}
               onOfferTrade={handleOfferTrade}
-              onSendStaffingRequest={handleOpenStaffingRequestForSelectedShift}
+              onSendStaffingRequest={
+                handleOpenStaffingRequestForSelectedShift
+              }
               leaveRequests={leaveRequests}
             />
-
             <StaffingRequestModal
               open={showStaffingRequestModal}
               onClose={resetStaffingRequestModal}
@@ -344,7 +345,6 @@ export default function SchedulePage() {
               }
               getUserDisplayName={getUserDisplayName}
             />
-
             <TimeRegistrationModal
               open={showClockModal}
               onClose={resetClockModal}
@@ -363,7 +363,6 @@ export default function SchedulePage() {
               onRegisterClockIn={handleRegisterClockIn}
               onRegisterClockOut={handleRegisterClockOut}
             />
-
             <ManualTimeRegistrationModal
               open={showManualTimeModal}
               onClose={resetManualTimeModal}
@@ -376,7 +375,6 @@ export default function SchedulePage() {
               onSubmit={handleSubmitManualTimeWithoutShift}
             />
           </main>
-
           <ConfirmModal
             open={confirmDialog.open}
             title={confirmDialog.title}
@@ -388,7 +386,6 @@ export default function SchedulePage() {
             onConfirm={confirmDialog.handleConfirm}
             onCancel={confirmDialog.handleCancel}
           />
-
           <InfoModal
             open={infoDialog.open}
             title={infoDialog.title}
