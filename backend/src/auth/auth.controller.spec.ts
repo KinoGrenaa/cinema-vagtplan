@@ -9,6 +9,7 @@ describe('AuthController boundaries', () => {
   let service: {
     login: jest.Mock;
     switchCinema: jest.Mock;
+    getCinemaStartOverview: jest.Mock;
     getDefaultCinemaOptions: jest.Mock;
     updateDefaultCinema: jest.Mock;
   };
@@ -18,6 +19,7 @@ describe('AuthController boundaries', () => {
     service = {
       login: jest.fn(),
       switchCinema: jest.fn(),
+      getCinemaStartOverview: jest.fn(),
       getDefaultCinemaOptions: jest.fn(),
       updateDefaultCinema: jest.fn(),
     };
@@ -55,6 +57,18 @@ describe('AuthController boundaries', () => {
       7,
       3,
     );
+  });
+
+  it('forwards the authenticated user to the cinema start overview', () => {
+    controller.getCinemaStartOverview({
+      user: {
+        sub: '7',
+      },
+    });
+
+    expect(
+      service.getCinemaStartOverview,
+    ).toHaveBeenCalledWith(7);
   });
 
   it('uses fallback authenticated user ID', () => {

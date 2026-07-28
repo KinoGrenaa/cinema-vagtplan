@@ -51,6 +51,14 @@ export class AuthController {
   }
 
   @UseGuards(JwtGuard)
+  @Get('cinema-start-overview')
+  getCinemaStartOverview(@Req() req: any) {
+    return this.authService.getCinemaStartOverview(
+      this.getCurrentUserId(req),
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Get('default-cinema-options')
   getDefaultCinemaOptions(@Req() req: any) {
     return this.authService.getDefaultCinemaOptions(

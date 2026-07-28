@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { updateAuthDefaultCinemaFlow } from './helpers/auth-default-cinema-flow';
+import { findAuthCinemaStartOverview } from './helpers/auth-cinema-start-overview';
 
 type SessionRole =
   | 'MASTER'
@@ -306,6 +307,13 @@ export class AuthService {
       user,
       membership,
       defaultCinema,
+    );
+  }
+
+  async getCinemaStartOverview(userId: number) {
+    return findAuthCinemaStartOverview(
+      this.prisma,
+      userId,
     );
   }
 
