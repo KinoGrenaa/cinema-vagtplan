@@ -51,3 +51,26 @@ export type StaffingHealth =
   | "STABLE"
   | "HIGH_PRESSURE"
   | "CRITICAL";
+
+export type DashboardSourceKey =
+  | "shifts"
+  | "timeEntries"
+  | "leaveRequests"
+  | "shiftTrades"
+  | "movies";
+
+export type DashboardSourceState =
+  | "disabled"
+  | "fresh"
+  | "stale"
+  | "unavailable";
+
+export type DashboardSourceStatus = {
+  state: DashboardSourceState;
+  message?: string;
+};
+
+export type DashboardSourceStatusMap = Record<
+  DashboardSourceKey,
+  DashboardSourceStatus
+>;

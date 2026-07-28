@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
@@ -14,6 +13,7 @@ import DashboardOverviewSections from "./components/overview/DashboardOverviewSe
 import DashboardPriorityActions from "./components/overview/DashboardPriorityActions";
 import DashboardSummaryCards from "./components/overview/DashboardSummaryCards";
 import DashboardStaffingSections from "./components/staffing/DashboardStaffingSections";
+import DashboardDataCoverage from "./components/status/DashboardDataCoverage";
 import { useDashboard } from "./hooks/useDashboard";
 
 export default function DashboardPage() {
@@ -21,6 +21,8 @@ export default function DashboardPage() {
     loading,
     refreshing,
     hasLoadedDashboard,
+    lastUpdatedAt,
+    sourceStatus,
     currentUser,
     needsMasterCinemaSelection,
     moduleAccess,
@@ -43,13 +45,6 @@ export default function DashboardPage() {
     errorMessage,
     reloadDashboard,
   } = useDashboard();
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (hasLoadedDashboard && !refreshing && !errorMessage) {
-      setLastUpdatedAt(new Date().toISOString());
-    }
-  }, [errorMessage, hasLoadedDashboard, refreshing]);
 
   if (loading || !currentUser) {
     return (
@@ -72,7 +67,9 @@ export default function DashboardPage() {
             Vælg en biograf for at se driftsoverblikket
           </h1>
           <p className="mt-3 text-sm leading-6 text-amber-900 dark:text-amber-100/90">
-            Driftsoverblikket viser vagter, fravær, vagtbytter og filmprogram for en konkret biograf. Som MASTER skal du vælge en aktiv biograf først.
+            Driftsoverblikket viser vagter, fravær, vagtbytter og
+            filmprogram for en konkret biograf. Som MASTER skal du vælge
+            en aktiv biograf først.
           </p>
           <Link
             href="/master"
@@ -85,10 +82,13 @@ export default function DashboardPage() {
     );
   }
 
-  const showStaffingAi = moduleAccess.staffingAi && moduleAccess.schedule;
+  const showStaffingAi =
+    moduleAccess.staffingAi && moduleAccess.schedule;
   const hasAdministrativeAccess =
-    currentUser.role === "ADMIN" || currentUser.role === "MASTER";
-  const showDashboardContent = !errorMessage || hasLoadedDashboard;
+    currentUser.role === "ADMIN" ||
+    currentUser.role === "MASTER";
+  const showDashboardContent =
+    !errorMessage || hasLoadedDashboard;
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -128,6 +128,14 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {hasLoadedDashboard && !errorMessage && (
+          <DashboardDataCoverage
+            sourceStatus={sourceStatus}
+            onRefresh={reloadDashboard}
+            isRefreshing={refreshing}
+          />
+        )}
+
         {showDashboardContent && (
           <>
             {showStaffingAi && (
@@ -151,14 +159,20 @@ export default function DashboardPage() {
               soldSeatsToday={soldSeatsToday}
               seatLoadPercent={seatLoadPercent}
               shiftCount={shifts.length}
-              movieDataAvailable={operationsHealth.movieDataAvailable}
-              canShowPersonalTime={currentUser.role !== "MASTER"}
+              movieDataAvailable={
+                operationsHealth.movieDataAvailable
+              }
+              canShowPersonalTime={
+                currentUser.role !== "MASTER"
+              }
               moduleAccess={moduleAccess}
             />
 
             <DashboardOverviewSections
               moduleAccess={moduleAccess}
-              hasAdministrativeAccess={hasAdministrativeAccess}
+              hasAdministrativeAccess={
+                hasAdministrativeAccess
+              }
             />
 
             {showStaffingAi && (
@@ -166,8 +180,12 @@ export default function DashboardPage() {
                 <DashboardStaffingSections
                   staffingWarnings={staffingWarnings}
                   predictiveStaffing={predictiveStaffing}
-                  movieDataAvailable={operationsHealth.movieDataAvailable}
-                  hasAdministrativeAccess={hasAdministrativeAccess}
+                  movieDataAvailable={
+                    operationsHealth.movieDataAvailable
+                  }
+                  hasAdministrativeAccess={
+                    hasAdministrativeAccess
+                  }
                 />
 
                 <section aria-labelledby="dashboard-analysis-heading">
@@ -181,20 +199,30 @@ export default function DashboardPage() {
                     <DashboardAnalysisMethod
                       shiftCount={shifts.length}
                       movieCount={movies.length}
-                      movieDataAvailable={operationsHealth.movieDataAvailable}
-                      hasAdministrativeAccess={hasAdministrativeAccess}
+                      movieDataAvailable={
+                        operationsHealth.movieDataAvailable
+                      }
+                      hasAdministrativeAccess={
+                        hasAdministrativeAccess
+                      }
                     />
                     <AiOperationsCommandCenter
                       operationsHealth={operationsHealth}
-                      operationalRecommendations={operationalRecommendations}
-                      hasAdministrativeAccess={hasAdministrativeAccess}
+                      operationalRecommendations={
+                        operationalRecommendations
+                      }
+                      hasAdministrativeAccess={
+                        hasAdministrativeAccess
+                      }
                     />
                     <AiStaffingHeatmap
                       staffingHeatmap={staffingHeatmap}
                     />
                     <div className="grid gap-6 2xl:grid-cols-2">
                       <AiLearningAnalytics
-                        aiLearningAnalytics={aiLearningAnalytics}
+                        aiLearningAnalytics={
+                          aiLearningAnalytics
+                        }
                       />
                       <AiPatternInsights
                         aiPatternInsights={aiPatternInsights}
