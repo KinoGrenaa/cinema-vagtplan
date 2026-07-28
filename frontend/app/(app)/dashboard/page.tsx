@@ -1,5 +1,4 @@
 "use client";
-
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import AiPatternInsights from "./components/ai/AiPatternInsights";
@@ -11,7 +10,6 @@ import DashboardPriorityActions from "./components/overview/DashboardPriorityAct
 import DashboardSummaryCards from "./components/overview/DashboardSummaryCards";
 import DashboardStaffingSections from "./components/staffing/DashboardStaffingSections";
 import { useDashboard } from "./hooks/useDashboard";
-
 export default function DashboardPage() {
   const {
     loading,
@@ -37,7 +35,6 @@ export default function DashboardPage() {
     errorMessage,
     reloadDashboard,
   } = useDashboard();
-
   if (loading || !currentUser) {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -47,7 +44,6 @@ export default function DashboardPage() {
       </main>
     );
   }
-
   if (needsMasterCinemaSelection) {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -58,7 +54,6 @@ export default function DashboardPage() {
           <h1 className="mt-2 text-2xl font-bold">
             Vælg en biograf for at se driftsoverblikket
           </h1>
-
           <p className="mt-3 text-sm leading-6 text-amber-900 dark:text-amber-100/90">
             Driftsoverblikket viser vagter, fravær,
             vagtbytter og filmprogram for en konkret
@@ -75,10 +70,10 @@ export default function DashboardPage() {
       </main>
     );
   }
-
   const showStaffingAi =
     moduleAccess.staffingAi && moduleAccess.schedule;
-
+  const hasAdministrativeAccess =
+    currentUser.role === "ADMIN" || currentUser.role === "MASTER";
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -115,6 +110,7 @@ export default function DashboardPage() {
               openShiftTrades={openShiftTrades}
               pendingLeaveRequests={pendingLeaveRequests}
               moduleAccess={moduleAccess}
+              hasAdministrativeAccess={hasAdministrativeAccess}
             />
             <DashboardSummaryCards
               todayPlannedHours={todayPlannedHours}
@@ -128,6 +124,7 @@ export default function DashboardPage() {
               shiftCount={shifts.length}
               movieDataAvailable={operationsHealth.movieDataAvailable}
               moduleAccess={moduleAccess}
+              hasAdministrativeAccess={hasAdministrativeAccess}
             />
             {showStaffingAi && (
               <>

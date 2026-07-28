@@ -7,6 +7,7 @@ type DashboardPriorityActionsProps = {
     leave: boolean;
     shiftTrades: boolean;
   };
+  hasAdministrativeAccess: boolean;
 };
 
 type PriorityAction = {
@@ -17,50 +18,83 @@ type PriorityAction = {
   actionLabel: string;
 };
 
-function getShiftTradeDescription(count: number) {
+function getShiftTradeDescription(
+  count: number,
+  hasAdministrativeAccess: boolean,
+) {
+  if (hasAdministrativeAccess) {
+    return count === 1
+      ? "1 åbent vagtbytte er klar til gennemgang."
+      : `${count} åbne vagtbytter er klar til gennemgang.`;
+  }
+
   return count === 1
-    ? "1 åbent vagtbytte er klar til gennemgang."
-    : `${count} åbne vagtbytter er klar til gennemgang.`;
+    ? "1 vagt er tilgængelig i vagtpuljen."
+    : `${count} vagter er tilgængelige i vagtpuljen.`;
 }
 
-function getLeaveDescription(count: number) {
+function getLeaveDescription(
+  count: number,
+  hasAdministrativeAccess: boolean,
+) {
+  if (hasAdministrativeAccess) {
+    return count === 1
+      ? "1 fraværsansøgning afventer godkendelse."
+      : `${count} fraværsansøgninger afventer godkendelse.`;
+  }
+
   return count === 1
-    ? "1 fraværsansøgning afventer."
-    : `${count} fraværsansøgninger afventer.`;
+    ? "1 af dine fraværsansøgninger afventer behandling."
+    : `${count} af dine fraværsansøgninger afventer behandling.`;
 }
 
 export default function DashboardPriorityActions({
   openShiftTrades,
   pendingLeaveRequests,
   moduleAccess,
+  hasAdministrativeAccess,
 }: DashboardPriorityActionsProps) {
   const actions: PriorityAction[] = [
     {
       href: "/shift-trades",
-      title: "Åbne vagtbytter",
-      description: getShiftTradeDescription(openShiftTrades),
+      title: hasAdministrativeAccess
+        ? "Åbne vagtbytter"
+        : "Vagter i vagtpuljen",
+      description: getShiftTradeDescription(
+        openShiftTrades,
+        hasAdministrativeAccess,
+      ),
       count: openShiftTrades,
-      actionLabel: "Gennemgå vagtbytter",
+      actionLabel: hasAdministrativeAccess
+        ? "Gennemgå vagtbytter"
+        : "Åbn vagtpuljen",
     },
     {
-      href: "/leave-requests",
-      title: "Fravær der afventer",
-      description: getLeaveDescription(pendingLeaveRequests),
+      href: hasAdministrativeAccess
+        ? "/leave-approval"
+        : "/leave-requests",
+      title: hasAdministrativeAccess
+        ? "Fravær til godkendelse"
+        : "Mit fravær der afventer",
+      description: getLeaveDescription(
+        pendingLeaveRequests,
+        hasAdministrativeAccess,
+      ),
       count: pendingLeaveRequests,
-      actionLabel: "Se fravær",
+      actionLabel: hasAdministrativeAccess
+        ? "Godkend fravær"
+        : "Se mit fravær",
     },
   ].filter((action) => {
     if (action.href === "/shift-trades") {
       return moduleAccess.shiftTrades && action.count > 0;
     }
-
     return moduleAccess.leave && action.count > 0;
   });
 
   if (actions.length === 0) {
     return null;
   }
-
   return (
     <section
       aria-labelledby="dashboard-priority-actions-heading"
@@ -78,7 +112,6 @@ export default function DashboardPriorityActions({
       <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900 dark:text-amber-100/90">
         Start her, når du vil følge op på det, der stadig afventer.
       </p>
-
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         {actions.map((action) => (
           <Link

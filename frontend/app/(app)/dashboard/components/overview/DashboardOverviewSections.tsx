@@ -12,6 +12,7 @@ type DashboardOverviewSectionsProps = {
     shiftTrades: boolean;
     payroll: boolean;
   };
+  hasAdministrativeAccess: boolean;
 };
 
 type Shortcut = {
@@ -20,10 +21,8 @@ type Shortcut = {
   title: string;
   description: string;
 };
-
 const panelClass =
   "rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100";
-
 export default function DashboardOverviewSections({
   movieCount,
   soldSeatsToday,
@@ -31,6 +30,7 @@ export default function DashboardOverviewSections({
   shiftCount,
   movieDataAvailable,
   moduleAccess,
+  hasAdministrativeAccess,
 }: DashboardOverviewSectionsProps) {
   const shortcuts: Shortcut[] = [
     {
@@ -48,21 +48,23 @@ export default function DashboardOverviewSections({
     {
       enabled: moduleAccess.shiftTrades,
       href: "/shift-trades",
-      title: "Arbejd med vagtbytter",
-      description: "Se åbne bytter og dine egne anmodninger.",
+      title: hasAdministrativeAccess
+        ? "Arbejd med vagtbytter"
+        : "Åbn vagtpuljen",
+      description: hasAdministrativeAccess
+        ? "Se åbne bytter og medarbejdernes anmodninger."
+        : "Se åbne vagter og dine egne anmodninger.",
     },
     {
-      enabled: moduleAccess.payroll,
+      enabled: moduleAccess.payroll && hasAdministrativeAccess,
       href: "/payroll",
       title: "Åbn lønbehandling",
       description: "Gå til lønperioder, kontrol og eksport.",
     },
   ].filter((shortcut) => shortcut.enabled);
-
   if (!moduleAccess.schedule && shortcuts.length === 0) {
     return null;
   }
-
   return (
     <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       {moduleAccess.schedule && (
