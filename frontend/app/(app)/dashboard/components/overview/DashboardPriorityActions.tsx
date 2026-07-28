@@ -1,21 +1,28 @@
 import Link from "next/link";
 
+import DashboardSectionHeading from "../layout/DashboardSectionHeading";
+
 type DashboardPriorityActionsProps = {
   openShiftTrades: number;
   pendingLeaveRequests: number;
+  staffingWarningsCount: number;
   moduleAccess: {
     leave: boolean;
     shiftTrades: boolean;
+    schedule: boolean;
+    staffingAi: boolean;
   };
   hasAdministrativeAccess: boolean;
 };
 
 type PriorityAction = {
+  kind: "staffing" | "leave" | "shiftTrades";
   href: string;
   title: string;
   description: string;
   count: number;
   actionLabel: string;
+  tone: "amber" | "orange" | "blue";
 };
 
 function getShiftTradeDescription(
@@ -48,28 +55,51 @@ function getLeaveDescription(
     : `${count} af dine fraværsansøgninger afventer behandling.`;
 }
 
+const toneClasses = {
+  amber: {
+    card: "border-amber-200 hover:border-amber-400 dark:border-amber-900 dark:hover:border-amber-600",
+    badge:
+      "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+    action: "text-amber-800 dark:text-amber-300",
+  },
+  orange: {
+    card: "border-orange-200 hover:border-orange-400 dark:border-orange-900 dark:hover:border-orange-600",
+    badge:
+      "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    action: "text-orange-800 dark:text-orange-300",
+  },
+  blue: {
+    card: "border-blue-200 hover:border-blue-400 dark:border-blue-900 dark:hover:border-blue-600",
+    badge:
+      "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    action: "text-blue-800 dark:text-blue-300",
+  },
+};
+
 export default function DashboardPriorityActions({
   openShiftTrades,
   pendingLeaveRequests,
+  staffingWarningsCount,
   moduleAccess,
   hasAdministrativeAccess,
 }: DashboardPriorityActionsProps) {
-  const actions: PriorityAction[] = [
+  const allActions: PriorityAction[] = [
     {
-      href: "/shift-trades",
-      title: hasAdministrativeAccess
-        ? "Åbne vagtbytter"
-        : "Vagter i vagtpuljen",
-      description: getShiftTradeDescription(
-        openShiftTrades,
-        hasAdministrativeAccess,
-      ),
-      count: openShiftTrades,
+      kind: "staffing",
+      href: hasAdministrativeAccess ? "/shift-planning" : "/schedule",
+      title: "Bemanding kræver opmærksomhed",
+      description:
+        staffingWarningsCount === 1
+          ? "1 forhold i dagens bemanding bør gennemgås."
+          : `${staffingWarningsCount} forhold i dagens bemanding bør gennemgås.`,
+      count: staffingWarningsCount,
       actionLabel: hasAdministrativeAccess
-        ? "Gennemgå vagtbytter"
-        : "Åbn vagtpuljen",
+        ? "Åbn vagtplanlægning"
+        : "Se dagens vagtplan",
+      tone: "orange",
     },
     {
+      kind: "leave",
       href: hasAdministrativeAccess
         ? "/leave-approval"
         : "/leave-requests",
@@ -84,9 +114,35 @@ export default function DashboardPriorityActions({
       actionLabel: hasAdministrativeAccess
         ? "Godkend fravær"
         : "Se mit fravær",
+      tone: "amber",
     },
-  ].filter((action) => {
-    if (action.href === "/shift-trades") {
+    {
+      kind: "shiftTrades",
+      href: "/shift-trades",
+      title: hasAdministrativeAccess
+        ? "Åbne vagtbytter"
+        : "Vagter i vagtpuljen",
+      description: getShiftTradeDescription(
+        openShiftTrades,
+        hasAdministrativeAccess,
+      ),
+      count: openShiftTrades,
+      actionLabel: hasAdministrativeAccess
+        ? "Gennemgå vagtbytter"
+        : "Åbn vagtpuljen",
+      tone: "blue",
+    },
+  ];
+
+  const actions = allActions.filter((action) => {
+    if (action.kind === "staffing") {
+      return (
+        moduleAccess.schedule &&
+        moduleAccess.staffingAi &&
+        action.count > 0
+      );
+    }
+    if (action.kind === "shiftTrades") {
       return moduleAccess.shiftTrades && action.count > 0;
     }
     return moduleAccess.leave && action.count > 0;
@@ -95,49 +151,58 @@ export default function DashboardPriorityActions({
   if (actions.length === 0) {
     return null;
   }
+
+  const totalOpenItems = actions.reduce(
+    (sum, action) => sum + action.count,
+    0,
+  );
+
   return (
-    <section
-      aria-labelledby="dashboard-priority-actions-heading"
-      className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-sm transition-colors dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100"
-    >
-      <p className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-        Aktuelt
-      </p>
-      <h2
+    <section aria-labelledby="dashboard-priority-actions-heading">
+      <DashboardSectionHeading
         id="dashboard-priority-actions-heading"
-        className="mt-2 text-2xl font-bold"
+        eyebrow="Kræver handling"
+        title="Dagens åbne opgaver"
+        description="Start her med de forhold, der stadig afventer eller kræver en konkret beslutning."
+        action={
+          <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+            {totalOpenItems} åbne
+          </span>
+        }
+      />
+      <div
+        className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"
       >
-        Handlinger med åbne poster
-      </h2>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900 dark:text-amber-100/90">
-        Start her, når du vil følge op på det, der stadig afventer.
-      </p>
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        {actions.map((action) => (
-          <Link
-            key={action.href}
-            href={action.href}
-            className="group rounded-xl border border-amber-200 bg-white p-5 text-gray-950 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 dark:border-amber-900 dark:bg-gray-900 dark:text-white dark:hover:border-amber-600 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-gray-950"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-bold">
-                  {action.title}
-                </h3>
-                <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                  {action.description}
-                </p>
+        {actions.map((action) => {
+          const classes = toneClasses[action.tone];
+          return (
+            <Link
+              key={`${action.href}-${action.title}`}
+              href={action.href}
+              className={`group rounded-2xl border bg-white p-5 text-gray-950 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-gray-900 dark:text-white dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950 ${classes.card}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold">{action.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                    {action.description}
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex min-w-10 items-center justify-center rounded-full px-3 py-1 text-sm font-bold ${classes.badge}`}
+                >
+                  {action.count}
+                </span>
               </div>
-              <span className="inline-flex min-w-10 items-center justify-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-                {action.count}
-              </span>
-            </div>
-            <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-amber-800 transition group-hover:gap-2 dark:text-amber-300">
-              {action.actionLabel}
-              <span aria-hidden="true">→</span>
-            </div>
-          </Link>
-        ))}
+              <div
+                className={`mt-4 inline-flex items-center gap-1 text-sm font-semibold transition group-hover:gap-2 ${classes.action}`}
+              >
+                {action.actionLabel}
+                <span aria-hidden="true">→</span>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </section>
   );

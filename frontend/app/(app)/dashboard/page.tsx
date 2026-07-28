@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import AiPatternInsights from "./components/ai/AiPatternInsights";
 import AiStaffingHeatmap from "./components/ai/AiStaffingHeatmap";
 import DashboardHeader from "./components/layout/DashboardHeader";
+import DashboardSectionHeading from "./components/layout/DashboardSectionHeading";
 import OperationsStatus from "./components/operations/OperationsStatus";
 import DashboardOverviewSections from "./components/overview/DashboardOverviewSections";
 import DashboardPriorityActions from "./components/overview/DashboardPriorityActions";
@@ -43,11 +46,7 @@ export default function DashboardPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
-    if (
-      hasLoadedDashboard &&
-      !refreshing &&
-      !errorMessage
-    ) {
+    if (hasLoadedDashboard && !refreshing && !errorMessage) {
       setLastUpdatedAt(new Date().toISOString());
     }
   }, [errorMessage, hasLoadedDashboard, refreshing]);
@@ -61,6 +60,7 @@ export default function DashboardPage() {
       </main>
     );
   }
+
   if (needsMasterCinemaSelection) {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -72,35 +72,34 @@ export default function DashboardPage() {
             Vælg en biograf for at se driftsoverblikket
           </h1>
           <p className="mt-3 text-sm leading-6 text-amber-900 dark:text-amber-100/90">
-            Driftsoverblikket viser vagter, fravær,
-            vagtbytter og filmprogram for en konkret
-            biograf. Som MASTER skal du vælge en
-            aktiv biograf først.
+            Driftsoverblikket viser vagter, fravær, vagtbytter og filmprogram for en konkret biograf. Som MASTER skal du vælge en aktiv biograf først.
           </p>
-          <a
+          <Link
             href="/master"
             className="mt-5 inline-flex rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-gray-950"
           >
             Vælg biograf
-          </a>
+          </Link>
         </div>
       </main>
     );
   }
+
   const showStaffingAi =
     moduleAccess.staffingAi && moduleAccess.schedule;
   const hasAdministrativeAccess =
     currentUser.role === "ADMIN" || currentUser.role === "MASTER";
-  const showDashboardContent =
-    !errorMessage || hasLoadedDashboard;
+  const showDashboardContent = !errorMessage || hasLoadedDashboard;
+
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-7xl space-y-8">
         <DashboardHeader
           onRefresh={reloadDashboard}
           isRefreshing={refreshing}
           lastUpdatedAt={lastUpdatedAt}
         />
+
         {errorMessage && (
           <section
             role="alert"
@@ -129,6 +128,7 @@ export default function DashboardPage() {
             </button>
           </section>
         )}
+
         {showDashboardContent && (
           <>
             {showStaffingAi && (
@@ -136,49 +136,66 @@ export default function DashboardPage() {
                 liveOperationsStatus={liveOperationsStatus}
               />
             )}
+
             <DashboardPriorityActions
               openShiftTrades={openShiftTrades}
               pendingLeaveRequests={pendingLeaveRequests}
+              staffingWarningsCount={staffingWarnings.length}
               moduleAccess={moduleAccess}
               hasAdministrativeAccess={hasAdministrativeAccess}
             />
+
             <DashboardSummaryCards
               todayPlannedHours={todayPlannedHours}
               myRegisteredHours={myRegisteredHours}
-              canShowPersonalTime={currentUser.role !== "MASTER"}
-              moduleAccess={moduleAccess}
-            />
-            <DashboardOverviewSections
               movieCount={movies.length}
               soldSeatsToday={soldSeatsToday}
               seatLoadPercent={seatLoadPercent}
               shiftCount={shifts.length}
               movieDataAvailable={operationsHealth.movieDataAvailable}
+              canShowPersonalTime={currentUser.role !== "MASTER"}
+              moduleAccess={moduleAccess}
+            />
+
+            <DashboardOverviewSections
               moduleAccess={moduleAccess}
               hasAdministrativeAccess={hasAdministrativeAccess}
             />
+
             {showStaffingAi && (
               <>
                 <DashboardStaffingSections
                   staffingWarnings={staffingWarnings}
                   predictiveStaffing={predictiveStaffing}
                   movieDataAvailable={operationsHealth.movieDataAvailable}
+                  hasAdministrativeAccess={hasAdministrativeAccess}
                 />
-                <AiOperationsCommandCenter
-                  operationsHealth={operationsHealth}
-                  operationalRecommendations={operationalRecommendations}
-                />
-                <AiStaffingHeatmap
-                  staffingHeatmap={staffingHeatmap}
-                />
-                <div className="grid gap-6 2xl:grid-cols-2">
-                  <AiLearningAnalytics
-                    aiLearningAnalytics={aiLearningAnalytics}
+
+                <section aria-labelledby="dashboard-ai-heading">
+                  <DashboardSectionHeading
+                    id="dashboard-ai-heading"
+                    eyebrow="Analyse"
+                    title="Analyse og anbefalinger"
+                    description="Automatiske vurderinger, der kan understøtte dagens bemanding og kommende planlægning."
                   />
-                  <AiPatternInsights
-                    aiPatternInsights={aiPatternInsights}
-                  />
-                </div>
+                  <div className="space-y-6">
+                    <AiOperationsCommandCenter
+                      operationsHealth={operationsHealth}
+                      operationalRecommendations={operationalRecommendations}
+                    />
+                    <AiStaffingHeatmap
+                      staffingHeatmap={staffingHeatmap}
+                    />
+                    <div className="grid gap-6 2xl:grid-cols-2">
+                      <AiLearningAnalytics
+                        aiLearningAnalytics={aiLearningAnalytics}
+                      />
+                      <AiPatternInsights
+                        aiPatternInsights={aiPatternInsights}
+                      />
+                    </div>
+                  </div>
+                </section>
               </>
             )}
           </>
