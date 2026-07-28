@@ -126,7 +126,7 @@ export async function findAuthCinemaStartOverview(
                   id: 'asc',
                 },
               ],
-              take: 1,
+              take: 5,
             },
           },
         },
@@ -204,6 +204,18 @@ export async function findAuthCinemaStartOverview(
               },
             }
           : null,
+        nextShifts: membership.cinema.shifts.map(
+          (shift) => ({
+            id: shift.id,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            workType: {
+              id: shift.workType.id,
+              name: shift.workType.name,
+              color: shift.workType.color,
+            },
+          }),
+        ),
       };
     },
   );

@@ -23,6 +23,16 @@ function overviewMembership(
         color: string;
       };
     } | null;
+    nextShifts?: Array<{
+      id: number;
+      startTime: Date;
+      endTime: Date;
+      workType: {
+        id: number;
+        name: string;
+        color: string;
+      };
+    }>;
     canManageSchedule?: boolean;
   } = {},
 ) {
@@ -41,9 +51,11 @@ function overviewMembership(
       name,
       logoUrl: null,
       moduleSettings: [],
-      shifts: options.nextShift
-        ? [options.nextShift]
-        : [],
+      shifts:
+        options.nextShifts ??
+        (options.nextShift
+          ? [options.nextShift]
+          : []),
     },
   };
 }
@@ -164,6 +176,7 @@ describe('findAuthCinemaStartOverview', () => {
             items: [],
           },
           nextShift,
+          nextShifts: [nextShift],
         },
         {
           cinemaId: 2,
@@ -187,6 +200,7 @@ describe('findAuthCinemaStartOverview', () => {
             items: [],
           },
           nextShift: null,
+          nextShifts: [],
         },
       ],
     });
@@ -248,7 +262,7 @@ describe('findAuthCinemaStartOverview', () => {
                   id: 'asc',
                 },
               ],
-              take: 1,
+              take: 5,
             },
           }),
         },
@@ -296,6 +310,53 @@ describe('findAuthCinemaStartOverview', () => {
           isDefault: false,
         },
       ],
+    });
+  });
+
+  it('returns at most the next five own shifts for each cinema', async () => {
+    const shifts = Array.from(
+      { length: 5 },
+      (_, index) => ({
+        id: index + 1,
+        startTime: new Date(
+          `2026-08-0${index + 1}T15:00:00.000Z`,
+        ),
+        endTime: new Date(
+          `2026-08-0${index + 1}T20:00:00.000Z`,
+        ),
+        workType: {
+          id: 11,
+          name: 'Kiosk',
+          color: '#123456',
+        },
+      }),
+    );
+    prisma.user.findUnique.mockResolvedValue({
+      id: 7,
+      role: 'EMPLOYEE',
+      defaultCinemaId: 1,
+      isActive: true,
+    });
+    prisma.userCinemaMembership.findMany
+      .mockResolvedValue([
+        overviewMembership(
+          1,
+          'Kino Grenaa',
+          {
+            nextShifts: shifts,
+          },
+        ),
+      ]);
+
+    const result =
+      await findAuthCinemaStartOverview(
+        prisma as never,
+        7,
+      );
+
+    expect(result.cinemas[0]).toMatchObject({
+      nextShift: shifts[0],
+      nextShifts: shifts,
     });
   });
 

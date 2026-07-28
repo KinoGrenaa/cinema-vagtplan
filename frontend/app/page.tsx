@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import {
+  fetchCinemaStartOverview,
+  getAuthenticatedStartPath,
+} from "./components/cinema/cinemaStartOverview";
 import InfoModal from "./components/modals/InfoModal";
 import { useInfoModal } from "./hooks/useInfoModal";
 import { useAuth } from "./providers/AuthProvider";
@@ -25,16 +29,12 @@ function applyMasterDefaultCinema(
   role: string,
   defaultCinema?: LoginDefaultCinema | null,
 ) {
-  if (role !== "MASTER") {
-    return;
-  }
+  if (role !== "MASTER") return;
 
   if (!defaultCinema) {
     localStorage.removeItem(MASTER_SELECTED_CINEMA_ID_KEY);
     localStorage.removeItem(MASTER_SELECTED_CINEMA_NAME_KEY);
-    localStorage.removeItem(
-      MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
-    );
+    localStorage.removeItem(MASTER_SELECTED_CINEMA_LOGO_URL_KEY);
     window.dispatchEvent(
       new Event("masterSelectedCinemaChanged"),
     );
@@ -49,7 +49,6 @@ function applyMasterDefaultCinema(
     MASTER_SELECTED_CINEMA_NAME_KEY,
     defaultCinema.name,
   );
-
   if (defaultCinema.logoUrl) {
     localStorage.setItem(
       MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
@@ -60,7 +59,6 @@ function applyMasterDefaultCinema(
       MASTER_SELECTED_CINEMA_LOGO_URL_KEY,
     );
   }
-
   window.dispatchEvent(
     new Event("masterSelectedCinemaChanged"),
   );
@@ -68,10 +66,8 @@ function applyMasterDefaultCinema(
 
 async function readLoginError(response: Response) {
   let serverMessage = "";
-
   try {
     const data = await response.json();
-
     if (typeof data?.message === "string") {
       serverMessage = data.message;
     } else if (Array.isArray(data?.message)) {
@@ -82,7 +78,6 @@ async function readLoginError(response: Response) {
   }
 
   const normalizedMessage = serverMessage.toLowerCase();
-
   const isWrongCredentials =
     response.status === 400 ||
     response.status === 401 ||
@@ -97,23 +92,32 @@ async function readLoginError(response: Response) {
   if (isWrongCredentials) {
     return "E-mail eller adgangskode er forkert. Prøv igen.";
   }
-
   if (response.status >= 500) {
     return "Der er en midlertidig fejl på serveren. Prøv igen om lidt.";
   }
+  return serverMessage.trim().length > 0
+    ? serverMessage
+    : "Login kunne ikke gennemføres. Prøv igen om lidt.";
+}
 
-  if (serverMessage.trim().length > 0) {
-    return serverMessage;
+async function routeAuthenticatedUser(role: string) {
+  if (role === "MASTER") {
+    window.location.href = "/dashboard";
+    return;
   }
 
-  return "Login kunne ikke gennemføres. Prøv igen om lidt.";
+  try {
+    const overview = await fetchCinemaStartOverview();
+    window.location.href = getAuthenticatedStartPath(overview);
+  } catch {
+    window.location.href = "/home";
+  }
 }
 
 export default function HomePage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
-
   const {
     login,
     loading: authLoading,
@@ -124,21 +128,15 @@ export default function HomePage() {
   const isAuthenticated = Boolean(token && user);
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated) {
-      return;
-    }
+    if (authLoading || !isAuthenticated || !user) return;
+    void routeAuthenticatedUser(user.role);
+  }, [authLoading, isAuthenticated, user]);
 
-    window.location.href = "/dashboard";
-  }, [authLoading, isAuthenticated]);
-
-  if (authLoading || isAuthenticated) {
-    return null;
-  }
+  if (authLoading || isAuthenticated) return null;
 
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault();
     setLoginLoading(true);
-
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -157,7 +155,6 @@ export default function HomePage() {
       }
 
       const data = await response.json();
-
       if (!data?.access_token || !data?.user) {
         infoDialog.showError(
           "Login mislykkedes",
@@ -171,7 +168,7 @@ export default function HomePage() {
         data.user.role,
         data.defaultCinema,
       );
-      window.location.href = "/dashboard";
+      await routeAuthenticatedUser(data.user.role);
     } catch {
       infoDialog.showError(
         "Kan ikke forbinde til serveren",
@@ -189,36 +186,33 @@ export default function HomePage() {
           <h1 className="mb-6 text-center text-3xl font-bold text-gray-950 dark:text-white">
             Cinema Vagtplan
           </h1>
-
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="mb-1 block font-medium">
-                Email
+                E-mail
               </label>
               <input
                 type="email"
+                autoComplete="email"
+                required
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
                 value={email}
-                onChange={(event) =>
-                  setEmail(event.target.value)
-                }
+                onChange={(event) => setEmail(event.target.value)}
               />
             </div>
-
             <div>
               <label className="mb-1 block font-medium">
                 Adgangskode
               </label>
               <input
                 type="password"
+                autoComplete="current-password"
+                required
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
                 value={password}
-                onChange={(event) =>
-                  setPassword(event.target.value)
-                }
+                onChange={(event) => setPassword(event.target.value)}
               />
             </div>
-
             <button
               type="submit"
               disabled={loginLoading}
@@ -229,7 +223,6 @@ export default function HomePage() {
           </form>
         </div>
       </main>
-
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}
