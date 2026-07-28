@@ -33,6 +33,8 @@ export default function DashboardPage() {
     predictiveStaffing,
     aiLearningAnalytics,
     aiPatternInsights,
+    errorMessage,
+    reloadDashboard,
   } = useDashboard();
 
   if (loading || !currentUser) {
@@ -84,82 +86,107 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <DashboardHeader />
 
-        {showStaffingAi && (
-          <OperationsStatus
-            liveOperationsStatus={
-              liveOperationsStatus
-            }
-          />
-        )}
-
-        <DashboardSummaryCards
-          todayPlannedHours={
-            todayPlannedHours
-          }
-          myRegisteredHours={
-            myRegisteredHours
-          }
-          openShiftTrades={
-            openShiftTrades
-          }
-          pendingLeaveRequests={
-            pendingLeaveRequests
-          }
-          moduleAccess={moduleAccess}
-        />
-
-        <DashboardOverviewSections
-          movieCount={movies.length}
-          soldSeatsToday={
-            soldSeatsToday
-          }
-          seatLoadPercent={
-            seatLoadPercent
-          }
-          shiftCount={shifts.length}
-          movieDataAvailable={
-            operationsHealth.movieDataAvailable
-          }
-          moduleAccess={moduleAccess}
-        />
-
-        {showStaffingAi && (
+        {errorMessage ? (
+          <section
+            role="alert"
+            className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-950 shadow-sm dark:border-red-900 dark:bg-red-950 dark:text-red-100 md:flex-row md:items-center md:justify-between"
+          >
+            <div>
+              <h2 className="text-lg font-bold">
+                Driftsoverblikket kunne ikke opdateres
+              </h2>
+              <p className="mt-1 text-sm text-red-800 dark:text-red-200">
+                {errorMessage}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={reloadDashboard}
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:bg-red-500 dark:text-red-950 dark:hover:bg-red-400 dark:focus-visible:ring-red-300 dark:focus-visible:ring-offset-red-950"
+            >
+              Prøv igen
+            </button>
+          </section>
+        ) : (
           <>
-            <DashboardStaffingSections
-              staffingWarnings={
-                staffingWarnings
+            {showStaffingAi && (
+              <OperationsStatus
+                liveOperationsStatus={
+                  liveOperationsStatus
+                }
+              />
+            )}
+
+            <DashboardSummaryCards
+              todayPlannedHours={
+                todayPlannedHours
               }
-              predictiveStaffing={
-                predictiveStaffing
+              myRegisteredHours={
+                myRegisteredHours
               }
+              openShiftTrades={
+                openShiftTrades
+              }
+              pendingLeaveRequests={
+                pendingLeaveRequests
+              }
+              moduleAccess={moduleAccess}
+            />
+
+            <DashboardOverviewSections
+              movieCount={movies.length}
+              soldSeatsToday={
+                soldSeatsToday
+              }
+              seatLoadPercent={
+                seatLoadPercent
+              }
+              shiftCount={shifts.length}
               movieDataAvailable={
                 operationsHealth.movieDataAvailable
               }
+              moduleAccess={moduleAccess}
             />
 
-            <AiOperationsCommandCenter
-              operationsHealth={operationsHealth}
-              operationalRecommendations={
-                operationalRecommendations
-              }
-            />
+            {showStaffingAi && (
+              <>
+                <DashboardStaffingSections
+                  staffingWarnings={
+                    staffingWarnings
+                  }
+                  predictiveStaffing={
+                    predictiveStaffing
+                  }
+                  movieDataAvailable={
+                    operationsHealth.movieDataAvailable
+                  }
+                />
 
-            <AiStaffingHeatmap
-              staffingHeatmap={staffingHeatmap}
-            />
+                <AiOperationsCommandCenter
+                  operationsHealth={operationsHealth}
+                  operationalRecommendations={
+                    operationalRecommendations
+                  }
+                />
 
-            <div className="grid gap-6 2xl:grid-cols-2">
-              <AiLearningAnalytics
-                aiLearningAnalytics={
-                  aiLearningAnalytics
-                }
-              />
-              <AiPatternInsights
-                aiPatternInsights={
-                  aiPatternInsights
-                }
-              />
-            </div>
+                <AiStaffingHeatmap
+                  staffingHeatmap={staffingHeatmap}
+                />
+
+                <div className="grid gap-6 2xl:grid-cols-2">
+                  <AiLearningAnalytics
+                    aiLearningAnalytics={
+                      aiLearningAnalytics
+                    }
+                  />
+                  <AiPatternInsights
+                    aiPatternInsights={
+                      aiPatternInsights
+                    }
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
