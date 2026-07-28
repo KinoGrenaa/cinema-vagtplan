@@ -71,6 +71,12 @@ describe('findAuthCinemaStartOverview', () => {
     message: {
       groupBy: jest.Mock;
     };
+    shiftTrade: {
+      groupBy: jest.Mock;
+    };
+    staffingRequest: {
+      groupBy: jest.Mock;
+    };
     timeEntry: {
       groupBy: jest.Mock;
     };
@@ -88,6 +94,12 @@ describe('findAuthCinemaStartOverview', () => {
         findMany: jest.fn(),
       },
       message: {
+        groupBy: jest.fn().mockResolvedValue([]),
+      },
+      shiftTrade: {
+        groupBy: jest.fn().mockResolvedValue([]),
+      },
+      staffingRequest: {
         groupBy: jest.fn().mockResolvedValue([]),
       },
       timeEntry: {
@@ -227,6 +239,8 @@ describe('findAuthCinemaStartOverview', () => {
                     'MESSAGES',
                     'TIME_TRACKING',
                     'LEAVE',
+                    'SHIFT_TRADES',
+                    'STAFFING_REQUESTS',
                   ],
                 },
               },

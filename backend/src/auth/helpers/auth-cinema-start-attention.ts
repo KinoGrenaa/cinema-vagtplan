@@ -1,5 +1,8 @@
 import {
   LeaveStatus,
+  StaffingRequestStatus,
+  ShiftTradeStatus,
+  ShiftTradeType,
   TimeEntryStatus,
 } from '@prisma/client';
 
@@ -11,6 +14,8 @@ export const CINEMA_START_ATTENTION_MODULE_KEYS = [
   'MESSAGES',
   'TIME_TRACKING',
   'LEAVE',
+  'SHIFT_TRADES',
+  'STAFFING_REQUESTS',
 ] as const;
 
 type CinemaStartAttentionModuleKey =
@@ -39,6 +44,8 @@ type CinemaCountGroup = {
 export type CinemaStartAttentionItem = {
   type:
     | 'OWN_TIME_ENTRY_CHANGES'
+    | 'DIRECT_SHIFT_TRADES'
+    | 'TARGETED_STAFFING_REQUESTS'
     | 'TIME_APPROVAL'
     | 'LEAVE_APPROVAL'
     | 'UNREAD_MESSAGES';
@@ -97,6 +104,8 @@ function pluralLabel(
 function buildAttention(
   counts: {
     ownTimeEntryChanges: number;
+    directShiftTrades: number;
+    targetedStaffingRequests: number;
     timeApprovals: number;
     leaveApprovals: number;
     unreadMessages: number;
@@ -115,6 +124,34 @@ function buildAttention(
         'tidsregistreringer skal rettes',
       ),
       linkUrl: '/my-time',
+    });
+  }
+
+  if (counts.directShiftTrades > 0) {
+    items.push({
+      type: 'DIRECT_SHIFT_TRADES',
+      severity: 'ACTION_REQUIRED',
+      count: counts.directShiftTrades,
+      label: pluralLabel(
+        counts.directShiftTrades,
+        'direkte vagtbytte afventer dit svar',
+        'direkte vagtbytter afventer dit svar',
+      ),
+      linkUrl: '/shift-trades',
+    });
+  }
+
+  if (counts.targetedStaffingRequests > 0) {
+    items.push({
+      type: 'TARGETED_STAFFING_REQUESTS',
+      severity: 'ACTION_REQUIRED',
+      count: counts.targetedStaffingRequests,
+      label: pluralLabel(
+        counts.targetedStaffingRequests,
+        'bemandingsforespørgsel afventer dit svar',
+        'bemandingsforespørgsler afventer dit svar',
+      ),
+      linkUrl: '/staffing-requests',
     });
   }
 
@@ -171,6 +208,7 @@ function buildAttention(
         total + item.count,
       0,
     );
+
   const informationalCount = items
     .filter(
       (item) =>
@@ -224,6 +262,7 @@ export async function findAuthCinemaStartAttention(
   prisma: PrismaService,
   userId: number,
   memberships: CinemaStartAttentionMembership[],
+  now = new Date(),
 ) {
   const messageCinemaIds = memberships
     .filter((membership) =>
@@ -236,6 +275,31 @@ export async function findAuthCinemaStartAttention(
       (membership) =>
         membership.cinemaId,
     );
+
+  const shiftTradeCinemaIds = memberships
+    .filter((membership) =>
+      moduleIsEnabled(
+        membership,
+        'SHIFT_TRADES',
+      ),
+    )
+    .map(
+      (membership) =>
+        membership.cinemaId,
+    );
+
+  const staffingRequestCinemaIds = memberships
+    .filter((membership) =>
+      moduleIsEnabled(
+        membership,
+        'STAFFING_REQUESTS',
+      ),
+    )
+    .map(
+      (membership) =>
+        membership.cinemaId,
+    );
+
   const timeTrackingMemberships = memberships.filter(
     (membership) =>
       moduleIsEnabled(
@@ -243,11 +307,13 @@ export async function findAuthCinemaStartAttention(
         'TIME_TRACKING',
       ),
   );
+
   const timeTrackingCinemaIds =
     timeTrackingMemberships.map(
       (membership) =>
         membership.cinemaId,
     );
+
   const timeApprovalCinemaIds =
     timeTrackingMemberships
       .filter(
@@ -259,6 +325,7 @@ export async function findAuthCinemaStartAttention(
         (membership) =>
           membership.cinemaId,
       );
+
   const leaveApprovalCinemaIds = memberships
     .filter(
       (membership) =>
@@ -276,6 +343,8 @@ export async function findAuthCinemaStartAttention(
 
   const [
     unreadMessageGroups,
+    directShiftTradeGroups,
+    targetedStaffingRequestGroups,
     ownTimeEntryChangeGroups,
     timeApprovalGroups,
     leaveApprovalGroups,
@@ -306,6 +375,89 @@ export async function findAuthCinemaStartAttention(
           },
         })
       : Promise.resolve([]),
+
+    shiftTradeCinemaIds.length > 0
+      ? prisma.shiftTrade.groupBy({
+          by: [
+            'cinemaId',
+          ],
+          where: {
+            cinemaId: {
+              in: shiftTradeCinemaIds,
+            },
+            status:
+              ShiftTradeStatus.OPEN,
+            type:
+              ShiftTradeType.DIRECT,
+            targetUserId: userId,
+            offeredByUserId: {
+              not: userId,
+            },
+            shift: {
+              startTime: {
+                gt: now,
+              },
+            },
+          },
+          _count: {
+            _all: true,
+          },
+        })
+      : Promise.resolve([]),
+
+    staffingRequestCinemaIds.length > 0
+      ? prisma.staffingRequest.groupBy({
+          by: [
+            'cinemaId',
+          ],
+          where: {
+            cinemaId: {
+              in: staffingRequestCinemaIds,
+            },
+            status:
+              StaffingRequestStatus.PENDING,
+            targetUserId: userId,
+            requestedByUserId: {
+              not: userId,
+            },
+            AND: [
+              {
+                OR: [
+                  {
+                    expiresAt: null,
+                  },
+                  {
+                    expiresAt: {
+                      gt: now,
+                    },
+                  },
+                ],
+              },
+              {
+                OR: [
+                  {
+                    shift: {
+                      startTime: {
+                        gt: now,
+                      },
+                    },
+                  },
+                  {
+                    shiftId: null,
+                    requestStartTime: {
+                      gt: now,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+          _count: {
+            _all: true,
+          },
+        })
+      : Promise.resolve([]),
+
     timeTrackingCinemaIds.length > 0
       ? prisma.timeEntry.groupBy({
           by: [
@@ -324,6 +476,7 @@ export async function findAuthCinemaStartAttention(
           },
         })
       : Promise.resolve([]),
+
     timeApprovalCinemaIds.length > 0
       ? prisma.timeEntry.groupBy({
           by: [
@@ -344,6 +497,7 @@ export async function findAuthCinemaStartAttention(
           },
         })
       : Promise.resolve([]),
+
     leaveApprovalCinemaIds.length > 0
       ? prisma.leaveRequest.groupBy({
           by: [
@@ -366,6 +520,12 @@ export async function findAuthCinemaStartAttention(
   const unreadMessages = countByCinema(
     unreadMessageGroups,
   );
+  const directShiftTrades = countByCinema(
+    directShiftTradeGroups,
+  );
+  const targetedStaffingRequests = countByCinema(
+    targetedStaffingRequestGroups,
+  );
   const ownTimeEntryChanges = countByCinema(
     ownTimeEntryChangeGroups,
   );
@@ -382,6 +542,14 @@ export async function findAuthCinemaStartAttention(
       buildAttention({
         ownTimeEntryChanges:
           ownTimeEntryChanges.get(
+            membership.cinemaId,
+          ) ?? 0,
+        directShiftTrades:
+          directShiftTrades.get(
+            membership.cinemaId,
+          ) ?? 0,
+        targetedStaffingRequests:
+          targetedStaffingRequests.get(
             membership.cinemaId,
           ) ?? 0,
         timeApprovals:

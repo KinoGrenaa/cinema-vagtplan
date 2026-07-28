@@ -30,9 +30,27 @@ function membership(
   };
 }
 
+function group(
+  cinemaId: number,
+  count: number,
+) {
+  return {
+    cinemaId,
+    _count: {
+      _all: count,
+    },
+  };
+}
+
 describe('findAuthCinemaStartAttention', () => {
   let prisma: {
     message: {
+      groupBy: jest.Mock;
+    };
+    shiftTrade: {
+      groupBy: jest.Mock;
+    };
+    staffingRequest: {
       groupBy: jest.Mock;
     };
     timeEntry: {
@@ -46,56 +64,50 @@ describe('findAuthCinemaStartAttention', () => {
   beforeEach(() => {
     prisma = {
       message: {
-        groupBy: jest.fn(),
+        groupBy:
+          jest.fn().mockResolvedValue([]),
+      },
+      shiftTrade: {
+        groupBy:
+          jest.fn().mockResolvedValue([]),
+      },
+      staffingRequest: {
+        groupBy:
+          jest.fn().mockResolvedValue([]),
       },
       timeEntry: {
-        groupBy: jest.fn(),
+        groupBy:
+          jest.fn().mockResolvedValue([]),
       },
       leaveRequest: {
-        groupBy: jest.fn(),
+        groupBy:
+          jest.fn().mockResolvedValue([]),
       },
     };
   });
 
-  it('keeps attention counts strictly separated between cinemas', async () => {
+  it('keeps personal and administrative attention strictly separated between cinemas', async () => {
     prisma.message.groupBy.mockResolvedValue([
-      {
-        cinemaId: 1,
-        _count: {
-          _all: 2,
-        },
-      },
-      {
-        cinemaId: 2,
-        _count: {
-          _all: 1,
-        },
-      },
+      group(1, 2),
+      group(2, 1),
+    ]);
+    prisma.shiftTrade.groupBy.mockResolvedValue([
+      group(1, 2),
+      group(2, 1),
+    ]);
+    prisma.staffingRequest.groupBy.mockResolvedValue([
+      group(1, 1),
+      group(2, 4),
     ]);
     prisma.timeEntry.groupBy
       .mockResolvedValueOnce([
-        {
-          cinemaId: 1,
-          _count: {
-            _all: 1,
-          },
-        },
+        group(1, 1),
       ])
       .mockResolvedValueOnce([
-        {
-          cinemaId: 2,
-          _count: {
-            _all: 3,
-          },
-        },
+        group(2, 3),
       ]);
     prisma.leaveRequest.groupBy.mockResolvedValue([
-      {
-        cinemaId: 2,
-        _count: {
-          _all: 2,
-        },
-      },
+      group(2, 2),
     ]);
 
     const result =
@@ -110,13 +122,16 @@ describe('findAuthCinemaStartAttention', () => {
             canManageLeaveRequests: true,
           }),
         ],
+        new Date(
+          '2026-07-28T08:00:00.000Z',
+        ),
       );
 
     expect(result.get(1)).toEqual({
       severity: 'ACTION_REQUIRED',
-      actionRequiredCount: 1,
+      actionRequiredCount: 4,
       informationalCount: 2,
-      label: '1 forhold kræver din handling',
+      label: '4 forhold kræver din handling',
       items: [
         {
           type: 'OWN_TIME_ENTRY_CHANGES',
@@ -127,6 +142,22 @@ describe('findAuthCinemaStartAttention', () => {
           linkUrl: '/my-time',
         },
         {
+          type: 'DIRECT_SHIFT_TRADES',
+          severity: 'ACTION_REQUIRED',
+          count: 2,
+          label:
+            '2 direkte vagtbytter afventer dit svar',
+          linkUrl: '/shift-trades',
+        },
+        {
+          type: 'TARGETED_STAFFING_REQUESTS',
+          severity: 'ACTION_REQUIRED',
+          count: 1,
+          label:
+            '1 bemandingsforespørgsel afventer dit svar',
+          linkUrl: '/staffing-requests',
+        },
+        {
           type: 'UNREAD_MESSAGES',
           severity: 'INFORMATIONAL',
           count: 2,
@@ -135,12 +166,30 @@ describe('findAuthCinemaStartAttention', () => {
         },
       ],
     });
+
     expect(result.get(2)).toEqual({
       severity: 'ACTION_REQUIRED',
-      actionRequiredCount: 5,
+      actionRequiredCount: 10,
       informationalCount: 1,
-      label: '5 forhold kræver din handling',
+      label:
+        '10 forhold kræver din handling',
       items: [
+        {
+          type: 'DIRECT_SHIFT_TRADES',
+          severity: 'ACTION_REQUIRED',
+          count: 1,
+          label:
+            '1 direkte vagtbytte afventer dit svar',
+          linkUrl: '/shift-trades',
+        },
+        {
+          type: 'TARGETED_STAFFING_REQUESTS',
+          severity: 'ACTION_REQUIRED',
+          count: 4,
+          label:
+            '4 bemandingsforespørgsler afventer dit svar',
+          linkUrl: '/staffing-requests',
+        },
         {
           type: 'TIME_APPROVAL',
           severity: 'ACTION_REQUIRED',
@@ -166,9 +215,30 @@ describe('findAuthCinemaStartAttention', () => {
         },
       ],
     });
+  });
+
+  it('queries only future direct actions for the signed-in user', async () => {
+    const now = new Date(
+      '2026-07-28T08:00:00.000Z',
+    );
+
+    await findAuthCinemaStartAttention(
+      prisma as never,
+      7,
+      [
+        membership(1, {
+          disabledModules: [
+            'MESSAGES',
+            'TIME_TRACKING',
+            'LEAVE',
+          ],
+        }),
+      ],
+      now,
+    );
 
     expect(
-      prisma.message.groupBy,
+      prisma.shiftTrade.groupBy,
     ).toHaveBeenCalledWith({
       by: [
         'cinemaId',
@@ -177,18 +247,71 @@ describe('findAuthCinemaStartAttention', () => {
         cinemaId: {
           in: [
             1,
-            2,
           ],
         },
-        isRead: false,
-        archivedAt: null,
-        recalledAt: null,
-        OR: [
+        status: 'OPEN',
+        type: 'DIRECT',
+        targetUserId: 7,
+        offeredByUserId: {
+          not: 7,
+        },
+        shift: {
+          startTime: {
+            gt: now,
+          },
+        },
+      },
+      _count: {
+        _all: true,
+      },
+    });
+
+    expect(
+      prisma.staffingRequest.groupBy,
+    ).toHaveBeenCalledWith({
+      by: [
+        'cinemaId',
+      ],
+      where: {
+        cinemaId: {
+          in: [
+            1,
+          ],
+        },
+        status: 'PENDING',
+        targetUserId: 7,
+        requestedByUserId: {
+          not: 7,
+        },
+        AND: [
           {
-            receiverId: 7,
+            OR: [
+              {
+                expiresAt: null,
+              },
+              {
+                expiresAt: {
+                  gt: now,
+                },
+              },
+            ],
           },
           {
-            isBroadcast: true,
+            OR: [
+              {
+                shift: {
+                  startTime: {
+                    gt: now,
+                  },
+                },
+              },
+              {
+                shiftId: null,
+                requestStartTime: {
+                  gt: now,
+                },
+              },
+            ],
           },
         ],
       },
@@ -196,87 +319,21 @@ describe('findAuthCinemaStartAttention', () => {
         _all: true,
       },
     });
-    expect(
-      prisma.timeEntry.groupBy,
-    ).toHaveBeenNthCalledWith(1, {
-      by: [
-        'cinemaId',
-      ],
-      where: {
-        cinemaId: {
-          in: [
-            1,
-            2,
-          ],
-        },
-        userId: 7,
-        status: 'NEEDS_CHANGES',
-      },
-      _count: {
-        _all: true,
-      },
-    });
-    expect(
-      prisma.timeEntry.groupBy,
-    ).toHaveBeenNthCalledWith(2, {
-      by: [
-        'cinemaId',
-      ],
-      where: {
-        cinemaId: {
-          in: [
-            2,
-          ],
-        },
-        status: 'PENDING',
-        clockOut: {
-          not: null,
-        },
-      },
-      _count: {
-        _all: true,
-      },
-    });
-    expect(
-      prisma.leaveRequest.groupBy,
-    ).toHaveBeenCalledWith({
-      by: [
-        'cinemaId',
-      ],
-      where: {
-        cinemaId: {
-          in: [
-            2,
-          ],
-        },
-        status: 'PENDING',
-      },
-      _count: {
-        _all: true,
-      },
-    });
   });
 
-  it('omits disabled modules and administrative queues without permission', async () => {
-    prisma.timeEntry.groupBy.mockResolvedValue([]);
-
+  it('omits actions when their cinema modules are disabled', async () => {
     const result =
       await findAuthCinemaStartAttention(
         prisma as never,
         7,
         [
           membership(1, {
-            role: 'ADMIN',
-            disabledModules: [
-              'MESSAGES',
-              'LEAVE',
-            ],
-          }),
-          membership(2, {
             disabledModules: [
               'MESSAGES',
               'TIME_TRACKING',
               'LEAVE',
+              'SHIFT_TRADES',
+              'STAFFING_REQUESTS',
             ],
           }),
         ],
@@ -289,17 +346,39 @@ describe('findAuthCinemaStartAttention', () => {
       label: 'Ingen aktuelle opgaver',
       items: [],
     });
-    expect(result.get(2)).toEqual({
-      severity: 'NONE',
-      actionRequiredCount: 0,
-      informationalCount: 0,
-      label: 'Ingen aktuelle opgaver',
-      items: [],
-    });
-
     expect(
       prisma.message.groupBy,
     ).not.toHaveBeenCalled();
+    expect(
+      prisma.shiftTrade.groupBy,
+    ).not.toHaveBeenCalled();
+    expect(
+      prisma.staffingRequest.groupBy,
+    ).not.toHaveBeenCalled();
+    expect(
+      prisma.timeEntry.groupBy,
+    ).not.toHaveBeenCalled();
+    expect(
+      prisma.leaveRequest.groupBy,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('does not expose administrative queues without the required permissions', async () => {
+    await findAuthCinemaStartAttention(
+      prisma as never,
+      7,
+      [
+        membership(1, {
+          role: 'ADMIN',
+          disabledModules: [
+            'MESSAGES',
+            'SHIFT_TRADES',
+            'STAFFING_REQUESTS',
+          ],
+        }),
+      ],
+    );
+
     expect(
       prisma.timeEntry.groupBy,
     ).toHaveBeenCalledTimes(1);
@@ -329,12 +408,7 @@ describe('findAuthCinemaStartAttention', () => {
 
   it('uses an informational state when only unread messages exist', async () => {
     prisma.message.groupBy.mockResolvedValue([
-      {
-        cinemaId: 1,
-        _count: {
-          _all: 4,
-        },
-      },
+      group(1, 4),
     ]);
 
     const result =
@@ -346,6 +420,8 @@ describe('findAuthCinemaStartAttention', () => {
             disabledModules: [
               'TIME_TRACKING',
               'LEAVE',
+              'SHIFT_TRADES',
+              'STAFFING_REQUESTS',
             ],
           }),
         ],
