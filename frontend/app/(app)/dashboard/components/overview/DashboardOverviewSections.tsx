@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type DashboardOverviewSectionsProps = {
   movieCount: number;
   soldSeatsToday: number;
@@ -12,18 +14,11 @@ type DashboardOverviewSectionsProps = {
   };
 };
 
-const shortcutBaseClass =
-  "rounded-xl px-4 py-3 text-center font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
-
-const shortcutClasses = {
-  schedule:
-    `${shortcutBaseClass} bg-blue-700 hover:bg-blue-800 focus-visible:ring-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:ring-blue-400`,
-  timeTracking:
-    `${shortcutBaseClass} bg-green-700 hover:bg-green-800 focus-visible:ring-green-600 dark:bg-green-600 dark:hover:bg-green-500 dark:focus-visible:ring-green-400`,
-  shiftTrades:
-    `${shortcutBaseClass} bg-purple-700 hover:bg-purple-800 focus-visible:ring-purple-600 dark:bg-purple-600 dark:hover:bg-purple-500 dark:focus-visible:ring-purple-400`,
-  payroll:
-    `${shortcutBaseClass} bg-gray-800 hover:bg-gray-900 focus-visible:ring-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus-visible:ring-gray-400`,
+type Shortcut = {
+  enabled: boolean;
+  href: string;
+  title: string;
+  description: string;
 };
 
 const panelClass =
@@ -37,45 +32,34 @@ export default function DashboardOverviewSections({
   movieDataAvailable,
   moduleAccess,
 }: DashboardOverviewSectionsProps) {
-  const shortcuts = [
+  const shortcuts: Shortcut[] = [
     {
       enabled: moduleAccess.schedule,
       href: "/schedule",
-      label: "Vagtplan",
-      className:
-        shortcutClasses.schedule,
+      title: "Se dagens vagtplan",
+      description: "Åbn vagter, filmprogram og dagens bemanding.",
     },
     {
-      enabled:
-        moduleAccess.timeTracking,
+      enabled: moduleAccess.timeTracking,
       href: "/clock",
-      label: "Tidsregistrering",
-      className:
-        shortcutClasses.timeTracking,
+      title: "Stempel ind eller ud",
+      description: "Åbn tidsuret og registrer din arbejdstid.",
     },
     {
-      enabled:
-        moduleAccess.shiftTrades,
+      enabled: moduleAccess.shiftTrades,
       href: "/shift-trades",
-      label: "Vagtbytte",
-      className:
-        shortcutClasses.shiftTrades,
+      title: "Arbejd med vagtbytter",
+      description: "Se åbne bytter og dine egne anmodninger.",
     },
     {
       enabled: moduleAccess.payroll,
       href: "/payroll",
-      label: "Løn",
-      className:
-        shortcutClasses.payroll,
+      title: "Åbn lønbehandling",
+      description: "Gå til lønperioder, kontrol og eksport.",
     },
-  ].filter(
-    (shortcut) => shortcut.enabled,
-  );
+  ].filter((shortcut) => shortcut.enabled);
 
-  if (
-    !moduleAccess.schedule &&
-    shortcuts.length === 0
-  ) {
+  if (!moduleAccess.schedule && shortcuts.length === 0) {
     return null;
   }
 
@@ -86,14 +70,12 @@ export default function DashboardOverviewSections({
           <h2 className="text-xl font-bold text-gray-950 dark:text-white">
             Biograf i dag
           </h2>
-
           {!movieDataAvailable && (
             <p className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
               Filmprogrammet er tomt eller ikke tilgængeligt.
               Filmrelaterede nøgletal kan derfor ikke vurderes.
             </p>
           )}
-
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <span className="text-gray-600 dark:text-gray-300">
@@ -103,7 +85,6 @@ export default function DashboardOverviewSections({
                 {movieDataAvailable ? movieCount : "Ikke tilgængelig"}
               </span>
             </div>
-
             <div className="flex justify-between gap-4">
               <span className="text-gray-600 dark:text-gray-300">
                 Solgte billetter
@@ -112,7 +93,6 @@ export default function DashboardOverviewSections({
                 {movieDataAvailable ? soldSeatsToday : "Ikke tilgængelig"}
               </span>
             </div>
-
             <div className="flex justify-between gap-4">
               <span className="text-gray-600 dark:text-gray-300">
                 Belægning
@@ -121,7 +101,6 @@ export default function DashboardOverviewSections({
                 {movieDataAvailable ? `${seatLoadPercent}%` : "Ikke tilgængelig"}
               </span>
             </div>
-
             <div className="flex justify-between gap-4">
               <span className="text-gray-600 dark:text-gray-300">
                 Vagter i dag
@@ -133,27 +112,37 @@ export default function DashboardOverviewSections({
           </div>
         </div>
       )}
-
       {shortcuts.length > 0 && (
         <div className={panelClass}>
           <h2 className="text-xl font-bold text-gray-950 dark:text-white">
-            Genveje
+            Gå direkte til
           </h2>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {shortcuts.map(
-              (shortcut) => (
-                <a
-                  key={shortcut.href}
-                  href={shortcut.href}
-                  className={
-                    shortcut.className
-                  }
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            Vælg den arbejdsflade, du skal bruge nu.
+          </p>
+          <div className="mt-4 grid gap-3">
+            {shortcuts.map((shortcut) => (
+              <Link
+                key={shortcut.href}
+                href={shortcut.href}
+                className="group flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:border-gray-800 dark:bg-gray-950 dark:hover:border-blue-700 dark:hover:bg-blue-950/40 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
+              >
+                <span>
+                  <span className="block font-semibold text-gray-950 dark:text-white">
+                    {shortcut.title}
+                  </span>
+                  <span className="mt-1 block text-sm text-gray-600 dark:text-gray-300">
+                    {shortcut.description}
+                  </span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="text-lg text-blue-700 transition group-hover:translate-x-1 dark:text-blue-300"
                 >
-                  {shortcut.label}
-                </a>
-              ),
-            )}
+                  →
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       )}

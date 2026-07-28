@@ -7,6 +7,7 @@ import AiStaffingHeatmap from "./components/ai/AiStaffingHeatmap";
 import DashboardHeader from "./components/layout/DashboardHeader";
 import OperationsStatus from "./components/operations/OperationsStatus";
 import DashboardOverviewSections from "./components/overview/DashboardOverviewSections";
+import DashboardPriorityActions from "./components/overview/DashboardPriorityActions";
 import DashboardSummaryCards from "./components/overview/DashboardSummaryCards";
 import DashboardStaffingSections from "./components/staffing/DashboardStaffingSections";
 import { useDashboard } from "./hooks/useDashboard";
@@ -54,7 +55,6 @@ export default function DashboardPage() {
           <p className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
             Ingen aktiv biograf valgt
           </p>
-
           <h1 className="mt-2 text-2xl font-bold">
             Vælg en biograf for at se driftsoverblikket
           </h1>
@@ -65,7 +65,6 @@ export default function DashboardPage() {
             biograf. Som MASTER skal du vælge en
             aktiv biograf først.
           </p>
-
           <a
             href="/master"
             className="mt-5 inline-flex rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-gray-950"
@@ -78,14 +77,12 @@ export default function DashboardPage() {
   }
 
   const showStaffingAi =
-    moduleAccess.staffingAi &&
-    moduleAccess.schedule;
+    moduleAccess.staffingAi && moduleAccess.schedule;
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <DashboardHeader />
-
         {errorMessage ? (
           <section
             role="alert"
@@ -111,78 +108,47 @@ export default function DashboardPage() {
           <>
             {showStaffingAi && (
               <OperationsStatus
-                liveOperationsStatus={
-                  liveOperationsStatus
-                }
+                liveOperationsStatus={liveOperationsStatus}
               />
             )}
-
-            <DashboardSummaryCards
-              todayPlannedHours={
-                todayPlannedHours
-              }
-              myRegisteredHours={
-                myRegisteredHours
-              }
-              openShiftTrades={
-                openShiftTrades
-              }
-              pendingLeaveRequests={
-                pendingLeaveRequests
-              }
+            <DashboardPriorityActions
+              openShiftTrades={openShiftTrades}
+              pendingLeaveRequests={pendingLeaveRequests}
               moduleAccess={moduleAccess}
             />
-
+            <DashboardSummaryCards
+              todayPlannedHours={todayPlannedHours}
+              myRegisteredHours={myRegisteredHours}
+              moduleAccess={moduleAccess}
+            />
             <DashboardOverviewSections
               movieCount={movies.length}
-              soldSeatsToday={
-                soldSeatsToday
-              }
-              seatLoadPercent={
-                seatLoadPercent
-              }
+              soldSeatsToday={soldSeatsToday}
+              seatLoadPercent={seatLoadPercent}
               shiftCount={shifts.length}
-              movieDataAvailable={
-                operationsHealth.movieDataAvailable
-              }
+              movieDataAvailable={operationsHealth.movieDataAvailable}
               moduleAccess={moduleAccess}
             />
-
             {showStaffingAi && (
               <>
                 <DashboardStaffingSections
-                  staffingWarnings={
-                    staffingWarnings
-                  }
-                  predictiveStaffing={
-                    predictiveStaffing
-                  }
-                  movieDataAvailable={
-                    operationsHealth.movieDataAvailable
-                  }
+                  staffingWarnings={staffingWarnings}
+                  predictiveStaffing={predictiveStaffing}
+                  movieDataAvailable={operationsHealth.movieDataAvailable}
                 />
-
                 <AiOperationsCommandCenter
                   operationsHealth={operationsHealth}
-                  operationalRecommendations={
-                    operationalRecommendations
-                  }
+                  operationalRecommendations={operationalRecommendations}
                 />
-
                 <AiStaffingHeatmap
                   staffingHeatmap={staffingHeatmap}
                 />
-
                 <div className="grid gap-6 2xl:grid-cols-2">
                   <AiLearningAnalytics
-                    aiLearningAnalytics={
-                      aiLearningAnalytics
-                    }
+                    aiLearningAnalytics={aiLearningAnalytics}
                   />
                   <AiPatternInsights
-                    aiPatternInsights={
-                      aiPatternInsights
-                    }
+                    aiPatternInsights={aiPatternInsights}
                   />
                 </div>
               </>
