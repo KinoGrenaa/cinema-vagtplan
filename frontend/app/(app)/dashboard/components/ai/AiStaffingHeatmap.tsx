@@ -1,4 +1,10 @@
 import { formatDashboardCount } from "../../helpers/dashboardPresentation";
+import {
+  isDashboardSourceReadable,
+  isDashboardSourceStale,
+} from "../../helpers/dashboardSourcePresentation";
+import type { DashboardSourceStatus } from "../../types";
+import DashboardSourceBadge from "../status/DashboardSourceBadge";
 
 type StaffingHeatmapItem = {
   id: number;
@@ -10,6 +16,7 @@ type StaffingHeatmapItem = {
 
 type Props = {
   staffingHeatmap: StaffingHeatmapItem[];
+  shiftsSourceStatus: DashboardSourceStatus;
 };
 
 const riskRank: Record<string, number> = {
@@ -27,43 +34,63 @@ function formatRisk(risk: string) {
 
 export default function AiStaffingHeatmap({
   staffingHeatmap,
+  shiftsSourceStatus,
 }: Props) {
-  const sortedItems = [...staffingHeatmap].sort((a, b) => {
-    const riskDifference = (riskRank[b.risk] ?? 0) - (riskRank[a.risk] ?? 0);
-    if (riskDifference !== 0) return riskDifference;
-    return Number.parseFloat(b.hours) - Number.parseFloat(a.hours);
-  });
-  const mediumRiskCount = staffingHeatmap.filter(
-    (item) => item.risk === "MEDIUM",
-  ).length;
-  const highRiskCount = staffingHeatmap.filter(
-    (item) => item.risk === "HIGH",
-  ).length;
+  const sourceReadable = isDashboardSourceReadable(
+    shiftsSourceStatus,
+  );
+  const sortedItems = sourceReadable
+    ? [...staffingHeatmap].sort((a, b) => {
+        const riskDifference =
+          (riskRank[b.risk] ?? 0) - (riskRank[a.risk] ?? 0);
+        if (riskDifference !== 0) return riskDifference;
+        return Number.parseFloat(b.hours) - Number.parseFloat(a.hours);
+      })
+    : [];
+  const mediumRiskCount = sourceReadable
+    ? staffingHeatmap.filter((item) => item.risk === "MEDIUM").length
+    : 0;
+  const highRiskCount = sourceReadable
+    ? staffingHeatmap.filter((item) => item.risk === "HIGH").length
+    : 0;
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-xl font-bold text-gray-950 dark:text-white">
-            Vagtlængder og belastning
-          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-xl font-bold text-gray-950 dark:text-white">
+              Vagtlængder og belastning
+            </h3>
+            {isDashboardSourceStale(shiftsSourceStatus) && (
+              <DashboardSourceBadge status={shiftsSourceStatus} />
+            )}
+          </div>
           <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
             Vagterne sorteres med de længste og mest belastende øverst.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-            {formatDashboardCount(mediumRiskCount, "vagt", "vagter")} 8-10 t.
-          </span>
-          <span className="rounded-full bg-red-100 px-3 py-1 text-red-800 dark:bg-red-900 dark:text-red-200">
-            {formatDashboardCount(highRiskCount, "vagt", "vagter")} 10+ t.
-          </span>
-        </div>
+        {sourceReadable ? (
+          <div className="flex flex-wrap gap-2 text-xs font-bold">
+            <span className="rounded-full bg-yellow-100 px-3 py-1 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+              {formatDashboardCount(mediumRiskCount, "vagt", "vagter")} 8-10 t.
+            </span>
+            <span className="rounded-full bg-red-100 px-3 py-1 text-red-800 dark:bg-red-900 dark:text-red-200">
+              {formatDashboardCount(highRiskCount, "vagt", "vagter")} 10+ t.
+            </span>
+          </div>
+        ) : (
+          <DashboardSourceBadge status={shiftsSourceStatus} />
+        )}
       </div>
 
-      {sortedItems.length === 0 ? (
+      {!sourceReadable ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          Dagens vagter kunne ikke hentes. Vagtlængderne kan derfor ikke vurderes.
+        </p>
+      ) : sortedItems.length === 0 ? (
         <p className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-          Der er ingen vagter at vurdere i dag.
+          Der er ingen vagter i dagens vagtplan.
         </p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

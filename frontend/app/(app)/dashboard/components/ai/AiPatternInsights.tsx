@@ -1,3 +1,10 @@
+import {
+  isDashboardSourceReadable,
+  isDashboardSourceStale,
+} from "../../helpers/dashboardSourcePresentation";
+import type { DashboardSourceStatus } from "../../types";
+import DashboardSourceBadge from "../status/DashboardSourceBadge";
+
 type AiPatternInsightsData = {
   busiestDay: string;
   busiestDayCount: number;
@@ -8,12 +15,18 @@ type AiPatternInsightsData = {
 
 type Props = {
   aiPatternInsights: AiPatternInsightsData;
+  shiftsSourceStatus: DashboardSourceStatus;
 };
 
 export default function AiPatternInsights({
   aiPatternInsights,
+  shiftsSourceStatus,
 }: Props) {
-  const hasShiftData = aiPatternInsights.busiestDayCount > 0;
+  const sourceReadable = isDashboardSourceReadable(
+    shiftsSourceStatus,
+  );
+  const hasShiftData =
+    sourceReadable && aiPatternInsights.busiestDayCount > 0;
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -25,15 +38,22 @@ export default function AiPatternInsights({
           <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
             Dagens vagter
           </span>
+          {isDashboardSourceStale(shiftsSourceStatus) && (
+            <DashboardSourceBadge status={shiftsSourceStatus} />
+          )}
         </div>
         <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
           En enkel optælling af dagens vagter og de hyppigste starttidspunkter.
         </p>
       </div>
 
-      {!hasShiftData ? (
+      {!sourceReadable ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          Dagens vagtplan kunne ikke hentes. Mønstrene kan derfor ikke beregnes.
+        </p>
+      ) : !hasShiftData ? (
         <p className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
-          Der er ingen vagter i dagens datagrundlag.
+          Der er ingen vagter i dagens vagtplan.
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

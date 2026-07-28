@@ -1,6 +1,12 @@
 import Link from "next/link";
 
 import { cleanDashboardInsight } from "../../helpers/dashboardPresentation";
+import {
+  isDashboardSourceReadable,
+  isDashboardSourceStale,
+} from "../../helpers/dashboardSourcePresentation";
+import type { DashboardSourceStatus } from "../../types";
+import DashboardSourceBadge from "../status/DashboardSourceBadge";
 
 type StaffingHealth =
   | "UNKNOWN"
@@ -19,6 +25,8 @@ type OperationsHealth = {
 type Props = {
   operationsHealth: OperationsHealth;
   operationalRecommendations: string[];
+  shiftsSourceStatus: DashboardSourceStatus;
+  moviesSourceStatus: DashboardSourceStatus;
   hasAdministrativeAccess: boolean;
 };
 
@@ -29,14 +37,59 @@ const staffingHealthLabels: Record<StaffingHealth, string> = {
   CRITICAL: "Kritisk",
 };
 
+type AssessmentMetricProps = {
+  label: string;
+  value: string | number;
+  status?: DashboardSourceStatus;
+};
+
+function AssessmentMetric({
+  label,
+  value,
+  status,
+}: AssessmentMetricProps) {
+  const readable = !status || isDashboardSourceReadable(status);
+
+  return (
+    <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-950">
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-sm text-cyan-800 dark:text-cyan-300">
+          {label}
+        </div>
+        {status && (
+          <DashboardSourceBadge status={status} hideWhenFresh />
+        )}
+      </div>
+      <div className="mt-2 text-2xl font-bold text-cyan-950 dark:text-cyan-100">
+        {readable ? value : "—"}
+      </div>
+    </div>
+  );
+}
+
 export default function AiOperationsCommandCenter({
   operationsHealth,
   operationalRecommendations,
+  shiftsSourceStatus,
+  moviesSourceStatus,
   hasAdministrativeAccess,
 }: Props) {
   const planningHref = hasAdministrativeAccess
     ? "/shift-planning"
     : "/schedule";
+  const shiftsReadable = isDashboardSourceReadable(
+    shiftsSourceStatus,
+  );
+  const moviesReadable = isDashboardSourceReadable(
+    moviesSourceStatus,
+  );
+  const assessmentReadable = shiftsReadable || moviesReadable;
+  const hasStaleData =
+    isDashboardSourceStale(shiftsSourceStatus) ||
+    isDashboardSourceStale(moviesSourceStatus);
+  const assessmentStatus = !shiftsReadable
+    ? "UNKNOWN"
+    : operationsHealth.staffingHealth;
 
   return (
     <section className="rounded-2xl border border-cyan-200 bg-cyan-50 p-6 shadow-sm dark:border-cyan-900 dark:bg-cyan-950/30">
@@ -49,6 +102,9 @@ export default function AiOperationsCommandCenter({
             <span className="inline-flex rounded-full bg-cyan-100 px-3 py-1 text-xs font-bold text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200">
               Regelbaseret
             </span>
+            {hasStaleData && (
+              <DashboardSourceBadge status={{ state: "stale" }} />
+            )}
           </div>
           <p className="mt-1 text-sm leading-6 text-cyan-900/75 dark:text-cyan-100/75">
             Et øjebliksbillede af dagens bemanding, vagtlængder og billetbelastning.
@@ -65,41 +121,33 @@ export default function AiOperationsCommandCenter({
         </Link>
       </div>
 
+      {!assessmentReadable && (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          Vagtplanen og filmprogrammet kunne ikke hentes. Den samlede driftsvurdering kan derfor ikke beregnes.
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-950">
-          <div className="text-sm text-cyan-800 dark:text-cyan-300">
-            Bemandingssituation
-          </div>
-          <div className="mt-2 text-2xl font-bold text-cyan-950 dark:text-cyan-100">
-            {staffingHealthLabels[operationsHealth.staffingHealth]}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-950">
-          <div className="text-sm text-cyan-800 dark:text-cyan-300">
-            Vagter i dag
-          </div>
-          <div className="mt-2 text-2xl font-bold text-cyan-950 dark:text-cyan-100">
-            {operationsHealth.activeShiftCount}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-950">
-          <div className="text-sm text-cyan-800 dark:text-cyan-300">
-            Vagter på mindst 8 timer
-          </div>
-          <div className="mt-2 text-2xl font-bold text-cyan-950 dark:text-cyan-100">
-            {operationsHealth.highFatigueEmployees}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-950">
-          <div className="text-sm text-cyan-800 dark:text-cyan-300">
-            Solgte billetter i programmet
-          </div>
-          <div className="mt-2 text-2xl font-bold text-cyan-950 dark:text-cyan-100">
-            {operationsHealth.movieDataAvailable
-              ? operationsHealth.moviePressure
-              : "Mangler data"}
-          </div>
-        </div>
+        <AssessmentMetric
+          label="Bemandingssituation"
+          value={staffingHealthLabels[assessmentStatus]}
+          status={shiftsSourceStatus}
+        />
+        <AssessmentMetric
+          label="Vagter i dag"
+          value={operationsHealth.activeShiftCount}
+          status={shiftsSourceStatus}
+        />
+        <AssessmentMetric
+          label="Vagter på mindst 8 timer"
+          value={operationsHealth.highFatigueEmployees}
+          status={shiftsSourceStatus}
+        />
+        <AssessmentMetric
+          label="Solgte billetter i programmet"
+          value={operationsHealth.moviePressure}
+          status={moviesSourceStatus}
+        />
       </div>
 
       <div className="mt-6">
@@ -108,22 +156,30 @@ export default function AiOperationsCommandCenter({
             Hvad bør kontrolleres?
           </h4>
           <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-cyan-800 dark:bg-gray-950 dark:text-cyan-200">
-            {operationalRecommendations.length} forhold
+            {assessmentReadable
+              ? `${operationalRecommendations.length} forhold`
+              : "Kan ikke vurderes"}
           </span>
         </div>
-        <ol className="space-y-3">
-          {operationalRecommendations.map((recommendation, index) => (
-            <li
-              key={`${index}-${recommendation}`}
-              className="flex gap-3 rounded-xl border border-cyan-200 bg-white p-4 text-sm leading-6 text-cyan-950 dark:border-cyan-900 dark:bg-gray-950 dark:text-cyan-100"
-            >
-              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-xs font-bold text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200">
-                {index + 1}
-              </span>
-              <span>{cleanDashboardInsight(recommendation)}</span>
-            </li>
-          ))}
-        </ol>
+        {assessmentReadable ? (
+          <ol className="space-y-3">
+            {operationalRecommendations.map((recommendation, index) => (
+              <li
+                key={`${index}-${recommendation}`}
+                className="flex gap-3 rounded-xl border border-cyan-200 bg-white p-4 text-sm leading-6 text-cyan-950 dark:border-cyan-900 dark:bg-gray-950 dark:text-cyan-100"
+              >
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-xs font-bold text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200">
+                  {index + 1}
+                </span>
+                <span>{cleanDashboardInsight(recommendation)}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="rounded-xl border border-cyan-200 bg-white p-4 text-sm leading-6 text-cyan-950 dark:border-cyan-900 dark:bg-gray-950 dark:text-cyan-100">
+            Anbefalinger vises igen, når mindst én relevant datakilde kan hentes.
+          </p>
+        )}
       </div>
     </section>
   );

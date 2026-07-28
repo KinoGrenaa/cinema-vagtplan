@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
@@ -85,10 +86,10 @@ export default function DashboardPage() {
   const showStaffingAi =
     moduleAccess.staffingAi && moduleAccess.schedule;
   const hasAdministrativeAccess =
-    currentUser.role === "ADMIN" ||
-    currentUser.role === "MASTER";
+    currentUser.role === "ADMIN" || currentUser.role === "MASTER";
   const showDashboardContent =
     !errorMessage || hasLoadedDashboard;
+  const hasMovieShowings = movies.length > 0;
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -141,6 +142,9 @@ export default function DashboardPage() {
             {showStaffingAi && (
               <OperationsStatus
                 liveOperationsStatus={liveOperationsStatus}
+                shiftsSourceStatus={sourceStatus.shifts}
+                moviesSourceStatus={sourceStatus.movies}
+                hasMovieShowings={hasMovieShowings}
               />
             )}
 
@@ -148,6 +152,7 @@ export default function DashboardPage() {
               openShiftTrades={openShiftTrades}
               pendingLeaveRequests={pendingLeaveRequests}
               staffingWarningsCount={staffingWarnings.length}
+              sourceStatus={sourceStatus}
               moduleAccess={moduleAccess}
               hasAdministrativeAccess={hasAdministrativeAccess}
             />
@@ -159,20 +164,14 @@ export default function DashboardPage() {
               soldSeatsToday={soldSeatsToday}
               seatLoadPercent={seatLoadPercent}
               shiftCount={shifts.length}
-              movieDataAvailable={
-                operationsHealth.movieDataAvailable
-              }
-              canShowPersonalTime={
-                currentUser.role !== "MASTER"
-              }
+              canShowPersonalTime={currentUser.role !== "MASTER"}
+              sourceStatus={sourceStatus}
               moduleAccess={moduleAccess}
             />
 
             <DashboardOverviewSections
               moduleAccess={moduleAccess}
-              hasAdministrativeAccess={
-                hasAdministrativeAccess
-              }
+              hasAdministrativeAccess={hasAdministrativeAccess}
             />
 
             {showStaffingAi && (
@@ -180,12 +179,10 @@ export default function DashboardPage() {
                 <DashboardStaffingSections
                   staffingWarnings={staffingWarnings}
                   predictiveStaffing={predictiveStaffing}
-                  movieDataAvailable={
-                    operationsHealth.movieDataAvailable
-                  }
-                  hasAdministrativeAccess={
-                    hasAdministrativeAccess
-                  }
+                  hasMovieShowings={hasMovieShowings}
+                  shiftsSourceStatus={sourceStatus.shifts}
+                  moviesSourceStatus={sourceStatus.movies}
+                  hasAdministrativeAccess={hasAdministrativeAccess}
                 />
 
                 <section aria-labelledby="dashboard-analysis-heading">
@@ -193,39 +190,38 @@ export default function DashboardPage() {
                     id="dashboard-analysis-heading"
                     eyebrow="Automatisk analyse"
                     title="Automatiske vurderinger"
-                    description="Gennemgå beregningsgrundlaget, de udløste regler og dagens vagtbelastning."
+                    description="Gennemgå beregningsgrundlaget, de udløste regler og dagens vagtbelastning. Hver del viser, når datagrundlaget er gammelt eller utilgængeligt."
                   />
                   <div className="space-y-6">
                     <DashboardAnalysisMethod
                       shiftCount={shifts.length}
                       movieCount={movies.length}
-                      movieDataAvailable={
-                        operationsHealth.movieDataAvailable
-                      }
-                      hasAdministrativeAccess={
-                        hasAdministrativeAccess
-                      }
+                      shiftsSourceStatus={sourceStatus.shifts}
+                      moviesSourceStatus={sourceStatus.movies}
+                      hasAdministrativeAccess={hasAdministrativeAccess}
                     />
                     <AiOperationsCommandCenter
                       operationsHealth={operationsHealth}
                       operationalRecommendations={
                         operationalRecommendations
                       }
-                      hasAdministrativeAccess={
-                        hasAdministrativeAccess
-                      }
+                      shiftsSourceStatus={sourceStatus.shifts}
+                      moviesSourceStatus={sourceStatus.movies}
+                      hasAdministrativeAccess={hasAdministrativeAccess}
                     />
                     <AiStaffingHeatmap
                       staffingHeatmap={staffingHeatmap}
+                      shiftsSourceStatus={sourceStatus.shifts}
                     />
                     <div className="grid gap-6 2xl:grid-cols-2">
                       <AiLearningAnalytics
-                        aiLearningAnalytics={
-                          aiLearningAnalytics
-                        }
+                        aiLearningAnalytics={aiLearningAnalytics}
+                        shiftsSourceStatus={sourceStatus.shifts}
+                        moviesSourceStatus={sourceStatus.movies}
                       />
                       <AiPatternInsights
                         aiPatternInsights={aiPatternInsights}
+                        shiftsSourceStatus={sourceStatus.shifts}
                       />
                     </div>
                   </div>
