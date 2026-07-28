@@ -85,7 +85,7 @@ export function calculateStaffingWarnings(
   });
 
   if (overtimeRisk) {
-    warnings.push("Der er vagter i dag med overtime-risiko.");
+    warnings.push("Der er meget lange vagter i dagens plan.");
   }
 
   return warnings;
@@ -147,25 +147,25 @@ export function calculateOperationalRecommendations(input: {
 
   if (input.staffingHealth === "HIGH_PRESSURE") {
     recommendations.push(
-      "🤖 AI anbefaler ekstra staffing mellem peak-timerne.",
+      "🤖 Overvej ekstra bemanding i de travleste tidsrum.",
     );
   }
 
   if (input.staffingHealth === "CRITICAL") {
     recommendations.push(
-      "🚨 Kritisk staffing pressure registreret — emergency staffing anbefales.",
+      "🚨 Der er registreret kritisk bemandingspres. Hurtig handling anbefales.",
     );
   }
 
   if (input.highFatigueEmployees >= 3) {
     recommendations.push(
-      "🤖 Flere medarbejdere nærmer sig fatigue-grænser — overvej omfordeling.",
+      "🤖 Flere lange vagter øger belastningen. Overvej at fordele arbejdet anderledes.",
     );
   }
 
   if (input.movieDataAvailable && input.moviePressure >= 500) {
     recommendations.push(
-      "🤖 Høj movie pressure registreret — foyer og billetsalg bør styrkes.",
+      "🤖 Mange solgte billetter kan øge presset i foyer og billetsalg.",
     );
   }
 
@@ -179,7 +179,7 @@ export function calculateOperationalRecommendations(input: {
 
   if (recommendations.length === 0) {
     recommendations.push(
-      "✅ AI-systemet vurderer at driften er stabil lige nu.",
+      "✅ Den automatiske vurdering viser ingen aktuelle driftsproblemer.",
     );
   }
 
@@ -263,11 +263,11 @@ export function calculatePredictiveStaffing(
   }).length;
 
   if (eveningSoldSeats >= 200 && eveningShiftCount <= 4) {
-    predictions.push("📈 Fredag/lørdag aften forventes høj staffing pressure.");
+    predictions.push("📈 Der forventes højt bemandingspres i aftentimerne.");
   }
 
   if (eveningSoldSeats >= 300 && eveningShiftCount <= 5) {
-    predictions.push("📈 Risiko for underbemanding i peak timer 18-22.");
+    predictions.push("📈 Der er risiko for underbemanding mellem kl. 18 og 22.");
   }
 
   const overtimeRisk = shifts.some((shift) => {
@@ -281,7 +281,7 @@ export function calculatePredictiveStaffing(
 
   if (overtimeRisk) {
     predictions.push(
-      "📈 Høj sandsynlighed for overtime belastning i denne uge.",
+      "📈 Lange vagter kan give øget belastning.",
     );
   }
 

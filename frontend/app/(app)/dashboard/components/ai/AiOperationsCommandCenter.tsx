@@ -17,22 +17,27 @@ type Props = {
   operationalRecommendations: string[];
 };
 
+const staffingHealthLabels: Record<StaffingHealth, string> = {
+  UNKNOWN: "Ukendt",
+  STABLE: "Stabil",
+  HIGH_PRESSURE: "Højt pres",
+  CRITICAL: "Kritisk",
+};
+
 export default function AiOperationsCommandCenter({
   operationsHealth,
   operationalRecommendations,
 }: Props) {
   return (
-    <section className="mb-6 rounded-2xl border border-cyan-200 bg-cyan-50 p-6 shadow-sm dark:border-cyan-900 dark:bg-cyan-950">
+    <section className="rounded-2xl border border-cyan-200 bg-cyan-50 p-6 shadow-sm dark:border-cyan-900 dark:bg-cyan-950">
       <div className="mb-5 flex items-center gap-3">
-        <div className="text-3xl">🤖</div>
-
+        <div className="text-3xl" aria-hidden="true">🤖</div>
         <div>
           <h2 className="text-2xl font-bold text-cyan-700 dark:text-cyan-300">
-            AI Operations Command Center
+            AI-driftsanalyse
           </h2>
-
           <p className="text-sm text-cyan-600 dark:text-cyan-400">
-            Realtidsanalyse af biografens samlede driftstilstand.
+            Automatisk vurdering af bemanding og publikumsbelastning.
           </p>
         </div>
       </div>
@@ -40,19 +45,17 @@ export default function AiOperationsCommandCenter({
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-900">
           <div className="text-sm text-cyan-600 dark:text-cyan-400">
-            Staffing health
+            Bemandingssituation
           </div>
-
           <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
-            {operationsHealth.staffingHealth}
+            {staffingHealthLabels[operationsHealth.staffingHealth]}
           </div>
         </div>
 
         <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-900">
           <div className="text-sm text-cyan-600 dark:text-cyan-400">
-            Active shifts
+            Vagter i dag
           </div>
-
           <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
             {operationsHealth.activeShiftCount}
           </div>
@@ -60,9 +63,8 @@ export default function AiOperationsCommandCenter({
 
         <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-900">
           <div className="text-sm text-cyan-600 dark:text-cyan-400">
-            High fatigue employees
+            Lange vagter
           </div>
-
           <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
             {operationsHealth.highFatigueEmployees}
           </div>
@@ -70,9 +72,8 @@ export default function AiOperationsCommandCenter({
 
         <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-900">
           <div className="text-sm text-cyan-600 dark:text-cyan-400">
-            Live movie pressure
+            Solgte billetter i programmet
           </div>
-
           <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
             {operationsHealth.movieDataAvailable
               ? operationsHealth.moviePressure
@@ -83,13 +84,11 @@ export default function AiOperationsCommandCenter({
 
       <div className="mt-6">
         <div className="mb-3 flex items-center gap-2">
-          <div className="text-xl">🧠</div>
-
+          <div className="text-xl" aria-hidden="true">🧠</div>
           <h3 className="text-lg font-bold text-cyan-700 dark:text-cyan-300">
-            AI Operational Recommendations
+            Anbefalinger
           </h3>
         </div>
-
         <div className="space-y-3">
           {operationalRecommendations.map((recommendation, index) => (
             <div

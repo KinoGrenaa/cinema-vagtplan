@@ -9,58 +9,60 @@ type Props = {
   aiLearningAnalytics: AiLearningAnalyticsData;
 };
 
-export default function AiLearningAnalytics({ aiLearningAnalytics }: Props) {
+export default function AiLearningAnalytics({
+  aiLearningAnalytics,
+}: Props) {
   return (
-    <div className="mt-6">
-      <div className="mb-3 flex items-center gap-2">
-        <div className="text-xl">📊</div>
-
-        <h3 className="text-lg font-bold text-cyan-700 dark:text-cyan-300">
-          AI Learning Analytics
-        </h3>
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="mb-4 flex items-center gap-2">
+        <div className="text-xl" aria-hidden="true">📊</div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-950 dark:text-white">
+            Analysegrundlag
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            De forhold, som dagens automatiske vurderinger bygger på.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-900">
-          <div className="text-sm text-cyan-600 dark:text-cyan-400">
-            Emergency events
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            Forestillinger med høj belastning
           </div>
-
-          <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
+          <div className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
             {aiLearningAnalytics.emergencyEvents}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-900">
-          <div className="text-sm text-cyan-600 dark:text-cyan-400">
-            Fatigue trend
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            Vagter på mindst 8 timer
           </div>
-
-          <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
+          <div className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
             {aiLearningAnalytics.fatigueTrend}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-900">
-          <div className="text-sm text-cyan-600 dark:text-cyan-400">
-            Overtime trend
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            Vagter på mindst 10 timer
           </div>
-
-          <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
+          <div className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
             {aiLearningAnalytics.overtimeTrend}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-cyan-200 bg-white p-5 dark:border-cyan-900 dark:bg-gray-900">
-          <div className="text-sm text-cyan-600 dark:text-cyan-400">
-            AI interventions
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-950">
+          <div className="text-sm text-gray-600 dark:text-gray-300">
+            Genererede advarsler og anbefalinger
           </div>
-
-          <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
+          <div className="mt-2 text-2xl font-bold text-gray-950 dark:text-white">
             {aiLearningAnalytics.aiInterventions}
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

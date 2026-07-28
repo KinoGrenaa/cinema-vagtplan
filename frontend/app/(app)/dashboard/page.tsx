@@ -39,7 +39,7 @@ export default function DashboardPage() {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 text-gray-700 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
-          Indlæser dashboard...
+          Indlæser driftsoverblik...
         </div>
       </main>
     );
@@ -54,11 +54,11 @@ export default function DashboardPage() {
           </p>
 
           <h1 className="mt-2 text-2xl font-bold">
-            Vælg en biograf for at se dashboardet
+            Vælg en biograf for at se driftsoverblikket
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-amber-900 dark:text-amber-100/90">
-            Dashboardet viser vagter, fravær,
+            Driftsoverblikket viser vagter, fravær,
             vagtbytter og filmprogram for en konkret
             biograf. Som MASTER skal du vælge en
             aktiv biograf først.
@@ -82,35 +82,14 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <DashboardHeader
-          firstName={currentUser.firstName}
-        />
+        <DashboardHeader />
 
         {showStaffingAi && (
-          <>
-            <AiOperationsCommandCenter
-              operationsHealth={operationsHealth}
-              operationalRecommendations={
-                operationalRecommendations
-              }
-            />
-
-            <OperationsStatus
-              liveOperationsStatus={
-                liveOperationsStatus
-              }
-            />
-
-            <AiStaffingHeatmap
-              staffingHeatmap={staffingHeatmap}
-            />
-
-            <AiLearningAnalytics
-              aiLearningAnalytics={
-                aiLearningAnalytics
-              }
-            />
-          </>
+          <OperationsStatus
+            liveOperationsStatus={
+              liveOperationsStatus
+            }
+          />
         )}
 
         <DashboardSummaryCards
@@ -129,20 +108,6 @@ export default function DashboardPage() {
           moduleAccess={moduleAccess}
         />
 
-        {showStaffingAi && (
-          <DashboardStaffingSections
-            staffingWarnings={
-              staffingWarnings
-            }
-            predictiveStaffing={
-              predictiveStaffing
-            }
-            movieDataAvailable={
-              operationsHealth.movieDataAvailable
-            }
-          />
-        )}
-
         <DashboardOverviewSections
           movieCount={movies.length}
           soldSeatsToday={
@@ -159,11 +124,43 @@ export default function DashboardPage() {
         />
 
         {showStaffingAi && (
-          <AiPatternInsights
-            aiPatternInsights={
-              aiPatternInsights
-            }
-          />
+          <>
+            <DashboardStaffingSections
+              staffingWarnings={
+                staffingWarnings
+              }
+              predictiveStaffing={
+                predictiveStaffing
+              }
+              movieDataAvailable={
+                operationsHealth.movieDataAvailable
+              }
+            />
+
+            <AiOperationsCommandCenter
+              operationsHealth={operationsHealth}
+              operationalRecommendations={
+                operationalRecommendations
+              }
+            />
+
+            <AiStaffingHeatmap
+              staffingHeatmap={staffingHeatmap}
+            />
+
+            <div className="grid gap-6 2xl:grid-cols-2">
+              <AiLearningAnalytics
+                aiLearningAnalytics={
+                  aiLearningAnalytics
+                }
+              />
+              <AiPatternInsights
+                aiPatternInsights={
+                  aiPatternInsights
+                }
+              />
+            </div>
+          </>
         )}
       </div>
     </main>
