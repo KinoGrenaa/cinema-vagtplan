@@ -1,11 +1,13 @@
 type DashboardStaffingSectionsProps = {
   staffingWarnings: string[];
   predictiveStaffing: string[];
+  movieDataAvailable: boolean;
 };
 
 export default function DashboardStaffingSections({
   staffingWarnings,
   predictiveStaffing,
+  movieDataAvailable,
 }: DashboardStaffingSectionsProps) {
   return (
     <>
@@ -52,7 +54,11 @@ export default function DashboardStaffingSections({
         <div className="space-y-3">
           {(predictiveStaffing.length > 0
             ? predictiveStaffing
-            : ["Ingen predictive staffing alerts lige nu."]
+            : [
+                movieDataAvailable
+                  ? "Ingen predictive staffing alerts lige nu."
+                  : "Filmprogrammet er tomt eller ikke tilgængeligt. Filmrelaterede forudsigelser kan ikke beregnes.",
+              ]
           ).map((prediction, index) => (
             <div
               key={index}

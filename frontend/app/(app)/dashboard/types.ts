@@ -46,4 +46,8 @@ export type MovieShowing = {
   freeSeats: number;
 };
 
-export type StaffingHealth = "STABLE" | "HIGH_PRESSURE" | "CRITICAL";
+export type StaffingHealth =
+  | "UNKNOWN"
+  | "STABLE"
+  | "HIGH_PRESSURE"
+  | "CRITICAL";

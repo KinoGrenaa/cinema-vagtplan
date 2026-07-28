@@ -1,10 +1,15 @@
-type StaffingHealth = "STABLE" | "HIGH_PRESSURE" | "CRITICAL";
+type StaffingHealth =
+  | "UNKNOWN"
+  | "STABLE"
+  | "HIGH_PRESSURE"
+  | "CRITICAL";
 
 type OperationsHealth = {
   staffingHealth: StaffingHealth;
   activeShiftCount: number;
   highFatigueEmployees: number;
   moviePressure: number;
+  movieDataAvailable: boolean;
 };
 
 type Props = {
@@ -69,7 +74,9 @@ export default function AiOperationsCommandCenter({
           </div>
 
           <div className="mt-2 text-2xl font-bold text-cyan-700 dark:text-cyan-300">
-            {operationsHealth.moviePressure}
+            {operationsHealth.movieDataAvailable
+              ? operationsHealth.moviePressure
+              : "Ukendt"}
           </div>
         </div>
       </div>

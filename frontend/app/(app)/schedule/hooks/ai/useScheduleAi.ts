@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/app/hooks/useApi";
 import type { Shift, User, WorkType } from "../../../../../../shared/types";
 import { toast } from "sonner";
+import {
+  getCopenhagenHour,
+  localDateHourToISOString,
+} from "@/app/utils/dateTime";
 
 export type MovieShowing = {
   id: number;
@@ -162,7 +166,7 @@ export function useScheduleAi({
     const suggestions: string[] = [];
 
     const eveningMovies = movieShowings.filter((movie) => {
-      const hour = new Date(movie.startTime).getHours();
+      const hour = getCopenhagenHour(movie.startTime);
 
       return hour >= 18 && hour <= 22;
     });
@@ -173,7 +177,7 @@ export function useScheduleAi({
     );
 
     const eveningShiftCount = shifts.filter((shift) => {
-      const hour = new Date(shift.startTime).getHours();
+      const hour = getCopenhagenHour(shift.startTime);
 
       return hour >= 18 && hour <= 22;
     }).length;
@@ -516,15 +520,18 @@ export function useScheduleAi({
           endHour = 23;
         }
 
-        const startTime = new Date(selectedDate);
-        startTime.setHours(startHour, 0, 0, 0);
-
-        const endTime = new Date(selectedDate);
-        endTime.setHours(endHour, 0, 0, 0);
+        const startTime = localDateHourToISOString(
+          selectedDate,
+          startHour,
+        );
+        const endTime = localDateHourToISOString(
+          selectedDate,
+          endHour,
+        );
 
         await createShift({
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
+          startTime,
+          endTime,
           userId: user.id,
           workTypeId,
           note: "AI suggested staffing shift",
@@ -563,7 +570,7 @@ export function useScheduleAi({
       }> = [];
 
       const eveningMovies = movieShowings.filter((movie) => {
-        const hour = new Date(movie.startTime).getHours();
+        const hour = getCopenhagenHour(movie.startTime);
 
         return hour >= 18 && hour <= 22;
       });
@@ -598,15 +605,18 @@ export function useScheduleAi({
       }
 
       for (const suggestion of suggestions) {
-        const startTime = new Date(selectedDate);
-        startTime.setHours(suggestion.startHour, 0, 0, 0);
-
-        const endTime = new Date(selectedDate);
-        endTime.setHours(suggestion.endHour, 0, 0, 0);
+        const startTime = localDateHourToISOString(
+          selectedDate,
+          suggestion.startHour,
+        );
+        const endTime = localDateHourToISOString(
+          selectedDate,
+          suggestion.endHour,
+        );
 
         await createShift({
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
+          startTime,
+          endTime,
           ...defaults,
           note: "AI generated day schedule",
         });
@@ -647,17 +657,20 @@ export function useScheduleAi({
         return;
       }
 
-      const currentHour = new Date().getHours();
+      const currentHour = getCopenhagenHour(new Date());
 
-      const startTime = new Date(selectedDate);
-      startTime.setHours(currentHour, 0, 0, 0);
-
-      const endTime = new Date(selectedDate);
-      endTime.setHours(currentHour + 2, 0, 0, 0);
+      const startTime = localDateHourToISOString(
+        selectedDate,
+        currentHour,
+      );
+      const endTime = localDateHourToISOString(
+        selectedDate,
+        currentHour + 2,
+      );
 
       await createShift({
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime,
+        endTime,
         userId,
         workTypeId,
         note: "AI Emergency Staffing Shift",
@@ -786,17 +799,20 @@ export function useScheduleAi({
           throw new Error("Arbejdstype mangler.");
         }
 
-        const currentHour = new Date().getHours();
+        const currentHour = getCopenhagenHour(new Date());
 
-        const startTime = new Date(selectedDate);
-        startTime.setHours(currentHour, 0, 0, 0);
-
-        const endTime = new Date(selectedDate);
-        endTime.setHours(currentHour + 2, 0, 0, 0);
+        const startTime = localDateHourToISOString(
+          selectedDate,
+          currentHour,
+        );
+        const endTime = localDateHourToISOString(
+          selectedDate,
+          currentHour + 2,
+        );
 
         await createShift({
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
+          startTime,
+          endTime,
           userId: employee.id,
           workTypeId,
           note: "Autonomous AI Emergency Shift",

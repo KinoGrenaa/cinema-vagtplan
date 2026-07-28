@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -118,6 +119,7 @@ export function useDashboard(
     useState<MovieShowing[]>([]);
   const [loading, setLoading] =
     useState(true);
+  const requestVersionRef = useRef(0);
   const [
     errorMessage,
     setErrorMessage,
@@ -143,12 +145,10 @@ export function useDashboard(
   const loadDashboard = useCallback(
     async (
       user: CurrentUser,
-      selectedCinemaId?: number,
+      selectedCinemaId: number | undefined,
+      requestVersion: number,
     ) => {
       try {
-        setLoading(true);
-        setErrorMessage(null);
-
         const dashboardData =
           await fetchDashboardOverview({
             userId: user.id,
@@ -157,6 +157,10 @@ export function useDashboard(
               selectedCinemaId,
             modules: moduleAccess,
           });
+
+        if (requestVersion !== requestVersionRef.current) {
+          return;
+        }
 
         setShifts(
           Array.isArray(
@@ -194,6 +198,10 @@ export function useDashboard(
             : [],
         );
       } catch (error) {
+        if (requestVersion !== requestVersionRef.current) {
+          return;
+        }
+
         const message = getErrorMessage(
           error,
           "Der opstod en fejl under hentning af dashboard.",
@@ -203,7 +211,9 @@ export function useDashboard(
         onError?.(message);
         clearDashboardData();
       } finally {
-        setLoading(false);
+        if (requestVersion === requestVersionRef.current) {
+          setLoading(false);
+        }
       }
     },
     [
@@ -221,6 +231,9 @@ export function useDashboard(
     }
 
     function loadFromStorage() {
+      const requestVersion = requestVersionRef.current + 1;
+      requestVersionRef.current = requestVersion;
+
       const savedUser =
         localStorage.getItem("user");
 
@@ -245,18 +258,22 @@ export function useDashboard(
           requiresMasterCinemaSelection,
         );
 
+        setErrorMessage(null);
+        clearDashboardData();
+
         if (
           requiresMasterCinemaSelection
         ) {
-          setErrorMessage(null);
-          clearDashboardData();
           setLoading(false);
           return;
         }
 
+        setLoading(true);
+
         void loadDashboard(
           parsedUser,
           selectedCinemaId,
+          requestVersion,
         );
       } catch {
         localStorage.removeItem("user");
@@ -276,6 +293,8 @@ export function useDashboard(
     );
 
     return () => {
+      requestVersionRef.current += 1;
+
       window.removeEventListener(
         "masterSelectedCinemaChanged",
         loadFromStorage,
@@ -350,6 +369,8 @@ export function useDashboard(
               operationsHealth.moviePressure,
             activeShiftCount:
               operationsHealth.activeShiftCount,
+            movieDataAvailable:
+              operationsHealth.movieDataAvailable,
           },
         ),
       [operationsHealth],
@@ -368,6 +389,8 @@ export function useDashboard(
           operationsHealth.highFatigueEmployees,
         moviePressure:
           operationsHealth.moviePressure,
+        movieDataAvailable:
+          operationsHealth.movieDataAvailable,
       }),
     [operationsHealth],
   );
@@ -403,6 +426,27 @@ export function useDashboard(
     [shifts, staffingHeatmap],
   );
 
+  const reloadDashboard = useCallback(() => {
+    if (!currentUser) return;
+
+    const selectedCinemaId =
+      currentUser.role === "MASTER"
+        ? getSelectedMasterCinemaId()
+        : undefined;
+    const requestVersion = requestVersionRef.current + 1;
+    requestVersionRef.current = requestVersion;
+
+    setErrorMessage(null);
+    clearDashboardData();
+    setLoading(true);
+
+    void loadDashboard(
+      currentUser,
+      selectedCinemaId,
+      requestVersion,
+    );
+  }, [clearDashboardData, currentUser, loadDashboard]);
+
   return {
     loading,
     errorMessage,
@@ -428,6 +472,6 @@ export function useDashboard(
     predictiveStaffing,
     aiLearningAnalytics,
     aiPatternInsights,
-    reloadDashboard: loadDashboard,
+    reloadDashboard,
   };
 }

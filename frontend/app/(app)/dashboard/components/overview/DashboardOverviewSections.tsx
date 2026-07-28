@@ -3,6 +3,7 @@ type DashboardOverviewSectionsProps = {
   soldSeatsToday: number;
   seatLoadPercent: number;
   shiftCount: number;
+  movieDataAvailable: boolean;
   moduleAccess: {
     schedule: boolean;
     timeTracking: boolean;
@@ -33,6 +34,7 @@ export default function DashboardOverviewSections({
   soldSeatsToday,
   seatLoadPercent,
   shiftCount,
+  movieDataAvailable,
   moduleAccess,
 }: DashboardOverviewSectionsProps) {
   const shortcuts = [
@@ -85,13 +87,20 @@ export default function DashboardOverviewSections({
             Biograf i dag
           </h2>
 
+          {!movieDataAvailable && (
+            <p className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
+              Filmprogrammet er tomt eller ikke tilgængeligt.
+              Filmrelaterede nøgletal kan derfor ikke vurderes.
+            </p>
+          )}
+
           <div className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">
               <span className="text-gray-600 dark:text-gray-300">
                 Forestillinger
               </span>
               <span className="font-medium text-gray-950 dark:text-white">
-                {movieCount}
+                {movieDataAvailable ? movieCount : "Ikke tilgængelig"}
               </span>
             </div>
 
@@ -100,7 +109,7 @@ export default function DashboardOverviewSections({
                 Solgte billetter
               </span>
               <span className="font-medium text-gray-950 dark:text-white">
-                {soldSeatsToday}
+                {movieDataAvailable ? soldSeatsToday : "Ikke tilgængelig"}
               </span>
             </div>
 
@@ -109,7 +118,7 @@ export default function DashboardOverviewSections({
                 Belægning
               </span>
               <span className="font-medium text-gray-950 dark:text-white">
-                {seatLoadPercent}%
+                {movieDataAvailable ? `${seatLoadPercent}%` : "Ikke tilgængelig"}
               </span>
             </div>
 

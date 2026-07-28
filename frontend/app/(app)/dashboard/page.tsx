@@ -137,6 +137,9 @@ export default function DashboardPage() {
             predictiveStaffing={
               predictiveStaffing
             }
+            movieDataAvailable={
+              operationsHealth.movieDataAvailable
+            }
           />
         )}
 
@@ -149,6 +152,9 @@ export default function DashboardPage() {
             seatLoadPercent
           }
           shiftCount={shifts.length}
+          movieDataAvailable={
+            operationsHealth.movieDataAvailable
+          }
           moduleAccess={moduleAccess}
         />
 

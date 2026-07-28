@@ -1,3 +1,8 @@
+import {
+  formatCopenhagenWeekday,
+  getCopenhagenHour,
+} from "@/app/utils/dateTime";
+
 import type {
   MovieShowing,
   Shift,
@@ -103,7 +108,10 @@ export function calculateOperationsHealth(
 
   const moviePressure = movies.reduce((sum, movie) => sum + movie.soldSeats, 0);
 
-  let staffingHealth: StaffingHealth = "STABLE";
+  const movieDataAvailable = movies.length > 0;
+  let staffingHealth: StaffingHealth = movieDataAvailable
+    ? "STABLE"
+    : "UNKNOWN";
 
   if (moviePressure >= 400 || highFatigueEmployees >= 4) {
     staffingHealth = "HIGH_PRESSURE";
@@ -117,6 +125,7 @@ export function calculateOperationsHealth(
     activeShiftCount,
     highFatigueEmployees,
     moviePressure,
+    movieDataAvailable,
     staffingHealth,
   };
 }
@@ -126,8 +135,15 @@ export function calculateOperationalRecommendations(input: {
   highFatigueEmployees: number;
   moviePressure: number;
   activeShiftCount: number;
+  movieDataAvailable: boolean;
 }) {
   const recommendations: string[] = [];
+
+  if (!input.movieDataAvailable) {
+    recommendations.push(
+      "ℹ️ Filmprogrammet er tomt eller ikke tilgængeligt. Filmrelateret drift kan ikke vurderes.",
+    );
+  }
 
   if (input.staffingHealth === "HIGH_PRESSURE") {
     recommendations.push(
@@ -147,13 +163,17 @@ export function calculateOperationalRecommendations(input: {
     );
   }
 
-  if (input.moviePressure >= 500) {
+  if (input.movieDataAvailable && input.moviePressure >= 500) {
     recommendations.push(
       "🤖 Høj movie pressure registreret — foyer og billetsalg bør styrkes.",
     );
   }
 
-  if (input.activeShiftCount <= 3 && input.moviePressure >= 300) {
+  if (
+    input.movieDataAvailable &&
+    input.activeShiftCount <= 3 &&
+    input.moviePressure >= 300
+  ) {
     recommendations.push("🚨 Risiko for underbemanding registreret.");
   }
 
@@ -193,8 +213,10 @@ export function calculateLiveOperationsStatus(input: {
   staffingHealth: StaffingHealth;
   highFatigueEmployees: number;
   moviePressure: number;
-}): "NORMAL" | "WARNING" | "CRITICAL" {
-  let status: "NORMAL" | "WARNING" | "CRITICAL" = "NORMAL";
+  movieDataAvailable: boolean;
+}): "UNKNOWN" | "NORMAL" | "WARNING" | "CRITICAL" {
+  let status: "UNKNOWN" | "NORMAL" | "WARNING" | "CRITICAL" =
+    input.movieDataAvailable ? "NORMAL" : "UNKNOWN";
 
   if (
     input.staffingHealth === "HIGH_PRESSURE" ||
@@ -224,7 +246,7 @@ export function calculatePredictiveStaffing(
   const eveningMovies = movies.filter((movie) => {
     if (!movie.startTime) return false;
 
-    const hour = new Date(movie.startTime).getHours();
+    const hour = getCopenhagenHour(movie.startTime);
 
     return hour >= 18 && hour <= 22;
   });
@@ -235,7 +257,7 @@ export function calculatePredictiveStaffing(
   );
 
   const eveningShiftCount = shifts.filter((shift) => {
-    const hour = new Date(shift.startTime).getHours();
+    const hour = getCopenhagenHour(shift.startTime);
 
     return hour >= 18 && hour <= 22;
   }).length;
@@ -326,11 +348,8 @@ export function calculateAiPatternInsights(input: {
   input.shifts.forEach((shift) => {
     const start = new Date(shift.startTime);
 
-    const weekday = start.toLocaleDateString("da-DK", {
-      weekday: "long",
-    });
-
-    const hour = start.getHours();
+    const weekday = formatCopenhagenWeekday(start);
+    const hour = getCopenhagenHour(start);
 
     weekdayMap[weekday] = (weekdayMap[weekday] || 0) + 1;
 
