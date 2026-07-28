@@ -40,6 +40,7 @@ function overviewMembership(
       id: cinemaId,
       name,
       logoUrl: null,
+      moduleSettings: [],
       shifts: options.nextShift
         ? [options.nextShift]
         : [],
@@ -55,6 +56,15 @@ describe('findAuthCinemaStartOverview', () => {
     userCinemaMembership: {
       findMany: jest.Mock;
     };
+    message: {
+      groupBy: jest.Mock;
+    };
+    timeEntry: {
+      groupBy: jest.Mock;
+    };
+    leaveRequest: {
+      groupBy: jest.Mock;
+    };
   };
 
   beforeEach(() => {
@@ -64,6 +74,15 @@ describe('findAuthCinemaStartOverview', () => {
       },
       userCinemaMembership: {
         findMany: jest.fn(),
+      },
+      message: {
+        groupBy: jest.fn().mockResolvedValue([]),
+      },
+      timeEntry: {
+        groupBy: jest.fn().mockResolvedValue([]),
+      },
+      leaveRequest: {
+        groupBy: jest.fn().mockResolvedValue([]),
       },
     };
   });
@@ -137,6 +156,13 @@ describe('findAuthCinemaStartOverview', () => {
             canManageCinemaSettings: false,
             canSendBroadcastMessages: false,
           },
+          attention: {
+            severity: 'NONE',
+            actionRequiredCount: 0,
+            informationalCount: 0,
+            label: 'Ingen aktuelle opgaver',
+            items: [],
+          },
           nextShift,
         },
         {
@@ -152,6 +178,13 @@ describe('findAuthCinemaStartOverview', () => {
             canManageLeaveRequests: false,
             canManageCinemaSettings: false,
             canSendBroadcastMessages: false,
+          },
+          attention: {
+            severity: 'NONE',
+            actionRequiredCount: 0,
+            informationalCount: 0,
+            label: 'Ingen aktuelle opgaver',
+            items: [],
           },
           nextShift: null,
         },
@@ -173,6 +206,21 @@ describe('findAuthCinemaStartOverview', () => {
             id: true,
             name: true,
             logoUrl: true,
+            moduleSettings: {
+              where: {
+                moduleKey: {
+                  in: [
+                    'MESSAGES',
+                    'TIME_TRACKING',
+                    'LEAVE',
+                  ],
+                },
+              },
+              select: {
+                moduleKey: true,
+                enabled: true,
+              },
+            },
             shifts: {
               where: {
                 userId: 7,

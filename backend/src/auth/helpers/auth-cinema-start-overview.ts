@@ -7,6 +7,10 @@ import {
 import {
   PrismaService,
 } from '../../prisma/prisma.service';
+import {
+  CINEMA_START_ATTENTION_MODULE_KEYS,
+  findAuthCinemaStartAttention,
+} from './auth-cinema-start-attention';
 
 const cinemaStartOverviewMembershipSelect = {
   cinemaId: true,
@@ -22,6 +26,19 @@ const cinemaStartOverviewMembershipSelect = {
       id: true,
       name: true,
       logoUrl: true,
+      moduleSettings: {
+        where: {
+          moduleKey: {
+            in: Array.from(
+              CINEMA_START_ATTENTION_MODULE_KEYS,
+            ),
+          },
+        },
+        select: {
+          moduleKey: true,
+          enabled: true,
+        },
+      },
       shifts: {
         select: {
           id: true,
@@ -132,6 +149,13 @@ export async function findAuthCinemaStartOverview(
     );
   }
 
+  const attentionByCinema =
+    await findAuthCinemaStartAttention(
+      prisma,
+      userId,
+      memberships,
+    );
+
   const cinemas = memberships.map(
     (membership) => {
       const nextShift =
@@ -160,6 +184,10 @@ export async function findAuthCinemaStartOverview(
           canSendBroadcastMessages:
             membership.canSendBroadcastMessages,
         },
+        attention:
+          attentionByCinema.get(
+            membership.cinemaId,
+          ) ?? null,
         nextShift: nextShift
           ? {
               id: nextShift.id,
