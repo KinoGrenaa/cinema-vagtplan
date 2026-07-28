@@ -115,6 +115,7 @@ export default function DashboardPage() {
             <DashboardSummaryCards
               todayPlannedHours={todayPlannedHours}
               myRegisteredHours={myRegisteredHours}
+              canShowPersonalTime={currentUser.role !== "MASTER"}
               moduleAccess={moduleAccess}
             />
             <DashboardOverviewSections

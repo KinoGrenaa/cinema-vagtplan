@@ -22,7 +22,6 @@ type DashboardDataAccess = {
   leave: boolean;
   shiftTrades: boolean;
 };
-
 function getCinemaQueryParam(cinemaId?: number) {
   if (
     !Number.isInteger(cinemaId) ||
@@ -49,7 +48,6 @@ function appendQuery(
     endpoint.includes("?") ? "&" : "?"
   }${queryParam}`;
 }
-
 async function readErrorMessage(
   response: Response,
   fallback: string,
@@ -77,7 +75,6 @@ async function readErrorMessage(
 
   return fallback;
 }
-
 async function ensureOk(
   response: Response,
   fallback: string,
@@ -105,7 +102,6 @@ async function safeJsonArray<T>(
     return [];
   }
 }
-
 async function fetchArray<T>(
   enabled: boolean,
   endpoint: string,
@@ -121,7 +117,6 @@ async function fetchArray<T>(
 
   return safeJsonArray<T>(response);
 }
-
 export async function fetchDashboardOverview(
   input: {
     userId: number;
@@ -132,7 +127,13 @@ export async function fetchDashboardOverview(
 ): Promise<DashboardOverview> {
   const cinemaQueryParam =
     getCinemaQueryParam(input.cinemaId);
-
+  const personalTimeEnabled =
+    input.modules.timeTracking &&
+    input.cinemaId === undefined;
+  const personalTimeEndpoint =
+    `/time-entries/me-period?startDate=${encodeURIComponent(
+      input.date,
+    )}&endDate=${encodeURIComponent(input.date)}`;
   const [
     shifts,
     timeEntries,
@@ -149,12 +150,9 @@ export async function fetchDashboardOverview(
       "Kunne ikke hente dagens vagter",
     ),
     fetchArray<TimeEntry>(
-      input.modules.timeTracking,
-      appendQuery(
-        `/time-entries?userId=${input.userId}`,
-        cinemaQueryParam,
-      ),
-      "Kunne ikke hente dine tidsregistreringer",
+      personalTimeEnabled,
+      personalTimeEndpoint,
+      "Kunne ikke hente dine tidsregistreringer for i dag",
     ),
     fetchArray<LeaveRequest>(
       input.modules.leave,
@@ -181,7 +179,6 @@ export async function fetchDashboardOverview(
       "Kunne ikke hente filmprogram",
     ),
   ]);
-
   return {
     shifts,
     timeEntries,
