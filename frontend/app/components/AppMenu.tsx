@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,6 +28,7 @@ type NavItem = {
   badge?: number;
   adminOnly?: boolean;
   masterOnly?: boolean;
+  nonMasterOnly?: boolean;
   moduleKey?: CinemaModuleKey;
   moduleKeysAny?: CinemaModuleKey[];
   children?: NavItem[];
@@ -63,7 +64,15 @@ export default function AppMenu() {
     leaveRequestCount;
 
   const navItems: NavItem[] = [
-    { href: "/dashboard", label: "Dashboard" },
+    {
+      href: "/home",
+      label: "Startside",
+      nonMasterOnly: true,
+    },
+    {
+      href: "/dashboard",
+      label: "Driftsoverblik",
+    },
     { href: "/colleagues", label: "Kollegaer" },
     {
       id: "schedule",
@@ -103,12 +112,12 @@ export default function AppMenu() {
     },
     {
       id: "time-and-leave",
-      label: "Tid & fravær",
+      label: "Tid & fravÃ¦r",
       badge: leaveRequestCount,
       children: [
         {
           href: "/clock",
-          label: "Registrér tid",
+          label: "RegistrÃ©r tid",
           moduleKey: "TIME_TRACKING",
         },
         {
@@ -118,7 +127,7 @@ export default function AppMenu() {
         },
         {
           href: "/leave-requests",
-          label: "Mit fravær",
+          label: "Mit fravÃ¦r",
           moduleKey: "LEAVE",
         },
         {
@@ -129,13 +138,13 @@ export default function AppMenu() {
         },
         {
           href: "/absence-calendar",
-          label: "Fraværskalender",
+          label: "FravÃ¦rskalender",
           adminOnly: true,
           moduleKey: "LEAVE",
         },
         {
           href: "/leave-approval",
-          label: "Godkend fravær",
+          label: "Godkend fravÃ¦r",
           badge: leaveRequestCount,
           adminOnly: true,
           moduleKey: "LEAVE",
@@ -144,12 +153,12 @@ export default function AppMenu() {
     },
     {
       id: "planning",
-      label: "Planlægning",
+      label: "PlanlÃ¦gning",
       adminOnly: true,
       children: [
         {
           href: "/shift-planning",
-          label: "Vagtplanlægning",
+          label: "VagtplanlÃ¦gning",
           moduleKey: "SHIFT_PLANNING",
         },
         {
@@ -205,7 +214,7 @@ export default function AppMenu() {
     },
     {
       id: "employees-and-payroll",
-      label: "Medarbejdere & løn",
+      label: "Medarbejdere & lÃ¸n",
       adminOnly: true,
       children: [
         {
@@ -219,12 +228,12 @@ export default function AppMenu() {
         },
         {
           href: "/payroll",
-          label: "Løn",
+          label: "LÃ¸n",
           moduleKey: "PAYROLL",
         },
         {
           href: "/cinema-settings/payroll-types",
-          label: "Lønarter",
+          label: "LÃ¸narter",
           moduleKey: "PAYROLL",
         },
       ],
@@ -280,6 +289,7 @@ export default function AppMenu() {
     return (
       (!item.adminOnly || isAdmin) &&
       (!item.masterOnly || isMaster) &&
+      (!item.nonMasterOnly || !isMaster) &&
       (!item.moduleKey || isModuleEnabled(item.moduleKey)) &&
       (!item.moduleKeysAny ||
         item.moduleKeysAny.some((moduleKey) => isModuleEnabled(moduleKey)))
@@ -356,7 +366,7 @@ export default function AppMenu() {
         type="button"
         onClick={() => setOpen(true)}
         className="relative rounded-2xl border border-gray-800 bg-black p-3 text-white shadow-xl transition hover:scale-105 hover:bg-gray-800 active:scale-100 active:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-700 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:active:bg-gray-300 dark:focus-visible:ring-gray-300 dark:focus-visible:ring-offset-gray-950"
-        aria-label="Åbn menu"
+        aria-label="Ã…bn menu"
       >
         <Menu size={22} />
         {totalMenuBadgeCount > 0 && (
