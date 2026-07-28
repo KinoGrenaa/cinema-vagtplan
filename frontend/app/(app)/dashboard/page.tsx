@@ -13,6 +13,8 @@ import { useDashboard } from "./hooks/useDashboard";
 export default function DashboardPage() {
   const {
     loading,
+    refreshing,
+    hasLoadedDashboard,
     currentUser,
     needsMasterCinemaSelection,
     moduleAccess,
@@ -74,11 +76,16 @@ export default function DashboardPage() {
     moduleAccess.staffingAi && moduleAccess.schedule;
   const hasAdministrativeAccess =
     currentUser.role === "ADMIN" || currentUser.role === "MASTER";
+  const showDashboardContent =
+    !errorMessage || hasLoadedDashboard;
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <DashboardHeader onRefresh={reloadDashboard} />
-        {errorMessage ? (
+        <DashboardHeader
+          onRefresh={reloadDashboard}
+          isRefreshing={refreshing}
+        />
+        {errorMessage && (
           <section
             role="alert"
             className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-950 shadow-sm dark:border-red-900 dark:bg-red-950 dark:text-red-100 md:flex-row md:items-center md:justify-between"
@@ -90,16 +97,23 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm text-red-800 dark:text-red-200">
                 {errorMessage}
               </p>
+              {hasLoadedDashboard && (
+                <p className="mt-2 text-sm text-red-800 dark:text-red-200">
+                  De senest hentede oplysninger vises fortsat nedenfor.
+                </p>
+              )}
             </div>
             <button
               type="button"
               onClick={reloadDashboard}
-              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 dark:bg-red-500 dark:text-red-950 dark:hover:bg-red-400 dark:focus-visible:ring-red-300 dark:focus-visible:ring-offset-red-950"
+              disabled={refreshing}
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-red-300 dark:bg-red-500 dark:text-red-950 dark:hover:bg-red-400 dark:focus-visible:ring-red-300 dark:focus-visible:ring-offset-red-950 dark:disabled:bg-red-900 dark:disabled:text-red-300"
             >
-              Prøv igen
+              {refreshing ? "Opdaterer..." : "Prøv igen"}
             </button>
           </section>
-        ) : (
+        )}
+        {showDashboardContent && (
           <>
             {showStaffingAi && (
               <OperationsStatus

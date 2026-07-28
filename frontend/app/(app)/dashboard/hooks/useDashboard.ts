@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-
 import {
   calculateAiLearningAnalytics,
   calculateAiPatternInsights,
@@ -33,10 +32,10 @@ import type {
   ShiftTrade,
   TimeEntry,
 } from "../types";
-
 type UseDashboardInput = {
   onError?: (message: string) => void;
 };
+type DashboardLoadMode = "initial" | "refresh";
 
 function getErrorMessage(
   error: unknown,
@@ -61,7 +60,6 @@ function getSelectedMasterCinemaId() {
     "masterSelectedCinemaId",
   );
   const selectedCinemaId = Number(value);
-
   if (
     !Number.isInteger(selectedCinemaId) ||
     selectedCinemaId <= 0
@@ -80,7 +78,6 @@ export function useDashboard(
     loading: modulesLoading,
     isModuleEnabled,
   } = useCinemaModules();
-
   const moduleAccess = useMemo(
     () => ({
       schedule:
@@ -98,7 +95,6 @@ export function useDashboard(
     }),
     [isModuleEnabled],
   );
-
   const [
     currentUser,
     setCurrentUser,
@@ -119,6 +115,12 @@ export function useDashboard(
     useState<MovieShowing[]>([]);
   const [loading, setLoading] =
     useState(true);
+  const [refreshing, setRefreshing] =
+    useState(false);
+  const [
+    hasLoadedDashboard,
+    setHasLoadedDashboard,
+  ] = useState(false);
   const requestVersionRef = useRef(0);
   const [
     errorMessage,
@@ -132,7 +134,6 @@ export function useDashboard(
     () => getTodayLocalDate(),
     [],
   );
-
   const clearDashboardData =
     useCallback(() => {
       setShifts([]);
@@ -141,12 +142,12 @@ export function useDashboard(
       setShiftTrades([]);
       setMovies([]);
     }, []);
-
   const loadDashboard = useCallback(
     async (
       user: CurrentUser,
       selectedCinemaId: number | undefined,
       requestVersion: number,
+      mode: DashboardLoadMode,
     ) => {
       try {
         const dashboardData =
@@ -161,7 +162,6 @@ export function useDashboard(
         if (requestVersion !== requestVersionRef.current) {
           return;
         }
-
         setShifts(
           Array.isArray(
             dashboardData.shifts,
@@ -197,11 +197,11 @@ export function useDashboard(
             ? dashboardData.movies
             : [],
         );
+        setHasLoadedDashboard(true);
       } catch (error) {
         if (requestVersion !== requestVersionRef.current) {
           return;
         }
-
         const message = getErrorMessage(
           error,
           "Der opstod en fejl under hentning af dashboard.",
@@ -209,10 +209,17 @@ export function useDashboard(
 
         setErrorMessage(message);
         onError?.(message);
-        clearDashboardData();
+        if (mode === "initial") {
+          clearDashboardData();
+          setHasLoadedDashboard(false);
+        }
       } finally {
         if (requestVersion === requestVersionRef.current) {
-          setLoading(false);
+          if (mode === "refresh") {
+            setRefreshing(false);
+          } else {
+            setLoading(false);
+          }
         }
       }
     },
@@ -223,7 +230,6 @@ export function useDashboard(
       today,
     ],
   );
-
   useEffect(() => {
     if (modulesLoading) {
       setLoading(true);
@@ -241,7 +247,6 @@ export function useDashboard(
         window.location.href = "/";
         return;
       }
-
       try {
         const parsedUser: CurrentUser =
           JSON.parse(savedUser);
@@ -257,8 +262,9 @@ export function useDashboard(
         setNeedsMasterCinemaSelection(
           requiresMasterCinemaSelection,
         );
-
         setErrorMessage(null);
+        setRefreshing(false);
+        setHasLoadedDashboard(false);
         clearDashboardData();
 
         if (
@@ -274,6 +280,7 @@ export function useDashboard(
           parsedUser,
           selectedCinemaId,
           requestVersion,
+          "initial",
         );
       } catch {
         localStorage.removeItem("user");
@@ -282,7 +289,6 @@ export function useDashboard(
     }
 
     loadFromStorage();
-
     window.addEventListener(
       "masterSelectedCinemaChanged",
       loadFromStorage,
@@ -309,7 +315,6 @@ export function useDashboard(
     loadDashboard,
     modulesLoading,
   ]);
-
   const todayPlannedHours = useMemo(
     () => calculatePlannedHours(shifts),
     [shifts],
@@ -425,9 +430,8 @@ export function useDashboard(
       }),
     [shifts, staffingHeatmap],
   );
-
   const reloadDashboard = useCallback(() => {
-    if (!currentUser) return;
+    if (!currentUser || refreshing) return;
 
     const selectedCinemaId =
       currentUser.role === "MASTER"
@@ -437,18 +441,18 @@ export function useDashboard(
     requestVersionRef.current = requestVersion;
 
     setErrorMessage(null);
-    clearDashboardData();
-    setLoading(true);
-
+    setRefreshing(true);
     void loadDashboard(
       currentUser,
       selectedCinemaId,
       requestVersion,
+      "refresh",
     );
-  }, [clearDashboardData, currentUser, loadDashboard]);
-
+  }, [currentUser, loadDashboard, refreshing]);
   return {
     loading,
+    refreshing,
+    hasLoadedDashboard,
     errorMessage,
     currentUser,
     needsMasterCinemaSelection,
