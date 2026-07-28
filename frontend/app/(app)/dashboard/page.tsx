@@ -1,4 +1,6 @@
 "use client";
+
+import { useEffect, useState } from "react";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import AiPatternInsights from "./components/ai/AiPatternInsights";
@@ -10,6 +12,7 @@ import DashboardPriorityActions from "./components/overview/DashboardPriorityAct
 import DashboardSummaryCards from "./components/overview/DashboardSummaryCards";
 import DashboardStaffingSections from "./components/staffing/DashboardStaffingSections";
 import { useDashboard } from "./hooks/useDashboard";
+
 export default function DashboardPage() {
   const {
     loading,
@@ -37,6 +40,18 @@ export default function DashboardPage() {
     errorMessage,
     reloadDashboard,
   } = useDashboard();
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      hasLoadedDashboard &&
+      !refreshing &&
+      !errorMessage
+    ) {
+      setLastUpdatedAt(new Date().toISOString());
+    }
+  }, [errorMessage, hasLoadedDashboard, refreshing]);
+
   if (loading || !currentUser) {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -84,6 +99,7 @@ export default function DashboardPage() {
         <DashboardHeader
           onRefresh={reloadDashboard}
           isRefreshing={refreshing}
+          lastUpdatedAt={lastUpdatedAt}
         />
         {errorMessage && (
           <section
