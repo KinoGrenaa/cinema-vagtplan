@@ -68,6 +68,9 @@ describe('findAuthCinemaStartOverview', () => {
     userCinemaMembership: {
       findMany: jest.Mock;
     };
+    shift: {
+      groupBy: jest.Mock;
+    };
     message: {
       groupBy: jest.Mock;
     };
@@ -92,6 +95,9 @@ describe('findAuthCinemaStartOverview', () => {
       },
       userCinemaMembership: {
         findMany: jest.fn(),
+      },
+      shift: {
+        groupBy: jest.fn().mockResolvedValue([]),
       },
       message: {
         groupBy: jest.fn().mockResolvedValue([]),
@@ -236,6 +242,7 @@ describe('findAuthCinemaStartOverview', () => {
               where: {
                 moduleKey: {
                   in: [
+                    'SCHEDULE',
                     'MESSAGES',
                     'TIME_TRACKING',
                     'LEAVE',

@@ -11,6 +11,7 @@ import {
 } from '../../prisma/prisma.service';
 
 export const CINEMA_START_ATTENTION_MODULE_KEYS = [
+  'SCHEDULE',
   'MESSAGES',
   'TIME_TRACKING',
   'LEAVE',
@@ -24,6 +25,7 @@ type CinemaStartAttentionModuleKey =
 type CinemaStartAttentionMembership = {
   cinemaId: number;
   role: 'ADMIN' | 'EMPLOYEE';
+  canManageSchedule: boolean;
   canManagePayroll: boolean;
   canManageLeaveRequests: boolean;
   cinema: {
@@ -43,6 +45,7 @@ type CinemaCountGroup = {
 
 export type CinemaStartAttentionItem = {
   type:
+    | 'UNSTAFFED_UPCOMING_SHIFTS'
     | 'OWN_TIME_ENTRY_CHANGES'
     | 'DIRECT_SHIFT_TRADES'
     | 'TARGETED_STAFFING_REQUESTS'
@@ -103,6 +106,7 @@ function pluralLabel(
 
 function buildAttention(
   counts: {
+    unstaffedUpcomingShifts: number;
     ownTimeEntryChanges: number;
     directShiftTrades: number;
     targetedStaffingRequests: number;
@@ -112,6 +116,20 @@ function buildAttention(
   },
 ): CinemaStartAttention {
   const items: CinemaStartAttentionItem[] = [];
+
+  if (counts.unstaffedUpcomingShifts > 0) {
+    items.push({
+      type: 'UNSTAFFED_UPCOMING_SHIFTS',
+      severity: 'ACTION_REQUIRED',
+      count: counts.unstaffedUpcomingShifts,
+      label: pluralLabel(
+        counts.unstaffedUpcomingShifts,
+        'ubemandet vagt starter inden for 24 timer',
+        'ubemandede vagter starter inden for 24 timer',
+      ),
+      linkUrl: '/schedule',
+    });
+  }
 
   if (counts.ownTimeEntryChanges > 0) {
     items.push({
@@ -264,6 +282,25 @@ export async function findAuthCinemaStartAttention(
   memberships: CinemaStartAttentionMembership[],
   now = new Date(),
 ) {
+  const unstaffedShiftCinemaIds = memberships
+    .filter(
+      (membership) =>
+        membership.role === 'ADMIN' &&
+        membership.canManageSchedule &&
+        moduleIsEnabled(
+          membership,
+          'SCHEDULE',
+        ),
+    )
+    .map(
+      (membership) =>
+        membership.cinemaId,
+    );
+
+  const criticalWindowEnd = new Date(
+    now.getTime() + 24 * 60 * 60 * 1000,
+  );
+
   const messageCinemaIds = memberships
     .filter((membership) =>
       moduleIsEnabled(
@@ -342,6 +379,7 @@ export async function findAuthCinemaStartAttention(
     );
 
   const [
+    unstaffedShiftGroups,
     unreadMessageGroups,
     directShiftTradeGroups,
     targetedStaffingRequestGroups,
@@ -349,6 +387,29 @@ export async function findAuthCinemaStartAttention(
     timeApprovalGroups,
     leaveApprovalGroups,
   ] = await Promise.all([
+    unstaffedShiftCinemaIds.length > 0
+      ? prisma.shift.groupBy({
+          by: [
+            'cinemaId',
+          ],
+          where: {
+            cinemaId: {
+              in: unstaffedShiftCinemaIds,
+            },
+            userId: null,
+            endTime: {
+              gt: now,
+            },
+            startTime: {
+              lte: criticalWindowEnd,
+            },
+          },
+          _count: {
+            _all: true,
+          },
+        })
+      : Promise.resolve([]),
+
     messageCinemaIds.length > 0
       ? prisma.message.groupBy({
           by: [
@@ -517,6 +578,9 @@ export async function findAuthCinemaStartAttention(
       : Promise.resolve([]),
   ]);
 
+  const unstaffedUpcomingShifts = countByCinema(
+    unstaffedShiftGroups,
+  );
   const unreadMessages = countByCinema(
     unreadMessageGroups,
   );
@@ -540,6 +604,10 @@ export async function findAuthCinemaStartAttention(
     memberships.map((membership) => [
       membership.cinemaId,
       buildAttention({
+        unstaffedUpcomingShifts:
+          unstaffedUpcomingShifts.get(
+            membership.cinemaId,
+          ) ?? 0,
         ownTimeEntryChanges:
           ownTimeEntryChanges.get(
             membership.cinemaId,

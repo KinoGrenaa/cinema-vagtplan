@@ -15,6 +15,7 @@ export type CinemaStartShift = {
 
 export type CinemaStartAttentionItem = {
   type:
+    | "UNSTAFFED_UPCOMING_SHIFTS"
     | "OWN_TIME_ENTRY_CHANGES"
     | "DIRECT_SHIFT_TRADES"
     | "TARGETED_STAFFING_REQUESTS"

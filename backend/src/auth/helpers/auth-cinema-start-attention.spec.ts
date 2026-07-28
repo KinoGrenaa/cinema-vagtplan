@@ -6,6 +6,7 @@ function membership(
   cinemaId: number,
   options: {
     role?: 'ADMIN' | 'EMPLOYEE';
+    canManageSchedule?: boolean;
     canManagePayroll?: boolean;
     canManageLeaveRequests?: boolean;
     disabledModules?: string[];
@@ -14,6 +15,8 @@ function membership(
   return {
     cinemaId,
     role: options.role ?? 'EMPLOYEE',
+    canManageSchedule:
+      options.canManageSchedule ?? false,
     canManagePayroll:
       options.canManagePayroll ?? false,
     canManageLeaveRequests:
@@ -44,6 +47,9 @@ function group(
 
 describe('findAuthCinemaStartAttention', () => {
   let prisma: {
+    shift: {
+      groupBy: jest.Mock;
+    };
     message: {
       groupBy: jest.Mock;
     };
@@ -63,6 +69,10 @@ describe('findAuthCinemaStartAttention', () => {
 
   beforeEach(() => {
     prisma = {
+      shift: {
+        groupBy:
+          jest.fn().mockResolvedValue([]),
+      },
       message: {
         groupBy:
           jest.fn().mockResolvedValue([]),
@@ -87,6 +97,9 @@ describe('findAuthCinemaStartAttention', () => {
   });
 
   it('keeps personal and administrative attention strictly separated between cinemas', async () => {
+    prisma.shift.groupBy.mockResolvedValue([
+      group(2, 1),
+    ]);
     prisma.message.groupBy.mockResolvedValue([
       group(1, 2),
       group(2, 1),
@@ -118,6 +131,7 @@ describe('findAuthCinemaStartAttention', () => {
           membership(1),
           membership(2, {
             role: 'ADMIN',
+            canManageSchedule: true,
             canManagePayroll: true,
             canManageLeaveRequests: true,
           }),
@@ -169,11 +183,19 @@ describe('findAuthCinemaStartAttention', () => {
 
     expect(result.get(2)).toEqual({
       severity: 'ACTION_REQUIRED',
-      actionRequiredCount: 10,
+      actionRequiredCount: 11,
       informationalCount: 1,
       label:
-        '10 forhold kræver din handling',
+        '11 forhold kræver din handling',
       items: [
+        {
+          type: 'UNSTAFFED_UPCOMING_SHIFTS',
+          severity: 'ACTION_REQUIRED',
+          count: 1,
+          label:
+            '1 ubemandet vagt starter inden for 24 timer',
+          linkUrl: '/schedule',
+        },
         {
           type: 'DIRECT_SHIFT_TRADES',
           severity: 'ACTION_REQUIRED',
@@ -214,6 +236,59 @@ describe('findAuthCinemaStartAttention', () => {
           linkUrl: '/messages',
         },
       ],
+    });
+  });
+
+  it('queries only nearby unstaffed shifts for schedule administrators', async () => {
+    const now = new Date(
+      '2026-07-28T08:00:00.000Z',
+    );
+    const criticalWindowEnd = new Date(
+      '2026-07-29T08:00:00.000Z',
+    );
+
+    await findAuthCinemaStartAttention(
+      prisma as never,
+      7,
+      [
+        membership(1, {
+          role: 'ADMIN',
+          canManageSchedule: true,
+          disabledModules: [
+            'MESSAGES',
+            'TIME_TRACKING',
+            'LEAVE',
+            'SHIFT_TRADES',
+            'STAFFING_REQUESTS',
+          ],
+        }),
+      ],
+      now,
+    );
+
+    expect(
+      prisma.shift.groupBy,
+    ).toHaveBeenCalledWith({
+      by: [
+        'cinemaId',
+      ],
+      where: {
+        cinemaId: {
+          in: [
+            1,
+          ],
+        },
+        userId: null,
+        endTime: {
+          gt: now,
+        },
+        startTime: {
+          lte: criticalWindowEnd,
+        },
+      },
+      _count: {
+        _all: true,
+      },
     });
   });
 
@@ -329,6 +404,7 @@ describe('findAuthCinemaStartAttention', () => {
         [
           membership(1, {
             disabledModules: [
+              'SCHEDULE',
               'MESSAGES',
               'TIME_TRACKING',
               'LEAVE',
@@ -346,6 +422,9 @@ describe('findAuthCinemaStartAttention', () => {
       label: 'Ingen aktuelle opgaver',
       items: [],
     });
+    expect(
+      prisma.shift.groupBy,
+    ).not.toHaveBeenCalled();
     expect(
       prisma.message.groupBy,
     ).not.toHaveBeenCalled();
@@ -371,6 +450,7 @@ describe('findAuthCinemaStartAttention', () => {
         membership(1, {
           role: 'ADMIN',
           disabledModules: [
+            'SCHEDULE',
             'MESSAGES',
             'SHIFT_TRADES',
             'STAFFING_REQUESTS',
@@ -379,6 +459,9 @@ describe('findAuthCinemaStartAttention', () => {
       ],
     );
 
+    expect(
+      prisma.shift.groupBy,
+    ).not.toHaveBeenCalled();
     expect(
       prisma.timeEntry.groupBy,
     ).toHaveBeenCalledTimes(1);
@@ -418,6 +501,7 @@ describe('findAuthCinemaStartAttention', () => {
         [
           membership(1, {
             disabledModules: [
+              'SCHEDULE',
               'TIME_TRACKING',
               'LEAVE',
               'SHIFT_TRADES',
