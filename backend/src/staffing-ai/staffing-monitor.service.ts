@@ -4,6 +4,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { StaffingRequestsService } from '../staffing-requests/staffing-requests.service';
 import { findAiRequestActorForCinema } from './staffing-ai-cinema-access';
+import { findMovieStaffingIssues } from './movie-staffing-coverage';
 import { PredictiveStaffingService } from './predictive-staffing.service';
 
 @Injectable()
@@ -34,8 +35,10 @@ export class StaffingMonitorService {
         shifts: {
           where: {
             startTime: {
-              gte: now,
-              lte: next12Hours,
+              lt: next12Hours,
+            },
+            endTime: {
+              gt: now,
             },
           },
           include: {
@@ -46,8 +49,10 @@ export class StaffingMonitorService {
         movieShowings: {
           where: {
             startTime: {
-              gte: now,
-              lte: next12Hours,
+              lt: next12Hours,
+            },
+            endTime: {
+              gt: now,
             },
           },
         },
@@ -104,59 +109,22 @@ export class StaffingMonitorService {
         }
       }
 
-      const staffingIssues: {
-        startTime: Date;
-        endTime: Date;
-        reason: string;
-      }[] = [];
-
-      const groupedHours = new Map<
-        string,
-        {
-          shifts: number;
-          movieShowings: number;
-        }
-      >();
-
-      for (const shift of cinema.shifts) {
-        const hourKey = new Date(shift.startTime).toISOString();
-        if (!groupedHours.has(hourKey)) {
-          groupedHours.set(hourKey, {
-            shifts: 0,
-            movieShowings: 0,
-          });
-        }
-        groupedHours.get(hourKey)!.shifts += 1;
-      }
-
-      for (const movie of cinema.movieShowings) {
-        const hourKey = new Date(movie.startTime).toISOString();
-        if (!groupedHours.has(hourKey)) {
-          groupedHours.set(hourKey, {
-            shifts: 0,
-            movieShowings: 0,
-          });
-        }
-        groupedHours.get(hourKey)!.movieShowings += 1;
-      }
-
-      for (const [hour, data] of groupedHours.entries()) {
-        const requiredStaff = Math.max(2, data.movieShowings * 2);
-
-        if (data.shifts < requiredStaff) {
-          const startTime = new Date(hour);
-          const endTime = new Date(startTime);
-          endTime.setHours(endTime.getHours() + 2);
-
-          staffingIssues.push({
-            startTime,
-            endTime,
-            reason:
-              `AI detected understaffing. ` +
-              `${data.shifts}/${requiredStaff} staff assigned.`,
-          });
-        }
-      }
+      const staffingIssues = findMovieStaffingIssues({
+        cinemaId: cinema.id,
+        startTime: now,
+        endTime: next12Hours,
+        shifts: cinema.shifts,
+        movieShowings: cinema.movieShowings,
+      }).map((issue) => ({
+        startTime: issue.startTime,
+        endTime: issue.endTime,
+        reason:
+          `AI detected understaffing. ` +
+          `${issue.assignedStaff}/${issue.requiredStaff} staff assigned ` +
+          `for ${issue.movieShowings} movie showing${
+            issue.movieShowings === 1 ? '' : 's'
+          }.`,
+      }));
 
       for (const issue of staffingIssues) {
         const existingRequests = await this.prisma.staffingRequest.findFirst({

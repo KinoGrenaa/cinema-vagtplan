@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { findMovieStaffingIssues } from './movie-staffing-coverage';
 import { PredictiveStaffingService } from './predictive-staffing.service';
 import { StaffingAiService } from './staffing-ai.service';
 
@@ -25,8 +26,10 @@ export class ScheduleOptimizationService {
         cinemaId: params.cinemaId,
 
         startTime: {
-          gte: params.startDate,
-          lte: params.endDate,
+          lt: params.endDate,
+        },
+        endTime: {
+          gt: params.startDate,
         },
       },
 
@@ -46,8 +49,10 @@ export class ScheduleOptimizationService {
         cinemaId: params.cinemaId,
 
         startTime: {
-          gte: params.startDate,
-          lte: params.endDate,
+          lt: params.endDate,
+        },
+        endTime: {
+          gt: params.startDate,
         },
       },
     });
@@ -60,12 +65,6 @@ export class ScheduleOptimizationService {
       });
 
     reasoning.push(`Predicted pressure: ${prediction.level}`);
-
-    const uncoveredPeriods: {
-      startTime: Date;
-      endTime: Date;
-      reason: string;
-    }[] = [];
 
     const fatigueWarnings: {
       userId: number;
@@ -109,64 +108,26 @@ export class ScheduleOptimizationService {
       }
     }
 
-    const groupedHours = new Map<
-      string,
-      {
-        shifts: number;
-        movies: number;
-      }
-    >();
+    const uncoveredPeriods = findMovieStaffingIssues({
+      cinemaId: params.cinemaId,
+      startTime: params.startDate,
+      endTime: params.endDate,
+      shifts,
+      movieShowings,
+    }).map((issue) => ({
+      startTime: issue.startTime,
+      endTime: issue.endTime,
+      reason:
+        `Only ${issue.assignedStaff}/${issue.requiredStaff} staff assigned ` +
+        `for ${issue.movieShowings} movie showing${
+          issue.movieShowings === 1 ? '' : 's'
+        }.`,
+    }));
 
-    for (const shift of shifts) {
-      if (shift.userId === null) {
-        continue;
-      }
-
-      const hourKey = new Date(shift.startTime).toISOString();
-
-      if (!groupedHours.has(hourKey)) {
-        groupedHours.set(hourKey, {
-          shifts: 0,
-          movies: 0,
-        });
-      }
-
-      groupedHours.get(hourKey)!.shifts += 1;
-    }
-
-    for (const movie of movieShowings) {
-      const hourKey = new Date(movie.startTime).toISOString();
-
-      if (!groupedHours.has(hourKey)) {
-        groupedHours.set(hourKey, {
-          shifts: 0,
-          movies: 0,
-        });
-      }
-
-      groupedHours.get(hourKey)!.movies += 1;
-    }
-
-    for (const [hour, data] of groupedHours.entries()) {
-      const requiredStaff = Math.max(2, data.movies * 2);
-
-      if (data.shifts < requiredStaff) {
-        const startTime = new Date(hour);
-
-        const endTime = new Date(startTime);
-        endTime.setHours(endTime.getHours() + 2);
-
-        uncoveredPeriods.push({
-          startTime,
-          endTime,
-
-          reason: `Only ${data.shifts}/${requiredStaff} staff assigned.`,
-        });
-
-        recommendations.push(
-          `Add more staff around ${startTime.toISOString()}`,
-        );
-      }
+    for (const period of uncoveredPeriods) {
+      recommendations.push(
+        `Add more staff around ${period.startTime.toISOString()}`,
+      );
     }
 
     const suggestedStaffing = await Promise.all(
