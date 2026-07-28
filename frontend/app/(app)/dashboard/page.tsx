@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
+import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import AiPatternInsights from "./components/ai/AiPatternInsights";
@@ -85,8 +85,7 @@ export default function DashboardPage() {
     );
   }
 
-  const showStaffingAi =
-    moduleAccess.staffingAi && moduleAccess.schedule;
+  const showStaffingAi = moduleAccess.staffingAi && moduleAccess.schedule;
   const hasAdministrativeAccess =
     currentUser.role === "ADMIN" || currentUser.role === "MASTER";
   const showDashboardContent = !errorMessage || hasLoadedDashboard;
@@ -171,17 +170,24 @@ export default function DashboardPage() {
                   hasAdministrativeAccess={hasAdministrativeAccess}
                 />
 
-                <section aria-labelledby="dashboard-ai-heading">
+                <section aria-labelledby="dashboard-analysis-heading">
                   <DashboardSectionHeading
-                    id="dashboard-ai-heading"
-                    eyebrow="Analyse"
-                    title="Analyse og anbefalinger"
-                    description="Automatiske vurderinger, der kan understøtte dagens bemanding og kommende planlægning."
+                    id="dashboard-analysis-heading"
+                    eyebrow="Automatisk analyse"
+                    title="Automatiske vurderinger"
+                    description="Gennemgå beregningsgrundlaget, de udløste regler og dagens vagtbelastning."
                   />
                   <div className="space-y-6">
+                    <DashboardAnalysisMethod
+                      shiftCount={shifts.length}
+                      movieCount={movies.length}
+                      movieDataAvailable={operationsHealth.movieDataAvailable}
+                      hasAdministrativeAccess={hasAdministrativeAccess}
+                    />
                     <AiOperationsCommandCenter
                       operationsHealth={operationsHealth}
                       operationalRecommendations={operationalRecommendations}
+                      hasAdministrativeAccess={hasAdministrativeAccess}
                     />
                     <AiStaffingHeatmap
                       staffingHeatmap={staffingHeatmap}

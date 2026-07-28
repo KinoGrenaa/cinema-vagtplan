@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { cleanDashboardInsight } from "../../helpers/dashboardPresentation";
 import DashboardSectionHeading from "../layout/DashboardSectionHeading";
 
 type DashboardStaffingSectionsProps = {
@@ -23,7 +24,7 @@ function StatusList({
   if (items.length === 0) {
     return (
       <div
-        className={`rounded-xl border p-4 text-sm ${
+        className={`rounded-xl border p-4 text-sm leading-6 ${
           emptyTone === "success"
             ? "border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200"
             : "border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300"
@@ -35,7 +36,7 @@ function StatusList({
   }
 
   return (
-    <ul className="space-y-3">
+    <ol className="space-y-3">
       {items.map((item, index) => (
         <li
           key={`${index}-${item}`}
@@ -43,14 +44,18 @@ function StatusList({
         >
           <span
             aria-hidden="true"
-            className={`mt-2 h-2 w-2 shrink-0 rounded-full ${
-              accent === "orange" ? "bg-orange-500" : "bg-purple-500"
+            className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+              accent === "orange"
+                ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+                : "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
             }`}
-          />
-          <span>{item}</span>
+          >
+            {index + 1}
+          </span>
+          <span>{cleanDashboardInsight(item)}</span>
         </li>
       ))}
-    </ul>
+    </ol>
   );
 }
 
@@ -69,8 +74,8 @@ export default function DashboardStaffingSections({
       <DashboardSectionHeading
         id="dashboard-staffing-heading"
         eyebrow="Bemanding"
-        title="Bemanding og forventninger"
-        description="Se aktuelle forhold i planen og den automatiske vurdering af resten af dagen."
+        title="Bemanding og beregnet belastning"
+        description="Se de konkrete forhold i dagens plan og de regelbaserede vurderinger af resten af dagen."
         action={
           <Link
             href={planningHref}
@@ -84,17 +89,20 @@ export default function DashboardStaffingSections({
         }
       />
 
-      <div
-        className="grid gap-6 xl:grid-cols-2"
-      >
+      <div className="grid gap-6 xl:grid-cols-2">
         <article className="rounded-2xl border border-gray-200 bg-gray-50 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-950 dark:text-white">
-                Aktuelle bemandingsforhold
-              </h3>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                Forhold i dagens plan, som kan kræve opmærksomhed.
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-950 dark:text-white">
+                  Aktuelle bemandingsforhold
+                </h3>
+                <span className="rounded-full bg-gray-200 px-2.5 py-1 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  Dagens plan
+                </span>
+              </div>
+              <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                Forhold i dagens vagtplan, som kan kræve opmærksomhed nu.
               </p>
             </div>
             <span
@@ -109,7 +117,7 @@ export default function DashboardStaffingSections({
           </div>
           <StatusList
             items={staffingWarnings}
-            emptyMessage="Der er ingen aktuelle bemandingsadvarsler."
+            emptyMessage="Der er ingen aktuelle bemandingsadvarsler i dagens data."
             accent="orange"
           />
         </article>
@@ -117,18 +125,25 @@ export default function DashboardStaffingSections({
         <article className="rounded-2xl border border-gray-200 bg-gray-50 p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-950 dark:text-white">
-                Forventet behov senere i dag
-              </h3>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                Automatisk vurdering baseret på plan og filmprogram.
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-950 dark:text-white">
+                  Beregnet belastning senere i dag
+                </h3>
+                <span className="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-bold text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                  Faste regler
+                </span>
+              </div>
+              <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                Beregnes ud fra aftenforestillinger, solgte billetter, antal vagter og vagtlængder.
               </p>
             </div>
             <span
               className={`inline-flex min-w-10 items-center justify-center rounded-full px-3 py-1 text-sm font-bold ${
                 predictiveStaffing.length > 0
                   ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                  : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                  : movieDataAvailable
+                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                    : "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-200"
               }`}
             >
               {predictiveStaffing.length}
@@ -138,8 +153,8 @@ export default function DashboardStaffingSections({
             items={predictiveStaffing}
             emptyMessage={
               movieDataAvailable
-                ? "Der er ingen forventede bemandingsproblemer lige nu."
-                : "Filmprogrammet er tomt eller ikke tilgængeligt. Filmrelaterede forudsigelser kan ikke beregnes."
+                ? "De faste regler finder ingen forventede bemandingsproblemer lige nu."
+                : "Filmprogrammet er tomt eller ikke tilgængeligt. Filmrelateret belastning kan derfor ikke beregnes."
             }
             accent="purple"
             emptyTone={movieDataAvailable ? "success" : "neutral"}

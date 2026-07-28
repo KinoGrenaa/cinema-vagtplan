@@ -26,18 +26,18 @@ const statusContent: Record<OperationsStatusValue, StatusContent> = {
   NORMAL: {
     label: "Normal",
     description:
-      "Dagens bemanding og aktivitet ser ud til at være i balance.",
+      "Dagens bemanding og aktivitet ser ud til at være i balance ud fra de tilgængelige data.",
   },
   WARNING: {
     label: "Kræver opmærksomhed",
     description:
-      "Dagens bemanding eller aktivitet bør gennemgås, før driften fortsætter.",
+      "Dagens bemanding eller aktivitet rammer en eller flere advarselstærskler og bør gennemgås.",
     actionLabel: "Gennemgå dagens vagtplan",
   },
   CRITICAL: {
     label: "Kritisk",
     description:
-      "Der er kritiske forhold i dagens bemanding eller aktivitet, som bør håndteres nu.",
+      "Dagens data rammer kritiske tærskler for bemanding, vagtlængde eller billetbelastning.",
     actionLabel: "Åbn dagens vagtplan",
   },
 };
@@ -72,14 +72,22 @@ export default function OperationsStatus({
                   : "🔴"}
           </div>
           <div>
-            <h2
-              id="dashboard-operations-status-heading"
-              className="text-2xl font-bold"
-            >
-              Driftsstatus lige nu
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2
+                id="dashboard-operations-status-heading"
+                className="text-2xl font-bold"
+              >
+                Driftsstatus lige nu
+              </h2>
+              <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-bold dark:bg-black/20">
+                Automatisk beregnet
+              </span>
+            </div>
             <p className="mt-1 max-w-3xl text-sm leading-6 opacity-80">
               {content.description}
+            </p>
+            <p className="mt-2 max-w-3xl text-xs leading-5 opacity-70">
+              Status er en støtte til gennemgang af dagens drift og erstatter ikke en konkret kontrol af vagtplanen.
             </p>
             {content.actionLabel && (
               <Link
