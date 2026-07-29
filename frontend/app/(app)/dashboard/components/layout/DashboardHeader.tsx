@@ -3,6 +3,7 @@
 import { getTodayLocalDate } from "@/app/utils/dateTime";
 
 import type { DashboardAutoRefreshState } from "../../helpers/dashboardRefresh";
+import type { DashboardSourceSummary } from "../../helpers/dashboardSourceHealth";
 import DashboardRefreshControls from "./DashboardRefreshControls";
 
 type DashboardHeaderProps = {
@@ -13,6 +14,7 @@ type DashboardHeaderProps = {
   autoRefreshState: DashboardAutoRefreshState;
   nextRefreshAt: string | null;
   secondsUntilRefresh: number | null;
+  sourceSummary: DashboardSourceSummary;
   onAutoRefreshChange: (enabled: boolean) => void;
 };
 
@@ -33,9 +35,11 @@ export default function DashboardHeader({
   autoRefreshState,
   nextRefreshAt,
   secondsUntilRefresh,
+  sourceSummary,
   onAutoRefreshChange,
 }: DashboardHeaderProps) {
   const today = getTodayLocalDate();
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -58,6 +62,7 @@ export default function DashboardHeader({
           lastUpdatedAt={lastUpdatedAt}
           nextRefreshAt={nextRefreshAt}
           secondsUntilRefresh={secondsUntilRefresh}
+          sourceSummary={sourceSummary}
           onAutoRefreshChange={onAutoRefreshChange}
           onRefresh={onRefresh}
         />

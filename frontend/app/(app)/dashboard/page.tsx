@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
@@ -15,8 +16,11 @@ import DashboardSummaryCards from "./components/overview/DashboardSummaryCards";
 import DashboardStaffingSections from "./components/staffing/DashboardStaffingSections";
 import DashboardConnectivityNotice from "./components/status/DashboardConnectivityNotice";
 import DashboardDataCoverage from "./components/status/DashboardDataCoverage";
+import DashboardDataStatus from "./components/status/DashboardDataStatus";
+import { summarizeDashboardSources } from "./helpers/dashboardSourceHealth";
 import { useDashboard } from "./hooks/useDashboard";
 import { useDashboardAutoRefresh } from "./hooks/useDashboardAutoRefresh";
+import { useDashboardSourceHistory } from "./hooks/useDashboardSourceHistory";
 
 export default function DashboardPage() {
   const {
@@ -47,6 +51,18 @@ export default function DashboardPage() {
     errorMessage,
     reloadDashboard,
   } = useDashboard();
+
+  const sourceHistory = useDashboardSourceHistory({
+    sourceStatus,
+    lastUpdatedAt,
+    isRefreshing: refreshing,
+    hasLoadedDashboard,
+    errorMessage,
+  });
+  const sourceSummary = summarizeDashboardSources(
+    sourceStatus,
+    sourceHistory,
+  );
   const autoRefresh = useDashboardAutoRefresh({
     canRefresh:
       hasLoadedDashboard &&
@@ -66,6 +82,7 @@ export default function DashboardPage() {
       </main>
     );
   }
+
   if (needsMasterCinemaSelection) {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -91,6 +108,7 @@ export default function DashboardPage() {
       </main>
     );
   }
+
   const showStaffingAi =
     moduleAccess.staffingAi && moduleAccess.schedule;
   const hasAdministrativeAccess =
@@ -98,6 +116,7 @@ export default function DashboardPage() {
   const showDashboardContent =
     !errorMessage || hasLoadedDashboard;
   const hasMovieShowings = movies.length > 0;
+
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -109,12 +128,19 @@ export default function DashboardPage() {
           autoRefreshState={autoRefresh.state}
           nextRefreshAt={autoRefresh.nextRefreshAt}
           secondsUntilRefresh={autoRefresh.secondsUntilRefresh}
+          sourceSummary={sourceSummary}
           onAutoRefreshChange={autoRefresh.setAutoRefreshEnabled}
         />
         <DashboardConnectivityNotice
           isOnline={autoRefresh.isOnline}
           autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
         />
+        {hasLoadedDashboard && (
+          <DashboardDataStatus
+            sourceStatus={sourceStatus}
+            sourceHistory={sourceHistory}
+          />
+        )}
         {errorMessage && (
           <section
             role="alert"
@@ -146,6 +172,7 @@ export default function DashboardPage() {
         {hasLoadedDashboard && !errorMessage && (
           <DashboardDataCoverage
             sourceStatus={sourceStatus}
+            sourceHistory={sourceHistory}
             onRefresh={reloadDashboard}
             isRefreshing={refreshing}
             autoRefreshEnabled={autoRefresh.autoRefreshEnabled}

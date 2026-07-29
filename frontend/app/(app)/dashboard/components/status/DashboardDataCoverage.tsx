@@ -1,35 +1,38 @@
 "use client";
 
+import {
+  DASHBOARD_SOURCE_KEYS,
+  DASHBOARD_SOURCE_LABELS,
+  formatDashboardSourceDateTime,
+  type DashboardSourceHistoryMap,
+} from "../../helpers/dashboardSourceHealth";
 import type {
   DashboardSourceKey,
   DashboardSourceStatusMap,
 } from "../../types";
 
-const SOURCE_LABELS: Record<DashboardSourceKey, string> = {
-  shifts: "Dagens vagter",
-  timeEntries: "Dine timer i dag",
-  leaveRequests: "Fraværsansøgninger",
-  shiftTrades: "Vagtbytter",
-  movies: "Filmprogram",
-};
-
-const SOURCE_KEYS = Object.keys(
-  SOURCE_LABELS,
-) as DashboardSourceKey[];
 type DashboardDataCoverageProps = {
   sourceStatus: DashboardSourceStatusMap;
+  sourceHistory: DashboardSourceHistoryMap;
   onRefresh: () => void;
   isRefreshing: boolean;
   autoRefreshEnabled: boolean;
 };
 
+function getFailureText(count: number) {
+  if (count <= 0) return null;
+  if (count === 1) return "Seneste forsøg mislykkedes.";
+  return `${count} forsøg i træk er mislykkedes.`;
+}
+
 export default function DashboardDataCoverage({
   sourceStatus,
+  sourceHistory,
   onRefresh,
   isRefreshing,
   autoRefreshEnabled,
 }: DashboardDataCoverageProps) {
-  const affectedSources = SOURCE_KEYS.filter(
+  const affectedSources = DASHBOARD_SOURCE_KEYS.filter(
     (key) =>
       sourceStatus[key].state === "stale" ||
       sourceStatus[key].state === "unavailable",
@@ -38,11 +41,13 @@ export default function DashboardDataCoverage({
   if (affectedSources.length === 0) {
     return null;
   }
+
   const staleCount = affectedSources.filter(
     (key) => sourceStatus[key].state === "stale",
   ).length;
   const unavailableCount =
     affectedSources.length - staleCount;
+
   return (
     <section
       aria-labelledby="dashboard-data-coverage-heading"
@@ -83,9 +88,22 @@ export default function DashboardDataCoverage({
         </button>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {affectedSources.map((key) => {
+        {affectedSources.map((key: DashboardSourceKey) => {
           const status = sourceStatus[key];
+          const history = sourceHistory[key];
           const isStale = status.state === "stale";
+          const lastSuccessfulAt =
+            formatDashboardSourceDateTime(
+              history.lastSuccessfulAt,
+            );
+          const lastAttemptedAt =
+            formatDashboardSourceDateTime(
+              history.lastAttemptedAt,
+            );
+          const failureText = getFailureText(
+            history.consecutiveFailures,
+          );
+
           return (
             <div
               key={key}
@@ -93,7 +111,7 @@ export default function DashboardDataCoverage({
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="font-semibold">
-                  {SOURCE_LABELS[key]}
+                  {DASHBOARD_SOURCE_LABELS[key]}
                 </p>
                 <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
                   {isStale
@@ -106,6 +124,26 @@ export default function DashboardDataCoverage({
                   ? "Tidligere hentede oplysninger vises fortsat."
                   : "Denne del er tom, indtil oplysningerne kan hentes."}
               </p>
+              <dl className="mt-3 space-y-2 text-xs leading-5 text-amber-800 dark:text-amber-200">
+                <div>
+                  <dt className="font-semibold">Senest vellykket</dt>
+                  <dd>
+                    {lastSuccessfulAt ??
+                      "Ingen vellykket hentning endnu"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-semibold">Seneste forsøg</dt>
+                  <dd>
+                    {lastAttemptedAt ?? "Afventer første forsøg"}
+                  </dd>
+                </div>
+              </dl>
+              {failureText && (
+                <p className="mt-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                  {failureText}
+                </p>
+              )}
               {status.message && (
                 <p className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
                   {status.message}

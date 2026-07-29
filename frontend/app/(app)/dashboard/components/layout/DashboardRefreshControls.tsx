@@ -5,6 +5,7 @@ import {
   formatDashboardRefreshTime,
   type DashboardAutoRefreshState,
 } from "../../helpers/dashboardRefresh";
+import type { DashboardSourceSummary } from "../../helpers/dashboardSourceHealth";
 
 type DashboardRefreshControlsProps = {
   autoRefreshEnabled: boolean;
@@ -13,6 +14,7 @@ type DashboardRefreshControlsProps = {
   lastUpdatedAt: string | null;
   nextRefreshAt: string | null;
   secondsUntilRefresh: number | null;
+  sourceSummary: DashboardSourceSummary;
   onAutoRefreshChange: (enabled: boolean) => void;
   onRefresh: () => void;
 };
@@ -35,6 +37,16 @@ const stateToneClasses: Record<
     "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
 };
 
+const sourceToneClasses: Record<
+  DashboardSourceSummary["tone"],
+  string
+> = {
+  fresh: "text-green-700 dark:text-green-300",
+  degraded: "text-amber-700 dark:text-amber-300",
+  unavailable: "text-red-700 dark:text-red-300",
+  disabled: "text-gray-500 dark:text-gray-400",
+};
+
 function getAutoRefreshStatusText(
   state: DashboardAutoRefreshState,
   secondsUntilRefresh: number | null,
@@ -54,7 +66,6 @@ function getAutoRefreshStatusText(
   if (state === "waiting") {
     return "Starter efter første indlæsning";
   }
-
   return `Næste opdatering ${formatDashboardRefreshCountdown(
     secondsUntilRefresh,
   )}`;
@@ -67,6 +78,7 @@ export default function DashboardRefreshControls({
   lastUpdatedAt,
   nextRefreshAt,
   secondsUntilRefresh,
+  sourceSummary,
   onAutoRefreshChange,
   onRefresh,
 }: DashboardRefreshControlsProps) {
@@ -126,6 +138,11 @@ export default function DashboardRefreshControls({
           {lastUpdatedTime
             ? `Senest opdateret kl. ${lastUpdatedTime}`
             : "Afventer første opdatering"}
+        </span>
+        <span
+          className={`font-semibold ${sourceToneClasses[sourceSummary.tone]}`}
+        >
+          {sourceSummary.text}
         </span>
       </div>
     </div>
