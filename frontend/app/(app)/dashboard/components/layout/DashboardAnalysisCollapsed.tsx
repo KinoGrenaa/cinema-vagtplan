@@ -1,10 +1,17 @@
 "use client";
 
-import type { DashboardViewMode } from "../../helpers/dashboardWorkspace";
+import {
+  buildDashboardWorkspaceUrl,
+  type DashboardViewMode,
+} from "../../helpers/dashboardWorkspace";
 
 type DashboardAnalysisCollapsedProps = {
   onViewModeChange: (mode: DashboardViewMode) => void;
 };
+
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+}
 
 export default function DashboardAnalysisCollapsed({
   onViewModeChange,
@@ -12,11 +19,23 @@ export default function DashboardAnalysisCollapsed({
   function showAnalysis() {
     onViewModeChange("complete");
 
-    window.setTimeout(() => {
-      document
-        .getElementById("dashboard-analysis")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 0);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const nextUrl = buildDashboardWorkspaceUrl({
+          currentUrl: window.location.href,
+          viewMode: "complete",
+          sectionId: "dashboard-analysis",
+        });
+        window.history.replaceState(window.history.state, "", nextUrl);
+
+        const analysisSection = document.getElementById("dashboard-analysis");
+        analysisSection?.scrollIntoView({
+          behavior: prefersReducedMotion() ? "auto" : "smooth",
+          block: "start",
+        });
+        analysisSection?.focus({ preventScroll: true });
+      });
+    });
   }
 
   return (

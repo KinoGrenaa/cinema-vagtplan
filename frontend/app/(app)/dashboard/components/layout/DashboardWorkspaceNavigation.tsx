@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import type { MouseEvent } from "react";
 
 import type {
   DashboardViewMode,
   DashboardWorkspaceSection,
-  DashboardWorkspaceSectionId,
 } from "../../helpers/dashboardWorkspace";
+import { useDashboardWorkspaceLocation } from "../../hooks/useDashboardWorkspaceLocation";
+import DashboardWorkspaceShareButton from "./DashboardWorkspaceShareButton";
 
 type DashboardWorkspaceNavigationProps = {
   sections: DashboardWorkspaceSection[];
@@ -14,82 +15,39 @@ type DashboardWorkspaceNavigationProps = {
   onViewModeChange: (mode: DashboardViewMode) => void;
 };
 
-function getInitialSectionId(
-  sections: DashboardWorkspaceSection[],
-): DashboardWorkspaceSectionId | null {
-  return sections[0]?.id ?? null;
-}
-
 export default function DashboardWorkspaceNavigation({
   sections,
   viewMode,
   onViewModeChange,
 }: DashboardWorkspaceNavigationProps) {
-  const [activeSectionId, setActiveSectionId] =
-    useState<DashboardWorkspaceSectionId | null>(() =>
-      getInitialSectionId(sections),
-    );
+  const workspaceLocation = useDashboardWorkspaceLocation({
+    sections,
+    viewMode,
+    onViewModeChange,
+  });
 
-  const sectionIds = useMemo(
-    () => sections.map((section) => section.id),
-    [sections],
-  );
+  function changeViewMode(nextMode: DashboardViewMode) {
+    onViewModeChange(nextMode);
 
-  useEffect(() => {
-    setActiveSectionId((current) =>
-      current && sectionIds.includes(current)
-        ? current
-        : (sectionIds[0] ?? null),
-    );
-  }, [sectionIds]);
+    if (
+      nextMode === "operations" &&
+      workspaceLocation.activeSectionId === "dashboard-analysis"
+    ) {
+      const fallbackSection =
+        sections.find((section) => section.id === "dashboard-staffing") ??
+        sections.at(-1);
 
-  useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") {
-      return undefined;
-    }
-
-    const visibleSections = new Map<DashboardWorkspaceSectionId, number>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.id as DashboardWorkspaceSectionId;
-
-          if (entry.isIntersecting) {
-            visibleSections.set(id, entry.intersectionRatio);
-          } else {
-            visibleSections.delete(id);
-          }
-        }
-
-        const nextActive = [...visibleSections.entries()].sort(
-          ([firstId, firstRatio], [secondId, secondRatio]) => {
-            if (secondRatio !== firstRatio) {
-              return secondRatio - firstRatio;
-            }
-
-            return sectionIds.indexOf(firstId) - sectionIds.indexOf(secondId);
-          },
-        )[0]?.[0];
-
-        if (nextActive) {
-          setActiveSectionId(nextActive);
-        }
-      },
-      {
-        rootMargin: "-18% 0px -62% 0px",
-        threshold: [0.05, 0.2, 0.5, 0.8],
-      },
-    );
-
-    for (const id of sectionIds) {
-      const element = document.getElementById(id);
-      if (element) {
-        observer.observe(element);
+      if (fallbackSection) {
+        window.requestAnimationFrame(() => {
+          workspaceLocation.navigateToSection(
+            fallbackSection.id,
+            "replace",
+            "operations",
+          );
+        });
       }
     }
-
-    return () => observer.disconnect();
-  }, [sectionIds]);
+  }
 
   return (
     <nav
@@ -103,7 +61,8 @@ export default function DashboardWorkspaceNavigation({
           </p>
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
             {sections.map((section) => {
-              const isActive = activeSectionId === section.id;
+              const isActive =
+                workspaceLocation.activeSectionId === section.id;
 
               return (
                 <a
@@ -111,6 +70,10 @@ export default function DashboardWorkspaceNavigation({
                   href={`#${section.id}`}
                   aria-current={isActive ? "location" : undefined}
                   title={section.description}
+                  onClick={(event: MouseEvent<HTMLAnchorElement>) => {
+                    event.preventDefault();
+                    workspaceLocation.navigateToSection(section.id);
+                  }}
                   className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-300 dark:focus-visible:ring-offset-gray-900 ${
                     isActive
                       ? "border-blue-700 bg-blue-700 text-white dark:border-blue-400 dark:bg-blue-400 dark:text-blue-950"
@@ -137,40 +100,47 @@ export default function DashboardWorkspaceNavigation({
           </div>
         </div>
 
-        <fieldset className="shrink-0">
-          <legend className="sr-only">Vælg dashboardvisning</legend>
-          <div className="inline-flex w-full rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-950 xl:w-auto">
-            <button
-              type="button"
-              aria-pressed={viewMode === "operations"}
-              onClick={() => onViewModeChange("operations")}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 xl:flex-none ${
-                viewMode === "operations"
-                  ? "bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-white"
-                  : "text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white"
-              }`}
-            >
-              Drift
-            </button>
-            <button
-              type="button"
-              aria-pressed={viewMode === "complete"}
-              onClick={() => onViewModeChange("complete")}
-              className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 xl:flex-none ${
-                viewMode === "complete"
-                  ? "bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-white"
-                  : "text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white"
-              }`}
-            >
-              Fuld visning
-            </button>
-          </div>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 xl:text-right">
-            {viewMode === "operations"
-              ? "Automatiske vurderinger er skjult."
-              : "Alle drifts- og analysedetaljer vises."}
-          </p>
-        </fieldset>
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end">
+          <fieldset>
+            <legend className="sr-only">Vælg dashboardvisning</legend>
+            <div className="inline-flex w-full rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-950 sm:w-auto">
+              <button
+                type="button"
+                aria-pressed={viewMode === "operations"}
+                onClick={() => changeViewMode("operations")}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 sm:flex-none ${
+                  viewMode === "operations"
+                    ? "bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-white"
+                    : "text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white"
+                }`}
+              >
+                Drift
+              </button>
+              <button
+                type="button"
+                aria-pressed={viewMode === "complete"}
+                onClick={() => changeViewMode("complete")}
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:focus-visible:ring-blue-300 sm:flex-none ${
+                  viewMode === "complete"
+                    ? "bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-white"
+                    : "text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white"
+                }`}
+              >
+                Fuld visning
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 sm:text-right">
+              {viewMode === "operations"
+                ? "Automatiske vurderinger er skjult."
+                : "Alle drifts- og analysedetaljer vises."}
+            </p>
+          </fieldset>
+
+          <DashboardWorkspaceShareButton
+            copyState={workspaceLocation.copyState}
+            onCopy={workspaceLocation.copyActiveSectionLink}
+          />
+        </div>
       </div>
     </nav>
   );

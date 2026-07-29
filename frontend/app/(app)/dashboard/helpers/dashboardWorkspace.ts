@@ -1,7 +1,9 @@
 export const DASHBOARD_VIEW_MODE_STORAGE_KEY =
   "cinema-vagtplan.dashboard.view-mode.v1";
+export const DASHBOARD_VIEW_QUERY_PARAM = "view";
 
 export type DashboardViewMode = "operations" | "complete";
+export type DashboardViewQueryValue = "drift" | "fuld";
 
 export type DashboardWorkspaceSectionId =
   | "dashboard-operations-status"
@@ -26,10 +28,79 @@ type GetDashboardWorkspaceSectionsOptions = {
   staffingWarningsCount: number;
 };
 
+const DASHBOARD_SECTION_IDS: readonly DashboardWorkspaceSectionId[] = [
+  "dashboard-operations-status",
+  "dashboard-priority-actions",
+  "dashboard-daily-overview",
+  "dashboard-work-forward",
+  "dashboard-staffing",
+  "dashboard-analysis",
+];
+
 export function isDashboardViewMode(
   value: string | null,
 ): value is DashboardViewMode {
   return value === "operations" || value === "complete";
+}
+
+export function dashboardViewModeToQueryValue(
+  viewMode: DashboardViewMode,
+): DashboardViewQueryValue {
+  return viewMode === "operations" ? "drift" : "fuld";
+}
+
+export function dashboardViewModeFromQueryValue(
+  value: string | null,
+): DashboardViewMode | null {
+  if (value === "drift") {
+    return "operations";
+  }
+
+  if (value === "fuld") {
+    return "complete";
+  }
+
+  return null;
+}
+
+export function isDashboardWorkspaceSectionId(
+  value: string | null,
+): value is DashboardWorkspaceSectionId {
+  return Boolean(
+    value &&
+      DASHBOARD_SECTION_IDS.includes(value as DashboardWorkspaceSectionId),
+  );
+}
+
+export function getDashboardSectionFromHash(
+  hash: string,
+): DashboardWorkspaceSectionId | null {
+  const value = hash.startsWith("#") ? hash.slice(1) : hash;
+  const decodedValue = decodeURIComponent(value);
+
+  return isDashboardWorkspaceSectionId(decodedValue) ? decodedValue : null;
+}
+
+export function buildDashboardWorkspaceUrl({
+  currentUrl,
+  viewMode,
+  sectionId,
+}: {
+  currentUrl: string;
+  viewMode: DashboardViewMode;
+  sectionId?: DashboardWorkspaceSectionId | null;
+}): string {
+  const url = new URL(currentUrl);
+  url.searchParams.set(
+    DASHBOARD_VIEW_QUERY_PARAM,
+    dashboardViewModeToQueryValue(viewMode),
+  );
+
+  if (sectionId) {
+    url.hash = sectionId;
+  }
+
+  return url.toString();
 }
 
 export function getDashboardWorkspaceSections({

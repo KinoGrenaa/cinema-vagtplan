@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
+
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import AiPatternInsights from "./components/ai/AiPatternInsights";
 import AiStaffingHeatmap from "./components/ai/AiStaffingHeatmap";
+import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
 import DashboardAnalysisCollapsed from "./components/layout/DashboardAnalysisCollapsed";
 import DashboardHeader from "./components/layout/DashboardHeader";
 import DashboardSectionHeading from "./components/layout/DashboardSectionHeading";
@@ -24,6 +25,9 @@ import { useDashboard } from "./hooks/useDashboard";
 import { useDashboardAutoRefresh } from "./hooks/useDashboardAutoRefresh";
 import { useDashboardSourceHistory } from "./hooks/useDashboardSourceHistory";
 import { useDashboardViewPreferences } from "./hooks/useDashboardViewPreferences";
+
+const workspaceSectionClassName =
+  "scroll-mt-32 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-4 dark:focus-visible:ring-blue-300 dark:focus-visible:ring-offset-gray-950";
 
 export default function DashboardPage() {
   const {
@@ -54,7 +58,6 @@ export default function DashboardPage() {
     errorMessage,
     reloadDashboard,
   } = useDashboard();
-
   const sourceHistory = useDashboardSourceHistory({
     sourceStatus,
     lastUpdatedAt,
@@ -77,7 +80,6 @@ export default function DashboardPage() {
     lastUpdatedAt,
     onRefresh: reloadDashboard,
   });
-
   const dashboardView = useDashboardViewPreferences();
 
   if (loading || !currentUser) {
@@ -145,7 +147,6 @@ export default function DashboardPage() {
           sourceSummary={sourceSummary}
           onAutoRefreshChange={autoRefresh.setAutoRefreshEnabled}
         />
-
         <DashboardConnectivityNotice
           isOnline={autoRefresh.isOnline}
           autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
@@ -206,7 +207,11 @@ export default function DashboardPage() {
             />
 
             {showStaffingAi && (
-              <div id="dashboard-operations-status" className="scroll-mt-32">
+              <div
+                id="dashboard-operations-status"
+                tabIndex={-1}
+                className={workspaceSectionClassName}
+              >
                 <OperationsStatus
                   liveOperationsStatus={liveOperationsStatus}
                   shiftsSourceStatus={sourceStatus.shifts}
@@ -216,7 +221,11 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div id="dashboard-priority-actions" className="scroll-mt-32">
+            <div
+              id="dashboard-priority-actions"
+              tabIndex={-1}
+              className={workspaceSectionClassName}
+            >
               <DashboardPriorityActions
                 openShiftTrades={openShiftTrades}
                 pendingLeaveRequests={pendingLeaveRequests}
@@ -227,7 +236,11 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div id="dashboard-daily-overview" className="scroll-mt-32">
+            <div
+              id="dashboard-daily-overview"
+              tabIndex={-1}
+              className={workspaceSectionClassName}
+            >
               <DashboardSummaryCards
                 todayPlannedHours={todayPlannedHours}
                 myRegisteredHours={myRegisteredHours}
@@ -241,7 +254,11 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div id="dashboard-work-forward" className="scroll-mt-32">
+            <div
+              id="dashboard-work-forward"
+              tabIndex={-1}
+              className={workspaceSectionClassName}
+            >
               <DashboardOverviewSections
                 moduleAccess={moduleAccess}
                 hasAdministrativeAccess={hasAdministrativeAccess}
@@ -250,7 +267,11 @@ export default function DashboardPage() {
 
             {showStaffingAi && (
               <>
-                <div id="dashboard-staffing" className="scroll-mt-32">
+                <div
+                  id="dashboard-staffing"
+                  tabIndex={-1}
+                  className={workspaceSectionClassName}
+                >
                   <DashboardStaffingSections
                     staffingWarnings={staffingWarnings}
                     predictiveStaffing={predictiveStaffing}
@@ -264,8 +285,9 @@ export default function DashboardPage() {
                 {showAnalysis ? (
                   <section
                     id="dashboard-analysis"
+                    tabIndex={-1}
                     aria-labelledby="dashboard-analysis-heading"
-                    className="scroll-mt-32"
+                    className={workspaceSectionClassName}
                   >
                     <DashboardSectionHeading
                       id="dashboard-analysis-heading"
