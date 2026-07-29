@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-
 import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import AiPatternInsights from "./components/ai/AiPatternInsights";
 import AiStaffingHeatmap from "./components/ai/AiStaffingHeatmap";
+import DashboardAnalysisCollapsed from "./components/layout/DashboardAnalysisCollapsed";
 import DashboardHeader from "./components/layout/DashboardHeader";
 import DashboardSectionHeading from "./components/layout/DashboardSectionHeading";
+import DashboardWorkspaceNavigation from "./components/layout/DashboardWorkspaceNavigation";
 import OperationsStatus from "./components/operations/OperationsStatus";
 import DashboardOverviewSections from "./components/overview/DashboardOverviewSections";
 import DashboardPriorityActions from "./components/overview/DashboardPriorityActions";
@@ -18,9 +19,11 @@ import DashboardConnectivityNotice from "./components/status/DashboardConnectivi
 import DashboardDataCoverage from "./components/status/DashboardDataCoverage";
 import DashboardDataStatus from "./components/status/DashboardDataStatus";
 import { summarizeDashboardSources } from "./helpers/dashboardSourceHealth";
+import { getDashboardWorkspaceSections } from "./helpers/dashboardWorkspace";
 import { useDashboard } from "./hooks/useDashboard";
 import { useDashboardAutoRefresh } from "./hooks/useDashboardAutoRefresh";
 import { useDashboardSourceHistory } from "./hooks/useDashboardSourceHistory";
+import { useDashboardViewPreferences } from "./hooks/useDashboardViewPreferences";
 
 export default function DashboardPage() {
   const {
@@ -59,10 +62,12 @@ export default function DashboardPage() {
     hasLoadedDashboard,
     errorMessage,
   });
+
   const sourceSummary = summarizeDashboardSources(
     sourceStatus,
     sourceHistory,
   );
+
   const autoRefresh = useDashboardAutoRefresh({
     canRefresh:
       hasLoadedDashboard &&
@@ -72,6 +77,8 @@ export default function DashboardPage() {
     lastUpdatedAt,
     onRefresh: reloadDashboard,
   });
+
+  const dashboardView = useDashboardViewPreferences();
 
   if (loading || !currentUser) {
     return (
@@ -94,9 +101,9 @@ export default function DashboardPage() {
             Vælg en biograf for at se driftsoverblikket
           </h1>
           <p className="mt-3 text-sm leading-6 text-amber-900 dark:text-amber-100/90">
-            Driftsoverblikket viser vagter, fravær, vagtbytter og
-            filmprogram for en konkret biograf. Som MASTER skal du vælge
-            en aktiv biograf først.
+            Driftsoverblikket viser vagter, fravær, vagtbytter og filmprogram
+            for en konkret biograf. Som MASTER skal du vælge en aktiv biograf
+            først.
           </p>
           <Link
             href="/master"
@@ -109,13 +116,20 @@ export default function DashboardPage() {
     );
   }
 
-  const showStaffingAi =
-    moduleAccess.staffingAi && moduleAccess.schedule;
+  const showStaffingAi = moduleAccess.staffingAi && moduleAccess.schedule;
+  const showAnalysis = showStaffingAi && dashboardView.isCompleteView;
   const hasAdministrativeAccess =
     currentUser.role === "ADMIN" || currentUser.role === "MASTER";
-  const showDashboardContent =
-    !errorMessage || hasLoadedDashboard;
+  const showDashboardContent = !errorMessage || hasLoadedDashboard;
   const hasMovieShowings = movies.length > 0;
+  const priorityCount =
+    openShiftTrades + pendingLeaveRequests + staffingWarnings.length;
+  const workspaceSections = getDashboardWorkspaceSections({
+    showStaffing: showStaffingAi,
+    showAnalysis,
+    priorityCount,
+    staffingWarningsCount: staffingWarnings.length,
+  });
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -131,16 +145,19 @@ export default function DashboardPage() {
           sourceSummary={sourceSummary}
           onAutoRefreshChange={autoRefresh.setAutoRefreshEnabled}
         />
+
         <DashboardConnectivityNotice
           isOnline={autoRefresh.isOnline}
           autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
         />
+
         {hasLoadedDashboard && (
           <DashboardDataStatus
             sourceStatus={sourceStatus}
             sourceHistory={sourceHistory}
           />
         )}
+
         {errorMessage && (
           <section
             role="alert"
@@ -169,6 +186,7 @@ export default function DashboardPage() {
             </button>
           </section>
         )}
+
         {hasLoadedDashboard && !errorMessage && (
           <DashboardDataCoverage
             sourceStatus={sourceStatus}
@@ -178,90 +196,120 @@ export default function DashboardPage() {
             autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
           />
         )}
+
         {showDashboardContent && (
           <>
+            <DashboardWorkspaceNavigation
+              sections={workspaceSections}
+              viewMode={dashboardView.viewMode}
+              onViewModeChange={dashboardView.setViewMode}
+            />
+
             {showStaffingAi && (
-              <OperationsStatus
-                liveOperationsStatus={liveOperationsStatus}
-                shiftsSourceStatus={sourceStatus.shifts}
-                moviesSourceStatus={sourceStatus.movies}
-                hasMovieShowings={hasMovieShowings}
-              />
-            )}
-            <DashboardPriorityActions
-              openShiftTrades={openShiftTrades}
-              pendingLeaveRequests={pendingLeaveRequests}
-              staffingWarningsCount={staffingWarnings.length}
-              sourceStatus={sourceStatus}
-              moduleAccess={moduleAccess}
-              hasAdministrativeAccess={hasAdministrativeAccess}
-            />
-            <DashboardSummaryCards
-              todayPlannedHours={todayPlannedHours}
-              myRegisteredHours={myRegisteredHours}
-              movieCount={movies.length}
-              soldSeatsToday={soldSeatsToday}
-              seatLoadPercent={seatLoadPercent}
-              shiftCount={shifts.length}
-              canShowPersonalTime={currentUser.role !== "MASTER"}
-              sourceStatus={sourceStatus}
-              moduleAccess={moduleAccess}
-            />
-            <DashboardOverviewSections
-              moduleAccess={moduleAccess}
-              hasAdministrativeAccess={hasAdministrativeAccess}
-            />
-            {showStaffingAi && (
-              <>
-                <DashboardStaffingSections
-                  staffingWarnings={staffingWarnings}
-                  predictiveStaffing={predictiveStaffing}
-                  hasMovieShowings={hasMovieShowings}
+              <div id="dashboard-operations-status" className="scroll-mt-32">
+                <OperationsStatus
+                  liveOperationsStatus={liveOperationsStatus}
                   shiftsSourceStatus={sourceStatus.shifts}
                   moviesSourceStatus={sourceStatus.movies}
-                  hasAdministrativeAccess={hasAdministrativeAccess}
+                  hasMovieShowings={hasMovieShowings}
                 />
-                <section aria-labelledby="dashboard-analysis-heading">
-                  <DashboardSectionHeading
-                    id="dashboard-analysis-heading"
-                    eyebrow="Automatisk analyse"
-                    title="Automatiske vurderinger"
-                    description="Gennemgå beregningsgrundlaget, de udløste regler og dagens vagtbelastning. Hver del viser, når datagrundlaget er gammelt eller utilgængeligt."
+              </div>
+            )}
+
+            <div id="dashboard-priority-actions" className="scroll-mt-32">
+              <DashboardPriorityActions
+                openShiftTrades={openShiftTrades}
+                pendingLeaveRequests={pendingLeaveRequests}
+                staffingWarningsCount={staffingWarnings.length}
+                sourceStatus={sourceStatus}
+                moduleAccess={moduleAccess}
+                hasAdministrativeAccess={hasAdministrativeAccess}
+              />
+            </div>
+
+            <div id="dashboard-daily-overview" className="scroll-mt-32">
+              <DashboardSummaryCards
+                todayPlannedHours={todayPlannedHours}
+                myRegisteredHours={myRegisteredHours}
+                movieCount={movies.length}
+                soldSeatsToday={soldSeatsToday}
+                seatLoadPercent={seatLoadPercent}
+                shiftCount={shifts.length}
+                canShowPersonalTime={currentUser.role !== "MASTER"}
+                sourceStatus={sourceStatus}
+                moduleAccess={moduleAccess}
+              />
+            </div>
+
+            <div id="dashboard-work-forward" className="scroll-mt-32">
+              <DashboardOverviewSections
+                moduleAccess={moduleAccess}
+                hasAdministrativeAccess={hasAdministrativeAccess}
+              />
+            </div>
+
+            {showStaffingAi && (
+              <>
+                <div id="dashboard-staffing" className="scroll-mt-32">
+                  <DashboardStaffingSections
+                    staffingWarnings={staffingWarnings}
+                    predictiveStaffing={predictiveStaffing}
+                    hasMovieShowings={hasMovieShowings}
+                    shiftsSourceStatus={sourceStatus.shifts}
+                    moviesSourceStatus={sourceStatus.movies}
+                    hasAdministrativeAccess={hasAdministrativeAccess}
                   />
-                  <div className="space-y-6">
-                    <DashboardAnalysisMethod
-                      shiftCount={shifts.length}
-                      movieCount={movies.length}
-                      shiftsSourceStatus={sourceStatus.shifts}
-                      moviesSourceStatus={sourceStatus.movies}
-                      hasAdministrativeAccess={hasAdministrativeAccess}
+                </div>
+
+                {showAnalysis ? (
+                  <section
+                    id="dashboard-analysis"
+                    aria-labelledby="dashboard-analysis-heading"
+                    className="scroll-mt-32"
+                  >
+                    <DashboardSectionHeading
+                      id="dashboard-analysis-heading"
+                      eyebrow="Automatisk analyse"
+                      title="Automatiske vurderinger"
+                      description="Gennemgå beregningsgrundlaget, de udløste regler og dagens vagtbelastning. Hver del viser, når datagrundlaget er gammelt eller utilgængeligt."
                     />
-                    <AiOperationsCommandCenter
-                      operationsHealth={operationsHealth}
-                      operationalRecommendations={
-                        operationalRecommendations
-                      }
-                      shiftsSourceStatus={sourceStatus.shifts}
-                      moviesSourceStatus={sourceStatus.movies}
-                      hasAdministrativeAccess={hasAdministrativeAccess}
-                    />
-                    <AiStaffingHeatmap
-                      staffingHeatmap={staffingHeatmap}
-                      shiftsSourceStatus={sourceStatus.shifts}
-                    />
-                    <div className="grid gap-6 2xl:grid-cols-2">
-                      <AiLearningAnalytics
-                        aiLearningAnalytics={aiLearningAnalytics}
+                    <div className="space-y-6">
+                      <DashboardAnalysisMethod
+                        shiftCount={shifts.length}
+                        movieCount={movies.length}
                         shiftsSourceStatus={sourceStatus.shifts}
                         moviesSourceStatus={sourceStatus.movies}
+                        hasAdministrativeAccess={hasAdministrativeAccess}
                       />
-                      <AiPatternInsights
-                        aiPatternInsights={aiPatternInsights}
+                      <AiOperationsCommandCenter
+                        operationsHealth={operationsHealth}
+                        operationalRecommendations={operationalRecommendations}
+                        shiftsSourceStatus={sourceStatus.shifts}
+                        moviesSourceStatus={sourceStatus.movies}
+                        hasAdministrativeAccess={hasAdministrativeAccess}
+                      />
+                      <AiStaffingHeatmap
+                        staffingHeatmap={staffingHeatmap}
                         shiftsSourceStatus={sourceStatus.shifts}
                       />
+                      <div className="grid gap-6 2xl:grid-cols-2">
+                        <AiLearningAnalytics
+                          aiLearningAnalytics={aiLearningAnalytics}
+                          shiftsSourceStatus={sourceStatus.shifts}
+                          moviesSourceStatus={sourceStatus.movies}
+                        />
+                        <AiPatternInsights
+                          aiPatternInsights={aiPatternInsights}
+                          shiftsSourceStatus={sourceStatus.shifts}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </section>
+                  </section>
+                ) : (
+                  <DashboardAnalysisCollapsed
+                    onViewModeChange={dashboardView.setViewMode}
+                  />
+                )}
               </>
             )}
           </>
