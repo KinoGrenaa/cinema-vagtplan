@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-
+import { getTodayLocalDate } from "@/app/utils/dateTime";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
 import AiPatternInsights from "./components/ai/AiPatternInsights";
@@ -9,7 +9,9 @@ import AiStaffingHeatmap from "./components/ai/AiStaffingHeatmap";
 import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
 import DashboardAnalysisCollapsed from "./components/layout/DashboardAnalysisCollapsed";
 import DashboardHeader from "./components/layout/DashboardHeader";
+import DashboardPrintSummary from "./components/layout/DashboardPrintSummary";
 import DashboardSectionHeading from "./components/layout/DashboardSectionHeading";
+import DashboardSnapshotActions from "./components/layout/DashboardSnapshotActions";
 import DashboardWorkspaceNavigation from "./components/layout/DashboardWorkspaceNavigation";
 import OperationsStatus from "./components/operations/OperationsStatus";
 import DashboardOverviewSections from "./components/overview/DashboardOverviewSections";
@@ -19,6 +21,7 @@ import DashboardStaffingSections from "./components/staffing/DashboardStaffingSe
 import DashboardConnectivityNotice from "./components/status/DashboardConnectivityNotice";
 import DashboardDataCoverage from "./components/status/DashboardDataCoverage";
 import DashboardDataStatus from "./components/status/DashboardDataStatus";
+import { createDashboardSnapshot } from "./helpers/dashboardSnapshot";
 import { summarizeDashboardSources } from "./helpers/dashboardSourceHealth";
 import { getDashboardWorkspaceSections } from "./helpers/dashboardWorkspace";
 import { useDashboard } from "./hooks/useDashboard";
@@ -65,7 +68,6 @@ export default function DashboardPage() {
     hasLoadedDashboard,
     errorMessage,
   });
-
   const sourceSummary = summarizeDashboardSources(
     sourceStatus,
     sourceHistory,
@@ -132,10 +134,35 @@ export default function DashboardPage() {
     priorityCount,
     staffingWarningsCount: staffingWarnings.length,
   });
+  const dashboardSnapshot = createDashboardSnapshot({
+    date: getTodayLocalDate(),
+    user: currentUser,
+    viewMode: dashboardView.viewMode,
+    metrics: {
+      plannedHours: todayPlannedHours,
+      registeredHours: myRegisteredHours,
+      shiftCount: shifts.length,
+      movieCount: movies.length,
+      soldSeats: soldSeatsToday,
+      seatLoadPercent,
+      canShowPersonalTime: currentUser.role !== "MASTER",
+    },
+    tasks: {
+      pendingLeaveRequests,
+      openShiftTrades,
+      staffingWarningsCount: staffingWarnings.length,
+    },
+    staffingWarnings,
+    predictiveStaffing,
+    recommendations: operationalRecommendations,
+    sourceStatus,
+    moduleAccess,
+  });
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-8">
+      <DashboardPrintSummary snapshot={dashboardSnapshot} />
+      <div className="mx-auto max-w-7xl space-y-8 print:hidden">
         <DashboardHeader
           onRefresh={reloadDashboard}
           isRefreshing={refreshing}
@@ -147,18 +174,20 @@ export default function DashboardPage() {
           sourceSummary={sourceSummary}
           onAutoRefreshChange={autoRefresh.setAutoRefreshEnabled}
         />
+        <DashboardSnapshotActions
+          snapshot={dashboardSnapshot}
+          disabled={!hasLoadedDashboard}
+        />
         <DashboardConnectivityNotice
           isOnline={autoRefresh.isOnline}
           autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
         />
-
         {hasLoadedDashboard && (
           <DashboardDataStatus
             sourceStatus={sourceStatus}
             sourceHistory={sourceHistory}
           />
         )}
-
         {errorMessage && (
           <section
             role="alert"
@@ -187,7 +216,6 @@ export default function DashboardPage() {
             </button>
           </section>
         )}
-
         {hasLoadedDashboard && !errorMessage && (
           <DashboardDataCoverage
             sourceStatus={sourceStatus}
@@ -197,7 +225,6 @@ export default function DashboardPage() {
             autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
           />
         )}
-
         {showDashboardContent && (
           <>
             <DashboardWorkspaceNavigation
@@ -205,7 +232,6 @@ export default function DashboardPage() {
               viewMode={dashboardView.viewMode}
               onViewModeChange={dashboardView.setViewMode}
             />
-
             {showStaffingAi && (
               <div
                 id="dashboard-operations-status"
@@ -220,7 +246,6 @@ export default function DashboardPage() {
                 />
               </div>
             )}
-
             <div
               id="dashboard-priority-actions"
               tabIndex={-1}
@@ -235,7 +260,6 @@ export default function DashboardPage() {
                 hasAdministrativeAccess={hasAdministrativeAccess}
               />
             </div>
-
             <div
               id="dashboard-daily-overview"
               tabIndex={-1}
@@ -253,7 +277,6 @@ export default function DashboardPage() {
                 moduleAccess={moduleAccess}
               />
             </div>
-
             <div
               id="dashboard-work-forward"
               tabIndex={-1}
@@ -264,7 +287,6 @@ export default function DashboardPage() {
                 hasAdministrativeAccess={hasAdministrativeAccess}
               />
             </div>
-
             {showStaffingAi && (
               <>
                 <div
@@ -281,7 +303,6 @@ export default function DashboardPage() {
                     hasAdministrativeAccess={hasAdministrativeAccess}
                   />
                 </div>
-
                 {showAnalysis ? (
                   <section
                     id="dashboard-analysis"
