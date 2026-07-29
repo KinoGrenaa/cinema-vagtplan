@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-
 import DashboardAnalysisMethod from "./components/analysis/DashboardAnalysisMethod";
 import AiLearningAnalytics from "./components/ai/AiLearningAnalytics";
 import AiOperationsCommandCenter from "./components/ai/AiOperationsCommandCenter";
@@ -14,8 +13,10 @@ import DashboardOverviewSections from "./components/overview/DashboardOverviewSe
 import DashboardPriorityActions from "./components/overview/DashboardPriorityActions";
 import DashboardSummaryCards from "./components/overview/DashboardSummaryCards";
 import DashboardStaffingSections from "./components/staffing/DashboardStaffingSections";
+import DashboardConnectivityNotice from "./components/status/DashboardConnectivityNotice";
 import DashboardDataCoverage from "./components/status/DashboardDataCoverage";
 import { useDashboard } from "./hooks/useDashboard";
+import { useDashboardAutoRefresh } from "./hooks/useDashboardAutoRefresh";
 
 export default function DashboardPage() {
   const {
@@ -46,6 +47,15 @@ export default function DashboardPage() {
     errorMessage,
     reloadDashboard,
   } = useDashboard();
+  const autoRefresh = useDashboardAutoRefresh({
+    canRefresh:
+      hasLoadedDashboard &&
+      Boolean(currentUser) &&
+      !needsMasterCinemaSelection,
+    isRefreshing: refreshing,
+    lastUpdatedAt,
+    onRefresh: reloadDashboard,
+  });
 
   if (loading || !currentUser) {
     return (
@@ -56,7 +66,6 @@ export default function DashboardPage() {
       </main>
     );
   }
-
   if (needsMasterCinemaSelection) {
     return (
       <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
@@ -82,7 +91,6 @@ export default function DashboardPage() {
       </main>
     );
   }
-
   const showStaffingAi =
     moduleAccess.staffingAi && moduleAccess.schedule;
   const hasAdministrativeAccess =
@@ -90,7 +98,6 @@ export default function DashboardPage() {
   const showDashboardContent =
     !errorMessage || hasLoadedDashboard;
   const hasMovieShowings = movies.length > 0;
-
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -98,8 +105,16 @@ export default function DashboardPage() {
           onRefresh={reloadDashboard}
           isRefreshing={refreshing}
           lastUpdatedAt={lastUpdatedAt}
+          autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
+          autoRefreshState={autoRefresh.state}
+          nextRefreshAt={autoRefresh.nextRefreshAt}
+          secondsUntilRefresh={autoRefresh.secondsUntilRefresh}
+          onAutoRefreshChange={autoRefresh.setAutoRefreshEnabled}
         />
-
+        <DashboardConnectivityNotice
+          isOnline={autoRefresh.isOnline}
+          autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
+        />
         {errorMessage && (
           <section
             role="alert"
@@ -128,15 +143,14 @@ export default function DashboardPage() {
             </button>
           </section>
         )}
-
         {hasLoadedDashboard && !errorMessage && (
           <DashboardDataCoverage
             sourceStatus={sourceStatus}
             onRefresh={reloadDashboard}
             isRefreshing={refreshing}
+            autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
           />
         )}
-
         {showDashboardContent && (
           <>
             {showStaffingAi && (
@@ -147,7 +161,6 @@ export default function DashboardPage() {
                 hasMovieShowings={hasMovieShowings}
               />
             )}
-
             <DashboardPriorityActions
               openShiftTrades={openShiftTrades}
               pendingLeaveRequests={pendingLeaveRequests}
@@ -156,7 +169,6 @@ export default function DashboardPage() {
               moduleAccess={moduleAccess}
               hasAdministrativeAccess={hasAdministrativeAccess}
             />
-
             <DashboardSummaryCards
               todayPlannedHours={todayPlannedHours}
               myRegisteredHours={myRegisteredHours}
@@ -168,12 +180,10 @@ export default function DashboardPage() {
               sourceStatus={sourceStatus}
               moduleAccess={moduleAccess}
             />
-
             <DashboardOverviewSections
               moduleAccess={moduleAccess}
               hasAdministrativeAccess={hasAdministrativeAccess}
             />
-
             {showStaffingAi && (
               <>
                 <DashboardStaffingSections
@@ -184,7 +194,6 @@ export default function DashboardPage() {
                   moviesSourceStatus={sourceStatus.movies}
                   hasAdministrativeAccess={hasAdministrativeAccess}
                 />
-
                 <section aria-labelledby="dashboard-analysis-heading">
                   <DashboardSectionHeading
                     id="dashboard-analysis-heading"

@@ -16,17 +16,18 @@ const SOURCE_LABELS: Record<DashboardSourceKey, string> = {
 const SOURCE_KEYS = Object.keys(
   SOURCE_LABELS,
 ) as DashboardSourceKey[];
-
 type DashboardDataCoverageProps = {
   sourceStatus: DashboardSourceStatusMap;
   onRefresh: () => void;
   isRefreshing: boolean;
+  autoRefreshEnabled: boolean;
 };
 
 export default function DashboardDataCoverage({
   sourceStatus,
   onRefresh,
   isRefreshing,
+  autoRefreshEnabled,
 }: DashboardDataCoverageProps) {
   const affectedSources = SOURCE_KEYS.filter(
     (key) =>
@@ -37,13 +38,11 @@ export default function DashboardDataCoverage({
   if (affectedSources.length === 0) {
     return null;
   }
-
   const staleCount = affectedSources.filter(
     (key) => sourceStatus[key].state === "stale",
   ).length;
   const unavailableCount =
     affectedSources.length - staleCount;
-
   return (
     <section
       aria-labelledby="dashboard-data-coverage-heading"
@@ -65,6 +64,11 @@ export default function DashboardDataCoverage({
             bevares, når de findes, så en enkelt fejl ikke fjerner hele
             driftsoverblikket.
           </p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900 dark:text-amber-100/90">
+            {autoRefreshEnabled
+              ? "Dashboardet prøver automatisk igen ved næste opdatering."
+              : "Automatisk opdatering er slået fra. Brug knappen for at prøve igen."}
+          </p>
         </div>
         <button
           type="button"
@@ -78,12 +82,10 @@ export default function DashboardDataCoverage({
             : "Prøv manglende data igen"}
         </button>
       </div>
-
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {affectedSources.map((key) => {
           const status = sourceStatus[key];
           const isStale = status.state === "stale";
-
           return (
             <div
               key={key}
@@ -113,7 +115,6 @@ export default function DashboardDataCoverage({
           );
         })}
       </div>
-
       <p className="mt-4 text-xs text-amber-700 dark:text-amber-300">
         {staleCount > 0 && unavailableCount > 0
           ? `${staleCount} datakilde${
