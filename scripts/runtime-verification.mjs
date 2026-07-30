@@ -9,10 +9,9 @@ const expectedRestartNoise = [
   /npm error path \/app/i,
   /npm error command failed/i,
   /npm error signal SIGTERM/i,
-  /npm error command sh -c (?:nest start --watch|next dev)/i,
+  /npm error command sh -c (?:nest start --watch|next dev|node \.\/scripts\/start-container\.mjs)/i,
   /A complete log of this run can be found/i,
 ];
-
 const fatalRuntimePatterns = [
   /UnhandledPromiseRejection/i,
   /uncaught exception/i,
@@ -27,7 +26,6 @@ const fatalRuntimePatterns = [
   /MODULE_NOT_FOUND/i,
   /npm error/i,
 ];
-
 function parsePositiveInteger(value, optionName) {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
@@ -35,7 +33,6 @@ function parsePositiveInteger(value, optionName) {
   }
   return parsed;
 }
-
 function parseUrl(value, optionName) {
   let parsed;
   try {
@@ -55,7 +52,6 @@ export function parseRuntimeArguments(argv) {
     showLogs: false,
     since: null,
   };
-
   for (const argument of argv) {
     if (argument === "--show-logs") {
       options.showLogs = true;
@@ -86,7 +82,6 @@ export function parseRuntimeArguments(argv) {
     }
     throw new Error(`Ukendt runtime-parameter: ${argument}`);
   }
-
   if (options.intervalMs > options.timeoutMs) {
     throw new Error("--interval-ms må ikke være større end --timeout-ms.");
   }
@@ -97,7 +92,6 @@ export function isAcceptableStatus(status, { acceptClientErrors = false } = {}) 
   const upperBound = acceptClientErrors ? 500 : 400;
   return Number.isInteger(status) && status >= 200 && status < upperBound;
 }
-
 export function validateProbe({
   acceptClientErrors = false,
   body = "",
@@ -112,7 +106,6 @@ export function validateProbe({
   }
   return null;
 }
-
 export function findRuntimeLogIssues(logText) {
   const lines = String(logText ?? "").split(/\r?\n/);
   return lines
@@ -122,12 +115,27 @@ export function findRuntimeLogIssues(logText) {
     .filter((line) => fatalRuntimePatterns.some((pattern) => pattern.test(line)));
 }
 
+export function formatRuntimeDuration(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "ukendt tid";
+  if (milliseconds < 1_000) return `${Math.round(milliseconds)} ms`;
+  return `${(milliseconds / 1_000).toFixed(1).replace(".", ",")} s`;
+}
+
 export function formatProbeProgress(results) {
   return results
-    .map(({ label, error }) => `${label}: ${error ? `venter (${error})` : "klar"}`)
+    .map(({ label, error, readyAfterMs }) => {
+      if (error) return `${label}: venter (${error})`;
+      return `${label}: klar${Number.isFinite(readyAfterMs) ? ` efter ${formatRuntimeDuration(readyAfterMs)}` : ""}`;
+    })
     .join(" · ");
 }
 
-export function buildRuntimeSummary({ backendStatus, frontendStatus, logIssueCount }) {
-  return `Runtime-smoke OK: backend HTTP ${backendStatus}, frontend HTTP ${frontendStatus}, ${logIssueCount} nye fatale logfejl.`;
+export function buildRuntimeSummary({
+  backendReadyMs,
+  backendStatus,
+  frontendReadyMs,
+  frontendStatus,
+  logIssueCount,
+}) {
+  return `Runtime-smoke OK: backend HTTP ${backendStatus} efter ${formatRuntimeDuration(backendReadyMs)}, frontend HTTP ${frontendStatus} efter ${formatRuntimeDuration(frontendReadyMs)}, ${logIssueCount} nye fatale logfejl.`;
 }

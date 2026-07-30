@@ -11,12 +11,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
   backend:
     build:
       context: ./backend
     container_name: cinema-vagtplan-backend
     restart: unless-stopped
+    command: ["npm", "run", "start:container"]
     ports:
       - "3001:3001"
       - "5555:5555"
@@ -26,8 +26,8 @@ services:
       - database
     volumes:
       - ./backend:/app
+      - backend_dist:/app/runtime-dist
       - /app/node_modules
-
   frontend:
     build:
       context: ./frontend
@@ -46,3 +46,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_dist:

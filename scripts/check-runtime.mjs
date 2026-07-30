@@ -16,7 +16,6 @@ try {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(2);
 }
-
 function runDocker(args, { capture = false } = {}) {
   const result = spawnSync("docker", ["compose", ...args], {
     cwd: repoRoot,
@@ -31,7 +30,6 @@ function runDocker(args, { capture = false } = {}) {
   }
   return capture ? result.stdout ?? "" : "";
 }
-
 function verifyRunningServices() {
   const output = runDocker(["ps", "--services", "--status", "running"], { capture: true });
   const running = new Set(output.split(/\r?\n/).map((value) => value.trim()).filter(Boolean));
@@ -40,7 +38,6 @@ function verifyRunningServices() {
     throw new Error(`Følgende services kører ikke: ${missing.join(", ")}`);
   }
 }
-
 async function probe(label, url, { acceptClientErrors = false, expectedText = null } = {}) {
   try {
     const response = await fetch(url, {
@@ -66,23 +63,37 @@ async function probe(label, url, { acceptClientErrors = false, expectedText = nu
     };
   }
 }
-
 async function waitForReadiness() {
-  const deadline = Date.now() + options.timeoutMs;
+  const startedAt = Date.now();
+  const deadline = startedAt + options.timeoutMs;
+  const readyAt = new Map();
   let lastResults = [];
+
   while (Date.now() <= deadline) {
     verifyRunningServices();
-    lastResults = await Promise.all([
+    const checkedAt = Date.now();
+    const probeResults = await Promise.all([
       probe("Backend", options.backendUrl, { acceptClientErrors: true }),
       probe("Frontend", options.frontendUrl),
     ]);
+
+    for (const result of probeResults) {
+      if (!result.error && !readyAt.has(result.label)) {
+        readyAt.set(result.label, checkedAt - startedAt);
+      }
+    }
+
+    lastResults = probeResults.map((result) => ({
+      ...result,
+      readyAfterMs: readyAt.get(result.label) ?? null,
+    }));
+
     if (lastResults.every((result) => !result.error)) return lastResults;
     console.log(formatProbeProgress(lastResults));
     await new Promise((resolvePromise) => setTimeout(resolvePromise, options.intervalMs));
   }
   throw new Error(`Services blev ikke klar inden for ${options.timeoutMs} ms: ${formatProbeProgress(lastResults)}`);
 }
-
 function readCurrentRestartLogs() {
   const since = options.since ?? new Date(Date.now() - 5 * 60_000).toISOString();
   return runDocker([
@@ -94,7 +105,6 @@ function readCurrentRestartLogs() {
     "frontend",
   ], { capture: true });
 }
-
 try {
   console.log("Venter på backend og frontend efter genstart...");
   const results = await waitForReadiness();
@@ -113,7 +123,9 @@ try {
   const backend = results.find((result) => result.label === "Backend");
   const frontend = results.find((result) => result.label === "Frontend");
   console.log(`\n${buildRuntimeSummary({
+    backendReadyMs: backend?.readyAfterMs ?? Number.NaN,
     backendStatus: backend?.status ?? "ukendt",
+    frontendReadyMs: frontend?.readyAfterMs ?? Number.NaN,
     frontendStatus: frontend?.status ?? "ukendt",
     logIssueCount: issues.length,
   })}`);
