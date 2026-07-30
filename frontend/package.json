@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:dashboard": "node ./scripts/run-dashboard-tests.mjs"
+    "test:dashboard": "node ./scripts/run-dashboard-tests.mjs",
+    "verify:release": "npm run test:dashboard && npm run build"
   },
   "dependencies": {
     "lucide-react": "^1.17.0",

@@ -18,6 +18,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:release": "jest --config ./test/jest-e2e.json release-regression.e2e-spec.ts --runInBand",
+    "verify:release": "npm run test:release && npm run build",
     "seed": "ts-node prisma/seed.ts",
     "seed:temporary-movie-showings": "ts-node prisma/seed-temporary-movie-showings.ts"
   },
@@ -53,7 +55,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
-    "@types/multer": "^2.1.0",
+    "@types/multer": "^2.0.0",
     "@types/node": "^24.0.0",
     "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.0.0",

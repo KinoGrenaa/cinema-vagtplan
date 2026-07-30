@@ -1,4 +1,11 @@
 {
+  "private": true,
+  "scripts": {
+    "check:release-hygiene": "node ./scripts/check-release-hygiene.mjs",
+    "verify:release": "node ./scripts/run-release-checks.mjs",
+    "verify:release:quick": "node ./scripts/run-release-checks.mjs --quick",
+    "verify:release:restart": "node ./scripts/run-release-checks.mjs --restart"
+  },
   "dependencies": {
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
@@ -8,7 +15,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
-    "@types/passport-jwt": "^4.0.1",
+    "@types/passport-jwt": "^4.1.0",
     "prettier": "^3.8.3"
   }
 }
