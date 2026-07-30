@@ -14,7 +14,6 @@ const allowedArgs = new Set([
   "--skip-build",
 ]);
 const unknownArgs = [...args].filter((arg) => !allowedArgs.has(arg));
-
 if (unknownArgs.length > 0) {
   console.error(`Ukendte argumenter: ${unknownArgs.join(", ")}`);
   process.exit(2);
@@ -30,7 +29,6 @@ const skipBuild = args.has("--skip-build");
 const listOnly = args.has("--list");
 const npmInvocation = resolveNpmInvocation();
 let restartStartedAt = null;
-
 function step(label, command, commandArgs, options = {}) {
   return {
     label,
@@ -51,6 +49,14 @@ function dockerStep(label, service, commandArgs) {
     ...commandArgs,
   ]);
 }
+function dockerRunStep(label, service, commandArgs, { build = false } = {}) {
+  const runArgs = ["compose", "run", "--rm", "--no-deps", "-T"];
+  if (build) {
+    runArgs.push("--build");
+  }
+  runArgs.push(service, ...commandArgs);
+  return step(label, "docker", runArgs);
+}
 function npmStep(label, directory, commandArgs) {
   return step(
     label,
@@ -62,28 +68,53 @@ function npmStep(label, directory, commandArgs) {
     },
   );
 }
-
 const steps = [
   step("Git whitespace-kontrol", "git", ["diff", "--check"]),
   step("Release-hygiejne", process.execPath, [
     resolve(repoRoot, "scripts", "check-release-hygiene.mjs"),
   ]),
   npmStep("Releaseværktøjernes regression", ".", ["run", "test:release-scripts"]),
+  npmStep("Backend dependency-/Docker-hardening", ".", ["run", "check:backend-hardening"]),
 ];
 if (!useHost) {
-  steps.push(step("Docker Compose-konfiguration", "docker", ["compose", "config", "--quiet"]));
+  steps.push(
+    step("Docker Compose-konfiguration", "docker", ["compose", "config", "--quiet"]),
+    dockerRunStep(
+      "Backend runtime-image har kun produktionsafhængigheder og genereret Prisma Client",
+      "backend",
+      [
+        "node",
+        "-e",
+        "const fs=require('node:fs'); require('@prisma/client'); require('bcrypt'); const archive=require('archiver')('zip'); if(typeof archive.append!=='function'||typeof archive.finalize!=='function') throw new Error('Archiver-adapterens kontrakt er ugyldig'); archive.abort(); const forbidden=['jest','prisma','ts-node','typescript','@nestjs/cli']; const present=forbidden.filter((name)=>fs.existsSync('/app/node_modules/'+name)); if(present.length) throw new Error('DevDependencies i runtime-image: '+present.join(', ')); if(!fs.existsSync('/app/node_modules/.prisma/client')) throw new Error('Genereret Prisma Client mangler'); console.log('Runtime-afhængigheder, Archiver-adapter og Prisma Client OK.');",
+      ],
+      { build: true },
+    ),
+  );
 }
+steps.push(
+  useHost
+    ? npmStep("Backend production audit", "backend", ["run", "audit:prod"])
+    : dockerRunStep("Backend production audit", "backend-build", ["npm", "run", "audit:prod"], { build: true }),
+  useHost
+    ? npmStep("Backend samlet auditrapport (dev-only)", "backend", ["run", "audit:report"])
+    : dockerRunStep("Backend samlet auditrapport (dev-only)", "backend-build", ["npm", "run", "audit:report"]),
+);
+steps.push(
+  useHost
+    ? npmStep("Backend XLSX-hardening", "backend", ["run", "test:xlsx-hardening"])
+    : dockerRunStep("Backend XLSX-hardening", "backend-build", ["npm", "run", "test:xlsx-hardening"]),
+);
 if (!quick) {
   steps.push(
     useHost
       ? npmStep("Fuld backend-testsuite", "backend", ["test", "--", "--runInBand"])
-      : dockerStep("Fuld backend-testsuite", "backend", ["npm", "test", "--", "--runInBand"]),
+      : dockerRunStep("Fuld backend-testsuite", "backend-build", ["npm", "test", "--", "--runInBand"]),
   );
 }
 steps.push(
   useHost
     ? npmStep("Backend release-regression", "backend", ["run", "test:release"])
-    : dockerStep("Backend release-regression", "backend", ["npm", "run", "test:release"]),
+    : dockerRunStep("Backend release-regression", "backend-build", ["npm", "run", "test:release"]),
   useHost
     ? npmStep("Dashboard-regression", "frontend", ["run", "test:dashboard"])
     : dockerStep("Dashboard-regression", "frontend", ["npm", "run", "test:dashboard"]),
@@ -92,7 +123,7 @@ if (!skipBuild) {
   steps.push(
     useHost
       ? npmStep("Backend-build", "backend", ["run", "build"])
-      : dockerStep("Backend-build", "backend", ["npm", "run", "build"]),
+      : dockerRunStep("Backend-build", "backend-build", ["npm", "run", "build"]),
     useHost
       ? npmStep("Frontend-build", "frontend", ["run", "build"])
       : dockerStep("Frontend-build", "frontend", ["npm", "run", "build"]),
@@ -104,16 +135,23 @@ if (restart) {
     process.exit(2);
   }
   steps.push(
-    step("Genstart backend og frontend", "docker", [
+    step("Recreate backend med nyt runtime-image", "docker", [
       "compose",
-      "restart",
+      "up",
+      "-d",
+      "--build",
+      "--force-recreate",
       "backend",
-      "frontend",
     ], {
       beforeRun: () => {
         restartStartedAt = new Date().toISOString();
       },
     }),
+    step("Genstart frontend", "docker", [
+      "compose",
+      "restart",
+      "frontend",
+    ]),
     step("Runtime-readiness, HTTP-smoke og nye logs", process.execPath, [
       resolve(repoRoot, "scripts", "check-runtime.mjs"),
       "--since=<genstartstidspunkt>",
@@ -127,7 +165,6 @@ if (restart) {
     }),
   );
 }
-
 function printableCommand(item, commandArgs = item.args) {
   const command = [item.command, ...commandArgs]
     .map((value) => (/\s/.test(value) ? JSON.stringify(value) : value))
@@ -145,7 +182,6 @@ if (listOnly) {
   });
   process.exit(0);
 }
-
 const startedAt = Date.now();
 console.log(`Starter ${quick ? "hurtig" : "fuld"} releasekontrol i ${useHost ? "host" : "Docker"}-tilstand.`);
 for (const [index, item] of steps.entries()) {
@@ -153,7 +189,6 @@ for (const [index, item] of steps.entries()) {
   item.beforeRun?.();
   const commandArgs = item.getArgs ? item.getArgs() : item.args;
   console.log(printableCommand(item, commandArgs));
-
   const result = spawnSync(item.command, commandArgs, {
     cwd: item.cwd,
     stdio: "inherit",
@@ -168,6 +203,5 @@ for (const [index, item] of steps.entries()) {
     process.exit(result.status ?? 1);
   }
 }
-
 const seconds = Math.round((Date.now() - startedAt) / 1000);
 console.log(`\nReleasekontrol bestået: ${steps.length} trin gennemført på ${seconds} sekunder.`);

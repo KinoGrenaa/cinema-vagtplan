@@ -4,7 +4,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 
-import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
@@ -16,10 +15,9 @@ import { RealtimeModule } from '../realtime/realtime.module';
 
     RealtimeModule,
   ],
-
   controllers: [NotificationsController],
 
-  providers: [NotificationsService, PrismaService],
+  providers: [NotificationsService],
 
   exports: [NotificationsService],
 })

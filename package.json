@@ -3,6 +3,7 @@
   "scripts": {
     "check:release-hygiene": "node ./scripts/check-release-hygiene.mjs",
     "check:runtime": "node ./scripts/check-runtime.mjs",
+    "check:backend-hardening": "node ./scripts/check-backend-hardening.mjs",
     "test:release-scripts": "node --test ./scripts/*.test.mjs",
     "verify:release": "node ./scripts/run-release-checks.mjs",
     "verify:release:quick": "node ./scripts/run-release-checks.mjs --quick",

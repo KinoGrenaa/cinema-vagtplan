@@ -1,0 +1,14 @@
+{
+  "name": "@kino-grenaa/archiver-compat",
+  "version": "1.0.0",
+  "description": "CommonJS Archiver factory compatibility adapter for ExcelJS on Node.js 22",
+  "private": true,
+  "license": "UNLICENSED",
+  "main": "./index.cjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "archiver-modern": "npm:archiver@8.0.0"
+  }
+}

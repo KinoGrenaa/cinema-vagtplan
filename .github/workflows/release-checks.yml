@@ -24,8 +24,10 @@ jobs:
           node-version: 22
       - run: node ./scripts/check-release-hygiene.mjs
       - run: npm run test:release-scripts
+      - run: npm run check:backend-hardening
+
   backend:
-    name: Backend tests and build
+    name: Backend tests, audit and runtime image
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,9 +40,26 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - run: npm run audit:prod
+      - run: npm run audit:report
+      - run: npm run test:xlsx-hardening
       - run: npm test -- --runInBand
       - run: npm run test:release
       - run: npm run build
+      - run: docker build --target runtime -t cinema-vagtplan-backend:ci .
+      - name: Verify production-only runtime dependencies and Prisma Client
+        run: >-
+          docker run --rm --entrypoint node cinema-vagtplan-backend:ci -e
+          "const fs=require('node:fs'); require('@prisma/client'); require('bcrypt');
+          const archive=require('archiver')('zip');
+          if(typeof archive.append!=='function'||typeof archive.finalize!=='function') throw new Error('Archiver-adapterens kontrakt er ugyldig');
+          archive.abort();
+          const forbidden=['jest','prisma','ts-node','typescript','@nestjs/cli'];
+          const present=forbidden.filter((name)=>fs.existsSync('/app/node_modules/'+name));
+          if(present.length) throw new Error('DevDependencies i runtime-image: '+present.join(', '));
+          if(!fs.existsSync('/app/node_modules/.prisma/client')) throw new Error('Genereret Prisma Client mangler');
+          console.log('Runtime-afhængigheder, Archiver-adapter og Prisma Client OK.');"
+
   frontend:
     name: Frontend tests and build
     runs-on: ubuntu-latest
