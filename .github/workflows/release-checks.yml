@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   hygiene:
-    name: Repository hygiene
+    name: Repository and release tools
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 22
       - run: node ./scripts/check-release-hygiene.mjs
-
+      - run: npm run test:release-scripts
   backend:
     name: Backend tests and build
     runs-on: ubuntu-latest
@@ -41,7 +41,6 @@ jobs:
       - run: npm test -- --runInBand
       - run: npm run test:release
       - run: npm run build
-
   frontend:
     name: Frontend tests and build
     runs-on: ubuntu-latest
