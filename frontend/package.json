@@ -6,13 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:container": "node ./scripts/start-container.mjs",
     "lint": "eslint",
     "test:dashboard": "node ./scripts/run-dashboard-tests.mjs",
-    "verify:release": "npm run test:dashboard && npm run build"
+    "audit:prod": "npm audit --omit=dev --audit-level=low",
+    "audit:all": "npm audit --audit-level=high",
+    "audit:report": "node ./scripts/report-frontend-audit.mjs",
+    "check:hardening": "node ../scripts/check-frontend-hardening.mjs",
+    "verify:release": "npm run check:hardening && npm run audit:prod && npm run audit:report && npm run test:dashboard && npm run build"
   },
   "dependencies": {
     "lucide-react": "^1.17.0",
-    "next": "16.2.6",
+    "next": "16.2.12",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-rnd": "^10.5.3",
@@ -26,8 +31,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "engine.io-client": "6.6.5",
+    "ws": "8.21.0",
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
   }
 }

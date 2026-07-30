@@ -12,7 +12,6 @@ concurrency:
 
 permissions:
   contents: read
-
 jobs:
   hygiene:
     name: Repository and release tools
@@ -25,7 +24,7 @@ jobs:
       - run: node ./scripts/check-release-hygiene.mjs
       - run: npm run test:release-scripts
       - run: npm run check:backend-hardening
-
+      - run: npm run check:frontend-hardening
   backend:
     name: Backend tests, audit and runtime image
     runs-on: ubuntu-latest
@@ -59,13 +58,9 @@ jobs:
           if(present.length) throw new Error('DevDependencies i runtime-image: '+present.join(', '));
           if(!fs.existsSync('/app/node_modules/.prisma/client')) throw new Error('Genereret Prisma Client mangler');
           console.log('Runtime-afhængigheder, Archiver-adapter og Prisma Client OK.');"
-
   frontend:
-    name: Frontend tests and build
+    name: Frontend tests, audit and runtime image
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     env:
       NEXT_PUBLIC_API_URL: http://localhost:3001
     steps:
@@ -76,5 +71,31 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+        working-directory: frontend
+      - run: npm run audit:prod
+        working-directory: frontend
+      - run: npm run audit:report
+        working-directory: frontend
       - run: npm run test:dashboard
+        working-directory: frontend
       - run: npm run build
+        working-directory: frontend
+      - name: Build frontend standalone runtime image
+        run: >-
+          docker build --target runtime
+          --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001
+          -f frontend/Dockerfile
+          -t cinema-vagtplan-frontend:ci .
+      - name: Verify minimal non-root frontend runtime image
+        run: >-
+          docker run --rm --entrypoint node cinema-vagtplan-frontend:ci -e
+          "const fs=require('node:fs');
+          const roots=['/app/node_modules','/app/frontend/node_modules'];
+          const forbidden=['typescript','eslint','tailwindcss','@types/node','@tailwindcss/postcss'];
+          const present=forbidden.filter((name)=>roots.some((root)=>fs.existsSync(root+'/'+name)));
+          if(present.length) throw new Error('DevDependencies i frontend runtime-image: '+present.join(', '));
+          if(fs.existsSync('/app/frontend/app')) throw new Error('Frontend-kildekode findes i runtime-imaget');
+          if(!['/app/frontend/server.js','/app/server.js'].some((path)=>fs.existsSync(path))) throw new Error('Standalone server.js mangler');
+          if(process.getuid&&process.getuid()===0) throw new Error('Frontend runtime koerer som root');
+          if(process.env.NODE_ENV!=='production') throw new Error('NODE_ENV er ikke production');
+          console.log('Frontend standalone runtime-image OK.');"

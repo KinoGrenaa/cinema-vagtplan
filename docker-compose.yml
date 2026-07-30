@@ -44,19 +44,36 @@ services:
       - /app/node_modules
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: runtime
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     container_name: cinema-vagtplan-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
     depends_on:
       - backend
+  frontend-build:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: dependencies
+    profiles:
+      - tools
+    working_dir: /app/frontend
+    command: ["node", "-e", "process.exit(0)"]
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     volumes:
-      - ./frontend:/app
-      - ./shared:/shared:ro
-      - /app/node_modules
+      - ./frontend:/app/frontend
+      - ./shared:/app/shared:ro
+      - /app/frontend/node_modules
 volumes:
   postgres_data:
   backend_dist:

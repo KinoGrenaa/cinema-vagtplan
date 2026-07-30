@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+*.zip
+backend
+scripts
+**/.dashboard-test-build
+**/.next
+**/coverage
+**/dist
+**/node_modules
+**/.env
+**/.env.*

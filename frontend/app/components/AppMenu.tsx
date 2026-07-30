@@ -112,12 +112,12 @@ export default function AppMenu() {
     },
     {
       id: "time-and-leave",
-      label: "Tid & fravÃ¦r",
+      label: "Tid & fravær",
       badge: leaveRequestCount,
       children: [
         {
           href: "/clock",
-          label: "RegistrÃ©r tid",
+          label: "Registrér tid",
           moduleKey: "TIME_TRACKING",
         },
         {
@@ -127,7 +127,7 @@ export default function AppMenu() {
         },
         {
           href: "/leave-requests",
-          label: "Mit fravÃ¦r",
+          label: "Mit fravær",
           moduleKey: "LEAVE",
         },
         {
@@ -138,13 +138,13 @@ export default function AppMenu() {
         },
         {
           href: "/absence-calendar",
-          label: "FravÃ¦rskalender",
+          label: "Fraværskalender",
           adminOnly: true,
           moduleKey: "LEAVE",
         },
         {
           href: "/leave-approval",
-          label: "Godkend fravÃ¦r",
+          label: "Godkend fravær",
           badge: leaveRequestCount,
           adminOnly: true,
           moduleKey: "LEAVE",
@@ -153,12 +153,12 @@ export default function AppMenu() {
     },
     {
       id: "planning",
-      label: "PlanlÃ¦gning",
+      label: "Planlægning",
       adminOnly: true,
       children: [
         {
           href: "/shift-planning",
-          label: "VagtplanlÃ¦gning",
+          label: "Vagtplanlægning",
           moduleKey: "SHIFT_PLANNING",
         },
         {
@@ -214,7 +214,7 @@ export default function AppMenu() {
     },
     {
       id: "employees-and-payroll",
-      label: "Medarbejdere & lÃ¸n",
+      label: "Medarbejdere & løn",
       adminOnly: true,
       children: [
         {
@@ -228,12 +228,12 @@ export default function AppMenu() {
         },
         {
           href: "/payroll",
-          label: "LÃ¸n",
+          label: "Løn",
           moduleKey: "PAYROLL",
         },
         {
           href: "/cinema-settings/payroll-types",
-          label: "LÃ¸narter",
+          label: "Lønarter",
           moduleKey: "PAYROLL",
         },
       ],
@@ -366,7 +366,7 @@ export default function AppMenu() {
         type="button"
         onClick={() => setOpen(true)}
         className="relative rounded-2xl border border-gray-800 bg-black p-3 text-white shadow-xl transition hover:scale-105 hover:bg-gray-800 active:scale-100 active:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-700 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:active:bg-gray-300 dark:focus-visible:ring-gray-300 dark:focus-visible:ring-offset-gray-950"
-        aria-label="Ã…bn menu"
+        aria-label="Åbn menu"
       >
         <Menu size={22} />
         {totalMenuBadgeCount > 0 && (
