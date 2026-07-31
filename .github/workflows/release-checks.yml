@@ -9,7 +9,6 @@ on:
 concurrency:
   group: release-checks-${{ github.ref }}
   cancel-in-progress: true
-
 permissions:
   contents: read
 jobs:
@@ -25,6 +24,7 @@ jobs:
       - run: npm run test:release-scripts
       - run: npm run check:backend-hardening
       - run: npm run check:frontend-hardening
+      - run: npm run check:frontend-flows
   backend:
     name: Backend tests, audit and runtime image
     runs-on: ubuntu-latest
@@ -99,3 +99,18 @@ jobs:
           if(process.getuid&&process.getuid()===0) throw new Error('Frontend runtime koerer som root');
           if(process.env.NODE_ENV!=='production') throw new Error('NODE_ENV er ikke production');
           console.log('Frontend standalone runtime-image OK.');"
+  frontend-flows:
+    name: Critical frontend flows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build Playwright flow-test image
+        run: >-
+          docker build --target flow-tests
+          --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001
+          -f frontend/Dockerfile
+          -t cinema-vagtplan-frontend-flow-tests:ci .
+      - name: Run critical browser flows
+        run: >-
+          docker run --rm --ipc=host
+          cinema-vagtplan-frontend-flow-tests:ci

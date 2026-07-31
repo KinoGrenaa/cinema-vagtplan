@@ -74,6 +74,19 @@ services:
       - ./frontend:/app/frontend
       - ./shared:/app/shared:ro
       - /app/frontend/node_modules
+  frontend-flow-tests:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+      target: flow-tests
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+    profiles:
+      - tools
+    init: true
+    ipc: host
+    volumes:
+      - ./frontend/test-results:/tests/test-results
 volumes:
   postgres_data:
   backend_dist:

@@ -2,7 +2,6 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
 import { resolveNpmInvocation } from "./release-command.mjs";
-
 const repoRoot = resolve(import.meta.dirname, "..");
 const args = new Set(process.argv.slice(2));
 const allowedArgs = new Set([
@@ -18,12 +17,10 @@ if (unknownArgs.length > 0) {
   console.error(`Ukendte argumenter: ${unknownArgs.join(", ")}`);
   process.exit(2);
 }
-
 if (args.has("--help")) {
-  console.log(`Releasekontrol\n\nBrug:\n  npm run verify:release\n  npm run verify:release:quick\n  npm run verify:release -- --restart\n  npm run verify:release -- --host\n  npm run verify:release -- --list\n\nArgumenter:\n  --quick       Spring den fulde backend-testsuite over.\n  --host        Kør npm-kommandoer direkte i backend/frontend.\n  --restart     Recreate Docker-runtime-images, vent på HTTP-readiness og kontroller nye logs.\n  --skip-build  Spring backend- og frontend-build over.\n  --list        Vis planen uden at udføre kommandoerne.\n`);
+  console.log(`Releasekontrol\n\nBrug:\n  npm run verify:release\n  npm run verify:release:quick\n  npm run verify:release -- --restart\n  npm run verify:release -- --host\n  npm run verify:release -- --list\n\nArgumenter:\n  --quick       Spring den fulde backend-testsuite over.\n  --host        Kør npm-kommandoer direkte i backend/frontend.\n  --restart     Recreate Docker-runtime-images, vent på HTTP-readiness og kontroller nye logs.\n  --skip-build  Spring backend-/frontend-build og browser-flowtests over.\n  --list        Vis planen uden at udføre kommandoerne.\n`);
   process.exit(0);
 }
-
 const useHost = args.has("--host");
 const quick = args.has("--quick");
 const restart = args.has("--restart");
@@ -31,7 +28,6 @@ const skipBuild = args.has("--skip-build");
 const listOnly = args.has("--list");
 const npmInvocation = resolveNpmInvocation();
 let restartStartedAt = null;
-
 function step(label, command, commandArgs, options = {}) {
   return {
     label,
@@ -43,14 +39,12 @@ function step(label, command, commandArgs, options = {}) {
     shell: options.shell ?? false,
   };
 }
-
-function dockerRunStep(label, service, commandArgs, { build = false } = {}) {
+function dockerRunStep(label, service, commandArgs = [], { build = false } = {}) {
   const runArgs = ["compose", "run", "--rm", "--no-deps", "-T"];
   if (build) runArgs.push("--build");
   runArgs.push(service, ...commandArgs);
   return step(label, "docker", runArgs);
 }
-
 function npmStep(label, directory, commandArgs) {
   return step(
     label,
@@ -62,7 +56,6 @@ function npmStep(label, directory, commandArgs) {
     },
   );
 }
-
 const steps = [
   step("Git whitespace-kontrol", "git", ["diff", "--check"]),
   step("Release-hygiejne", process.execPath, [
@@ -71,8 +64,8 @@ const steps = [
   npmStep("Releaseværktøjernes regression", ".", ["run", "test:release-scripts"]),
   npmStep("Backend dependency-/Docker-hardening", ".", ["run", "check:backend-hardening"]),
   npmStep("Frontend dependency-/Docker-hardening", ".", ["run", "check:frontend-hardening"]),
+  npmStep("Frontend flowtest-konfiguration", ".", ["run", "check:frontend-flows"]),
 ];
-
 if (!useHost) {
   steps.push(
     step("Docker Compose-konfiguration", "docker", ["compose", "config", "--quiet"]),
@@ -98,7 +91,6 @@ if (!useHost) {
     ),
   );
 }
-
 steps.push(
   useHost
     ? npmStep("Backend production audit", "backend", ["run", "audit:prod"])
@@ -113,7 +105,6 @@ steps.push(
     ? npmStep("Frontend samlet auditrapport (dev-only)", "frontend", ["run", "audit:report"])
     : dockerRunStep("Frontend samlet auditrapport (dev-only)", "frontend-build", ["npm", "run", "audit:report"]),
 );
-
 steps.push(
   useHost
     ? npmStep("Backend XLSX-hardening", "backend", ["run", "test:xlsx-hardening"])
@@ -127,7 +118,6 @@ if (!quick) {
       : dockerRunStep("Fuld backend-testsuite", "backend-build", ["npm", "test", "--", "--runInBand"]),
   );
 }
-
 steps.push(
   useHost
     ? npmStep("Backend release-regression", "backend", ["run", "test:release"])
@@ -136,7 +126,6 @@ steps.push(
     ? npmStep("Dashboard-regression", "frontend", ["run", "test:dashboard"])
     : dockerRunStep("Dashboard-regression", "frontend-build", ["npm", "run", "test:dashboard"]),
 );
-
 if (!skipBuild) {
   steps.push(
     useHost
@@ -145,9 +134,11 @@ if (!skipBuild) {
     useHost
       ? npmStep("Frontend-build", "frontend", ["run", "build"])
       : dockerRunStep("Frontend-build", "frontend-build", ["npm", "run", "build"]),
+    useHost
+      ? npmStep("Kritiske frontend-flowtests", "frontend", ["run", "test:flows:host"])
+      : dockerRunStep("Kritiske frontend-flowtests", "frontend-flow-tests", [], { build: true }),
   );
 }
-
 if (restart) {
   if (useHost) {
     console.error("--restart kan kun bruges i Docker-tilstand.");
@@ -187,7 +178,6 @@ if (restart) {
     }),
   );
 }
-
 function printableCommand(item, commandArgs = item.args) {
   const command = [item.command, ...commandArgs]
     .map((value) => (/\s/.test(value) ? JSON.stringify(value) : value))
@@ -197,7 +187,6 @@ function printableCommand(item, commandArgs = item.args) {
     : item.cwd.slice(repoRoot.length + 1).replaceAll("\\", "/");
   return `${relativeCwd}> ${command}`;
 }
-
 if (listOnly) {
   console.log(`Releaseplan (${quick ? "hurtig" : "fuld"}, ${useHost ? "host" : "Docker"}):\n`);
   steps.forEach((item, index) => {
@@ -206,7 +195,6 @@ if (listOnly) {
   });
   process.exit(0);
 }
-
 const startedAt = Date.now();
 console.log(`Starter ${quick ? "hurtig" : "fuld"} releasekontrol i ${useHost ? "host" : "Docker"}-tilstand.`);
 for (const [index, item] of steps.entries()) {
@@ -228,6 +216,5 @@ for (const [index, item] of steps.entries()) {
     process.exit(result.status ?? 1);
   }
 }
-
 const seconds = Math.round((Date.now() - startedAt) / 1000);
 console.log(`\nReleasekontrol bestået: ${steps.length} trin gennemført på ${seconds} sekunder.`);

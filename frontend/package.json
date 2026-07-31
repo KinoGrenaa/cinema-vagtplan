@@ -9,6 +9,8 @@
     "start:container": "node ./scripts/start-container.mjs",
     "lint": "eslint",
     "test:dashboard": "node ./scripts/run-dashboard-tests.mjs",
+    "test:flows": "playwright test --config=./playwright.config.ts",
+    "test:flows:host": "node ./scripts/run-flow-tests-host.mjs",
     "audit:prod": "npm audit --omit=dev --audit-level=low",
     "audit:all": "npm audit --audit-level=high",
     "audit:report": "node ./scripts/report-frontend-audit.mjs",
@@ -26,6 +28,7 @@
     "sonner": "^2.0.7"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -8,12 +8,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { apiFetch } from "@/app/lib/api";
 import { useAuth } from "@/app/providers/AuthProvider";
-
 export type CinemaModuleKey =
   | "SCHEDULE"
   | "SHIFT_PLANNING"
@@ -35,7 +35,6 @@ type CinemaModule = {
 type CinemaModulesResponse = {
   modules: CinemaModule[];
 };
-
 type CinemaModulesContextValue = {
   loading: boolean;
   hasCinemaContext: boolean;
@@ -49,7 +48,6 @@ const CinemaModulesContext =
   createContext<CinemaModulesContextValue | null>(
     null,
   );
-
 const moduleRouteRules: Array<{
   prefix: string;
   moduleKey: CinemaModuleKey;
@@ -130,7 +128,6 @@ const moduleRouteRules: Array<{
     moduleKey: "SCHEDULE",
   },
 ];
-
 function pathMatches(
   pathname: string,
   prefix: string,
@@ -163,7 +160,6 @@ function getSelectedMasterCinemaId() {
   ) {
     return null;
   }
-
   const cinemaId = Number(
     localStorage.getItem(
       "masterSelectedCinemaId",
@@ -179,7 +175,6 @@ function getSelectedMasterCinemaId() {
 
   return cinemaId;
 }
-
 export function CinemaModulesProvider({
   children,
 }: {
@@ -197,43 +192,81 @@ export function CinemaModulesProvider({
       >
     >
   >({});
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    resolvedContextKey,
+    setResolvedContextKey,
+  ] = useState<string | null>(null);
+  const moduleRequestIdRef = useRef(0);
   const [
     contextVersion,
     setContextVersion,
   ] = useState(0);
-
+  const selectedMasterCinemaId =
+    user?.role === "MASTER"
+      ? getSelectedMasterCinemaId()
+      : null;
   const hasCinemaContext =
     Boolean(
       user &&
         (user.role !== "MASTER" ||
-          getSelectedMasterCinemaId()),
+          selectedMasterCinemaId),
     );
+  const activeContextKey = [
+    token ?? "anonymous",
+    user?.id ?? "anonymous",
+    user?.role ?? "anonymous",
+    selectedMasterCinemaId ?? "none",
+    contextVersion,
+  ].join(":");
+  const loading =
+    resolvedContextKey !== activeContextKey;
 
   const refreshModules =
     useCallback(async () => {
+      const requestId =
+        moduleRequestIdRef.current + 1;
+      moduleRequestIdRef.current = requestId;
+      setResolvedContextKey(null);
+
       if (!token || !user) {
         setEnabledByKey({});
-        setLoading(false);
+        if (
+          moduleRequestIdRef.current ===
+          requestId
+        ) {
+          setResolvedContextKey(
+            activeContextKey,
+          );
+        }
         return;
       }
 
       if (
         user.role === "MASTER" &&
-        !getSelectedMasterCinemaId()
+        !selectedMasterCinemaId
       ) {
         setEnabledByKey({});
-        setLoading(false);
+        if (
+          moduleRequestIdRef.current ===
+          requestId
+        ) {
+          setResolvedContextKey(
+            activeContextKey,
+          );
+        }
         return;
       }
-
       try {
-        setLoading(true);
-
         const response = await apiFetch(
           "/cinema-modules/current",
         );
+
+        if (
+          moduleRequestIdRef.current !==
+          requestId
+        ) {
+          return;
+        }
 
         if (!response.ok) {
           setEnabledByKey({});
@@ -249,7 +282,6 @@ export function CinemaModulesProvider({
               boolean
             >
           > = {};
-
         for (const module of
           data.modules ?? []) {
           nextEnabledByKey[
@@ -257,24 +289,42 @@ export function CinemaModulesProvider({
           ] = module.enabled;
         }
 
+        if (
+          moduleRequestIdRef.current !==
+          requestId
+        ) {
+          return;
+        }
         setEnabledByKey(
           nextEnabledByKey,
         );
       } catch {
-        setEnabledByKey({});
+        if (
+          moduleRequestIdRef.current ===
+          requestId
+        ) {
+          setEnabledByKey({});
+        }
       } finally {
-        setLoading(false);
+        if (
+          moduleRequestIdRef.current ===
+          requestId
+        ) {
+          setResolvedContextKey(
+            activeContextKey,
+          );
+        }
       }
     }, [
+      activeContextKey,
+      selectedMasterCinemaId,
       token,
       user,
-      contextVersion,
     ]);
 
   useEffect(() => {
     void refreshModules();
   }, [refreshModules]);
-
   useEffect(() => {
     function handleCinemaContextChange() {
       setContextVersion(
@@ -294,7 +344,6 @@ export function CinemaModulesProvider({
       "storage",
       handleCinemaContextChange,
     );
-
     return () => {
       window.removeEventListener(
         "masterSelectedCinemaChanged",
@@ -310,7 +359,6 @@ export function CinemaModulesProvider({
       );
     };
   }, []);
-
   const isModuleEnabled =
     useCallback(
       (
@@ -335,7 +383,6 @@ export function CinemaModulesProvider({
       refreshModules,
     ],
   );
-
   return (
     <CinemaModulesContext.Provider
       value={value}
@@ -358,7 +405,6 @@ export function useCinemaModules() {
 
   return context;
 }
-
 export function CinemaModuleRouteGate({
   children,
 }: {
@@ -377,7 +423,6 @@ export function CinemaModuleRouteGate({
   if (!requiredModule) {
     return <>{children}</>;
   }
-
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-100 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
@@ -387,7 +432,6 @@ export function CinemaModuleRouteGate({
       </main>
     );
   }
-
   if (
     hasCinemaContext &&
     !isModuleEnabled(requiredModule)
@@ -417,6 +461,5 @@ export function CinemaModuleRouteGate({
       </main>
     );
   }
-
   return <>{children}</>;
 }

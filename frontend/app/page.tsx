@@ -168,7 +168,6 @@ export default function HomePage() {
         data.user.role,
         data.defaultCinema,
       );
-      await routeAuthenticatedUser(data.user.role);
     } catch {
       infoDialog.showError(
         "Kan ikke forbinde til serveren",

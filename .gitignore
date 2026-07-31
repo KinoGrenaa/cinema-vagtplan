@@ -8,5 +8,7 @@ build
 uploads
 backend/uploads
 frontend/.next
+frontend/test-results
+frontend/playwright-report
 backend/dist
 backend/runtime-dist
