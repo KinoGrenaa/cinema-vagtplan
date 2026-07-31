@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:22-alpine AS base
 
 WORKDIR /app/frontend
@@ -7,7 +8,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 FROM base AS dependencies
 
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,id=cinema-frontend-npm,target=/root/.npm,sharing=locked \
+  npm ci
 
 FROM dependencies AS build
 
@@ -19,7 +21,8 @@ COPY frontend ./frontend
 COPY shared ./shared
 
 WORKDIR /app/frontend
-RUN npm run build
+RUN --mount=type=cache,id=cinema-next-build,target=/app/frontend/.next/cache,sharing=locked \
+  npm run build
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
@@ -54,7 +57,8 @@ ENV FRONTEND_FLOW_BASE_URL=http://127.0.0.1:3000
 
 WORKDIR /tests
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,id=cinema-frontend-npm,target=/root/.npm,sharing=locked \
+  npm ci
 COPY frontend/playwright.config.ts ./playwright.config.ts
 COPY frontend/tests/flows ./tests/flows
 COPY frontend/scripts/run-flow-tests-container.mjs ./scripts/run-flow-tests-container.mjs

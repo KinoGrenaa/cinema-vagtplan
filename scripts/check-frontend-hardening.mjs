@@ -12,7 +12,6 @@ const mojibakePattern = /(?:\u00c3[\u0080-\u00bf\u2026]|\u00c2[\u0080-\u00bf]|\u
 
 function findMojibakeFiles(frontendRoot) {
   const files = [];
-
   function walk(directory) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       if (entry.isDirectory() && ["node_modules", ".next"].includes(entry.name)) {
@@ -28,7 +27,6 @@ function findMojibakeFiles(frontendRoot) {
       if (!/\.(?:ts|tsx|js|jsx|mjs|cjs|css)$/.test(entry.name)) {
         continue;
       }
-
       if (mojibakePattern.test(readFileSync(path, "utf8"))) {
         files.push(path.slice(frontendRoot.length + 1));
       }
@@ -64,7 +62,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
     release: resolve(root, "scripts", "run-release-checks.mjs"),
     workflow: resolve(root, ".github", "workflows", "release-checks.yml"),
   };
-
   for (const [name, path] of Object.entries(paths)) {
     if (!existsSync(path)) problems.push(`Mangler ${name}: ${path.slice(root.length + 1)}`);
   }
@@ -76,11 +73,9 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
       `Frontend-kildekode indeholder fejlkonverteret UTF-8: ${mojibakeFiles.join(", ")}.`,
     );
   }
-
   const frontendPackage = readJson(paths.frontendPackage);
   const frontendLock = readJson(paths.frontendLock);
   const rootPackage = readJson(paths.rootPackage);
-
   const expectedRuntimeVersions = {
     next: "16.2.12",
     engineIoClient: "6.6.5",
@@ -106,7 +101,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   if (frontendPackage.overrides?.sharp !== expectedRuntimeVersions.sharp) {
     problems.push(`frontend/package.json skal fastlaase sharp ${expectedRuntimeVersions.sharp}.`);
   }
-
   const lockRoot = frontendLock.packages?.[""] ?? {};
   if (lockRoot.dependencies?.next !== expectedRuntimeVersions.next) {
     problems.push(`frontend/package-lock.json skal fastlaase next ${expectedRuntimeVersions.next}.`);
@@ -121,7 +115,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
       .map(([, metadata]) => metadata?.version)
       .filter(Boolean);
   }
-
   for (const [packageName, expectedVersion] of [
     ["next", expectedRuntimeVersions.next],
     ["engine.io-client", expectedRuntimeVersions.engineIoClient],
@@ -136,11 +129,9 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
       );
     }
   }
-
   if (frontendLock.lockfileVersion !== 3) {
     problems.push(`frontend/package-lock.json skal bruge lockfileVersion 3, men bruger ${frontendLock.lockfileVersion}.`);
   }
-
   const expectedScripts = {
     "start:container": "node ./scripts/start-container.mjs",
     "audit:prod": "npm audit --omit=dev --audit-level=low",
@@ -162,16 +153,15 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   }
 
   const dockerfile = readFileSync(paths.dockerfile, "utf8");
+  const normalizedDockerfile = dockerfile.replace(/\\\r?\n\s*/g, " ");
   for (const marker of [
     "FROM node:22-alpine AS base",
     "FROM base AS dependencies",
     "COPY frontend/package.json frontend/package-lock.json ./",
-    "RUN npm ci",
     "FROM dependencies AS build",
     "ARG NEXT_PUBLIC_API_URL=http://localhost:3001",
     "COPY frontend ./frontend",
     "COPY shared ./shared",
-    "RUN npm run build",
     "FROM node:22-alpine AS runtime",
     "ENV NODE_ENV=production",
     "COPY --from=build --chown=nextjs:nodejs /app/frontend/.next/standalone ./",
@@ -182,14 +172,21 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   ]) {
     if (!dockerfile.includes(marker)) problems.push(`frontend/Dockerfile mangler: ${marker}`);
   }
-  if (/RUN\s+npm install\b/.test(dockerfile)) problems.push("frontend/Dockerfile maa ikke bruge npm install.");
+  if (!/RUN\s+(?:--mount=\S+\s+)*npm ci\b/.test(normalizedDockerfile)) {
+    problems.push("frontend/Dockerfile mangler: RUN npm ci (eventuelt med BuildKit cache mount)");
+  }
+  if (!/RUN\s+(?:--mount=\S+\s+)*npm run build\b/.test(normalizedDockerfile)) {
+    problems.push("frontend/Dockerfile mangler: RUN npm run build (eventuelt med BuildKit cache mount)");
+  }
+  if (/RUN\s+(?:--mount=\S+\s+)*npm install\b/.test(normalizedDockerfile)) {
+    problems.push("frontend/Dockerfile maa ikke bruge npm install.");
+  }
   if (/CMD\s*\[\s*["']npm["']\s*,\s*["']run["']\s*,\s*["']dev["']/.test(dockerfile)) {
     problems.push("Frontendens runtime-image maa ikke starte Next.js development-serveren.");
   }
   if (/COPY\s+\.\s+\./.test(dockerfile)) {
     problems.push("Frontendens Dockerfile maa ikke kopiere hele repository-konteksten ukontrolleret.");
   }
-
   const nextConfig = readFileSync(paths.nextConfig, "utf8");
   for (const marker of [
     'output: "standalone"',
@@ -198,7 +195,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   ]) {
     if (!nextConfig.includes(marker)) problems.push(`frontend/next.config.ts mangler: ${marker}`);
   }
-
   const dockerignore = readFileSync(paths.dockerignore, "utf8");
   for (const marker of [".git", "backend", "**/node_modules", "**/.next", "**/.env.*"]) {
     if (!dockerignore.split(/\r?\n/).includes(marker)) problems.push(`.dockerignore mangler: ${marker}`);
@@ -206,7 +202,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   if (/^frontend\/?$/m.test(dockerignore) || /^shared\/?$/m.test(dockerignore)) {
     problems.push(".dockerignore maa ikke udelukke frontend eller shared fra build-konteksten.");
   }
-
   const compose = readFileSync(paths.compose, "utf8");
   const frontendService = serviceBlock(compose, "frontend", "frontend-build");
   const frontendBuildService = serviceBlock(compose, "frontend-build", null).split("\nvolumes:")[0];
@@ -234,7 +229,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   ]) {
     if (!frontendBuildService.includes(marker)) problems.push(`frontend-build-service mangler: ${marker}`);
   }
-
   const startScript = readFileSync(paths.startScript, "utf8");
   for (const marker of [
     'resolve(root, "frontend", "server.js")',
@@ -245,7 +239,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   ]) {
     if (!startScript.includes(marker)) problems.push(`Frontendens startscript mangler: ${marker}`);
   }
-
   const auditScript = readFileSync(paths.auditScript, "utf8");
   for (const marker of [
     'runAudit(["--omit=dev"])',
@@ -254,7 +247,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   ]) {
     if (!auditScript.includes(marker)) problems.push(`Frontendens auditrapport mangler: ${marker}`);
   }
-
   const release = readFileSync(paths.release, "utf8");
   for (const marker of [
     '"check:frontend-hardening"',
@@ -271,7 +263,6 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   if (/\["compose",\s*"restart",\s*"frontend"\]/s.test(release)) {
     problems.push("Frontend skal recreates fra runtime-imaget og maa ikke blot genstartes efter kildekodeændringer.");
   }
-
   const workflow = readFileSync(paths.workflow, "utf8");
   for (const marker of [
     "npm run check:frontend-hardening",
@@ -279,9 +270,11 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
     "npm run audit:report",
     "Build frontend standalone runtime image",
     "Verify minimal non-root frontend runtime image",
-    "-f frontend/Dockerfile",
   ]) {
     if (!workflow.includes(marker)) problems.push(`GitHub Actions mangler: ${marker}`);
+  }
+  if (!workflow.includes("file: frontend/Dockerfile") && !workflow.includes("-f frontend/Dockerfile")) {
+    problems.push("GitHub Actions mangler reference til frontend/Dockerfile.");
   }
 
   return problems;

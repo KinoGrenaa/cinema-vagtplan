@@ -12,7 +12,6 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 
 import { collectFrontendHardeningProblems } from "./check-frontend-hardening.mjs";
-
 const repoRoot = resolve(import.meta.dirname, "..");
 const fixtureFiles = [
   ".dockerignore",
@@ -28,7 +27,6 @@ const fixtureFiles = [
   "frontend/scripts/start-container.mjs",
   "frontend/scripts/report-frontend-audit.mjs",
 ];
-
 function withFixture(run) {
   const root = mkdtempSync(resolve(tmpdir(), "cinema-frontend-hardening-"));
   try {
@@ -43,7 +41,6 @@ function withFixture(run) {
     rmSync(root, { recursive: true, force: true });
   }
 }
-
 function replace(root, relativePath, searchValue, replacement) {
   const path = resolve(root, relativePath);
   const source = readFileSync(path, "utf8");
@@ -54,10 +51,9 @@ function replace(root, relativePath, searchValue, replacement) {
 test("den aktuelle repository-tilstand opfylder frontend-hardening", () => {
   assert.deepEqual(collectFrontendHardeningProblems(), []);
 });
-
 test("hardening-kontrollen afviser development-server og npm install", () => {
   withFixture((root) => {
-    replace(root, "frontend/Dockerfile", "RUN npm ci", "RUN npm install");
+    replace(root, "frontend/Dockerfile", "npm ci", "npm install");
     replace(
       root,
       "frontend/Dockerfile",
@@ -69,7 +65,6 @@ test("hardening-kontrollen afviser development-server og npm install", () => {
     assert.ok(problems.some((problem) => /development-serveren/.test(problem)));
   });
 });
-
 test("hardening-kontrollen afviser manglende standalone-output og runtime-bind-mount", () => {
   withFixture((root) => {
     replace(root, "frontend/next.config.ts", 'output: "standalone",', "");
@@ -84,7 +79,6 @@ test("hardening-kontrollen afviser manglende standalone-output og runtime-bind-m
     assert.ok(problems.some((problem) => /runtime-service maa ikke bind-mounte/.test(problem)));
   });
 });
-
 test("hardening-kontrollen afviser saarbart Next.js, ws, postcss, sharp og uens Turbopack-root", () => {
   withFixture((root) => {
     replace(root, "frontend/package.json", '"next": "16.2.12"', '"next": "16.2.6"');
@@ -105,7 +99,6 @@ test("hardening-kontrollen afviser saarbart Next.js, ws, postcss, sharp og uens 
     assert.ok(problems.some((problem) => /root: path\.resolve/.test(problem)));
   });
 });
-
 
 test("hardening-kontrollen afviser fejlkonverterede danske tegn", () => {
   withFixture((root) => {

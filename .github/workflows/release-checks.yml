@@ -5,7 +5,6 @@ on:
     branches: [main]
   push:
     branches: [main]
-
 concurrency:
   group: release-checks-${{ github.ref }}
   cancel-in-progress: true
@@ -25,6 +24,7 @@ jobs:
       - run: npm run check:backend-hardening
       - run: npm run check:frontend-hardening
       - run: npm run check:frontend-flows
+      - run: npm run check:frontend-build-cache
   backend:
     name: Backend tests, audit and runtime image
     runs-on: ubuntu-latest
@@ -70,6 +70,13 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.[jt]s', 'frontend/**/*.[jt]sx', 'frontend/**/*.css', 'shared/**/*.[jt]s', 'shared/**/*.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-
       - run: npm ci
         working-directory: frontend
       - run: npm run audit:prod
@@ -80,12 +87,19 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
+      - uses: docker/setup-buildx-action@v3
       - name: Build frontend standalone runtime image
-        run: >-
-          docker build --target runtime
-          --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001
-          -f frontend/Dockerfile
-          -t cinema-vagtplan-frontend:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          target: runtime
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:3001
+          tags: cinema-vagtplan-frontend:ci
+          load: true
+          cache-from: type=gha,scope=frontend-runtime
+          cache-to: type=gha,mode=max,scope=frontend-runtime
       - name: Verify minimal non-root frontend runtime image
         run: >-
           docker run --rm --entrypoint node cinema-vagtplan-frontend:ci -e
@@ -104,12 +118,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
       - name: Build Playwright flow-test image
-        run: >-
-          docker build --target flow-tests
-          --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001
-          -f frontend/Dockerfile
-          -t cinema-vagtplan-frontend-flow-tests:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          target: flow-tests
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:3001
+          tags: cinema-vagtplan-frontend-flow-tests:ci
+          load: true
+          cache-from: type=gha,scope=frontend-flow-tests
+          cache-to: type=gha,mode=max,scope=frontend-flow-tests
       - name: Run critical browser flows
         run: >-
           docker run --rm --ipc=host

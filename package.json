@@ -6,6 +6,7 @@
     "check:backend-hardening": "node ./scripts/check-backend-hardening.mjs",
     "check:frontend-hardening": "node ./scripts/check-frontend-hardening.mjs",
     "check:frontend-flows": "node ./scripts/check-frontend-flows.mjs",
+    "check:frontend-build-cache": "node ./scripts/check-frontend-build-cache.mjs",
     "test:frontend-flows": "docker compose run --rm --no-deps -T --build frontend-flow-tests",
     "test:release-scripts": "node --test ./scripts/*.test.mjs",
     "verify:release": "node ./scripts/run-release-checks.mjs",

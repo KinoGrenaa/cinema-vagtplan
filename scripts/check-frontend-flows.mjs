@@ -256,10 +256,17 @@ export function collectFrontendFlowProblems(root = repoRoot) {
   const workflow = readFileSync(paths.workflow, "utf8");
   for (const marker of [
     "name: Critical frontend flows",
-    "--target flow-tests",
     "cinema-vagtplan-frontend-flow-tests:ci",
   ]) {
     if (!workflow.includes(marker)) problems.push(`GitHub Actions mangler: ${marker}`);
+  }
+  if (
+    !workflow.includes("--target flow-tests") &&
+    !workflow.includes("target: flow-tests")
+  ) {
+    problems.push(
+      "GitHub Actions mangler flow-testtarget: --target flow-tests eller target: flow-tests",
+    );
   }
 
   const gitignore = readFileSync(paths.gitignore, "utf8");

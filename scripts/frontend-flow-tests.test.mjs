@@ -105,9 +105,24 @@ test("flowtestkontrollen afviser kildekode-bind mount og manglende CI-gate", () 
       "name: Critical frontend flows",
       "name: Frontend browser smoke",
     );
+    const workflowPath = resolve(root, ".github", "workflows", "release-checks.yml");
+    const workflow = readFileSync(workflowPath, "utf8");
+    const targetMarker = workflow.includes("target: flow-tests")
+      ? "target: flow-tests"
+      : "--target flow-tests";
+    assert.ok(workflow.includes(targetMarker), "Workflow-fixturen mangler flow-testtarget");
+    writeFileSync(
+      workflowPath,
+      workflow.replace(
+        targetMarker,
+        targetMarker === "target: flow-tests" ? "target: runtime" : "--target runtime",
+      ),
+      "utf8",
+    );
     const problems = collectFrontendFlowProblems(root);
     assert.ok(problems.some((problem) => /maa ikke bind-mounte kildekode/.test(problem)));
     assert.ok(problems.some((problem) => /Critical frontend flows/.test(problem)));
+    assert.ok(problems.some((problem) => /flow-testtarget/.test(problem)));
   });
 });
 
