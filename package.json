@@ -9,6 +9,8 @@
     "check:frontend-build-cache": "node ./scripts/check-frontend-build-cache.mjs",
     "check:data-recovery": "node ./scripts/check-data-recovery.mjs",
     "check:production-compose": "node ./scripts/check-production-compose.mjs",
+    "check:production-env": "node ./scripts/check-production-env.mjs",
+    "production:preflight": "node ./scripts/production-preflight.mjs",
     "production:rehearse": "node ./scripts/rehearse-production-compose.mjs",
     "backup:create": "node ./scripts/create-backup.mjs",
     "backup:verify": "node ./scripts/verify-backup.mjs",
