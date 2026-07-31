@@ -33,12 +33,13 @@ Kopiér eksemplet og indsæt rigtige værdier:
 Copy-Item .env.production.example .env.production
 ```
 
-Generér eksempelvis lange alfanumeriske secrets i PowerShell:
+Generér eksempelvis lange hex-secrets i Windows PowerShell og nyere PowerShell:
 
 ```powershell
 $bytes = New-Object byte[] 48
-[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-[Convert]::ToHexString($bytes).ToLowerInvariant()
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+-join ($bytes | ForEach-Object { $_.ToString("x2") })
 ```
 
 `APP_ORIGIN` og `CADDY_SITE_ADDRESS` skal normalt være samme HTTPS-origin, eksempelvis `https://vagtplan.example.dk`. DNS skal pege på serveren, og firewall/NAT skal tillade 80/TCP, 443/TCP og eventuelt 443/UDP. PostgreSQL, 3000, 3001 og 5555 må ikke åbnes i firewall.
@@ -98,22 +99,12 @@ Remove-Item Env:COMPOSE_ENV_FILES
 
 Kopiér backupen krypteret off-host og følg retention-, RPO- og RTO-kravene i `docs/data-recovery.md`.
 
-## Opdatering
+## Kontrolleret opdatering og rollback
+
+Brug de automatiserede deploy- og rollbackkommandoer i `docs/production-deploy.md`. De kører preflight, verificeret pre-deploy-backup, build, migration, healthchecks og offentlig smoke. Rollback er kun automatisk for applikationskode, når Prisma-schema og migrationer er identiske; der udføres ingen automatisk database-restore.
+
+Start altid med dry-run:
 
 ```powershell
-git pull --ff-only
-docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
-docker compose --env-file .env.production -f docker-compose.production.yml ps
+npm run production:deploy -- --env-file .env.production --dry-run
 ```
-
-Migrationen skal være `Exited (0)`, og de fire langkørende services skal blive healthy/running. Gennemgå logs før trafiktesten.
-
-## Rollback
-
-Ved rollback skal databasekompatibilitet vurderes først. En tidligere applikationsversion kan ikke nødvendigvis køre mod en nyere migration.
-
-1. Stop ny trafik eller aktivér vedligeholdelsesvindue.
-2. Bevar den aktuelle installation og opret en ny verificeret backup.
-3. Gendan den tidligere applikationsversion til et separat Compose-projekt.
-4. Brug en kompatibel databasekopi og et matchende uploadvolume.
-5. Skift først trafik tilbage efter runtime-smoke, login og kritiske flows er grønne.
