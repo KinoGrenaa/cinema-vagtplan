@@ -1,0 +1,38 @@
+{
+  email {$CADDY_ACME_EMAIL}
+}
+
+{$CADDY_SITE_ADDRESS} {
+  encode zstd gzip
+
+  header {
+    -Server
+    X-Content-Type-Options nosniff
+    X-Frame-Options DENY
+    Referrer-Policy strict-origin-when-cross-origin
+  }
+
+  route {
+    @socket path /socket.io/*
+    reverse_proxy @socket backend:3001
+
+    @uploads path /uploads/*
+    reverse_proxy @uploads backend:3001
+
+    @mutation method POST PUT PATCH DELETE OPTIONS
+    reverse_proxy @mutation backend:3001
+
+    @authorized header Authorization *
+    reverse_proxy @authorized backend:3001
+
+    @jsonRequest header Content-Type application/json*
+    reverse_proxy @jsonRequest backend:3001
+
+    reverse_proxy frontend:3000
+  }
+
+  log {
+    output stdout
+    format console
+  }
+}
