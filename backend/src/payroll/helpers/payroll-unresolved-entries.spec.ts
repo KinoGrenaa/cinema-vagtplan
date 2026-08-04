@@ -178,6 +178,22 @@ describe('payroll unresolved time entries', () => {
           .fn()
           .mockResolvedValue([]),
       },
+      payrollPeriod: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      cinemaPayrollConfigurationVersion: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 1,
+            mode: 'HOURS_ONLY',
+            validFrom: new Date('2020-01-01T00:00:00.000Z'),
+            validTo: null,
+          },
+        ]),
+        findUnique: jest.fn().mockResolvedValue({ mode: 'HOURS_ONLY' }),
+      },
+      payRule: { findMany: jest.fn().mockResolvedValue([]) },
+      cinemaSpecialDay: { findMany: jest.fn().mockResolvedValue([]) },
     };
 
     const result =

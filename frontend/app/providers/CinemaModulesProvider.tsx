@@ -54,7 +54,7 @@ const moduleRouteRules: Array<{
 }> = [
   {
     prefix:
-      "/cinema-settings/payroll-types",
+      "/cinema-settings/payroll-export-codes",
     moduleKey: "PAYROLL",
   },
   {
@@ -68,10 +68,6 @@ const moduleRouteRules: Array<{
   },
   {
     prefix: "/schedule-templates",
-    moduleKey: "SHIFT_PLANNING",
-  },
-  {
-    prefix: "/day-periods",
     moduleKey: "SHIFT_PLANNING",
   },
   {

@@ -1,6 +1,8 @@
 import { lockPayrollPeriod } from './payroll-period-lock-flow';
 import { ensurePayrollEntriesApproved } from './payroll-period-export';
 import { acquirePayrollPeriodMutationLockForPeriod } from './payroll-period-mutation-lock';
+import { includePendingPayrollAdjustmentsInPeriod } from './payroll-adjustment-export';
+import { createPayrollCalculationRun } from './payroll-calculation';
 
 jest.mock('./payroll-period-export', () => ({
   ensurePayrollEntriesApproved: jest.fn(),
@@ -9,6 +11,14 @@ jest.mock('./payroll-period-export', () => ({
 jest.mock('./payroll-period-mutation-lock', () => ({
   acquirePayrollPeriodMutationLockForPeriod:
     jest.fn(),
+}));
+
+jest.mock('./payroll-adjustment-export', () => ({
+  includePendingPayrollAdjustmentsInPeriod: jest.fn(),
+}));
+
+jest.mock('./payroll-calculation', () => ({
+  createPayrollCalculationRun: jest.fn(),
 }));
 
 describe('payroll period lock transaction', () => {
@@ -27,6 +37,10 @@ describe('payroll period lock transaction', () => {
     (
       ensurePayrollEntriesApproved as jest.Mock
     ).mockResolvedValue(undefined);
+    (
+      includePendingPayrollAdjustmentsInPeriod as jest.Mock
+    ).mockResolvedValue(0);
+    (createPayrollCalculationRun as jest.Mock).mockResolvedValue({ id: 91 });
   });
 
   it('låser, genkontrollerer og opdaterer i samme transaktion', async () => {
@@ -38,7 +52,7 @@ describe('payroll period lock transaction', () => {
     const tx = {
       payrollPeriod: {
         findFirst: jest.fn().mockResolvedValue(null),
-        update: jest.fn(),
+        update: jest.fn().mockResolvedValue(period),
         create: jest.fn().mockResolvedValue(period),
       },
       payrollType: {
@@ -113,6 +127,29 @@ describe('payroll period lock transaction', () => {
     );
     expect(tx.payrollPeriod.create).toHaveBeenCalledTimes(1);
     expect(tx.timeEntry.update).toHaveBeenCalledTimes(2);
+    expect(includePendingPayrollAdjustmentsInPeriod).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        cinemaId: 2,
+        payrollPeriodId: 12,
+        changedByUserId: 7,
+        reason: 'Medtaget i låst lønperiode.',
+      }),
+    );
+    expect(createPayrollCalculationRun).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        cinemaId: 2,
+        payrollPeriodId: 12,
+        status: 'LOCKED',
+      }),
+    );
+    expect(
+      (includePendingPayrollAdjustmentsInPeriod as jest.Mock).mock
+        .invocationCallOrder[0],
+    ).toBeLessThan(
+      (createPayrollCalculationRun as jest.Mock).mock.invocationCallOrder[0],
+    );
   });
 
   it('lader en registreringsfejl afbryde hele transaktionen', async () => {

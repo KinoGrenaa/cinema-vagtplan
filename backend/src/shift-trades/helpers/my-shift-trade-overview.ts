@@ -32,11 +32,12 @@ export const myShiftTradeSelect = {
     select: {
       startTime: true,
       endTime: true,
-      workType: {
+      jobFunction: {
         select: {
           name: true,
         },
       },
+      jobFunctionNameSnapshot: true,
     },
   },
 } as const;

@@ -11,7 +11,7 @@ type EmployeePreferenceAnalysis = {
   employeeName: string;
   preferredHours: string[];
   preferredDays: string[];
-  preferredWorkTypes: string[];
+  preferredJobFunctions: string[];
   acceptedRequests: number;
   rejectedRequests: number;
   acceptanceRate: number;
@@ -47,7 +47,7 @@ export class PreferenceEngineService {
             },
           },
           include: {
-            workType: true,
+            jobFunction: true,
           },
         },
         targetedStaffingRequests: {
@@ -71,7 +71,7 @@ export class PreferenceEngineService {
       const reasoning: string[] = [];
       const hourCounts = new Map<number, number>();
       const dayCounts = new Map<number, number>();
-      const workTypeCounts = new Map<string, number>();
+      const jobFunctionCounts = new Map<string, number>();
 
       for (const shift of user.shifts) {
         const start = new Date(shift.startTime);
@@ -80,10 +80,10 @@ export class PreferenceEngineService {
         hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
         dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1);
 
-        if (shift.workType?.name) {
-          workTypeCounts.set(
-            shift.workType.name,
-            (workTypeCounts.get(shift.workType.name) ?? 0) + 1,
+        if (shift.jobFunction?.name) {
+          jobFunctionCounts.set(
+            shift.jobFunction.name,
+            (jobFunctionCounts.get(shift.jobFunction.name) ?? 0) + 1,
           );
         }
       }
@@ -96,10 +96,10 @@ export class PreferenceEngineService {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 4)
         .map(([day]) => this.getDayName(day));
-      const preferredWorkTypes = Array.from(workTypeCounts.entries())
+      const preferredJobFunctions = Array.from(jobFunctionCounts.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
-        .map(([workType]) => workType);
+        .map(([jobFunction]) => jobFunction);
       const requestRates = calculateCinemaRequestRates(
         user.targetedStaffingRequests,
       );
@@ -124,9 +124,9 @@ export class PreferenceEngineService {
       if (preferredDays.length > 0) {
         reasoning.push(`Foretrukne dage: ${preferredDays.join(', ')}`);
       }
-      if (preferredWorkTypes.length > 0) {
+      if (preferredJobFunctions.length > 0) {
         reasoning.push(
-          `Foretrukne arbejdstyper: ${preferredWorkTypes.join(', ')}`,
+          `Foretrukne jobfunktioner: ${preferredJobFunctions.join(', ')}`,
         );
       }
 
@@ -139,7 +139,7 @@ export class PreferenceEngineService {
         employeeName: `${user.firstName} ${user.lastName}`,
         preferredHours,
         preferredDays,
-        preferredWorkTypes,
+        preferredJobFunctions,
         acceptedRequests,
         rejectedRequests,
         acceptanceRate,

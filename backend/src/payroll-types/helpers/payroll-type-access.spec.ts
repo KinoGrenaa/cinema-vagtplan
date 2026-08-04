@@ -192,7 +192,7 @@ describe('payroll type access and input', () => {
 
   it('rejects deletion when the payroll type is used', async () => {
     const prisma = {
-      workType: {
+      jobFunction: {
         count: jest
           .fn()
           .mockResolvedValue(1),

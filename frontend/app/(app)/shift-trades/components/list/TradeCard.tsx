@@ -68,7 +68,7 @@ export default function TradeCard({
           <h3 className="text-lg font-bold text-gray-950 dark:text-white md:text-xl">
             {
               trade.shift
-                .workType.name
+                .jobFunction.name
             }
           </h3>
         </div>

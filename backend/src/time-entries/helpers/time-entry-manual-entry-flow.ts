@@ -139,7 +139,7 @@ export async function submitManualTimeEntry(params: {
           cinemaId: data.cinemaId,
           shiftId: shift?.id || null,
           payrollTypeId:
-            shift?.workType?.payrollTypeId || null,
+            shift?.jobFunction?.defaultPayrollExportCodeId || null,
           clockIn,
           clockOut,
           note: data.note ?? null,

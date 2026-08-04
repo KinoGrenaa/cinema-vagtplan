@@ -24,6 +24,8 @@ describe('payroll export readiness', () => {
     startDate,
     endDate,
     lockedAt,
+    lockedCalculationRunId: 44,
+    lockedCalculationRun: { checksum: 'checksum-44' },
   };
 
   it('opretter et snapshot af den låste periode', async () => {
@@ -46,6 +48,8 @@ describe('payroll export readiness', () => {
       startDateTime: startDate.getTime(),
       endDateTime: endDate.getTime(),
       lockedAtTime: lockedAt.getTime(),
+      lockedCalculationRunId: 44,
+      calculationChecksum: 'checksum-44',
     });
   });
 
@@ -98,10 +102,10 @@ describe('payroll export readiness', () => {
     );
   });
 
-  it('bevarer individuelle medarbejderudtræk uden periodelås', async () => {
+  it('kræver samme låste snapshot ved et filtreret medarbejderudtræk', async () => {
     const prisma = {
       payrollPeriod: {
-        findFirst: jest.fn(),
+        findFirst: jest.fn().mockResolvedValue(lockedPeriod),
       },
     };
 
@@ -113,8 +117,12 @@ describe('payroll export readiness', () => {
         '2026-08-20',
         '18',
       ),
-    ).resolves.toBeNull();
-    expect(prisma.payrollPeriod.findFirst).not.toHaveBeenCalled();
+    ).resolves.toMatchObject({
+      periodId: 12,
+      lockedCalculationRunId: 44,
+      calculationChecksum: 'checksum-44',
+    });
+    expect(prisma.payrollPeriod.findFirst).toHaveBeenCalledTimes(1);
   });
 
   it('accepterer samme lås ved finalisering', () => {
@@ -125,6 +133,8 @@ describe('payroll export readiness', () => {
         startDateTime: startDate.getTime(),
         endDateTime: endDate.getTime(),
         lockedAtTime: lockedAt.getTime(),
+        lockedCalculationRunId: 44,
+        calculationChecksum: 'checksum-44',
       }),
     ).not.toThrow();
   });
@@ -142,6 +152,8 @@ describe('payroll export readiness', () => {
           startDateTime: startDate.getTime(),
           endDateTime: endDate.getTime(),
           lockedAtTime: lockedAt.getTime(),
+          lockedCalculationRunId: 44,
+          calculationChecksum: 'checksum-44',
         },
       ),
     ).toThrow(ConflictException);

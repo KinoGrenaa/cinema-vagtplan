@@ -6,7 +6,6 @@ import {
   getPayrollCinemaFilter,
   type PayrollAuthUser,
 } from './payroll-access';
-import { includePendingPayrollAdjustmentsInPeriod } from './payroll-adjustment-export';
 import {
   ensurePayrollExportLockUnchanged,
   type PayrollExportLockSnapshot,
@@ -14,7 +13,6 @@ import {
 import {
   getPayrollPeriodTimeRange,
   getPayrollReferenceDateFilters,
-  getPeriodDates,
 } from './payroll-periods';
 const unresolvedTimeEntryStatuses = [
   'PENDING',
@@ -96,20 +94,17 @@ export async function markPayrollPeriodAsExported(
     );
   }
 
-  const periodDates = getPeriodDates(startDate, endDate);
-  const timeRange = getPayrollPeriodTimeRange(
-    startDate,
-    endDate,
-  );
-  const cinemaId = getPayrollCinemaFilter(
-    user,
-    selectedCinemaId,
-  ).cinemaId;
+  // Alle registreringer, eksportkoder og efterreguleringer fryses ved
+  // låsning. Eksporten må derfor kun ændre periodens status og må aldrig
+  // hente eller tilknytte nye live-data efter det låste snapshot.
   const now = new Date();
   return prisma.$transaction(async (tx) => {
     const existingPeriod = await tx.payrollPeriod.findUnique({
       where: {
         id: lockSnapshot.periodId,
+      },
+      include: {
+        lockedCalculationRun: { select: { checksum: true } },
       },
     });
 
@@ -117,7 +112,8 @@ export async function markPayrollPeriodAsExported(
       existingPeriod,
       lockSnapshot,
     );
-    const period = await tx.payrollPeriod.update({
+
+    return tx.payrollPeriod.update({
       where: {
         id: existingPeriod!.id,
       },
@@ -130,66 +126,5 @@ export async function markPayrollPeriodAsExported(
         unlockNote: null,
       },
     });
-    const defaultPayrollType =
-      await tx.payrollType.findFirst({
-        where: {
-          cinemaId,
-          isDefault: true,
-          isActive: true,
-        },
-      });
-    const entries = await tx.timeEntry.findMany({
-      where: {
-        cinemaId,
-        OR: getPayrollReferenceDateFilters(
-          timeRange.start,
-          timeRange.endExclusive,
-        ),
-        clockOut: {
-          not: null,
-        },
-        status: 'APPROVED',
-      },
-      include: {
-        payrollType: true,
-        shift: {
-          include: {
-            workType: {
-              include: {
-                payrollType: true,
-              },
-            },
-          },
-        },
-      },
-    });
-    for (const entry of entries) {
-      const payrollType =
-        entry.payrollType ||
-        entry.shift?.workType?.payrollType ||
-        defaultPayrollType;
-      await tx.timeEntry.update({
-        where: {
-          id: entry.id,
-        },
-        data: {
-          payrollPeriodId: period.id,
-          payrollLocked: true,
-          payrollUnlockedByMaster: false,
-          payrollUnlockedAt: null,
-          payrollLockNote: null,
-          payrollTypeId: payrollType?.id || null,
-        },
-      });
-    }
-    await includePendingPayrollAdjustmentsInPeriod(tx, {
-      cinemaId,
-      payrollPeriodId: period.id,
-      periodStart: periodDates.start,
-      includedAt: now,
-      changedByUserId: user.sub,
-    });
-
-    return period;
   });
 }

@@ -40,7 +40,7 @@ export class ScheduleOptimizationService {
           },
         },
 
-        workType: true,
+        jobFunction: true,
       },
     });
 

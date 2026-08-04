@@ -3,7 +3,7 @@
 import type { ComponentProps, Dispatch, FormEvent, SetStateAction } from "react";
 
 import BaseModal from "@/app/components/modals/BaseModal";
-import type { Shift, User, WorkType } from "../../../../../../shared/types";
+import type { Shift, User, JobFunction } from "../../../../../../shared/types";
 import ShiftForm from "./ShiftForm";
 
 type ShiftFormProps = ComponentProps<typeof ShiftForm>;
@@ -12,7 +12,7 @@ type ScheduleShiftFormModalProps = {
   open: boolean;
   selectedShift: Shift | null;
   users: User[];
-  workTypes: WorkType[];
+  jobFunctions: JobFunction[];
   startTime: string;
   setStartTime: Dispatch<SetStateAction<string>>;
   endTime: string;
@@ -21,8 +21,8 @@ type ScheduleShiftFormModalProps = {
   setNote: Dispatch<SetStateAction<string>>;
   userId: number;
   setUserId: Dispatch<SetStateAction<number>>;
-  workTypeId: number;
-  setWorkTypeId: Dispatch<SetStateAction<number>>;
+  jobFunctionId: number;
+  setJobFunctionId: Dispatch<SetStateAction<number>>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onDelete: () => void;
   onCancel: () => void;
@@ -35,7 +35,7 @@ export default function ScheduleShiftFormModal({
   open,
   selectedShift,
   users,
-  workTypes,
+  jobFunctions,
   startTime,
   setStartTime,
   endTime,
@@ -44,8 +44,8 @@ export default function ScheduleShiftFormModal({
   setNote,
   userId,
   setUserId,
-  workTypeId,
-  setWorkTypeId,
+  jobFunctionId,
+  setJobFunctionId,
   onSubmit,
   onDelete,
   onCancel,
@@ -62,7 +62,7 @@ export default function ScheduleShiftFormModal({
     >
       <ShiftForm
         users={users}
-        workTypes={workTypes}
+        jobFunctions={jobFunctions}
         startTime={startTime}
         setStartTime={setStartTime}
         endTime={endTime}
@@ -71,8 +71,8 @@ export default function ScheduleShiftFormModal({
         setNote={setNote}
         userId={userId}
         setUserId={setUserId}
-        workTypeId={workTypeId}
-        setWorkTypeId={setWorkTypeId}
+        jobFunctionId={jobFunctionId}
+        setJobFunctionId={setJobFunctionId}
         selectedShift={selectedShift}
         onSubmit={onSubmit}
         onDelete={onDelete}

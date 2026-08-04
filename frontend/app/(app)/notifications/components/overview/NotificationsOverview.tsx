@@ -404,7 +404,7 @@ export default function NotificationsOverview({
                             </span>
                             <p className="mt-3 font-semibold text-gray-950 dark:text-white">
                               {trade.shift
-                                .workType
+                                .jobFunction
                                 ?.name ||
                                 "Vagt"}
                             </p>

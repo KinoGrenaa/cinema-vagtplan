@@ -9,7 +9,7 @@ import {
   getPriorityStyle,
   getRequestTimeRange,
   getRequestTitle,
-  getRequestWorkTypeName,
+  getRequestJobFunctionName,
   getStatusLabel,
   getStatusStyle,
   getTypeLabel,
@@ -341,7 +341,7 @@ export default function StaffingRequestsListSection({
                       Vagt / behov
                     </dt>
                     <dd className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
-                      {getRequestWorkTypeName(
+                      {getRequestJobFunctionName(
                         request,
                       )}
                     </dd>

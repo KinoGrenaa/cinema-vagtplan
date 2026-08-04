@@ -22,6 +22,7 @@ const admin: PayrollAuthUser = {
   email: 'admin@example.com',
   role: 'ADMIN',
   cinemaId: 7,
+  canManagePayroll: true,
 };
 
 const payrollManager: PayrollAuthUser = {
@@ -33,7 +34,7 @@ const payrollManager: PayrollAuthUser = {
 };
 
 describe('payroll access', () => {
-  it('allows payroll access for supported roles', () => {
+  it('allows payroll access for MASTER and explicit payroll permission', () => {
     expect(() => ensurePayrollAccess(master)).not.toThrow();
     expect(() => ensurePayrollAccess(admin)).not.toThrow();
     expect(() =>

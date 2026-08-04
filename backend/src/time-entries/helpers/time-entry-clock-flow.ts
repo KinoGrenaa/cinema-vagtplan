@@ -114,7 +114,7 @@ export async function clockInTimeEntry(params: {
           cinemaId: data.cinemaId,
           shiftId: shift?.id || null,
           payrollTypeId:
-            shift?.workType?.payrollTypeId ||
+            shift?.jobFunction?.defaultPayrollExportCodeId ||
             null,
           clockIn,
           note,

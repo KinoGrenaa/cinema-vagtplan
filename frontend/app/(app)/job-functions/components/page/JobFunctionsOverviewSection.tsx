@@ -1,7 +1,7 @@
 import JobFunctionsList from "../list/JobFunctionsList";
 
 import type {
-  JobFunctionWithWorkType,
+  JobFunctionWithJobFunction,
   MissingPayrollTypeWarningData,
 } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
@@ -9,16 +9,17 @@ type JobFunctionsOverviewSectionProps = {
   activeCount: number;
   archivedCount: number;
   expandedJobFunctionIds: ReadonlySet<number>;
-  jobFunctions: JobFunctionWithWorkType[];
+  jobFunctions: JobFunctionWithJobFunction[];
   loading: boolean;
   missingPayrollTypeWarning: MissingPayrollTypeWarningData;
   showArchived: boolean;
-  onArchive: (jobFunction: JobFunctionWithWorkType) => void;
+  onArchive: (jobFunction: JobFunctionWithJobFunction) => void;
   onCreate: () => void;
-  onEdit: (jobFunction: JobFunctionWithWorkType) => void;
-  onOpenEmployees: (jobFunction: JobFunctionWithWorkType) => void;
-  onOpenTimingRule: (jobFunction: JobFunctionWithWorkType) => void;
-  onReactivate: (jobFunction: JobFunctionWithWorkType) => void;
+  onCopy: (jobFunction: JobFunctionWithJobFunction) => void;
+  onEdit: (jobFunction: JobFunctionWithJobFunction) => void;
+  onOpenEmployees: (jobFunction: JobFunctionWithJobFunction) => void;
+  onOpenTimingRule: (jobFunction: JobFunctionWithJobFunction) => void;
+  onReactivate: (jobFunction: JobFunctionWithJobFunction) => void;
   onRefresh: () => void;
   onShowArchivedChange: (showArchived: boolean) => void;
   onToggleDetails: (jobFunctionId: number) => void;
@@ -34,6 +35,7 @@ export default function JobFunctionsOverviewSection({
   showArchived,
   onArchive,
   onCreate,
+  onCopy,
   onEdit,
   onOpenEmployees,
   onOpenTimingRule,
@@ -92,6 +94,7 @@ export default function JobFunctionsOverviewSection({
         loading={loading}
         missingPayrollTypeWarning={missingPayrollTypeWarning}
         onArchive={onArchive}
+        onCopy={onCopy}
         onEdit={onEdit}
         onOpenEmployees={onOpenEmployees}
         onOpenTimingRule={onOpenTimingRule}

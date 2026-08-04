@@ -39,7 +39,7 @@ export type RealtimeShiftTradePayload = {
   shift?: {
     startTime?: string;
     endTime?: string;
-    workType?: {
+    jobFunction?: {
       name?: string;
     };
   } | null;

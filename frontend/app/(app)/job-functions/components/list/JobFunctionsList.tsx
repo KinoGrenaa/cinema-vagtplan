@@ -1,20 +1,21 @@
 import JobFunctionCard from "./JobFunctionCard";
 import JobFunctionMissingPayrollWarning from "./JobFunctionMissingPayrollWarning";
 import type {
-  JobFunctionWithWorkType,
+  JobFunctionWithJobFunction,
   MissingPayrollTypeWarningData,
 } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
 type JobFunctionsListProps = {
   expandedJobFunctionIds: ReadonlySet<number>;
-  jobFunctions: JobFunctionWithWorkType[];
+  jobFunctions: JobFunctionWithJobFunction[];
   loading: boolean;
   missingPayrollTypeWarning: MissingPayrollTypeWarningData;
-  onArchive: (jobFunction: JobFunctionWithWorkType) => void;
-  onEdit: (jobFunction: JobFunctionWithWorkType) => void;
-  onOpenEmployees: (jobFunction: JobFunctionWithWorkType) => void;
-  onOpenTimingRule: (jobFunction: JobFunctionWithWorkType) => void;
-  onReactivate: (jobFunction: JobFunctionWithWorkType) => void;
+  onArchive: (jobFunction: JobFunctionWithJobFunction) => void;
+  onCopy: (jobFunction: JobFunctionWithJobFunction) => void;
+  onEdit: (jobFunction: JobFunctionWithJobFunction) => void;
+  onOpenEmployees: (jobFunction: JobFunctionWithJobFunction) => void;
+  onOpenTimingRule: (jobFunction: JobFunctionWithJobFunction) => void;
+  onReactivate: (jobFunction: JobFunctionWithJobFunction) => void;
   onToggleDetails: (jobFunctionId: number) => void;
 };
 
@@ -24,6 +25,7 @@ export default function JobFunctionsList({
   loading,
   missingPayrollTypeWarning,
   onArchive,
+  onCopy,
   onEdit,
   onOpenEmployees,
   onOpenTimingRule,
@@ -35,7 +37,7 @@ export default function JobFunctionsList({
       <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-100">
         Brug jobfunktioner til at styre hvilke roller en vagt kræver, hvilke
         medarbejdere der kan ønskes, tildeles eller foreslås til vagten, og
-        hvilken løntype vagten oprettes som.
+        eventuel eksportkode og adgang for medarbejdere.
       </div>
 
       <JobFunctionMissingPayrollWarning
@@ -70,6 +72,7 @@ export default function JobFunctionsList({
               jobFunction={jobFunction}
               isExpanded={expandedJobFunctionIds.has(jobFunction.id)}
               onArchive={onArchive}
+              onCopy={onCopy}
               onEdit={onEdit}
               onOpenEmployees={onOpenEmployees}
               onOpenTimingRule={onOpenTimingRule}

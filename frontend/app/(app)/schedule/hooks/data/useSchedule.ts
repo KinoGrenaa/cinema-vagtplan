@@ -21,7 +21,7 @@ import {
 import type {
   Shift,
   User,
-  WorkType,
+  JobFunction,
 } from "../../../../../../shared/types";
 
 type CreateShiftInput = {
@@ -29,7 +29,7 @@ type CreateShiftInput = {
   endTime: string;
   note?: string;
   userId?: number | null;
-  workTypeId: number;
+  jobFunctionId: number;
 };
 
 type UpdateShiftInput = {
@@ -37,7 +37,7 @@ type UpdateShiftInput = {
   endTime: string;
   note?: string | null;
   userId?: number | null;
-  workTypeId: number;
+  jobFunctionId: number;
 };
 
 type ManualTimeInput = {
@@ -61,7 +61,7 @@ type CreateStaffingRequestInput = {
   message: string;
   requestStartTime?: string | null;
   requestEndTime?: string | null;
-  workTypeId?: number | null;
+  jobFunctionId?: number | null;
 };
 
 type OpenTimeEntry = {
@@ -69,7 +69,7 @@ type OpenTimeEntry = {
     id: number;
     startTime: string;
     endTime: string;
-    workType?: {
+    jobFunction?: {
       name: string;
     };
   } | null;
@@ -95,7 +95,7 @@ type ScheduleTimeEntry = {
 
 type ScheduleStaticDataResponse = {
   users?: User[];
-  workTypes?: WorkType[];
+  jobFunctions?: JobFunction[];
 };
 
 type ScheduleErrorHandler = (
@@ -326,10 +326,10 @@ export function useSchedule(
   ] =
     useState<User[]>([]);
   const [
-    workTypes,
-    setWorkTypes,
+    jobFunctions,
+    setJobFunctions,
   ] =
-    useState<WorkType[]>(
+    useState<JobFunction[]>(
       [],
     );
   const [
@@ -363,7 +363,7 @@ export function useSchedule(
           needsMasterCinemaSelection
         ) {
           setUsers([]);
-          setWorkTypes([]);
+          setJobFunctions([]);
           return true;
         }
 
@@ -377,14 +377,14 @@ export function useSchedule(
 
           if (!response.ok) {
             setUsers([]);
-            setWorkTypes([]);
+            setJobFunctions([]);
 
             if (reportError) {
               reportBackgroundError(
                 "Vagtplanens stamdata kunne ikke hentes",
                 await readErrorMessage(
                   response,
-                  "Kunne ikke hente medarbejdere og vagttyper.",
+                  "Kunne ikke hente medarbejdere og jobfunktioner.",
                 ),
               );
             }
@@ -403,23 +403,23 @@ export function useSchedule(
               ? data.users
               : [],
           );
-          setWorkTypes(
+          setJobFunctions(
             Array.isArray(
-              data.workTypes,
+              data.jobFunctions,
             )
-              ? data.workTypes
+              ? data.jobFunctions
               : [],
           );
 
           return true;
         } catch {
           setUsers([]);
-          setWorkTypes([]);
+          setJobFunctions([]);
 
           if (reportError) {
             reportBackgroundError(
               "Vagtplanens stamdata kunne ikke hentes",
-              "Der opstod en fejl, da medarbejdere og vagttyper skulle hentes.",
+              "Der opstod en fejl, da medarbejdere og jobfunktioner skulle hentes.",
             );
           }
 
@@ -1105,8 +1105,8 @@ export function useSchedule(
                     requestEndTime:
                       input.requestEndTime ??
                       null,
-                    workTypeId:
-                      input.workTypeId ??
+                    jobFunctionId:
+                      input.jobFunctionId ??
                       null,
                     cinemaId:
                       activeCinemaId,
@@ -1335,10 +1335,10 @@ export function useSchedule(
 
     shifts,
     users,
-    workTypes,
+    jobFunctions,
 
     setUsers,
-    setWorkTypes,
+    setJobFunctions,
 
     refreshDayData,
     refreshShifts,

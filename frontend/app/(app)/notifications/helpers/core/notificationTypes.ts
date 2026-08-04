@@ -27,7 +27,7 @@ export type ShiftTrade = {
   shift: {
     startTime: string;
     endTime: string;
-    workType?: {
+    jobFunction?: {
       name: string;
     };
   };

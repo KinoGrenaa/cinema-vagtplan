@@ -43,11 +43,11 @@ export type StaffingRequest = {
   shift?: {
     startTime: string;
     endTime: string;
-    workType?: {
+    jobFunction?: {
       name: string;
     } | null;
   } | null;
-  workType?: {
+  jobFunction?: {
     name: string;
   } | null;
 };

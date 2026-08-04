@@ -75,7 +75,7 @@ export function useShiftTradeActions({
       }
 
       const offeredBy = `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`;
-      const shiftInfo = `${trade.shift.workType.name} - ${formatShiftDate(
+      const shiftInfo = `${trade.shift.jobFunction.name} - ${formatShiftDate(
         trade.shift.startTime,
       )} kl. ${formatShiftTime(
         trade.shift.startTime,
@@ -135,7 +135,7 @@ ${shiftInfo}${approvedLeaveWarning}`,
 
   const rejectTrade = useCallback(
     (trade: ShiftTrade) => {
-      const shiftInfo = `${trade.shift.workType.name} - ${formatShiftDate(
+      const shiftInfo = `${trade.shift.jobFunction.name} - ${formatShiftDate(
         trade.shift.startTime,
       )} kl. ${formatShiftTime(
         trade.shift.startTime,

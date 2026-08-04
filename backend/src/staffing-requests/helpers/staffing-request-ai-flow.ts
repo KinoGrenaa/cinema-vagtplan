@@ -28,6 +28,7 @@ type CreateAiEmergencyStaffingRequestsParams = {
     startTime: Date;
     endTime: Date;
     shiftId?: number;
+    jobFunctionId?: number;
     message?: string;
     limit?: number;
   };
@@ -150,6 +151,7 @@ async function ensureShiftBelongsToCinema(
       select: {
         id: true,
         cinemaId: true,
+        jobFunctionId: true,
       },
     });
 
@@ -165,7 +167,7 @@ async function ensureShiftBelongsToCinema(
     );
   }
 
-  return shift.id;
+  return shift;
 }
 
 export async function createAiEmergencyStaffingRequests({
@@ -186,6 +188,10 @@ export async function createAiEmergencyStaffingRequests({
   const shiftId = getOptionalPositiveId(
     params.shiftId,
     'Vagt skal være et gyldigt ID',
+  );
+  const requestedJobFunctionId = getOptionalPositiveId(
+    params.jobFunctionId,
+    'Jobfunktion skal være et gyldigt ID',
   );
   const {
     start,
@@ -208,12 +214,28 @@ export async function createAiEmergencyStaffingRequests({
     requestedByUserId,
     cinemaId,
   });
-  const validatedShiftId =
+  const validatedShift =
     await ensureShiftBelongsToCinema({
       prisma,
       shiftId,
       cinemaId,
     });
+  const jobFunctionId =
+    validatedShift?.jobFunctionId ?? requestedJobFunctionId;
+  if (!jobFunctionId) {
+    throw new BadRequestException(
+      'En AI-bemandingsforespørgsel skal knyttes til en jobfunktion eller en eksisterende vagt.',
+    );
+  }
+  const jobFunction = await prisma.jobFunction.findFirst({
+    where: { id: jobFunctionId, cinemaId, isActive: true },
+    select: { id: true },
+  });
+  if (!jobFunction) {
+    throw new NotFoundException(
+      'Jobfunktionen blev ikke fundet eller er inaktiv i den valgte biograf',
+    );
+  }
   const candidates =
     await staffingAiService.getTopEmergencyCandidates(
       cinemaId,
@@ -242,6 +264,18 @@ export async function createAiEmergencyStaffingRequests({
       continue;
     }
 
+    const qualification = await prisma.userJobFunction.findFirst({
+      where: {
+        cinemaId,
+        userId: candidate.userId,
+        jobFunctionId,
+      },
+      select: { id: true },
+    });
+    if (!qualification) {
+      continue;
+    }
+
     const request =
       await prisma.staffingRequest.create({
         data: {
@@ -249,7 +283,11 @@ export async function createAiEmergencyStaffingRequests({
           requestedByUserId,
           targetUserId:
             candidate.userId,
-          shiftId: validatedShiftId,
+          shiftId: validatedShift?.id,
+          requestStartTime: start,
+          requestEndTime: end,
+          jobFunctionId,
+          workTypeId: null,
           type: 'EMERGENCY',
           status:
             StaffingRequestStatus.PENDING,

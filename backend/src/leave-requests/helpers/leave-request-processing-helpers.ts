@@ -37,11 +37,12 @@ export async function ensureNoOverlappingShift(
     select: {
       startTime: true,
       endTime: true,
-      workType: {
+      jobFunction: {
         select: {
           name: true,
         },
       },
+      jobFunctionNameSnapshot: true,
     },
   });
 

@@ -41,7 +41,7 @@ export class CreateStaffingRequestDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  workTypeId?: number;
+  jobFunctionId?: number;
 
   @IsOptional()
   @Type(() => Number)

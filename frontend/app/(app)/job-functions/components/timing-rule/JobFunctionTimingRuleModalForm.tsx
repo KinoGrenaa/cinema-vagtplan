@@ -1,19 +1,15 @@
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 
 import type { TimingRuleFormState } from "../../helpers/form/jobFunctionTimingRuleFormHelpers";
-import type {
-  DayPeriod,
-  JobFunctionTimingRule,
-} from "../../helpers/types/jobFunctionTypes";
+import type { JobFunctionTimingRule } from "../../helpers/types/jobFunctionTypes";
 
 import JobFunctionTimingRuleActions from "./JobFunctionTimingRuleActions";
 import JobFunctionTimingRuleAnchorFields from "./JobFunctionTimingRuleAnchorFields";
-import JobFunctionTimingRuleDayPeriodField from "./JobFunctionTimingRuleDayPeriodField";
+import JobFunctionTimingRuleWindowField from "./JobFunctionTimingRuleWindowField";
 import JobFunctionTimingRuleFallbackFields from "./JobFunctionTimingRuleFallbackFields";
 import JobFunctionTimingRuleSummary from "./JobFunctionTimingRuleSummary";
 
 type JobFunctionTimingRuleModalFormProps = {
-  dayPeriods: DayPeriod[];
   timingRule: JobFunctionTimingRule | null;
   timingRuleForm: TimingRuleFormState;
   timingRuleSaving: boolean;
@@ -24,7 +20,6 @@ type JobFunctionTimingRuleModalFormProps = {
 };
 
 export default function JobFunctionTimingRuleModalForm({
-  dayPeriods,
   timingRule,
   timingRuleForm,
   timingRuleSaving,
@@ -40,8 +35,7 @@ export default function JobFunctionTimingRuleModalForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <JobFunctionTimingRuleDayPeriodField
-        dayPeriods={dayPeriods}
+      <JobFunctionTimingRuleWindowField
         timingRuleForm={timingRuleForm}
         timingRuleSaving={timingRuleSaving}
         setTimingRuleForm={setTimingRuleForm}

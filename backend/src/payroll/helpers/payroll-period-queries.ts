@@ -83,22 +83,3 @@ export async function findCurrentPayrollPeriodEntity(
     new Date(),
   );
 }
-
-export async function getPayrollRulesEnabled(
-  prisma: PrismaService,
-  user: PayrollAuthUser,
-  selectedCinemaId?: number | null,
-): Promise<boolean> {
-  const cinemaId = getPayrollCinemaFilter(
-    user,
-    selectedCinemaId,
-  ).cinemaId;
-
-  const cinema = await prisma.cinema.findUnique({
-    where: {
-      id: cinemaId,
-    },
-  });
-
-  return Boolean((cinema as any)?.payrollRulesEnabled);
-}

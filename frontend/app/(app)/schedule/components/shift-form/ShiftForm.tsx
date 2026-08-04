@@ -17,7 +17,7 @@ type LeaveRequest = {
 
 type ShiftFormProps = {
   users: any[];
-  workTypes: any[];
+  jobFunctions: any[];
   leaveRequests?: LeaveRequest[];
   startTime: string;
   setStartTime: (value: string) => void;
@@ -27,8 +27,8 @@ type ShiftFormProps = {
   setNote: (value: string) => void;
   userId: number;
   setUserId: (value: number) => void;
-  workTypeId: number;
-  setWorkTypeId: (value: number) => void;
+  jobFunctionId: number;
+  setJobFunctionId: (value: number) => void;
   selectedShift: any;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDelete: () => void;
@@ -162,13 +162,13 @@ function validateShiftForm({
   startTime,
   endTime,
   userId,
-  workTypeId,
+  jobFunctionId,
   selectedUserLeaveConflict,
 }: {
   startTime: string;
   endTime: string;
   userId: number;
-  workTypeId: number;
+  jobFunctionId: number;
   selectedUserLeaveConflict: LeaveStatus | null;
 }) {
   const errors: string[] = [];
@@ -189,8 +189,8 @@ function validateShiftForm({
     }
   }
 
-  if (!workTypeId || workTypeId <= 0) {
-    errors.push("Arbejdstype skal vælges.");
+  if (!jobFunctionId || jobFunctionId <= 0) {
+    errors.push("Jobfunktion skal vælges.");
   }
 
   if (userId > 0 && selectedUserLeaveConflict === "APPROVED") {
@@ -202,7 +202,7 @@ function validateShiftForm({
 
 export default function ShiftForm({
   users,
-  workTypes,
+  jobFunctions,
   leaveRequests = [],
   startTime,
   setStartTime,
@@ -212,8 +212,8 @@ export default function ShiftForm({
   setNote,
   userId,
   setUserId,
-  workTypeId,
-  setWorkTypeId,
+  jobFunctionId,
+  setJobFunctionId,
   selectedShift,
   onSubmit,
   onDelete,
@@ -235,7 +235,7 @@ export default function ShiftForm({
       startTime,
       endTime,
       userId,
-      workTypeId,
+      jobFunctionId,
       selectedUserLeaveConflict,
     });
 
@@ -257,7 +257,7 @@ export default function ShiftForm({
             {selectedShift ? "Rediger vagt" : "Opret vagt"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Vælg tidspunkt, medarbejder og arbejdstype for vagten.
+            Vælg tidspunkt, medarbejder og jobfunktion for vagten.
           </p>
         </div>
       )}
@@ -395,17 +395,17 @@ export default function ShiftForm({
         </div>
 
         <div>
-          <label className={labelClass}>Arbejdstype</label>
+          <label className={labelClass}>Jobfunktion</label>
           <select
             className={inputClass}
-            value={workTypeId}
-            onChange={(e) => setWorkTypeId(Number(e.target.value))}
+            value={jobFunctionId}
+            onChange={(e) => setJobFunctionId(Number(e.target.value))}
           >
-            <option value={0}>Vælg vagttype</option>
+            <option value={0}>Vælg jobfunktion</option>
 
-            {workTypes.map((workType) => (
-              <option key={workType.id} value={workType.id}>
-                {workType.name}
+            {jobFunctions.map((jobFunction) => (
+              <option key={jobFunction.id} value={jobFunction.id}>
+                {jobFunction.name}
               </option>
             ))}
           </select>

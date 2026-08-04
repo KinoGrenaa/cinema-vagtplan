@@ -16,6 +16,6 @@ export type Cinema = {
   _count?: {
     users?: number;
     shifts?: number;
-    workTypes?: number;
+    jobFunctions?: number;
   };
 };

@@ -22,7 +22,7 @@ export const staffingRequestParticipantSelect = {
   lastName: true,
 } as const;
 
-export const staffingRequestWorkTypeSelect = {
+export const staffingRequestJobFunctionSelect = {
   id: true,
   name: true,
   color: true,
@@ -42,17 +42,19 @@ export const staffingRequestInclude = {
       startTime: true,
       endTime: true,
       userId: true,
-      workTypeId: true,
+      jobFunctionId: true,
+      jobFunctionNameSnapshot: true,
+      jobFunctionColorSnapshot: true,
       user: {
         select: staffingRequestParticipantSelect,
       },
-      workType: {
-        select: staffingRequestWorkTypeSelect,
+      jobFunction: {
+        select: staffingRequestJobFunctionSelect,
       },
     },
   },
-  workType: {
-    select: staffingRequestWorkTypeSelect,
+  jobFunction: {
+    select: staffingRequestJobFunctionSelect,
   },
   requestedByUser: {
     select: staffingRequestParticipantSelect,
@@ -83,7 +85,6 @@ export function resolveStaffingCinemaId(
         'Vælg en biograf, før du administrerer bemandingsforespørgsler.',
       );
     }
-
     return requestedCinemaId;
   }
 
@@ -91,15 +92,12 @@ export function resolveStaffingCinemaId(
     user.cinemaId,
     'Din aktive biograf er ikke gyldig',
   );
-
   if (!sessionCinemaId) {
     throw new ForbiddenException('Din bruger er ikke tilknyttet en biograf');
   }
-
   if (requestedCinemaId && requestedCinemaId !== sessionCinemaId) {
     throw new ForbiddenException('Du har ikke adgang til denne biograf');
   }
-
   return sessionCinemaId;
 }
 
@@ -112,7 +110,6 @@ export function normalizeCreateStaffingRequestInput(
       'Bemandingsforespørgslen mangler gyldige oplysninger.',
     );
   }
-
   if (!Object.values(StaffingRequestType).includes(dto.type)) {
     throw new BadRequestException('Vælg en gyldig type bemandingsforespørgsel.');
   }
@@ -121,7 +118,6 @@ export function normalizeCreateStaffingRequestInput(
   if (!Number.isInteger(priority) || priority < 1 || priority > 5) {
     throw new BadRequestException('Prioritet skal være et helt tal fra 1 til 5.');
   }
-
   if (dto.aiGenerated !== undefined && typeof dto.aiGenerated !== 'boolean') {
     throw new BadRequestException('AI-markeringen er ikke gyldig.');
   }
@@ -138,27 +134,20 @@ export function normalizeCreateStaffingRequestInput(
     dto.expiresAt,
     'Udløbstidspunktet er ikke gyldigt.',
   );
-
   if (expiresAt && new Date(expiresAt) <= now) {
     throw new BadRequestException('Udløbstidspunktet skal ligge i fremtiden.');
   }
 
   return {
     ...dto,
-    cinemaId: normalizeOptionalPositiveId(
-      dto.cinemaId,
-      'Biograf skal være et gyldigt ID',
-    ),
-    shiftId: normalizeOptionalPositiveId(
-      dto.shiftId,
-      'Vagt skal være et gyldigt ID',
-    ),
+    cinemaId: normalizeOptionalPositiveId(dto.cinemaId, 'Biograf skal være et gyldigt ID'),
+    shiftId: normalizeOptionalPositiveId(dto.shiftId, 'Vagt skal være et gyldigt ID'),
     targetUserId: normalizeOptionalPositiveId(
       dto.targetUserId,
       'Medarbejder skal være et gyldigt ID',
     ),
-    workTypeId: normalizeOptionalPositiveId(
-      dto.workTypeId,
+    jobFunctionId: normalizeOptionalPositiveId(
+      dto.jobFunctionId,
       'Jobfunktion skal være et gyldigt ID',
     ),
     priority,
@@ -172,12 +161,10 @@ export function normalizeCreateStaffingRequestInput(
 
 export function parseStaffingRequestDate(value?: string | null) {
   if (!value) return null;
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     throw new BadRequestException('Tidsintervallet er ikke gyldigt.');
   }
-
   return date;
 }
 
@@ -189,7 +176,6 @@ function normalizeOptionalPositiveId(
   if (!Number.isInteger(value) || value <= 0) {
     throw new BadRequestException(message);
   }
-
   return value;
 }
 
@@ -198,16 +184,12 @@ function normalizeOptionalDateString(
   message: string,
 ) {
   if (value === undefined || value === null || value === '') return undefined;
-  if (typeof value !== 'string') {
-    throw new BadRequestException(message);
-  }
-
+  if (typeof value !== 'string') throw new BadRequestException(message);
   const normalized = value.trim();
   const date = new Date(normalized);
   if (!normalized || Number.isNaN(date.getTime())) {
     throw new BadRequestException(message);
   }
-
   return normalized;
 }
 
@@ -216,17 +198,12 @@ function normalizeOptionalMessage(value?: string | null) {
   if (typeof value !== 'string') {
     throw new BadRequestException('Beskeden er ikke gyldig.');
   }
-
   const normalized = value.trim();
-  if (!normalized) {
-    throw new BadRequestException('Beskeden må ikke være tom.');
-  }
-
+  if (!normalized) throw new BadRequestException('Beskeden må ikke være tom.');
   if (normalized.length > STAFFING_REQUEST_MESSAGE_MAX_LENGTH) {
     throw new BadRequestException(
       `Beskeden må højst være ${STAFFING_REQUEST_MESSAGE_MAX_LENGTH} tegn.`,
     );
   }
-
   return normalized;
 }

@@ -34,12 +34,13 @@ type ExistingLeaveRequest = {
   status: string;
 };
 
-type ShiftWithWorkType = {
+type ShiftWithJobFunction = {
   startTime: Date;
   endTime: Date;
-  workType?: {
+  jobFunction?: {
     name: string;
   } | null;
+  jobFunctionNameSnapshot?: string | null;
 };
 
 const COPENHAGEN_TIME_ZONE =
@@ -260,7 +261,7 @@ export function validateLeaveRequestDates(
 }
 
 export function createOverlappingShiftException(
-  shift: ShiftWithWorkType,
+  shift: ShiftWithJobFunction,
 ) {
   const shiftDate =
     shift.startTime.toLocaleDateString(
@@ -287,12 +288,12 @@ export function createOverlappingShiftException(
         timeZone: COPENHAGEN_TIME_ZONE,
       },
     );
-  const workTypeName = shift.workType?.name
-    ? `${shift.workType.name}-vagt`
-    : 'vagt';
+  const jobFunctionName =
+    shift.jobFunctionNameSnapshot || shift.jobFunction?.name;
+  const shiftLabel = jobFunctionName ? `${jobFunctionName}-vagt` : 'vagt';
 
   return new BadRequestException(
-    `Du har en ${workTypeName} den ${shiftDate} kl. ${shiftStart}-${shiftEnd}. ` +
+    `Du har en ${shiftLabel} den ${shiftDate} kl. ${shiftStart}-${shiftEnd}. ` +
       'Byt vagten først, eller kontakt din planlægger, før du søger fravær.',
   );
 }

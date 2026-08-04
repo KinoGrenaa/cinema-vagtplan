@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, GoneException } from '@nestjs/common';
 import { PayrollController } from './payroll.controller';
 import { PayrollService } from './payroll.service';
 
@@ -105,49 +105,10 @@ describe('PayrollController input validation', () => {
     );
   });
 
-  it('normalizes valid unlock IDs and cinema', () => {
-    controller.unlockPeriod(req, '9', 'Kontrolleret', '4');
-    controller.unlockTimeEntry(req, '11', 'Rettelse', 4);
-
-    expect(service.unlockPeriod).toHaveBeenCalledWith(
-      req.user,
-      9,
-      'Kontrolleret',
-      4,
-    );
-    expect(service.unlockTimeEntry).toHaveBeenCalledWith(
-      req.user,
-      11,
-      'Rettelse',
-      4,
-    );
-  });
-
-  it.each([
-    '',
-    '1.5',
-    '1e2',
-    '-1',
-    'abc',
-    '9007199254740992',
-  ])('rejects invalid payroll-period ID %p', (id) => {
-    expect(() =>
-      controller.unlockPeriod(req, id, 'Note', '1'),
-    ).toThrow(BadRequestException);
+  it('rejects legacy unlock routes with the immutable-period contract', () => {
+    expect(() => controller.unlockPeriod()).toThrow(GoneException);
+    expect(() => controller.unlockTimeEntry()).toThrow(GoneException);
     expect(service.unlockPeriod).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    '',
-    '1.5',
-    '1e2',
-    '-1',
-    'abc',
-    '9007199254740992',
-  ])('rejects invalid time-entry ID %p', (id) => {
-    expect(() =>
-      controller.unlockTimeEntry(req, id, 'Note', '1'),
-    ).toThrow(BadRequestException);
     expect(service.unlockTimeEntry).not.toHaveBeenCalled();
   });
 

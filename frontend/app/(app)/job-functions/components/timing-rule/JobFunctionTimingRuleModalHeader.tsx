@@ -1,7 +1,7 @@
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
 type JobFunctionTimingRuleModalHeaderProps = {
-  jobFunction: JobFunctionWithWorkType;
+  jobFunction: JobFunctionWithJobFunction;
 };
 
 export default function JobFunctionTimingRuleModalHeader({
@@ -16,9 +16,8 @@ export default function JobFunctionTimingRuleModalHeader({
         {jobFunction.name}
       </h2>
       <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-        Reglen bruges til at beregne mødetid og fyraften ud fra dagsperiode,
-        filmprogram og tider uden filmprogram, når vagtplanlægning opretter
-        vagter fra en forhåndsvisning.
+        Reglen bruger de valgte filmvisninger, filmprogrammet og fallbacktiderne
+        til at beregne mødetid og fyraften.
       </p>
     </div>
   );

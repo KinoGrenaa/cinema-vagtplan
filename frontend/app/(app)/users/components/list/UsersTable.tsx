@@ -13,10 +13,12 @@ type UsersTableProps = {
   loadingMore: boolean;
   needsMasterCinemaSelection: boolean;
   canManageCinemaMemberships: boolean;
+  canManagePayroll: boolean;
   onEdit: (user: User) => void;
   onManageCinemaMemberships: (
     user: User,
   ) => void;
+  onManageJobFunctionsPayroll: (user: User) => void;
   onDeactivate: (user: User) => void;
   onReactivate: (user: User) => void;
   onLoadMore: () => void;
@@ -29,8 +31,10 @@ export default function UsersTable({
   loadingMore,
   needsMasterCinemaSelection,
   canManageCinemaMemberships,
+  canManagePayroll,
   onEdit,
   onManageCinemaMemberships,
+  onManageJobFunctionsPayroll,
   onDeactivate,
   onReactivate,
   onLoadMore,
@@ -167,6 +171,15 @@ export default function UsersTable({
                             administreres af en
                             anden biograf
                           </span>
+                        )}
+                        {user.role !== "MASTER" && user.isActive !== false && (
+                          <button
+                            type="button"
+                            onClick={() => onManageJobFunctionsPayroll(user)}
+                            className="rounded-lg bg-blue-700 px-3 py-2 text-sm text-white hover:bg-blue-800"
+                          >
+                            {canManagePayroll ? "Jobfunktioner og løn" : "Jobfunktioner"}
+                          </button>
                         )}
                         {canManageCinemaMemberships &&
                           user.role !==

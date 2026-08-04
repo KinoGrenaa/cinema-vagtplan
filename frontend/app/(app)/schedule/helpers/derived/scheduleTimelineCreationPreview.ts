@@ -1,7 +1,7 @@
 type PreviewShift = {
   startTime: string;
   endTime: string;
-  workTypeId: number;
+  jobFunctionId: number;
 };
 
 export type ScheduleTimelineCreationPreview = {
@@ -11,7 +11,7 @@ export type ScheduleTimelineCreationPreview = {
   leftPercent: number;
   widthPercent: number;
   overlapCount: number;
-  sameWorkTypeOverlapCount: number;
+  sameJobFunctionOverlapCount: number;
   crossesMidnight: boolean;
   conflictLevel:
     | "none"
@@ -65,7 +65,7 @@ export function getScheduleTimelineCreationPreview(
       | number
       | null
       | undefined;
-    workTypeId:
+    jobFunctionId:
       | number
       | null
       | undefined;
@@ -137,12 +137,12 @@ export function getScheduleTimelineCreationPreview(
           ),
         ),
     );
-  const sameWorkTypeOverlapCount =
-    params.workTypeId
+  const sameJobFunctionOverlapCount =
+    params.jobFunctionId
       ? overlappingShifts.filter(
           (shift) =>
-            shift.workTypeId ===
-            params.workTypeId,
+            shift.jobFunctionId ===
+            params.jobFunctionId,
         ).length
       : 0;
 
@@ -164,11 +164,11 @@ export function getScheduleTimelineCreationPreview(
       ) * 100,
     overlapCount:
       overlappingShifts.length,
-    sameWorkTypeOverlapCount,
+    sameJobFunctionOverlapCount,
     crossesMidnight:
       previewEnd > dayEnd,
     conflictLevel:
-      sameWorkTypeOverlapCount >
+      sameJobFunctionOverlapCount >
       0
         ? "same-work-type"
         : overlappingShifts.length >
@@ -183,14 +183,14 @@ export function getScheduleTimelinePreviewStatus(
     ScheduleTimelineCreationPreview,
 ) {
   if (
-    preview.sameWorkTypeOverlapCount >
+    preview.sameJobFunctionOverlapCount >
     0
   ) {
     return (
-      preview.sameWorkTypeOverlapCount ===
+      preview.sameJobFunctionOverlapCount ===
       1
-        ? "Overlapper 1 vagt med samme vagttype"
-        : `Overlapper ${preview.sameWorkTypeOverlapCount} vagter med samme vagttype`
+        ? "Overlapper 1 vagt med samme jobfunktion"
+        : `Overlapper ${preview.sameJobFunctionOverlapCount} vagter med samme jobfunktion`
     );
   }
 

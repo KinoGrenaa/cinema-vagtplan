@@ -1,5 +1,4 @@
 import {
-  parseTimingRuleDayPeriodId,
   parseTimingRuleForm,
   type TimingRuleFormState,
 } from "../form/jobFunctionTimingRuleFormHelpers";
@@ -19,16 +18,6 @@ export function buildTimingRulePayload(
 ) {
   return {
     ...parseTimingRuleForm(timingRuleForm),
-    cinemaId: activeCinemaId,
-  };
-}
-
-export function buildJobFunctionDayPeriodPayload(
-  timingRuleForm: TimingRuleFormState,
-  activeCinemaId: number | null,
-) {
-  return {
-    dayPeriodId: parseTimingRuleDayPeriodId(timingRuleForm.dayPeriodId),
     cinemaId: activeCinemaId,
   };
 }

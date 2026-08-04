@@ -1,13 +1,13 @@
 import {
   findScheduleStaticData,
   scheduleStaticUserSelect,
-  scheduleStaticWorkTypeSelect,
+  scheduleStaticJobFunctionSelect,
 } from './schedule-static-data';
 
 describe(
   'schedule static data',
   () => {
-    it('henter kun aktive biografmedlemmer og aktive vagttyper', async () => {
+    it('henter kun aktive biografmedlemmer og aktive jobfunktioner', async () => {
       const memberships = [
         {
           role: 'EMPLOYEE',
@@ -24,11 +24,12 @@ describe(
           },
         },
       ];
-      const workTypes = [
+      const jobFunctions = [
         {
           id: 3,
           name: 'Kiosk',
           color: '#2563eb',
+          sortOrder: 0,
         },
       ];
       const prisma = {
@@ -38,10 +39,10 @@ describe(
               memberships,
             ),
         },
-        workType: {
+        jobFunction: {
           findMany:
             jest.fn().mockResolvedValue(
-              workTypes,
+              jobFunctions,
             ),
         },
       };
@@ -60,7 +61,7 @@ describe(
             cinemaId: 7,
           },
         ],
-        workTypes,
+        jobFunctions,
       });
 
       expect(
@@ -101,15 +102,18 @@ describe(
       });
 
       expect(
-        prisma.workType.findMany,
+        prisma.jobFunction.findMany,
       ).toHaveBeenCalledWith({
         where: {
           cinemaId: 7,
           isActive: true,
         },
         select:
-          scheduleStaticWorkTypeSelect,
+          scheduleStaticJobFunctionSelect,
         orderBy: [
+          {
+            sortOrder: 'asc',
+          },
           {
             name: 'asc',
           },

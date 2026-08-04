@@ -1,6 +1,6 @@
 import { apiFetch } from "@/app/lib/api";
 
-import type { JobFunctionWithWorkType } from "../payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../payroll/jobFunctionPayrollHelpers";
 import {
   appendCinemaId,
   readErrorMessage,
@@ -8,7 +8,6 @@ import {
 import type { TimingRuleFormState } from "../form/jobFunctionTimingRuleFormHelpers";
 import type { JobFunctionTimingRule } from "../types/jobFunctionTypes";
 import {
-  buildJobFunctionDayPeriodPayload,
   buildTimingRulePayload,
   parseTimingRuleResponseText,
 } from "./jobFunctionTimingRuleApiHelpers";
@@ -38,32 +37,11 @@ export async function fetchJobFunctionTimingRule(
 }
 
 export async function saveJobFunctionTimingRule(
-  jobFunction: JobFunctionWithWorkType,
+  jobFunction: JobFunctionWithJobFunction,
   timingRuleForm: TimingRuleFormState,
   activeCinemaId: number | null,
 ): Promise<JobFunctionTimingRule | null> {
-  const dayPeriodPayload = buildJobFunctionDayPeriodPayload(
-    timingRuleForm,
-    activeCinemaId,
-  );
   const payload = buildTimingRulePayload(timingRuleForm, activeCinemaId);
-
-  const dayPeriodResponse = await apiFetch(
-    appendCinemaId(`/job-functions/${jobFunction.id}`, activeCinemaId),
-    {
-      method: "PATCH",
-      body: JSON.stringify(dayPeriodPayload),
-    },
-  );
-
-  if (!dayPeriodResponse.ok) {
-    throw new Error(
-      await readErrorMessage(
-        dayPeriodResponse,
-        "Kunne ikke gemme dagsperiode for jobfunktion",
-      ),
-    );
-  }
 
   const response = await apiFetch(
     appendCinemaId(

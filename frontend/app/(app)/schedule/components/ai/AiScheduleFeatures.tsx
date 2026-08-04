@@ -7,7 +7,7 @@ import {
   type MovieShowing,
   type UseScheduleAiInput,
 } from "../../hooks/ai/useScheduleAi";
-import type { Shift, User, WorkType } from "../../../../../../shared/types";
+import type { Shift, User, JobFunction } from "../../../../../../shared/types";
 
 type AiScheduleData = ReturnType<typeof useScheduleAi>;
 
@@ -16,7 +16,7 @@ type AiScheduleFeatureProps = {
   selectedDate: string;
   shifts: Shift[];
   users: User[];
-  workTypes: WorkType[];
+  jobFunctions: JobFunction[];
   movieShowings: MovieShowing[];
   createShift: UseScheduleAiInput["createShift"];
   showError: UseScheduleAiInput["showError"];
@@ -28,7 +28,7 @@ export default function AiScheduleFeatures({
   selectedDate,
   shifts,
   users,
-  workTypes,
+  jobFunctions,
   movieShowings,
   createShift,
   showError,
@@ -43,7 +43,7 @@ export default function AiScheduleFeatures({
       selectedDate={selectedDate}
       shifts={shifts}
       users={users}
-      workTypes={workTypes}
+      jobFunctions={jobFunctions}
       movieShowings={movieShowings}
       createShift={createShift}
       showError={showError}
@@ -57,7 +57,7 @@ function AiScheduleFeaturesEnabled({
   selectedDate,
   shifts,
   users,
-  workTypes,
+  jobFunctions,
   movieShowings,
   createShift,
   showError,
@@ -67,7 +67,7 @@ function AiScheduleFeaturesEnabled({
     selectedDate,
     shifts,
     users,
-    workTypes,
+    jobFunctions,
     movieShowings,
     createShift,
     showError,

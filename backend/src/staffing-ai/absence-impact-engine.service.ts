@@ -36,7 +36,7 @@ export class AbsenceImpactEngineService {
       },
       include: {
         user: true,
-        workType: true,
+        jobFunction: true,
       },
       orderBy: {
         startTime: 'asc',
@@ -56,7 +56,7 @@ export class AbsenceImpactEngineService {
         shiftId: shift.id,
         shiftStart: shift.startTime,
         shiftEnd: shift.endTime,
-        workType: shift.workType?.name || 'Ukendt',
+        jobFunction: shift.jobFunction?.name || 'Ukendt',
         candidates: replacementCandidates,
       });
 
@@ -96,7 +96,7 @@ export class AbsenceImpactEngineService {
         cinemaId,
       },
       include: {
-        workType: true,
+        jobFunction: true,
       },
     });
 
@@ -178,8 +178,8 @@ export class AbsenceImpactEngineService {
         (retention?.dissatisfactionRisk ?? 0) +
         (retention?.workloadStressScore ?? 0);
       const preferenceMatch =
-        !!shift.workType?.name &&
-        (preferences?.preferredWorkTypes ?? []).includes(shift.workType.name);
+        !!shift.jobFunction?.name &&
+        (preferences?.preferredJobFunctions ?? []).includes(shift.jobFunction.name);
       let score = 100;
       score -= (100 - (fairness?.fairnessScore ?? 100)) * 0.2;
       score -= fatigue.fatigueScore * 0.3;

@@ -23,12 +23,15 @@ describe('shift trade relation read shape', () => {
           user: {
             select: shiftTradeParticipantSelect,
           },
-          workType: {
+          jobFunction: {
             select: {
+              id: true,
               name: true,
               color: true,
             },
           },
+          jobFunctionNameSnapshot: true,
+          jobFunctionColorSnapshot: true,
         },
       },
       offeredByUser: {

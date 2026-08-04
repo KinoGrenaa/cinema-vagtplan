@@ -50,10 +50,8 @@ type PublicationPreviewItemRow = {
   warningMessage: string | null;
   jobFunctionName: string | null;
   jobFunctionColor: string | null;
-  jobFunctionWorkTypeId: number | bigint | null;
-  workTypeName: string | null;
-  workTypeIsActive: boolean | null;
-  workTypeArchivedAt: Date | string | null;
+  jobFunctionIsActive: boolean | null;
+  jobFunctionArchivedAt: Date | string | null;
   scheduleTemplateName: string | null;
   userFirstName: string | null;
   userLastName: string | null;
@@ -166,21 +164,12 @@ function getUserName(row: PublicationPreviewItemRow) {
   return fullName || row.userEmail || null;
 }
 
-function getJobFunctionWorkTypeBlockReason(row: PublicationPreviewItemRow) {
+function getJobFunctionBlockReason(row: PublicationPreviewItemRow) {
   const jobFunctionName = row.jobFunctionName || 'Jobfunktionen';
-
-  if (!row.jobFunctionId) {
-    return 'Jobfunktion mangler.';
+  if (!row.jobFunctionId) return 'Jobfunktion mangler.';
+  if (row.jobFunctionIsActive === false || row.jobFunctionArchivedAt) {
+    return `${jobFunctionName} er arkiveret eller inaktiv.`;
   }
-
-  if (!row.jobFunctionWorkTypeId) {
-    return `${jobFunctionName} mangler feltet “Oprettes som”. Ret jobfunktionen først.`;
-  }
-
-  if (row.workTypeIsActive === false || row.workTypeArchivedAt) {
-    return `${jobFunctionName} er koblet til en inaktiv arbejdstype. Ret “Oprettes som” på jobfunktionen først.`;
-  }
-
   return null;
 }
 
@@ -200,9 +189,9 @@ function buildBlockReasons(
     reasons.push('Mangler vagtsskabelon eller ugedag.');
   }
 
-  const workTypeBlockReason = getJobFunctionWorkTypeBlockReason(row);
-  if (workTypeBlockReason) {
-    reasons.push(workTypeBlockReason);
+  const jobFunctionBlockReason = getJobFunctionBlockReason(row);
+  if (jobFunctionBlockReason) {
+    reasons.push(jobFunctionBlockReason);
   }
 
   if (plannedStartMinute === null || plannedEndMinute === null) {
@@ -238,8 +227,6 @@ function normalizePreviewItem(
     jobFunctionId: toNullableNumber(row.jobFunctionId),
     jobFunctionName: row.jobFunctionName,
     jobFunctionColor: row.jobFunctionColor,
-    workTypeId: toNullableNumber(row.jobFunctionWorkTypeId),
-    workTypeName: row.workTypeName,
     userId: toNullableNumber(row.userId),
     userName: getUserName(row),
     plannedStartMinute,
@@ -302,15 +289,15 @@ function buildPublishAuditDescription(
   draftId: number,
   insertedShiftIds: number[],
   affectedDateKeys: string[],
-  workTypeNames: string[],
+  jobFunctionNames: string[],
 ) {
   const parts = [
     `Publicerede planlægningskladde #${draftId} til ${insertedShiftIds.length} vagt(er).`,
     affectedDateKeys.length > 0
       ? `Datoer: ${affectedDateKeys.join(', ')}`
       : null,
-    workTypeNames.length > 0
-      ? `Arbejdstyper: ${workTypeNames.join(', ')}`
+    jobFunctionNames.length > 0
+      ? `Jobfunktioner: ${jobFunctionNames.join(', ')}`
       : null,
     insertedShiftIds.length > 0
       ? `Shift-id'er: ${insertedShiftIds.join(', ')}`
@@ -439,19 +426,16 @@ export class ShiftPlanningDraftPublicationService {
           i."warningMessage",
           jf.name AS "jobFunctionName",
           jf.color AS "jobFunctionColor",
-          jf."workTypeId" AS "jobFunctionWorkTypeId",
-          wt.name AS "workTypeName",
-          wt."isActive" AS "workTypeIsActive",
-          wt."archivedAt" AS "workTypeArchivedAt",
+          jf."isActive" AS "jobFunctionIsActive",
+          jf."archivedAt" AS "jobFunctionArchivedAt",
           st.name AS "scheduleTemplateName",
           u."firstName" AS "userFirstName",
           u."lastName" AS "userLastName",
           u.email AS "userEmail"
         FROM "ShiftPlanningDraftItem" i
-        LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId"
-        LEFT JOIN "WorkType" wt
-          ON wt.id = jf."workTypeId"
-          AND wt."cinemaId" = i."cinemaId"
+        LEFT JOIN "JobFunction" jf
+          ON jf.id = i."jobFunctionId"
+          AND jf."cinemaId" = i."cinemaId"
         LEFT JOIN "ScheduleTemplate" st ON st.id = i."scheduleTemplateId"
         LEFT JOIN "User" u ON u.id = i."userId"
         WHERE i."draftId" = ${draftId}
@@ -611,19 +595,16 @@ export class ShiftPlanningDraftPublicationService {
             i."warningMessage",
             jf.name AS "jobFunctionName",
             jf.color AS "jobFunctionColor",
-            jf."workTypeId" AS "jobFunctionWorkTypeId",
-            wt.name AS "workTypeName",
-            wt."isActive" AS "workTypeIsActive",
-            wt."archivedAt" AS "workTypeArchivedAt",
+            jf."isActive" AS "jobFunctionIsActive",
+            jf."archivedAt" AS "jobFunctionArchivedAt",
             st.name AS "scheduleTemplateName",
             u."firstName" AS "userFirstName",
             u."lastName" AS "userLastName",
             u.email AS "userEmail"
           FROM "ShiftPlanningDraftItem" i
-          LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId"
-          LEFT JOIN "WorkType" wt
-            ON wt.id = jf."workTypeId"
-            AND wt."cinemaId" = i."cinemaId"
+          LEFT JOIN "JobFunction" jf
+            ON jf.id = i."jobFunctionId"
+            AND jf."cinemaId" = i."cinemaId"
           LEFT JOIN "ScheduleTemplate" st ON st.id = i."scheduleTemplateId"
           LEFT JOIN "User" u ON u.id = i."userId"
           WHERE i."draftId" = ${draftId}
@@ -643,7 +624,7 @@ export class ShiftPlanningDraftPublicationService {
 
       const insertedShiftIds: number[] = [];
       const affectedDateKeys = new Set<string>();
-      const workTypeNames = new Set<string>();
+      const jobFunctionNames = new Set<string>();
 
       for (const row of itemRows) {
         const item = normalizePreviewItem(row);
@@ -651,18 +632,26 @@ export class ShiftPlanningDraftPublicationService {
         if (!item.canBecomeShift || !item.startTime || !item.endTime) {
           throw new BadRequestException(
             item.blockReasons[0] ??
-              'Ret jobfunktionens “Oprettes som” og tider, før vagterne oprettes.',
+              'Ret jobfunktionen og tiderne, før vagterne oprettes.',
           );
         }
 
-        if (item.workTypeId === null) {
-          throw new BadRequestException(
-            'Ret jobfunktionens “Oprettes som”, før vagterne oprettes.',
-          );
-        }
 
         if (item.userId !== null) {
           await ensureShiftUserHasCinemaAccess(tx, item.userId, cinemaId);
+          const qualification = await tx.userJobFunction.findFirst({
+            where: {
+              cinemaId,
+              userId: item.userId,
+              jobFunctionId: item.jobFunctionId!,
+            },
+            select: { id: true },
+          });
+          if (!qualification) {
+            throw new BadRequestException(
+              'Medarbejderen er ikke kvalificeret til jobfunktionen.',
+            );
+          }
           await checkShiftConflicts(tx, {
             startTime: item.startTime,
             endTime: item.endTime,
@@ -676,6 +665,12 @@ export class ShiftPlanningDraftPublicationService {
             "cinemaId",
             "userId",
             "workTypeId",
+            "jobFunctionId",
+            "jobFunctionNameSnapshot",
+            "jobFunctionColorSnapshot",
+            "timingSource",
+            "timingRuleSnapshot",
+            "sourceMovieShowingIds",
             "startTime",
             "endTime",
             note
@@ -683,7 +678,13 @@ export class ShiftPlanningDraftPublicationService {
           VALUES (
             ${cinemaId},
             ${item.userId},
-            ${item.workTypeId},
+            NULL,
+            ${item.jobFunctionId},
+            ${item.jobFunctionName},
+            ${item.jobFunctionColor},
+            'JOB_FUNCTION_RULE',
+            CAST(${JSON.stringify({ source: 'SHIFT_PLANNING_DRAFT' })} AS jsonb),
+            CAST(${JSON.stringify([])} AS jsonb),
             ${item.startTime},
             ${item.endTime},
             ${note}
@@ -694,8 +695,8 @@ export class ShiftPlanningDraftPublicationService {
         insertedShiftIds.push(toRequiredNumber(insertedRows[0]?.id));
         affectedDateKeys.add(item.dateKey);
 
-        if (item.workTypeName) {
-          workTypeNames.add(item.workTypeName);
+        if (item.jobFunctionName) {
+          jobFunctionNames.add(item.jobFunctionName);
         }
 
         await tx.$executeRaw(Prisma.sql`
@@ -711,7 +712,7 @@ export class ShiftPlanningDraftPublicationService {
       }
 
       const sortedDateKeys = Array.from(affectedDateKeys).sort();
-      const sortedWorkTypeNames = Array.from(workTypeNames).sort();
+      const sortedJobFunctionNames = Array.from(jobFunctionNames).sort();
 
       await refreshMonthPlanCountsForDateKeys(tx, cinemaId, sortedDateKeys);
 
@@ -743,7 +744,7 @@ export class ShiftPlanningDraftPublicationService {
               draftId,
               insertedShiftIds,
               sortedDateKeys,
-              sortedWorkTypeNames,
+              sortedJobFunctionNames,
             )},
             CURRENT_TIMESTAMP,
             ${actorUserId},
@@ -755,7 +756,7 @@ export class ShiftPlanningDraftPublicationService {
       return {
         createdShiftIds: insertedShiftIds,
         affectedDateKeys: sortedDateKeys,
-        workTypeNames: sortedWorkTypeNames,
+        jobFunctionNames: sortedJobFunctionNames,
       };
     });
 
@@ -792,9 +793,9 @@ export class ShiftPlanningDraftPublicationService {
       createdShiftCount: publicationResult.createdShiftIds.length,
       createdShiftIds: publicationResult.createdShiftIds,
       affectedDateKeys: publicationResult.affectedDateKeys,
-      workTypeId: null,
-      workTypeName: publicationResult.workTypeNames.join(', ') || null,
-      workTypeNames: publicationResult.workTypeNames,
+      jobFunctionId: null,
+      jobFunctionName: publicationResult.jobFunctionNames.join(', ') || null,
+      jobFunctionNames: publicationResult.jobFunctionNames,
       publishedAt,
       message: `${publicationResult.createdShiftIds.length} vagter er oprettet i vagtplanen.`,
     };

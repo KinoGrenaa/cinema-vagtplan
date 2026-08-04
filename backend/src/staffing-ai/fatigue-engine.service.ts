@@ -99,7 +99,7 @@ export class FatigueEngineService {
     let consecutiveDays = 0;
     let maxConsecutiveDays = 0;
 
-    const workedDates = new Set(
+    const workedDates = new Set<string>(
       shifts.map((shift) =>
         this.dateToCopenhagenDateKey(new Date(shift.startTime)),
       ),

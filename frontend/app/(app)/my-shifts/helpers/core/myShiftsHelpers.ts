@@ -51,22 +51,22 @@ export function formatShiftTimeRange(shift: {
   return `${formatTimeDK(shift.startTime)} - ${formatTimeDK(shift.endTime)}`;
 }
 
-export function getShiftWorkTypeName(shift: {
-  workType?: {
+export function getShiftJobFunctionName(shift: {
+  jobFunction?: {
     name: string;
   };
 }) {
-  return shift.workType?.name ?? "Ukendt arbejdstype";
+  return shift.jobFunction?.name ?? "Ukendt jobfunktion";
 }
 
 export function getShiftConfirmText(shift: {
   startTime: string;
   endTime: string;
-  workType?: {
+  jobFunction?: {
     name: string;
   };
 }) {
-  return `${getShiftWorkTypeName(shift)} ${formatShiftDate(
+  return `${getShiftJobFunctionName(shift)} ${formatShiftDate(
     shift.startTime,
   )} ${formatShiftTimeRange(shift)}`;
 }

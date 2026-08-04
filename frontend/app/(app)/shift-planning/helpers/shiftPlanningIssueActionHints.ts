@@ -12,7 +12,7 @@ export type ShiftPlanningIssueActionHint = {
 const PAYROLL_TYPE_ACTION_HINT: ShiftPlanningIssueActionHint = {
   href: "/job-functions",
   linkLabel: "Åbn Jobfunktioner",
-  text: "Ret jobfunktionen under Jobfunktioner: vælg “Oprettes som”, så vagten kan få korrekt løntype.",
+  text: "Ret jobfunktionen under Jobfunktioner og vælg en standardeksportkode, hvis timerne skal grupperes i løneksporten.",
 };
 
 const JOB_FUNCTION_ACTION_HINT: ShiftPlanningIssueActionHint = {
@@ -60,12 +60,9 @@ function getActionHintFromSearchText(searchText: string) {
 
   if (
     includesAny(normalizedText, [
-      "løntype",
+      "eksportkode",
       "loentype",
       "payroll",
-      "oprettes som",
-      "worktype",
-      "work type",
     ])
   ) {
     return PAYROLL_TYPE_ACTION_HINT;
@@ -174,7 +171,7 @@ export function getPublicationPreviewItemActionHint(
   return getActionHintFromSearchText(
     [
       item.jobFunctionName,
-      item.workTypeName,
+      item.jobFunctionName,
       item.warningMessage,
       ...(item.blockReasons ?? []),
     ]

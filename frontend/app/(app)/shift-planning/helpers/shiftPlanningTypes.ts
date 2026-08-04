@@ -17,30 +17,26 @@ export type ScheduleTemplateUserSummary = {
   cinemaId: number | null;
 };
 
-export type ScheduleTemplateDayPeriodSummary = {
-  id: number;
-  cinemaId: number;
-  name: string;
-  startMinute: number;
-  endMinute: number;
-  sortOrder: number;
-  isActive: boolean;
-  archivedAt: string | null;
-};
+
 
 export type ScheduleTemplateTimingRuleSummary = {
   id: number;
   cinemaId: number;
   jobFunctionId: number;
+  filmWindowStartMinute: number;
+  filmWindowEndMinute: number;
   startAnchor: string;
   startOffsetMinutes: number;
   startFixedMinute: number | null;
   endAnchor: string;
   endOffsetMinutes: number;
   endFixedMinute: number | null;
-  fallbackStartMinute: number | null;
-  fallbackEndMinute: number | null;
-  clampToDayPeriod: boolean;
+  fallbackStartMinute: number;
+  fallbackEndMinute: number;
+  roundToQuarter?: boolean;
+  roundStartToNearestQuarter: boolean;
+  roundEndToNearestQuarter: boolean;
+  restrictMovieStartsToWindow: boolean;
   isActive: boolean;
 };
 
@@ -51,8 +47,6 @@ export type ScheduleTemplateJobFunctionDetail = {
   description: string | null;
   color: string;
   sortOrder: number;
-  dayPeriodId: number | null;
-  dayPeriod: ScheduleTemplateDayPeriodSummary | null;
   timingRule: ScheduleTemplateTimingRuleSummary | null;
   isActive: boolean;
   archivedAt: string | null;

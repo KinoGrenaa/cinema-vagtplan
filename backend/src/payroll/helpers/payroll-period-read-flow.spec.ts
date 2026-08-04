@@ -25,6 +25,7 @@ describe('payroll period read flow', () => {
         email: 'admin@example.com',
         role: 'ADMIN',
         cinemaId: 3,
+        canManagePayroll: true,
       },
       '2026-07-01',
       '2026-07-31',
@@ -36,8 +37,23 @@ describe('payroll period read flow', () => {
         startDate: new Date('2026-07-01T00:00:00.000Z'),
         endDate: new Date('2026-07-31T23:59:59.999Z'),
       },
+      include: {
+        lockedCalculationRun: {
+          include: {
+            payrollConfigurationVersion: true,
+            lines: {
+              orderBy: [
+                { segmentStart: 'asc' },
+                { id: 'asc' },
+              ],
+            },
+          },
+        },
+      },
     });
-    expect(findFirst.mock.calls[0]?.[0]).not.toHaveProperty('include');
+    expect(findFirst.mock.calls[0]?.[0].include).not.toHaveProperty(
+      'timeEntries',
+    );
     expect(result).toBe(period);
   });
 
@@ -67,6 +83,19 @@ describe('payroll period read flow', () => {
         cinemaId: 3,
         startDate: new Date('2026-07-01T00:00:00.000Z'),
         endDate: new Date('2026-07-31T23:59:59.999Z'),
+      },
+      include: {
+        lockedCalculationRun: {
+          include: {
+            payrollConfigurationVersion: true,
+            lines: {
+              orderBy: [
+                { segmentStart: 'asc' },
+                { id: 'asc' },
+              ],
+            },
+          },
+        },
       },
     });
   });

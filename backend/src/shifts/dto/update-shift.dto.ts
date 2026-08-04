@@ -16,7 +16,7 @@ export class UpdateShiftDto {
 
   @IsInt()
   @Min(1)
-  workTypeId: number;
+  jobFunctionId: number;
 
   @IsOptional()
   @IsInt()

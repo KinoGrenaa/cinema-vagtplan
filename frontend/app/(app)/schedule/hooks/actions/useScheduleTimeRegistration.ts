@@ -22,7 +22,7 @@ type OpenTimeEntry = {
     id: number;
     startTime: string;
     endTime: string;
-    workType?: { name: string };
+    jobFunction?: { name: string };
   } | null;
 } | null;
 

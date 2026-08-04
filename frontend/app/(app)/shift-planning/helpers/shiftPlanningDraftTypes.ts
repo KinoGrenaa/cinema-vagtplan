@@ -110,8 +110,7 @@ export type DraftPublicationPreviewItem = {
   plannedStartMinute?: number | string | null;
   plannedEndMinute?: number | string | null;
   canBecomeShift?: boolean | null;
-  workTypeId?: number | string | null;
-  workTypeName?: string | null;
+  jobFunctionId?: number | string | null;
   blockReasons?: string[] | null;
   warningMessage?: string | null;
 };
@@ -132,7 +131,7 @@ export type DraftPublicationPreviewResult = {
   previewItems?: DraftPublicationPreviewItem[];
 };
 
-export type WorkTypeOption = {
+export type JobFunctionOption = {
   id: number | string;
   name: string;
   color?: string | null;
@@ -151,9 +150,9 @@ export type DraftPublishResult = {
   createdShiftCount?: number | string | null;
   createdShiftIds?: Array<number | string>;
   affectedDateKeys?: string[];
-  workTypeId?: number | string | null;
-  workTypeName?: string | null;
-  workTypeNames?: string[];
+  jobFunctionId?: number | string | null;
+  jobFunctionName?: string | null;
+  jobFunctionNames?: string[];
   publishedAt?: string | null;
   message?: string | null;
 };

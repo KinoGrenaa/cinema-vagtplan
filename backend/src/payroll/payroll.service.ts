@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { PayrollRulesService } from './payroll-rules.service';
 import { type PayrollAuthUser } from './helpers/payroll-access';
 import { buildPayrollReportData } from './helpers/payroll-report-data';
 import {
@@ -9,10 +8,6 @@ import {
   resolvePayrollPeriodForDate,
 } from './helpers/payroll-period-queries';
 import { lockPayrollPeriod } from './helpers/payroll-period-lock-flow';
-import {
-  unlockPayrollPeriod,
-  unlockPayrollTimeEntry,
-} from './helpers/payroll-period-unlock-flow';
 import { getPayrollPeriodWithTimeEntries } from './helpers/payroll-period-read-flow';
 import {
   exportPayrollCsvFlow,
@@ -24,10 +19,7 @@ import { getPayrollAuditHistoryData } from './helpers/payroll-audit-history';
 
 @Injectable()
 export class PayrollService {
-  constructor(
-    private prisma: PrismaService,
-    private payrollRulesService: PayrollRulesService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async getPayrollPeriodForDate(
     user: PayrollAuthUser,
@@ -101,36 +93,6 @@ export class PayrollService {
     );
   }
 
-  async unlockPeriod(
-    user: PayrollAuthUser,
-    periodId: number,
-    note?: string,
-    selectedCinemaId?: number | null,
-  ) {
-    return unlockPayrollPeriod(
-      this.prisma,
-      user,
-      periodId,
-      note,
-      selectedCinemaId,
-    );
-  }
-
-  async unlockTimeEntry(
-    user: PayrollAuthUser,
-    timeEntryId: number,
-    note?: string,
-    selectedCinemaId?: number | null,
-  ) {
-    return unlockPayrollTimeEntry(
-      this.prisma,
-      user,
-      timeEntryId,
-      note,
-      selectedCinemaId,
-    );
-  }
-
   async exportPayrollCsv(
     user: PayrollAuthUser,
     startDate: string,
@@ -157,7 +119,6 @@ export class PayrollService {
   ) {
     return exportPayrollUnicontaCsvFlow(
       this.prisma,
-      this.payrollRulesService,
       user,
       startDate,
       endDate,

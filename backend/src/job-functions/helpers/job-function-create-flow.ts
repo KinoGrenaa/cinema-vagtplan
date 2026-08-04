@@ -5,18 +5,21 @@ import type {
   JobFunctionCreateData,
 } from './job-function-service-helpers';
 import {
+  ensureAssignableJobFunctionUsers,
   ensureJobFunctionAdmin,
-  getDayPeriodIdForCinema,
+  getActorUserId,
+  getPayrollExportCodeIdForCinema,
   getRequiredJobFunctionCinemaId,
-  getWorkTypeIdForCinema,
-  getWorkTypeIdForPayrollType,
   jobFunctionInclude,
   normalizeJobFunctionColor,
   normalizeJobFunctionName,
+  normalizeJobFunctionNameKey,
   normalizeOptionalText,
   parseOptionalSortOrder,
+  parsePositiveIdList,
   withJobFunctionCinemaLock,
 } from './job-function-service-helpers';
+import { normalizeTimingRuleData } from './job-function-timing-rule-flow';
 
 export async function createJobFunction(
   prisma: PrismaService,
@@ -24,80 +27,70 @@ export async function createJobFunction(
   data: JobFunctionCreateData,
 ) {
   ensureJobFunctionAdmin(user);
+  const cinemaId = getRequiredJobFunctionCinemaId(user, data?.cinemaId);
+  const name = normalizeJobFunctionName(data?.name);
+  const nameKey = normalizeJobFunctionNameKey(name);
+  const description = normalizeOptionalText(data?.description) ?? null;
+  const color = normalizeJobFunctionColor(data?.color) ?? '#2563eb';
+  const sortOrder = parseOptionalSortOrder(data?.sortOrder) ?? 0;
+  const userIds = parsePositiveIdList(data?.userIds) ?? [];
+  const actorUserId = getActorUserId(user);
 
-  const cinemaId =
-    getRequiredJobFunctionCinemaId(
-      user,
-      data?.cinemaId,
-    );
-  const name = normalizeJobFunctionName(
-    data?.name,
-  );
-  const description =
-    normalizeOptionalText(data?.description) ??
-    null;
-  const color =
-    normalizeJobFunctionColor(data?.color) ??
-    '#2563eb';
-  const sortOrder =
-    parseOptionalSortOrder(data?.sortOrder) ?? 0;
+  return withJobFunctionCinemaLock(prisma, cinemaId, async (transaction) => {
+    const defaultPayrollExportCodeId =
+      (await getPayrollExportCodeIdForCinema(
+        transaction,
+        cinemaId,
+        data?.defaultPayrollExportCodeId ?? data?.payrollTypeId,
+      )) ?? null;
+    const existing = await transaction.jobFunction.findFirst({
+      where: { nameKey, cinemaId },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'Der findes allerede en jobfunktion med samme navn.',
+      );
+    }
+    await ensureAssignableJobFunctionUsers(transaction, userIds, cinemaId);
 
-  return withJobFunctionCinemaLock(
-    prisma,
-    cinemaId,
-    async (transaction) => {
-      const dayPeriodId =
-        (await getDayPeriodIdForCinema(
-          transaction,
-          cinemaId,
-          data?.dayPeriodId,
-        )) ?? null;
-      const resolvedWorkTypeId =
-        data?.payrollTypeId !== undefined
-          ? await getWorkTypeIdForPayrollType(
-              transaction,
-              cinemaId,
-              data.payrollTypeId,
-            )
-          : await getWorkTypeIdForCinema(
-              transaction,
-              cinemaId,
-              data?.workTypeId,
-            );
-      const workTypeId =
-        resolvedWorkTypeId ?? null;
-      const existing =
-        await transaction.jobFunction.findFirst({
-          where: {
-            name,
-            isActive: true,
-            cinemaId,
-          },
-          select: {
-            id: true,
-          },
-        });
+    const jobFunction = await transaction.jobFunction.create({
+      data: {
+        name,
+        nameKey,
+        description,
+        color,
+        sortOrder,
+        defaultPayrollExportCodeId,
+        cinemaId,
+        isActive: true,
+        archivedAt: null,
+        ...(data?.timingRule
+          ? {
+              timingRule: {
+                create: {
+                  cinemaId,
+                  ...normalizeTimingRuleData(data.timingRule),
+                  isActive: true,
+                },
+              },
+            }
+          : {}),
+        ...(userIds.length > 0
+          ? {
+              userJobFunctions: {
+                create: userIds.map((userId) => ({
+                  cinemaId,
+                  userId,
+                  assignedByUserId: actorUserId,
+                })),
+              },
+            }
+          : {}),
+      },
+      include: jobFunctionInclude,
+    });
 
-      if (existing) {
-        throw new BadRequestException(
-          'Aktiv jobfunktion findes allerede.',
-        );
-      }
-
-      return transaction.jobFunction.create({
-        data: {
-          name,
-          description,
-          color,
-          sortOrder,
-          dayPeriodId,
-          workTypeId,
-          cinemaId,
-          isActive: true,
-          archivedAt: null,
-        },
-        include: jobFunctionInclude,
-      });
-    },
-  );
+    return jobFunction;
+  });
 }

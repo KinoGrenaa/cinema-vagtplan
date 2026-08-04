@@ -14,7 +14,6 @@ import { buildPayrollPdfExport } from './payroll-pdf-export';
 import { buildPayrollReportData } from './payroll-report-data';
 import { buildPayrollUnicontaCsvExport } from './payroll-uniconta-export';
 import { buildPayrollXlsxExport } from './payroll-xlsx-export';
-import { getPayrollRulesEnabled } from './payroll-period-queries';
 
 jest.mock('./payroll-access', () => ({
   ensurePayrollExportAccess: jest.fn(),
@@ -49,18 +48,16 @@ jest.mock('./payroll-pdf-export', () => ({
   buildPayrollPdfExport: jest.fn(),
 }));
 
-jest.mock('./payroll-period-queries', () => ({
-  getPayrollRulesEnabled: jest.fn(),
-}));
 
 describe('payroll export finalization', () => {
-  const prisma = {};
+  const prisma = {} as any;
   const user = {
     sub: 7,
+    email: 'payroll@example.com',
     role: 'ADMIN',
     cinemaId: 2,
     canManagePayroll: true,
-  };
+  } as const;
   const report = {
     employees: [],
   };
@@ -76,6 +73,8 @@ describe('payroll export finalization', () => {
     lockedAtTime: new Date(
       '2026-08-21T08:00:00.000Z',
     ).getTime(),
+    lockedCalculationRunId: 44,
+    calculationChecksum: 'checksum-44',
   };
   const params = [
     prisma,
@@ -102,9 +101,6 @@ describe('payroll export finalization', () => {
     ).mockResolvedValue({
       id: 12,
     });
-    (
-      getPayrollRulesEnabled as jest.Mock
-    ).mockResolvedValue(false);
   });
 
   it('markerer først perioden efter CSV-filen er bygget', async () => {

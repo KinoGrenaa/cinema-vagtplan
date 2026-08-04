@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 
 import BaseModal from "@/app/components/modals/BaseModal";
-import type { Shift, User, WorkType } from "../../../../../../shared/types";
+import type { Shift, User, JobFunction } from "../../../../../../shared/types";
 
 export type StaffingRequestType =
   | "EXTRA_SHIFT"
@@ -39,7 +39,7 @@ type StaffingRequestModalProps = {
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   shifts: Shift[];
-  workTypes: WorkType[];
+  jobFunctions: JobFunction[];
   staffingTargetUsers: User[];
   selectedShift: Shift | null;
   selectedShiftId: number | null;
@@ -58,8 +58,8 @@ type StaffingRequestModalProps = {
   onStartTimeChange: (value: string) => void;
   endTime: string;
   onEndTimeChange: (value: string) => void;
-  workTypeId: number;
-  onWorkTypeIdChange: (value: number) => void;
+  jobFunctionId: number;
+  onJobFunctionIdChange: (value: number) => void;
   getShiftOptionText: (shift: Shift) => string;
   getUserDisplayName: (user: User) => string;
 };
@@ -69,7 +69,7 @@ export default function StaffingRequestModal({
   onClose,
   onSubmit,
   shifts,
-  workTypes,
+  jobFunctions,
   staffingTargetUsers,
   selectedShift,
   selectedShiftId,
@@ -88,8 +88,8 @@ export default function StaffingRequestModal({
   onStartTimeChange,
   endTime,
   onEndTimeChange,
-  workTypeId,
-  onWorkTypeIdChange,
+  jobFunctionId,
+  onJobFunctionIdChange,
   getShiftOptionText,
   getUserDisplayName,
 }: StaffingRequestModalProps) {
@@ -164,16 +164,16 @@ export default function StaffingRequestModal({
                 Jobfunktion
               </label>
               <select
-                value={workTypeId}
+                value={jobFunctionId}
                 onChange={(event) =>
-                  onWorkTypeIdChange(Number(event.target.value))
+                  onJobFunctionIdChange(Number(event.target.value))
                 }
                 className={fieldClass}
               >
                 <option value={0}>Vælg jobfunktion</option>
-                {workTypes.map((workType) => (
-                  <option key={workType.id} value={workType.id}>
-                    {workType.name}
+                {jobFunctions.map((jobFunction) => (
+                  <option key={jobFunction.id} value={jobFunction.id}>
+                    {jobFunction.name}
                   </option>
                 ))}
               </select>

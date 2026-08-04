@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  findUserJobFunctions,
+  replaceUserJobFunctions,
+} from '../job-functions/helpers/job-function-user-flow';
+import type { UserJobFunctionReplaceData } from '../job-functions/helpers/job-function-service-helpers';
+import {
   createUserFlow,
   CreateUserInput,
 } from './helpers/user-create-flow';
@@ -48,6 +53,35 @@ export class UsersService {
     return findAllUsers(
       this.prisma,
       currentUser,
+      selectedCinemaId,
+    );
+  }
+
+
+  async findJobFunctions(
+    id: number,
+    currentUser: AuthUser,
+    selectedCinemaId?: number,
+  ) {
+    return findUserJobFunctions(
+      this.prisma,
+      currentUser,
+      id,
+      selectedCinemaId,
+    );
+  }
+
+  async replaceJobFunctions(
+    id: number,
+    data: UserJobFunctionReplaceData,
+    currentUser: AuthUser,
+    selectedCinemaId?: number,
+  ) {
+    return replaceUserJobFunctions(
+      this.prisma,
+      currentUser,
+      id,
+      data,
       selectedCinemaId,
     );
   }

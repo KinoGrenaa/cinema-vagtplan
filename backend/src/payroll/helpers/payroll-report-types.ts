@@ -30,7 +30,7 @@ export type PayrollReportEmployeeGroup = {
     clockIn: string;
     clockOut: string;
     hours: number;
-    workType: string;
+    jobFunction: string;
     payrollCode: string;
     exportCode: string;
     payrollName: string;
@@ -67,7 +67,15 @@ export type PayrollReportEmployeeGroup = {
     payrollCode: string;
     exportCode: string;
     payrollName: string;
-    workType: string;
+    jobFunction: string;
     createdAt: string;
+    amountDelta: number | null;
+    exportedAmount: number | null;
+    adjustedAmount: number | null;
+    currencyCode: string;
   }[];
+  basePayAmount?: number;
+  supplementAmount?: number;
+  adjustmentAmount?: number;
+  totalAmount?: number;
 };

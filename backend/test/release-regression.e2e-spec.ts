@@ -559,7 +559,7 @@ describe('Release regression routes (e2e)', () => {
   describe('shift planning', () => {
     const shiftBody = {
       userId: null,
-      workTypeId: 4,
+      jobFunctionId: 4,
       cinemaId: 2,
       startTime:
         '2026-08-10T15:15:00.000Z',
@@ -602,7 +602,7 @@ describe('Release regression routes (e2e)', () => {
           expect(body).toMatchObject({
             id: 101,
             userId: null,
-            workTypeId: 4,
+            jobFunctionId: 4,
           });
         });
 

@@ -26,12 +26,12 @@ export default function JobFunctionMissingPayrollWarning({
     >
       <p className="font-semibold">
         {count === 1
-          ? "1 aktiv jobfunktion mangler Oprettes som"
-          : `${count} aktive jobfunktioner mangler Oprettes som`}
+          ? "1 aktiv jobfunktion mangler en standardeksportkode"
+          : `${count} aktive jobfunktioner mangler en standardeksportkode`}
       </p>
       <p className="mt-1">
-        Vælg en løntype for <span className="font-semibold">{nameText}</span>,
-        før vagter kan oprettes fra {targetText} i vagtplanlægningen.
+        Vælg en eksportkode for <span className="font-semibold">{nameText}</span>,
+        hvis timer fra {targetText} skal grupperes med en bestemt kode i løneksporten.
       </p>
     </div>
   );

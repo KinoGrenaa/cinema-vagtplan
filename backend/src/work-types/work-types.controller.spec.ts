@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, GoneException } from '@nestjs/common';
 import { WorkTypesController } from './work-types.controller';
 import { WorkTypesService } from './work-types.service';
 
@@ -54,21 +54,12 @@ describe('WorkTypesController input validation', () => {
     },
   );
 
-  it.each(['1.5', '1e2', '-1', 'abc', '9007199254740992'])(
-    'rejects invalid work-type ID %p',
-    (value) => {
-      expect(() => controller.remove(req, value, '1')).toThrow(
-        BadRequestException,
-      );
-      expect(service.remove).not.toHaveBeenCalled();
-    },
-  );
-
-  it('forwards valid update IDs as numbers', () => {
-    const body = { name: 'Aften' };
-
-    controller.update(req, '4', body, '3');
-
-    expect(service.update).toHaveBeenCalledWith(req.user, 4, body, 3);
+  it.each([
+    ['create', () => controller.create()],
+    ['update', () => controller.update()],
+    ['remove', () => controller.remove()],
+    ['reactivate', () => controller.reactivate()],
+  ] as const)('returns WORK_TYPE_RETIRED for %s', (_name, action) => {
+    expect(action).toThrow(GoneException);
   });
 });

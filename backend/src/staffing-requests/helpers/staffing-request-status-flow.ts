@@ -138,7 +138,7 @@ export async function acceptStaffingRequest({
           },
           include: {
             user: true,
-            workType: true,
+            jobFunction: true,
           },
         });
       }

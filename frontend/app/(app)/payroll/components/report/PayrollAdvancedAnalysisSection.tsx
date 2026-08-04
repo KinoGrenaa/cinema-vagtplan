@@ -249,7 +249,7 @@ export default function PayrollAdvancedAnalysisSection({
                   Lønfordeling
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  Fordeling af lønarter.
+                  Fordeling af eksportkoder og lønkomponenter.
                 </p>
               </div>
               <div className="h-[280px]">

@@ -8,6 +8,7 @@ const admin: AuthUser = {
   email: 'admin@example.com',
   role: 'ADMIN',
   cinemaId: 7,
+  canManageSchedule: true,
 };
 
 function createTransactionalPrisma(
@@ -30,12 +31,6 @@ describe('job function write flows', () => {
     };
     const transaction = {
       $executeRaw: jest.fn().mockResolvedValue(1),
-      dayPeriod: {
-        findFirst: jest.fn().mockResolvedValue(null),
-      },
-      workType: {
-        findFirst: jest.fn().mockResolvedValue(null),
-      },
       jobFunction: {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue(created),
@@ -58,8 +53,7 @@ describe('job function write flows', () => {
       transaction.jobFunction.findFirst,
     ).toHaveBeenCalledWith({
       where: {
-        name: 'Billetsalg',
-        isActive: true,
+        nameKey: 'billetsalg',
         cinemaId: 7,
       },
       select: {
@@ -74,12 +68,6 @@ describe('job function write flows', () => {
   it('rejects a duplicate active job function inside the lock', async () => {
     const transaction = {
       $executeRaw: jest.fn().mockResolvedValue(1),
-      dayPeriod: {
-        findFirst: jest.fn().mockResolvedValue(null),
-      },
-      workType: {
-        findFirst: jest.fn().mockResolvedValue(null),
-      },
       jobFunction: {
         findFirst: jest
           .fn()

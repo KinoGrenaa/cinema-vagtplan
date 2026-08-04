@@ -14,7 +14,7 @@ import {
   parseSelectedAssignmentUserId,
 } from "../../helpers/actions/jobFunctionEmployeeAssignmentHelpers";
 import { formatUserName } from "../../helpers/page/jobFunctionHelpers";
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 import type { User, UserJobFunction } from "../../helpers/types/jobFunctionTypes";
 
 type UseJobFunctionEmployeeAssignmentsOptions = {
@@ -33,14 +33,14 @@ export function useJobFunctionEmployeeAssignments({
   users,
 }: UseJobFunctionEmployeeAssignmentsOptions) {
   const [employeeModalJobFunction, setEmployeeModalJobFunction] =
-    useState<JobFunctionWithWorkType | null>(null);
+    useState<JobFunctionWithJobFunction | null>(null);
   const [assignments, setAssignments] = useState<UserJobFunction[]>([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
 
   const fetchAssignments = useCallback(
-    async (jobFunction: JobFunctionWithWorkType) => {
+    async (jobFunction: JobFunctionWithJobFunction) => {
       try {
         setAssignmentLoading(true);
         const data = await fetchJobFunctionAssignments(
@@ -64,7 +64,7 @@ export function useJobFunctionEmployeeAssignments({
   );
 
   const openEmployeeModal = useCallback(
-    async (jobFunction: JobFunctionWithWorkType) => {
+    async (jobFunction: JobFunctionWithJobFunction) => {
       setEmployeeModalJobFunction(jobFunction);
       setSelectedUserId("");
       setAssignments([]);

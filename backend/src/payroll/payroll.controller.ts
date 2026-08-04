@@ -2,8 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  GoneException,
   Header,
-  Param,
   Post,
   Query,
   Req,
@@ -21,12 +21,10 @@ import {
   normalizePayrollPeriod,
   parsePayrollOptionalBodyId,
   parsePayrollOptionalQueryId,
-  parsePayrollRequiredId,
 } from './helpers/payroll-input';
 
 @Controller('payroll')
-@UseGuards(JwtGuard, RolesGuard)
-@Roles('ADMIN', 'MASTER')
+@UseGuards(JwtGuard)
 export class PayrollController {
   constructor(private payrollService: PayrollService) {}
 
@@ -51,6 +49,8 @@ export class PayrollController {
     )?.toString();
   }
 
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'MASTER')
   @Get()
   getPayrollReport(
     @Req() req: any,
@@ -88,7 +88,6 @@ export class PayrollController {
   }
 
   @Get('period-for-date')
-  @Roles('EMPLOYEE', 'ADMIN', 'MASTER')
   getPeriodForDate(
     @Req() req: any,
     @Query('date') date: string,
@@ -136,39 +135,21 @@ export class PayrollController {
   }
 
   @Post('period/:id/unlock')
-  unlockPeriod(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body('note') note?: string,
-    @Body('cinemaId') cinemaId?: number | string | null,
-  ) {
-    return this.payrollService.unlockPeriod(
-      req.user,
-      parsePayrollRequiredId(
-        id,
-        'Lønperiode skal være et gyldigt ID',
-      ),
-      note,
-      this.parseBodyCinemaId(cinemaId),
-    );
+  unlockPeriod() {
+    throw new GoneException({
+      code: 'CLOSED_PAYROLL_PERIOD_IMMUTABLE',
+      message:
+        'En låst eller eksporteret lønperiode kan ikke genåbnes. Rettelser håndteres som efterregulering.',
+    });
   }
 
   @Post('time-entry/:id/unlock')
-  unlockTimeEntry(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body('note') note?: string,
-    @Body('cinemaId') cinemaId?: number | string | null,
-  ) {
-    return this.payrollService.unlockTimeEntry(
-      req.user,
-      parsePayrollRequiredId(
-        id,
-        'Tidsregistrering skal være et gyldigt ID',
-      ),
-      note,
-      this.parseBodyCinemaId(cinemaId),
-    );
+  unlockTimeEntry() {
+    throw new GoneException({
+      code: 'CLOSED_PAYROLL_PERIOD_IMMUTABLE',
+      message:
+        'En tidsregistrering i en afsluttet lønperiode kan ikke låses op. Rettelsen skal oprettes som efterregulering.',
+    });
   }
 
   @Get('export/csv')

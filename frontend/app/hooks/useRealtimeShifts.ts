@@ -20,7 +20,7 @@ type RealtimeShiftTradeUser = {
 type RealtimeShiftTradeShift = {
   startTime?: string;
   endTime?: string;
-  workType?: {
+  jobFunction?: {
     name?: string;
   };
 };
@@ -73,11 +73,11 @@ function formatShiftText(trade: ShiftTradeEvent) {
         })}`
       : "";
 
-  const workType = trade.shift?.workType?.name
-    ? ` (${trade.shift.workType.name})`
+  const jobFunction = trade.shift?.jobFunction?.name
+    ? ` (${trade.shift.jobFunction.name})`
     : "";
 
-  return `${dateText} ${timeText}${workType}`.trim();
+  return `${dateText} ${timeText}${jobFunction}`.trim();
 }
 
 export function useRealtimeShifts({

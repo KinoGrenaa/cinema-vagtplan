@@ -31,7 +31,11 @@ export async function findMatchingShiftForClockIn(
       },
     },
     include: {
-      workType: true,
+      jobFunction: {
+        include: {
+          defaultPayrollExportCode: true,
+        },
+      },
       cinema: {
         select: getCinemaDeviationSelect(),
       },

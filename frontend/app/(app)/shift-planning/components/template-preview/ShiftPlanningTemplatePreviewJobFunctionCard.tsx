@@ -7,7 +7,12 @@ type ShiftPlanningTemplatePreviewJobFunctionCardProps = {
 export function ShiftPlanningTemplatePreviewJobFunctionCard({
   templateJobFunction,
 }: ShiftPlanningTemplatePreviewJobFunctionCardProps) {
-  const dayPeriodName = templateJobFunction.jobFunction.dayPeriod?.name;
+  const timingRule = templateJobFunction.jobFunction.timingRule;
+  const filmWindow = timingRule
+    ? timingRule.restrictMovieStartsToWindow
+      ? `Medregner filmstarter fra kl. ${String(Math.floor((timingRule.filmWindowStartMinute % 1440) / 60)).padStart(2, "0")}:${String(timingRule.filmWindowStartMinute % 60).padStart(2, "0")} og før kl. ${String(Math.floor((timingRule.filmWindowEndMinute % 1440) / 60)).padStart(2, "0")}:${String(timingRule.filmWindowEndMinute % 60).padStart(2, "0")}`
+      : "Medregner alle filmstarter"
+    : null;
 
   return (
     <article className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
@@ -28,9 +33,9 @@ export function ShiftPlanningTemplatePreviewJobFunctionCard({
         </span>
       </div>
 
-      {dayPeriodName && (
+      {filmWindow && (
         <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-          {dayPeriodName}
+          {filmWindow}
         </p>
       )}
 

@@ -70,9 +70,9 @@ export function getTimeEntryResponseInclude() {
     },
     shift: {
       include: {
-        workType: {
+        jobFunction: {
           include: {
-            payrollType: true,
+            defaultPayrollExportCode: true,
           },
         },
       },
@@ -102,15 +102,19 @@ export function getOpenTimeEntryInclude() {
     },
     shift: {
       include: {
-        workType: true,
+        jobFunction: true,
       },
     },
   } as const;
 }
 
-export function getShiftWithWorkTypeAndCinemaInclude() {
+export function getShiftWithJobFunctionAndCinemaInclude() {
   return {
-    workType: true,
+    jobFunction: {
+      include: {
+        defaultPayrollExportCode: true,
+      },
+    },
     cinema: {
       select:
         getCinemaDeviationSelect(),

@@ -202,7 +202,7 @@ export function calculateStaffingHeatmap(shifts: Shift[]) {
       employee: `${shift.user?.firstName ?? ""} ${
         shift.user?.lastName ?? ""
       }`.trim(),
-      workType: shift.workType?.name ?? "Ukendt",
+      jobFunction: shift.jobFunction?.name ?? "Ukendt",
       risk,
       hours: hours.toFixed(1),
     };

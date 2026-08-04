@@ -60,7 +60,7 @@ export default function MyShiftsDirectTradesSection({
                     minute: "2-digit",
                   })}
                 </div>
-                <div className="mt-1">{trade.shift.workType?.name}</div>
+                <div className="mt-1">{trade.shift.jobFunction?.name}</div>
               </div>
             )}
 

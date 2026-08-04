@@ -13,9 +13,14 @@ describe('createShiftFlow', () => {
       note: 'Kasse',
       cinemaId: 2,
       userId: 7,
-      workTypeId: 3,
-      workType: {
+      workTypeId: null,
+      jobFunctionId: 3,
+      jobFunctionNameSnapshot: 'Kasse',
+      jobFunctionColorSnapshot: '#123456',
+      jobFunction: {
+        id: 3,
         name: 'Kasse',
+        color: '#123456',
       },
       user: {
         firstName: 'Anna',
@@ -25,10 +30,13 @@ describe('createShiftFlow', () => {
 
     const tx = {
       $executeRaw: jest.fn(),
-      workType: {
+      jobFunction: {
         findFirst: jest
           .fn()
-          .mockResolvedValue({ id: 3 }),
+          .mockResolvedValue({ id: 3, name: 'Kasse', color: '#123456' }),
+      },
+      userJobFunction: {
+        findFirst: jest.fn().mockResolvedValue({ id: 30 }),
       },
       user: {
         findFirst: jest
@@ -101,7 +109,7 @@ describe('createShiftFlow', () => {
           note: ' Kasse ',
           cinemaId: 2,
           userId: 7,
-          workTypeId: 3,
+          jobFunctionId: 3,
         },
       }),
     ).resolves.toBe(shift);
@@ -117,6 +125,11 @@ describe('createShiftFlow', () => {
           note: 'Kasse',
           userId: 7,
           cinemaId: 2,
+          jobFunctionId: 3,
+          jobFunctionNameSnapshot: 'Kasse',
+          jobFunctionColorSnapshot: '#123456',
+          timingSource: 'MANUAL',
+          workTypeId: null,
         }),
       }),
     );

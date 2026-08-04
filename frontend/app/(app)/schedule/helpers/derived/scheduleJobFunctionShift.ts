@@ -108,18 +108,7 @@ export function getJobFunctionShiftDurationMinutes(
     return timingDuration;
   }
 
-  const dayPeriodDuration =
-    normalizeDuration(
-      jobFunction.dayPeriod
-        ?.startMinute,
-      jobFunction.dayPeriod
-        ?.endMinute,
-    );
-
-  return (
-    dayPeriodDuration ??
-    DEFAULT_DURATION_MINUTES
-  );
+  return DEFAULT_DURATION_MINUTES;
 }
 
 export function formatJobFunctionShiftDuration(
@@ -152,7 +141,7 @@ export function buildUnassignedJobFunctionShift(
   params: {
     selectedDate: string;
     startMinutes: number;
-    workTypeId: number;
+    jobFunctionId: number;
     jobFunction:
       ScheduleJobFunction;
   },
@@ -192,7 +181,7 @@ export function buildUnassignedJobFunctionShift(
       ),
     note: "",
     userId: null,
-    workTypeId:
-      params.workTypeId,
+    jobFunctionId:
+      params.jobFunctionId,
   };
 }

@@ -190,7 +190,7 @@ export default function MasterCinemasListSection({
                           <span>
                             Jobfunktioner:{" "}
                             {cinema._count
-                              ?.workTypes ??
+                              ?.jobFunctions ??
                               0}
                           </span>
                         </div>

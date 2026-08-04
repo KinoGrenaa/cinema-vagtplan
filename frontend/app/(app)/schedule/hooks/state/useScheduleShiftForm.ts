@@ -26,7 +26,7 @@ type InfoDialog = ReturnType<typeof useInfoModal>;
 type UseScheduleShiftFormParams = {
   selectedDate: string;
   users: ScheduleData["users"];
-  workTypes: ScheduleData["workTypes"];
+  jobFunctions: ScheduleData["jobFunctions"];
   needsMasterCinemaSelection: boolean;
   showMissingActiveCinemaMessage: () => void;
   createShift: ScheduleData["createShift"];
@@ -88,7 +88,7 @@ function getPresetShiftTimes(
 export function useScheduleShiftForm({
   selectedDate,
   users,
-  workTypes,
+  jobFunctions,
   needsMasterCinemaSelection,
   showMissingActiveCinemaMessage,
   createShift,
@@ -110,7 +110,7 @@ export function useScheduleShiftForm({
   );
   const [note, setNote] = useState("");
   const [userId, setUserId] = useState(0);
-  const [workTypeId, setWorkTypeId] = useState(0);
+  const [jobFunctionId, setJobFunctionId] = useState(0);
 
   useEffect(() => {
     if (
@@ -124,18 +124,18 @@ export function useScheduleShiftForm({
 
   useEffect(() => {
     if (
-      workTypeId !== 0 &&
-      workTypes.length > 0 &&
-      !workTypes.some(
-        (workType) => workType.id === workTypeId,
+      jobFunctionId !== 0 &&
+      jobFunctions.length > 0 &&
+      !jobFunctions.some(
+        (jobFunction) => jobFunction.id === jobFunctionId,
       )
     ) {
-      setWorkTypeId(0);
+      setJobFunctionId(0);
     }
-  }, [workTypeId, workTypes]);
+  }, [jobFunctionId, jobFunctions]);
 
   function clearForm(
-    presetWorkTypeId = 0,
+    presetJobFunctionId = 0,
     presetStartMinutes?: number,
   ) {
     const presetTimes = getPresetShiftTimes(
@@ -145,7 +145,7 @@ export function useScheduleShiftForm({
 
     setSelectedShift(null);
     setUserId(0);
-    setWorkTypeId(presetWorkTypeId);
+    setJobFunctionId(presetJobFunctionId);
     setStartTime(presetTimes.startTime);
     setEndTime(presetTimes.endTime);
     setNote("");
@@ -159,7 +159,7 @@ export function useScheduleShiftForm({
   }
 
   function openCreateShiftModal(
-    presetWorkTypeId = 0,
+    presetJobFunctionId = 0,
     presetStartMinutes?: number,
   ) {
     if (needsMasterCinemaSelection) {
@@ -168,7 +168,7 @@ export function useScheduleShiftForm({
     }
 
     clearForm(
-      presetWorkTypeId,
+      presetJobFunctionId,
       presetStartMinutes,
     );
     setShowShiftFormModal(true);
@@ -195,7 +195,7 @@ export function useScheduleShiftForm({
         localDateTimeToISOString(endTime),
       note,
       userId: userId > 0 ? userId : null,
-      workTypeId,
+      jobFunctionId,
     };
 
     try {
@@ -262,7 +262,7 @@ export function useScheduleShiftForm({
     setUserId(
       getShiftUserId(shift) ?? 0,
     );
-    setWorkTypeId(shift.workTypeId);
+    setJobFunctionId(shift.jobFunctionId);
     setShowShiftFormModal(true);
   }
 
@@ -316,8 +316,8 @@ export function useScheduleShiftForm({
     setNote,
     userId,
     setUserId,
-    workTypeId,
-    setWorkTypeId,
+    jobFunctionId,
+    setJobFunctionId,
     openCreateShiftModal,
     hideShiftFormModal,
     closeShiftFormModal,

@@ -15,7 +15,7 @@ describe('normalizeShiftWriteData', () => {
       normalizeShiftWriteData({
         startTime,
         endTime,
-        workTypeId: 3,
+        jobFunctionId: 3,
         cinemaId: 2,
         userId: 7,
         note: '  Kasse  ',
@@ -23,7 +23,7 @@ describe('normalizeShiftWriteData', () => {
     ).toEqual({
       startTime: new Date(startTime),
       endTime: new Date(endTime),
-      workTypeId: 3,
+      jobFunctionId: 3,
       cinemaId: 2,
       userId: 7,
       note: 'Kasse',
@@ -35,7 +35,7 @@ describe('normalizeShiftWriteData', () => {
       normalizeShiftWriteData({
         startTime,
         endTime,
-        workTypeId: 3,
+        jobFunctionId: 3,
         userId: null,
         note: '   ',
       }),
@@ -50,7 +50,7 @@ describe('normalizeShiftWriteData', () => {
       normalizeShiftWriteData({
         startTime: endTime,
         endTime: startTime,
-        workTypeId: 3,
+        jobFunctionId: 3,
       }),
     ).toThrow(BadRequestException);
   });
@@ -60,7 +60,7 @@ describe('normalizeShiftWriteData', () => {
       normalizeShiftWriteData({
         startTime,
         endTime,
-        workTypeId: 3,
+        jobFunctionId: 3,
         note: 'x'.repeat(
           SHIFT_NOTE_MAX_LENGTH + 1,
         ),
@@ -69,7 +69,7 @@ describe('normalizeShiftWriteData', () => {
   });
 
   it.each([
-    ['workTypeId', 0],
+    ['jobFunctionId', 0],
     ['cinemaId', -1],
     ['userId', 1.5],
   ])(
@@ -79,7 +79,7 @@ describe('normalizeShiftWriteData', () => {
         normalizeShiftWriteData({
           startTime,
           endTime,
-          workTypeId: 3,
+          jobFunctionId: 3,
           [field]: value,
         }),
       ).toThrow(BadRequestException);

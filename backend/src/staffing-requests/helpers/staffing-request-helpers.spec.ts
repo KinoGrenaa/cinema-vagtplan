@@ -19,7 +19,7 @@ describe('staffing request helpers', () => {
         cinemaId: 7,
         shiftId: 12,
         targetUserId: 13,
-        workTypeId: 14,
+        jobFunctionId: 14,
         type: StaffingRequestType.EXTRA_SHIFT,
         message: '  Kan du tage vagten?  ',
       },
@@ -30,7 +30,7 @@ describe('staffing request helpers', () => {
       cinemaId: 7,
       shiftId: 12,
       targetUserId: 13,
-      workTypeId: 14,
+      jobFunctionId: 14,
       type: StaffingRequestType.EXTRA_SHIFT,
       priority: 1,
       message: 'Kan du tage vagten?',
@@ -42,7 +42,7 @@ describe('staffing request helpers', () => {
     ['cinemaId', 0],
     ['shiftId', -1],
     ['targetUserId', 1.5],
-    ['workTypeId', Number.NaN],
+    ['jobFunctionId', Number.NaN],
   ] as const)('rejects invalid %s', (field, value) => {
     expect(() =>
       normalizeCreateStaffingRequestInput({

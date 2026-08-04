@@ -45,7 +45,7 @@ export type ShiftTrade = {
     endTime: string;
     userId: number;
     user: User;
-    workType: {
+    jobFunction: {
       name: string;
       color?:
         string | null;

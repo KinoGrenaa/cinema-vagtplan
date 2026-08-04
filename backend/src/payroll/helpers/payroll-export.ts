@@ -21,17 +21,17 @@ export function resolvePayrollData(timeEntry: any): PayrollData {
     };
   }
 
-  const workTypePayrollType = timeEntry.shift?.workType?.payrollType;
+  const jobFunctionExportCode = timeEntry.shift?.jobFunction?.defaultPayrollExportCode;
 
-  if (workTypePayrollType) {
+  if (jobFunctionExportCode) {
     return {
-      payrollCode: workTypePayrollType.payrollCode,
-      exportCode: workTypePayrollType.exportCode || workTypePayrollType.payrollCode,
-      payrollName: workTypePayrollType.name,
+      payrollCode: jobFunctionExportCode.payrollCode,
+      exportCode: jobFunctionExportCode.exportCode || jobFunctionExportCode.payrollCode,
+      payrollName: jobFunctionExportCode.name,
     };
   }
 
-  const fallbackName = timeEntry.shift?.workType?.name || 'Standard';
+  const fallbackName = timeEntry.shift?.jobFunctionNameSnapshot || timeEntry.shift?.jobFunction?.name || 'Standard';
 
   return {
     payrollCode: fallbackName.toUpperCase(),

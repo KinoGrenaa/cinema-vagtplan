@@ -15,7 +15,7 @@ export type Shift = {
     firstName: string;
     lastName: string;
   };
-  workType?: {
+  jobFunction?: {
     name: string;
   };
 };

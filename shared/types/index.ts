@@ -29,10 +29,28 @@ export type User = {
   profileImage?: string | null;
 };
 
-export type WorkType = {
+export type JobFunctionTimingRule = {
+  filmWindowStartMinute: number;
+  filmWindowEndMinute: number;
+  startAnchor: string;
+  startOffsetMinutes: number;
+  startFixedMinute?: number | null;
+  endAnchor: string;
+  endOffsetMinutes: number;
+  endFixedMinute?: number | null;
+  fallbackStartMinute?: number | null;
+  fallbackEndMinute?: number | null;
+  roundStartToNearestQuarter?: boolean;
+  roundEndToNearestQuarter?: boolean;
+  restrictMovieStartsToWindow?: boolean;
+  isActive?: boolean;
+};
+
+export type JobFunction = {
   id: number;
   name: string;
   color: string;
+  timingRule?: JobFunctionTimingRule | null;
 };
 
 export type Shift = {
@@ -41,9 +59,9 @@ export type Shift = {
   endTime: string;
   note?: string | null;
   userId: number;
-  workTypeId: number;
+  jobFunctionId: number;
   user: User;
-  workType: WorkType;
+  jobFunction: JobFunction;
 };
 
 export type TimeEntry = {

@@ -16,11 +16,11 @@ export type ShiftWriteData = {
   note?: string | null;
   cinemaId?: number;
   userId?: number | null;
-  workTypeId: number;
+  jobFunctionId: number;
 };
 
 export const shiftResponseInclude = {
-  workType: true,
+  jobFunction: true,
   user: true,
 } as const;
 

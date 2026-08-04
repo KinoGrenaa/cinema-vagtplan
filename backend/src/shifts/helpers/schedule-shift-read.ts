@@ -1,9 +1,5 @@
-import type {
-  PrismaService,
-} from '../../prisma/prisma.service';
-import {
-  getCopenhagenDayRange,
-} from './shift-service-helpers';
+import type { PrismaService } from '../../prisma/prisma.service';
+import { getCopenhagenDayRange } from './shift-service-helpers';
 
 export const scheduleShiftSelect = {
   id: true,
@@ -11,7 +7,10 @@ export const scheduleShiftSelect = {
   endTime: true,
   note: true,
   userId: true,
-  workTypeId: true,
+  jobFunctionId: true,
+  jobFunctionNameSnapshot: true,
+  jobFunctionColorSnapshot: true,
+  timingSource: true,
   user: {
     select: {
       id: true,
@@ -21,12 +20,8 @@ export const scheduleShiftSelect = {
       profileImage: true,
     },
   },
-  workType: {
-    select: {
-      id: true,
-      name: true,
-      color: true,
-    },
+  jobFunction: {
+    select: { id: true, name: true, color: true, isActive: true },
   },
 } as const;
 
@@ -35,38 +30,13 @@ export async function findScheduleShiftsForDay(
   cinemaId: number,
   date: string,
 ) {
-  const {
-    start,
-    end,
-  } = getCopenhagenDayRange(
-    date,
-  );
-
+  const { start, end } = getCopenhagenDayRange(date);
   return prisma.shift.findMany({
     where: {
       cinemaId,
-      AND: [
-        {
-          startTime: {
-            lt: end,
-          },
-        },
-        {
-          endTime: {
-            gt: start,
-          },
-        },
-      ],
+      AND: [{ startTime: { lt: end } }, { endTime: { gt: start } }],
     },
-    select:
-      scheduleShiftSelect,
-    orderBy: [
-      {
-        startTime: 'asc',
-      },
-      {
-        id: 'asc',
-      },
-    ],
+    select: scheduleShiftSelect,
+    orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
   });
 }

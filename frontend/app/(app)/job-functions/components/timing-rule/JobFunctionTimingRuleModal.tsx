@@ -1,18 +1,14 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import type { TimingRuleFormState } from "../../helpers/form/jobFunctionTimingRuleFormHelpers";
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
-import type {
-  DayPeriod,
-  JobFunctionTimingRule,
-} from "../../helpers/types/jobFunctionTypes";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionTimingRule } from "../../helpers/types/jobFunctionTypes";
 import JobFunctionTimingRuleModalForm from "./JobFunctionTimingRuleModalForm";
 import JobFunctionTimingRuleModalHeader from "./JobFunctionTimingRuleModalHeader";
 import JobFunctionTimingRuleModalLoadingState from "./JobFunctionTimingRuleModalLoadingState";
 
 type JobFunctionTimingRuleModalProps = {
-  dayPeriods: DayPeriod[];
-  jobFunction: JobFunctionWithWorkType;
+  jobFunction: JobFunctionWithJobFunction;
   timingRule: JobFunctionTimingRule | null;
   timingRuleForm: TimingRuleFormState;
   timingRuleLoading: boolean;
@@ -24,7 +20,6 @@ type JobFunctionTimingRuleModalProps = {
 };
 
 export default function JobFunctionTimingRuleModal({
-  dayPeriods,
   jobFunction,
   timingRule,
   timingRuleForm,
@@ -44,7 +39,6 @@ export default function JobFunctionTimingRuleModal({
           <JobFunctionTimingRuleModalLoadingState />
         ) : (
           <JobFunctionTimingRuleModalForm
-            dayPeriods={dayPeriods}
             timingRule={timingRule}
             timingRuleForm={timingRuleForm}
             timingRuleSaving={timingRuleSaving}

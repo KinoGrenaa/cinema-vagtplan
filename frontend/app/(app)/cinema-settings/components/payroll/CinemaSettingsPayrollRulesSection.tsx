@@ -1,4 +1,10 @@
-import type { ChangeEvent, Dispatch, SetStateAction } from "react";
+"use client";
+
+import { useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
+import CinemaSettingsPayrollModeSection, {
+  type PayrollMode,
+} from "./CinemaSettingsPayrollModeSection";
+import CinemaSettingsAdvancedPayRulesSection from "./CinemaSettingsAdvancedPayRulesSection";
 import type {
   Cinema,
   CinemaSettingsUpdate,
@@ -30,6 +36,9 @@ export default function CinemaSettingsPayrollRulesSection({
   setCinema,
   updateCinemaSettings,
 }: CinemaSettingsPayrollRulesSectionProps) {
+  const [visiblePayrollMode, setVisiblePayrollMode] =
+    useState<PayrollMode | null>(null);
+
   function setLocalValue(changes: Partial<Cinema>) {
     setCinema((previousCinema) =>
       previousCinema
@@ -62,93 +71,23 @@ export default function CinemaSettingsPayrollRulesSection({
 
   return (
     <div className="space-y-5">
-      <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition-colors dark:border-slate-700 dark:bg-slate-950/60">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-slate-950 dark:text-white">
-              Brug avancerede lønregler
-            </h3>
-            <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
-              Splitter automatisk timer i weekend, aften og nat.
-            </p>
+      <CinemaSettingsPayrollModeSection
+        cinemaId={cinema.id}
+        onModeChange={setVisiblePayrollMode}
+      />
+      {visiblePayrollMode === "ADVANCED" && (
+        <CinemaSettingsAdvancedPayRulesSection cinemaId={cinema.id} />
+      )}
 
-            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <h4 className="text-lg font-semibold text-slate-950 dark:text-white">
-                Afvigelsestolerance
-              </h4>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
-                  Mødetid (minutter)
-                  <input
-                    type="number"
-                    min={0}
-                    max={1440}
-                    step={1}
-                    inputMode="numeric"
-                    value={cinema.clockInDeviationToleranceMinutes}
-                    disabled={saving}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      setLocalValue({
-                        clockInDeviationToleranceMinutes: Number(
-                          event.target.value,
-                        ),
-                      })
-                    }
-                    onBlur={() =>
-                      saveTolerance("clockInDeviationToleranceMinutes")
-                    }
-                    className={inputClassName}
-                  />
-                </label>
-
-                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">
-                  Fyraften (minutter)
-                  <input
-                    type="number"
-                    min={0}
-                    max={1440}
-                    step={1}
-                    inputMode="numeric"
-                    value={cinema.clockOutDeviationToleranceMinutes}
-                    disabled={saving}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                      setLocalValue({
-                        clockOutDeviationToleranceMinutes: Number(
-                          event.target.value,
-                        ),
-                      })
-                    }
-                    onBlur={() =>
-                      saveTolerance("clockOutDeviationToleranceMinutes")
-                    }
-                    className={inputClassName}
-                  />
-                </label>
-              </div>
-              <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-                Afvigelser mindre end tolerancen ignoreres. Gyldigt interval:
-                0–1440 minutter.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            aria-pressed={cinema.payrollRulesEnabled}
-            onClick={() =>
-              void updateCinemaSettings({
-                payrollRulesEnabled: !cinema.payrollRulesEnabled,
-              })
-            }
-            disabled={saving}
-            className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-950 ${
-              cinema.payrollRulesEnabled
-                ? "bg-blue-700 hover:bg-blue-800 active:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400"
-                : "bg-gray-600 hover:bg-gray-700 active:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-500"
-            }`}
-          >
-            {cinema.payrollRulesEnabled ? "Aktiveret" : "Deaktiveret"}
-          </button>
+      <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/60">
+        <h3 className="font-semibold text-slate-950 dark:text-white">Afvigelsestolerance</h3>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Mødetid (minutter)
+            <input type="number" min={0} max={1440} step={1} value={cinema.clockInDeviationToleranceMinutes} disabled={saving} onChange={(event: ChangeEvent<HTMLInputElement>) => setLocalValue({ clockInDeviationToleranceMinutes: Number(event.target.value) })} onBlur={() => saveTolerance("clockInDeviationToleranceMinutes")} className={inputClassName} />
+          </label>
+          <label className="block text-sm font-medium text-slate-800 dark:text-slate-200">Fyraften (minutter)
+            <input type="number" min={0} max={1440} step={1} value={cinema.clockOutDeviationToleranceMinutes} disabled={saving} onChange={(event: ChangeEvent<HTMLInputElement>) => setLocalValue({ clockOutDeviationToleranceMinutes: Number(event.target.value) })} onBlur={() => saveTolerance("clockOutDeviationToleranceMinutes")} className={inputClassName} />
+          </label>
         </div>
       </section>
 

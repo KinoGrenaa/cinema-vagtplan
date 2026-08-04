@@ -87,7 +87,7 @@ export async function deleteShiftFlow({
     description:
       `Slettede vagt for ${getShiftUserLabel(
         shiftToDelete,
-      )}: ${shiftToDelete.workType.name} - ${formatShiftTime(
+      )}: ${shiftToDelete.jobFunctionNameSnapshot} - ${formatShiftTime(
         shiftToDelete.startTime,
         shiftToDelete.endTime,
       )}`,
@@ -111,7 +111,7 @@ export async function deleteShiftFlow({
       {
         title: 'Vagt slettet',
         body:
-          `${shiftToDelete.workType.name} - ${formatShiftTime(
+          `${shiftToDelete.jobFunctionNameSnapshot} - ${formatShiftTime(
             shiftToDelete.startTime,
             shiftToDelete.endTime,
           )}`,

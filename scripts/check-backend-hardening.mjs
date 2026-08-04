@@ -99,7 +99,7 @@ export function findForbiddenRuntimePackages(lock) {
       problems.push(`${name}@${version} (${lockPath})`);
     } else if (name === "minimatch" && compareVersions(version, "10.2.6") < 0) {
       problems.push(`${name}@${version} (${lockPath})`);
-    } else if (name === "brace-expansion" && compareVersions(version, "5.0.8") < 0) {
+    } else if (name === "brace-expansion" && compareVersions(version, "5.0.9") < 0) {
       problems.push(`${name}@${version} (${lockPath})`);
     }
   }
@@ -233,7 +233,7 @@ export function collectBackendHardeningProblems(root = repoRoot) {
     "archiver-modern": "8.0.0",
     "readdir-glob": "3.0.0",
     minimatch: "10.2.6",
-    "brace-expansion": "5.0.8",
+    "brace-expansion": "5.0.9",
     unzipper: "0.12.3",
     uuid: "11.1.1",
   };

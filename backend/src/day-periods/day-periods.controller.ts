@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  GoneException,
   Param,
   Patch,
   Post,
@@ -48,60 +49,35 @@ export class DayPeriodsController {
 
   @UseGuards(JwtGuard)
   @Post()
-  create(@Req() req: any, @Body() body: unknown) {
-    return this.dayPeriodsService.create(req.user, body as any);
+  create() {
+    throw new GoneException({
+      code: 'DAY_PERIOD_RETIRED',
+      message: 'Dagsperioder er udfaset. Brug jobfunktioner i stedet.',
+    });
   }
 
-  @UseGuards(JwtGuard)
   @Patch(':id')
-  update(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() body: unknown,
-    @Query('cinemaId') cinemaId?: string,
-  ) {
-    return this.dayPeriodsService.update(
-      req.user,
-      parseRequiredPositiveInteger(
-        id,
-        'Dagsperiode skal være et gyldigt ID',
-      ),
-      body as any,
-      parseOptionalCinemaId(cinemaId),
-    );
+  update() {
+    throw new GoneException({
+      code: 'DAY_PERIOD_RETIRED',
+      message: 'Dagsperioder er udfaset. Brug jobfunktioner i stedet.',
+    });
   }
 
-  @UseGuards(JwtGuard)
   @Delete(':id')
-  remove(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
-  ) {
-    return this.dayPeriodsService.remove(
-      req.user,
-      parseRequiredPositiveInteger(
-        id,
-        'Dagsperiode skal være et gyldigt ID',
-      ),
-      parseOptionalCinemaId(cinemaId),
-    );
+  remove() {
+    throw new GoneException({
+      code: 'DAY_PERIOD_RETIRED',
+      message: 'Dagsperioder er udfaset. Brug jobfunktioner i stedet.',
+    });
   }
 
-  @UseGuards(JwtGuard)
   @Patch(':id/reactivate')
-  reactivate(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
-  ) {
-    return this.dayPeriodsService.reactivate(
-      req.user,
-      parseRequiredPositiveInteger(
-        id,
-        'Dagsperiode skal være et gyldigt ID',
-      ),
-      parseOptionalCinemaId(cinemaId),
-    );
+  reactivate() {
+    throw new GoneException({
+      code: 'DAY_PERIOD_RETIRED',
+      message: 'Dagsperioder er udfaset. Brug jobfunktioner i stedet.',
+    });
   }
+
 }

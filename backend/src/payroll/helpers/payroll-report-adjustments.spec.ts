@@ -68,7 +68,7 @@ describe(
           },
           timeEntry: {
             shift: {
-              workType: {
+              jobFunction: {
                 name: 'Kiosk',
                 payrollType: null,
               },

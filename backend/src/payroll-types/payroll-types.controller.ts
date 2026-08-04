@@ -87,7 +87,7 @@ export class PayrollTypesController {
       req.user,
       parseRequiredPositiveInteger(
         id,
-        'Lønart skal være et gyldigt ID',
+        'Eksportkode skal være et gyldigt ID',
       ),
       {
         ...body,
@@ -110,7 +110,7 @@ export class PayrollTypesController {
       req.user,
       parseRequiredPositiveInteger(
         id,
-        'Lønart skal være et gyldigt ID',
+        'Eksportkode skal være et gyldigt ID',
       ),
       parseOptionalPositiveIntegerQuery(
         cinemaId,

@@ -9,7 +9,7 @@ import DashboardSourceBadge from "../status/DashboardSourceBadge";
 type StaffingHeatmapItem = {
   id: number;
   employee: string;
-  workType?: string;
+  jobFunction?: string;
   risk: string;
   hours: string;
 };
@@ -111,7 +111,7 @@ export default function AiStaffingHeatmap({
                     {item.employee || "Ikke tildelt"}
                   </h4>
                   <p className="mt-1 text-sm opacity-80">
-                    {item.workType || "Arbejdstype ikke angivet"}
+                    {item.jobFunction || "Jobfunktion ikke angivet"}
                   </p>
                 </div>
                 <span

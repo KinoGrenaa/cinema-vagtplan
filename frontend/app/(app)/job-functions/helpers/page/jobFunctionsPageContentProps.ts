@@ -50,6 +50,7 @@ export function buildJobFunctionsPageContentProps({
       showArchived: data.showArchived,
       onArchive: archiveActions.archiveJobFunction,
       onCreate: form.openCreateModal,
+      onCopy: form.copyJobFunction,
       onEdit: form.openEditModal,
       onOpenEmployees: assignments.openEmployeeModal,
       onOpenTimingRule: timingRule.openTimingRuleModal,

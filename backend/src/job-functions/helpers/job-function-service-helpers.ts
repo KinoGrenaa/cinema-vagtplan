@@ -13,64 +13,25 @@ export type AuthUser = {
   email: string;
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
   cinemaId: number | null;
+  canManageSchedule?: boolean;
+  canManageUsers?: boolean;
 };
 
-export type CinemaContextValue =
-  | number
-  | string
-  | null
-  | undefined;
-
-export type NumberContextValue =
-  | number
-  | string
-  | null
-  | undefined;
-
-export type BooleanContextValue =
-  | boolean
-  | string
-  | null
-  | undefined;
+export type CinemaContextValue = number | string | null | undefined;
+export type NumberContextValue = number | string | null | undefined;
+export type BooleanContextValue = boolean | string | null | undefined;
 
 export type JobFunctionTimingAnchorValue =
-  | 'DAY_PERIOD_START'
-  | 'DAY_PERIOD_END'
   | 'FIRST_MOVIE_START'
   | 'FIRST_MOVIE_END'
   | 'LAST_MOVIE_START'
   | 'LAST_MOVIE_END'
   | 'FIXED_TIME';
 
-export type JobFunctionCreateData = {
-  name: string;
-  description?: string | null;
-  color?: string | null;
-  sortOrder?: NumberContextValue;
-  dayPeriodId?: NumberContextValue;
-  workTypeId?: NumberContextValue;
-  payrollTypeId?: NumberContextValue;
-  cinemaId?: CinemaContextValue;
-};
-
-export type JobFunctionUpdateData = {
-  name?: string;
-  description?: string | null;
-  color?: string | null;
-  sortOrder?: NumberContextValue;
-  dayPeriodId?: NumberContextValue;
-  workTypeId?: NumberContextValue;
-  payrollTypeId?: NumberContextValue;
-  cinemaId?: CinemaContextValue;
-};
-
-export type UserJobFunctionAssignData = {
-  userId: NumberContextValue;
-  cinemaId?: CinemaContextValue;
-};
-
 export type JobFunctionTimingRuleData = {
   cinemaId?: CinemaContextValue;
+  filmWindowStartMinute?: NumberContextValue;
+  filmWindowEndMinute?: NumberContextValue;
   startAnchor?: JobFunctionTimingAnchorValue | string | null;
   startOffsetMinutes?: NumberContextValue;
   startFixedMinute?: NumberContextValue;
@@ -79,7 +40,58 @@ export type JobFunctionTimingRuleData = {
   endFixedMinute?: NumberContextValue;
   fallbackStartMinute?: NumberContextValue;
   fallbackEndMinute?: NumberContextValue;
-  clampToDayPeriod?: BooleanContextValue;
+  roundToQuarter?: BooleanContextValue;
+  roundStartToNearestQuarter?: BooleanContextValue;
+  roundEndToNearestQuarter?: BooleanContextValue;
+  /** @deprecated Accepted temporarily for clients from the previous AT3A preview. */
+  roundStartDownToQuarter?: BooleanContextValue;
+  /** @deprecated Accepted temporarily for clients from the previous AT3A preview. */
+  roundEndUpToQuarter?: BooleanContextValue;
+  restrictMovieStartsToWindow?: BooleanContextValue;
+  /** @deprecated Accepted for clients using the first AT3A contract. */
+  limitToFilmWindow?: BooleanContextValue;
+};
+
+export type JobFunctionCreateData = {
+  name: string;
+  description?: string | null;
+  color?: string | null;
+  sortOrder?: NumberContextValue;
+  defaultPayrollExportCodeId?: NumberContextValue;
+  payrollTypeId?: NumberContextValue;
+  cinemaId?: CinemaContextValue;
+  timingRule?: JobFunctionTimingRuleData | null;
+  userIds?: NumberContextValue[];
+};
+
+export type JobFunctionUpdateData = {
+  name?: string;
+  description?: string | null;
+  color?: string | null;
+  sortOrder?: NumberContextValue;
+  defaultPayrollExportCodeId?: NumberContextValue;
+  payrollTypeId?: NumberContextValue;
+  cinemaId?: CinemaContextValue;
+  timingRule?: JobFunctionTimingRuleData | null;
+  userIds?: NumberContextValue[];
+};
+
+export type UserJobFunctionAssignData = {
+  userId: NumberContextValue;
+  cinemaId?: CinemaContextValue;
+};
+
+export type UserJobFunctionReplaceData = {
+  userIds?: NumberContextValue[];
+  jobFunctionIds?: NumberContextValue[];
+  cinemaId?: CinemaContextValue;
+};
+
+export type JobFunctionCopyData = {
+  cinemaId?: CinemaContextValue;
+  name?: string | null;
+  copyQualifiedUsers?: BooleanContextValue;
+  copySpecialPayRules?: BooleanContextValue;
 };
 
 export type JobFunctionDbClient = Prisma.TransactionClient;
@@ -89,32 +101,23 @@ const MAX_JOB_FUNCTION_NAME_LENGTH = 200;
 const MAX_JOB_FUNCTION_TEXT_LENGTH = 5_000;
 
 export const jobFunctionInclude = {
-  dayPeriod: true,
-  workType: {
+  defaultPayrollExportCode: {
     select: {
       id: true,
       name: true,
+      payrollCode: true,
+      exportCode: true,
+      description: true,
       color: true,
+      isDefault: true,
       isActive: true,
-      cinemaId: true,
-      payrollTypeId: true,
-      payrollType: {
-        select: {
-          id: true,
-          name: true,
-          payrollCode: true,
-          exportCode: true,
-          color: true,
-          isDefault: true,
-          isActive: true,
-        },
-      },
     },
   },
   timingRule: true,
   _count: {
     select: {
       userJobFunctions: true,
+      shifts: true,
     },
   },
 } as const;
@@ -127,7 +130,6 @@ export const jobFunctionTimingRuleInclude = {
       color: true,
       isActive: true,
       cinemaId: true,
-      dayPeriod: true,
     },
   },
 } as const;
@@ -141,7 +143,6 @@ export const userJobFunctionInclude = {
       email: true,
       role: true,
       isActive: true,
-      cinemaId: true,
     },
   },
   jobFunction: {
@@ -171,7 +172,7 @@ function parseStrictInteger(
 ) {
   if (
     (typeof value !== 'string' && typeof value !== 'number') ||
-    (typeof value === 'string' && !/^[0-9]+$/.test(value))
+    (typeof value === 'string' && !/^-?[0-9]+$/.test(value))
   ) {
     throw new BadRequestException(message);
   }
@@ -189,10 +190,7 @@ function parseStrictInteger(
 }
 
 function parseCinemaId(value: CinemaContextValue) {
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
-
+  if (value === null || value === undefined || value === '') return null;
   try {
     return parseStrictInteger(
       value,
@@ -205,10 +203,34 @@ function parseCinemaId(value: CinemaContextValue) {
   }
 }
 
+export function parseBooleanValue(
+  value: BooleanContextValue,
+  fallback: boolean,
+  message = 'Feltet skal være true eller false.',
+) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new BadRequestException(message);
+}
+
 export function ensureJobFunctionAdmin(user: AuthUser) {
-  if (user.role === 'MASTER') return;
-  if (user.role === 'ADMIN') return;
-  throw new ForbiddenException('Ingen adgang');
+  if (user.role === 'MASTER' || user.canManageSchedule === true) return;
+  throw new ForbiddenException('Du har ikke adgang til at administrere jobfunktioner.');
+}
+
+export function ensureJobFunctionAssignmentAdmin(user: AuthUser) {
+  if (
+    user.role === 'MASTER' ||
+    user.canManageSchedule === true ||
+    user.canManageUsers === true
+  ) {
+    return;
+  }
+  throw new ForbiddenException(
+    'Du har ikke adgang til at administrere medarbejdernes jobfunktioner.',
+  );
 }
 
 export function getRequiredJobFunctionCinemaId(
@@ -226,19 +248,17 @@ export function getRequiredJobFunctionCinemaId(
   }
 
   const cinemaId = parseCinemaId(user.cinemaId);
-  if (!cinemaId) {
-    throw new BadRequestException('Brugeren mangler biograf.');
+  if (!cinemaId) throw new BadRequestException('Brugeren mangler biograf.');
+  const requestedCinemaId = parseCinemaId(selectedCinemaId);
+  if (requestedCinemaId && requestedCinemaId !== cinemaId) {
+    throw new ForbiddenException('Du har ikke adgang til denne biograf.');
   }
-
   return cinemaId;
 }
 
 export function getActorUserId(user: AuthUser) {
   const value = user.sub ?? user.id;
-  if (value === undefined || value === null) {
-    return null;
-  }
-
+  if (value === undefined || value === null) return null;
   try {
     return parseStrictInteger(
       value,
@@ -252,15 +272,9 @@ export function getActorUserId(user: AuthUser) {
 }
 
 export function normalizeJobFunctionName(value: unknown) {
-  if (typeof value !== 'string') {
-    throw new BadRequestException('Navn mangler.');
-  }
-
+  if (typeof value !== 'string') throw new BadRequestException('Navn mangler.');
   const name = value.trim();
-  if (!name) {
-    throw new BadRequestException('Navn mangler.');
-  }
-
+  if (!name) throw new BadRequestException('Navn mangler.');
   if (
     name.length > MAX_JOB_FUNCTION_NAME_LENGTH ||
     /[\u0000-\u001f\u007f]/.test(name)
@@ -269,8 +283,11 @@ export function normalizeJobFunctionName(value: unknown) {
       'Navnet er for langt eller indeholder ugyldige tegn.',
     );
   }
-
   return name;
+}
+
+export function normalizeJobFunctionNameKey(name: string) {
+  return name.trim().toLocaleLowerCase('da-DK');
 }
 
 export function normalizeOptionalText(value: unknown) {
@@ -279,38 +296,22 @@ export function normalizeOptionalText(value: unknown) {
   if (typeof value !== 'string') {
     throw new BadRequestException('Tekstfeltet er ugyldigt.');
   }
-
   const text = value.trim();
-  if (
-    text.length > MAX_JOB_FUNCTION_TEXT_LENGTH ||
-    text.includes('\u0000')
-  ) {
-    throw new BadRequestException(
-      'Tekstfeltet er for langt eller ugyldigt.',
-    );
+  if (text.length > MAX_JOB_FUNCTION_TEXT_LENGTH || text.includes('\u0000')) {
+    throw new BadRequestException('Tekstfeltet er for langt eller ugyldigt.');
   }
-
   return text || null;
 }
 
 export function normalizeJobFunctionColor(value: unknown) {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
-
+  if (value === undefined || value === null || value === '') return undefined;
   if (typeof value !== 'string') {
-    throw new BadRequestException(
-      'Farve skal være en gyldig hex-farve.',
-    );
+    throw new BadRequestException('Farve skal være en gyldig hex-farve.');
   }
-
   const color = value.trim();
   if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
-    throw new BadRequestException(
-      'Farve skal være en gyldig hex-farve.',
-    );
+    throw new BadRequestException('Farve skal være en gyldig hex-farve.');
   }
-
   return color;
 }
 
@@ -321,13 +322,7 @@ export function parseRequiredPositiveId(
   if (value === null || value === undefined || value === '') {
     throw new BadRequestException(message);
   }
-
-  return parseStrictInteger(
-    value,
-    1,
-    Number.MAX_SAFE_INTEGER,
-    message,
-  );
+  return parseStrictInteger(value, 1, Number.MAX_SAFE_INTEGER, message);
 }
 
 export function parseOptionalPositiveId(
@@ -339,11 +334,19 @@ export function parseOptionalPositiveId(
   return parseRequiredPositiveId(value, message);
 }
 
-export function parseOptionalSortOrder(value: NumberContextValue) {
-  if (value === null || value === undefined || value === '') {
-    return undefined;
+export function parsePositiveIdList(values: NumberContextValue[] | undefined) {
+  if (values === undefined) return undefined;
+  if (!Array.isArray(values)) {
+    throw new BadRequestException('Listen over ID’er er ugyldig.');
   }
+  return [...new Set(values.map((value) => parseRequiredPositiveId(
+    value,
+    'Listen indeholder et ugyldigt ID.',
+  )))];
+}
 
+export function parseOptionalSortOrder(value: NumberContextValue) {
+  if (value === null || value === undefined || value === '') return undefined;
   return parseStrictInteger(
     value,
     0,
@@ -352,183 +355,26 @@ export function parseOptionalSortOrder(value: NumberContextValue) {
   );
 }
 
-export async function getDayPeriodIdForCinema(
-  prisma: JobFunctionDbClient,
-  cinemaId: number,
-  dayPeriodId: NumberContextValue,
-) {
-  const parsedDayPeriodId = parseOptionalPositiveId(
-    dayPeriodId,
-    'Dagsperiode skal være et gyldigt ID.',
-  );
-  if (parsedDayPeriodId === undefined) {
-    return undefined;
-  }
-  if (parsedDayPeriodId === null) {
-    return null;
-  }
-
-  const dayPeriod = await prisma.dayPeriod.findFirst({
-    where: {
-      id: parsedDayPeriodId,
-      cinemaId,
-      isActive: true,
-    },
-    select: {
-      id: true,
-    },
-  });
-  if (!dayPeriod) {
-    throw new BadRequestException(
-      'Dagsperioden findes ikke for den valgte biograf.',
-    );
-  }
-
-  return dayPeriod.id;
-}
-
-export async function getWorkTypeIdForCinema(
-  prisma: JobFunctionDbClient,
-  cinemaId: number,
-  workTypeId: NumberContextValue,
-) {
-  const parsedWorkTypeId = parseOptionalPositiveId(
-    workTypeId,
-    'Arbejdstype skal være et gyldigt ID.',
-  );
-  if (parsedWorkTypeId === undefined) {
-    return undefined;
-  }
-  if (parsedWorkTypeId === null) {
-    return null;
-  }
-
-  const workType = await prisma.workType.findFirst({
-    where: {
-      id: parsedWorkTypeId,
-      cinemaId,
-      isActive: true,
-    },
-    select: {
-      id: true,
-    },
-  });
-  if (!workType) {
-    throw new BadRequestException(
-      'Arbejdstypen findes ikke for den valgte biograf.',
-    );
-  }
-
-  return workType.id;
-}
-
-export async function getWorkTypeIdForPayrollType(
+export async function getPayrollExportCodeIdForCinema(
   prisma: JobFunctionDbClient,
   cinemaId: number,
   payrollTypeId: NumberContextValue,
 ) {
-  const parsedPayrollTypeId = parseOptionalPositiveId(
+  const parsedId = parseOptionalPositiveId(
     payrollTypeId,
-    'Løntype skal være et gyldigt ID.',
+    'Eksportkode skal være et gyldigt ID.',
   );
-  if (parsedPayrollTypeId === undefined) {
-    return undefined;
-  }
-  if (parsedPayrollTypeId === null) {
-    return null;
-  }
-
+  if (parsedId === undefined || parsedId === null) return parsedId;
   const payrollType = await prisma.payrollType.findFirst({
-    where: {
-      id: parsedPayrollTypeId,
-      cinemaId,
-      isActive: true,
-    },
-    select: {
-      id: true,
-      name: true,
-      color: true,
-    },
+    where: { id: parsedId, cinemaId, isActive: true },
+    select: { id: true },
   });
   if (!payrollType) {
     throw new BadRequestException(
-      'Løntypen findes ikke for den valgte biograf.',
+      'Eksportkoden findes ikke for den valgte biograf.',
     );
   }
-
-  const workTypeColor = payrollType.color || '#2563eb';
-  const existingWorkType =
-    (await prisma.workType.findFirst({
-      where: {
-        cinemaId,
-        payrollTypeId: payrollType.id,
-        isActive: true,
-      },
-      orderBy: {
-        id: 'asc',
-      },
-      select: {
-        id: true,
-        name: true,
-        color: true,
-        isActive: true,
-        archivedAt: true,
-      },
-    })) ??
-    (await prisma.workType.findFirst({
-      where: {
-        cinemaId,
-        payrollTypeId: payrollType.id,
-      },
-      orderBy: {
-        id: 'asc',
-      },
-      select: {
-        id: true,
-        name: true,
-        color: true,
-        isActive: true,
-        archivedAt: true,
-      },
-    }));
-
-  if (existingWorkType) {
-    if (
-      !existingWorkType.isActive ||
-      existingWorkType.archivedAt ||
-      existingWorkType.name !== payrollType.name ||
-      existingWorkType.color !== workTypeColor
-    ) {
-      await prisma.workType.update({
-        where: {
-          id: existingWorkType.id,
-        },
-        data: {
-          name: payrollType.name,
-          color: workTypeColor,
-          isActive: true,
-          archivedAt: null,
-        },
-      });
-    }
-    return existingWorkType.id;
-  }
-
-  const workType = await prisma.workType.create({
-    data: {
-      cinemaId,
-      name: payrollType.name,
-      color: workTypeColor,
-      payrollTypeId: payrollType.id,
-      isActive: true,
-      archivedAt: null,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  return workType.id;
+  return payrollType.id;
 }
 
 export async function findJobFunctionForCinema(
@@ -545,13 +391,11 @@ export async function findJobFunctionForCinema(
     },
     include: jobFunctionInclude,
   });
-
   if (!jobFunction) {
     throw new NotFoundException(
       'Jobfunktionen findes ikke for den valgte biograf.',
     );
   }
-
   return jobFunction;
 }
 
@@ -564,28 +408,41 @@ export async function ensureAssignableJobFunctionUser(
     where: {
       id: userId,
       isActive: true,
-      role: {
-        not: 'MASTER',
-      },
-      cinemaMemberships: {
-        some: {
-          cinemaId,
-          isActive: true,
-        },
-      },
+      role: { not: 'MASTER' },
+      cinemaMemberships: { some: { cinemaId, isActive: true } },
     },
-    select: {
-      id: true,
-    },
+    select: { id: true },
   });
-
   if (!user) {
     throw new BadRequestException(
-      'Medarbejderen findes ikke for den valgte biograf.',
+      'Medarbejderen findes ikke som aktivt medlemskab i den valgte biograf.',
     );
   }
-
   return user;
+}
+
+export async function ensureAssignableJobFunctionUsers(
+  prisma: JobFunctionDbClient,
+  userIds: number[],
+  cinemaId: number,
+) {
+  if (userIds.length === 0) return;
+  const users = await prisma.user.findMany({
+    where: {
+      id: { in: userIds },
+      isActive: true,
+      role: { not: 'MASTER' },
+      cinemaMemberships: { some: { cinemaId, isActive: true } },
+    },
+    select: { id: true },
+  });
+  const validIds = new Set(users.map((user) => user.id));
+  const invalidIds = userIds.filter((id) => !validIds.has(id));
+  if (invalidIds.length > 0) {
+    throw new BadRequestException(
+      `Følgende medarbejdere kan ikke tildeles i biografen: ${invalidIds.join(', ')}.`,
+    );
+  }
 }
 
 export async function withJobFunctionCinemaLock<T>(

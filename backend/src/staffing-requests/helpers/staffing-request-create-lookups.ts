@@ -13,45 +13,22 @@ export type StaffingRequestShift = {
   id: number;
   cinemaId: number;
   userId: number | null;
-  workTypeId: number;
+  jobFunctionId: number;
+  jobFunctionNameSnapshot: string;
+  jobFunctionColorSnapshot: string;
   startTime: Date;
   endTime: Date;
   note: string | null;
   user?: unknown;
-  workType?: unknown;
+  jobFunction?: unknown;
 };
 
-type EnsureStaffingRequestTargetUserExistsParams = {
-  prisma: PrismaService;
-  cinemaId: number;
-  targetUserId?: number | null;
-};
-
-type ResolveStaffingRequestShiftParams = {
-  prisma: PrismaService;
-  cinemaId: number;
-  shiftId?: number | null;
-};
-
-type ResolveStaffingRequestWorkTypeIdParams = {
-  prisma: PrismaService;
-  cinemaId: number;
-  dto: CreateStaffingRequestInput;
-  shift: StaffingRequestShift | null;
-};
-
-function getActiveCinemaUserFilter(
-  userId: number,
-  cinemaId: number,
-) {
+function getActiveCinemaUserFilter(userId: number, cinemaId: number) {
   return {
     id: userId,
     isActive: true,
     cinemaMemberships: {
-      some: {
-        cinemaId,
-        isActive: true,
-      },
+      some: { cinemaId, isActive: true },
     },
   };
 }
@@ -65,24 +42,13 @@ export async function ensureStaffingRequestActorAccess({
   user: AuthUser;
   cinemaId: number;
 }) {
-  if (user.role === 'MASTER') {
-    return;
-  }
-
+  if (user.role === 'MASTER') return;
   const actor = await prisma.user.findFirst({
-    where: getActiveCinemaUserFilter(
-      user.sub,
-      cinemaId,
-    ),
-    select: {
-      id: true,
-    },
+    where: getActiveCinemaUserFilter(user.sub, cinemaId),
+    select: { id: true },
   });
-
   if (!actor) {
-    throw new ForbiddenException(
-      'Du er ikke aktivt tilknyttet denne biograf',
-    );
+    throw new ForbiddenException('Du er ikke aktivt tilknyttet denne biograf');
   }
 }
 
@@ -90,22 +56,16 @@ export async function ensureStaffingRequestTargetUserExists({
   prisma,
   cinemaId,
   targetUserId,
-}: EnsureStaffingRequestTargetUserExistsParams) {
-  if (!targetUserId) {
-    return;
-  }
-
-  const targetUser =
-    await prisma.user.findFirst({
-      where: getActiveCinemaUserFilter(
-        targetUserId,
-        cinemaId,
-      ),
-      select: {
-        id: true,
-      },
-    });
-
+}: {
+  prisma: PrismaService;
+  cinemaId: number;
+  targetUserId?: number | null;
+}) {
+  if (!targetUserId) return;
+  const targetUser = await prisma.user.findFirst({
+    where: getActiveCinemaUserFilter(targetUserId, cinemaId),
+    select: { id: true },
+  });
   if (!targetUser) {
     throw new NotFoundException(
       'Medarbejderen blev ikke fundet i den aktive biograf',
@@ -117,61 +77,43 @@ export async function resolveStaffingRequestShift({
   prisma,
   cinemaId,
   shiftId,
-}: ResolveStaffingRequestShiftParams):
-  Promise<StaffingRequestShift | null> {
+}: {
+  prisma: PrismaService;
+  cinemaId: number;
+  shiftId?: number | null;
+}): Promise<StaffingRequestShift | null> {
   const shift = shiftId
     ? await prisma.shift.findFirst({
-        where: {
-          id: shiftId,
-          cinemaId,
-        },
-        include: {
-          user: true,
-          workType: true,
-        },
+        where: { id: shiftId, cinemaId },
+        include: { user: true, jobFunction: true },
       })
     : null;
-
-  if (shiftId && !shift) {
-    throw new NotFoundException(
-      'Vagt blev ikke fundet',
-    );
-  }
-
+  if (shiftId && !shift) throw new NotFoundException('Vagt blev ikke fundet');
   return shift;
 }
 
-export async function resolveStaffingRequestWorkTypeId({
+export async function resolveStaffingRequestJobFunction({
   prisma,
   cinemaId,
   dto,
   shift,
-}: ResolveStaffingRequestWorkTypeIdParams):
-  Promise<number> {
-  const requestedWorkTypeId =
-    shift?.workTypeId ??
-    dto.workTypeId ??
-    null;
-
-  if (!requestedWorkTypeId) {
-    throw new BadRequestException(
-      'Vælg jobfunktion for bemandingsbehovet.',
-    );
+}: {
+  prisma: PrismaService;
+  cinemaId: number;
+  dto: CreateStaffingRequestInput;
+  shift: StaffingRequestShift | null;
+}) {
+  const requestedJobFunctionId = shift?.jobFunctionId ?? dto.jobFunctionId ?? null;
+  if (!requestedJobFunctionId) {
+    throw new BadRequestException('Vælg jobfunktion for bemandingsbehovet.');
   }
 
-  const workType =
-    await prisma.workType.findFirst({
-      where: {
-        id: requestedWorkTypeId,
-        cinemaId,
-      },
-    });
-
-  if (!workType) {
-    throw new NotFoundException(
-      'Jobfunktionen blev ikke fundet',
-    );
+  const jobFunction = await prisma.jobFunction.findFirst({
+    where: { id: requestedJobFunctionId, cinemaId, isActive: true },
+    select: { id: true, name: true, color: true },
+  });
+  if (!jobFunction) {
+    throw new NotFoundException('Jobfunktionen blev ikke fundet');
   }
-
-  return requestedWorkTypeId;
+  return jobFunction;
 }

@@ -23,20 +23,19 @@ export class ShiftGenerationService {
         endDate: params.endDate,
       });
 
-    const defaultWorkType = await this.prisma.workType.findFirst({
+    const defaultJobFunction = await this.prisma.jobFunction.findFirst({
       where: {
         cinemaId: params.cinemaId,
+        isActive: true,
       },
-      orderBy: {
-        id: 'asc',
-      },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
-    if (!defaultWorkType) {
+    if (!defaultJobFunction) {
       return {
         suggestedShifts: [],
         recommendations: [
-          'No work type found. Create a work type before generating shifts.',
+          'No job function found. Create a job function before generating shifts.',
         ],
         reasoning: optimization.reasoning,
       };
@@ -53,10 +52,22 @@ export class ShiftGenerationService {
       );
 
       for (const candidate of candidates) {
+        const qualification = await this.prisma.userJobFunction.findUnique({
+          where: {
+            userId_jobFunctionId: {
+              userId: candidate.userId,
+              jobFunctionId: defaultJobFunction.id,
+            },
+          },
+          select: { id: true },
+        });
+        if (!qualification) continue;
         suggestedShifts.push({
           cinemaId: params.cinemaId,
           userId: candidate.userId,
-          workTypeId: defaultWorkType.id,
+          jobFunctionId: defaultJobFunction.id,
+          jobFunctionName: defaultJobFunction.name,
+          jobFunctionColor: defaultJobFunction.color,
           startTime: period.startTime,
           endTime: period.endTime,
           note:
@@ -126,7 +137,11 @@ export class ShiftGenerationService {
         data: {
           cinemaId: suggestion.cinemaId,
           userId: suggestion.userId,
-          workTypeId: suggestion.workTypeId,
+          workTypeId: null,
+          jobFunctionId: suggestion.jobFunctionId,
+          jobFunctionNameSnapshot: suggestion.jobFunctionName,
+          jobFunctionColorSnapshot: suggestion.jobFunctionColor,
+          timingSource: 'MANUAL',
           startTime: suggestion.startTime,
           endTime: suggestion.endTime,
           note: params.createdByNote || suggestion.note || 'AI generated shift',

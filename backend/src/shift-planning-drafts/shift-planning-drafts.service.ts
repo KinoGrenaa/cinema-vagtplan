@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveJobFunctionTiming } from '../job-functions/helpers/job-function-timing-resolver';
 import {
   buildCopenhagenDateTimeFromMinute,
   getCopenhagenDateKey,
@@ -219,166 +220,41 @@ function getDateKeyFromDateTime(value: Date) {
   return getCopenhagenDateKey(value);
 }
 
-function normalizeRangeEnd(startMinute: number, endMinute: number) {
-  return endMinute <= startMinute ? endMinute + 24 * 60 : endMinute;
-}
-
-function isMinuteRangeOverlap(
-  firstStart: number,
-  firstEnd: number,
-  secondStart: number,
-  secondEnd: number,
-) {
-  return firstStart < secondEnd && firstEnd > secondStart;
-}
-
-function getMovieIntervalsForDate(
-  date: Date,
+function resolvePlannedTiming(
   jobFunction: any,
-  movieShowings: MovieShowingTimingData[],
+  date: Date,
+  movieShowings: Array<MovieShowingTimingData & { id?: number }>,
 ) {
-  const dateKey = toIsoDateOnly(date);
-  const dayPeriod = jobFunction?.dayPeriod;
-  const hasDayPeriod =
-    dayPeriod?.startMinute !== null &&
-    dayPeriod?.startMinute !== undefined &&
-    dayPeriod?.endMinute !== null &&
-    dayPeriod?.endMinute !== undefined;
-  const periodStart = hasDayPeriod ? Number(dayPeriod.startMinute) : 0;
-  const periodEnd = hasDayPeriod
-    ? normalizeRangeEnd(periodStart, Number(dayPeriod.endMinute))
-    : 24 * 60;
+  const timingRule = jobFunction?.timingRule;
+  if (!timingRule) return null;
 
-  return movieShowings
-    .filter((showing) => getDateKeyFromDateTime(showing.startTime) === dateKey)
-    .map((showing) => {
-      const startMinute = getMinuteOfDay(showing.startTime);
-      const rawEndMinute = getMinuteOfDay(showing.endTime);
-      const endMinute = normalizeRangeEnd(startMinute, rawEndMinute);
-
-      return { startMinute, endMinute };
-    })
-    .filter((showing) =>
-      isMinuteRangeOverlap(
-        showing.startMinute,
-        showing.endMinute,
-        periodStart,
-        periodEnd,
-      ),
+  try {
+    return resolveJobFunctionTiming(
+      date,
+      {
+        filmWindowStartMinute: Number(timingRule.filmWindowStartMinute ?? 0),
+        filmWindowEndMinute: Number(timingRule.filmWindowEndMinute ?? 1440),
+        startAnchor: timingRule.startAnchor,
+        startOffsetMinutes: Number(timingRule.startOffsetMinutes ?? 0),
+        startFixedMinute: timingRule.startFixedMinute ?? null,
+        endAnchor: timingRule.endAnchor,
+        endOffsetMinutes: Number(timingRule.endOffsetMinutes ?? 0),
+        endFixedMinute: timingRule.endFixedMinute ?? null,
+        fallbackStartMinute: timingRule.fallbackStartMinute ?? null,
+        fallbackEndMinute: timingRule.fallbackEndMinute ?? null,
+        roundStartToNearestQuarter: Boolean(
+          timingRule.roundStartToNearestQuarter ?? timingRule.roundToQuarter,
+        ),
+        roundEndToNearestQuarter: Boolean(
+          timingRule.roundEndToNearestQuarter ?? timingRule.roundToQuarter,
+        ),
+        restrictMovieStartsToWindow: Boolean(timingRule.restrictMovieStartsToWindow),
+      },
+      movieShowings,
     );
-}
-
-function resolveMovieAnchorMinute(
-  anchor: string | null | undefined,
-  movieIntervals: { startMinute: number; endMinute: number }[],
-) {
-  if (movieIntervals.length === 0) {
+  } catch {
     return null;
   }
-
-  if (anchor === 'FIRST_MOVIE_START') {
-    return Math.min(...movieIntervals.map((showing) => showing.startMinute)) %
-      (24 * 60);
-  }
-
-  if (anchor === 'FIRST_MOVIE_END') {
-    return Math.min(...movieIntervals.map((showing) => showing.endMinute)) %
-      (24 * 60);
-  }
-
-  if (anchor === 'LAST_MOVIE_START') {
-    return Math.max(...movieIntervals.map((showing) => showing.startMinute)) %
-      (24 * 60);
-  }
-
-  if (anchor === 'LAST_MOVIE_END') {
-    return Math.max(...movieIntervals.map((showing) => showing.endMinute)) %
-      (24 * 60);
-  }
-
-  return null;
-}
-
-function applyTimingOffset(
-  anchorMinute: number,
-  offsetMinutes: number | null | undefined,
-) {
-  const offset = Number(offsetMinutes ?? 0);
-  return (anchorMinute + offset + 24 * 60) % (24 * 60);
-}
-
-function resolvePlannedStartMinute(
-  jobFunction: any,
-  date: Date,
-  movieShowings: MovieShowingTimingData[],
-) {
-  const timingRule = jobFunction?.timingRule;
-  if (
-    timingRule?.startAnchor === 'FIXED_TIME' &&
-    timingRule.startFixedMinute !== null &&
-    timingRule.startFixedMinute !== undefined
-  ) {
-    return timingRule.startFixedMinute;
-  }
-
-  const movieAnchorMinute = resolveMovieAnchorMinute(
-    timingRule?.startAnchor ?? 'FIRST_MOVIE_START',
-    getMovieIntervalsForDate(date, jobFunction, movieShowings),
-  );
-  if (movieAnchorMinute !== null) {
-    return applyTimingOffset(movieAnchorMinute, timingRule?.startOffsetMinutes);
-  }
-
-  if (
-    timingRule?.fallbackStartMinute !== null &&
-    timingRule?.fallbackStartMinute !== undefined
-  ) {
-    return timingRule.fallbackStartMinute;
-  }
-  if (
-    jobFunction?.dayPeriod?.startMinute !== null &&
-    jobFunction?.dayPeriod?.startMinute !== undefined
-  ) {
-    return jobFunction.dayPeriod.startMinute;
-  }
-  return null;
-}
-
-function resolvePlannedEndMinute(
-  jobFunction: any,
-  date: Date,
-  movieShowings: MovieShowingTimingData[],
-) {
-  const timingRule = jobFunction?.timingRule;
-  if (
-    timingRule?.endAnchor === 'FIXED_TIME' &&
-    timingRule.endFixedMinute !== null &&
-    timingRule.endFixedMinute !== undefined
-  ) {
-    return timingRule.endFixedMinute;
-  }
-
-  const movieAnchorMinute = resolveMovieAnchorMinute(
-    timingRule?.endAnchor ?? 'LAST_MOVIE_END',
-    getMovieIntervalsForDate(date, jobFunction, movieShowings),
-  );
-  if (movieAnchorMinute !== null) {
-    return applyTimingOffset(movieAnchorMinute, timingRule?.endOffsetMinutes);
-  }
-
-  if (
-    timingRule?.fallbackEndMinute !== null &&
-    timingRule?.fallbackEndMinute !== undefined
-  ) {
-    return timingRule.fallbackEndMinute;
-  }
-  if (
-    jobFunction?.dayPeriod?.endMinute !== null &&
-    jobFunction?.dayPeriod?.endMinute !== undefined
-  ) {
-    return jobFunction.dayPeriod.endMinute;
-  }
-  return null;
 }
 
 function toNullableNumber(value: unknown) {
@@ -514,21 +390,12 @@ function buildDateTimeFromMinute(dateValue: unknown, minuteValue: unknown) {
   return buildCopenhagenDateTimeFromMinute(date, minute);
 }
 
-function getJobFunctionWorkTypeBlockReason(row: any) {
+function getJobFunctionBlockReason(row: any) {
   const jobFunctionName = row.jobFunctionName || 'Jobfunktionen';
-
-  if (!row.jobFunctionId) {
-    return 'Jobfunktion mangler.';
+  if (!row.jobFunctionId) return 'Jobfunktion mangler.';
+  if (row.jobFunctionIsActive === false || row.jobFunctionArchivedAt) {
+    return `${jobFunctionName} er arkiveret eller inaktiv.`;
   }
-
-  if (!row.jobFunctionWorkTypeId) {
-    return `${jobFunctionName} mangler feltet “Oprettes som”. Ret jobfunktionen først.`;
-  }
-
-  if (row.workTypeIsActive === false || row.workTypeArchivedAt) {
-    return `${jobFunctionName} er koblet til en inaktiv arbejdstype. Ret “Oprettes som” på jobfunktionen først.`;
-  }
-
   return null;
 }
 
@@ -723,16 +590,13 @@ export class ShiftPlanningDraftsService {
         i."warningCode",
         i."warningMessage",
         jf.name AS "jobFunctionName",
-        jf."workTypeId" AS "jobFunctionWorkTypeId",
-        wt.name AS "workTypeName",
-        wt."isActive" AS "workTypeIsActive",
-        wt."archivedAt" AS "workTypeArchivedAt",
+        jf."isActive" AS "jobFunctionIsActive",
+        jf."archivedAt" AS "jobFunctionArchivedAt",
         u."firstName" AS "userFirstName",
         u."lastName" AS "userLastName",
         u."isActive" AS "userIsActive"
       FROM "ShiftPlanningDraftItem" i
-      LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId"
-      LEFT JOIN "WorkType" wt ON wt.id = jf."workTypeId" AND wt."cinemaId" = i."cinemaId"
+      LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId" AND jf."cinemaId" = i."cinemaId"
       LEFT JOIN "User" u ON u.id = i."userId"
       WHERE i."draftId" = ${id}
         AND i."cinemaId" = ${cinemaId}
@@ -771,17 +635,15 @@ export class ShiftPlanningDraftsService {
         });
       }
 
-      const workTypeBlockReason = getJobFunctionWorkTypeBlockReason(row);
-      if (workTypeBlockReason) {
+      const jobFunctionBlockReason = getJobFunctionBlockReason(row);
+      if (jobFunctionBlockReason) {
         issues.push({
           severity: 'ERROR',
-          code: row.jobFunctionWorkTypeId
-            ? 'INACTIVE_JOB_FUNCTION_WORK_TYPE'
-            : 'MISSING_JOB_FUNCTION_WORK_TYPE',
+          code: 'INACTIVE_JOB_FUNCTION',
           itemId,
           dateKey,
           userId,
-          message: workTypeBlockReason,
+          message: jobFunctionBlockReason,
         });
       }
 
@@ -962,9 +824,7 @@ export class ShiftPlanningDraftsService {
                   include: {
                     jobFunction: {
                       include: {
-                        dayPeriod: true,
                         timingRule: true,
-                        workType: true,
                       },
                     },
                     assignments: {
@@ -999,6 +859,7 @@ export class ShiftPlanningDraftsService {
       },
       orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
       select: {
+        id: true,
         startTime: true,
         endTime: true,
       },
@@ -1058,8 +919,9 @@ export class ShiftPlanningDraftsService {
           Number(templateJobFunction.requiredCount ?? 1),
         );
         const jobFunction = templateJobFunction.jobFunction;
-        const plannedStartMinute = resolvePlannedStartMinute(jobFunction, date, movieShowings);
-        const plannedEndMinute = resolvePlannedEndMinute(jobFunction, date, movieShowings);
+        const resolvedTiming = resolvePlannedTiming(jobFunction, date, movieShowings);
+        const plannedStartMinute = resolvedTiming?.startMinute ?? null;
+        const plannedEndMinute = resolvedTiming?.endMinute ?? null;
         const timeWarning =
           plannedStartMinute === null || plannedEndMinute === null
             ? 'Mangler tidsgrundlag for jobfunktionen.'
@@ -1099,9 +961,9 @@ export class ShiftPlanningDraftsService {
               templateWeekParity: template.weekParity,
               jobFunctionName: jobFunction?.name ?? null,
               jobFunctionColor: jobFunction?.color ?? null,
-              jobFunctionWorkTypeId: jobFunction?.workTypeId ?? null,
-              jobFunctionWorkTypeName: jobFunction?.workType?.name ?? null,
-              dayPeriodName: jobFunction?.dayPeriod?.name ?? null,
+              timingSource: resolvedTiming ? 'JOB_FUNCTION_RULE' : null,
+              timingRuleSnapshot: resolvedTiming?.explanation ?? null,
+              sourceMovieShowingIds: resolvedTiming?.sourceMovieShowingIds ?? [],
               assignedUserName: assignment?.user
                 ? `${assignment.user.firstName} ${assignment.user.lastName}`.trim()
                 : null,
@@ -1209,16 +1071,13 @@ export class ShiftPlanningDraftsService {
         i."warningMessage",
         jf.name AS "jobFunctionName",
         jf.color AS "jobFunctionColor",
-        jf."workTypeId" AS "jobFunctionWorkTypeId",
-        wt.name AS "workTypeName",
-        wt."isActive" AS "workTypeIsActive",
-        wt."archivedAt" AS "workTypeArchivedAt",
+        jf."isActive" AS "jobFunctionIsActive",
+        jf."archivedAt" AS "jobFunctionArchivedAt",
         u."firstName" AS "userFirstName",
         u."lastName" AS "userLastName",
         u.email AS "userEmail"
       FROM "ShiftPlanningDraftItem" i
-      LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId"
-      LEFT JOIN "WorkType" wt ON wt.id = jf."workTypeId" AND wt."cinemaId" = i."cinemaId"
+      LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId" AND jf."cinemaId" = i."cinemaId"
       LEFT JOIN "User" u ON u.id = i."userId"
       WHERE i."draftId" = ${id}
         AND i."cinemaId" = ${cinemaId}
@@ -1232,7 +1091,7 @@ export class ShiftPlanningDraftsService {
       const blockReasons: string[] = [];
       const startTime = buildDateTimeFromMinute(row.date, row.plannedStartMinute);
       const endTime = buildDateTimeFromMinute(row.date, row.plannedEndMinute);
-      const workTypeBlockReason = getJobFunctionWorkTypeBlockReason(row);
+      const jobFunctionBlockReason = getJobFunctionBlockReason(row);
       const userName = `${row.userFirstName ?? ''} ${row.userLastName ?? ''}`.trim() || row.userEmail || null;
 
       if (draftStatus !== 'DRAFT') {
@@ -1243,8 +1102,8 @@ export class ShiftPlanningDraftsService {
         blockReasons.push('Vagten mangler mødetid eller fyraften.');
       }
 
-      if (workTypeBlockReason) {
-        blockReasons.push(workTypeBlockReason);
+      if (jobFunctionBlockReason) {
+        blockReasons.push(jobFunctionBlockReason);
       }
 
       blockReasons.push(...(errorMessagesByItemId.get(itemId) ?? []));
@@ -1255,8 +1114,7 @@ export class ShiftPlanningDraftsService {
         status: row.status ?? null,
         jobFunctionName: row.jobFunctionName ?? null,
         jobFunctionColor: row.jobFunctionColor ?? null,
-        workTypeId: toNullableNumber(row.jobFunctionWorkTypeId),
-        workTypeName: row.workTypeName ?? null,
+        jobFunctionId: toNullableNumber(row.jobFunctionId),
         userName,
         plannedStartMinute: toNullableNumber(row.plannedStartMinute),
         plannedEndMinute: toNullableNumber(row.plannedEndMinute),
@@ -1345,11 +1203,14 @@ export class ShiftPlanningDraftsService {
         i."userId",
         i."plannedStartMinute",
         i."plannedEndMinute",
-        jf."workTypeId" AS "jobFunctionWorkTypeId",
-        wt.name AS "workTypeName"
+        i.metadata,
+        jf.id AS "jobFunctionId",
+        jf.name AS "jobFunctionName",
+        jf.color AS "jobFunctionColor",
+        jf."isActive" AS "jobFunctionIsActive",
+        jf."archivedAt" AS "jobFunctionArchivedAt"
       FROM "ShiftPlanningDraftItem" i
-      LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId"
-      LEFT JOIN "WorkType" wt ON wt.id = jf."workTypeId" AND wt."cinemaId" = i."cinemaId"
+      LEFT JOIN "JobFunction" jf ON jf.id = i."jobFunctionId" AND jf."cinemaId" = i."cinemaId"
       WHERE i."draftId" = ${id}
         AND i."cinemaId" = ${cinemaId}
       ORDER BY i.date ASC, i."plannedStartMinute" ASC NULLS LAST, i.id ASC
@@ -1357,33 +1218,45 @@ export class ShiftPlanningDraftsService {
 
     const createdShiftIds: number[] = [];
     const affectedDateKeys = new Set<string>();
-    const workTypeNames = new Set<string>();
+    const jobFunctionNames = new Set<string>();
 
     await this.prisma.$transaction(async (tx) => {
       for (const row of itemRows) {
         const startTime = buildDateTimeFromMinute(row.date, row.plannedStartMinute);
         const endTime = buildDateTimeFromMinute(row.date, row.plannedEndMinute);
-        const workTypeId = toNullableNumber(row.jobFunctionWorkTypeId);
+        const jobFunctionId = toNullableNumber(row.jobFunctionId);
 
-        if (!startTime || !endTime || workTypeId === null) {
+        if (
+          !startTime ||
+          !endTime ||
+          jobFunctionId === null ||
+          row.jobFunctionIsActive === false ||
+          row.jobFunctionArchivedAt
+        ) {
           throw new BadRequestException(
-            'Ret jobfunktionens “Oprettes som” og tider, før vagterne oprettes.',
+            'Ret jobfunktionen og tiderne, før vagterne oprettes.',
           );
         }
 
         const createdRows = await tx.$queryRaw<any[]>(Prisma.sql`
           INSERT INTO "Shift" (
-            "cinemaId", "userId", "workTypeId", "startTime", "endTime", note
+            "cinemaId", "userId", "workTypeId", "jobFunctionId",
+            "jobFunctionNameSnapshot", "jobFunctionColorSnapshot",
+            "timingSource", "timingRuleSnapshot", "sourceMovieShowingIds",
+            "startTime", "endTime", note
           ) VALUES (
-            ${cinemaId}, ${toNullableNumber(row.userId)}, ${workTypeId}, ${startTime}, ${endTime}, ${note}
+            ${cinemaId}, ${toNullableNumber(row.userId)}, NULL, ${jobFunctionId},
+            ${String(row.jobFunctionName)}, ${String(row.jobFunctionColor)},
+            'JOB_FUNCTION_RULE', CAST(${JSON.stringify({ source: 'SHIFT_PLANNING_DRAFT' })} AS jsonb),
+            CAST(${JSON.stringify([])} AS jsonb), ${startTime}, ${endTime}, ${note}
           )
           RETURNING id
         `);
 
         createdShiftIds.push(Number(createdRows[0].id));
         affectedDateKeys.add(toIsoDateOnly(toDate(row.date)));
-        if (row.workTypeName) {
-          workTypeNames.add(String(row.workTypeName));
+        if (row.jobFunctionName) {
+          jobFunctionNames.add(String(row.jobFunctionName));
         }
 
         await tx.$executeRaw(Prisma.sql`
@@ -1414,9 +1287,9 @@ export class ShiftPlanningDraftsService {
       createdShiftCount: createdShiftIds.length,
       createdShiftIds,
       affectedDateKeys: Array.from(affectedDateKeys).sort(),
-      workTypeId: null,
-      workTypeName: Array.from(workTypeNames).join(', ') || null,
-      workTypeNames: Array.from(workTypeNames).sort(),
+      jobFunctionId: null,
+      jobFunctionName: Array.from(jobFunctionNames).join(', ') || null,
+      jobFunctionNames: Array.from(jobFunctionNames).sort(),
       publishedAt: new Date(),
       message: `${createdShiftIds.length} vagter er oprettet i vagtplanen.`,
     };

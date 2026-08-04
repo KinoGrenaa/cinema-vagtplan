@@ -54,7 +54,7 @@ export type TimeEntry = {
   shift?: {
     startTime?: string;
     endTime?: string;
-    workType?: {
+    jobFunction?: {
       name: string;
     };
   } | null;

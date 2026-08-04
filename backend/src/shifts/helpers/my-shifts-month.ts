@@ -8,11 +8,11 @@ export const myShiftSelect = {
   endTime: true,
   note: true,
   userId: true,
-  workType: {
-    select: {
-      name: true,
-      color: true,
-    },
+  jobFunctionId: true,
+  jobFunctionNameSnapshot: true,
+  jobFunctionColorSnapshot: true,
+  jobFunction: {
+    select: { name: true, color: true },
   },
 } as const;
 

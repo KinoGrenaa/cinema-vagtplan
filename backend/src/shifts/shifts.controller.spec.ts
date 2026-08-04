@@ -47,7 +47,7 @@ describe('ShiftsController', () => {
               '2026-08-10T08:00:00.000Z',
             endTime:
               '2026-08-10T12:00:00.000Z',
-            workTypeId: 3,
+            jobFunctionId: 3,
           },
         ),
       ).toThrow(BadRequestException);
@@ -92,7 +92,7 @@ describe('ShiftsController', () => {
         '2026-08-10T08:00:00.000Z',
       endTime:
         '2026-08-10T12:00:00.000Z',
-      workTypeId: 3,
+      jobFunctionId: 3,
       userId: 7,
       cinemaId: 2,
       note: 'Kasse',

@@ -94,8 +94,8 @@ export function ShiftPlanningPublishPanel({
       {publishResult && (
         <ShiftPlanningPublishResultPanel
           publishResult={publishResult}
-          selectedWorkTypeName={
-            publishResult.workTypeName ?? "Jobfunktionernes valgte typer"
+          selectedJobFunctionName={
+            publishResult.jobFunctionName ?? "Jobfunktionernes valgte typer"
           }
         />
       )}
@@ -148,7 +148,7 @@ export function ShiftPlanningPublishPanel({
 
             <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
               Når du fortsætter, bliver vagterne oprettet i vagtplanen. Hver
-              jobfunktion bruger feltet “Oprettes som”, som er valgt under
+              jobfunktion har en standardeksportkode, som er valgt under
               Jobfunktioner.
             </p>
 

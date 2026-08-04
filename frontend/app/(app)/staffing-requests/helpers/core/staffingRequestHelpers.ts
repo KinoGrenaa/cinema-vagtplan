@@ -134,21 +134,21 @@ export function formatDateTime(value: string) {
   return `${datePart} kl. ${timePart}`;
 }
 
-export function getRequestWorkTypeName(request: StaffingRequest) {
+export function getRequestJobFunctionName(request: StaffingRequest) {
   return (
-    request.shift?.workType?.name ||
-    request.workType?.name ||
+    request.shift?.jobFunction?.name ||
+    request.jobFunction?.name ||
     getTypeLabel(request.type)
   );
 }
 
 export function getRequestTitle(request: StaffingRequest) {
   const typeLabel = getTypeLabel(request.type);
-  const workTypeName = getRequestWorkTypeName(request);
-  if (workTypeName === typeLabel) {
+  const jobFunctionName = getRequestJobFunctionName(request);
+  if (jobFunctionName === typeLabel) {
     return typeLabel;
   }
-  return `${typeLabel} · ${workTypeName}`;
+  return `${typeLabel} · ${jobFunctionName}`;
 }
 
 export function getRequestTimeRange(request: StaffingRequest) {

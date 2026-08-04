@@ -1,15 +1,15 @@
 import { isMissingPayrollType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
 type JobFunctionCardHeaderProps = {
-  jobFunction: JobFunctionWithWorkType;
+  jobFunction: JobFunctionWithJobFunction;
 };
 
 export default function JobFunctionCardHeader({
   jobFunction,
 }: JobFunctionCardHeaderProps) {
   const hasMissingPayrollType =
-    jobFunction.isActive && isMissingPayrollType(jobFunction.workType);
+    jobFunction.isActive && isMissingPayrollType(jobFunction);
 
   return (
     <div className="min-w-0">
@@ -32,7 +32,7 @@ export default function JobFunctionCardHeader({
         </span>
         {hasMissingPayrollType && (
           <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-100">
-            Mangler løntype
+            Ingen eksportkode
           </span>
         )}
       </div>

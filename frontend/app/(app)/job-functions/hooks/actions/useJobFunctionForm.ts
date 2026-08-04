@@ -16,7 +16,7 @@ import {
   appendCinemaId,
   readErrorMessage,
 } from "../../helpers/page/jobFunctionHelpers";
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
 type UseJobFunctionFormOptions = {
   activeCinemaId: number | null;
@@ -59,7 +59,7 @@ export function useJobFunctionForm({
     setFormModalOpen(true);
   }, [resetForm]);
 
-  const openEditModal = useCallback((jobFunction: JobFunctionWithWorkType) => {
+  const openEditModal = useCallback((jobFunction: JobFunctionWithJobFunction) => {
     setEditingId(jobFunction.id);
     setForm(toJobFunctionFormState(jobFunction));
     setFormModalOpen(true);
@@ -134,8 +134,46 @@ export function useJobFunctionForm({
     showError,
   ]);
 
+
+  const copyJobFunction = useCallback(async (jobFunction: JobFunctionWithJobFunction) => {
+    if (needsMasterCinemaSelection) {
+      showError("Biograf mangler", "Vælg først en biograf, før jobfunktionen kopieres.");
+      return;
+    }
+    try {
+      setSaving(true);
+      const response = await apiFetch(
+        appendCinemaId(`/job-functions/${jobFunction.id}/copy`, activeCinemaId),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            cinemaId: activeCinemaId,
+            copyQualifiedUsers: true,
+            copySpecialPayRules: true,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, "Jobfunktionen kunne ikke kopieres."));
+      }
+      const copy = (await response.json()) as JobFunctionWithJobFunction;
+      await refreshData();
+      show({
+        title: "Jobfunktion kopieret",
+        description: `Kopien er oprettet som “${copy.name}”. Planlagte vagter og historik er ikke kopieret.`,
+        variant: "success",
+        buttonText: "OK",
+      });
+    } catch (error) {
+      showError("Jobfunktionen kunne ikke kopieres", error instanceof Error ? error.message : "Der opstod en fejl under kopieringen.");
+    } finally {
+      setSaving(false);
+    }
+  }, [activeCinemaId, needsMasterCinemaSelection, refreshData, show, showError]);
+
   return {
     closeFormModal,
+    copyJobFunction,
     editingId,
     form,
     formModalOpen,

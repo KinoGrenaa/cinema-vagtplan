@@ -110,7 +110,6 @@ export const scheduleTemplateInclude: Prisma.ScheduleTemplateInclude =
           include: {
             jobFunction: {
               include: {
-                dayPeriod: true,
                 timingRule: true,
                 _count: {
                   select: {
@@ -167,7 +166,6 @@ export const scheduleTemplateDayInclude: Prisma.ScheduleTemplateDayInclude =
       include: {
         jobFunction: {
           include: {
-            dayPeriod: true,
             timingRule: true,
             _count: {
               select: {
@@ -212,7 +210,6 @@ export const scheduleTemplateJobFunctionInclude: Prisma.ScheduleTemplateJobFunct
     },
     jobFunction: {
       include: {
-        dayPeriod: true,
         timingRule: true,
         _count: {
           select: {

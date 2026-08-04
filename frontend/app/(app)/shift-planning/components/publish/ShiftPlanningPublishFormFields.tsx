@@ -36,7 +36,7 @@ export function ShiftPlanningPublishFormFields({
       <span className="text-xs font-normal text-gray-600 dark:text-gray-300">
         Arbejdstype hentes automatisk
         fra jobfunktionens felt
-        “Oprettes som”.
+        en standardeksportkode.
       </span>
     </label>
   );

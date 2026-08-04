@@ -13,6 +13,7 @@ export async function includePendingPayrollAdjustmentsInPeriod(
     periodStart: Date;
     includedAt: Date;
     changedByUserId: number;
+    reason?: string;
   },
 ) {
   const adjustments = await prisma.payrollAdjustment.findMany({
@@ -70,7 +71,7 @@ export async function includePendingPayrollAdjustmentsInPeriod(
           adjustment.settlementPayrollPeriodId,
         newSettlementPayrollPeriodId:
           includedAdjustment.settlementPayrollPeriodId,
-        reason: 'Medtaget i løneksport.',
+        reason: params.reason ?? 'Medtaget i låst lønperiode.',
       },
     });
   }

@@ -167,19 +167,9 @@ export default function AppMenu() {
           moduleKey: "SHIFT_PLANNING",
         },
         {
-          href: "/day-periods",
-          label: "Dagsperioder",
-          moduleKey: "SHIFT_PLANNING",
-        },
-        {
           href: "/job-functions",
           label: "Jobfunktioner",
           moduleKey: "SHIFT_PLANNING",
-        },
-        {
-          href: "/work-types",
-          label: "Vagttyper",
-          moduleKey: "SCHEDULE",
         },
       ],
     },
@@ -232,8 +222,8 @@ export default function AppMenu() {
           moduleKey: "PAYROLL",
         },
         {
-          href: "/cinema-settings/payroll-types",
-          label: "Lønarter",
+          href: "/cinema-settings/payroll-export-codes",
+          label: "Eksportkoder",
           moduleKey: "PAYROLL",
         },
       ],

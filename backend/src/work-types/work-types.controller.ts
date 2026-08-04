@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  GoneException,
   Param,
   Patch,
   Post,
@@ -55,51 +56,35 @@ export class WorkTypesController {
 
   @UseGuards(JwtGuard)
   @Post()
-  create(@Req() req, @Body() body) {
-    return this.workTypesService.create(req.user, body);
+  create() {
+    throw new GoneException({
+      code: 'WORK_TYPE_RETIRED',
+      message: 'Vagttyper er udfaset. Brug jobfunktioner i stedet.',
+    });
   }
 
-  @UseGuards(JwtGuard)
   @Patch(':id')
-  update(
-    @Req() req,
-    @Param('id') id: string,
-    @Body() body,
-    @Query('cinemaId') cinemaId?: string,
-  ) {
-    return this.workTypesService.update(
-      req.user,
-      this.parseWorkTypeId(id),
-      body,
-      this.parseCinemaId(cinemaId),
-    );
+  update() {
+    throw new GoneException({
+      code: 'WORK_TYPE_RETIRED',
+      message: 'Vagttyper er udfaset. Brug jobfunktioner i stedet.',
+    });
   }
 
-  @UseGuards(JwtGuard)
   @Delete(':id')
-  remove(
-    @Req() req,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
-  ) {
-    return this.workTypesService.remove(
-      req.user,
-      this.parseWorkTypeId(id),
-      this.parseCinemaId(cinemaId),
-    );
+  remove() {
+    throw new GoneException({
+      code: 'WORK_TYPE_RETIRED',
+      message: 'Vagttyper er udfaset. Brug jobfunktioner i stedet.',
+    });
   }
 
-  @UseGuards(JwtGuard)
   @Patch(':id/reactivate')
-  reactivate(
-    @Req() req,
-    @Param('id') id: string,
-    @Query('cinemaId') cinemaId?: string,
-  ) {
-    return this.workTypesService.reactivate(
-      req.user,
-      this.parseWorkTypeId(id),
-      this.parseCinemaId(cinemaId),
-    );
+  reactivate() {
+    throw new GoneException({
+      code: 'WORK_TYPE_RETIRED',
+      message: 'Vagttyper er udfaset. Brug jobfunktioner i stedet.',
+    });
   }
+
 }

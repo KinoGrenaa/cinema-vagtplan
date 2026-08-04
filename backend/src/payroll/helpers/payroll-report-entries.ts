@@ -47,7 +47,7 @@ export function addPayrollReportEntry(
     clockIn: entry.clockIn.toISOString(),
     clockOut: entry.clockOut.toISOString(),
     hours: Number(hours.toFixed(2)),
-    workType: entry.shift?.workType?.name || '-',
+    jobFunction: entry.shift?.jobFunctionNameSnapshot || entry.shift?.jobFunction?.name || '-',
     payrollCode: payrollData.payrollCode,
     exportCode: payrollData.exportCode,
     payrollName: payrollData.payrollName,

@@ -1,5 +1,4 @@
 import { PrismaService } from '../../prisma/prisma.service';
-import { type PayrollRulesService } from '../payroll-rules.service';
 import {
   ensurePayrollExportAccess,
   type PayrollAuthUser,
@@ -17,7 +16,6 @@ import { buildPayrollPdfExport } from './payroll-pdf-export';
 import { buildPayrollReportData } from './payroll-report-data';
 import { buildPayrollUnicontaCsvExport } from './payroll-uniconta-export';
 import { buildPayrollXlsxExport } from './payroll-xlsx-export';
-import { getPayrollRulesEnabled } from './payroll-period-queries';
 
 type PayrollExportParams = {
   prisma: PrismaService;
@@ -127,7 +125,6 @@ export async function exportPayrollCsvFlow(
 
 export async function exportPayrollUnicontaCsvFlow(
   prisma: PrismaService,
-  payrollRulesService: PayrollRulesService,
   user: PayrollAuthUser,
   startDate: string,
   endDate: string,
@@ -143,16 +140,7 @@ export async function exportPayrollUnicontaCsvFlow(
     selectedCinemaId,
   };
   const prepared = await preparePayrollExportReport(params);
-  const usePayrollRules = await getPayrollRulesEnabled(
-    prisma,
-    user,
-    selectedCinemaId,
-  );
-  const csv = buildPayrollUnicontaCsvExport(
-    prepared.report,
-    usePayrollRules,
-    (entry) => payrollRulesService.calculateSegments(entry),
-  );
+  const csv = buildPayrollUnicontaCsvExport(prepared.report);
 
   await finalizePayrollExport({
     ...params,

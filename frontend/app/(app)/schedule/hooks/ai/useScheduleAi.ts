@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/app/hooks/useApi";
-import type { Shift, User, WorkType } from "../../../../../../shared/types";
+import type { Shift, User, JobFunction } from "../../../../../../shared/types";
 import { toast } from "sonner";
 import {
   getCopenhagenHour,
@@ -33,14 +33,14 @@ export type UseScheduleAiInput = {
   selectedDate: string;
   shifts: Shift[];
   users: User[];
-  workTypes: WorkType[];
+  jobFunctions: JobFunction[];
   movieShowings: MovieShowing[];
   createShift: (input: {
     startTime: string;
     endTime: string;
     note?: string;
     userId: number;
-    workTypeId: number;
+    jobFunctionId: number;
   }) => Promise<void>;
   showError?: (title: string, description: string) => void;
 };
@@ -80,17 +80,17 @@ function getCurrentActiveMovies(movieShowings: MovieShowing[]) {
   });
 }
 
-function getDefaultCreateValues(users: User[], workTypes: WorkType[]) {
+function getDefaultCreateValues(users: User[], jobFunctions: JobFunction[]) {
   const userId = users[0]?.id;
-  const workTypeId = workTypes[0]?.id;
+  const jobFunctionId = jobFunctions[0]?.id;
 
-  if (!userId || !workTypeId) {
+  if (!userId || !jobFunctionId) {
     return null;
   }
 
   return {
     userId,
-    workTypeId,
+    jobFunctionId,
   };
 }
 
@@ -113,15 +113,15 @@ function getLeastLoadedUser(users: User[], shifts: Shift[]) {
     .sort((a, b) => a.totalHours - b.totalHours)[0]?.user;
 }
 
-function getWorkTypeId(workTypes: WorkType[]) {
-  return workTypes[0]?.id ?? null;
+function getJobFunctionId(jobFunctions: JobFunction[]) {
+  return jobFunctions[0]?.id ?? null;
 }
 
 export function useScheduleAi({
   selectedDate,
   shifts,
   users,
-  workTypes,
+  jobFunctions,
   movieShowings,
   createShift,
   showError,
@@ -501,13 +501,13 @@ export function useScheduleAi({
       try {
         setCreatingAiShift(index);
 
-        const workTypeId = getWorkTypeId(workTypes);
+        const jobFunctionId = getJobFunctionId(jobFunctions);
         const user = getLeastLoadedUser(users, shifts);
 
-        if (!user || !workTypeId) {
+        if (!user || !jobFunctionId) {
           showErrorModal(
             "AI-funktion kan ikke fortsætte",
-            "Der mangler medarbejder eller arbejdstype.",
+            "Der mangler medarbejder eller jobfunktion.",
           );
           return;
         }
@@ -533,7 +533,7 @@ export function useScheduleAi({
           startTime,
           endTime,
           userId: user.id,
-          workTypeId,
+          jobFunctionId,
           note: "AI suggested staffing shift",
         });
 
@@ -547,19 +547,19 @@ export function useScheduleAi({
         setCreatingAiShift(null);
       }
     },
-    [createShift, selectedDate, shifts, showErrorModal, users, workTypes],
+    [createShift, selectedDate, shifts, showErrorModal, users, jobFunctions],
   );
 
   const generateAiDaySchedule = useCallback(async () => {
     try {
       setGeneratingAiSchedule(true);
 
-      const defaults = getDefaultCreateValues(users, workTypes);
+      const defaults = getDefaultCreateValues(users, jobFunctions);
 
       if (!defaults) {
         showErrorModal(
           "AI-funktion kan ikke fortsætte",
-          "Der mangler medarbejder eller arbejdstype.",
+          "Der mangler medarbejder eller jobfunktion.",
         );
         return;
       }
@@ -637,22 +637,22 @@ export function useScheduleAi({
     selectedDate,
     showErrorModal,
     users,
-    workTypes,
+    jobFunctions,
   ]);
 
   const autoCreateEmergencyShift = useCallback(async () => {
     try {
       setAutoCreatingEmergencyShift(true);
 
-      const workTypeId = getWorkTypeId(workTypes);
+      const jobFunctionId = getJobFunctionId(jobFunctions);
       const recommendedUserId = suggestedEmergencyReplacements[0]?.userId;
       const fallbackUserId = users[0]?.id;
       const userId = recommendedUserId ?? fallbackUserId;
 
-      if (!userId || !workTypeId) {
+      if (!userId || !jobFunctionId) {
         showErrorModal(
           "AI-funktion kan ikke fortsætte",
-          "Der mangler medarbejder eller arbejdstype.",
+          "Der mangler medarbejder eller jobfunktion.",
         );
         return;
       }
@@ -672,7 +672,7 @@ export function useScheduleAi({
         startTime,
         endTime,
         userId,
-        workTypeId,
+        jobFunctionId,
         note: "AI Emergency Staffing Shift",
       });
 
@@ -691,7 +691,7 @@ export function useScheduleAi({
     suggestedEmergencyReplacements,
     users,
     showErrorModal,
-    workTypes,
+    jobFunctions,
   ]);
 
   const sendEmergencyStaffingRequest = useCallback(
@@ -793,10 +793,10 @@ export function useScheduleAi({
           throw new Error("Medarbejder ikke fundet.");
         }
 
-        const workTypeId = getWorkTypeId(workTypes);
+        const jobFunctionId = getJobFunctionId(jobFunctions);
 
-        if (!workTypeId) {
-          throw new Error("Arbejdstype mangler.");
+        if (!jobFunctionId) {
+          throw new Error("Jobfunktion mangler.");
         }
 
         const currentHour = getCopenhagenHour(new Date());
@@ -814,7 +814,7 @@ export function useScheduleAi({
           startTime,
           endTime,
           userId: employee.id,
-          workTypeId,
+          jobFunctionId,
           note: "Autonomous AI Emergency Shift",
         });
 
@@ -832,7 +832,7 @@ export function useScheduleAi({
         );
       }
     },
-    [createShift, selectedDate, showErrorModal, users, workTypes],
+    [createShift, selectedDate, showErrorModal, users, jobFunctions],
   );
 
   const startAutoEscalation = useCallback(async () => {

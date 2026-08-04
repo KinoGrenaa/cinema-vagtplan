@@ -8,9 +8,8 @@ export default function JobFunctionsPageHeader() {
         Jobfunktioner
       </h1>
       <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-        Jobfunktioner beskriver bemandingsroller og kompetencer.
-        Vagtplanlægning bruger dem til at oprette vagter med korrekt løntype
-        via feltet Oprettes som.
+        En jobfunktion er definitionen af en vagt. Her samles navn, farve,
+        medarbejderadgang, filmvalg, tidsregel og eventuel eksportkode.
       </p>
     </header>
   );

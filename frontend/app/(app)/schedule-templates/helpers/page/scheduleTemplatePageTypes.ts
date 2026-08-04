@@ -7,13 +7,7 @@ export type CurrentUser = {
 
 export type WeekParity = "ANY" | "EVEN" | "ODD";
 
-export type DayPeriod = {
-  id: number;
-  name: string;
-  startMinute: number;
-  endMinute: number;
-  isActive: boolean;
-};
+
 
 export type JobFunction = {
   id: number;
@@ -21,7 +15,15 @@ export type JobFunction = {
   description: string | null;
   color: string;
   isActive: boolean;
-  dayPeriod?: DayPeriod | null;
+  timingRule?: {
+    filmWindowStartMinute: number;
+    filmWindowEndMinute: number;
+    roundToQuarter?: boolean;
+    roundStartToNearestQuarter: boolean;
+    roundEndToNearestQuarter: boolean;
+    restrictMovieStartsToWindow: boolean;
+    isActive: boolean;
+  } | null;
 };
 
 export type ScheduleTemplateUser = {

@@ -37,7 +37,7 @@ export function addPayrollReportAdjustment(
   const payrollData =
     adjustment.payrollType ||
     adjustment.timeEntry.shift
-      ?.workType?.payrollType ||
+      ?.jobFunction?.defaultPayrollExportCode ||
     null;
   const adjustmentHours =
     adjustment.minutesDelta / 60;
@@ -56,6 +56,19 @@ export function addPayrollReportAdjustment(
     hours: Number(
       adjustmentHours.toFixed(2),
     ),
+    amountDelta:
+      adjustment.amountDelta === null || adjustment.amountDelta === undefined
+        ? null
+        : Number(adjustment.amountDelta),
+    exportedAmount:
+      adjustment.exportedAmount === null || adjustment.exportedAmount === undefined
+        ? null
+        : Number(adjustment.exportedAmount),
+    adjustedAmount:
+      adjustment.adjustedAmount === null || adjustment.adjustedAmount === undefined
+        ? null
+        : Number(adjustment.adjustedAmount),
+    currencyCode: adjustment.currencyCode || 'DKK',
     exportedHours: Number(
       (
         adjustment.exportedMinutes /
@@ -128,9 +141,10 @@ export function addPayrollReportAdjustment(
     payrollName:
       payrollData?.name ||
       'Normale timer',
-    workType:
+    jobFunction:
       adjustment.timeEntry.shift
-        ?.workType?.name ||
+        ?.jobFunctionNameSnapshot ||
+      adjustment.timeEntry.shift?.jobFunction?.name ||
       '-',
     createdAt:
       adjustment.createdAt.toISOString(),

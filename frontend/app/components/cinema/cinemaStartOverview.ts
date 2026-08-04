@@ -6,7 +6,7 @@ export type CinemaStartShift = {
   id: number;
   startTime: string;
   endTime: string;
-  workType: {
+  jobFunction: {
     id: number;
     name: string;
     color: string;

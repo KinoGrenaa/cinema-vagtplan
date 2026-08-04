@@ -41,7 +41,7 @@ export function useScheduleShiftTimelineActions({
         endTime: newEnd.toISOString(),
         note: shift.note,
         userId: getShiftUserId(shift),
-        workTypeId: shift.workTypeId,
+        jobFunctionId: shift.jobFunctionId,
       });
     } catch (error) {
       infoDialog.showError(
@@ -60,7 +60,7 @@ export function useScheduleShiftTimelineActions({
         endTime: shift.endTime,
         note: shift.note,
         userId: newUserId,
-        workTypeId: shift.workTypeId,
+        jobFunctionId: shift.jobFunctionId,
       });
     } catch (error) {
       infoDialog.showError(
@@ -94,7 +94,7 @@ export function useScheduleShiftTimelineActions({
         endTime: newEnd.toISOString(),
         note: shift.note,
         userId: getShiftUserId(shift),
-        workTypeId: shift.workTypeId,
+        jobFunctionId: shift.jobFunctionId,
       });
     } catch (error) {
       infoDialog.showError(

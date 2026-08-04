@@ -222,7 +222,7 @@ describe('payroll type write flows', () => {
       ),
     ).rejects.toThrow(
       new BadRequestException(
-        'Standardlønarten skal være aktiv.',
+        'Standardeksportkoden skal være aktiv.',
       ),
     );
 
@@ -252,6 +252,11 @@ describe('payroll type write flows', () => {
           .mockResolvedValue(deleted),
       },
       workType: {
+        count: jest
+          .fn()
+          .mockResolvedValue(0),
+      },
+      jobFunction: {
         count: jest
           .fn()
           .mockResolvedValue(0),

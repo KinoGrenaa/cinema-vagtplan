@@ -19,8 +19,7 @@ export default function JobFunctionFormModalHeader({
           {isEditing ? "Redigér jobfunktion" : "Opret jobfunktion"}
         </h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-          Angiv navn, beskrivelse, farve og hvilken løntype vagter skal oprettes
-          som.
+          Angiv navn, beskrivelse, farve, sortering og eventuel eksportkode.
         </p>
       </div>
       <button

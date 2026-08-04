@@ -5,6 +5,7 @@ import {
 import {
   ensureAssignableJobFunctionUser,
   ensureJobFunctionAdmin,
+  ensureJobFunctionAssignmentAdmin,
   getRequiredJobFunctionCinemaId,
   normalizeJobFunctionColor,
   normalizeJobFunctionName,
@@ -26,6 +27,7 @@ const admin: AuthUser = {
   email: 'admin@example.com',
   role: 'ADMIN',
   cinemaId: 7,
+  canManageSchedule: true,
 };
 
 describe('job function service helpers', () => {
@@ -38,11 +40,37 @@ describe('job function service helpers', () => {
     ).not.toThrow();
   });
 
-  it('rejects employees', () => {
+  it('rejects users without schedule administration', () => {
     expect(() =>
       ensureJobFunctionAdmin({
         ...admin,
+        canManageSchedule: false,
+      }),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('allows user administrators to maintain qualification relations only', () => {
+    const userAdministrator: AuthUser = {
+      ...admin,
+      canManageSchedule: false,
+      canManageUsers: true,
+    };
+
+    expect(() =>
+      ensureJobFunctionAssignmentAdmin(userAdministrator),
+    ).not.toThrow();
+    expect(() =>
+      ensureJobFunctionAdmin(userAdministrator),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('rejects employees without either explicit permission', () => {
+    expect(() =>
+      ensureJobFunctionAssignmentAdmin({
+        ...admin,
         role: 'EMPLOYEE',
+        canManageSchedule: false,
+        canManageUsers: false,
       }),
     ).toThrow(ForbiddenException);
   });

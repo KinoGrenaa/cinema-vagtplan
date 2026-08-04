@@ -111,9 +111,9 @@ export default function PayrollEmployeesSection({
                             <th className="p-2">Mødetid</th>
                             <th className="p-2">Fyraften</th>
                             <th className="p-2 text-right">Timer</th>
-                            <th className="p-2">Arbejdstype</th>
-                            <th className="p-2">Lønart</th>
-                            <th className="p-2">Løntype</th>
+                            <th className="p-2">Jobfunktion</th>
+                            <th className="p-2">Eksportkode</th>
+                            <th className="p-2">Navn</th>
                             <th className="p-2">Afvigelse</th>
                             <th className="p-2">Låst</th>
                           </tr>
@@ -134,7 +134,7 @@ export default function PayrollEmployeesSection({
                               <td className="p-2 text-right font-medium">
                                 {formatHours(entry.hours)}
                               </td>
-                              <td className="p-2">{entry.workType}</td>
+                              <td className="p-2">{entry.jobFunction}</td>
                               <td className="p-2">
                                 {entry.payrollCode || "-"}
                               </td>

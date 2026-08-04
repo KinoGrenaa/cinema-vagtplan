@@ -42,7 +42,7 @@ type ScheduleShift = Shift & {
     firstName?: string;
     lastName?: string;
   } | null;
-  workType?: {
+  jobFunction?: {
     name?: string;
   } | null;
 };
@@ -50,7 +50,7 @@ type ScheduleShift = Shift & {
 type ScheduleLeaveConflict = {
   shiftId: number;
   employeeName: string;
-  workTypeName: string;
+  jobFunctionName: string;
   shiftStartTime: string;
   shiftEndTime: string;
   leaveStartTime: string;
@@ -150,11 +150,11 @@ function getEmployeeName(
   );
 }
 
-function getWorkTypeName(
+function getJobFunctionName(
   shift: ScheduleShift,
 ) {
   return (
-    shift.workType?.name ??
+    shift.jobFunction?.name ??
     "Vagt"
   );
 }
@@ -206,8 +206,8 @@ function getApprovedLeaveConflicts(
             users,
             userId,
           ),
-        workTypeName:
-          getWorkTypeName(
+        jobFunctionName:
+          getJobFunctionName(
             scheduleShift,
           ),
         shiftStartTime:
@@ -237,7 +237,7 @@ type ScheduleShiftsPanelProps = {
       endTime: string;
       note: string;
       userId: null;
-      workTypeId: number;
+      jobFunctionId: number;
     },
   ) => Promise<void>;
   onPreviousDay: () => void;
@@ -267,20 +267,10 @@ type ScheduleShiftsPanelProps = {
   ) => void | Promise<void>;
 };
 
-function getWorkTypeId(
-  jobFunction: ScheduleJobFunction,
-) {
-  const workTypeId =
-    jobFunction.workTypeId ??
-    jobFunction.workType?.id ??
-    null;
-
-  return (
-    typeof workTypeId === "number" &&
-    workTypeId > 0
-      ? workTypeId
-      : null
-  );
+function getJobFunctionId(jobFunction: ScheduleJobFunction) {
+  return Number.isInteger(jobFunction.id) && jobFunction.id > 0
+    ? jobFunction.id
+    : null;
 }
 
 export default function ScheduleShiftsPanel({
@@ -311,8 +301,8 @@ export default function ScheduleShiftsPanel({
       !needsMasterCinemaSelection,
   );
   const [
-    selectedJobFunctionId,
-    setSelectedJobFunctionId,
+    selectedJobFunctionSelectionId,
+    setSelectedJobFunctionSelectionId,
   ] = useState(0);
   const [
     isPlacingJobFunction,
@@ -349,12 +339,7 @@ export default function ScheduleShiftsPanel({
       () =>
         jobFunctions.filter(
           (jobFunction) =>
-            jobFunction.isActive &&
-            jobFunction.workType
-              ?.isActive !== false &&
-            getWorkTypeId(
-              jobFunction,
-            ) !== null,
+            jobFunction.isActive && getJobFunctionId(jobFunction) !== null,
         ),
       [jobFunctions],
     );
@@ -365,17 +350,17 @@ export default function ScheduleShiftsPanel({
         availableJobFunctions.find(
           (jobFunction) =>
             jobFunction.id ===
-            selectedJobFunctionId,
+            selectedJobFunctionSelectionId,
         ) ?? null,
       [
         availableJobFunctions,
-        selectedJobFunctionId,
+        selectedJobFunctionSelectionId,
       ],
     );
 
-  const selectedWorkTypeId =
+  const selectedJobFunctionId =
     selectedJobFunction
-      ? getWorkTypeId(
+      ? getJobFunctionId(
           selectedJobFunction,
         )
       : null;
@@ -386,39 +371,28 @@ export default function ScheduleShiftsPanel({
         )
       : null;
 
-  const missingWorkTypeCount =
-    useMemo(
-      () =>
-        jobFunctions.filter(
-          (jobFunction) =>
-            jobFunction.isActive &&
-            getWorkTypeId(
-              jobFunction,
-            ) === null,
-        ).length,
-      [jobFunctions],
-    );
+
 
   useEffect(() => {
     if (
-      selectedJobFunctionId > 0 &&
+      selectedJobFunctionSelectionId > 0 &&
       availableJobFunctions.some(
         (jobFunction) =>
           jobFunction.id ===
-          selectedJobFunctionId,
+          selectedJobFunctionSelectionId,
       )
     ) {
       return;
     }
 
-    setSelectedJobFunctionId(
+    setSelectedJobFunctionSelectionId(
       availableJobFunctions[0]
         ?.id ?? 0,
     );
     setIsPlacingJobFunction(false);
   }, [
     availableJobFunctions,
-    selectedJobFunctionId,
+    selectedJobFunctionSelectionId,
   ]);
 
   useEffect(() => {
@@ -426,7 +400,7 @@ export default function ScheduleShiftsPanel({
   }, [selectedDate]);
 
   function handleToggleJobFunctionPlacement() {
-    if (!selectedWorkTypeId) {
+    if (!selectedJobFunctionId) {
       return;
     }
 
@@ -440,7 +414,7 @@ export default function ScheduleShiftsPanel({
     minute: number,
   ) {
     if (
-      !selectedWorkTypeId ||
+      !selectedJobFunctionId ||
       !selectedJobFunction ||
       isCreatingJobFunctionShift
     ) {
@@ -458,8 +432,8 @@ export default function ScheduleShiftsPanel({
           selectedDate,
           startMinutes:
             hour * 60 + minute,
-          workTypeId:
-            selectedWorkTypeId,
+          jobFunctionId:
+            selectedJobFunctionId,
           jobFunction:
             selectedJobFunction,
         }),
@@ -579,7 +553,7 @@ export default function ScheduleShiftsPanel({
                     <span className="text-gray-700 dark:text-gray-300">
                       {" · "}
                       {
-                        conflict.workTypeName
+                        conflict.jobFunctionName
                       }
                       {" · "}
                       {formatDateTime(
@@ -684,8 +658,7 @@ export default function ScheduleShiftsPanel({
                   <p className="mt-1 text-xs text-blue-800 dark:text-blue-200">
                     Opretter en
                     untildelt vagt med
-                    jobfunktionens
-                    vagttype
+                    jobfunktionen
                     forudvalgt.
                   </p>
                 </div>
@@ -693,12 +666,12 @@ export default function ScheduleShiftsPanel({
                 <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
                   <select
                     value={
-                      selectedJobFunctionId
+                      selectedJobFunctionSelectionId
                     }
                     onChange={(
                       event,
                     ) => {
-                      setSelectedJobFunctionId(
+                      setSelectedJobFunctionSelectionId(
                         Number(
                           event.target
                             .value,
@@ -765,7 +738,7 @@ export default function ScheduleShiftsPanel({
                     }
                     disabled={
                 jobFunctionsLoading ||
-                !selectedWorkTypeId ||
+                !selectedJobFunctionId ||
                 isCreatingJobFunctionShift
               }
                     className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -810,16 +783,6 @@ export default function ScheduleShiftsPanel({
           )}
 
 
-              {missingWorkTypeCount >
-                0 && (
-                <p className="mt-2 text-xs font-medium text-amber-800 dark:text-amber-200">
-                  {missingWorkTypeCount ===
-                  1
-                    ? "1 aktiv jobfunktion mangler Oprettes som og kan derfor ikke tilføjes."
-                    : `${missingWorkTypeCount} aktive jobfunktioner mangler Oprettes som og kan derfor ikke tilføjes.`}
-                </p>
-              )}
-
               {jobFunctionsError && (
                 <p
                   role="alert"
@@ -850,9 +813,9 @@ export default function ScheduleShiftsPanel({
             ? selectedDurationMinutes
             : null
         }
-        createWorkTypeId={
+        createJobFunctionId={
           isPlacingJobFunction
-            ? selectedWorkTypeId
+            ? selectedJobFunctionId
             : null
         }
         createPreviewColor={

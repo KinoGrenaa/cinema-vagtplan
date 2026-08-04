@@ -10,18 +10,18 @@ export function formatShiftTimeRange(shift: Shift) {
   return `${formatTimeDK(shift.startTime)} - ${formatTimeDK(shift.endTime)}`;
 }
 
-export function getShiftWorkTypeName(shift: Shift) {
+export function getShiftJobFunctionName(shift: Shift) {
   const maybeShift = shift as Shift & {
-    workType?: {
+    jobFunction?: {
       name?: string;
     };
   };
 
-  return maybeShift.workType?.name ?? `Arbejdstype #${shift.workTypeId}`;
+  return maybeShift.jobFunction?.name ?? `Jobfunktion #${shift.jobFunctionId}`;
 }
 
 export function getShiftConfirmText(shift: Shift) {
-  return `${getShiftWorkTypeName(shift)} ${formatShiftDate(
+  return `${getShiftJobFunctionName(shift)} ${formatShiftDate(
     shift.startTime,
   )} ${formatShiftTimeRange(shift)}`;
 }
@@ -69,7 +69,7 @@ export function getShiftUserDisplayName(shift: Shift, users: User[]) {
 }
 
 export function getStaffingShiftOptionText(shift: Shift, users: User[]) {
-  return `${formatShiftTimeRange(shift)} · ${getShiftWorkTypeName(
+  return `${formatShiftTimeRange(shift)} · ${getShiftJobFunctionName(
     shift,
   )} · ${getShiftUserDisplayName(shift, users)}`;
 }

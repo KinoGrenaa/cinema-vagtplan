@@ -5,32 +5,42 @@ export type CurrentUser = {
   cinemaId: number | null;
 };
 
-export type DayPeriod = {
+export type PayrollExportCode = {
   id: number;
-  cinemaId: number;
   name: string;
-  startMinute: number;
-  endMinute: number;
-  sortOrder: number;
-  isActive: boolean;
-  archivedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  payrollCode?: string | null;
+  exportCode?: string | null;
+  description?: string | null;
+  color?: string | null;
+  isDefault?: boolean;
+  isActive?: boolean;
 };
 
-export type JobFunctionTimingAnchor = "DAY_PERIOD_START" | "DAY_PERIOD_END" | "FIRST_MOVIE_START" | "FIRST_MOVIE_END" | "LAST_MOVIE_START" | "LAST_MOVIE_END" | "FIXED_TIME"; export type JobFunctionTimingRule = {
+export type JobFunctionTimingAnchor =
+  | "FIRST_MOVIE_START"
+  | "FIRST_MOVIE_END"
+  | "LAST_MOVIE_START"
+  | "LAST_MOVIE_END"
+  | "FIXED_TIME";
+
+export type JobFunctionTimingRule = {
   id: number;
   cinemaId: number;
   jobFunctionId: number;
+  filmWindowStartMinute: number;
+  filmWindowEndMinute: number;
   startAnchor: JobFunctionTimingAnchor;
   startOffsetMinutes: number;
   startFixedMinute: number | null;
   endAnchor: JobFunctionTimingAnchor;
   endOffsetMinutes: number;
   endFixedMinute: number | null;
-  fallbackStartMinute: number | null;
-  fallbackEndMinute: number | null;
-  clampToDayPeriod: boolean;
+  fallbackStartMinute: number;
+  fallbackEndMinute: number;
+  roundToQuarter?: boolean;
+  roundStartToNearestQuarter: boolean;
+  roundEndToNearestQuarter: boolean;
+  restrictMovieStartsToWindow: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -40,7 +50,6 @@ export type JobFunctionTimingAnchor = "DAY_PERIOD_START" | "DAY_PERIOD_END" | "F
     color: string;
     isActive: boolean;
     cinemaId: number;
-    dayPeriod?: DayPeriod | null;
   };
 };
 
@@ -48,11 +57,12 @@ export type JobFunction = {
   id: number;
   cinemaId: number;
   name: string;
+  nameKey?: string;
   description: string | null;
   color: string;
   sortOrder: number;
-  dayPeriodId: number | null;
-  dayPeriod: DayPeriod | null;
+  defaultPayrollExportCodeId: number | null;
+  defaultPayrollExportCode: PayrollExportCode | null;
   timingRule?: JobFunctionTimingRule | null;
   isActive: boolean;
   archivedAt: string | null;
@@ -60,6 +70,7 @@ export type JobFunction = {
   updatedAt: string;
   _count?: {
     userJobFunctions?: number;
+    shifts?: number;
   };
 };
 

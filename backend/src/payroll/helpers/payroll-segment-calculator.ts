@@ -28,14 +28,14 @@ export function calculatePayrollSegments(timeEntry: any): PayrollSegment[] {
 
   const dailyOvertimeThreshold = Number(cinema.dailyOvertimeThreshold) || 8;
 
-  const workTypePayroll =
-    timeEntry.payrollType || timeEntry.shift?.workType?.payrollType;
+  const jobFunctionExportCode =
+    timeEntry.payrollType || timeEntry.shift?.jobFunction?.defaultPayrollExportCode;
 
-  const normalPayrollCode = workTypePayroll?.payrollCode || 'STANDARD';
+  const normalPayrollCode = jobFunctionExportCode?.payrollCode || 'STANDARD';
 
-  const normalExportCode = workTypePayroll?.exportCode || normalPayrollCode;
+  const normalExportCode = jobFunctionExportCode?.exportCode || normalPayrollCode;
 
-  const normalPayrollName = workTypePayroll?.name || 'Standard';
+  const normalPayrollName = jobFunctionExportCode?.name || 'Standard';
 
   const segments: PayrollSegment[] = [];
 

@@ -14,7 +14,6 @@ export type UpdateCinemaSettingsData = {
   allowShiftTradePool?: boolean;
   allowShiftTradeDirect?: boolean;
   aiEnabled?: boolean;
-  payrollRulesEnabled?: boolean;
   clockInDeviationToleranceMinutes?: number;
   clockOutDeviationToleranceMinutes?: number;
   requireNoteForClockInDeviation?: boolean;
@@ -49,7 +48,6 @@ function setDefinedCinemaSettings(
     'allowShiftTradePool',
     'allowShiftTradeDirect',
     'aiEnabled',
-    'payrollRulesEnabled',
     'clockInDeviationToleranceMinutes',
     'clockOutDeviationToleranceMinutes',
     'requireNoteForClockInDeviation',

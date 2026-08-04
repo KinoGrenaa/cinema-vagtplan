@@ -5,7 +5,7 @@ import {
   localDateTimeToISOString,
   toInputDateTime,
 } from "@/app/utils/dateTime";
-import type { Shift, User, WorkType } from "../../../../../../shared/types";
+import type { Shift, User, JobFunction } from "../../../../../../shared/types";
 import type {
   StaffingRequestType,
   StaffingTargetMode,
@@ -25,14 +25,14 @@ type CreateStaffingRequest = (payload: {
   message: string;
   requestStartTime: string | null;
   requestEndTime: string | null;
-  workTypeId: number | null;
+  jobFunctionId: number | null;
 }) => Promise<void>;
 
 type UseScheduleStaffingRequestOptions = {
   selectedDate: string;
   shifts: Shift[];
   users: User[];
-  workTypes: WorkType[];
+  jobFunctions: JobFunction[];
   needsMasterCinemaSelection: boolean;
   showMissingActiveCinemaMessage: () => void;
   hideShiftFormModal: () => void;
@@ -44,7 +44,7 @@ export function useScheduleStaffingRequest({
   selectedDate,
   shifts,
   users,
-  workTypes,
+  jobFunctions,
   needsMasterCinemaSelection,
   showMissingActiveCinemaMessage,
   hideShiftFormModal,
@@ -70,7 +70,7 @@ export function useScheduleStaffingRequest({
   const [staffingRequestEndTime, setStaffingRequestEndTime] = useState(
     `${selectedDate}T22:00`,
   );
-  const [staffingRequestWorkTypeId, setStaffingRequestWorkTypeId] =
+  const [staffingRequestJobFunctionId, setStaffingRequestJobFunctionId] =
     useState(0);
 
   const staffingTargetUsers = useMemo(
@@ -104,7 +104,7 @@ export function useScheduleStaffingRequest({
     setStaffingRequestMessage("");
     setStaffingRequestStartTime(`${selectedDate}T14:00`);
     setStaffingRequestEndTime(`${selectedDate}T22:00`);
-    setStaffingRequestWorkTypeId(0);
+    setStaffingRequestJobFunctionId(0);
   }
 
   function applyStaffingRequestShift(shift: Shift | null) {
@@ -113,13 +113,13 @@ export function useScheduleStaffingRequest({
     if (shift) {
       setStaffingRequestStartTime(toInputDateTime(shift.startTime));
       setStaffingRequestEndTime(toInputDateTime(shift.endTime));
-      setStaffingRequestWorkTypeId(shift.workTypeId ?? 0);
+      setStaffingRequestJobFunctionId(shift.jobFunctionId ?? 0);
       return;
     }
 
     setStaffingRequestStartTime(`${selectedDate}T14:00`);
     setStaffingRequestEndTime(`${selectedDate}T22:00`);
-    setStaffingRequestWorkTypeId(workTypes[0]?.id ?? 0);
+    setStaffingRequestJobFunctionId(jobFunctions[0]?.id ?? 0);
   }
 
   function openStaffingRequestModal(shift: Shift | null = null) {
@@ -193,7 +193,7 @@ export function useScheduleStaffingRequest({
         return;
       }
 
-      if (!staffingRequestWorkTypeId || staffingRequestWorkTypeId <= 0) {
+      if (!staffingRequestJobFunctionId || staffingRequestJobFunctionId <= 0) {
         infoDialog.showError(
           "Vælg jobfunktion",
           "Vælg hvilken jobfunktion bemandingsbehovet gælder.",
@@ -226,9 +226,9 @@ export function useScheduleStaffingRequest({
         requestEndTime: staffingRequestShiftId
           ? null
           : localDateTimeToISOString(staffingRequestEndTime),
-        workTypeId: staffingRequestShiftId
+        jobFunctionId: staffingRequestShiftId
           ? null
-          : staffingRequestWorkTypeId || null,
+          : staffingRequestJobFunctionId || null,
       });
       toast.success("Bemandingsforespørgslen er sendt");
       resetStaffingRequestModal();
@@ -261,8 +261,8 @@ export function useScheduleStaffingRequest({
     setStaffingRequestStartTime,
     staffingRequestEndTime,
     setStaffingRequestEndTime,
-    staffingRequestWorkTypeId,
-    setStaffingRequestWorkTypeId,
+    staffingRequestJobFunctionId,
+    setStaffingRequestJobFunctionId,
     openStaffingRequestModal,
     handleStaffingRequestShiftChange,
     handleStaffingRequestTargetModeChange,

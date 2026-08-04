@@ -17,6 +17,28 @@ export class StaffingMonitorService {
     private predictiveStaffingService: PredictiveStaffingService,
   ) {}
 
+  private getScheduledJobFunctionId(
+    shifts: Array<{
+      startTime: Date;
+      endTime: Date;
+      jobFunctionId: number;
+    }>,
+    startTime: Date,
+    endTime: Date,
+  ) {
+    return [...shifts]
+      .filter(
+        (shift) =>
+          shift.startTime < endTime &&
+          shift.endTime > startTime,
+      )
+      .sort(
+        (left, right) =>
+          left.startTime.getTime() - right.startTime.getTime() ||
+          left.jobFunctionId - right.jobFunctionId,
+      )[0]?.jobFunctionId ?? null;
+  }
+
   @Cron('*/5 * * * *')
   async checkForStaffingProblems() {
     const aiMonitorEnabled = process.env.ENABLE_AI_MONITOR === 'true';
@@ -43,7 +65,7 @@ export class StaffingMonitorService {
           },
           include: {
             user: true,
-            workType: true,
+            jobFunction: true,
           },
         },
         movieShowings: {
@@ -94,8 +116,21 @@ export class StaffingMonitorService {
             `Predictive staffing pressure detected in cinema ${cinema.id}: ${prediction.level}`,
           );
 
+          const jobFunctionId = this.getScheduledJobFunctionId(
+            cinema.shifts,
+            now,
+            next12Hours,
+          );
+          if (!jobFunctionId) {
+            this.logger.warn(
+              `AI-bemandingsforespørgsel blev sprunget over i biograf ${cinema.id}, fordi der ikke var en planlagt jobfunktion i perioden.`,
+            );
+            continue;
+          }
+
           await this.staffingRequestsService.createAiEmergencyRequests({
             cinemaId: cinema.id,
+            jobFunctionId,
             requestedByUserId: requestActor.id,
             startTime: now,
             endTime: next12Hours,
@@ -143,8 +178,20 @@ export class StaffingMonitorService {
         }
 
         this.logger.warn(`AI staffing issue detected in cinema ${cinema.id}`);
+        const jobFunctionId = this.getScheduledJobFunctionId(
+          cinema.shifts,
+          issue.startTime,
+          issue.endTime,
+        );
+        if (!jobFunctionId) {
+          this.logger.warn(
+            `AI-bemandingsforespørgsel blev sprunget over i biograf ${cinema.id}, fordi problemet ikke kunne knyttes til en planlagt jobfunktion.`,
+          );
+          continue;
+        }
         await this.staffingRequestsService.createAiEmergencyRequests({
           cinemaId: cinema.id,
+          jobFunctionId,
           requestedByUserId: requestActor.id,
           startTime: issue.startTime,
           endTime: issue.endTime,

@@ -237,7 +237,7 @@ export default function TimeApprovalEntryCard({
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {entry.shift
-                ?.workType?.name ||
+                ?.jobFunction?.name ||
                 "Manuel registrering"}
             </p>
           </div>
@@ -259,10 +259,10 @@ export default function TimeApprovalEntryCard({
           <div className="grid gap-2 text-sm">
             <div>
               <span className="font-semibold">
-                Arbejdstype:
+                Jobfunktion:
               </span>{" "}
               {entry.shift
-                ?.workType?.name ||
+                ?.jobFunction?.name ||
                 "-"}
             </div>
 

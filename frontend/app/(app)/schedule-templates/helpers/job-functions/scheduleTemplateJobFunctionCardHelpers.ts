@@ -1,18 +1,18 @@
-type DayPeriod = {
-  id: number;
-  name: string;
-  startMinute: number;
-  endMinute: number;
-  isActive: boolean;
-};
-
 type JobFunction = {
   id: number;
   name: string;
   description: string | null;
   color: string;
   isActive: boolean;
-  dayPeriod?: DayPeriod | null;
+  timingRule?: {
+    filmWindowStartMinute: number;
+    filmWindowEndMinute: number;
+    roundToQuarter?: boolean;
+    roundStartToNearestQuarter: boolean;
+    roundEndToNearestQuarter: boolean;
+    restrictMovieStartsToWindow: boolean;
+    isActive: boolean;
+  } | null;
 };
 
 type ScheduleTemplateUser = {
@@ -54,10 +54,12 @@ function minuteToTime(value: number) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
-function formatDayPeriod(dayPeriod: DayPeriod | null | undefined) {
-  if (!dayPeriod) return "Ingen dagsperiode";
-
-  return `${dayPeriod.name} · kl. ${minuteToTime(dayPeriod.startMinute)}-${minuteToTime(dayPeriod.endMinute)}`;
+function formatFilmWindow(jobFunction: JobFunction) {
+  const rule = jobFunction.timingRule;
+  if (!rule?.isActive) return "Ingen aktiv tidsregel";
+  if (!rule.restrictMovieStartsToWindow) return "Medregner alle filmstarter";
+  const nextDay = rule.filmWindowEndMinute >= 1440 ? " næste dag" : "";
+  return `Medregner filmstarter fra kl. ${minuteToTime(rule.filmWindowStartMinute)} og før kl. ${minuteToTime(rule.filmWindowEndMinute)}${nextDay}`;
 }
 
 function formatUserName(user: ScheduleTemplateUser | null | undefined) {
@@ -103,7 +105,7 @@ function formatOpenShiftText(openShiftCount: number) {
 }
 
 export {
-  formatDayPeriod,
+  formatFilmWindow,
   formatOpenShiftText,
   formatUserName,
   getAssignedUserIdSet,

@@ -107,7 +107,7 @@ export function TimeRegistrationModal({
                 return (
                   <option key={shift.id} value={shift.id} disabled={isDisabled}>
                     {formatTimeDK(shift.startTime)} - {formatTimeDK(shift.endTime)}{" "}
-                    · {shift.workType.name}
+                    · {shift.jobFunction.name}
                     {statusText ? ` · ${statusText}` : ""}
                   </option>
                 );
@@ -125,7 +125,7 @@ export function TimeRegistrationModal({
                 {formatTimeDK(selectedClockShift.endTime)}
               </div>
               <div className="text-sm text-blue-700 dark:text-blue-300">
-                {selectedClockShift.workType.name}
+                {selectedClockShift.jobFunction.name}
               </div>
             </div>
           )}

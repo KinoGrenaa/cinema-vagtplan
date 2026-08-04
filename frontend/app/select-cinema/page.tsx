@@ -263,7 +263,7 @@ export default function SelectCinemaPage() {
                         )}
                       </div>
                       <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                        {cinema.nextShift.workType.name}
+                        {cinema.nextShift.jobFunction.name}
                       </div>
                     </div>
                   ) : (

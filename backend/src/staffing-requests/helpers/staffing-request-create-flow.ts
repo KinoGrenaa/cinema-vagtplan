@@ -13,7 +13,7 @@ import {
   ensureStaffingRequestActorAccess,
   ensureStaffingRequestTargetUserExists,
   resolveStaffingRequestShift,
-  resolveStaffingRequestWorkTypeId,
+  resolveStaffingRequestJobFunction,
 } from './staffing-request-create-lookups';
 import { createNotificationForStaffingRequest } from './staffing-request-create-notifications';
 import { resolveStaffingRequestSchedule } from './staffing-request-create-schedule';
@@ -60,7 +60,7 @@ export async function createStaffingRequest({
     dto: normalizedDto,
     shift,
   });
-  const requestedWorkTypeId = await resolveStaffingRequestWorkTypeId({
+  const jobFunction = await resolveStaffingRequestJobFunction({
     prisma,
     cinemaId,
     dto: normalizedDto,
@@ -73,7 +73,7 @@ export async function createStaffingRequest({
     cinemaId,
     dto: normalizedDto,
     shift,
-    requestedWorkTypeId,
+    jobFunction,
     schedule,
   });
 
@@ -85,7 +85,8 @@ export async function createStaffingRequest({
       shiftId: shift.id,
       requestStartTime: shift.startTime,
       requestEndTime: shift.endTime,
-      workTypeId: requestedWorkTypeId,
+      jobFunctionId: jobFunction.id,
+      workTypeId: null,
       type: normalizedDto.type,
       priority: normalizedDto.priority ?? 1,
       message: normalizedDto.message,

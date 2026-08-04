@@ -44,13 +44,15 @@ const cinemaStartOverviewMembershipSelect = {
           id: true,
           startTime: true,
           endTime: true,
-          workType: {
+          jobFunction: {
             select: {
               id: true,
               name: true,
               color: true,
             },
           },
+          jobFunctionNameSnapshot: true,
+          jobFunctionColorSnapshot: true,
         },
       },
     },
@@ -195,12 +197,12 @@ export async function findAuthCinemaStartOverview(
                 nextShift.startTime,
               endTime:
                 nextShift.endTime,
-              workType: {
-                id: nextShift.workType.id,
+              jobFunction: {
+                id: nextShift.jobFunction.id,
                 name:
-                  nextShift.workType.name,
+                  nextShift.jobFunctionNameSnapshot || nextShift.jobFunction.name,
                 color:
-                  nextShift.workType.color,
+                  nextShift.jobFunctionColorSnapshot || nextShift.jobFunction.color,
               },
             }
           : null,
@@ -209,10 +211,10 @@ export async function findAuthCinemaStartOverview(
             id: shift.id,
             startTime: shift.startTime,
             endTime: shift.endTime,
-            workType: {
-              id: shift.workType.id,
-              name: shift.workType.name,
-              color: shift.workType.color,
+            jobFunction: {
+              id: shift.jobFunction.id,
+              name: shift.jobFunctionNameSnapshot || shift.jobFunction.name,
+              color: shift.jobFunctionColorSnapshot || shift.jobFunction.color,
             },
           }),
         ),

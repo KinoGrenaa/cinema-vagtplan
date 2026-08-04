@@ -1,8 +1,8 @@
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
 type JobFunctionEmployeeModalHeaderProps = {
   assignmentSaving: boolean;
-  jobFunction: JobFunctionWithWorkType;
+  jobFunction: JobFunctionWithJobFunction;
   onClose: () => void;
 };
 

@@ -37,7 +37,6 @@ export function buildJobFunctionsPageModalsProps({
     },
     timingRuleModalProps: timingRule.timingModalJobFunction
       ? {
-          dayPeriods: data.dayPeriods,
           jobFunction: timingRule.timingModalJobFunction,
           timingRule: timingRule.timingRule,
           timingRuleForm: timingRule.timingRuleForm,

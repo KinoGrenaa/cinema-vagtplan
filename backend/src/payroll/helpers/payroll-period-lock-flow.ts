@@ -15,6 +15,8 @@ import {
 } from './payroll-access';
 import { ensurePayrollEntriesApproved } from './payroll-period-export';
 import { acquirePayrollPeriodMutationLockForPeriod } from './payroll-period-mutation-lock';
+import { createPayrollCalculationRun } from './payroll-calculation';
+import { includePendingPayrollAdjustmentsInPeriod } from './payroll-adjustment-export';
 
 export async function lockPayrollPeriod(
   prisma: PrismaService,
@@ -102,9 +104,9 @@ export async function lockPayrollPeriod(
         payrollType: true,
         shift: {
           include: {
-            workType: {
+            jobFunction: {
               include: {
-                payrollType: true,
+                defaultPayrollExportCode: true,
               },
             },
           },
@@ -151,13 +153,11 @@ export async function lockPayrollPeriod(
     for (const entry of entries) {
       const payrollType =
         entry.payrollType ||
-        entry.shift?.workType?.payrollType ||
+        entry.shift?.jobFunction?.defaultPayrollExportCode ||
         defaultPayrollType;
 
       await tx.timeEntry.update({
-        where: {
-          id: entry.id,
-        },
+        where: { id: entry.id },
         data: {
           payrollPeriodId: period.id,
           payrollLocked: true,
@@ -169,6 +169,38 @@ export async function lockPayrollPeriod(
       });
     }
 
-    return period;
+    // Efterreguleringer hører til den låste beregning og skal derfor
+    // inkluderes før snapshottet oprettes. Nye reguleringer, der opstår
+    // bagefter, forbliver PENDING til den næste åbne periode.
+    await includePendingPayrollAdjustmentsInPeriod(tx, {
+      cinemaId,
+      payrollPeriodId: period.id,
+      periodStart: periodDates.start,
+      includedAt: now,
+      changedByUserId: user.sub,
+      reason: 'Medtaget i låst lønperiode.',
+    });
+
+    const calculationRun = await createPayrollCalculationRun(tx, {
+      cinemaId,
+      payrollPeriodId: period.id,
+      startDate,
+      endDate,
+      createdByUserId: user.sub,
+      status: 'LOCKED',
+    });
+    if (!calculationRun) {
+      throw new BadRequestException('Lønberegningen kunne ikke låses.');
+    }
+
+    return tx.payrollPeriod.update({
+      where: { id: period.id },
+      data: { lockedCalculationRunId: calculationRun.id },
+      include: {
+        lockedCalculationRun: {
+          include: { lines: { orderBy: [{ segmentStart: 'asc' }, { id: 'asc' }] } },
+        },
+      },
+    });
   });
 }

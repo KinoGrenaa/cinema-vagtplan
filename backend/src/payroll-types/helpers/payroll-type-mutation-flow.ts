@@ -98,7 +98,7 @@ export async function updatePayrollType(
         !effectiveIsActive
       ) {
         throw new BadRequestException(
-          'Standardlønarten skal være aktiv.',
+          'Standardeksportkoden skal være aktiv.',
         );
       }
 

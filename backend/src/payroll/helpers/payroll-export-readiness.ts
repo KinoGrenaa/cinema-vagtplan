@@ -15,6 +15,8 @@ export type PayrollExportLockSnapshot = {
   startDateTime: number;
   endDateTime: number;
   lockedAtTime: number;
+  lockedCalculationRunId: number;
+  calculationChecksum: string;
 };
 
 type PayrollPeriodSnapshotSource = {
@@ -24,6 +26,8 @@ type PayrollPeriodSnapshotSource = {
   startDate: Date;
   endDate: Date;
   lockedAt: Date | null;
+  lockedCalculationRunId: number | null;
+  lockedCalculationRun?: { checksum: string } | null;
 };
 
 export async function getPayrollExportLockSnapshot(
@@ -34,10 +38,6 @@ export async function getPayrollExportLockSnapshot(
   userId?: string,
   selectedCinemaId?: number | null,
 ): Promise<PayrollExportLockSnapshot | null> {
-  if (userId) {
-    return null;
-  }
-
   const periodDates = getPeriodDates(startDate, endDate);
   const cinemaId = getPayrollCinemaFilter(
     user,
@@ -56,6 +56,8 @@ export async function getPayrollExportLockSnapshot(
       startDate: true,
       endDate: true,
       lockedAt: true,
+      lockedCalculationRunId: true,
+      lockedCalculationRun: { select: { checksum: true } },
     },
   });
 
@@ -67,11 +69,16 @@ export async function getPayrollExportLockSnapshot(
 
   if (period.status === 'EXPORTED') {
     throw new BadRequestException(
-      'Lønperioden er allerede eksporteret. Genåbn og lås perioden igen, før der oprettes en ny eksport.',
+      'Lønperioden er allerede eksporteret. Eventuelle rettelser skal håndteres som efterregulering i en ny åben periode.',
     );
   }
 
-  if (period.status !== 'LOCKED' || !period.lockedAt) {
+  if (
+    period.status !== 'LOCKED' ||
+    !period.lockedAt ||
+    !period.lockedCalculationRunId ||
+    !period.lockedCalculationRun
+  ) {
     throw new BadRequestException(
       'Lås lønperioden, før den eksporteres.',
     );
@@ -83,6 +90,8 @@ export async function getPayrollExportLockSnapshot(
     startDateTime: period.startDate.getTime(),
     endDateTime: period.endDate.getTime(),
     lockedAtTime: period.lockedAt.getTime(),
+    lockedCalculationRunId: period.lockedCalculationRunId,
+    calculationChecksum: period.lockedCalculationRun.checksum,
   };
 }
 
@@ -96,7 +105,9 @@ export function ensurePayrollExportLockUnchanged(
     period.status === 'LOCKED' &&
     period.lockedAt?.getTime() === snapshot.lockedAtTime &&
     period.startDate.getTime() === snapshot.startDateTime &&
-    period.endDate.getTime() === snapshot.endDateTime;
+    period.endDate.getTime() === snapshot.endDateTime &&
+    period.lockedCalculationRunId === snapshot.lockedCalculationRunId &&
+    period.lockedCalculationRun?.checksum === snapshot.calculationChecksum;
 
   if (!matches) {
     throw new ConflictException(

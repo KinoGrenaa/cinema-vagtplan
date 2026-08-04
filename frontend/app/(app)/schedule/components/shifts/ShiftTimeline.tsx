@@ -29,7 +29,7 @@ type ShiftTimelineProps = {
   createAtTimeLabel?: string | null;
   createDurationMinutes?:
     number | null;
-  createWorkTypeId?:
+  createJobFunctionId?:
     number | null;
   createPreviewColor?:
     string | null;
@@ -112,29 +112,29 @@ function getShiftUserName(shift: Shift) {
     : "Ikke tildelt";
 }
 
-function getShiftWorkTypeName(shift: Shift) {
+function getShiftJobFunctionName(shift: Shift) {
   const maybeShift = shift as Shift & {
-    workType?: {
+    jobFunction?: {
       name?: string;
       color?: string | null;
     };
   };
 
   return (
-    maybeShift.workType?.name ??
-    `Arbejdstype #${shift.workTypeId}`
+    maybeShift.jobFunction?.name ??
+    `Jobfunktion #${shift.jobFunctionId}`
   );
 }
 
 function getShiftColor(shift: Shift) {
   const maybeShift = shift as Shift & {
-    workType?: {
+    jobFunction?: {
       color?: string | null;
     };
   };
 
   return (
-    maybeShift.workType?.color || "#2563eb"
+    maybeShift.jobFunction?.color || "#2563eb"
   );
 }
 
@@ -418,7 +418,7 @@ function ShiftTimeline({
   selectedDate,
   createAtTimeLabel,
   createDurationMinutes,
-  createWorkTypeId,
+  createJobFunctionId,
   createPreviewColor,
   onCreateAtTime,
   onSelectShift,
@@ -491,14 +491,14 @@ function ShiftTimeline({
                 creationPreviewMinutes,
               durationMinutes:
                 createDurationMinutes,
-              workTypeId:
-                createWorkTypeId,
+              jobFunctionId:
+                createJobFunctionId,
               shifts,
             })
           : null,
       [
         createDurationMinutes,
-        createWorkTypeId,
+        createJobFunctionId,
         creationEnabled,
         creationPreviewMinutes,
         selectedDate,
@@ -919,7 +919,7 @@ function ShiftTimeline({
                             )}
                           </div>
                           <div className="truncate text-[11px] opacity-90">
-                            {getShiftWorkTypeName(
+                            {getShiftJobFunctionName(
                               shift,
                             )}
                           </div>

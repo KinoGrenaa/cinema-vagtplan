@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
-import { getShiftWithWorkTypeAndCinemaInclude } from './time-entry-includes';
+import { getShiftWithJobFunctionAndCinemaInclude } from './time-entry-includes';
 import { findMatchingShiftForClockIn } from './time-entry-shifts';
 
 export async function findManualEntryShift(
@@ -20,7 +20,7 @@ export async function findManualEntryShift(
       id: data.shiftId,
       cinemaId: data.cinemaId,
     },
-    include: getShiftWithWorkTypeAndCinemaInclude(),
+    include: getShiftWithJobFunctionAndCinemaInclude(),
   });
 
   if (!shift) {
@@ -89,7 +89,11 @@ export async function resolveClockInShift(
       cinemaId: data.cinemaId,
     },
     include: {
-      workType: true,
+      jobFunction: {
+        include: {
+          defaultPayrollExportCode: true,
+        },
+      },
     },
   });
 

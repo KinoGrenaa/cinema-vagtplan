@@ -9,7 +9,6 @@ const BOOLEAN_FIELDS = [
   'allowShiftTradePool',
   'allowShiftTradeDirect',
   'aiEnabled',
-  'payrollRulesEnabled',
   'requireNoteForClockInDeviation',
   'requireNoteForClockOutDeviation',
   'requireNoteForManualEntry',

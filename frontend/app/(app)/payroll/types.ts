@@ -16,7 +16,7 @@ export type PayrollEntry = {
   clockIn: string;
   clockOut: string;
   hours: number;
-  workType: string;
+  jobFunction: string;
   payrollCode?: string;
   exportCode?: string;
   payrollName?: string;
@@ -55,7 +55,7 @@ export type PayrollAdjustment = {
   payrollCode: string;
   exportCode: string;
   payrollName: string;
-  workType: string;
+  jobFunction: string;
   createdAt: string;
 };
 

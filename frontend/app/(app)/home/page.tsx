@@ -36,7 +36,7 @@ function ShiftRow({ shift }: { shift: CinemaStartShift }) {
             {dayFormatter.format(new Date(shift.startTime))}
           </div>
           <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            {shift.workType.name}
+            {shift.jobFunction.name}
           </div>
         </div>
         <div className="font-semibold text-gray-800 dark:text-gray-200">

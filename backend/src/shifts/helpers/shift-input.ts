@@ -14,7 +14,7 @@ export type NormalizedShiftWriteData = {
   note: string | null;
   cinemaId?: number;
   userId: number | null;
-  workTypeId: number;
+  jobFunctionId: number;
 };
 
 function parseShiftDate(
@@ -87,9 +87,9 @@ export function normalizeShiftWriteData(
             data.userId,
             'Medarbejder skal være et gyldigt ID',
           ),
-    workTypeId: getRequiredPositiveShiftId(
-      data?.workTypeId,
-      'Vagttype skal være et gyldigt ID',
+    jobFunctionId: getRequiredPositiveShiftId(
+      data?.jobFunctionId,
+      'Jobfunktion skal være et gyldigt ID',
     ),
   };
 }

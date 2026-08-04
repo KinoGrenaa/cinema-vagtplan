@@ -9,7 +9,7 @@ import {
   fetchJobFunctionTimingRule,
   saveJobFunctionTimingRule,
 } from "../../helpers/actions/jobFunctionTimingRuleApi";
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 import {
   emptyTimingRuleForm,
   toTimingRuleForm,
@@ -31,7 +31,7 @@ export function useJobFunctionTimingRule({
   showError,
 }: UseJobFunctionTimingRuleOptions) {
   const [timingModalJobFunction, setTimingModalJobFunction] =
-    useState<JobFunctionWithWorkType | null>(null);
+    useState<JobFunctionWithJobFunction | null>(null);
   const [timingRule, setTimingRule] = useState<JobFunctionTimingRule | null>(
     null,
   );
@@ -41,7 +41,7 @@ export function useJobFunctionTimingRule({
   const [timingRuleSaving, setTimingRuleSaving] = useState(false);
 
   const fetchTimingRule = useCallback(
-    async (jobFunction: JobFunctionWithWorkType) => {
+    async (jobFunction: JobFunctionWithJobFunction) => {
       try {
         setTimingRuleLoading(true);
         const data = await fetchJobFunctionTimingRule(
@@ -67,7 +67,7 @@ export function useJobFunctionTimingRule({
   );
 
   const openTimingRuleModal = useCallback(
-    async (jobFunction: JobFunctionWithWorkType) => {
+    async (jobFunction: JobFunctionWithJobFunction) => {
       setTimingModalJobFunction(jobFunction);
       setTimingRule(jobFunction.timingRule ?? null);
       setTimingRuleForm(toTimingRuleForm(jobFunction.timingRule, jobFunction));

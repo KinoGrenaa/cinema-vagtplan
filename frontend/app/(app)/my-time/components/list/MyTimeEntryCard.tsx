@@ -45,7 +45,7 @@ export default function MyTimeEntryCard({
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h3 className="text-lg font-bold text-gray-950 dark:text-white">
-            {entry.shift?.workType?.name ||
+            {entry.shift?.jobFunction?.name ||
               entry.payrollType?.name ||
               "Timeregistrering"}
           </h3>

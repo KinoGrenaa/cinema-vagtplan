@@ -12,6 +12,12 @@ export type CurrentUser = {
   sub?: number;
   role: UserRole;
   cinemaId: number | null;
+  canManageSchedule?: boolean;
+  canManageUsers?: boolean;
+  canManagePayroll?: boolean;
+  canManageLeaveRequests?: boolean;
+  canManageCinemaSettings?: boolean;
+  canSendBroadcastMessages?: boolean;
 };
 
 export type User = {

@@ -482,7 +482,7 @@ export default function PayrollAdjustmentsSection({
                                       </p>
                                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                                         {
-                                          adjustment.workType
+                                          adjustment.jobFunction
                                         }{" "}
                                         ·{" "}
                                         {

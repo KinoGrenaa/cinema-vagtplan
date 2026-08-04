@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, GoneException } from '@nestjs/common';
 import { DayPeriodsController } from './day-periods.controller';
 import { DayPeriodsService } from './day-periods.service';
 
@@ -78,73 +78,12 @@ describe('DayPeriodsController input validation', () => {
     expect(service.findAll).not.toHaveBeenCalled();
   });
 
-  it('forwards create input unchanged', () => {
-    const body = {
-      name: 'Aften',
-      startMinute: 960,
-      endMinute: 1200,
-      cinemaId: 4,
-    };
-
-    controller.create(req, body);
-
-    expect(service.create).toHaveBeenCalledWith(req.user, body);
-  });
-
   it.each([
-    ['update', 'update'],
-    ['remove', 'remove'],
-    ['reactivate', 'reactivate'],
-  ] as const)(
-    'normalizes valid IDs and cinema context for %s',
-    (methodName, serviceMethodName) => {
-      if (methodName === 'update') {
-        controller.update(req, '8', { name: 'Aften' }, '3');
-
-        expect(service[serviceMethodName]).toHaveBeenCalledWith(
-          req.user,
-          8,
-          { name: 'Aften' },
-          3,
-        );
-        return;
-      }
-
-      controller[methodName](req, '8', '3');
-
-      expect(service[serviceMethodName]).toHaveBeenCalledWith(
-        req.user,
-        8,
-        3,
-      );
-    },
-  );
-
-  it.each([
-    '',
-    '1.5',
-    '1e2',
-    '-1',
-    'abc',
-    '9007199254740992',
-  ])('rejects invalid day-period ID %p', (id) => {
-    expect(() =>
-      controller.update(req, id, { name: 'Aften' }, '1'),
-    ).toThrow(BadRequestException);
-    expect(service.update).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    '',
-    '1.5',
-    '1e2',
-    '-1',
-    'abc',
-    '9007199254740992',
-  ])('rejects invalid mutation cinema ID %p', (cinemaId) => {
-    expect(() =>
-      controller.reactivate(req, '2', cinemaId),
-    ).toThrow(BadRequestException);
-    expect(service.reactivate).not.toHaveBeenCalled();
+    ['create', () => controller.create()],
+    ['update', () => controller.update()],
+    ['remove', () => controller.remove()],
+    ['reactivate', () => controller.reactivate()],
+  ] as const)('returns DAY_PERIOD_RETIRED for %s', (_name, action) => {
+    expect(action).toThrow(GoneException);
   });
 });

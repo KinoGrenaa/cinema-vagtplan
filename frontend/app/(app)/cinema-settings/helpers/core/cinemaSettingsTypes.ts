@@ -14,7 +14,6 @@ export type Cinema = {
   allowShiftTradePool: boolean;
   allowShiftTradeDirect: boolean;
   aiEnabled: boolean;
-  payrollRulesEnabled: boolean;
   clockInDeviationToleranceMinutes: number;
   clockOutDeviationToleranceMinutes: number;
   requireNoteForClockInDeviation: boolean;
@@ -40,7 +39,6 @@ export type CinemaSettingsUpdate = Partial<
     | "allowShiftTradePool"
     | "allowShiftTradeDirect"
     | "aiEnabled"
-    | "payrollRulesEnabled"
     | "clockInDeviationToleranceMinutes"
     | "clockOutDeviationToleranceMinutes"
     | "requireNoteForClockInDeviation"
@@ -76,7 +74,6 @@ export const CINEMA_DEFAULTS = {
   allowShiftTradePool: false,
   allowShiftTradeDirect: false,
   aiEnabled: false,
-  payrollRulesEnabled: false,
   clockInDeviationToleranceMinutes: 0,
   clockOutDeviationToleranceMinutes: 0,
   requireNoteForClockInDeviation: true,
@@ -219,10 +216,6 @@ export function normalizeCinemaSettings(value: unknown): Cinema {
       source.aiEnabled,
       CINEMA_DEFAULTS.aiEnabled,
     ),
-    payrollRulesEnabled: normalizeBoolean(
-      source.payrollRulesEnabled,
-      CINEMA_DEFAULTS.payrollRulesEnabled,
-    ),
     clockInDeviationToleranceMinutes: normalizeInteger(
       source.clockInDeviationToleranceMinutes,
       CINEMA_DEFAULTS.clockInDeviationToleranceMinutes,
@@ -310,8 +303,7 @@ export function normalizeCinemaSettingsUpdate(
       | "allowShiftTradePool"
       | "allowShiftTradeDirect"
       | "aiEnabled"
-      | "payrollRulesEnabled"
-      | "requireNoteForClockInDeviation"
+        | "requireNoteForClockInDeviation"
       | "requireNoteForClockOutDeviation"
       | "requireNoteForManualEntry"
       | "payrollOvertimeEnabled"
@@ -323,7 +315,6 @@ export function normalizeCinemaSettingsUpdate(
     "allowShiftTradePool",
     "allowShiftTradeDirect",
     "aiEnabled",
-    "payrollRulesEnabled",
     "requireNoteForClockInDeviation",
     "requireNoteForClockOutDeviation",
     "requireNoteForManualEntry",

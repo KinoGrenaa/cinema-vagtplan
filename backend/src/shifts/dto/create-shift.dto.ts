@@ -16,7 +16,7 @@ export class CreateShiftDto {
 
   @IsInt()
   @Min(1)
-  workTypeId: number;
+  jobFunctionId: number;
 
   @IsOptional()
   @IsInt()

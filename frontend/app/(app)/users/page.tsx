@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import UserJobFunctionsPayrollModal from "./components/form/UserJobFunctionsPayrollModal";
 import PermissionGuard from "@/app/components/access/PermissionGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
@@ -33,6 +34,7 @@ export default function UsersPage() {
     useState("");
   const [sort, setSort] =
     useState<UserListSort>("NAME");
+  const [employmentUser, setEmploymentUser] = useState<import("./helpers/core/userTypes").User | null>(null);
 
   const {
     users,
@@ -305,6 +307,16 @@ export default function UsersPage() {
             }
           />
 
+          <UserJobFunctionsPayrollModal
+            user={employmentUser}
+            cinemaId={currentUser?.cinemaId ?? selectedMasterCinemaId ?? null}
+            canManagePayroll={
+              currentUser?.role === "MASTER" ||
+              currentUser?.canManagePayroll === true
+            }
+            onClose={() => setEmploymentUser(null)}
+          />
+
           <UsersTable
             visibleUsers={
               visibleUsers
@@ -321,9 +333,14 @@ export default function UsersPage() {
               currentUser?.role ===
               "MASTER"
             }
+            canManagePayroll={
+              currentUser?.role === "MASTER" ||
+              currentUser?.canManagePayroll === true
+            }
             onEdit={
               openEditUserModal
             }
+            onManageJobFunctionsPayroll={setEmploymentUser}
             onManageCinemaMemberships={
               cinemaMembershipActions.openMembershipModal
             }

@@ -163,7 +163,7 @@ export function getRequiredPayrollTypeCinemaId(
 
     if (!cinemaId) {
       throw new BadRequestException(
-        'Vælg en biograf, før du administrerer lønarter.',
+        'Vælg en biograf, før du administrerer eksportkoder.',
       );
     }
 
@@ -258,7 +258,7 @@ export function normalizeOptionalIsDefault(
 ) {
   return normalizeOptionalBoolean(
     value,
-    'Standardlønart',
+    'Standardeksportkode',
   );
 }
 
@@ -286,7 +286,7 @@ export async function findPayrollTypeForCinema(
 
   if (!payrollType) {
     throw new NotFoundException(
-      'Lønart blev ikke fundet',
+      'Eksportkoden blev ikke fundet',
     );
   }
 
@@ -319,7 +319,7 @@ export async function ensurePayrollTypeCodeAvailable(
 
   if (duplicate) {
     throw new BadRequestException(
-      'Lønart med denne kode findes allerede',
+      'En eksportkode med denne interne kode findes allerede',
     );
   }
 }
@@ -329,13 +329,13 @@ export async function ensurePayrollTypeUnused(
   payrollTypeId: number,
 ) {
   const [
-    workTypeCount,
+    jobFunctionCount,
     timeEntryCount,
     adjustmentCount,
   ] = await Promise.all([
-    prisma.workType.count({
+    prisma.jobFunction.count({
       where: {
-        payrollTypeId,
+        defaultPayrollExportCodeId: payrollTypeId,
       },
     }),
     prisma.timeEntry.count({
@@ -351,12 +351,12 @@ export async function ensurePayrollTypeUnused(
   ]);
 
   if (
-    workTypeCount > 0 ||
+    jobFunctionCount > 0 ||
     timeEntryCount > 0 ||
     adjustmentCount > 0
   ) {
     throw new BadRequestException(
-      'Lønarten er i brug og kan ikke slettes.',
+      'Eksportkoden er i brug og kan ikke slettes.',
     );
   }
 }

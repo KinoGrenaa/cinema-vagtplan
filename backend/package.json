@@ -27,7 +27,8 @@
     "verify:release": "npm run check:hardening && npm run audit:prod && npm run audit:report && npm run test:release && npm run build",
     "seed": "ts-node prisma/seed.ts",
     "seed:temporary-movie-showings": "ts-node prisma/seed-temporary-movie-showings.ts",
-    "test:xlsx-hardening": "jest payroll-xlsx-export.spec.ts --runInBand && node ./scripts/check-exceljs-streaming.mjs"
+    "test:xlsx-hardening": "jest payroll-xlsx-export.spec.ts --runInBand && node ./scripts/check-exceljs-streaming.mjs",
+    "preflight:at3a": "ts-node scripts/at3a-preflight.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.1.28",
@@ -90,13 +91,15 @@
       "uuid": "11.1.1"
     },
     "readdir-glob": {
-      "minimatch": "10.2.6"
+      "minimatch": "10.2.6",
+      "brace-expansion": "5.0.9"
     },
     "body-parser": "2.3.0",
     "multer": "2.2.0",
     "qs": "6.15.3",
     "tmp": "0.2.7",
-    "ws": "8.21.1"
+    "ws": "8.21.1",
+    "brace-expansion": "5.0.9"
   },
   "jest": {
     "moduleFileExtensions": [

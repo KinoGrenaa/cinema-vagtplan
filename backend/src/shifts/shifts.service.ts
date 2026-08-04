@@ -84,7 +84,7 @@ export class ShiftsService {
       },
       include: {
         user: true,
-        workType: true,
+        jobFunction: true,
       },
       orderBy: {
         startTime: 'asc',

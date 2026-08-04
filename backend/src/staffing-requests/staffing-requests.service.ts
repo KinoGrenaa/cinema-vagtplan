@@ -171,6 +171,7 @@ export class StaffingRequestsService {
       startTime: Date;
       endTime: Date;
       shiftId?: number;
+      jobFunctionId?: number;
       message?: string;
       limit?: number;
     },

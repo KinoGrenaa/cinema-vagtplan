@@ -41,7 +41,7 @@ export async function assignAcceptedStaffingRequestShift({
     },
     include: {
       user: true,
-      workType: true,
+      jobFunction: true,
     },
   });
 

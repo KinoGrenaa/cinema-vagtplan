@@ -10,7 +10,7 @@ import {
   appendCinemaId,
   readErrorMessage,
 } from "../../helpers/page/jobFunctionHelpers";
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 import type { JobFunction } from "../../helpers/types/jobFunctionTypes";
 
 type UseJobFunctionArchiveActionsOptions = {
@@ -31,7 +31,7 @@ export function useJobFunctionArchiveActions({
   showError,
 }: UseJobFunctionArchiveActionsOptions) {
   const archiveJobFunction = useCallback(
-    (jobFunction: JobFunctionWithWorkType) => {
+    (jobFunction: JobFunctionWithJobFunction) => {
       confirm({
         title: "Arkivér jobfunktion",
         description:

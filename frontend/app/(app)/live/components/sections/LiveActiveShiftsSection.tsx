@@ -31,7 +31,7 @@ export function LiveActiveShiftsSection({
               className="h-2"
               style={{
                 backgroundColor:
-                  shift.workType.color,
+                  shift.jobFunction.color,
               }}
             />
 
@@ -42,7 +42,7 @@ export function LiveActiveShiftsSection({
               </div>
 
               <div className="mt-1 text-sm text-gray-700 dark:text-gray-200">
-                {shift.workType.name}
+                {shift.jobFunction.name}
               </div>
 
               <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">

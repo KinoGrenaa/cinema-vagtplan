@@ -132,7 +132,7 @@ export default function ShiftTradesHistorySection({
                       <h3 className="mt-3 font-bold text-gray-950 dark:text-white">
                         {
                           trade.shift
-                            .workType
+                            .jobFunction
                             .name
                         }
                       </h3>

@@ -8,6 +8,7 @@ import {
 } from "./components/time-registration/TimeRegistrationModals";
 import ScheduleShiftFormModal from "./components/shift-form/ScheduleShiftFormModal";
 import ScheduleMainContent from "./components/layout/ScheduleMainContent";
+import ScheduleMovieCoverageWarnings from "./components/coverage/ScheduleMovieCoverageWarnings";
 import { useScheduleShiftForm } from "./hooks/state/useScheduleShiftForm";
 import { useScheduleShiftTimelineActions } from "./hooks/actions/useScheduleShiftTimelineActions";
 import { useScheduleStaffingRequest } from "./hooks/actions/useScheduleStaffingRequest";
@@ -46,7 +47,7 @@ export default function SchedulePage() {
     needsMasterCinemaSelection,
     shifts,
     users,
-    workTypes,
+    jobFunctions,
     refreshShifts,
     createShift,
     updateShift,
@@ -99,8 +100,8 @@ export default function SchedulePage() {
     setNote,
     userId,
     setUserId,
-    workTypeId,
-    setWorkTypeId,
+    jobFunctionId,
+    setJobFunctionId,
     hideShiftFormModal,
     closeShiftFormModal,
     resetShiftFormForDate,
@@ -111,7 +112,7 @@ export default function SchedulePage() {
   } = useScheduleShiftForm({
     selectedDate,
     users,
-    workTypes,
+    jobFunctions,
     needsMasterCinemaSelection,
     showMissingActiveCinemaMessage,
     createShift,
@@ -201,8 +202,8 @@ export default function SchedulePage() {
     setStaffingRequestStartTime,
     staffingRequestEndTime,
     setStaffingRequestEndTime,
-    staffingRequestWorkTypeId,
-    setStaffingRequestWorkTypeId,
+    staffingRequestJobFunctionId,
+    setStaffingRequestJobFunctionId,
     openStaffingRequestModal,
     handleStaffingRequestShiftChange,
     handleStaffingRequestTargetModeChange,
@@ -211,7 +212,7 @@ export default function SchedulePage() {
     selectedDate,
     shifts,
     users,
-    workTypes,
+    jobFunctions,
     needsMasterCinemaSelection,
     showMissingActiveCinemaMessage,
     hideShiftFormModal,
@@ -273,7 +274,7 @@ export default function SchedulePage() {
       selectedDate={selectedDate}
       shifts={shifts}
       users={users}
-      workTypes={workTypes}
+      jobFunctions={jobFunctions}
       movieShowings={filteredMovieShowings}
       createShift={createShift}
       showError={infoDialog.showError}
@@ -281,6 +282,14 @@ export default function SchedulePage() {
       {(ai) => (
         <>
           <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
+            {canManageShifts ? (
+              <ScheduleMovieCoverageWarnings
+                selectedDate={selectedDate}
+                movieShowings={filteredMovieShowings}
+                jobFunctions={jobFunctions}
+                shifts={shifts}
+              />
+            ) : null}
             <ScheduleMainContent
               ai={ai}
               shifts={shifts}
@@ -307,7 +316,7 @@ export default function SchedulePage() {
               open={showShiftFormModal}
               selectedShift={selectedShift}
               users={users}
-              workTypes={workTypes}
+              jobFunctions={jobFunctions}
               startTime={startTime}
               setStartTime={setStartTime}
               endTime={endTime}
@@ -316,8 +325,8 @@ export default function SchedulePage() {
               setNote={setNote}
               userId={userId}
               setUserId={setUserId}
-              workTypeId={workTypeId}
-              setWorkTypeId={setWorkTypeId}
+              jobFunctionId={jobFunctionId}
+              setJobFunctionId={setJobFunctionId}
               onSubmit={handleSubmit}
               onDelete={handleDelete}
               onCancel={closeShiftFormModal}
@@ -332,7 +341,7 @@ export default function SchedulePage() {
               onClose={resetStaffingRequestModal}
               onSubmit={handleSubmitStaffingRequest}
               shifts={shifts}
-              workTypes={workTypes}
+              jobFunctions={jobFunctions}
               staffingTargetUsers={staffingTargetUsers}
               selectedShift={selectedStaffingRequestShift}
               selectedShiftId={staffingRequestShiftId}
@@ -351,8 +360,8 @@ export default function SchedulePage() {
               onStartTimeChange={setStaffingRequestStartTime}
               endTime={staffingRequestEndTime}
               onEndTimeChange={setStaffingRequestEndTime}
-              workTypeId={staffingRequestWorkTypeId}
-              onWorkTypeIdChange={setStaffingRequestWorkTypeId}
+              jobFunctionId={staffingRequestJobFunctionId}
+              onJobFunctionIdChange={setStaffingRequestJobFunctionId}
               getShiftOptionText={(shift) =>
                 getStaffingShiftOptionText(shift, users)
               }

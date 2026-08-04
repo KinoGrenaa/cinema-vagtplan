@@ -17,7 +17,7 @@ function overviewMembership(
       id: number;
       startTime: Date;
       endTime: Date;
-      workType: {
+      jobFunction: {
         id: number;
         name: string;
         color: string;
@@ -27,7 +27,7 @@ function overviewMembership(
       id: number;
       startTime: Date;
       endTime: Date;
-      workType: {
+      jobFunction: {
         id: number;
         name: string;
         color: string;
@@ -129,7 +129,7 @@ describe('findAuthCinemaStartOverview', () => {
       endTime: new Date(
         '2026-07-27T20:30:00.000Z',
       ),
-      workType: {
+      jobFunction: {
         id: 11,
         name: 'Kiosk',
         color: '#123456',
@@ -267,13 +267,15 @@ describe('findAuthCinemaStartOverview', () => {
                 id: true,
                 startTime: true,
                 endTime: true,
-                workType: {
+                jobFunction: {
                   select: {
                     id: true,
                     name: true,
                     color: true,
                   },
                 },
+                jobFunctionNameSnapshot: true,
+                jobFunctionColorSnapshot: true,
               },
               orderBy: [
                 {
@@ -345,7 +347,7 @@ describe('findAuthCinemaStartOverview', () => {
         endTime: new Date(
           `2026-08-0${index + 1}T20:00:00.000Z`,
         ),
-        workType: {
+        jobFunction: {
           id: 11,
           name: 'Kiosk',
           color: '#123456',

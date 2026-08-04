@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UploadedFile,
@@ -132,6 +133,38 @@ export class UsersController {
       getAuthenticatedUserId(
         req.user?.sub ?? req.user?.id,
       ),
+    );
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
+  @Get(':id/job-functions')
+  getUserJobFunctions(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.usersService.findJobFunctions(
+      parseUserControllerId(id),
+      req.user as AuthUser,
+      parseOptionalUserCinemaId(cinemaId),
+    );
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
+  @Put(':id/job-functions')
+  replaceUserJobFunctions(
+    @Param('id') id: string,
+    @Body() body: { jobFunctionIds?: Array<number | string>; cinemaId?: number },
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.usersService.replaceJobFunctions(
+      parseUserControllerId(id),
+      body ?? {},
+      req.user as AuthUser,
+      parseOptionalUserCinemaId(cinemaId),
     );
   }
 

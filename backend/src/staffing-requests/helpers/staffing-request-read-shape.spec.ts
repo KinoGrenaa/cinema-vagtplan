@@ -1,7 +1,7 @@
 import {
   staffingRequestInclude,
   staffingRequestParticipantSelect,
-  staffingRequestWorkTypeSelect,
+  staffingRequestJobFunctionSelect,
 } from './staffing-request-helpers';
 
 describe('staffing request relation read shape', () => {
@@ -14,7 +14,7 @@ describe('staffing request relation read shape', () => {
   });
 
   it('henter kun nødvendige jobfunktionsfelter', () => {
-    expect(staffingRequestWorkTypeSelect).toEqual({
+    expect(staffingRequestJobFunctionSelect).toEqual({
       id: true,
       name: true,
       color: true,
@@ -36,17 +36,19 @@ describe('staffing request relation read shape', () => {
           startTime: true,
           endTime: true,
           userId: true,
-          workTypeId: true,
+          jobFunctionId: true,
+          jobFunctionNameSnapshot: true,
+          jobFunctionColorSnapshot: true,
           user: {
             select: staffingRequestParticipantSelect,
           },
-          workType: {
-            select: staffingRequestWorkTypeSelect,
+          jobFunction: {
+            select: staffingRequestJobFunctionSelect,
           },
         },
       },
-      workType: {
-        select: staffingRequestWorkTypeSelect,
+      jobFunction: {
+        select: staffingRequestJobFunctionSelect,
       },
       requestedByUser: {
         select: staffingRequestParticipantSelect,

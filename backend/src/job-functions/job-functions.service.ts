@@ -7,6 +7,8 @@ import type {
   JobFunctionTimingRuleData,
   JobFunctionUpdateData,
   UserJobFunctionAssignData,
+  UserJobFunctionReplaceData,
+  JobFunctionCopyData,
 } from './helpers/job-function-service-helpers';
 import {
   ensureJobFunctionAdmin,
@@ -24,10 +26,13 @@ import {
   upsertJobFunctionTimingRule,
 } from './helpers/job-function-timing-rule-flow';
 import { updateJobFunction } from './helpers/job-function-update-flow';
+import { copyJobFunction } from './helpers/job-function-copy-flow';
+import { previewJobFunctionTiming } from './helpers/job-function-timing-preview';
 import {
   assignUserJobFunction,
   findJobFunctionUsers,
   removeUserJobFunction,
+  replaceJobFunctionUsers,
 } from './helpers/job-function-user-flow';
 
 @Injectable()
@@ -95,6 +100,16 @@ export class JobFunctionsService {
     );
   }
 
+
+  async copy(
+    user: AuthUser,
+    id: number,
+    data: JobFunctionCopyData,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    return copyJobFunction(this.prisma, user, id, data, selectedCinemaId);
+  }
+
   async remove(
     user: AuthUser,
     id: number,
@@ -141,6 +156,22 @@ export class JobFunctionsService {
     );
   }
 
+
+  async previewTiming(
+    user: AuthUser,
+    id: number,
+    data: { date?: unknown },
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    return previewJobFunctionTiming(
+      this.prisma,
+      user,
+      id,
+      data,
+      selectedCinemaId,
+    );
+  }
+
   async removeTimingRule(
     user: AuthUser,
     id: number,
@@ -160,6 +191,22 @@ export class JobFunctionsService {
     selectedCinemaId?: CinemaContextValue,
   ) {
     return findJobFunctionUsers(this.prisma, user, id, selectedCinemaId);
+  }
+
+
+  async replaceUsers(
+    user: AuthUser,
+    id: number,
+    data: UserJobFunctionReplaceData,
+    selectedCinemaId?: CinemaContextValue,
+  ) {
+    return replaceJobFunctionUsers(
+      this.prisma,
+      user,
+      id,
+      data,
+      selectedCinemaId,
+    );
   }
 
   async assignUser(

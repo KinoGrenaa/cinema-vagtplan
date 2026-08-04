@@ -2,7 +2,7 @@ import ScheduleTemplateJobFunctionAssignments from "./ScheduleTemplateJobFunctio
 import ScheduleTemplateJobFunctionSettings from "./ScheduleTemplateJobFunctionSettings";
 
 import {
-  formatDayPeriod,
+  formatFilmWindow,
   formatOpenShiftText,
   type ScheduleTemplateAssignment,
   type ScheduleTemplateUser,
@@ -97,10 +97,7 @@ export default function ScheduleTemplateJobFunctionCard({
           </div>
 
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            {formatDayPeriod(
-              item.jobFunction
-                .dayPeriod,
-            )}{" "}
+            {formatFilmWindow(item.jobFunction)}{" "}
             · {assignedCount}/
             {item.requiredCount} faste
             medarbejdere

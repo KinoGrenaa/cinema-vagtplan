@@ -1,13 +1,14 @@
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
 type JobFunctionCardActionsProps = {
-  jobFunction: JobFunctionWithWorkType;
+  jobFunction: JobFunctionWithJobFunction;
   isExpanded: boolean;
-  onArchive: (jobFunction: JobFunctionWithWorkType) => void;
-  onEdit: (jobFunction: JobFunctionWithWorkType) => void;
-  onOpenEmployees: (jobFunction: JobFunctionWithWorkType) => void;
-  onOpenTimingRule: (jobFunction: JobFunctionWithWorkType) => void;
-  onReactivate: (jobFunction: JobFunctionWithWorkType) => void;
+  onArchive: (jobFunction: JobFunctionWithJobFunction) => void;
+  onCopy: (jobFunction: JobFunctionWithJobFunction) => void;
+  onEdit: (jobFunction: JobFunctionWithJobFunction) => void;
+  onOpenEmployees: (jobFunction: JobFunctionWithJobFunction) => void;
+  onOpenTimingRule: (jobFunction: JobFunctionWithJobFunction) => void;
+  onReactivate: (jobFunction: JobFunctionWithJobFunction) => void;
   onToggleDetails: (jobFunctionId: number) => void;
 };
 
@@ -15,6 +16,7 @@ export default function JobFunctionCardActions({
   jobFunction,
   isExpanded,
   onArchive,
+  onCopy,
   onEdit,
   onOpenEmployees,
   onOpenTimingRule,
@@ -43,6 +45,13 @@ export default function JobFunctionCardActions({
         className="rounded-xl border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-200 dark:hover:bg-blue-950"
       >
         Medarbejdere
+      </button>
+      <button
+        type="button"
+        onClick={() => onCopy(jobFunction)}
+        className="rounded-xl border border-teal-200 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 dark:border-teal-900 dark:text-teal-200 dark:hover:bg-teal-950"
+      >
+        Kopiér
       </button>
       {jobFunction.isActive && (
         <button

@@ -1,16 +1,17 @@
 import JobFunctionCardActions from "./JobFunctionCardActions";
 import JobFunctionCardDetails from "./JobFunctionCardDetails";
 import JobFunctionCardHeader from "./JobFunctionCardHeader";
-import type { JobFunctionWithWorkType } from "../../helpers/payroll/jobFunctionPayrollHelpers";
+import type { JobFunctionWithJobFunction } from "../../helpers/payroll/jobFunctionPayrollHelpers";
 
 type JobFunctionCardProps = {
-  jobFunction: JobFunctionWithWorkType;
+  jobFunction: JobFunctionWithJobFunction;
   isExpanded: boolean;
-  onArchive: (jobFunction: JobFunctionWithWorkType) => void;
-  onEdit: (jobFunction: JobFunctionWithWorkType) => void;
-  onOpenEmployees: (jobFunction: JobFunctionWithWorkType) => void;
-  onOpenTimingRule: (jobFunction: JobFunctionWithWorkType) => void;
-  onReactivate: (jobFunction: JobFunctionWithWorkType) => void;
+  onArchive: (jobFunction: JobFunctionWithJobFunction) => void;
+  onCopy: (jobFunction: JobFunctionWithJobFunction) => void;
+  onEdit: (jobFunction: JobFunctionWithJobFunction) => void;
+  onOpenEmployees: (jobFunction: JobFunctionWithJobFunction) => void;
+  onOpenTimingRule: (jobFunction: JobFunctionWithJobFunction) => void;
+  onReactivate: (jobFunction: JobFunctionWithJobFunction) => void;
   onToggleDetails: (jobFunctionId: number) => void;
 };
 
@@ -18,6 +19,7 @@ export default function JobFunctionCard({
   jobFunction,
   isExpanded,
   onArchive,
+  onCopy,
   onEdit,
   onOpenEmployees,
   onOpenTimingRule,
@@ -33,6 +35,7 @@ export default function JobFunctionCard({
             jobFunction={jobFunction}
             isExpanded={isExpanded}
             onArchive={onArchive}
+            onCopy={onCopy}
             onEdit={onEdit}
             onOpenEmployees={onOpenEmployees}
             onOpenTimingRule={onOpenTimingRule}

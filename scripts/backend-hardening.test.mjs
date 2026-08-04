@@ -45,7 +45,7 @@ test("den rettede runtime-kaede accepteres", () => {
       "node_modules/archiver-modern": runtime("8.0.0"),
       "node_modules/readdir-glob": runtime("3.0.0"),
       "node_modules/minimatch": runtime("10.2.6"),
-      "node_modules/brace-expansion": runtime("5.0.8"),
+      "node_modules/brace-expansion": runtime("5.0.9"),
       "node_modules/unzipper": runtime("0.12.3"),
       "node_modules/uuid": runtime("11.1.1"),
     },

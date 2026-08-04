@@ -9,12 +9,12 @@ import { ShiftPlanningScheduleDateLinks } from "./ShiftPlanningScheduleDateLinks
 
 type ShiftPlanningPublishResultPanelProps = {
   publishResult: DraftPublishResult;
-  selectedWorkTypeName: string;
+  selectedJobFunctionName: string;
 };
 
 export function ShiftPlanningPublishResultPanel({
   publishResult,
-  selectedWorkTypeName,
+  selectedJobFunctionName,
 }: ShiftPlanningPublishResultPanelProps) {
   const publishedShiftIdsText = formatCreatedShiftIds(
     publishResult.createdShiftIds,
@@ -23,7 +23,7 @@ export function ShiftPlanningPublishResultPanel({
     publishResult.affectedDateKeys,
   );
   const createdShiftCount = toNumber(publishResult.createdShiftCount);
-  const workTypeName = publishResult.workTypeName || selectedWorkTypeName;
+  const jobFunctionName = publishResult.jobFunctionName || selectedJobFunctionName;
   const firstAffectedDateKey = publishedAffectedDateLabels[0]?.dateKey ?? "";
   const scheduleHref = firstAffectedDateKey
     ? `/schedule?date=${firstAffectedDateKey}`
@@ -35,8 +35,8 @@ export function ShiftPlanningPublishResultPanel({
         {publishResult.message || "Vagterne er oprettet."}
       </p>
       <p className="mt-1">
-        Der er oprettet {createdShiftCount} rigtige vagter med arbejdstypen{" "}
-        <span className="font-semibold">{workTypeName}</span>. Forslaget er nu
+        Der er oprettet {createdShiftCount} rigtige vagter med jobfunktionn{" "}
+        <span className="font-semibold">{jobFunctionName}</span>. Forslaget er nu
         låst mod ny oprettelse, så samme forslag ikke kan oprette dubletter.
       </p>
 

@@ -164,8 +164,14 @@ export async function updateShiftFlow({
                 note: normalized.note,
                 userId:
                   normalized.userId,
-                workTypeId:
-                  normalized.workTypeId,
+                jobFunctionId:
+                  context.jobFunction.id,
+                jobFunctionNameSnapshot:
+                  context.jobFunction.name,
+                jobFunctionColorSnapshot:
+                  context.jobFunction.color,
+                timingSource: 'MANUAL',
+                workTypeId: null,
               },
             },
           );
@@ -213,12 +219,12 @@ export async function updateShiftFlow({
     entityType: 'Shift',
     entityId: shift.id,
     description:
-      `Opdaterede vagt fra ${oldShift.workType.name} - ${formatShiftTime(
+      `Opdaterede vagt fra ${oldShift.jobFunctionNameSnapshot} - ${formatShiftTime(
         oldShift.startTime,
         oldShift.endTime,
       )} til ${getShiftUserLabel(
         shift,
-      )}: ${shift.workType.name} - ${formatShiftTime(
+      )}: ${shift.jobFunctionNameSnapshot} - ${formatShiftTime(
         shift.startTime,
         shift.endTime,
       )}`,
@@ -243,7 +249,7 @@ export async function updateShiftFlow({
             ? 'Vagt ændret'
             : 'Vagt tildelt',
         body:
-          `${shift.workType.name} - ${formatShiftTime(
+          `${shift.jobFunctionNameSnapshot} - ${formatShiftTime(
             startTime,
             endTime,
           )}`,

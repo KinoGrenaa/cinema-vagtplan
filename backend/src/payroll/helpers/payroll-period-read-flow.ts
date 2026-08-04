@@ -22,5 +22,13 @@ export async function getPayrollPeriodWithTimeEntries(
       startDate: start,
       endDate: end,
     },
+    include: {
+      lockedCalculationRun: {
+        include: {
+          payrollConfigurationVersion: true,
+          lines: { orderBy: [{ segmentStart: 'asc' }, { id: 'asc' }] },
+        },
+      },
+    },
   });
 }

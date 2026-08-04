@@ -13,7 +13,7 @@ export type TimeEntry = {
     name: string;
   } | null;
   shift?: {
-    workType?: {
+    jobFunction?: {
       name: string;
     } | null;
   } | null;

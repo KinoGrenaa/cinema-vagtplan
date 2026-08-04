@@ -22,6 +22,11 @@ export function buildPayrollPdfExport(
 
   doc.fontSize(11).text(`Periode: ${startDate} til ${endDate}`);
   doc.text(`Eksporteret: ${new Date().toLocaleString('da-DK')}`);
+  doc.text(`Lønmodel: ${report.payrollMode ?? 'Ikke angivet'}`);
+  doc.text(`Grundløn i alt: ${(report.basePayAmount ?? 0).toFixed(2)} kr.`);
+  doc.text(`Tillæg i alt: ${(report.supplementAmount ?? 0).toFixed(2)} kr.`);
+  doc.text(`Efterregulering i alt: ${(report.adjustmentAmount ?? 0).toFixed(2)} kr.`);
+  doc.text(`Beregnet beløb i alt: ${(report.totalAmount ?? 0).toFixed(2)} kr.`);
 
   doc.moveDown();
 
@@ -41,6 +46,10 @@ export function buildPayrollPdfExport(
     }
 
     doc.text(`Timer i alt: ${employee.totalHours.toFixed(2)}`);
+    doc.text(`Grundløn: ${(employee.basePayAmount ?? 0).toFixed(2)} kr.`);
+    doc.text(`Tillæg: ${(employee.supplementAmount ?? 0).toFixed(2)} kr.`);
+    doc.text(`Efterregulering: ${(employee.adjustmentAmount ?? 0).toFixed(2)} kr.`);
+    doc.text(`Beløb i alt: ${(employee.totalAmount ?? 0).toFixed(2)} kr.`);
 
     doc.moveDown(0.5);
 
@@ -48,7 +57,7 @@ export function buildPayrollPdfExport(
       doc
         .fontSize(9)
         .text(
-          `${entry.date} | ${entry.hours.toFixed(2)} timer | ${entry.workType} | ${entry.payrollName} | ${entry.exportCode} | ${entry.status}`,
+          `${entry.date} | ${entry.hours.toFixed(2)} timer | ${entry.jobFunction} | ${entry.payrollName} | ${entry.exportCode} | ${(entry.calculatedAmount ?? 0).toFixed(2)} kr. | ${entry.status}`,
         );
 
       if (entry.note || entry.adminNote) {

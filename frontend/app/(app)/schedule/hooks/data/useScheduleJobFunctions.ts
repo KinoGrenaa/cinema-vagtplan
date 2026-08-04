@@ -12,25 +12,19 @@ export type ScheduleJobFunction = {
   color: string;
   sortOrder?: number;
   isActive: boolean;
-  workTypeId?: number | null;
-  workType?: {
-    id: number;
-    name: string;
-    isActive?: boolean;
-  } | null;
-  dayPeriod?: {
-    id: number;
-    name: string;
-    startMinute: number;
-    endMinute: number;
-  } | null;
   timingRule?: {
+    filmWindowStartMinute?: number;
+    filmWindowEndMinute?: number;
     startAnchor?: string;
     startFixedMinute?: number | null;
     fallbackStartMinute?: number | null;
     endAnchor?: string;
     endFixedMinute?: number | null;
     fallbackEndMinute?: number | null;
+    roundToQuarter?: boolean;
+    roundStartToNearestQuarter?: boolean;
+    roundEndToNearestQuarter?: boolean;
+    restrictMovieStartsToWindow?: boolean;
     isActive?: boolean;
   } | null;
 };

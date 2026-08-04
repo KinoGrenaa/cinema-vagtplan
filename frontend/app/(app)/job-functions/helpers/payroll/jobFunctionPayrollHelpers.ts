@@ -1,29 +1,10 @@
-import type { JobFunction } from "../types/jobFunctionTypes";
+import type {
+  JobFunction,
+  PayrollExportCode,
+} from "../types/jobFunctionTypes";
 
-export type PayrollTypeOption = {
-  id: number;
-  name: string;
-  payrollCode?: string | null;
-  exportCode?: string | null;
-  description?: string | null;
-  color?: string | null;
-  isDefault?: boolean;
-  isActive?: boolean;
-};
-
-export type WorkType = {
-  id: number;
-  name: string;
-  color?: string | null;
-  isActive?: boolean;
-  payrollTypeId?: number | null;
-  payrollType?: PayrollTypeOption | null;
-};
-
-export type JobFunctionWithWorkType = JobFunction & {
-  workTypeId?: number | null;
-  workType?: WorkType | null;
-};
+export type PayrollTypeOption = PayrollExportCode;
+export type JobFunctionWithJobFunction = JobFunction;
 
 export type MissingPayrollTypeWarningData = {
   count: number;
@@ -32,41 +13,40 @@ export type MissingPayrollTypeWarningData = {
   visible: boolean;
 };
 
-export function isMissingPayrollType(workType: WorkType | null | undefined) {
-  return !workType?.payrollType?.id && !workType?.payrollTypeId;
+export function isMissingPayrollType(
+  jobFunction: JobFunction | null | undefined,
+) {
+  return !jobFunction?.defaultPayrollExportCode?.id &&
+    !jobFunction?.defaultPayrollExportCodeId;
 }
 
-export function formatPayrollType(workType: WorkType | null | undefined) {
-  if (!workType) {
-    return "Mangler løntype";
+export function formatPayrollType(
+  jobFunction: JobFunction | null | undefined,
+) {
+  if (!jobFunction || isMissingPayrollType(jobFunction)) {
+    return "Ingen eksportkode";
   }
 
-  if (isMissingPayrollType(workType)) {
-    return "Mangler løntype";
-  }
-
-  return workType.payrollType?.name ?? workType.name;
+  return jobFunction.defaultPayrollExportCode?.name ?? "Eksportkode valgt";
 }
 
 export function getMissingPayrollTypeWarningData(
-  jobFunctions: JobFunctionWithWorkType[],
+  jobFunctions: JobFunction[],
   loading: boolean,
 ): MissingPayrollTypeWarningData {
-  const missingPayrollTypeJobFunctions = jobFunctions.filter(
-    (jobFunction) =>
-      jobFunction.isActive && isMissingPayrollType(jobFunction.workType),
+  const missing = jobFunctions.filter(
+    (jobFunction) => jobFunction.isActive && isMissingPayrollType(jobFunction),
   );
-  const count = missingPayrollTypeJobFunctions.length;
-  const names = missingPayrollTypeJobFunctions
+  const count = missing.length;
+  const names = missing
     .slice(0, 3)
     .map((jobFunction) => jobFunction.name)
     .join(", ");
-  const remainingCount = Math.max(count - 3, 0);
 
   return {
     count,
     names,
-    remainingCount,
+    remainingCount: Math.max(count - 3, 0),
     visible: !loading && count > 0,
   };
 }

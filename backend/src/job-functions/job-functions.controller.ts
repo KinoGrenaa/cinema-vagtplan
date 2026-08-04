@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -63,9 +64,34 @@ export class JobFunctionsController {
   }
 
   @UseGuards(JwtGuard)
+  @Get('export-codes')
+  findExportCodes(@Req() req, @Query('cinemaId') cinemaId?: string) {
+    return this.jobFunctionsService.findPayrollTypes(
+      req.user,
+      this.parseCinemaId(cinemaId),
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Post()
   create(@Req() req, @Body() body) {
     return this.jobFunctionsService.create(req.user, body);
+  }
+
+  @UseGuards(JwtGuard)
+  @Post(':id/copy')
+  copy(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.jobFunctionsService.copy(
+      req.user,
+      this.parseJobFunctionId(id),
+      body ?? {},
+      this.parseCinemaId(cinemaId),
+    );
   }
 
   @UseGuards(JwtGuard)
@@ -132,6 +158,22 @@ export class JobFunctionsController {
   }
 
   @UseGuards(JwtGuard)
+  @Post(':id/resolve-time-preview')
+  previewTiming(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.jobFunctionsService.previewTiming(
+      req.user,
+      this.parseJobFunctionId(id),
+      body ?? {},
+      this.parseCinemaId(cinemaId),
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Patch(':id/timing-rule')
   upsertTimingRule(
     @Req() req,
@@ -171,6 +213,22 @@ export class JobFunctionsController {
     return this.jobFunctionsService.getUsers(
       req.user,
       this.parseJobFunctionId(id),
+      this.parseCinemaId(cinemaId),
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Put(':id/users')
+  replaceUsers(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.jobFunctionsService.replaceUsers(
+      req.user,
+      this.parseJobFunctionId(id),
+      body ?? {},
       this.parseCinemaId(cinemaId),
     );
   }

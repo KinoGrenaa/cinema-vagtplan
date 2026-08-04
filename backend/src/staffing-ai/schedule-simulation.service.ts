@@ -37,7 +37,7 @@ export class ScheduleSimulationService {
             staffingAiProfile: true,
           },
         },
-        workType: true,
+        jobFunction: true,
       },
     });
 

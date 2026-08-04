@@ -9,6 +9,7 @@ export type PayrollAuthUser = {
   role: 'MASTER' | 'ADMIN' | 'EMPLOYEE';
   cinemaId: number | null;
   canManagePayroll?: boolean;
+  canManageCinemaSettings?: boolean;
 };
 
 function isPositiveSafeInteger(value: unknown): value is number {
@@ -17,7 +18,6 @@ function isPositiveSafeInteger(value: unknown): value is number {
 
 export function ensurePayrollAccess(user: PayrollAuthUser) {
   if (user.role === 'MASTER') return;
-  if (user.role === 'ADMIN') return;
   if (user.canManagePayroll) return;
 
   throw new ForbiddenException('Du har ikke adgang til løndata');
@@ -25,7 +25,6 @@ export function ensurePayrollAccess(user: PayrollAuthUser) {
 
 export function ensurePayrollExportAccess(user: PayrollAuthUser) {
   if (user.role === 'MASTER') return;
-  if (user.role === 'ADMIN') return;
   if (user.canManagePayroll) return;
 
   throw new ForbiddenException('Du har ikke adgang til eksport');
