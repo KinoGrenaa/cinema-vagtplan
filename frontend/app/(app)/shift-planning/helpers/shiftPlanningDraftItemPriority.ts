@@ -16,6 +16,19 @@ function hasDraftItemWarning(item: SavedDraftItem) {
   return Boolean(item.warningCode || item.warningMessage);
 }
 
+export function draftItemNeedsAttention(item: SavedDraftItem) {
+  return (
+    hasDraftItemWarning(item) ||
+    !itemHasTime(item) ||
+    !itemHasJobFunction(item) ||
+    !itemHasTemplate(item)
+  );
+}
+
+export function draftDateGroupNeedsAttention(group: DraftDateGroup) {
+  return group.items.some(draftItemNeedsAttention);
+}
+
 export function getDraftItemPriorityScore(item: SavedDraftItem) {
   let score = 0;
 
