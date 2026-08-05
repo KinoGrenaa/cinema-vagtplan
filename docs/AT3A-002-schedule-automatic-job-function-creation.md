@@ -5,15 +5,18 @@ i jobfunktionen og den valgte planlægningsdato.
 
 ## Standardforløb
 
-1. Administratoren vælger en jobfunktion.
-2. Backend beregner mødetid og fyraften i `Europe/Copenhagen` ud fra:
+1. Administratoren vælger en jobfunktion. Valget står sammen med resten af
+   oprettelsesforløbet i venstre side.
+2. Tiderne genberegnes automatisk, når datoen eller jobfunktionen ændres. Der er
+   derfor ingen særskilt knap til manuel genberegning.
+3. Backend beregner mødetid og fyraften i `Europe/Copenhagen` ud fra:
    - filmvisninger på den konkrete planlægningsdag,
    - jobfunktionens aktive tidsregel,
    - start- og slutanker samt offsets,
    - fallbacktider,
    - de valgte afrundinger.
-3. Siden viser det beregnede tidsrum, filmgrundlag eller fallback samt overlap.
-4. **Opret untildelt vagt** opretter vagten med de viste ISO-tider.
+4. Siden viser det beregnede tidsrum, filmgrundlag eller fallback samt overlap.
+5. **Opret untildelt vagt** opretter vagten med de viste ISO-tider.
 
 ## Manuel undtagelse
 

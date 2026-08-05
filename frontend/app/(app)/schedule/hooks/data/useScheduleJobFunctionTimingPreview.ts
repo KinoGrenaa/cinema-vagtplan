@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -78,10 +77,6 @@ export function useScheduleJobFunctionTimingPreview({
   const [
     cinemaSelectionVersion,
     setCinemaSelectionVersion,
-  ] = useState(0);
-  const [
-    refreshVersion,
-    setRefreshVersion,
   ] = useState(0);
   const [
     preview,
@@ -221,7 +216,6 @@ export function useScheduleJobFunctionTimingPreview({
       }
     }
 
-    void refreshVersion;
     void fetchPreview();
 
     return () => {
@@ -230,20 +224,12 @@ export function useScheduleJobFunctionTimingPreview({
   }, [
     apiFetch,
     endpoint,
-    refreshVersion,
     selectedDate,
   ]);
-
-  const refresh = useCallback(() => {
-    setRefreshVersion(
-      (current) => current + 1,
-    );
-  }, []);
 
   return {
     preview,
     loading,
     error,
-    refresh,
   };
 }

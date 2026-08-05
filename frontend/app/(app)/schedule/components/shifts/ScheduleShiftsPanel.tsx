@@ -381,8 +381,6 @@ export default function ScheduleShiftsPanel({
     loading:
       timingPreviewLoading,
     error: timingPreviewError,
-    refresh:
-      refreshTimingPreview,
   } =
     useScheduleJobFunctionTimingPreview({
       enabled:
@@ -734,17 +732,20 @@ export default function ScheduleShiftsPanel({
         {canManageShifts &&
           !needsMasterCinemaSelection && (
             <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 dark:border-blue-900 dark:bg-blue-950/25">
-              <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+              <div className="space-y-3">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-blue-950 dark:text-blue-100">
                     Opret untildelt vagt
                   </p>
                   <p className="mt-1 max-w-3xl text-xs text-blue-800 dark:text-blue-200">
-                    Vælg en jobfunktion. Mødetid og fyraften beregnes automatisk
-                    fra dagens filmprogram, jobfunktionens tidsregel, fallback og
-                    afrunding.
+                    Vælg den vagt, du vil oprette. Tiderne beregnes automatisk
+                    ud fra dagens filmprogram.
                   </p>
                 </div>
+                <label className="block max-w-xl">
+                  <span className="mb-1 block text-xs font-semibold text-blue-950 dark:text-blue-100">
+                    Jobfunktion
+                  </span>
                 <select
                   value={
                     selectedJobFunctionSelectionId
@@ -799,6 +800,7 @@ export default function ScheduleShiftsPanel({
                     ),
                   )}
                 </select>
+                </label>
               </div>
 
               {jobFunctionsError && (
@@ -831,11 +833,11 @@ export default function ScheduleShiftsPanel({
                           </p>
                           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                             {timingPreview.usedFallback
-                              ? "Ingen film matchede tidsreglen. Jobfunktionens fallbacktider bruges."
+                              ? "Der var ingen relevante filmvisninger, så vagtens standardtider bruges."
                               : timingPreview.sourceMovieShowings.length >
                                   0
                                 ? `Baseret på ${timingPreview.sourceMovieShowings.length} ${timingPreview.sourceMovieShowings.length === 1 ? "filmvisning" : "filmvisninger"}.`
-                                : "Baseret på jobfunktionens faste tidsregel."}
+                                : "Tiderne følger vagtens faste indstillinger."}
                           </p>
                         </div>
                         {timingPreviewOverlap && (
@@ -889,19 +891,6 @@ export default function ScheduleShiftsPanel({
                           {isCreatingJobFunctionShift
                             ? "Opretter..."
                             : "Opret untildelt vagt"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={
-                            refreshTimingPreview
-                          }
-                          disabled={
-                            timingPreviewLoading ||
-                            isCreatingJobFunctionShift
-                          }
-                          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
-                        >
-                          Beregn igen
                         </button>
                         <button
                           type="button"
