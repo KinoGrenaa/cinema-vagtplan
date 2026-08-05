@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
-import { getCopenhagenDayInstantRange } from '../../shift-planning-drafts/shift-planning-time-zone';
+import {
+  buildCopenhagenDateTimeFromMinute,
+  getCopenhagenDayInstantRange,
+} from '../../shift-planning-drafts/shift-planning-time-zone';
 import type { AuthUser, CinemaContextValue } from './job-function-service-helpers';
 import {
   ensureJobFunctionAdmin,
@@ -52,6 +55,14 @@ export async function previewJobFunctionTiming(
     jobFunction.timingRule,
     movieShowings,
   );
+  const startTime = buildCopenhagenDateTimeFromMinute(
+    logicalDate,
+    result.startMinute,
+  );
+  const endTime = buildCopenhagenDateTimeFromMinute(
+    logicalDate,
+    result.endMinute,
+  );
 
   return {
     date,
@@ -63,6 +74,8 @@ export async function previewJobFunctionTiming(
     usedFallback: result.usedFallback,
     startMinute: result.startMinute,
     endMinute: result.endMinute,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
     sourceMovieShowingIds: result.sourceMovieShowingIds,
     sourceMovieShowings: movieShowings.filter((showing) =>
       result.sourceMovieShowingIds.includes(showing.id),

@@ -19,9 +19,15 @@ import {
   type ScheduleJobFunction,
 } from "../../hooks/data/useScheduleJobFunctions";
 import {
+  useScheduleJobFunctionTimingPreview,
+} from "../../hooks/data/useScheduleJobFunctionTimingPreview";
+import {
   buildUnassignedJobFunctionShift,
+  buildUnassignedJobFunctionShiftFromTimingPreview,
   formatJobFunctionShiftDuration,
+  formatJobFunctionTimingPreviewRange,
   getJobFunctionShiftDurationMinutes,
+  getJobFunctionTimingPreviewOverlap,
 } from "../../helpers/derived/scheduleJobFunctionShift";
 
 type AiScheduleData = ReturnType<typeof useScheduleAi>;
@@ -370,6 +376,39 @@ export default function ScheduleShiftsPanel({
           selectedJobFunction,
         )
       : null;
+  const {
+    preview: timingPreview,
+    loading:
+      timingPreviewLoading,
+    error: timingPreviewError,
+    refresh:
+      refreshTimingPreview,
+  } =
+    useScheduleJobFunctionTimingPreview({
+      enabled:
+        canManageShifts &&
+        !needsMasterCinemaSelection,
+      selectedDate,
+      jobFunctionId:
+        selectedJobFunctionId,
+    });
+  const timingPreviewOverlap =
+    useMemo(
+      () =>
+        timingPreview &&
+        selectedJobFunctionId
+          ? getJobFunctionTimingPreviewOverlap(
+              timingPreview,
+              shifts,
+              selectedJobFunctionId,
+            )
+          : null,
+      [
+        selectedJobFunctionId,
+        shifts,
+        timingPreview,
+      ],
+    );
 
 
 
@@ -407,6 +446,53 @@ export default function ScheduleShiftsPanel({
     setIsPlacingJobFunction(
       (current) => !current,
     );
+  }
+
+  async function handleCreateFromTimingRule() {
+    if (
+      !selectedJobFunctionId ||
+      !selectedJobFunction ||
+      !timingPreview ||
+      isCreatingJobFunctionShift
+    ) {
+      return;
+    }
+
+    setPlacementError(null);
+    setIsCreatingJobFunctionShift(
+      true,
+    );
+
+    try {
+      await onCreateUnassignedShift(
+        buildUnassignedJobFunctionShiftFromTimingPreview({
+          preview:
+            timingPreview,
+          jobFunctionId:
+            selectedJobFunctionId,
+        }),
+      );
+      setIsPlacingJobFunction(
+        false,
+      );
+      toast.success(
+        `${selectedJobFunction.name} er oprettet som untildelt vagt`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Vagten kunne ikke oprettes.";
+
+      setPlacementError(message);
+      toast.error(
+        "Vagten kunne ikke oprettes",
+      );
+    } finally {
+      setIsCreatingJobFunctionShift(
+        false,
+      );
+    }
   }
 
   async function handleCreateAtTime(
@@ -647,157 +733,244 @@ export default function ScheduleShiftsPanel({
       <div className="mt-4 space-y-3">
         {canManageShifts &&
           !needsMasterCinemaSelection && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 dark:border-blue-900 dark:bg-blue-950/25">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 dark:border-blue-900 dark:bg-blue-950/25">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-blue-950 dark:text-blue-100">
-                    Tilføj
-                    jobfunktion på
-                    tidslinjen
+                    Opret untildelt vagt
                   </p>
-                  <p className="mt-1 text-xs text-blue-800 dark:text-blue-200">
-                    Opretter en
-                    untildelt vagt med
-                    jobfunktionen
-                    forudvalgt.
+                  <p className="mt-1 max-w-3xl text-xs text-blue-800 dark:text-blue-200">
+                    Vælg en jobfunktion. Mødetid og fyraften beregnes automatisk
+                    fra dagens filmprogram, jobfunktionens tidsregel, fallback og
+                    afrunding.
                   </p>
                 </div>
-
-                <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-                  <select
-                    value={
-                      selectedJobFunctionSelectionId
-                    }
-                    onChange={(
-                      event,
-                    ) => {
-                      setSelectedJobFunctionSelectionId(
-                        Number(
-                          event.target
-                            .value,
-                        ),
-                      );
-                      setIsPlacingJobFunction(
-                  false,
-                );
-                setPlacementError(null);
-              }}
-                    disabled={
-                      jobFunctionsLoading ||
-                      availableJobFunctions.length ===
-                        0
-                    }
-                    className="min-w-56 rounded-xl border border-blue-300 bg-white px-3 py-2 text-sm text-gray-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-800 dark:bg-gray-950 dark:text-white"
-                    aria-label="Vælg jobfunktion til tidslinjen"
-                  >
-                    {jobFunctionsLoading && (
-                      <option
-                        value={0}
-                      >
-                        Henter
-                        jobfunktioner...
+                <select
+                  value={
+                    selectedJobFunctionSelectionId
+                  }
+                  onChange={(event) => {
+                    setSelectedJobFunctionSelectionId(
+                      Number(
+                        event.target.value,
+                      ),
+                    );
+                    setIsPlacingJobFunction(
+                      false,
+                    );
+                    setPlacementError(
+                      null,
+                    );
+                  }}
+                  disabled={
+                    jobFunctionsLoading ||
+                    availableJobFunctions.length ===
+                      0
+                  }
+                  className="min-w-64 rounded-xl border border-blue-300 bg-white px-3 py-2 text-sm text-gray-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-800 dark:bg-gray-950 dark:text-white"
+                  aria-label="Vælg jobfunktion til automatisk beregning"
+                >
+                  {jobFunctionsLoading && (
+                    <option value={0}>
+                      Henter jobfunktioner...
+                    </option>
+                  )}
+                  {!jobFunctionsLoading &&
+                    availableJobFunctions.length ===
+                      0 && (
+                      <option value={0}>
+                        Ingen jobfunktioner kan tilføjes
                       </option>
                     )}
-
-                    {!jobFunctionsLoading &&
-                      availableJobFunctions.length ===
-                        0 && (
-                        <option
-                          value={0}
-                        >
-                          Ingen
-                          jobfunktioner
-                          kan tilføjes
-                        </option>
-                      )}
-
-                    {availableJobFunctions.map(
-                      (
-                        jobFunction,
-                      ) => (
-                        <option
-                          key={
-                            jobFunction.id
-                          }
-                          value={
-                            jobFunction.id
-                          }
-                        >
-                          {
-                            jobFunction.name
-                          }
-                        </option>
-                      ),
-                    )}
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={
-                      handleToggleJobFunctionPlacement
-                    }
-                    disabled={
-                jobFunctionsLoading ||
-                !selectedJobFunctionId ||
-                isCreatingJobFunctionShift
-              }
-                    className={`rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                      isPlacingJobFunction
-                        ? "bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500"
-                        : "bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500"
-                    }`}
-                  >
-                    {isCreatingJobFunctionShift
-                ? "Opretter..."
-                : isPlacingJobFunction
-                  ? "Annuller placering"
-                  : "Placér untildelt vagt"}
-                  </button>
-                </div>
+                  {availableJobFunctions.map(
+                    (jobFunction) => (
+                      <option
+                        key={
+                          jobFunction.id
+                        }
+                        value={
+                          jobFunction.id
+                        }
+                      >
+                        {
+                          jobFunction.name
+                        }
+                      </option>
+                    ),
+                  )}
+                </select>
               </div>
-
-              {isPlacingJobFunction &&
-                selectedJobFunction && (
-                  <p className="mt-2 rounded-lg bg-blue-100 px-3 py-2 text-xs font-semibold text-blue-950 dark:bg-blue-950/60 dark:text-blue-100">
-                    Klik på et tomt
-                tidspunkt i tidslinjen
-                for straks at oprette {
-                  selectedJobFunction.name
-                } som untildelt vagt.
-                Starttiden snapper til
-                nærmeste kvarter
-                {selectedDurationMinutes
-                  ? ` · Varighed: ${formatJobFunctionShiftDuration(
-                      selectedDurationMinutes,
-                    )}`
-                  : ""}.
-                  </p>
-                )}
-          {placementError && (
-            <p
-              role="alert"
-              className="mt-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100"
-            >
-              {placementError}
-            </p>
-          )}
-
 
               {jobFunctionsError && (
                 <p
                   role="alert"
-                  className="mt-2 text-xs font-medium text-red-700 dark:text-red-300"
+                  className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium text-red-800 dark:border-red-800 dark:bg-red-950/35 dark:text-red-200"
                 >
-                  Jobfunktionerne
-                  kunne ikke hentes:{" "}
-                  {
-                    jobFunctionsError
-                  }
+                  Jobfunktionerne kunne ikke hentes:{" "}
+                  {jobFunctionsError}
+                </p>
+              )}
+
+              {selectedJobFunction && (
+                <div className="mt-3 rounded-xl border border-blue-200 bg-white p-4 dark:border-blue-900 dark:bg-gray-950">
+                  {timingPreviewLoading ? (
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      Beregner vagtens mødetid og fyraften...
+                    </p>
+                  ) : timingPreview ? (
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                            Beregnet vagt
+                          </p>
+                          <p className="mt-1 text-2xl font-black text-gray-950 dark:text-white">
+                            {formatJobFunctionTimingPreviewRange(
+                              timingPreview,
+                            )}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                            {timingPreview.usedFallback
+                              ? "Ingen film matchede tidsreglen. Jobfunktionens fallbacktider bruges."
+                              : timingPreview.sourceMovieShowings.length >
+                                  0
+                                ? `Baseret på ${timingPreview.sourceMovieShowings.length} ${timingPreview.sourceMovieShowings.length === 1 ? "filmvisning" : "filmvisninger"}.`
+                                : "Baseret på jobfunktionens faste tidsregel."}
+                          </p>
+                        </div>
+                        {timingPreviewOverlap && (
+                          <span
+                            className={`rounded-lg border px-3 py-2 text-xs font-bold ${
+                              timingPreviewOverlap.level ===
+                              "error"
+                                ? "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/35 dark:text-red-200"
+                                : timingPreviewOverlap.level ===
+                                    "warning"
+                                  ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-200"
+                                  : "border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/35 dark:text-green-200"
+                            }`}
+                          >
+                            {
+                              timingPreviewOverlap.message
+                            }
+                          </span>
+                        )}
+                      </div>
+
+                      {timingPreview.sourceMovieShowings.length >
+                        0 && (
+                        <p className="rounded-lg bg-gray-100 px-3 py-2 text-xs text-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                          Filmgrundlag:{" "}
+                          {timingPreview.sourceMovieShowings
+                            .slice(0, 4)
+                            .map(
+                              (showing) =>
+                                showing.title,
+                            )
+                            .join(", ")}
+                          {timingPreview.sourceMovieShowings.length >
+                          4
+                            ? ` og ${timingPreview.sourceMovieShowings.length - 4} flere`
+                            : ""}
+                        </p>
+                      )}
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        <button
+                          type="button"
+                          onClick={
+                            handleCreateFromTimingRule
+                          }
+                          disabled={
+                            isCreatingJobFunctionShift
+                          }
+                          className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500"
+                        >
+                          {isCreatingJobFunctionShift
+                            ? "Opretter..."
+                            : "Opret untildelt vagt"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={
+                            refreshTimingPreview
+                          }
+                          disabled={
+                            timingPreviewLoading ||
+                            isCreatingJobFunctionShift
+                          }
+                          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
+                        >
+                          Beregn igen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={
+                            handleToggleJobFunctionPlacement
+                          }
+                          disabled={
+                            isCreatingJobFunctionShift
+                          }
+                          className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/70"
+                        >
+                          {isPlacingJobFunction
+                            ? "Annuller manuel placering"
+                            : "Placér manuelt i stedet"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p
+                        role="alert"
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100"
+                      >
+                        {timingPreviewError ||
+                          "Vagtens tider kunne ikke beregnes."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={
+                          handleToggleJobFunctionPlacement
+                        }
+                        disabled={
+                          isCreatingJobFunctionShift
+                        }
+                        className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/70"
+                      >
+                        {isPlacingJobFunction
+                          ? "Annuller manuel placering"
+                          : "Placér manuelt som undtagelse"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isPlacingJobFunction &&
+                selectedJobFunction && (
+                  <p className="mt-3 rounded-lg bg-blue-100 px-3 py-2 text-xs font-semibold text-blue-950 dark:bg-blue-950/60 dark:text-blue-100">
+                    Manuel undtagelse: Klik på et tomt tidspunkt i tidslinjen for
+                    at oprette {selectedJobFunction.name}. Starttiden snapper til
+                    nærmeste kvarter
+                    {selectedDurationMinutes
+                      ? ` · Varighed: ${formatJobFunctionShiftDuration(
+                          selectedDurationMinutes,
+                        )}`
+                      : ""}.
+                  </p>
+                )}
+
+              {placementError && (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100"
+                >
+                  {placementError}
                 </p>
               )}
             </div>
           )}
-
         <ShiftTimeline
           shifts={shifts}
           users={users}

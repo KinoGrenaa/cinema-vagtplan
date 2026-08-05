@@ -980,7 +980,10 @@ export function useSchedule(
 
         if (!response.ok) {
           throw new Error(
-            "Kunne ikke slette vagt",
+            await readErrorMessage(
+              response,
+              "Kunne ikke slette vagt.",
+            ),
           );
         }
 

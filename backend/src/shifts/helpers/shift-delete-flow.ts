@@ -1,9 +1,12 @@
 import { NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
+import {
+  acquireShiftAdvisoryLock,
+  SHIFT_RECORD_LOCK_NAMESPACE,
+} from './shift-advisory-lock';
 import {
   AuthUser,
   getShiftUserLabel,
@@ -39,13 +42,10 @@ export async function deleteShiftFlow({
   );
   const shiftToDelete =
     await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(
-        Prisma.sql`
-          SELECT pg_advisory_xact_lock(
-            56002,
-            ${id}
-          )
-        `,
+      await acquireShiftAdvisoryLock(
+        tx,
+        SHIFT_RECORD_LOCK_NAMESPACE,
+        id,
       );
 
       const shift =
