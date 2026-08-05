@@ -32,9 +32,9 @@ export function getDraftPreviewPrepareState({
   if (loading) {
     return {
       canPrepareDraft: false,
-      title: "Forhåndsvisningen hentes",
+      title: "Planlægningsgrundlaget hentes",
       description:
-        "Vent til månedens skabeloner er hentet, før du gemmer en forhåndsvisning.",
+        "Vent til månedens skabeloner er hentet, før du beregner vagtforslaget.",
       nextStep: "Tjek listen igen, når indlæsningen er færdig.",
       variant: "loading",
     };
@@ -45,7 +45,7 @@ export function getDraftPreviewPrepareState({
       canPrepareDraft: false,
       title: "Vælg aktiv biograf først",
       description:
-        "Forhåndsvisningen kan først gemmes, når MASTER har valgt en aktiv biograf.",
+        "Vagtforslaget kan først beregnes, når MASTER har valgt en aktiv biograf.",
       nextStep: "Vælg biograf i toppen eller via MASTER-panelet.",
       variant: "blocked",
     };
@@ -54,11 +54,11 @@ export function getDraftPreviewPrepareState({
   if (rowCount === 0) {
     return {
       canPrepareDraft: false,
-      title: "Ingen datoer er klar til forhåndsvisning",
+      title: "Ingen datoer er klar til beregning",
       description:
         "Der er ingen aktive datoer med vagtsskabelon i måneden endnu.",
       nextStep:
-        "Vælg datoer i kalenderen nedenfor, læg vagtsskabeloner på dem, og gem derefter forhåndsvisningen.",
+        "Vælg datoer i kalenderen, læg vagtsskabeloner på dem, og beregn derefter vagtforslaget.",
       variant: "blocked",
     };
   }
@@ -66,11 +66,11 @@ export function getDraftPreviewPrepareState({
   if (missingTemplateDayCount > 0) {
     return {
       canPrepareDraft: true,
-      title: "Kan gemmes, men kræver kontrol",
+      title: "Kan beregnes, men kræver kontrol",
       description:
         "Mindst én dato bruger en skabelon uden opsætning for den ugedag.",
       nextStep:
-        "Ret de markerede datoer eller gem forhåndsvisningen og kør kontrol, før vagter oprettes.",
+        "Ret de markerede datoer eller beregn vagtforslaget og kør kontrol, før vagter oprettes.",
       variant: "warning",
     };
   }
@@ -78,22 +78,22 @@ export function getDraftPreviewPrepareState({
   if (warningCount > 0 || emptyDraftShiftCount > 0) {
     return {
       canPrepareDraft: true,
-      title: "Kan gemmes med opmærksomhedspunkter",
+      title: "Kan beregnes med opmærksomhedspunkter",
       description:
-        "Forhåndsvisningen indeholder ugeadvarsler eller vagter uden standardmedarbejder.",
+        "Vagtforslaget vil indeholde ugeadvarsler eller vagter uden fast medarbejder.",
       nextStep:
-        "Gem forhåndsvisningen, åbn kontrollen og gennemgå oprettelsesoverblikket, før vagter oprettes.",
+        "Beregn vagtforslaget, åbn kladden og gennemgå kontrollen, før vagter oprettes.",
       variant: "warning",
     };
   }
 
   return {
     canPrepareDraft: true,
-    title: "Klar til forhåndsvisning",
+    title: "Klar til beregning",
     description:
       "Måneden har aktive datoer med vagtsskabeloner og ingen kendte opmærksomhedspunkter i denne oversigt.",
     nextStep:
-      "Gem forhåndsvisningen, gennemgå kontrollen og opret først derefter de rigtige vagter.",
+      "Beregn vagtforslaget, gennemgå kontrollen og opret først derefter vagterne.",
     variant: "ready",
   };
 }
@@ -103,14 +103,14 @@ export function getDraftPreviewPrepareButtonLabel(
   savingDraft: boolean,
 ) {
   if (savingDraft) {
-    return "Gemmer forhåndsvisning...";
+    return "Beregner vagtforslag...";
   }
 
   if (!state.canPrepareDraft) {
-    return "Gem forhåndsvisning";
+    return "Beregn vagtforslag";
   }
 
   return state.variant === "warning"
-    ? "Gem og kontrollér"
-    : "Gem forhåndsvisning";
+    ? "Beregn og gennemgå"
+    : "Beregn vagtforslag";
 }

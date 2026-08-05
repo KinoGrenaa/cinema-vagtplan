@@ -3,15 +3,9 @@ import { useState } from "react";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
-
 import { ShiftPlanningDraftPreviewMetricsPanel } from "./ShiftPlanningDraftPreviewMetricsPanel";
 import { ShiftPlanningDraftPreviewPrepareNotice } from "./ShiftPlanningDraftPreviewPrepareNotice";
-import { ShiftPlanningDraftPreviewRowCard } from "./ShiftPlanningDraftPreviewRowCard";
 import { ShiftPlanningDraftPreviewStatusPanel } from "./ShiftPlanningDraftPreviewStatusPanel";
-import {
-  getHiddenDraftPreviewAttentionCount,
-  getPrioritizedDraftPreviewRows,
-} from "../../helpers/shiftPlanningDraftPreviewPriority";
 import {
   getDraftPreviewPrepareButtonLabel,
   getDraftPreviewPrepareState,
@@ -39,7 +33,6 @@ type ShiftPlanningDraftPreviewProps = {
   month: number;
   templatesById: Map<number | string, ScheduleTemplateSummary>;
   year: number;
-  onOpenDay: (day: MonthPlanDay) => void;
   onDraftPrepared?: (draft: PreparedDraftSummary) => void;
 };
 
@@ -63,8 +56,6 @@ export type PreparedDraftSummary = {
   status?: string | null;
   createdAt?: string | null;
 };
-
-const MAX_VISIBLE_DAYS = 6;
 
 function getPreviewRows(
   days: MonthPlanDay[],
@@ -100,7 +91,6 @@ export default function ShiftPlanningDraftPreview({
   month,
   templatesById,
   year,
-  onOpenDay,
   onDraftPrepared,
 }: ShiftPlanningDraftPreviewProps) {
   const infoDialog = useInfoModal();
@@ -108,9 +98,7 @@ export default function ShiftPlanningDraftPreview({
   const [latestDraft, setLatestDraft] = useState<PreparedDraftSummary | null>(
     null,
   );
-
   const rows = getPreviewRows(days, templatesById);
-  const prioritizedRows = getPrioritizedDraftPreviewRows(rows);
   const totalDraftShifts = rows.reduce(
     (sum, row) => sum + row.requiredCount,
     0,
@@ -127,12 +115,6 @@ export default function ShiftPlanningDraftPreview({
   const missingTemplateDayCount = rows.filter(
     (row) => !row.hasTemplateDay,
   ).length;
-  const visibleRows = prioritizedRows.slice(0, MAX_VISIBLE_DAYS);
-  const hiddenCount = Math.max(0, rows.length - visibleRows.length);
-  const hiddenAttentionCount = getHiddenDraftPreviewAttentionCount(
-    visibleRows,
-    prioritizedRows,
-  );
   const prepareState = getDraftPreviewPrepareState({
     activeCinemaId,
     emptyDraftShiftCount: totalEmptyDraftShifts,
@@ -150,8 +132,8 @@ export default function ShiftPlanningDraftPreview({
   const prepareDraft = async () => {
     if (!activeCinemaId) {
       infoDialog.showError(
-        "Kan ikke gemme forhåndsvisning",
-        "Vælg en aktiv biograf, før du forbereder vagter.",
+        "Kan ikke beregne vagtforslag",
+        "Vælg en aktiv biograf, før du beregner vagter.",
       );
       return;
     }
@@ -166,32 +148,38 @@ export default function ShiftPlanningDraftPreview({
             year,
             month,
             cinemaId: activeCinemaId,
-            note: `Forberedt fra månedsplanen for ${getMonthName(year, month)}`,
+            note:
+              "Forberedt fra månedsplanen for " + getMonthName(year, month),
           }),
         },
       );
 
       if (!response.ok) {
         throw new Error(
-          await readErrorMessage(response, "Kunne ikke gemme forhåndsvisning"),
+          await readErrorMessage(response, "Kunne ikke beregne vagtforslag"),
         );
       }
 
       const draft = (await response.json()) as PreparedDraftSummary;
       setLatestDraft(draft);
       onDraftPrepared?.(draft);
+      window.setTimeout(() => {
+        document
+          .getElementById("shift-planning-review")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
       infoDialog.show({
-        title: "Forhåndsvisning gemt",
+        title: "Vagtforslag beregnet",
         description: getPreparedDraftSuccessDescription(draft),
         variant: "success",
         buttonText: "OK",
       });
     } catch (error) {
       infoDialog.showError(
-        "Kunne ikke gemme forhåndsvisning",
+        "Kunne ikke beregne vagtforslag",
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da forhåndsvisningen skulle gemmes.",
+          : "Der opstod en fejl, da vagtforslaget skulle beregnes.",
       );
     } finally {
       setSavingDraft(false);
@@ -200,22 +188,24 @@ export default function ShiftPlanningDraftPreview({
 
   return (
     <>
-      <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950">
+      <section
+        id="shift-planning-calculate"
+        className="scroll-mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950"
+      >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
+          <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">
-              Forhåndsvisning
+              Trin 2
             </p>
             <h2 className="mt-1 text-xl font-bold text-gray-900 dark:text-white">
-              Forhåndsvis vagter
+              Beregn månedens vagtforslag
             </h2>
-            <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
-              Viser hvad månedens valgte skabeloner foreløbigt vil kunne blive
-              til. Knappen gemmer en forhåndsvisning, men opretter stadig ingen
-              aktive vagter i vagtplanen.
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              Kalenderen ovenfor er planlægningsgrundlaget. Her beregnes én
+              samlet kladde ud fra de valgte skabeloner, jobfunktionernes
+              tidsregler og filmprogrammet.
             </p>
           </div>
-
           <button
             type="button"
             onClick={prepareDraft}
@@ -226,73 +216,29 @@ export default function ShiftPlanningDraftPreview({
           </button>
         </div>
 
-        <p className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">
-          En ny forhåndsvisning for samme måned erstatter den tidligere åbne
-          forhåndsvisning, så du altid arbejder videre fra den nyeste version.
-        </p>
+        <ShiftPlanningDraftPreviewMetricsPanel
+          totalDraftShifts={totalDraftShifts}
+          totalStandardAssignments={totalStandardAssignments}
+          totalEmptyDraftShifts={totalEmptyDraftShifts}
+          rowCount={rows.length}
+        />
 
         <ShiftPlanningDraftPreviewPrepareNotice state={prepareState} />
 
-        <div className="mt-5 space-y-4">
+        <p className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">
+          Ret en dato ved at klikke direkte på den i kalenderen. Der vises ikke
+          længere en ekstra datoliste her. Findes der allerede en åben kladde,
+          genberegnes den og kan derfor beholde samme kladde-nummer.
+        </p>
+
+        <div className="mt-4">
           <ShiftPlanningDraftPreviewStatusPanel
             latestDraft={latestDraft}
             loading={loading}
             rowCount={rows.length}
           />
-
-          {!loading && rows.length > 0 && (
-            <>
-              <ShiftPlanningDraftPreviewMetricsPanel
-                totalDraftShifts={totalDraftShifts}
-                totalStandardAssignments={totalStandardAssignments}
-                totalEmptyDraftShifts={totalEmptyDraftShifts}
-                rowCount={rows.length}
-              />
-
-              <div className="space-y-3">
-                {visibleRows.map((row) => (
-                  <ShiftPlanningDraftPreviewRowCard
-                    key={row.dateKey}
-                    row={row}
-                    onOpen={() => onOpenDay(row.day)}
-                  />
-                ))}
-              </div>
-
-              {(hiddenCount > 0 || warningCount > 0 || missingTemplateDayCount > 0) && (
-                <div className="flex flex-wrap gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  {hiddenCount > 0 && (
-                    <span className="rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
-                      {hiddenCount} øvrige dage ses i kalenderen nedenfor
-                    </span>
-                  )}
-                  {hiddenAttentionCount > 0 && (
-                    <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800 dark:bg-amber-950 dark:text-amber-100">
-                      {hiddenAttentionCount} skjulte dage kræver stadig tjek
-                    </span>
-                  )}
-                  {hiddenCount > 0 && hiddenAttentionCount === 0 && (
-                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-100">
-                      De viste dage dækker alle kendte opmærksomhedspunkter
-                    </span>
-                  )}
-                  {warningCount > 0 && (
-                    <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800 dark:bg-amber-950 dark:text-amber-100">
-                      {warningCount} dage med ugeadvarsel
-                    </span>
-                  )}
-                  {missingTemplateDayCount > 0 && (
-                    <span className="rounded-full bg-red-100 px-3 py-1 text-red-800 dark:bg-red-950 dark:text-red-100">
-                      {missingTemplateDayCount} dage uden ugedagsopsætning
-                    </span>
-                  )}
-                </div>
-              )}
-            </>
-          )}
         </div>
       </section>
-
       <InfoModal
         open={infoDialog.open}
         title={infoDialog.title}

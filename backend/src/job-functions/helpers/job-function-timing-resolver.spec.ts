@@ -197,4 +197,99 @@ describe('job-function-timing-resolver', () => {
     expect(result.startMinute).toBe(24 * 60 + 45);
     expect(result.endMinute).toBe(26 * 60 + 15);
   });
+  it('ignorerer filmstarter fra senere planlægningsdage, når tidsbegrænsningen er slået fra', () => {
+    const result = resolveJobFunctionTiming(
+      new Date('2026-08-15T10:00:00+02:00'),
+      {
+        ...baseRule,
+        startOffsetMinutes: 0,
+        endOffsetMinutes: 0,
+        roundStartToNearestQuarter: false,
+        roundEndToNearestQuarter: false,
+        restrictMovieStartsToWindow: false,
+      },
+      [
+        {
+          id: 1,
+          startTime: new Date('2026-08-15T16:00:00+02:00'),
+          endTime: new Date('2026-08-15T18:00:00+02:00'),
+        },
+        {
+          id: 2,
+          startTime: new Date('2026-08-31T20:00:00+02:00'),
+          endTime: new Date('2026-08-31T22:00:00+02:00'),
+        },
+      ],
+    );
+
+    expect(result.sourceMovieShowingIds).toEqual([1]);
+    expect(result.startMinute).toBe(16 * 60);
+    expect(result.endMinute).toBe(18 * 60);
+  });
+
+  it('medtager kun den udtrykkelige fortsættelse efter midnat i et tidsrum over midnat', () => {
+    const result = resolveJobFunctionTiming(
+      new Date('2026-08-15T10:00:00+02:00'),
+      {
+        ...baseRule,
+        filmWindowStartMinute: 20 * 60,
+        filmWindowEndMinute: 2 * 60,
+        startOffsetMinutes: 0,
+        endOffsetMinutes: 0,
+        roundStartToNearestQuarter: false,
+        roundEndToNearestQuarter: false,
+        restrictMovieStartsToWindow: true,
+      },
+      [
+        {
+          id: 1,
+          startTime: new Date('2026-08-15T21:00:00+02:00'),
+          endTime: new Date('2026-08-15T23:00:00+02:00'),
+        },
+        {
+          id: 2,
+          startTime: new Date('2026-08-16T01:00:00+02:00'),
+          endTime: new Date('2026-08-16T02:00:00+02:00'),
+        },
+        {
+          id: 3,
+          startTime: new Date('2026-08-16T03:00:00+02:00'),
+          endTime: new Date('2026-08-16T05:00:00+02:00'),
+        },
+        {
+          id: 4,
+          startTime: new Date('2026-08-17T01:00:00+02:00'),
+          endTime: new Date('2026-08-17T02:00:00+02:00'),
+        },
+      ],
+    );
+
+    expect(result.sourceMovieShowingIds).toEqual([1, 2]);
+    expect(result.startMinute).toBe(21 * 60);
+    expect(result.endMinute).toBe(26 * 60);
+  });
+
+  it('afviser en beregnet vagt på 24 timer eller mere', () => {
+    expect(() =>
+      resolveJobFunctionTiming(
+        new Date('2026-08-15T10:00:00+02:00'),
+        {
+          ...baseRule,
+          startOffsetMinutes: 0,
+          endOffsetMinutes: 24 * 60,
+          roundStartToNearestQuarter: false,
+          roundEndToNearestQuarter: false,
+          restrictMovieStartsToWindow: false,
+        },
+        [
+          {
+            id: 1,
+            startTime: new Date('2026-08-15T16:00:00+02:00'),
+            endTime: new Date('2026-08-15T18:00:00+02:00'),
+          },
+        ],
+      ),
+    ).toThrow('24 timer eller mere');
+  });
+
 });

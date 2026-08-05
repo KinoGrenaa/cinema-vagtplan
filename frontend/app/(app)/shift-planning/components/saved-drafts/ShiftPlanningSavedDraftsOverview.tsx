@@ -92,7 +92,7 @@ export default function ShiftPlanningSavedDraftsOverview({
   const [publishError, setPublishError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [draftStatusFilter, setDraftStatusFilter] =
-    useState<DraftStatusFilter>("ALL");
+    useState<DraftStatusFilter>("DRAFT");
   const [showAllDrafts, setShowAllDrafts] = useState(false);
 
   const selectedItems = selectedDraft?.items ?? [];
@@ -158,7 +158,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke hente forhåndsvisninger",
+            "Kunne ikke hente kladder",
           ),
         );
       }
@@ -190,7 +190,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da forhåndsvisningerne skulle hentes.",
+          : "Der opstod en fejl, da kladderne skulle hentes.",
       );
     } finally {
       setLoading(false);
@@ -198,12 +198,20 @@ export default function ShiftPlanningSavedDraftsOverview({
   }, [activeCinemaId, month, year]);
 
   useEffect(() => {
-    fetchDrafts();
+    setSelectedDraft(null);
+    setValidationResult(null);
+    setValidationError(null);
+    setPublicationPreviewResult(null);
+    setPublicationPreviewError(null);
+    setPublishResult(null);
+    setPublishError(null);
+    setPublishNote("");
+    void fetchDrafts();
   }, [fetchDrafts, refreshKey]);
 
   const openDraft = async (draftId: number | string) => {
     if (!activeCinemaId) {
-      setErrorMessage("Vælg en aktiv biograf, før du åbner forhåndsvisninger.");
+      setErrorMessage("Vælg en aktiv biograf, før du åbner kladder.");
       return;
     }
 
@@ -226,7 +234,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke åbne forhåndsvisning",
+            "Kunne ikke åbne kladde",
           ),
         );
       }
@@ -243,7 +251,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da forhåndsvisningen skulle åbnes.",
+          : "Der opstod en fejl, da kladden skulle åbnes.",
       );
     } finally {
       setOpeningDraftId(null);
@@ -253,7 +261,7 @@ export default function ShiftPlanningSavedDraftsOverview({
   const requestDeleteDraft = (draft: SavedDraftSummary) => {
     if (String(draft.status ?? "").toUpperCase() === "PUBLISHED") {
       setDeleteError(
-        "Forhåndsvisningen har allerede oprettet vagter og kan ikke slettes.",
+        "Kladden har allerede oprettet vagter og kan ikke slettes.",
       );
       return;
     }
@@ -268,7 +276,7 @@ export default function ShiftPlanningSavedDraftsOverview({
     }
 
     if (!activeCinemaId) {
-      setDeleteError("Vælg en aktiv biograf, før du sletter forhåndsvisningen.");
+      setDeleteError("Vælg en aktiv biograf, før du sletter kladden.");
       return;
     }
 
@@ -288,7 +296,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke slette forhåndsvisningen",
+            "Kunne ikke slette kladden",
           ),
         );
       }
@@ -315,7 +323,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setDeleteError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da forhåndsvisningen skulle slettes.",
+          : "Der opstod en fejl, da kladden skulle slettes.",
       );
     } finally {
       setDeletingDraftId(null);
@@ -324,12 +332,12 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const validateSelectedDraft = async () => {
     if (!selectedDraft) {
-      setValidationError("Åbn en forhåndsvisning, før du kører kontrol.");
+      setValidationError("Åbn en kladde, før du kører kontrol.");
       return;
     }
 
     if (!activeCinemaId) {
-      setValidationError("Vælg en aktiv biograf, før du kører kontrol på forhåndsvisningen.");
+      setValidationError("Vælg en aktiv biograf, før du kører kontrol på kladden.");
       return;
     }
 
@@ -348,7 +356,7 @@ export default function ShiftPlanningSavedDraftsOverview({
         throw new Error(
           await readErrorMessage(
             response,
-            "Kunne ikke køre kontrol på forhåndsvisningen",
+            "Kunne ikke køre kontrol på kladden",
           ),
         );
       }
@@ -359,7 +367,7 @@ export default function ShiftPlanningSavedDraftsOverview({
       setValidationError(
         error instanceof Error
           ? error.message
-          : "Der opstod en fejl, da forhåndsvisningen skulle kontrolleres.",
+          : "Der opstod en fejl, da kladden skulle kontrolleres.",
       );
     } finally {
       setValidatingDraftId(null);
@@ -369,7 +377,7 @@ export default function ShiftPlanningSavedDraftsOverview({
   const loadPublicationPreview = async () => {
     if (!selectedDraft) {
       setPublicationPreviewError(
-        "Åbn en forhåndsvisning, før du henter oprettelsesoverblik.",
+        "Åbn en kladde, før du henter oprettelsesoverblik.",
       );
       return;
     }
@@ -420,7 +428,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
   const publishSelectedDraft = async () => {
     if (!selectedDraft) {
-      setPublishError("Åbn en forhåndsvisning, før du opretter vagter.");
+      setPublishError("Åbn en kladde, før du opretter vagter.");
       return;
     }
 
@@ -513,7 +521,7 @@ export default function ShiftPlanningSavedDraftsOverview({
   };
 
   return (
-    <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section id="shift-planning-review" className="scroll-mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <ShiftPlanningSavedDraftsHeader
         loading={loading}
         month={month}
@@ -595,16 +603,16 @@ export default function ShiftPlanningSavedDraftsOverview({
           <div className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-red-600 dark:text-red-300">
-                Slet forhåndsvisning
+                Slet kladde
               </p>
               <h3 className="mt-2 text-xl font-extrabold text-gray-950 dark:text-gray-50">
-                Slet forhåndsvisning #{draftPendingDelete.id}?
+                Slet kladde #{draftPendingDelete.id}?
               </h3>
             </div>
 
             <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
-              Forhåndsvisningen fjernes fra listen. Der slettes ikke vagter i
-              vagtplanen, fordi forhåndsvisningen ikke har oprettet vagter.
+              Kladden fjernes fra listen. Der slettes ikke vagter i
+              vagtplanen, fordi kladden ikke har oprettet vagter.
             </p>
 
             {deleteError && (
@@ -628,7 +636,7 @@ export default function ShiftPlanningSavedDraftsOverview({
                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
                 disabled={Boolean(deletingDraftId)}
               >
-                {deletingDraftId ? "Sletter..." : "Ja, slet forhåndsvisning"}
+                {deletingDraftId ? "Sletter..." : "Ja, slet kladde"}
               </button>
             </div>
           </div>

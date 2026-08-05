@@ -49,14 +49,18 @@ export function getDateKey(value?: string | null) {
 export function formatMinute(value: unknown) {
   const minute = Number(value);
 
-  if (!Number.isInteger(minute) || minute < 0) {
+  if (!Number.isInteger(minute) || minute < 0 || minute >= 48 * 60) {
     return null;
   }
 
-  const hours = Math.floor(minute / 60);
-  const minutes = minute % 60;
+  const dayOffset = Math.floor(minute / (24 * 60));
+  const minuteOfDay = minute % (24 * 60);
+  const hours = Math.floor(minuteOfDay / 60);
+  const minutes = minuteOfDay % 60;
+  const formatted =
+    String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0");
 
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  return dayOffset === 1 ? formatted + " næste dag" : formatted;
 }
 
 

@@ -82,7 +82,15 @@ export type ScheduleTemplateAssignmentData = {
 export type ScheduleTemplateDbClient =
   Prisma.TransactionClient;
 
-const SCHEDULE_TEMPLATE_LOCK_NAMESPACE = 1_397_909_604;
+const SCHEDULE_TEMPLATE_LOCK_NAMESPACE = 1_397_909_604n;
+const UINT32_MASK = 0xffff_ffffn;
+
+export function getScheduleTemplateCinemaLockKey(cinemaId: number) {
+  return (
+    (SCHEDULE_TEMPLATE_LOCK_NAMESPACE << 32n) |
+    (BigInt(cinemaId) & UINT32_MASK)
+  );
+}
 const MAX_TEMPLATE_NAME_LENGTH = 200;
 const MAX_TEMPLATE_TEXT_LENGTH = 5_000;
 
@@ -583,8 +591,7 @@ export async function withScheduleTemplateCinemaLock<T>(
   return prisma.$transaction(async (transaction) => {
     await transaction.$executeRaw`
       SELECT pg_advisory_xact_lock(
-        ${SCHEDULE_TEMPLATE_LOCK_NAMESPACE},
-        ${cinemaId}
+        ${getScheduleTemplateCinemaLockKey(cinemaId)}
       )
     `;
 

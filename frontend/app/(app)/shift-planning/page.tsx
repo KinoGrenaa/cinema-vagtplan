@@ -13,6 +13,7 @@ import ShiftPlanningMissingTemplateOverview from "./components/month/ShiftPlanni
 import ShiftPlanningDraftPreview from "./components/draft-preview/ShiftPlanningDraftPreview";
 import ShiftPlanningSavedDraftsOverview from "./components/saved-drafts/ShiftPlanningSavedDraftsOverview";
 import ShiftPlanningMasterCinemaRequired from "./components/shared/ShiftPlanningMasterCinemaRequired";
+import ShiftPlanningWorkflowSteps from "./components/shared/ShiftPlanningWorkflowSteps";
 import {
   addMonths,
   appendCinemaId,
@@ -463,7 +464,7 @@ export default function ShiftPlanningPage() {
       setDayForm(toDayForm(updatedDay));
       infoDialog.show({
         title: "Planlægningsdag gemt",
-        description: `Datoen ${formatDateKey(updatedDay.dateKey)} er gemt. Gem en forhåndsvisning, når månedens datoer er klar.`,
+        description: `Datoen ${formatDateKey(updatedDay.dateKey)} er gemt. Beregn vagtforslaget, når månedens datoer er klar.`,
         variant: "success",
         buttonText: "OK",
       });
@@ -488,11 +489,11 @@ export default function ShiftPlanningPage() {
             Vagtplanlægning
           </p>
           <h1 className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">
-            Månedsplan
+            Planlæg vagter
           </h1>
           <p className="mx-auto mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
-            Vælg vagtsskabeloner på dage eller hele uger. Gennemgå
-            forhåndsvisningen, før vagterne oprettes i vagtplanen.
+            Følg de tre trin: vælg månedens dage, beregn en kladde og
+            gennemgå den, før vagterne oprettes i vagtplanen.
           </p>
         </section>
 
@@ -500,7 +501,7 @@ export default function ShiftPlanningPage() {
 
         {!needsMasterCinemaSelection && (
           <>
-            <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <section id="shift-planning-month" className="scroll-mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
                 <div className="hidden lg:block" aria-hidden="true" />
                 <div className="text-center">
@@ -541,6 +542,7 @@ export default function ShiftPlanningPage() {
               </div>
             </section>
 
+            <ShiftPlanningWorkflowSteps />
             <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -576,34 +578,8 @@ export default function ShiftPlanningPage() {
               </div>
             </section>
 
-            <ShiftPlanningMissingTemplateOverview
-              days={missingTemplateDays}
-              loading={loading}
-              onOpenDay={openDayModal}
-            />
 
-            <ShiftPlanningDraftPreview
-              activeCinemaId={activeCinemaId}
-              days={plannedTemplateDays}
-              loading={loading}
-              month={month}
-              templatesById={templatesById}
-              year={year}
-              onOpenDay={openDayModal}
-              onDraftPrepared={() =>
-                setDraftRefreshKey((currentRefreshKey) => currentRefreshKey + 1)
-              }
-            />
-
-            <ShiftPlanningSavedDraftsOverview
-              activeCinemaId={activeCinemaId}
-              month={month}
-              refreshKey={draftRefreshKey}
-              year={year}
-              onDraftPublished={refreshMonthPlanAfterDraftPublish}
-            />
-
-            <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <section id="shift-planning-calendar" className="scroll-mt-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div className="mb-3 hidden grid-cols-[minmax(7rem,8rem)_repeat(7,minmax(0,1fr))] gap-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 lg:grid">
                 <div className="text-left">Uge</div>
                 {weekdayHeaders.map((weekday) => (
@@ -675,6 +651,32 @@ export default function ShiftPlanningPage() {
                 </div>
               )}
             </section>
+            <ShiftPlanningMissingTemplateOverview
+              days={missingTemplateDays}
+              loading={loading}
+              onOpenDay={openDayModal}
+            />
+
+            <ShiftPlanningDraftPreview
+              activeCinemaId={activeCinemaId}
+              days={plannedTemplateDays}
+              loading={loading}
+              month={month}
+              templatesById={templatesById}
+              year={year}
+              onDraftPrepared={() =>
+                setDraftRefreshKey((currentRefreshKey) => currentRefreshKey + 1)
+              }
+            />
+
+            <ShiftPlanningSavedDraftsOverview
+              activeCinemaId={activeCinemaId}
+              month={month}
+              refreshKey={draftRefreshKey}
+              year={year}
+              onDraftPublished={refreshMonthPlanAfterDraftPublish}
+            />
+
           </>
         )}
 

@@ -64,7 +64,7 @@ export function ShiftPlanningDraftPreviewStatusPanel({
 
       {loading && (
         <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-950/50 dark:text-gray-300">
-          Henter forhåndsvisning fra månedens skabeloner...
+          Henter grundlaget for månedens vagtforslag...
         </div>
       )}
 

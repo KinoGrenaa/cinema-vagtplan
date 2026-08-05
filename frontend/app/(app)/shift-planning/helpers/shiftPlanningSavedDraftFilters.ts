@@ -102,11 +102,11 @@ export function formatSelectedDraftFilterText(filter: DraftStatusFilter) {
     case "PUBLISHED":
       return "oprettede forslag";
     case "SUPERSEDED":
-      return "erstattede forhåndsvisninger";
+      return "erstattede kladder";
     case "OTHER":
-      return "andre eller annullerede forhåndsvisninger";
+      return "andre eller annullerede kladder";
     default:
-      return "forhåndsvisninger";
+      return "kladder";
   }
 }
 

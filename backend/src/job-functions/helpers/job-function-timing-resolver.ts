@@ -48,6 +48,7 @@ export type ResolvedJobFunctionTiming = {
 };
 
 const MINUTES_PER_DAY = 24 * 60;
+const MAX_SHIFT_DURATION_MINUTES = MINUTES_PER_DAY;
 
 function normalizeWindowEnd(startMinute: number, endMinute: number) {
   return endMinute <= startMinute ? endMinute + MINUTES_PER_DAY : endMinute;
@@ -136,11 +137,16 @@ export function resolveJobFunctionTiming(
           ? showing.endMinute + MINUTES_PER_DAY
           : showing.endMinute,
     }))
-    .filter(
-      (showing) =>
-        showing.localStartDate === planningDateKey ||
-        showing.startMinute >= MINUTES_PER_DAY,
-    );
+    .filter((showing) => {
+      if (showing.localStartDate === planningDateKey) return true;
+
+      return (
+        rule.restrictMovieStartsToWindow &&
+        filmWindowEndMinute > MINUTES_PER_DAY &&
+        showing.startMinute >= MINUTES_PER_DAY &&
+        showing.startMinute < filmWindowEndMinute
+      );
+    });
 
   const movies = rule.restrictMovieStartsToWindow
     ? allMovies.filter(
@@ -187,6 +193,9 @@ export function resolveJobFunctionTiming(
 
   if (roundedEndMinute <= roundedStartMinute) {
     throw new Error('Tidsreglen giver et sluttidspunkt, der ikke ligger efter starttidspunktet.');
+  }
+  if (roundedEndMinute - roundedStartMinute >= MAX_SHIFT_DURATION_MINUTES) {
+    throw new Error('Tidsreglen giver en vagt på 24 timer eller mere.');
   }
 
   return {

@@ -16,6 +16,11 @@ import {
   buildCopenhagenDateTimeFromMinute,
   getCopenhagenDayInstantRange,
 } from './shift-planning-time-zone';
+import { validateDraftShiftMinutes } from './shift-planning-draft-time-validation';
+import {
+  buildPostgresIntegerArraySql,
+  getSourceMovieShowingIds,
+} from './shift-planning-source-movie-showing-ids';
 
 type AuthUser = {
   sub?: number;
@@ -48,6 +53,7 @@ type PublicationPreviewItemRow = {
   plannedEndMinute: number | bigint | null;
   warningCode: string | null;
   warningMessage: string | null;
+  metadata: unknown;
   jobFunctionName: string | null;
   jobFunctionColor: string | null;
   jobFunctionIsActive: boolean | null;
@@ -146,15 +152,21 @@ function buildShiftTimes(
     return { startTime: null, endTime: null };
   }
 
-  const date = toDate(dateValue);
-  const normalizedEndMinute =
-    plannedEndMinute <= plannedStartMinute
-      ? plannedEndMinute + 24 * 60
-      : plannedEndMinute;
+  const timingValidation = validateDraftShiftMinutes(
+    plannedStartMinute,
+    plannedEndMinute,
+  );
+  if (timingValidation.normalizedEndMinute === null) {
+    return { startTime: null, endTime: null };
+  }
 
+  const date = toDate(dateValue);
   return {
     startTime: buildDateTimeFromMinute(date, plannedStartMinute),
-    endTime: buildDateTimeFromMinute(date, normalizedEndMinute),
+    endTime: buildDateTimeFromMinute(
+      date,
+      timingValidation.normalizedEndMinute,
+    ),
   };
 }
 
@@ -196,6 +208,14 @@ function buildBlockReasons(
 
   if (plannedStartMinute === null || plannedEndMinute === null) {
     reasons.push('Mangler mødetid eller fyraften.');
+  } else {
+    const timingValidation = validateDraftShiftMinutes(
+      plannedStartMinute,
+      plannedEndMinute,
+    );
+    if (timingValidation.message) {
+      reasons.push(timingValidation.message);
+    }
   }
 
   reasons.push(...validationErrors);
@@ -237,6 +257,7 @@ function normalizePreviewItem(
     blockReasons,
     warningCode: row.warningCode,
     warningMessage: row.warningMessage,
+    sourceMovieShowingIds: getSourceMovieShowingIds(row.metadata),
   };
 }
 
@@ -424,6 +445,7 @@ export class ShiftPlanningDraftPublicationService {
           i."plannedEndMinute",
           i."warningCode",
           i."warningMessage",
+          i.metadata,
           jf.name AS "jobFunctionName",
           jf.color AS "jobFunctionColor",
           jf."isActive" AS "jobFunctionIsActive",
@@ -593,6 +615,7 @@ export class ShiftPlanningDraftPublicationService {
             i."plannedEndMinute",
             i."warningCode",
             i."warningMessage",
+            i.metadata,
             jf.name AS "jobFunctionName",
             jf.color AS "jobFunctionColor",
             jf."isActive" AS "jobFunctionIsActive",
@@ -660,6 +683,9 @@ export class ShiftPlanningDraftPublicationService {
           });
         }
 
+        const sourceMovieShowingIdsSql = buildPostgresIntegerArraySql(
+          item.sourceMovieShowingIds,
+        );
         const insertedRows = await tx.$queryRaw<InsertedShiftRow[]>(Prisma.sql`
           INSERT INTO "Shift" (
             "cinemaId",
@@ -684,7 +710,7 @@ export class ShiftPlanningDraftPublicationService {
             ${item.jobFunctionColor},
             'JOB_FUNCTION_RULE',
             CAST(${JSON.stringify({ source: 'SHIFT_PLANNING_DRAFT' })} AS jsonb),
-            CAST(${JSON.stringify([])} AS jsonb),
+            ${sourceMovieShowingIdsSql},
             ${item.startTime},
             ${item.endTime},
             ${note}

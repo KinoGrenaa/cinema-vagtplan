@@ -45,20 +45,20 @@ export function getPreparedDraftStatus(
   if (attentionText) {
     return {
       badgeText: "Kræver kontrol",
-      title: `Forhåndsvisning #${draft.id} er gemt`,
-      description: `${itemCount} vagter er gemt i forhåndsvisningen, men ${attentionText}. Der er stadig ikke oprettet aktive vagter.`,
+      title: `Kladde #${draft.id} er beregnet`,
+      description: `${itemCount} vagter er beregnet i kladden, men ${attentionText}. Der er stadig ikke oprettet aktive vagter.`,
       nextStep:
-        "Åbn den gemte forhåndsvisning fra listen, kør kontrol og gennemgå oprettelsesoverblikket, før vagter oprettes.",
+        "Åbn kladden nedenfor, kør kontrol og gennemgå oprettelsesoverblikket, før vagter oprettes.",
       tone: "attention",
     };
   }
 
   return {
     badgeText: "Klar til kontrol",
-    title: `Forhåndsvisning #${draft.id} er gemt`,
-    description: `${itemCount} vagter er gemt i forhåndsvisningen uden kendte opmærksomhedspunkter i denne oversigt. Der er stadig ikke oprettet aktive vagter.`,
+    title: `Kladde #${draft.id} er beregnet`,
+    description: `${itemCount} vagter er beregnet i kladden uden kendte opmærksomhedspunkter i denne oversigt. Der er stadig ikke oprettet aktive vagter.`,
     nextStep:
-      "Åbn den gemte forhåndsvisning fra listen, kør den endelige kontrol og opret derefter vagterne.",
+      "Åbn kladden nedenfor, kør den endelige kontrol og opret derefter vagterne.",
     tone: "ready",
   };
 }

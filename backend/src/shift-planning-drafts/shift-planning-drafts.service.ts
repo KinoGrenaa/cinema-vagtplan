@@ -13,6 +13,11 @@ import {
   getCopenhagenMinuteOfDay,
   getCopenhagenMonthInstantRange,
 } from './shift-planning-time-zone';
+import { validateDraftShiftMinutes } from './shift-planning-draft-time-validation';
+import {
+  buildPostgresIntegerArraySql,
+  getSourceMovieShowingIds,
+} from './shift-planning-source-movie-showing-ids';
 
 type AuthUser = {
   sub?: number;
@@ -354,17 +359,28 @@ function buildDraftItemInterval(row: any): DraftValidationInterval {
     };
   }
 
+  const timingValidation = validateDraftShiftMinutes(
+    plannedStartMinute,
+    plannedEndMinute,
+  );
+  if (timingValidation.normalizedEndMinute === null) {
+    return {
+      itemId: Number(row.id),
+      userId: toNullableNumber(row.userId),
+      dateKey,
+      start: null,
+      end: null,
+      plannedStartMinute,
+      plannedEndMinute,
+    };
+  }
   const start = buildCopenhagenDateTimeFromMinute(
     date,
     plannedStartMinute,
   );
-  const normalizedEndMinute =
-    plannedEndMinute <= plannedStartMinute
-      ? plannedEndMinute + 24 * 60
-      : plannedEndMinute;
   const end = buildCopenhagenDateTimeFromMinute(
     date,
-    normalizedEndMinute,
+    timingValidation.normalizedEndMinute,
   );
 
   return {
@@ -656,6 +672,21 @@ export class ShiftPlanningDraftsService {
           userId,
           message: 'Vagten mangler mødetid eller fyraften.',
         });
+      } else {
+        const timingValidation = validateDraftShiftMinutes(
+          plannedStartMinute,
+          plannedEndMinute,
+        );
+        if (timingValidation.message) {
+          issues.push({
+            severity: 'ERROR',
+            code: 'INVALID_SHIFT_TIME_RANGE',
+            itemId,
+            dateKey,
+            userId,
+            message: timingValidation.message,
+          });
+        }
       }
 
       if (userId !== null && row.userIsActive === false) {
@@ -1238,6 +1269,9 @@ export class ShiftPlanningDraftsService {
           );
         }
 
+        const sourceMovieShowingIdsSql = buildPostgresIntegerArraySql(
+          getSourceMovieShowingIds(row.metadata),
+        );
         const createdRows = await tx.$queryRaw<any[]>(Prisma.sql`
           INSERT INTO "Shift" (
             "cinemaId", "userId", "workTypeId", "jobFunctionId",
@@ -1248,7 +1282,7 @@ export class ShiftPlanningDraftsService {
             ${cinemaId}, ${toNullableNumber(row.userId)}, NULL, ${jobFunctionId},
             ${String(row.jobFunctionName)}, ${String(row.jobFunctionColor)},
             'JOB_FUNCTION_RULE', CAST(${JSON.stringify({ source: 'SHIFT_PLANNING_DRAFT' })} AS jsonb),
-            CAST(${JSON.stringify([])} AS jsonb), ${startTime}, ${endTime}, ${note}
+            ${sourceMovieShowingIdsSql}, ${startTime}, ${endTime}, ${note}
           )
           RETURNING id
         `);
