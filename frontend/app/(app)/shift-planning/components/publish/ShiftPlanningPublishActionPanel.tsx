@@ -18,16 +18,20 @@ export function ShiftPlanningPublishActionPanel({
     : selectedDraftIsPublished
       ? "Vagter er oprettet"
       : "Opret vagter";
+  const panelClasses = canOpenConfirm
+    ? "border-green-200 bg-green-50 text-green-950 dark:border-green-900/70 dark:bg-green-950/35 dark:text-green-100"
+    : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-100";
+  const title = canOpenConfirm
+    ? "Klar til at oprette vagter"
+    : "Oprettelsen venter";
+  const description = canOpenConfirm
+    ? "Kontrollen og oprettelsesoverblikket er godkendt. Klik for at åbne den sidste bekræftelse."
+    : blockedReason ?? "Kør den samlede kontrol, før vagterne oprettes.";
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 transition-colors dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-100">
-      <p className="font-semibold">Opret vagter i vagtplanen</p>
-      <p className="mt-1 text-amber-900 dark:text-amber-100/90">
-        Knappen åbner en bekræftelse, før noget oprettes. Hvis der mangler
-        kontrol eller vagtoverblik, viser bekræftelsen hvad der mangler.
-        Arbejdstype vælges på jobfunktionen.
-      </p>
-
+    <div className={`mt-4 rounded-2xl border p-4 text-sm transition-colors ${panelClasses}`}>
+      <p className="font-semibold">{title}</p>
+      <p className="mt-1 opacity-90">{description}</p>
       <button
         type="button"
         onClick={onOpenConfirm}
@@ -36,12 +40,6 @@ export function ShiftPlanningPublishActionPanel({
       >
         {buttonLabel}
       </button>
-
-      {!canOpenConfirm && blockedReason && (
-        <p className="mt-2 rounded-xl border border-amber-300 bg-white/60 px-3 py-2 text-xs font-semibold text-amber-950 dark:border-amber-800 dark:bg-black/20 dark:text-amber-100">
-          {blockedReason}
-        </p>
-      )}
     </div>
   );
 }

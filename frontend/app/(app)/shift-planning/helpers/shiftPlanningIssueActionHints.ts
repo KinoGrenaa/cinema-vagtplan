@@ -30,6 +30,14 @@ const TEMPLATE_ACTION_HINT: ShiftPlanningIssueActionHint = {
   linkLabel: "Åbn Vagtskabeloner",
   text: "Vælg en vagtskabelon for dagen, og kontrollér forslaget igen.",
 };
+const PAST_DATE_ACTION_HINT: ShiftPlanningIssueActionHint = {
+  text: "Opret et nyt forslag for en kommende dato. Overståede datoer kan ikke oprettes fra en kladde.",
+};
+const EXISTING_SHIFT_ACTION_HINT: ShiftPlanningIssueActionHint = {
+  href: "/schedule",
+  linkLabel: "Åbn Vagtplan",
+  text: "Kontrollér den eksisterende vagt i Vagtplan. Ret eller fjern konflikten, og kør kontrollen igen.",
+};
 
 function normalizeSearchText(value: unknown) {
   return String(value ?? "").toLowerCase();
@@ -58,6 +66,22 @@ function includesAny(searchText: string, terms: string[]) {
 function getActionHintFromSearchText(searchText: string) {
   const normalizedText = normalizeSearchText(searchText);
 
+  if (
+    includesAny(normalizedText, [
+      "datoen er overstået",
+      "overstået dato",
+    ])
+  ) {
+    return PAST_DATE_ACTION_HINT;
+  }
+  if (
+    includesAny(normalizedText, [
+      "samme jobfunktion og tidspunkt",
+      "allerede en vagt",
+    ])
+  ) {
+    return EXISTING_SHIFT_ACTION_HINT;
+  }
   if (
     includesAny(normalizedText, [
       "eksportkode",

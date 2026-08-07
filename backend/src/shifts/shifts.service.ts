@@ -27,6 +27,18 @@ import {
   findScheduleShiftsForDay,
 } from './helpers/schedule-shift-read';
 import {
+  findShiftMonthOverview,
+} from './helpers/shift-month-overview-read';
+import {
+  previewPlanningShiftRemoval as previewPlanningShiftRemovalFlow,
+  removePlanningShifts as removePlanningShiftsFlow,
+} from './helpers/shift-planning-removal';
+import {
+  previewPlanningShiftReplacement as previewPlanningShiftReplacementFlow,
+  replacePlanningShifts as replacePlanningShiftsFlow,
+} from './helpers/shift-planning-replacement';
+
+import {
   AuthUser,
   ShiftWriteData,
   formatShiftTime as formatShiftTimeHelper,
@@ -51,6 +63,115 @@ export class ShiftsService {
     private auditLogsService:
       AuditLogsService,
   ) {}
+
+  async findMonthOverview(
+    user: AuthUser,
+    year: number,
+    month: number,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = resolveShiftCinemaId(user, selectedCinemaId);
+    await ensureShiftActorHasCinemaAccess(this.prisma, user, cinemaId);
+
+    return findShiftMonthOverview(
+      this.prisma,
+      cinemaId,
+      year,
+      month,
+    );
+  }
+  async previewPlanningShiftReplacement(
+    user: AuthUser,
+    draftId: number,
+    scope: unknown,
+    dateKey: unknown,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = resolveShiftCinemaId(user, selectedCinemaId);
+    await ensureShiftActorHasCinemaAccess(this.prisma, user, cinemaId);
+
+    return previewPlanningShiftReplacementFlow(this.prisma, {
+      cinemaId,
+      draftId,
+      scope,
+      dateKey,
+    });
+  }
+
+  async replacePlanningShifts(
+    user: AuthUser,
+    input: {
+      draftId: number;
+      scope: unknown;
+      dateKey: unknown;
+      confirmationText: unknown;
+    },
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = resolveShiftCinemaId(user, selectedCinemaId);
+    await ensureShiftActorHasCinemaAccess(this.prisma, user, cinemaId);
+
+    return replacePlanningShiftsFlow(
+      {
+        prisma: this.prisma,
+        realtimeGateway: this.realtimeGateway,
+        pushService: this.pushService,
+      },
+      user,
+      {
+        cinemaId,
+        draftId: input.draftId,
+        scope: input.scope,
+        dateKey: input.dateKey,
+        confirmationText: input.confirmationText,
+      },
+    );
+  }
+
+  async previewPlanningShiftRemoval(
+    user: AuthUser,
+    scope: unknown,
+    dateKey: unknown,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = resolveShiftCinemaId(user, selectedCinemaId);
+    await ensureShiftActorHasCinemaAccess(this.prisma, user, cinemaId);
+
+    return previewPlanningShiftRemovalFlow(this.prisma, {
+      cinemaId,
+      scope,
+      dateKey,
+    });
+  }
+
+  async removePlanningShifts(
+    user: AuthUser,
+    input: {
+      scope: unknown;
+      dateKey: unknown;
+      confirmationText: unknown;
+    },
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId = resolveShiftCinemaId(user, selectedCinemaId);
+    await ensureShiftActorHasCinemaAccess(this.prisma, user, cinemaId);
+
+    return removePlanningShiftsFlow(
+      {
+        prisma: this.prisma,
+        realtimeGateway: this.realtimeGateway,
+        pushService: this.pushService,
+      },
+      user,
+      {
+        cinemaId,
+        scope: input.scope,
+        dateKey: input.dateKey,
+        confirmationText: input.confirmationText,
+      },
+    );
+  }
+
 
   async findAll(
     user: AuthUser,

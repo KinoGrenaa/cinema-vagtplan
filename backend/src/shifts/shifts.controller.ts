@@ -28,6 +28,124 @@ export class ShiftsController {
   ) {}
 
   @UseGuards(JwtGuard)
+  @Get('month-overview')
+  getShiftMonthOverview(
+    @Req() req: any,
+    @Query('year') year: string,
+    @Query('month') month: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.shiftsService.findMonthOverview(
+      req.user,
+      parseRequiredPositiveInteger(year, 'År skal være et gyldigt tal'),
+      parseRequiredPositiveInteger(month, 'Måned skal være et gyldigt tal'),
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+  @UseGuards(JwtGuard)
+  @Get('planning-replacement-preview')
+  previewPlanningShiftReplacement(
+    @Req() req: any,
+    @Query('draftId') draftId?: string,
+    @Query('scope') scope?: string,
+    @Query('date') date?: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.shiftsService.previewPlanningShiftReplacement(
+      req.user,
+      parseRequiredPositiveInteger(
+        draftId ?? '',
+        'Kladde skal være et gyldigt ID',
+      ),
+      scope,
+      date,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
+  @Post('planning-replacement')
+  replacePlanningShifts(
+    @Req() req: any,
+    @Body() body: unknown,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const input =
+      body && typeof body === 'object' && !Array.isArray(body)
+        ? (body as Record<string, unknown>)
+        : {};
+
+    return this.shiftsService.replacePlanningShifts(
+      req.user,
+      {
+        draftId: parseRequiredPositiveInteger(
+          String(input.draftId ?? ''),
+          'Kladde skal være et gyldigt ID',
+        ),
+        scope: input.scope,
+        dateKey: input.date,
+        confirmationText: input.confirmationText,
+      },
+      parseOptionalPositiveIntegerQuery(
+        input.cinemaId ?? cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Get('planning-removal-preview')
+  previewPlanningShiftRemoval(
+    @Req() req: any,
+    @Query('scope') scope?: string,
+    @Query('date') date?: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.shiftsService.previewPlanningShiftRemoval(
+      req.user,
+      scope,
+      date,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles('ADMIN', 'MASTER')
+  @Post('planning-removal')
+  removePlanningShifts(
+    @Req() req: any,
+    @Body() body: unknown,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const input =
+      body && typeof body === 'object' && !Array.isArray(body)
+        ? (body as Record<string, unknown>)
+        : {};
+    return this.shiftsService.removePlanningShifts(
+      req.user,
+      {
+        scope: input.scope,
+        dateKey: input.date,
+        confirmationText: input.confirmationText,
+      },
+      parseOptionalPositiveIntegerQuery(
+        input.cinemaId ?? cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Get()
   getAllShifts(
     @Req() req: any,

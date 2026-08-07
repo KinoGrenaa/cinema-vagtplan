@@ -23,7 +23,6 @@ export function ShiftPlanningPublicationPreviewPanel({
             Viser hvilke vagter der vil blive oprettet, uden at oprette dem endnu.
           </p>
         </div>
-
         {result?.checkedAt && (
           <span className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-medium text-blue-800 dark:border-blue-800 dark:bg-blue-950/70 dark:text-blue-100">
             Senest hentet {formatCreatedAt(result.checkedAt)}
@@ -39,7 +38,8 @@ export function ShiftPlanningPublicationPreviewPanel({
 
       {!result && !errorMessage && (
         <div className="mt-4 rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800 dark:border-blue-900/70 dark:bg-gray-950/70 dark:text-blue-100">
-          Vagterne er ikke vist endnu. Klik på “Se vagter”, når kontrollen er gennemført, så du kan se præcis hvilke vagter der kan oprettes.
+          Oprettelsesoverblikket vises automatisk, når den samlede kontrol er
+          gennemført.
         </div>
       )}
 

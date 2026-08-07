@@ -108,6 +108,49 @@ export type ScheduleTemplateSummary = {
   };
 };
 
+export type ShiftMonthOverviewUser = {
+  id: number;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  profileImage: string | null;
+};
+export type ShiftMonthOverviewJobFunction = {
+  id: number;
+  name: string;
+  color: string;
+  isActive: boolean;
+};
+export type ShiftMonthOverviewShift = {
+  id: number;
+  startTime: string;
+  endTime: string;
+  note: string | null;
+  userId: number | null;
+  jobFunctionId: number | null;
+  jobFunctionNameSnapshot: string | null;
+  jobFunctionColorSnapshot: string | null;
+  timingSource: string;
+  user: ShiftMonthOverviewUser | null;
+  jobFunction: ShiftMonthOverviewJobFunction | null;
+};
+export type ShiftMonthOverviewDay = {
+  dateKey: string;
+  shiftCount: number;
+  assignedShiftCount: number;
+  unassignedShiftCount: number;
+  shifts: ShiftMonthOverviewShift[];
+};
+export type ShiftMonthOverviewResponse = {
+  cinemaId: number;
+  year: number;
+  month: number;
+  startDate: string;
+  endDateExclusive: string;
+  totalShiftCount: number;
+  days: ShiftMonthOverviewDay[];
+};
+
 export type MonthPlanDay = {
   id: number | null;
   cinemaId: number;
@@ -123,6 +166,11 @@ export type MonthPlanDay = {
   movieShowingCount: number;
   plannedShiftCount: number;
   unassignedShiftCount: number;
+  scheduledShifts?: ShiftMonthOverviewShift[];
+  scheduledShiftCount?: number;
+  scheduledAssignedShiftCount?: number;
+  scheduledUnassignedShiftCount?: number;
+  workingPreviewItems?: ShiftPlanningWorkingPreviewItem[];
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -134,4 +182,48 @@ export type MonthPlanResponse = {
   startDate: string;
   endDateExclusive: string;
   days: MonthPlanDay[];
+};
+
+export type ShiftPlanningWorkingPreviewItem = {
+  previewItemId: string;
+  dateKey: string;
+  monthPlanDayId: number | null;
+  scheduleTemplateId: number | null;
+  scheduleTemplateDayId: number | null;
+  templateJobFunctionId: number | null;
+  jobFunctionId: number | null;
+  jobFunctionName: string | null;
+  jobFunctionColor: string | null;
+  userId: number | null;
+  userName: string | null;
+  userEmail: string | null;
+  requiredIndex: number;
+  plannedStartMinute: number | null;
+  plannedEndMinute: number | null;
+  startTime: string | null;
+  endTime: string | null;
+  canBecomeShift: boolean;
+  blockReasons: string[];
+  warningCode: string | null;
+  warningMessage: string | null;
+};
+
+export type ShiftPlanningWorkingPreviewResponse = {
+  cinemaId: number;
+  year: number;
+  month: number;
+  checkedAt: string;
+  source: "MONTH_PLAN_WORKING_PREVIEW" | "SAVED_DRAFT_PREVIEW";
+  persistsDraft: boolean;
+  summary: {
+    itemCount: number;
+    readyItemCount: number;
+    blockedItemCount: number;
+    existingShiftCount: number;
+    pastItemCount: number;
+    warningCount: number;
+    hasProblems: boolean;
+  };
+  warnings: Array<{ code: string; dateKey?: string; message: string }>;
+  items: ShiftPlanningWorkingPreviewItem[];
 };

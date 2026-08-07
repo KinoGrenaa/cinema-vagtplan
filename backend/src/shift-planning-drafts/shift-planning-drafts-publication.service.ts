@@ -13,6 +13,11 @@ import { ensureShiftUserHasCinemaAccess } from '../shifts/helpers/shift-user-acc
 
 import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
 import {
+  applyPublicationSafetyBlocks,
+  getPublicationSafetyInstantRange,
+  type PublicationSafetyExistingShift,
+} from './shift-planning-publication-safety';
+import {
   buildCopenhagenDateTimeFromMinute,
   getCopenhagenDayInstantRange,
 } from './shift-planning-time-zone';
@@ -268,6 +273,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 
   return fallback;
 }
+function isSerializableTransactionConflict(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'P2034'
+  );
+}
 
 function toBodyObject(body: unknown): PublicationPublishBody {
   if (!body || typeof body !== 'object') {
@@ -486,6 +499,28 @@ export class ShiftPlanningDraftPublicationService {
 
       return item;
     });
+    const previewSafetyRange =
+      getPublicationSafetyInstantRange(previewItems);
+    let existingPreviewShifts: PublicationSafetyExistingShift[] = [];
+    if (previewSafetyRange) {
+      const { start: previewStart, end: previewEnd } = previewSafetyRange;
+      existingPreviewShifts =
+        await this.prisma.$queryRaw<PublicationSafetyExistingShift[]>(
+          Prisma.sql`
+            SELECT
+              s.id,
+              s."jobFunctionId",
+              s."startTime",
+              s."endTime"
+            FROM "Shift" s
+            WHERE s."cinemaId" = ${cinemaId}
+              AND s."startTime" < ${previewEnd}
+              AND s."endTime" > ${previewStart}
+            ORDER BY s."startTime" ASC, s."endTime" ASC, s.id ASC
+          `,
+        );
+    }
+    applyPublicationSafetyBlocks(previewItems, existingPreviewShifts);
 
     for (const item of previewItems) {
       if (
@@ -645,12 +680,45 @@ export class ShiftPlanningDraftPublicationService {
         );
       }
 
+      const publishItems = itemRows.map((row) => normalizePreviewItem(row));
+      const publicationSafetyRange =
+        getPublicationSafetyInstantRange(publishItems);
+      let existingShifts: PublicationSafetyExistingShift[] = [];
+      if (publicationSafetyRange) {
+        const { start: publicationStart, end: publicationEnd } =
+          publicationSafetyRange;
+        existingShifts =
+          await tx.$queryRaw<PublicationSafetyExistingShift[]>(Prisma.sql`
+            SELECT
+              s.id,
+              s."jobFunctionId",
+              s."startTime",
+              s."endTime"
+            FROM "Shift" s
+            WHERE s."cinemaId" = ${cinemaId}
+              AND s."startTime" < ${publicationEnd}
+              AND s."endTime" > ${publicationStart}
+            ORDER BY s."startTime" ASC, s."endTime" ASC, s.id ASC
+            FOR SHARE
+          `);
+      }
+      applyPublicationSafetyBlocks(publishItems, existingShifts);
+
+      const blockedPublishItem = publishItems.find(
+        (item) => !item.canBecomeShift,
+      );
+      if (blockedPublishItem) {
+        throw new BadRequestException(
+          blockedPublishItem.blockReasons[0] ??
+            'Ret de markerede punkter, før vagterne oprettes.',
+        );
+      }
+
       const insertedShiftIds: number[] = [];
       const affectedDateKeys = new Set<string>();
       const jobFunctionNames = new Set<string>();
 
-      for (const row of itemRows) {
-        const item = normalizePreviewItem(row);
+      for (const item of publishItems) {
 
         if (!item.canBecomeShift || !item.startTime || !item.endTime) {
           throw new BadRequestException(
@@ -709,7 +777,11 @@ export class ShiftPlanningDraftPublicationService {
             ${item.jobFunctionName},
             ${item.jobFunctionColor},
             'JOB_FUNCTION_RULE',
-            CAST(${JSON.stringify({ source: 'SHIFT_PLANNING_DRAFT' })} AS jsonb),
+            CAST(${JSON.stringify({
+              source: 'SHIFT_PLANNING_DRAFT',
+              draftId,
+              draftItemId: item.draftItemId,
+            })} AS jsonb),
             ${sourceMovieShowingIdsSql},
             ${item.startTime},
             ${item.endTime},
@@ -784,6 +856,15 @@ export class ShiftPlanningDraftPublicationService {
         affectedDateKeys: sortedDateKeys,
         jobFunctionNames: sortedJobFunctionNames,
       };
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    }).catch((error) => {
+      if (isSerializableTransactionConflict(error)) {
+        throw new BadRequestException(
+          'Vagtplanen blev ændret under oprettelsen. Kør “Kontrollér og vis vagter” igen.',
+        );
+      }
+      throw error;
     });
 
     const publishedAt = new Date();

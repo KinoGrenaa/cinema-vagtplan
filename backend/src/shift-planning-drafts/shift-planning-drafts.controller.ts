@@ -23,6 +23,7 @@ type PrepareMonthBody = {
   month?: unknown;
   cinemaId?: unknown;
   note?: string | null;
+  name?: string | null;
 };
 
 function parseYear(value: unknown) {
@@ -78,6 +79,14 @@ function normalizePrepareBody(body: unknown): PrepareMonthBody {
     );
   }
 
+  if (
+    input.name !== undefined &&
+    input.name !== null &&
+    typeof input.name !== 'string'
+  ) {
+    throw new BadRequestException('Kladdenavn skal være tekst.');
+  }
+
   return input as PrepareMonthBody;
 }
 
@@ -103,6 +112,132 @@ export class ShiftPlanningDraftsController {
     );
   }
 
+  @UseGuards(JwtGuard)
+  @Post('preview')
+  previewMonth(
+    @Req() req: any,
+    @Body() body: unknown,
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const normalizedBody = normalizePrepareBody(body);
+    const selectedYear = normalizedBody.year ?? year;
+    const selectedMonth = normalizedBody.month ?? month;
+    const selectedCinemaId = normalizedBody.cinemaId ?? cinemaId;
+    return this.shiftPlanningDraftsService.previewMonth(req.user, {
+      ...normalizedBody,
+      year: parseYear(selectedYear),
+      month: parseMonth(selectedMonth),
+      cinemaId: parseOptionalCinemaId(selectedCinemaId),
+    });
+  }
+  @UseGuards(JwtGuard)
+  @Post('save')
+  saveNamedDraft(
+    @Req() req: any,
+    @Body() body: unknown,
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const normalizedBody = normalizePrepareBody(body);
+    const selectedYear = normalizedBody.year ?? year;
+    const selectedMonth = normalizedBody.month ?? month;
+    const selectedCinemaId = normalizedBody.cinemaId ?? cinemaId;
+    return this.shiftPlanningDraftsService.saveNamedDraft(req.user, {
+      ...normalizedBody,
+      year: parseYear(selectedYear),
+      month: parseMonth(selectedMonth),
+      cinemaId: parseOptionalCinemaId(selectedCinemaId),
+    });
+  }
+  @UseGuards(JwtGuard)
+  @Post('create')
+  createNamedDraft(
+    @Req() req: any,
+    @Body() body: unknown,
+    @Query('year') year?: string,
+    @Query('month') month?: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const normalizedBody = normalizePrepareBody(body);
+    const selectedYear = normalizedBody.year ?? year;
+    const selectedMonth = normalizedBody.month ?? month;
+    const selectedCinemaId = normalizedBody.cinemaId ?? cinemaId;
+    return this.shiftPlanningDraftsService.createNamedDraft(req.user, {
+      name: normalizedBody.name,
+      year: parseYear(selectedYear),
+      month: parseMonth(selectedMonth),
+      cinemaId: parseOptionalCinemaId(selectedCinemaId),
+    });
+  }
+
+  @UseGuards(JwtGuard)
+  @Post(':id/copy')
+  copyNamedDraft(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const normalizedBody = normalizePrepareBody(body);
+    const selectedCinemaId = normalizedBody.cinemaId ?? cinemaId;
+    return this.shiftPlanningDraftsService.copyNamedDraft(
+      req.user,
+      parseRequiredPositiveInteger(
+        id,
+        'Planlægningskladde skal være et gyldigt ID.',
+      ),
+      {
+        name: normalizedBody.name,
+        cinemaId: parseOptionalCinemaId(selectedCinemaId),
+      },
+    );
+  }
+  @UseGuards(JwtGuard)
+  @Post(':id/open')
+  openNamedDraftWorkspace(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const normalizedBody = normalizePrepareBody(body);
+    const selectedCinemaId = normalizedBody.cinemaId ?? cinemaId;
+    return this.shiftPlanningDraftsService.openNamedDraftWorkspace(
+      req.user,
+      parseRequiredPositiveInteger(
+        id,
+        'Planlægningskladde skal være et gyldigt ID.',
+      ),
+      {
+        cinemaId: parseOptionalCinemaId(selectedCinemaId),
+      },
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Post(':id/save-changes')
+  saveNamedDraftChanges(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const normalizedBody = normalizePrepareBody(body);
+    const selectedCinemaId = normalizedBody.cinemaId ?? cinemaId;
+    return this.shiftPlanningDraftsService.updateNamedDraft(
+      req.user,
+      parseRequiredPositiveInteger(
+        id,
+        'Planlægningskladde skal være et gyldigt ID.',
+      ),
+      {
+        cinemaId: parseOptionalCinemaId(selectedCinemaId),
+      },
+    );
+  }
   @UseGuards(JwtGuard)
   @Post('prepare')
   prepareMonth(

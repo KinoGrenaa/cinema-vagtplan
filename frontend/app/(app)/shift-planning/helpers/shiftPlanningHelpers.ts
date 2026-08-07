@@ -234,7 +234,6 @@ export function getMonthCalendarWeeks(
   }
 
   const weeks: MonthCalendarWeek[] = [];
-
   for (let index = 0; index < cells.length; index += 7) {
     const weekDays = cells.slice(index, index + 7);
     const firstVisibleDay = weekDays.find((day): day is MonthPlanDay => Boolean(day));
@@ -248,9 +247,8 @@ export function getMonthCalendarWeeks(
       (day) => day?.isActive && Boolean(day.scheduleTemplateId),
     ).length;
     const missingTemplateDays = weekDays.filter(
-      (day) => day?.isActive && !day.scheduleTemplateId,
+      (day) => day && isPlanningMissing(day),
     ).length;
-
     weeks.push({
       weekKey: `week-${index / 7}-${firstVisibleDateKey || "unknown"}`,
       weekNumber,
@@ -328,15 +326,44 @@ export function getTemplateWeekParityWarning(
   ).toLowerCase()}. Brug kun valget som bevidst afvigelse.`;
 }
 
+export function getTodayDateKey() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
+export function isPastDate(dateKey: string | null | undefined) {
+  const normalizedDateKey = normalizeDateKey(dateKey);
+  return Boolean(normalizedDateKey && normalizedDateKey < getTodayDateKey());
+}
+
+export function hasScheduledShifts(day: MonthPlanDay) {
+  return (day.scheduledShiftCount ?? day.scheduledShifts?.length ?? 0) > 0;
+}
+
+export function isPlanningMissing(day: MonthPlanDay) {
+  return (
+    day.isActive &&
+    !day.scheduleTemplateId &&
+    !hasScheduledShifts(day) &&
+    !isPastDate(getMonthPlanDayDateKey(day))
+  );
+}
+
 export function getDayStatusLabel(day: MonthPlanDay) {
   if (!day.isActive) return "Inaktiv";
-  if (day.scheduleTemplateId) return "Planlagt";
-  return "Mangler skabelon";
+  if (isPastDate(getMonthPlanDayDateKey(day))) return "Afsluttet";
+  if (hasScheduledShifts(day)) return "I vagtplanen";
+  if (day.scheduleTemplateId) return "Skabelon valgt";
+  return "Mangler planlægning";
 }
 
 export function getDayStatusClasses(day: MonthPlanDay) {
-  if (!day.isActive) {
+  if (!day.isActive || isPastDate(getMonthPlanDayDateKey(day))) {
     return "border-gray-300 bg-gray-100 text-gray-600 dark:border-gray-800 dark:bg-gray-950/60 dark:text-gray-400";
+  }
+
+  if (hasScheduledShifts(day)) {
+    return "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900/70 dark:bg-blue-950/35 dark:text-blue-100";
   }
 
   if (day.scheduleTemplateId) {
@@ -352,18 +379,17 @@ export function getMonthSummary(days: MonthPlanDay[]) {
   const daysWithTemplate = days.filter(
     (day) => day.isActive && Boolean(day.scheduleTemplateId),
   ).length;
-  const missingTemplateDays = days.filter(
-    (day) => day.isActive && !day.scheduleTemplateId,
-  ).length;
+  const scheduledDays = days.filter((day) => hasScheduledShifts(day)).length;
+  const missingTemplateDays = days.filter((day) => isPlanningMissing(day)).length;
   const totalUnassigned = days.reduce(
     (sum, day) => sum + (day.unassignedShiftCount ?? 0),
     0,
   );
-
   return {
     activeDays,
     inactiveDays,
     daysWithTemplate,
+    scheduledDays,
     missingTemplateDays,
     totalUnassigned,
   };
@@ -411,12 +437,5 @@ export function getUserDisplayName(user: ScheduleTemplateUserSummary) {
 
 export function isToday(dateKey: string | null | undefined) {
   const normalizedDateKey = normalizeDateKey(dateKey);
-
-  if (!normalizedDateKey) {
-    return false;
-  }
-
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  return normalizedDateKey === todayKey;
+  return Boolean(normalizedDateKey && normalizedDateKey === getTodayDateKey());
 }

@@ -18,7 +18,8 @@ export function ShiftPlanningDraftValidationStateMessage({
   if (!hasResult) {
     return (
       <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-        Kontrollen er ikke kørt endnu. Kør kontrollen, før du henter oprettelsesoverblik eller opretter vagter.
+        Kontrollen er ikke kørt endnu. Klik på “Kontrollér og vis vagter” for
+        både at kontrollere kladden og hente oprettelsesoverblikket.
       </div>
     );
   }

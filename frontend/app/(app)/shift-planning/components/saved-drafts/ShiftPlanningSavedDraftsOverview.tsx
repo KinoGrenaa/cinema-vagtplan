@@ -333,17 +333,22 @@ export default function ShiftPlanningSavedDraftsOverview({
   const validateSelectedDraft = async () => {
     if (!selectedDraft) {
       setValidationError("Åbn en kladde, før du kører kontrol.");
-      return;
+      return false;
     }
 
     if (!activeCinemaId) {
       setValidationError("Vælg en aktiv biograf, før du kører kontrol på kladden.");
-      return;
+      return false;
     }
 
     try {
       setValidatingDraftId(selectedDraft.id);
       setValidationError(null);
+      setValidationResult(null);
+      setPublicationPreviewResult(null);
+      setPublicationPreviewError(null);
+      setPublishResult(null);
+      setPublishError(null);
 
       const response = await apiFetch(
         appendCinemaId(
@@ -361,7 +366,10 @@ export default function ShiftPlanningSavedDraftsOverview({
         );
       }
 
-      setValidationResult((await response.json()) as DraftValidationResult);
+      const nextValidationResult =
+        (await response.json()) as DraftValidationResult;
+      setValidationResult(nextValidationResult);
+      return true;
     } catch (error) {
       setValidationResult(null);
       setValidationError(
@@ -369,6 +377,7 @@ export default function ShiftPlanningSavedDraftsOverview({
           ? error.message
           : "Der opstod en fejl, da kladden skulle kontrolleres.",
       );
+      return false;
     } finally {
       setValidatingDraftId(null);
     }
@@ -576,6 +585,7 @@ export default function ShiftPlanningSavedDraftsOverview({
 
           <ShiftPlanningPublishPanel
             canSubmitPublish={canSubmitPublish}
+            controlReadyForCreation={isReadyForCreation}
             onPublish={publishSelectedDraft}
             publicationPreviewCanPublishLater={
               publicationPreviewCanPublishLater

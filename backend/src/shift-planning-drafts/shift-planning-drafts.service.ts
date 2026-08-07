@@ -18,6 +18,17 @@ import {
   buildPostgresIntegerArraySql,
   getSourceMovieShowingIds,
 } from './shift-planning-source-movie-showing-ids';
+import { buildShiftPlanningMonthWorkingPreview } from './shift-planning-month-working-preview';
+import {
+  EmptyShiftPlanningNamedDraftError,
+  ShiftPlanningNamedDraftNotEditableError,
+  createEmptyNamedShiftPlanningDraft,
+  openNamedShiftPlanningDraftWorkspace,
+  updateNamedShiftPlanningDraft,
+  ShiftPlanningNamedDraftNotFoundError,
+  copyNamedShiftPlanningDraft,
+  saveNamedShiftPlanningDraft,
+} from './shift-planning-named-draft-workspace';
 
 type AuthUser = {
   sub?: number;
@@ -31,6 +42,7 @@ type DraftRequestData = {
   month?: number | string;
   cinemaId?: number | string | null;
   note?: string | null;
+  name?: string | null;
 };
 
 type PublishDraftData = {
@@ -132,6 +144,22 @@ function parseOptionalNote(value: unknown) {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseRequiredDraftName(value: unknown) {
+  if (typeof value !== 'string') {
+    throw new BadRequestException('Skriv et navn til kladden.');
+  }
+
+  const name = value.trim();
+  if (!name) {
+    throw new BadRequestException('Skriv et navn til kladden.');
+  }
+  if (name.length > 80) {
+    throw new BadRequestException('Kladdenavnet må højst være 80 tegn.');
+  }
+
+  return name;
 }
 
 function resolveCinemaId(
@@ -823,6 +851,131 @@ export class ShiftPlanningDraftsService {
     };
   }
 
+  async previewMonth(user: AuthUser, data: DraftRequestData) {
+    const cinemaId = resolveCinemaId(user, data?.cinemaId);
+    const year = parseYear(data?.year);
+    const month = parseMonth(data?.month);
+
+    return buildShiftPlanningMonthWorkingPreview(
+      this.prisma,
+      cinemaId,
+      year,
+      month,
+    );
+  }
+  async saveNamedDraft(user: AuthUser, data: DraftRequestData) {
+    const cinemaId = resolveCinemaId(user, data?.cinemaId);
+    const year = parseYear(data?.year);
+    const month = parseMonth(data?.month);
+    const name = parseRequiredDraftName(data?.name);
+    const actorUserId = getActorUserId(user);
+
+    try {
+      const savedDraft = await saveNamedShiftPlanningDraft(this.prisma, {
+        cinemaId,
+        year,
+        month,
+        name,
+        actorUserId,
+      });
+      return this.findOne(user, savedDraft.id, String(cinemaId));
+    } catch (error) {
+      if (error instanceof EmptyShiftPlanningNamedDraftError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  async createNamedDraft(user: AuthUser, data: DraftRequestData) {
+    const cinemaId = resolveCinemaId(user, data?.cinemaId);
+    const year = parseYear(data?.year);
+    const month = parseMonth(data?.month);
+    const name = parseRequiredDraftName(data?.name);
+    const actorUserId = getActorUserId(user);
+
+    const createdDraft = await createEmptyNamedShiftPlanningDraft(this.prisma, {
+      cinemaId,
+      year,
+      month,
+      name,
+      actorUserId,
+    });
+    return this.findOne(user, createdDraft.id, String(cinemaId));
+  }
+  async copyNamedDraft(
+    user: AuthUser,
+    sourceDraftId: number,
+    data: DraftRequestData,
+  ) {
+    const cinemaId = resolveCinemaId(user, data?.cinemaId);
+    const name = parseRequiredDraftName(data?.name);
+    const actorUserId = getActorUserId(user);
+
+    try {
+      const copiedDraft = await copyNamedShiftPlanningDraft(this.prisma, {
+        sourceDraftId,
+        cinemaId,
+        name,
+        actorUserId,
+      });
+      return this.findOne(user, copiedDraft.id, String(cinemaId));
+    } catch (error) {
+      if (error instanceof ShiftPlanningNamedDraftNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+      if (error instanceof EmptyShiftPlanningNamedDraftError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+  async openNamedDraftWorkspace(
+    user: AuthUser,
+    draftId: number,
+    data: DraftRequestData,
+  ) {
+    const cinemaId = resolveCinemaId(user, data?.cinemaId);
+
+    try {
+      return await openNamedShiftPlanningDraftWorkspace(this.prisma, {
+        draftId,
+        cinemaId,
+      });
+    } catch (error) {
+      if (error instanceof ShiftPlanningNamedDraftNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+      if (error instanceof ShiftPlanningNamedDraftNotEditableError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  async updateNamedDraft(
+    user: AuthUser,
+    draftId: number,
+    data: DraftRequestData,
+  ) {
+    const cinemaId = resolveCinemaId(user, data?.cinemaId);
+
+    try {
+      const updatedDraft = await updateNamedShiftPlanningDraft(this.prisma, {
+        draftId,
+        cinemaId,
+      });
+      return this.findOne(user, updatedDraft.id, String(cinemaId));
+    } catch (error) {
+      if (error instanceof ShiftPlanningNamedDraftNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+      if (error instanceof ShiftPlanningNamedDraftNotEditableError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
   async prepareMonth(user: AuthUser, data: DraftRequestData) {
     const cinemaId = resolveCinemaId(user, data?.cinemaId);
     const year = parseYear(data?.year);
