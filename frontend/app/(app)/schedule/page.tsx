@@ -135,7 +135,7 @@ export default function SchedulePage() {
     resetShiftFormForDate(queryDate);
   }, [resetShiftFormForDate]);
 
-  const { handleMoveShift, handleChangeShiftUser, handleResizeShift } =
+  const { handleMoveShift, handleResizeShift } =
     useScheduleShiftTimelineActions({
       selectedDate,
       updateShift,
@@ -301,7 +301,6 @@ export default function SchedulePage() {
               movieShowings={filteredMovieShowings}
               onOpenRegisterTimeModal={openRegisterTimeModal}
               onOpenManualTimeModal={openManualTimeModal}
-              onOpenStaffingRequest={() => openStaffingRequestModal(null)}
               onCreateUnassignedShift={createShift}
               onPreviousDay={() => changeDate(-1)}
               onToday={goToToday}
@@ -309,7 +308,6 @@ export default function SchedulePage() {
               onNextDay={() => changeDate(1)}
               onSelectShift={handleSelectShift}
               onMoveShift={handleMoveShift}
-              onChangeShiftUser={handleChangeShiftUser}
               onResizeShift={handleResizeShift}
             />
             <ScheduleShiftFormModal

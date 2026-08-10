@@ -449,7 +449,7 @@ export default function ShiftForm({
             </button>
           )}
 
-          {onSendStaffingRequest && (
+          {onSendStaffingRequest && (!selectedShift.userId || selectedShift.userId <= 0) && (
             <button
               type="button"
               onClick={onSendStaffingRequest}

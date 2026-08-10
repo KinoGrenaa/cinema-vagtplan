@@ -236,7 +236,6 @@ type ScheduleShiftsPanelProps = {
   selectedDate: string;
   canManageShifts: boolean;
   needsMasterCinemaSelection: boolean;
-  onOpenStaffingRequest: () => void;
   onCreateUnassignedShift: (
     input: {
       startTime: string;
@@ -260,10 +259,7 @@ type ScheduleShiftsPanelProps = {
     newStartHour: number,
     newStartMinute: number,
   ) => void | Promise<void>;
-  onChangeShiftUser: (
-    shift: Shift,
-    newUserId: number | null,
-  ) => void | Promise<void>;
+
   onResizeShift: (
     shift: Shift,
     newStartHour: number,
@@ -287,7 +283,6 @@ export default function ScheduleShiftsPanel({
   selectedDate,
   canManageShifts,
   needsMasterCinemaSelection,
-  onOpenStaffingRequest,
   onCreateUnassignedShift,
   onPreviousDay,
   onToday,
@@ -295,7 +290,6 @@ export default function ScheduleShiftsPanel({
   onNextDay,
   onSelectShift,
   onMoveShift,
-  onChangeShiftUser,
   onResizeShift,
 }: ScheduleShiftsPanelProps) {
   const {
@@ -555,23 +549,12 @@ export default function ScheduleShiftsPanel({
           </h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             {canManageShifts
-              ? "Administrer, flyt og resize vagter"
+              ? "Klik på en vagt for at se eller redigere den"
               : "Se dagens vagtplan"}
           </p>
         </div>
 
-        {canManageShifts &&
-          !needsMasterCinemaSelection && (
-            <button
-              type="button"
-              onClick={
-                onOpenStaffingRequest
-              }
-              className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
-            >
-              Send forespørgsel
-            </button>
-          )}
+
       </div>
 
       <ScheduleDateNavigation
@@ -962,7 +945,6 @@ export default function ScheduleShiftsPanel({
           )}
         <ShiftTimeline
           shifts={shifts}
-          users={users}
           selectedDate={selectedDate}
           createAtTimeLabel={
             isPlacingJobFunction
@@ -1002,11 +984,7 @@ export default function ScheduleShiftsPanel({
               ? onMoveShift
               : () => {}
           }
-          onChangeShiftUser={
-            canManageShifts
-              ? onChangeShiftUser
-              : () => {}
-          }
+
           onResizeShift={
             canManageShifts
               ? onResizeShift

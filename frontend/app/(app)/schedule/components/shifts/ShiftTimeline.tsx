@@ -16,15 +16,10 @@ import {
 } from "../../helpers/derived/scheduleTimelineCreationPreview";
 import type { Shift } from "../../../../../../shared/types";
 
-type User = {
-  id: number;
-  firstName: string;
-  lastName: string;
-};
+
 
 type ShiftTimelineProps = {
   shifts: Shift[];
-  users: User[];
   selectedDate: string;
   createAtTimeLabel?: string | null;
   createDurationMinutes?:
@@ -43,10 +38,7 @@ type ShiftTimelineProps = {
     newStartHour: number,
     newStartMinute: number,
   ) => Promise<void> | void;
-  onChangeShiftUser: (
-    shift: Shift,
-    newUserId: number | null,
-  ) => Promise<void> | void;
+
   onResizeShift: (
     shift: Shift,
     newStartHour: number,
@@ -414,7 +406,6 @@ function buildTimelineShifts(
 
 function ShiftTimeline({
   shifts,
-  users,
   selectedDate,
   createAtTimeLabel,
   createDurationMinutes,
@@ -423,7 +414,6 @@ function ShiftTimeline({
   onCreateAtTime,
   onSelectShift,
   onMoveShift,
-  onChangeShiftUser,
   onResizeShift,
 }: ShiftTimelineProps) {
   const timelineRef =
@@ -792,16 +782,9 @@ function ShiftTimeline({
                     key={shift.id}
                     bounds="parent"
                     dragAxis="x"
-                    enableResizing={{
-                      top: false,
-                      right: true,
-                      bottom: false,
-                      left: true,
-                      topRight: false,
-                      bottomRight: false,
-                      bottomLeft: false,
-                      topLeft: false,
-                    }}
+                    disableDragging
+                    enableResizing={false}
+
                     minWidth={MIN_SHIFT_WIDTH}
                     size={{
                       width,
@@ -913,10 +896,18 @@ function ShiftTimeline({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <div className="truncate text-xs font-bold">
-                            {getShiftUserName(
-                              shift,
-                            )}
+                          <div
+                            className={`truncate text-xs font-bold ${
+                              shiftUserId
+                                ? ""
+                                : "rounded-md bg-white px-1.5 py-0.5 text-red-700 shadow-sm"
+                            }`}
+                          >
+                            {shiftUserId
+                              ? getShiftUserName(
+                                  shift,
+                                )
+                              : "IKKE TILDELT"}
                           </div>
                           <div className="truncate text-[11px] opacity-90">
                             {getShiftJobFunctionName(
@@ -936,41 +927,7 @@ function ShiftTimeline({
                         </div>
                       </div>
 
-                      {users.length > 0 && (
-                        <select
-                          value={
-                            shiftUserId ?? ""
-                          }
-                          onClick={(event) =>
-                            event.stopPropagation()
-                          }
-                          onChange={(event) =>
-                            onChangeShiftUser(
-                              shift,
-                              event.target.value
-                                ? Number(
-                                    event.target
-                                      .value,
-                                  )
-                                : null,
-                            )
-                          }
-                          className="mt-1 w-full rounded-lg border border-white/30 bg-white/90 px-2 py-0.5 text-[11px] text-gray-900 dark:bg-gray-950 dark:text-gray-100"
-                        >
-                          <option value="">
-                            Ikke tildelt
-                          </option>
-                          {users.map((user) => (
-                            <option
-                              key={user.id}
-                              value={user.id}
-                            >
-                              {user.firstName}{" "}
-                              {user.lastName}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+
                     </div>
                   </Rnd>
                 );
