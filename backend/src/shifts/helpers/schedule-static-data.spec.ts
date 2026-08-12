@@ -3,7 +3,6 @@ import {
   scheduleStaticUserSelect,
   scheduleStaticJobFunctionSelect,
 } from './schedule-static-data';
-
 describe(
   'schedule static data',
   () => {
@@ -46,7 +45,6 @@ describe(
             ),
         },
       };
-
       await expect(
         findScheduleStaticData(
           prisma as never,
@@ -63,7 +61,6 @@ describe(
         ],
         jobFunctions,
       });
-
       expect(
         prisma.userCinemaMembership.findMany,
       ).toHaveBeenCalledWith({
@@ -80,8 +77,17 @@ describe(
         select: {
           role: true,
           user: {
-            select:
-              scheduleStaticUserSelect,
+            select: {
+              ...scheduleStaticUserSelect,
+              userJobFunctions: {
+                where: {
+                  cinemaId: 7,
+                },
+                select: {
+                  jobFunctionId: true,
+                },
+              },
+            },
           },
         },
         orderBy: [
@@ -100,7 +106,6 @@ describe(
           },
         ],
       });
-
       expect(
         prisma.jobFunction.findMany,
       ).toHaveBeenCalledWith({

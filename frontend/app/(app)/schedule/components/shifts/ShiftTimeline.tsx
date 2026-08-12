@@ -6,46 +6,14 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
-  type MouseEvent,
 } from "react";
-import { Rnd } from "react-rnd";
-import ScheduleTimelineCreationGhost from "./ScheduleTimelineCreationGhost";
-import {
-  getScheduleTimelineCreationPreview,
-} from "../../helpers/derived/scheduleTimelineCreationPreview";
 import type { Shift } from "../../../../../../shared/types";
-
-
 
 type ShiftTimelineProps = {
   shifts: Shift[];
   selectedDate: string;
-  createAtTimeLabel?: string | null;
-  createDurationMinutes?:
-    number | null;
-  createJobFunctionId?:
-    number | null;
-  createPreviewColor?:
-    string | null;
-  onCreateAtTime?: (
-    hour: number,
-    minute: number,
-  ) => void;
   onSelectShift: (shift: Shift) => void;
-  onMoveShift: (
-    shift: Shift,
-    newStartHour: number,
-    newStartMinute: number,
-  ) => Promise<void> | void;
-
-  onResizeShift: (
-    shift: Shift,
-    newStartHour: number,
-    newStartMinute: number,
-    newEndHour: number,
-    newEndMinute: number,
-  ) => Promise<void> | void;
+  onOpenCreateShift?: () => void;
 };
 
 type TimelineShift = {
@@ -55,20 +23,25 @@ type TimelineShift = {
   left: number;
   width: number;
   lane: number;
-  laneCount: number;
+};
+
+type TimelineRange = {
+  startMinutes: number;
+  endMinutes: number;
+  durationMinutes: number;
 };
 
 const DAY_MINUTES = 24 * 60;
-const TIMELINE_HEIGHT = 520;
+const RANGE_PADDING_MINUTES = 60;
+const MIN_VISIBLE_SHIFT_MINUTES = 15;
+const MIN_TIMELINE_HEIGHT = 260;
 const LEFT_LABEL_WIDTH = 64;
-const SHIFT_HEIGHT = 64;
+const SHIFT_HEIGHT = 78;
 const LANE_GAP = 10;
 const TOP_OFFSET = 52;
-const SNAP_MINUTES = 15;
+const BOTTOM_ACTION_SPACE = 72;
 const MIN_SHIFT_WIDTH = 36;
-const DEFAULT_CREATION_MINUTES = 14 * 60;
-const LAST_CREATION_MINUTES =
-  DAY_MINUTES - SNAP_MINUTES;
+const MIN_TIME_MARK_GAP_MINUTES = 30;
 
 function getShiftUserId(shift: Shift) {
   return (
@@ -130,6 +103,30 @@ function getShiftColor(shift: Shift) {
   );
 }
 
+function getActiveTradeLabel(shift: Shift) {
+  const trade = shift.trades?.[0];
+
+  if (!trade) return null;
+  if (trade.type === "POOL") return "I vagtpuljen";
+
+  const targetName =
+    `${trade.targetUser?.firstName ?? ""} ${trade.targetUser?.lastName ?? ""}`.trim();
+  return `Direkte tilbud → ${targetName || "kollega"}`;
+}
+
+function getActiveStaffingRequestLabel(shift: Shift) {
+  const request = shift.staffingRequests?.[0];
+
+  if (!request) return null;
+
+  const targetName =
+    `${request.targetUser?.firstName ?? ""} ${request.targetUser?.lastName ?? ""}`.trim();
+
+  return targetName
+    ? `Bemanding \u2192 ${targetName}`
+    : "Bemanding \u2192 alle kvalificerede";
+}
+
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString(
     "da-DK",
@@ -141,10 +138,18 @@ function formatTime(value: string) {
 }
 
 function formatMinutes(totalMinutes: number) {
-  const hour = Math.floor(
-    totalMinutes / 60,
+  if (totalMinutes === DAY_MINUTES) {
+    return "24:00";
+  }
+
+  const normalized = Math.max(
+    0,
+    Math.min(DAY_MINUTES - 1, totalMinutes),
   );
-  const minute = totalMinutes % 60;
+  const hour = Math.floor(
+    normalized / 60,
+  );
+  const minute = normalized % 60;
 
   return `${String(hour).padStart(
     2,
@@ -152,49 +157,10 @@ function formatMinutes(totalMinutes: number) {
   )}:${String(minute).padStart(2, "0")}`;
 }
 
-function formatCreationRange(
-  startMinutes: number,
-  durationMinutes:
-    | number
-    | null
-    | undefined,
-) {
-  if (!durationMinutes) {
-    return formatMinutes(
-      startMinutes,
-    );
-  }
-
-  const endMinutes =
-    startMinutes +
-    durationMinutes;
-  const endDayOffset =
-    Math.floor(
-      endMinutes / DAY_MINUTES,
-    );
-  const normalizedEnd =
-    endMinutes % DAY_MINUTES;
-
-  return (
-    `${formatMinutes(startMinutes)}–` +
-    `${formatMinutes(normalizedEnd)}` +
-    (endDayOffset > 0
-      ? " (+1 dag)"
-      : "")
-  );
-}
-
 function clampMinutes(value: number) {
   return Math.max(
     0,
     Math.min(DAY_MINUTES, value),
-  );
-}
-
-function snapMinutes(value: number) {
-  return (
-    Math.round(value / SNAP_MINUTES) *
-    SNAP_MINUTES
   );
 }
 
@@ -254,55 +220,83 @@ function getVisibleShiftMinutes(
     startMinutes,
     endMinutes: Math.max(
       endMinutes,
-      startMinutes + SNAP_MINUTES,
+      startMinutes + MIN_VISIBLE_SHIFT_MINUTES,
     ),
   };
 }
 
-function xToTime(
-  x: number,
-  timelineWidth: number,
-) {
-  const safeTimelineWidth = Math.max(
-    1,
-    timelineWidth,
-  );
-  const totalMinutes = clampMinutes(
-    snapMinutes(
-      (x / safeTimelineWidth) *
-        DAY_MINUTES,
+function getTimelineRange(
+  shifts: Shift[],
+  selectedDate: string,
+): TimelineRange {
+  const visibleRanges = shifts
+    .map((shift) =>
+      getVisibleShiftMinutes(
+        shift,
+        selectedDate,
+      ),
+    )
+    .filter(
+      (
+        range,
+      ): range is {
+        startMinutes: number;
+        endMinutes: number;
+      } => range !== null,
+    );
+
+  if (visibleRanges.length === 0) {
+    return {
+      startMinutes: 0,
+      endMinutes: DAY_MINUTES,
+      durationMinutes: DAY_MINUTES,
+    };
+  }
+
+  const earliestStart = Math.min(
+    ...visibleRanges.map(
+      (range) => range.startMinutes,
     ),
   );
-  const hour = Math.floor(totalMinutes / 60);
-  const minute = totalMinutes % 60;
-
-  return { hour, minute };
-}
-
-function xToCreationMinutes(
-  x: number,
-  timelineWidth: number,
-) {
-  const { hour, minute } = xToTime(
-    x,
-    timelineWidth,
+  const latestEnd = Math.max(
+    ...visibleRanges.map(
+      (range) => range.endMinutes,
+    ),
   );
 
-  return Math.min(
-    LAST_CREATION_MINUTES,
-    hour * 60 + minute,
+  const rawStart = Math.max(
+    0,
+    earliestStart - RANGE_PADDING_MINUTES,
   );
+  const rawEnd = Math.min(
+    DAY_MINUTES,
+    latestEnd + RANGE_PADDING_MINUTES,
+  );
+
+  const startMinutes = rawStart;
+  const endMinutes = rawEnd;
+
+  return {
+    startMinutes,
+    endMinutes,
+    durationMinutes: Math.max(
+      MIN_VISIBLE_SHIFT_MINUTES,
+      endMinutes - startMinutes,
+    ),
+  };
 }
 
 function buildTimelineShifts(
   shifts: Shift[],
   selectedDate: string,
   timelineWidth: number,
+  range: TimelineRange,
 ) {
   const safeTimelineWidth = Math.max(
     1,
     timelineWidth,
   );
+
   const dayShifts = shifts
     .map((shift) => {
       const visibleMinutes =
@@ -315,30 +309,37 @@ function buildTimelineShifts(
         return null;
       }
 
-      const { startMinutes, endMinutes } =
-        visibleMinutes;
-      const safeEndMinutes = Math.max(
-        endMinutes,
-        startMinutes + SNAP_MINUTES,
+      const startMinutes = Math.max(
+        range.startMinutes,
+        visibleMinutes.startMinutes,
       );
+      const endMinutes = Math.min(
+        range.endMinutes,
+        visibleMinutes.endMinutes,
+      );
+
+      if (endMinutes <= startMinutes) {
+        return null;
+      }
+
       const left =
-        (startMinutes / DAY_MINUTES) *
+        ((startMinutes - range.startMinutes) /
+          range.durationMinutes) *
         safeTimelineWidth;
       const width = Math.max(
         MIN_SHIFT_WIDTH,
-        ((safeEndMinutes - startMinutes) /
-          DAY_MINUTES) *
+        ((endMinutes - startMinutes) /
+          range.durationMinutes) *
           safeTimelineWidth,
       );
 
       return {
         shift,
         startMinutes,
-        endMinutes: safeEndMinutes,
+        endMinutes,
         left,
         width,
         lane: 0,
-        laneCount: 1,
       } satisfies TimelineShift;
     })
     .filter(
@@ -395,40 +396,60 @@ function buildTimelineShifts(
         lanes[laneIndex].push(item);
       }
     }
-
-    for (const item of group) {
-      item.laneCount = lanes.length;
-    }
   }
 
   return dayShifts;
 }
 
+function buildTimeMarks(
+  range: TimelineRange,
+) {
+  const marks = new Set<number>([
+    range.startMinutes,
+    range.endMinutes,
+  ]);
+  const firstWholeHour =
+    Math.ceil(
+      range.startMinutes / 60,
+    ) * 60;
+
+  for (
+    let minute = firstWholeHour;
+    minute < range.endMinutes;
+    minute += 60
+  ) {
+    const minutesFromStart =
+      minute - range.startMinutes;
+    const minutesToEnd =
+      range.endMinutes - minute;
+
+    if (
+      minutesFromStart <
+        MIN_TIME_MARK_GAP_MINUTES ||
+      minutesToEnd <
+        MIN_TIME_MARK_GAP_MINUTES
+    ) {
+      continue;
+    }
+
+    marks.add(minute);
+  }
+
+  return Array.from(marks).sort(
+    (a, b) => a - b,
+  );
+}
+
 function ShiftTimeline({
   shifts,
   selectedDate,
-  createAtTimeLabel,
-  createDurationMinutes,
-  createJobFunctionId,
-  createPreviewColor,
-  onCreateAtTime,
   onSelectShift,
-  onMoveShift,
-  onResizeShift,
+  onOpenCreateShift,
 }: ShiftTimelineProps) {
   const timelineRef =
     useRef<HTMLDivElement | null>(null);
   const [timelineWidth, setTimelineWidth] =
     useState(1);
-  const [creationPreviewMinutes, setCreationPreviewMinutes] =
-    useState<number | null>(null);
-  const dragStartPositionRef = useRef<{
-    x: number;
-    y: number;
-  } | null>(null);
-  const resizeStartRef = useRef(false);
-  const creationEnabled =
-    typeof onCreateAtTime === "function";
 
   useEffect(() => {
     const element = timelineRef.current;
@@ -451,13 +472,14 @@ function ShiftTimeline({
       resizeObserver.disconnect();
   }, []);
 
-  useEffect(() => {
-    setCreationPreviewMinutes(
-      creationEnabled
-        ? DEFAULT_CREATION_MINUTES
-        : null,
-    );
-  }, [creationEnabled, selectedDate]);
+  const timelineRange = useMemo(
+    () =>
+      getTimelineRange(
+        shifts,
+        selectedDate,
+      ),
+    [selectedDate, shifts],
+  );
 
   const timelineShifts = useMemo(
     () =>
@@ -465,44 +487,22 @@ function ShiftTimeline({
         shifts,
         selectedDate,
         timelineWidth,
+        timelineRange,
       ),
-    [selectedDate, shifts, timelineWidth],
+    [
+      selectedDate,
+      shifts,
+      timelineRange,
+      timelineWidth,
+    ],
   );
 
-  const creationPreview =
-    useMemo(
-      () =>
-        creationEnabled &&
-        creationPreviewMinutes !==
-          null
-          ? getScheduleTimelineCreationPreview({
-              selectedDate,
-              startMinutes:
-                creationPreviewMinutes,
-              durationMinutes:
-                createDurationMinutes,
-              jobFunctionId:
-                createJobFunctionId,
-              shifts,
-            })
-          : null,
-      [
-        createDurationMinutes,
-        createJobFunctionId,
-        creationEnabled,
-        creationPreviewMinutes,
-        selectedDate,
-        shifts,
-      ],
-    );
-  const hours = useMemo(
+  const timeMarks = useMemo(
     () =>
-      Array.from(
-        { length: 25 },
-        (_, hour) => hour,
-      ),
-    [],
+      buildTimeMarks(timelineRange),
+    [timelineRange],
   );
+
   const laneCount = Math.max(
     1,
     ...timelineShifts.map(
@@ -510,125 +510,30 @@ function ShiftTimeline({
     ),
   );
   const dynamicHeight = Math.max(
-    TIMELINE_HEIGHT,
+    MIN_TIMELINE_HEIGHT,
     TOP_OFFSET +
       laneCount *
         (SHIFT_HEIGHT + LANE_GAP) +
-      48,
+      BOTTOM_ACTION_SPACE,
   );
-
-  function getPointerCreationMinutes(
-    clientX: number,
-  ) {
-    const bounds =
-      timelineRef.current?.getBoundingClientRect();
-
-    if (!bounds) {
-      return null;
-    }
-
-    return xToCreationMinutes(
-      clientX - bounds.left,
-      bounds.width,
-    );
-  }
-
-  function handleTimelineMouseMove(
-    event: MouseEvent<HTMLDivElement>,
-  ) {
-    if (
-      !creationEnabled ||
-      event.target !== event.currentTarget
-    ) {
-      return;
-    }
-
-    const nextMinutes =
-      getPointerCreationMinutes(
-        event.clientX,
-      );
-
-    if (nextMinutes !== null) {
-      setCreationPreviewMinutes(
-        nextMinutes,
-      );
-    }
-  }
-
-  function handleTimelineClick(
-    event: MouseEvent<HTMLDivElement>,
-  ) {
-    if (
-      !onCreateAtTime ||
-      event.target !== event.currentTarget
-    ) {
-      return;
-    }
-
-    const nextMinutes =
-      getPointerCreationMinutes(
-        event.clientX,
-      );
-
-    if (nextMinutes === null) {
-      return;
-    }
-
-    onCreateAtTime(
-      Math.floor(nextMinutes / 60),
-      nextMinutes % 60,
-    );
-  }
-
-  function handleTimelineKeyDown(
-    event: KeyboardEvent<HTMLDivElement>,
-  ) {
-    if (
-      !onCreateAtTime ||
-      creationPreviewMinutes === null ||
-      (event.key !== "Enter" &&
-        event.key !== " ")
-    ) {
-      return;
-    }
-
-    event.preventDefault();
-    onCreateAtTime(
-      Math.floor(
-        creationPreviewMinutes / 60,
-      ),
-      creationPreviewMinutes % 60,
-    );
-  }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            Dagsoversigt
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {creationEnabled
-              ? "Klik på et tomt tidspunkt for at placere den untildelte vagt. Tiden snapper til nærmeste kvarter."
-              : "Hele dagen vises skaleret fra 00:00 til 24:00."}
-          </p>
-        </div>
-
-        {creationEnabled && (
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-900 dark:bg-blue-950/60 dark:text-blue-100">
-            Placér: {createAtTimeLabel || "jobfunktion"}
-          </span>
-        )}
+      <div className="mb-3">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          Dagsoversigt
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Viser {formatMinutes(
+            timelineRange.startMinutes,
+          )}–{formatMinutes(
+            timelineRange.endMinutes,
+          )} med 1 times luft før og efter dagens vagter, begrænset af
+          døgnets start og slut.
+        </p>
       </div>
 
-      <div
-        className={`w-full overflow-hidden rounded-xl border bg-gray-50 dark:bg-gray-950 ${
-          creationEnabled
-            ? "border-blue-400 ring-2 ring-blue-500/15 dark:border-blue-700"
-            : "border-gray-200 dark:border-gray-800"
-        }`}
-      >
+      <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950">
         <div
           className="relative w-full"
           style={{
@@ -649,32 +554,39 @@ function ShiftTimeline({
               right: 0,
             }}
           >
-            {hours.map((hour) => {
+            {timeMarks.map((minute) => {
               const leftPercent =
-                (hour / 24) * 100;
+                ((minute -
+                  timelineRange.startMinutes) /
+                  timelineRange.durationMinutes) *
+                100;
+              const isStart =
+                minute ===
+                timelineRange.startMinutes;
+              const isEnd =
+                minute ===
+                timelineRange.endMinutes;
 
               return (
                 <div
-                  key={hour}
+                  key={minute}
                   className="absolute bottom-0 top-0 border-l border-gray-200 dark:border-gray-800"
                   style={{
-                    left:
-                      hour === 24
-                        ? "calc(100% - 1px)"
-                        : `${leftPercent}%`,
+                    left: isEnd
+                      ? "calc(100% - 1px)"
+                      : `${leftPercent}%`,
                   }}
                 >
                   <div
-                    className={`absolute top-2 text-[11px] font-medium text-gray-500 dark:text-gray-400 ${
-                      hour === 24
-                        ? "-translate-x-full pr-1"
-                        : "-translate-x-1/2"
+                    className={`absolute top-2 whitespace-nowrap text-[11px] font-medium text-gray-500 dark:text-gray-400 ${
+                      isStart
+                        ? "pl-1"
+                        : isEnd
+                          ? "-translate-x-full pr-1"
+                          : "-translate-x-1/2"
                     }`}
                   >
-                    {String(hour).padStart(
-                      2,
-                      "0",
-                    )}
+                    {formatMinutes(minute)}
                   </div>
                 </div>
               );
@@ -690,49 +602,9 @@ function ShiftTimeline({
             Vagter
           </div>
 
-          {timelineShifts.length === 0 && (
-            <div
-              className="pointer-events-none absolute rounded-xl border border-dashed border-gray-300 bg-white px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
-              style={{
-                left:
-                  LEFT_LABEL_WIDTH + 16,
-                top: TOP_OFFSET,
-              }}
-            >
-              {creationEnabled
-                ? "Klik på tidslinjen for at placere den første vagt."
-                : "Ingen vagter på den valgte dato."}
-            </div>
-          )}
-
           <div
             ref={timelineRef}
-            role={
-              creationEnabled
-                ? "button"
-                : undefined
-            }
-            tabIndex={
-              creationEnabled ? 0 : undefined
-            }
-            aria-label={
-              creationEnabled
-                ? `Placér ${
-                    createAtTimeLabel ||
-                    "jobfunktion"
-                  } på tidslinjen`
-                : undefined
-            }
-            onMouseMove={
-              handleTimelineMouseMove
-            }
-            onClick={handleTimelineClick}
-            onKeyDown={handleTimelineKeyDown}
-            className={`absolute outline-none ${
-              creationEnabled
-                ? "cursor-crosshair focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
-                : ""
-            }`}
+            className="absolute"
             style={{
               left: LEFT_LABEL_WIDTH,
               right: 0,
@@ -740,29 +612,9 @@ function ShiftTimeline({
               height:
                 dynamicHeight -
                 TOP_OFFSET -
-                24,
+                BOTTOM_ACTION_SPACE,
             }}
           >
-            {creationPreview &&
-            creationPreviewMinutes !==
-              null && (
-              <ScheduleTimelineCreationGhost
-                label={
-                  createAtTimeLabel ||
-                  "Jobfunktion"
-                }
-                timeLabel={formatCreationRange(
-                  creationPreviewMinutes,
-                  createDurationMinutes,
-                )}
-                color={
-                  createPreviewColor
-                }
-                preview={
-                  creationPreview
-                }
-              />
-            )}
             {timelineShifts.map(
               ({
                 shift,
@@ -778,106 +630,22 @@ function ShiftTimeline({
                   getShiftUserId(shift);
 
                 return (
-                  <Rnd
+                  <div
                     key={shift.id}
-                    bounds="parent"
-                    dragAxis="x"
-                    disableDragging
-                    enableResizing={false}
-
-                    minWidth={MIN_SHIFT_WIDTH}
-                    size={{
+                    className="absolute z-10"
+                    style={{
+                      left,
+                      top: y,
                       width,
                       height: SHIFT_HEIGHT,
                     }}
-                    position={{
-                      x: left,
-                      y,
-                    }}
-                    onDragStart={(_, data) => {
-                      dragStartPositionRef.current = {
-                        x: data.x,
-                        y: data.y,
-                      };
-                    }}
-                    onDragStop={(_, data) => {
-                      const dragStartPosition =
-                        dragStartPositionRef.current;
-                      dragStartPositionRef.current =
-                        null;
-
-                      if (
-                        dragStartPosition &&
-                        Math.round(
-                          dragStartPosition.x,
-                        ) ===
-                          Math.round(data.x) &&
-                        Math.round(
-                          dragStartPosition.y,
-                        ) ===
-                          Math.round(data.y)
-                      ) {
-                        return;
-                      }
-
-                      const { hour, minute } =
-                        xToTime(
-                          data.x,
-                          timelineWidth,
-                        );
-                      onMoveShift(
-                        shift,
-                        hour,
-                        minute,
-                      );
-                    }}
-                    onResizeStart={() => {
-                      resizeStartRef.current =
-                        true;
-                    }}
-                    onResizeStop={(
-                      _,
-                      __,
-                      ref,
-                      ___,
-                      position,
-                    ) => {
-                      resizeStartRef.current =
-                        false;
-                      const start = xToTime(
-                        position.x,
-                        timelineWidth,
-                      );
-                      const end = xToTime(
-                        position.x +
-                          ref.offsetWidth,
-                        timelineWidth,
-                      );
-
-                      onResizeShift(
-                        shift,
-                        start.hour,
-                        start.minute,
-                        end.hour,
-                        end.minute,
-                      );
-                    }}
-                    className="z-10"
                   >
                     <div
                       role="button"
                       tabIndex={0}
-                      onClick={(event) => {
-                        event.stopPropagation();
-
-                        if (
-                          resizeStartRef.current
-                        ) {
-                          return;
-                        }
-
-                        onSelectShift(shift);
-                      }}
+                      onClick={() =>
+                        onSelectShift(shift)
+                      }
                       onKeyDown={(event) => {
                         if (
                           event.key ===
@@ -894,29 +662,39 @@ function ShiftTimeline({
                           getShiftColor(shift),
                       }}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div
-                            className={`truncate text-xs font-bold ${
-                              shiftUserId
-                                ? ""
-                                : "rounded-md bg-white px-1.5 py-0.5 text-red-700 shadow-sm"
-                            }`}
-                          >
-                            {shiftUserId
-                              ? getShiftUserName(
-                                  shift,
-                                )
-                              : "IKKE TILDELT"}
-                          </div>
-                          <div className="truncate text-[11px] opacity-90">
+                          <div className="truncate text-sm font-black leading-tight tracking-tight">
                             {getShiftJobFunctionName(
                               shift,
                             )}
                           </div>
+                          <div className="mt-1 flex min-w-0 items-center gap-2">
+                            {shiftUserId ? (
+                              <div className="truncate text-[13px] font-black leading-tight drop-shadow-sm">
+                                {getShiftUserName(
+                                  shift,
+                                )}
+                              </div>
+                            ) : (
+                              <span className="inline-flex shrink-0 rounded-md bg-white/95 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700 shadow-sm">
+                                Ikke tildelt
+                              </span>
+                            )}
+                          </div>
+                          {getActiveTradeLabel(shift) && (
+                            <span className="mt-1 inline-flex max-w-full truncate rounded-md bg-white/95 px-1.5 py-0.5 text-[9px] font-black text-blue-800 shadow-sm">
+                              {getActiveTradeLabel(shift)}
+                            </span>
+                          )}
+                          {getActiveStaffingRequestLabel(shift) && (
+                            <span className="mt-1 inline-flex max-w-full truncate rounded-md bg-white/95 px-1.5 py-0.5 text-[9px] font-black text-amber-900 shadow-sm">
+                              {getActiveStaffingRequestLabel(shift)}
+                            </span>
+                          )}
                         </div>
 
-                        <div className="shrink-0 text-right text-[11px] font-semibold opacity-90">
+                        <div className="shrink-0 text-right text-[11px] font-bold opacity-95">
                           {formatTime(
                             shift.startTime,
                           )}
@@ -926,14 +704,25 @@ function ShiftTimeline({
                           )}
                         </div>
                       </div>
-
-
                     </div>
-                  </Rnd>
+                  </div>
                 );
               },
             )}
           </div>
+
+          {onOpenCreateShift && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+              <button
+                type="button"
+                onClick={onOpenCreateShift}
+                className="pointer-events-auto inline-flex items-center gap-2 border-b-2 border-blue-500 px-2 pb-1.5 text-base font-bold text-blue-700 transition hover:border-blue-700 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-400 dark:text-blue-300 dark:hover:border-blue-200 dark:hover:text-blue-100"
+              >
+                <span aria-hidden="true">+</span>
+                Opret vagt
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

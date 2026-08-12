@@ -73,11 +73,13 @@ describe(
               ShiftTradeStatus.OPEN,
             offeredByUserId: 9,
             shift: {
-              startTime: {
-                lt: range.end,
-              },
-              endTime: {
-                gt: range.start,
+              is: {
+                startTime: {
+                  lt: range.end,
+                },
+                endTime: {
+                  gt: range.start,
+                },
               },
             },
           },
@@ -112,8 +114,18 @@ describe(
               not: 9,
             },
             shift: {
-              startTime: {
-                gt: now,
+              is: {
+                startTime: {
+                  gt: now,
+                },
+                jobFunction: {
+                  userJobFunctions: {
+                    some: {
+                      cinemaId: 7,
+                      userId: 9,
+                    },
+                  },
+                },
               },
             },
           },

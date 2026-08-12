@@ -19,14 +19,12 @@ type ScheduleMainContentProps = {
   movieShowings: ComponentProps<typeof MovieProgram>["movieShowings"];
   onOpenRegisterTimeModal: () => void;
   onOpenManualTimeModal: () => void;
-  onCreateUnassignedShift: ScheduleShiftsPanelProps["onCreateUnassignedShift"];
+  onOpenCreateShift: ScheduleShiftsPanelProps["onOpenCreateShift"];
   onPreviousDay: ScheduleShiftsPanelProps["onPreviousDay"];
   onToday: ScheduleShiftsPanelProps["onToday"];
   onDateChange: ScheduleShiftsPanelProps["onDateChange"];
   onNextDay: ScheduleShiftsPanelProps["onNextDay"];
   onSelectShift: ScheduleShiftsPanelProps["onSelectShift"];
-  onMoveShift: ScheduleShiftsPanelProps["onMoveShift"];
-  onResizeShift: ScheduleShiftsPanelProps["onResizeShift"];
 };
 
 export default function ScheduleMainContent({
@@ -40,14 +38,12 @@ export default function ScheduleMainContent({
   movieShowings,
   onOpenRegisterTimeModal,
   onOpenManualTimeModal,
-  onCreateUnassignedShift,
+  onOpenCreateShift,
   onPreviousDay,
   onToday,
   onDateChange,
   onNextDay,
   onSelectShift,
-  onMoveShift,
-  onResizeShift,
 }: ScheduleMainContentProps) {
   return (
     <div className="mx-auto space-y-6">
@@ -74,14 +70,12 @@ export default function ScheduleMainContent({
         selectedDate={selectedDate}
         canManageShifts={canManageShifts}
         needsMasterCinemaSelection={needsMasterCinemaSelection}
-        onCreateUnassignedShift={onCreateUnassignedShift}
+        onOpenCreateShift={onOpenCreateShift}
         onPreviousDay={onPreviousDay}
         onToday={onToday}
         onDateChange={onDateChange}
         onNextDay={onNextDay}
         onSelectShift={onSelectShift}
-        onMoveShift={onMoveShift}
-        onResizeShift={onResizeShift}
       />
 
       {!needsMasterCinemaSelection && (

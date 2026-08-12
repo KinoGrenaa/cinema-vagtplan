@@ -13,6 +13,8 @@ type ScheduleShiftFormModalProps = {
   selectedShift: Shift | null;
   users: User[];
   jobFunctions: JobFunction[];
+  shifts: Shift[];
+  selectedDate: string;
   startTime: string;
   setStartTime: Dispatch<SetStateAction<string>>;
   endTime: string;
@@ -36,6 +38,8 @@ export default function ScheduleShiftFormModal({
   selectedShift,
   users,
   jobFunctions,
+  shifts,
+  selectedDate,
   startTime,
   setStartTime,
   endTime,
@@ -63,6 +67,8 @@ export default function ScheduleShiftFormModal({
       <ShiftForm
         users={users}
         jobFunctions={jobFunctions}
+        shifts={shifts}
+        selectedDate={selectedDate}
         startTime={startTime}
         setStartTime={setStartTime}
         endTime={endTime}

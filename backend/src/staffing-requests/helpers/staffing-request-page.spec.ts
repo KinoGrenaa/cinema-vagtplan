@@ -71,6 +71,14 @@ describe(
           {
             targetUserId:
               null,
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         ],
       });
@@ -95,6 +103,14 @@ describe(
           {
             targetUserId:
               null,
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         ],
         status:
@@ -122,6 +138,14 @@ describe(
           {
             targetUserId:
               null,
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         ],
         status: {
@@ -154,6 +178,14 @@ describe(
           {
             targetUserId:
               null,
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         ],
         id: 31,

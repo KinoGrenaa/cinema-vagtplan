@@ -1,6 +1,9 @@
 import {
   formatShiftDate,
   formatShiftTime,
+  getTradeEndTime,
+  getTradeJobFunctionName,
+  getTradeStartTime,
 } from "../../helpers/core/shiftTradeHelpers";
 import type {
   ShiftTrade,
@@ -131,23 +134,18 @@ export default function ShiftTradesHistorySection({
                       </div>
                       <h3 className="mt-3 font-bold text-gray-950 dark:text-white">
                         {
-                          trade.shift
-                            .jobFunction
-                            .name
+                          getTradeJobFunctionName(trade)
                         }
                       </h3>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {formatShiftDate(
-                        trade.shift
-                          .startTime,
+                        getTradeStartTime(trade),
                       )}{" "}
                       ·{" "}
                       {formatShiftTime(
-                        trade.shift
-                          .startTime,
-                        trade.shift
-                          .endTime,
+                        getTradeStartTime(trade),
+                        getTradeEndTime(trade),
                       )}
                     </p>
                   </div>

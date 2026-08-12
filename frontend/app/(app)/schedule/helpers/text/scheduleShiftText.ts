@@ -76,15 +76,9 @@ export function getStaffingShiftOptionText(shift: Shift, users: User[]) {
 
 export function getDefaultStaffingMessage(
   shift: Shift | null,
-  type: StaffingRequestType,
+  _type: string,
 ) {
-  if (shift) {
-    return `Kan du hjælpe med denne vagt? ${getShiftConfirmText(shift)}`;
-  }
-
-  if (type === "EMERGENCY") {
-    return "Der er akut brug for ekstra bemanding.\nKan du hjælpe?";
-  }
-
-  return "Der er brug for ekstra bemanding. Kan du hjælpe?";
+  return shift
+    ? "Kan du hjælpe med denne vagt?"
+    : "Kan du hjælpe med dette bemandingsbehov?";
 }

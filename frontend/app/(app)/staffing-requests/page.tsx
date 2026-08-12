@@ -38,6 +38,10 @@ import type {
   StaffingRequest,
 } from "./helpers/core/staffingRequestTypes";
 import {
+  getRequestTimeRange,
+  getRequestTitle,
+} from "./helpers/core/staffingRequestHelpers";
+import {
   useStaffingRequestActions,
 } from "./hooks/actions/useStaffingRequestActions";
 import {
@@ -262,7 +266,25 @@ export default function StaffingRequestsPage() {
   function handleAccept(
     id: number,
   ) {
-    void acceptRequest(id);
+    const request = requests.find(
+      (candidate) => candidate.id === id,
+    );
+
+    if (!request) {
+      return;
+    }
+
+    const timeRange = getRequestTimeRange(request);
+    confirmDialog.confirm({
+      title: "Tag denne vagt?",
+      description: `Er du sikker på, at du vil tage ${getRequestTitle(request)}?${
+        timeRange ? `\n\n${timeRange}` : ""
+      }`,
+      confirmText: "Tag vagten",
+      cancelText: "Annuller",
+      confirmVariant: "primary",
+      onConfirm: () => acceptRequest(id),
+    });
   }
 
   function handleReject(
@@ -273,7 +295,7 @@ export default function StaffingRequestsPage() {
       title:
         "Afvis bemandingsforespørgsel",
       description:
-        `Vil du afvise forespørgsel #${request.id}?\n\n` +
+        `Vil du afvise ${getRequestTitle(request)}?\n\n` +
         "Forespørgslen markeres som afvist.",
       confirmText: "Afvis",
       cancelText:
@@ -295,7 +317,7 @@ export default function StaffingRequestsPage() {
       title:
         "Annuller bemandingsforespørgsel",
       description:
-        `Vil du annullere forespørgsel #${request.id}?\n\n` +
+        `Vil du annullere ${getRequestTitle(request)}?\n\n` +
         "Forespørgslen fjernes ikke, men den kan ikke længere accepteres.",
       confirmText:
         "Annuller forespørgsel",

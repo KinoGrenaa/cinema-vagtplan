@@ -23,6 +23,48 @@ export const scheduleShiftSelect = {
   jobFunction: {
     select: { id: true, name: true, color: true, isActive: true },
   },
+  staffingRequests: {
+    where: {
+      status: 'PENDING',
+    },
+    select: {
+      id: true,
+      type: true,
+      targetUserId: true,
+      targetUser: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+    orderBy: {
+      id: 'desc',
+    },
+    take: 1,
+  },
+  trades: {
+    where: {
+      status: 'OPEN',
+    },
+    select: {
+      id: true,
+      type: true,
+      targetUserId: true,
+      targetUser: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+    orderBy: {
+      id: 'desc',
+    },
+    take: 1,
+  },
 } as const;
 
 export async function findScheduleShiftsForDay(

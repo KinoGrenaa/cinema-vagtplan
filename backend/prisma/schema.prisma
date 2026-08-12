@@ -717,13 +717,18 @@ model LeaveRequest {
 }
 
 model ShiftTrade {
-  id               Int              @id @default(autoincrement())
-  status           ShiftTradeStatus @default(OPEN)
-  message          String?
-  createdAt        DateTime         @default(now())
-  shiftId          Int
-  shift            Shift            @relation(fields: [shiftId], references: [id])
-  offeredByUserId  Int
+  id                        Int              @id @default(autoincrement())
+  status                    ShiftTradeStatus @default(OPEN)
+  message                   String?
+  createdAt                 DateTime         @default(now())
+  shiftId                   Int?
+  shift                     Shift?           @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  shiftStartTimeSnapshot    DateTime
+  shiftEndTimeSnapshot      DateTime
+  jobFunctionIdSnapshot     Int
+  jobFunctionNameSnapshot   String
+  jobFunctionColorSnapshot  String
+  offeredByUserId           Int
   offeredByUser    User             @relation("OfferedTrades", fields: [offeredByUserId], references: [id])
   acceptedByUserId Int?
   acceptedByUser   User?            @relation("AcceptedTrades", fields: [acceptedByUserId], references: [id])
@@ -735,6 +740,7 @@ model ShiftTrade {
   cinema           Cinema           @relation(fields: [cinemaId], references: [id])
   type             ShiftTradeType   @default(POOL)
 
+  @@index([shiftId])
   @@index([cinemaId, status, type, id])
   @@index([cinemaId, status, offeredByUserId, id])
   @@index([cinemaId, status, acceptedByUserId, id])

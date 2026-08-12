@@ -120,10 +120,16 @@ export default function MyShiftsListSection({
               );
             const isSent =
               Boolean(openTrade);
+            const qualifiedDirectUsers = users.filter(
+              (user) =>
+                user.id !== currentUserId &&
+                user.jobFunctionIds?.includes(shift.jobFunctionId),
+            );
             const directTradeDisabled =
               isSent ||
               !cinemaSettings
-                ?.allowShiftTradeDirect;
+                ?.allowShiftTradeDirect ||
+              qualifiedDirectUsers.length === 0;
             const isFocused =
               shift.id ===
               focusedShiftId;
@@ -318,18 +324,15 @@ export default function MyShiftsListSection({
                       }
                     >
                       <option value="">
-                        {cinemaSettings
+                        {!cinemaSettings
                           ?.allowShiftTradeDirect
-                          ? "Send direkte til kollega"
-                          : "Direkte vagtbytte deaktiveret"}
+                          ? "Direkte vagtbytte deaktiveret"
+                          : qualifiedDirectUsers.length === 0
+                            ? "Ingen kvalificerede kolleger"
+                            : "Send direkte til kollega"}
                       </option>
 
-                      {users
-                        .filter(
-                          (user) =>
-                            user.id !==
-                            currentUserId,
-                        )
+                      {qualifiedDirectUsers
                         .map(
                           (user) => (
                             <option

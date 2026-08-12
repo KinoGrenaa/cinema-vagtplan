@@ -5,6 +5,7 @@ import {
   mkdirSync,
   readdirSync,
   rmSync,
+  statSync,
 } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -20,6 +21,15 @@ export function findCompiledEntry(directory) {
   }
 
   return null;
+}
+
+export function getCompiledOutputFreshness(directory) {
+  const entry = findCompiledEntry(directory);
+  if (!entry) {
+    return null;
+  }
+
+  return statSync(entry).mtimeMs;
 }
 
 export function replaceDirectoryContents(sourceDir, targetDir) {
@@ -51,45 +61,91 @@ export function replaceDirectoryContents(sourceDir, targetDir) {
   return targetEntry;
 }
 
+export function selectCompiledOutputSource({
+  buildDir,
+  seedDir,
+} = {}) {
+  const buildFreshness = buildDir
+    ? getCompiledOutputFreshness(buildDir)
+    : null;
+  const seedFreshness = seedDir
+    ? getCompiledOutputFreshness(seedDir)
+    : null;
+
+  if (buildFreshness !== null && seedFreshness !== null) {
+    if (buildFreshness > seedFreshness) {
+      return {
+        directory: buildDir,
+        source: "project-build",
+      };
+    }
+
+    return {
+      directory: seedDir,
+      source: "image-seed",
+    };
+  }
+
+  if (buildFreshness !== null) {
+    return {
+      directory: buildDir,
+      source: "project-build",
+    };
+  }
+
+  if (seedFreshness !== null) {
+    return {
+      directory: seedDir,
+      source: "image-seed",
+    };
+  }
+
+  return null;
+}
+
 export function ensureCompiledOutput({
   cwd = process.cwd(),
   buildDir = resolve(cwd, "dist"),
   runtimeDir = process.env.BACKEND_RUNTIME_DIST ?? "/app/runtime-dist",
   seedDir = process.env.BACKEND_DIST_SEED ?? "/opt/backend-dist",
 } = {}) {
-  const buildEntry = findCompiledEntry(buildDir);
-  if (buildEntry) {
+  const selectedSource = selectCompiledOutputSource({
+    buildDir,
+    seedDir,
+  });
+
+  if (selectedSource) {
     return {
-      distEntry: replaceDirectoryContents(buildDir, runtimeDir),
-      source: "project-build",
+      distEntry: replaceDirectoryContents(
+        selectedSource.directory,
+        runtimeDir,
+      ),
+      source: selectedSource.source,
     };
   }
 
   const runtimeEntry = findCompiledEntry(runtimeDir);
   if (runtimeEntry) {
-    return { distEntry: runtimeEntry, source: "existing-runtime" };
+    return {
+      distEntry: runtimeEntry,
+      source: "existing-runtime",
+    };
   }
 
-  const seedEntry = findCompiledEntry(seedDir);
-  if (!seedEntry) {
-    throw new Error(
-      "Backendens kompilerede output mangler. Kør `npm run build` eller genopbyg backend-imaget.",
-    );
-  }
-
-  return {
-    distEntry: replaceDirectoryContents(seedDir, runtimeDir),
-    source: "image-seed",
-  };
+  throw new Error(
+    "Backendens kompilerede output mangler. Kør `npm run build` eller genopbyg backend-imaget.",
+  );
 }
 
 export function startCompiledBackend(options = {}) {
   const { distEntry, source } = ensureCompiledOutput(options);
 
   if (source === "project-build") {
-    console.log("Synkroniserede backendens runtime-output fra seneste build.");
+    console.log("Synkroniserede backendens runtime-output fra seneste lokale build.");
   } else if (source === "image-seed") {
-    console.log("Initialiserede backendens runtime-output fra det byggede Docker-image.");
+    console.log("Synkroniserede backendens runtime-output fra det byggede Docker-image.");
+  } else {
+    console.log("Bruger eksisterende backend runtime-output som fallback.");
   }
 
   const child = spawn(process.execPath, [distEntry], {

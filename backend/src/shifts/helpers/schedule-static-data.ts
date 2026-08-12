@@ -7,7 +7,6 @@ export const scheduleStaticUserSelect = {
   lastName: true,
   profileImage: true,
 } as const;
-
 export const scheduleStaticJobFunctionSelect = {
   id: true,
   name: true,
@@ -32,7 +31,6 @@ export const scheduleStaticJobFunctionSelect = {
     },
   },
 } as const;
-
 export async function findScheduleStaticData(
   prisma: PrismaService,
   cinemaId: number,
@@ -44,7 +42,22 @@ export async function findScheduleStaticData(
         isActive: true,
         user: { isActive: true, role: { not: 'MASTER' } },
       },
-      select: { role: true, user: { select: scheduleStaticUserSelect } },
+      select: {
+        role: true,
+        user: {
+          select: {
+            ...scheduleStaticUserSelect,
+            userJobFunctions: {
+              where: {
+                cinemaId,
+              },
+              select: {
+                jobFunctionId: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: [
         { user: { firstName: 'asc' } },
         { user: { lastName: 'asc' } },
@@ -57,7 +70,6 @@ export async function findScheduleStaticData(
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
     }),
   ]);
-
   return {
     users: memberships.map((membership) => ({
       ...membership.user,

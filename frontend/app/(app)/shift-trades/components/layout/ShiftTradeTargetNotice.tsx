@@ -29,7 +29,7 @@ function getNotice(
       title:
         "Vagtbyttet er fremhævet",
       description:
-        `Vagtbytte #${tradeId} er fundet og scrolles ind i visningen.`,
+        "Vagtbyttet er fundet og fremhævet i visningen.",
       tone:
         "border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-100",
     };
@@ -40,7 +40,7 @@ function getNotice(
       title:
         "Vagtbyttet blev ikke fundet",
       description:
-        `Vagtbytte #${tradeId} er ikke tilgængeligt i den aktive biograf. Det kan være udløbet, fjernet eller tilhøre en anden biograf.`,
+        "Vagtbyttet er ikke tilgængeligt i den aktive biograf. Det kan være udløbet, fjernet eller tilhøre en anden biograf.",
       tone:
         "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100",
     };

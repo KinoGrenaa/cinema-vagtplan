@@ -1,6 +1,9 @@
 import {
   formatShiftDate,
   formatShiftTime,
+  getTradeEndTime,
+  getTradeJobFunctionName,
+  getTradeStartTime,
 } from "../../helpers/core/shiftTradeHelpers";
 import type {
   ShiftTrade,
@@ -66,10 +69,7 @@ export default function TradeCard({
           </div>
 
           <h3 className="text-lg font-bold text-gray-950 dark:text-white md:text-xl">
-            {
-              trade.shift
-                .jobFunction.name
-            }
+            {getTradeJobFunctionName(trade)}
           </h3>
         </div>
       </div>
@@ -81,8 +81,7 @@ export default function TradeCard({
           </dt>
           <dd className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
             {formatShiftDate(
-              trade.shift
-                .startTime,
+              getTradeStartTime(trade),
             )}
           </dd>
         </div>
@@ -93,9 +92,8 @@ export default function TradeCard({
           </dt>
           <dd className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
             {formatShiftTime(
-              trade.shift
-                .startTime,
-              trade.shift.endTime,
+              getTradeStartTime(trade),
+              getTradeEndTime(trade),
             )}
           </dd>
         </div>

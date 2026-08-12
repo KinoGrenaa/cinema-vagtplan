@@ -276,11 +276,12 @@ describe('staffing AI cinema access', () => {
     );
   });
 
-  it('sender brede bemandingsnotifikationer kun til aktive medlemskaber', async () => {
+  it('sender brede bemandingsnotifikationer kun til kvalificerede aktive medlemskaber', async () => {
     prisma.staffingRequest.findUnique
       .mockResolvedValue({
         id: 31,
         cinemaId: 8,
+        jobFunctionId: 41,
         targetUserId: null,
         message: null,
         targetUser: null,
@@ -309,10 +310,19 @@ describe('staffing AI cinema access', () => {
     ).toHaveBeenCalledWith({
       where: {
         isActive: true,
+        role: {
+          not: 'MASTER',
+        },
         cinemaMemberships: {
           some: {
             cinemaId: 8,
             isActive: true,
+          },
+        },
+        userJobFunctions: {
+          some: {
+            cinemaId: 8,
+            jobFunctionId: 41,
           },
         },
       },

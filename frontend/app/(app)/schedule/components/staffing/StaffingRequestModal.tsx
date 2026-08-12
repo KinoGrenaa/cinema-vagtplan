@@ -106,40 +106,35 @@ export default function StaffingRequestModal({
           bemandingsindbakken.
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-semibold">
-            Vagt eller behov
-          </label>
-          <select
-            value={selectedShiftId ?? ""}
-            onChange={(event) => {
-              const nextShiftId = event.target.value
-                ? Number(event.target.value)
-                : null;
-              const nextShift = nextShiftId
-                ? shifts.find((shift) => shift.id === nextShiftId) ?? null
-                : null;
-              onShiftChange(nextShift);
-            }}
-            className={fieldClass}
-          >
-            <option value="">Intet konkret vagtkort / bemandingsbehov</option>
-            {shifts.map((shift) => (
-              <option key={shift.id} value={shift.id}>
-                {getShiftOptionText(shift)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {selectedShift ? (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-800 dark:bg-gray-950">
-            <div className="font-semibold">Koblet til vagt</div>
-            <div className="mt-1 text-gray-700 dark:text-gray-300">
-              {getShiftOptionText(selectedShift)}
-            </div>
+        {!selectedShift && (
+          <div>
+            <label className="mb-1 block text-sm font-semibold">
+              Vagt eller behov
+            </label>
+            <select
+              value={selectedShiftId ?? ""}
+              onChange={(event) => {
+                const nextShiftId = event.target.value
+                  ? Number(event.target.value)
+                  : null;
+                const nextShift = nextShiftId
+                  ? shifts.find((shift) => shift.id === nextShiftId) ?? null
+                  : null;
+                onShiftChange(nextShift);
+              }}
+              className={fieldClass}
+            >
+              <option value="">Intet konkret vagtkort / bemandingsbehov</option>
+              {shifts.map((shift) => (
+                <option key={shift.id} value={shift.id}>
+                  {getShiftOptionText(shift)}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : (
+        )}
+
+        {!selectedShift && (
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-semibold">Fra</label>
@@ -191,8 +186,8 @@ export default function StaffingRequestModal({
               }
               className={fieldClass}
             >
-              <option value="ALL">Alle medarbejdere</option>
-              <option value="USER">Bestemt medarbejder</option>
+              <option value="ALL">Alle kvalificerede medarbejdere</option>
+              <option value="USER">Bestemt kvalificeret medarbejder</option>
             </select>
           </div>
 

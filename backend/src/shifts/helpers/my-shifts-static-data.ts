@@ -10,6 +10,12 @@ export const myShiftsColleagueSelect = {
   id: true,
   firstName: true,
   lastName: true,
+  userJobFunctions: {
+    select: {
+      cinemaId: true,
+      jobFunctionId: true,
+    },
+  },
 } as const;
 
 export const myShiftsCinemaSettingsSelect = {
@@ -83,10 +89,14 @@ export async function findMyShiftsStaticData(
 
   return {
     users:
-      memberships.map(
-        (membership) =>
-          membership.user,
-      ),
+      memberships.map((membership) => ({
+        id: membership.user.id,
+        firstName: membership.user.firstName,
+        lastName: membership.user.lastName,
+        jobFunctionIds: membership.user.userJobFunctions
+          .filter((qualification) => qualification.cinemaId === params.cinemaId)
+          .map((qualification) => qualification.jobFunctionId),
+      })),
     cinemaSettings,
   };
 }

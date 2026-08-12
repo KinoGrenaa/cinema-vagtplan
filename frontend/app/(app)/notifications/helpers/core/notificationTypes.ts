@@ -24,14 +24,28 @@ export type ShiftTrade = {
   offeredByUserId: number;
   targetUserId?: number | null;
   offeredByUser?: User | null;
+  shiftStartTimeSnapshot?: string;
+  shiftEndTimeSnapshot?: string;
+  jobFunctionNameSnapshot?: string;
   shift: {
     startTime: string;
     endTime: string;
     jobFunction?: {
       name: string;
     };
-  };
+  } | null;
 };
+
+
+export type DirectTradeNotificationItem =
+  | {
+      kind: "trade";
+      trade: ShiftTrade;
+    }
+  | {
+      kind: "result";
+      notification: Notification;
+    };
 
 export type ErrorDialogState = {
   open: boolean;
@@ -55,4 +69,5 @@ export type DateGroup<T> = {
 export type NotificationGroup =
   | DateGroup<Notification>
   | DateGroup<Message>
-  | DateGroup<ShiftTrade>;
+  | DateGroup<ShiftTrade>
+  | DateGroup<DirectTradeNotificationItem>;

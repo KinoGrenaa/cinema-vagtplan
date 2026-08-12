@@ -43,8 +43,18 @@ describe(
         status:
           ShiftTradeStatus.OPEN,
         shift: {
-          startTime: {
-            gt: now,
+          is: {
+            startTime: {
+              gt: now,
+            },
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         },
         OR: [
@@ -80,8 +90,18 @@ describe(
         type:
           ShiftTradeType.DIRECT,
         shift: {
-          startTime: {
-            gt: now,
+          is: {
+            startTime: {
+              gt: now,
+            },
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         },
         targetUserId: 9,
@@ -106,8 +126,18 @@ describe(
         type:
           ShiftTradeType.POOL,
         shift: {
-          startTime: {
-            gt: now,
+          is: {
+            startTime: {
+              gt: now,
+            },
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         },
         offeredByUserId: {
@@ -185,8 +215,18 @@ describe(
             status:
               ShiftTradeStatus.OPEN,
             shift: {
-              startTime: {
-                gt: now,
+              is: {
+                startTime: {
+                  gt: now,
+                },
+                jobFunction: {
+                  userJobFunctions: {
+                    some: {
+                      cinemaId: 7,
+                      userId: 9,
+                    },
+                  },
+                },
               },
             },
             OR: [

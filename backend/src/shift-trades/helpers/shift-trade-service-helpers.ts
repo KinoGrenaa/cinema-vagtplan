@@ -30,8 +30,6 @@ export const shiftTradeInclude = {
           color: true,
         },
       },
-      jobFunctionNameSnapshot: true,
-      jobFunctionColorSnapshot: true,
     },
   },
   offeredByUser: {
@@ -47,6 +45,49 @@ export const shiftTradeInclude = {
     select: shiftTradeParticipantSelect,
   },
 } as const;
+
+export function getShiftTradeDisplayData(
+  trade: {
+    shiftStartTimeSnapshot: Date;
+    shiftEndTimeSnapshot: Date;
+    jobFunctionIdSnapshot: number;
+    jobFunctionNameSnapshot: string;
+    jobFunctionColorSnapshot: string;
+    shift?: {
+      startTime: Date;
+      endTime: Date;
+      jobFunctionId?: number;
+      jobFunctionNameSnapshot?: string;
+      jobFunctionColorSnapshot?: string;
+      jobFunction?: {
+        id?: number;
+        name?: string;
+        color?: string | null;
+      } | null;
+    } | null;
+  },
+) {
+  return {
+    startTime:
+      trade.shift?.startTime ??
+      trade.shiftStartTimeSnapshot,
+    endTime:
+      trade.shift?.endTime ??
+      trade.shiftEndTimeSnapshot,
+    jobFunctionId:
+      trade.shift?.jobFunction?.id ??
+      trade.shift?.jobFunctionId ??
+      trade.jobFunctionIdSnapshot,
+    jobFunctionName:
+      trade.shift?.jobFunction?.name ??
+      trade.shift?.jobFunctionNameSnapshot ??
+      trade.jobFunctionNameSnapshot,
+    jobFunctionColor:
+      trade.shift?.jobFunction?.color ??
+      trade.shift?.jobFunctionColorSnapshot ??
+      trade.jobFunctionColorSnapshot,
+  };
+}
 
 function getPositiveId(
   value: unknown,

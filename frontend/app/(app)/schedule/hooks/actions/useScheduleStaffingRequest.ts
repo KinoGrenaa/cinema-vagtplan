@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { toast } from "sonner";
 import {
   localDateTimeToISOString,
   toInputDateTime,
@@ -15,6 +14,7 @@ import { getScheduleStaffingTargetUsers } from "../../helpers/derived/scheduleDe
 
 type InfoDialog = {
   showError: (title: string, description: string) => void;
+  showSuccess: (title: string, description: string) => void;
 };
 
 type CreateStaffingRequest = (payload: {
@@ -28,6 +28,56 @@ type CreateStaffingRequest = (payload: {
   jobFunctionId: number | null;
 }) => Promise<void>;
 
+function formatStaffingSuccessDescription(
+  shift: Shift | null,
+  jobFunctions: JobFunction[],
+) {
+  if (!shift) {
+    return "Bemandingsforespørgslen er sendt.";
+  }
+
+  const jobFunctionName =
+    (
+      shift as Shift & {
+        jobFunction?: {
+          name?: string;
+        } | null;
+      }
+    ).jobFunction?.name ??
+    jobFunctions.find(
+      (jobFunction) =>
+        jobFunction.id ===
+        shift.jobFunctionId,
+    )?.name ??
+    "Vagt";
+  const start = new Date(shift.startTime);
+  const end = new Date(shift.endTime);
+  const dateLabel = start.toLocaleDateString(
+    "da-DK",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    },
+  );
+  const startLabel = start.toLocaleTimeString(
+    "da-DK",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
+  const endLabel = end.toLocaleTimeString(
+    "da-DK",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
+
+  return `${jobFunctionName} · ${dateLabel} · ${startLabel}–${endLabel}`;
+}
+
 type UseScheduleStaffingRequestOptions = {
   selectedDate: string;
   shifts: Shift[];
@@ -38,6 +88,10 @@ type UseScheduleStaffingRequestOptions = {
   hideShiftFormModal: () => void;
   infoDialog: InfoDialog;
   createStaffingRequest: CreateStaffingRequest;
+  commitLinkedShiftDraft?: () => Promise<{
+    shift: Shift;
+    rollback: null | (() => Promise<void>);
+  } | null>;
 };
 
 export function useScheduleStaffingRequest({
@@ -50,6 +104,7 @@ export function useScheduleStaffingRequest({
   hideShiftFormModal,
   infoDialog,
   createStaffingRequest,
+  commitLinkedShiftDraft,
 }: UseScheduleStaffingRequestOptions) {
   const [showStaffingRequestModal, setShowStaffingRequestModal] =
     useState(false);
@@ -73,15 +128,23 @@ export function useScheduleStaffingRequest({
   const [staffingRequestJobFunctionId, setStaffingRequestJobFunctionId] =
     useState(0);
 
-  const staffingTargetUsers = useMemo(
-    () => getScheduleStaffingTargetUsers(users),
-    [users],
-  );
-
   const selectedStaffingRequestShift = useMemo(() => {
     if (!staffingRequestShiftId) return null;
     return shifts.find((shift) => shift.id === staffingRequestShiftId) ?? null;
   }, [shifts, staffingRequestShiftId]);
+
+  const staffingTargetJobFunctionId =
+    selectedStaffingRequestShift?.jobFunctionId ??
+    staffingRequestJobFunctionId;
+
+  const staffingTargetUsers = useMemo(
+    () =>
+      getScheduleStaffingTargetUsers(
+        users,
+        staffingTargetJobFunctionId,
+      ),
+    [users, staffingTargetJobFunctionId],
+  );
 
   useEffect(() => {
     if (
@@ -210,7 +273,33 @@ export function useScheduleStaffingRequest({
       return;
     }
 
+    let committed:
+      | {
+          shift: Shift;
+          rollback: null | (() => Promise<void>);
+        }
+      | null = null;
+
     try {
+      committed =
+        staffingRequestShiftId && commitLinkedShiftDraft
+          ? await commitLinkedShiftDraft()
+          : null;
+
+      if (
+        staffingRequestShiftId &&
+        commitLinkedShiftDraft &&
+        !committed
+      ) {
+        return;
+      }
+
+      const successDescription =
+        formatStaffingSuccessDescription(
+          committed?.shift ?? selectedStaffingRequestShift,
+          jobFunctions,
+        );
+
       await createStaffingRequest({
         shiftId: staffingRequestShiftId,
         targetUserId:
@@ -230,9 +319,24 @@ export function useScheduleStaffingRequest({
           ? null
           : staffingRequestJobFunctionId || null,
       });
-      toast.success("Bemandingsforespørgslen er sendt");
       resetStaffingRequestModal();
+      infoDialog.showSuccess(
+        "Bemandingsforespørgslen er sendt",
+        successDescription,
+      );
     } catch (error) {
+      if (committed?.rollback) {
+        try {
+          await committed.rollback();
+        } catch {
+          infoDialog.showError(
+            "Vagten kunne ikke gendannes automatisk",
+            "Bemandingsforespørgslen fejlede, og den tidligere vagttildeling kunne ikke gendannes automatisk. Genindlæs vagtplanen og kontrollér vagten.",
+          );
+          return;
+        }
+      }
+
       infoDialog.showError(
         "Bemandingsforespørgslen kunne ikke sendes",
         error instanceof Error

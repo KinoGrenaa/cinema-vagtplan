@@ -1052,7 +1052,10 @@ export function useSchedule(
 
         if (!response.ok) {
           throw new Error(
-            "Kunne ikke sende vagten i byttepuljen",
+            await readErrorMessage(
+              response,
+              "Kunne ikke sende vagten i byttepuljen",
+            ),
           );
         }
 
@@ -1126,11 +1129,14 @@ export function useSchedule(
             ),
           );
         }
+
+        await refreshShifts();
       },
       [
         activeCinemaId,
         apiFetch,
         needsMasterCinemaSelection,
+        refreshShifts,
       ],
     );
 

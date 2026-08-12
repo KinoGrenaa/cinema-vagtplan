@@ -20,6 +20,7 @@ import {
   getNotificationDestination,
 } from "../../helpers/core/notificationNavigation";
 import type {
+  DirectTradeNotificationItem,
   Message,
   NotificationCategory,
   NotificationGroup,
@@ -63,7 +64,18 @@ type Props = {
 };
 
 const itemClass =
-  "block w-full p-5 text-left transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:hover:bg-gray-800/70 dark:active:bg-gray-800 dark:focus-visible:ring-blue-400";
+  "block w-full p-5 text-left transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 disabled:cursor-default disabled:hover:bg-inherit disabled:active:bg-inherit dark:hover:bg-gray-800/70 dark:active:bg-gray-800 dark:focus-visible:ring-blue-400";
+
+function isInactiveActionNotification(
+  notification: Notification,
+) {
+  return (
+    (notification.type === "STAFFING_REQUEST" ||
+      notification.type === "SHIFT_DIRECT") &&
+    notification.isRead &&
+    !notification.linkUrl
+  );
+}
 
 function NotificationMeta({
   notification,
@@ -72,6 +84,10 @@ function NotificationMeta({
 }) {
   const destination =
     getNotificationDestination(
+      notification,
+    );
+  const inactiveStaffingRequest =
+    isInactiveActionNotification(
       notification,
     );
 
@@ -84,11 +100,13 @@ function NotificationMeta({
       </span>
 
       <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-        {destination
-          ? "Åbn"
-          : notification.isRead
-            ? "Læst"
-            : "Markér som læst"}
+        {inactiveStaffingRequest
+          ? "Ikke længere aktuel"
+          : destination
+            ? "Åbn"
+            : notification.isRead
+              ? "Læst"
+              : "Markér som læst"}
       </span>
     </div>
   );
@@ -281,12 +299,21 @@ export default function NotificationsOverview({
                       ).map(
                         (
                           notification,
-                        ) => (
+                        ) => {
+                          const inactiveStaffingRequest =
+                            isInactiveActionNotification(
+                              notification,
+                            );
+
+                          return (
                           <button
                             key={
                               notification.id
                             }
                             type="button"
+                            disabled={
+                              inactiveStaffingRequest
+                            }
                             onClick={() =>
                               void handleSystemNotification(
                                 notification,
@@ -296,12 +323,21 @@ export default function NotificationsOverview({
                               notification.isRead
                                 ? "bg-white dark:bg-gray-900"
                                 : "bg-blue-50 dark:bg-blue-950/30"
+                            } ${
+                              inactiveStaffingRequest
+                                ? "opacity-75"
+                                : ""
                             }`}
                           >
                             <div className="flex flex-wrap items-center gap-2">
                               {!notification.isRead && (
                                 <span className="rounded-full bg-blue-700 px-2 py-1 text-xs font-bold text-white dark:bg-blue-500">
                                   Ny
+                                </span>
+                              )}
+                              {inactiveStaffingRequest && (
+                                <span className="rounded-full bg-gray-200 px-2 py-1 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                  Ikke længere aktuel
                                 </span>
                               )}
                               <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -328,7 +364,8 @@ export default function NotificationsOverview({
                               }
                             />
                           </button>
-                        ),
+                          );
+                        },
                       )}
 
                     {activeCategory ===
@@ -381,49 +418,99 @@ export default function NotificationsOverview({
                         ),
                       )}
 
-                    {(activeCategory ===
-                      "directTrades" ||
-                      activeCategory ===
-                        "poolTrades") &&
-                      (
-                        group.items as ShiftTrade[]
-                      ).map(
-                        (trade) => (
-                          <Link
-                            key={
-                              trade.id
-                            }
-                            href={`/shift-trades?tradeId=${trade.id}`}
-                            className={itemClass}
-                          >
-                            <span className="rounded-full bg-orange-600 px-2 py-1 text-xs font-bold text-white">
-                              {activeCategory ===
-                              "directTrades"
-                                ? "Direkte bytte"
-                                : "Åben vagt"}
-                            </span>
-                            <p className="mt-3 font-semibold text-gray-950 dark:text-white">
-                              {trade.shift
-                                .jobFunction
-                                ?.name ||
-                                "Vagt"}
-                            </p>
-                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                              Fra:{" "}
-                              {getUserName(
-                                trade.offeredByUser,
-                              ) ||
-                                "Ukendt"}
-                            </p>
-                            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                              {formatDateTimeDK(
-                                trade.shift
-                                  .startTime,
-                              )}
-                            </p>
-                          </Link>
-                        ),
+                    {activeCategory === "directTrades" &&
+                      (group.items as DirectTradeNotificationItem[]).map(
+                        (item) =>
+                          item.kind === "result" ? (
+                            <button
+                              key={`notification-${item.notification.id}`}
+                              type="button"
+                              onClick={() =>
+                                void handleSystemNotification(
+                                  item.notification,
+                                )
+                              }
+                              className={`${itemClass} bg-blue-50 dark:bg-blue-950/30`}
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-blue-700 px-2 py-1 text-xs font-bold text-white dark:bg-blue-500">
+                                  Ny
+                                </span>
+                                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                  {getNotificationTypeLabel(
+                                    item.notification.type,
+                                  )}
+                                </span>
+                              </div>
+                              <p className="mt-3 font-semibold text-gray-950 dark:text-white">
+                                {item.notification.title}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">
+                                {item.notification.message}
+                              </p>
+                              <NotificationMeta
+                                notification={item.notification}
+                              />
+                            </button>
+                          ) : (
+                            <Link
+                              key={`trade-${item.trade.id}`}
+                              href={`/shift-trades?tradeId=${item.trade.id}`}
+                              className={itemClass}
+                            >
+                              <span className="rounded-full bg-orange-600 px-2 py-1 text-xs font-bold text-white">
+                                Direkte bytte
+                              </span>
+                              <p className="mt-3 font-semibold text-gray-950 dark:text-white">
+                                {item.trade.shift?.jobFunction?.name ||
+                                  item.trade.jobFunctionNameSnapshot ||
+                                  "Vagt"}
+                              </p>
+                              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                                Fra:{" "}
+                                {getUserName(item.trade.offeredByUser) ||
+                                  "Ukendt"}
+                              </p>
+                              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                                {formatDateTimeDK(
+                                  item.trade.shift?.startTime ??
+                                    item.trade.shiftStartTimeSnapshot ??
+                                    new Date(0).toISOString(),
+                                )}
+                              </p>
+                            </Link>
+                          ),
                       )}
+
+                    {activeCategory === "poolTrades" &&
+                      (group.items as ShiftTrade[]).map((trade) => (
+                        <Link
+                          key={trade.id}
+                          href={`/shift-trades?tradeId=${trade.id}`}
+                          className={itemClass}
+                        >
+                          <span className="rounded-full bg-orange-600 px-2 py-1 text-xs font-bold text-white">
+                            Åben vagt
+                          </span>
+                          <p className="mt-3 font-semibold text-gray-950 dark:text-white">
+                            {trade.shift?.jobFunction?.name ||
+                              trade.jobFunctionNameSnapshot ||
+                              "Vagt"}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                            Fra:{" "}
+                            {getUserName(trade.offeredByUser) ||
+                              "Ukendt"}
+                          </p>
+                          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                            {formatDateTimeDK(
+                              trade.shift?.startTime ??
+                                trade.shiftStartTimeSnapshot ??
+                                new Date(0).toISOString(),
+                            )}
+                          </p>
+                        </Link>
+                      ))}
                   </div>
                 )}
               </section>

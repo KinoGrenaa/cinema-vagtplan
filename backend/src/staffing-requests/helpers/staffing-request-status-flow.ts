@@ -6,12 +6,20 @@ import { StaffingRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
+  acquireShiftAdvisoryLock,
+  SHIFT_RECORD_LOCK_NAMESPACE,
+} from '../../shifts/helpers/shift-advisory-lock';
+import {
   AuthUser,
   staffingRequestInclude,
 } from './staffing-request-helpers';
 import { assertNoStaffingRequestAcceptConflicts } from './staffing-request-acceptance-conflicts';
 import { createStaffingRequestAcceptedNotifications } from './staffing-request-accepted-notifications';
-import { ensureStaffingRequestActorAccess } from './staffing-request-create-lookups';
+import { resolveStaffingRequestNotifications } from './staffing-request-notification-resolution';
+import {
+  ensureStaffingRequestActorAccess,
+  ensureStaffingRequestUserQualified,
+} from './staffing-request-create-lookups';
 import { emitStaffingRequestsUpdate } from './staffing-request-realtime';
 import {
   assertCanAcceptStaffingRequest,
@@ -58,18 +66,103 @@ export async function acceptStaffingRequest({
   id,
   selectedCinemaId,
 }: StaffingRequestActionParams) {
-  const request = await findAccessibleStaffingRequest({
+  const accessibleRequest = await findAccessibleStaffingRequest({
     prisma,
     user,
     id,
     selectedCinemaId,
   });
 
-  assertPendingStaffingRequest(request);
-  assertCanAcceptStaffingRequest(user, request);
-  await assertNoStaffingRequestAcceptConflicts(prisma, request, user.sub);
+  assertPendingStaffingRequest(accessibleRequest);
+  assertCanAcceptStaffingRequest(user, accessibleRequest);
+
+  const linkedShiftId = accessibleRequest.shiftId;
+
+  if (!linkedShiftId) {
+    throw new BadRequestException(
+      'Bemandingsforespørgslen er ikke længere aktuel, fordi vagten er slettet',
+    );
+  }
 
   const result = await prisma.$transaction(async (tx) => {
+    await acquireShiftAdvisoryLock(
+      tx,
+      SHIFT_RECORD_LOCK_NAMESPACE,
+      linkedShiftId,
+    );
+
+    const request = await tx.staffingRequest.findFirst({
+      where: {
+        id,
+        cinemaId: accessibleRequest.cinemaId,
+        status: StaffingRequestStatus.PENDING,
+      },
+      include: staffingRequestInclude,
+    });
+
+    if (!request) {
+      throw new BadRequestException(
+        'Bemandingsforespørgslen er ikke længere aktuel',
+      );
+    }
+
+    assertCanAcceptStaffingRequest(user, request);
+
+    if (!request.shiftId) {
+      throw new BadRequestException(
+        'Bemandingsforespørgslen er ikke længere aktuel, fordi vagten er slettet',
+      );
+    }
+
+    await ensureStaffingRequestUserQualified({
+      prisma: tx,
+      cinemaId: request.cinemaId,
+      userId: user.sub,
+      jobFunctionId: request.jobFunctionId,
+    });
+
+    let currentShift:
+      | {
+          id: number;
+          userId: number | null;
+          startTime: Date;
+          endTime: Date;
+        }
+      | null = null;
+
+    if (request.shiftId) {
+      currentShift = await tx.shift.findFirst({
+        where: {
+          id: request.shiftId,
+          cinemaId: request.cinemaId,
+        },
+        select: {
+          id: true,
+          userId: true,
+          startTime: true,
+          endTime: true,
+        },
+      });
+
+      if (!currentShift) {
+        throw new BadRequestException(
+          'Bemandingsforespørgslen er ikke længere aktuel, fordi vagten er slettet',
+        );
+      }
+
+      if (currentShift.userId !== null) {
+        throw new BadRequestException(
+          'Bemandingsforespørgslen er ikke længere aktuel, fordi vagten allerede er tildelt',
+        );
+      }
+    }
+
+    await assertNoStaffingRequestAcceptConflicts(
+      tx,
+      request,
+      user.sub,
+    );
+
     const transition = await tx.staffingRequest.updateMany({
       where: {
         id,
@@ -84,64 +177,61 @@ export async function acceptStaffingRequest({
 
     if (transition.count !== 1) {
       throw new BadRequestException(
-        'Bemandingsforespørgslen er ikke længere åben',
+        'Bemandingsforespørgslen er ikke længere aktuel',
       );
     }
 
     let assignedShift: unknown = null;
-    let assignedShiftNow = false;
+    const relatedRequestIds = [id];
 
     if (request.shiftId) {
-      const currentShift = await tx.shift.findFirst({
+      const assignment = await tx.shift.updateMany({
         where: {
           id: request.shiftId,
           cinemaId: request.cinemaId,
+          userId: null,
         },
-        select: {
-          id: true,
-          userId: true,
+        data: {
+          userId: user.sub,
         },
       });
 
-      if (!currentShift) {
-        throw new NotFoundException('Vagt blev ikke fundet');
-      }
-
-      if (currentShift.userId && currentShift.userId !== user.sub) {
+      if (assignment.count !== 1) {
         throw new BadRequestException(
-          'Vagten er allerede tildelt en anden medarbejder.',
+          'Bemandingsforespørgslen er ikke længere aktuel, fordi vagten er blevet ændret',
         );
       }
 
-      if (!currentShift.userId) {
-        const assignment = await tx.shift.updateMany({
+      assignedShift = await tx.shift.findUnique({
+        where: {
+          id: request.shiftId,
+        },
+        include: {
+          user: true,
+          jobFunction: true,
+        },
+      });
+
+      const otherPendingRequests =
+        await tx.staffingRequest.findMany({
           where: {
-            id: request.shiftId,
             cinemaId: request.cinemaId,
-            userId: null,
+            id: {
+              not: id,
+            },
+            shiftId: request.shiftId,
+            status: StaffingRequestStatus.PENDING,
           },
-          data: {
-            userId: user.sub,
+          select: {
+            id: true,
           },
         });
 
-        if (assignment.count !== 1) {
-          throw new BadRequestException(
-            'Vagten er allerede blevet taget af en anden medarbejder.',
-          );
-        }
-
-        assignedShiftNow = true;
-        assignedShift = await tx.shift.findUnique({
-          where: {
-            id: request.shiftId,
-          },
-          include: {
-            user: true,
-            jobFunction: true,
-          },
-        });
-      }
+      relatedRequestIds.push(
+        ...otherPendingRequests.map(
+          (pendingRequest) => pendingRequest.id,
+        ),
+      );
 
       await tx.staffingRequest.updateMany({
         where: {
@@ -158,7 +248,14 @@ export async function acceptStaffingRequest({
       });
     }
 
-    if (assignedShiftNow) {
+    const notificationUserIds =
+      await resolveStaffingRequestNotifications(
+        tx,
+        request.cinemaId,
+        relatedRequestIds,
+      );
+
+    if (assignedShift) {
       await createStaffingRequestAcceptedNotifications(
         tx,
         request.cinemaId,
@@ -183,18 +280,34 @@ export async function acceptStaffingRequest({
     return {
       updatedRequest,
       assignedShift,
+      notificationUserIds,
     };
   });
 
   if (result.assignedShift) {
     realtimeGateway.notifyCinema(
-      request.cinemaId,
+      accessibleRequest.cinemaId,
       'shiftsUpdated',
       result.assignedShift,
     );
   }
 
-  emitStaffingRequestsUpdate(realtimeGateway, request.cinemaId);
+  for (const notificationUserId of result.notificationUserIds) {
+    realtimeGateway.notifyUser(
+      notificationUserId,
+      'notificationsUpdated',
+      {
+        cinemaId: accessibleRequest.cinemaId,
+        staffingRequestId: id,
+        resolved: true,
+      },
+    );
+  }
+
+  emitStaffingRequestsUpdate(
+    realtimeGateway,
+    accessibleRequest.cinemaId,
+  );
   return result.updatedRequest;
 }
 
@@ -215,35 +328,59 @@ export async function rejectStaffingRequest({
   assertPendingStaffingRequest(request);
   assertCanRejectStaffingRequest(user, request);
 
-  const transition = await prisma.staffingRequest.updateMany({
-    where: {
-      id,
-      cinemaId: request.cinemaId,
-      status: StaffingRequestStatus.PENDING,
-    },
-    data: {
-      status: StaffingRequestStatus.REJECTED,
-      rejectedAt: new Date(),
-    },
+  const result = await prisma.$transaction(async (tx) => {
+    const transition = await tx.staffingRequest.updateMany({
+      where: {
+        id,
+        cinemaId: request.cinemaId,
+        status: StaffingRequestStatus.PENDING,
+      },
+      data: {
+        status: StaffingRequestStatus.REJECTED,
+        rejectedAt: new Date(),
+      },
+    });
+
+    if (transition.count !== 1) {
+      throw new BadRequestException(
+        'Bemandingsforespørgslen er ikke længere åben',
+      );
+    }
+
+    const notificationUserIds =
+      await resolveStaffingRequestNotifications(
+        tx,
+        request.cinemaId,
+        [id],
+      );
+    const updated = await tx.staffingRequest.findUnique({
+      where: { id },
+      include: staffingRequestInclude,
+    });
+
+    if (!updated) {
+      throw new NotFoundException('Bemandingsforespørgsel blev ikke fundet');
+    }
+
+    return {
+      updated,
+      notificationUserIds,
+    };
   });
 
-  if (transition.count !== 1) {
-    throw new BadRequestException(
-      'Bemandingsforespørgslen er ikke længere åben',
+  for (const notificationUserId of result.notificationUserIds) {
+    realtimeGateway.notifyUser(
+      notificationUserId,
+      'notificationsUpdated',
+      {
+        cinemaId: request.cinemaId,
+        staffingRequestId: id,
+        resolved: true,
+      },
     );
   }
-
-  const updated = await prisma.staffingRequest.findUnique({
-    where: { id },
-    include: staffingRequestInclude,
-  });
-
-  if (!updated) {
-    throw new NotFoundException('Bemandingsforespørgsel blev ikke fundet');
-  }
-
-  emitStaffingRequestsUpdate(realtimeGateway, updated.cinemaId);
-  return updated;
+  emitStaffingRequestsUpdate(realtimeGateway, result.updated.cinemaId);
+  return result.updated;
 }
 
 export async function cancelStaffingRequest({
@@ -267,32 +404,56 @@ export async function cancelStaffingRequest({
     'Kun åbne forespørgsler kan annulleres',
   );
 
-  const transition = await prisma.staffingRequest.updateMany({
-    where: {
-      id,
-      cinemaId: request.cinemaId,
-      status: StaffingRequestStatus.PENDING,
-    },
-    data: {
-      status: StaffingRequestStatus.CANCELLED,
-    },
+  const result = await prisma.$transaction(async (tx) => {
+    const transition = await tx.staffingRequest.updateMany({
+      where: {
+        id,
+        cinemaId: request.cinemaId,
+        status: StaffingRequestStatus.PENDING,
+      },
+      data: {
+        status: StaffingRequestStatus.CANCELLED,
+      },
+    });
+
+    if (transition.count !== 1) {
+      throw new BadRequestException(
+        'Kun åbne forespørgsler kan annulleres',
+      );
+    }
+
+    const notificationUserIds =
+      await resolveStaffingRequestNotifications(
+        tx,
+        request.cinemaId,
+        [id],
+      );
+    const updated = await tx.staffingRequest.findUnique({
+      where: { id },
+      include: staffingRequestInclude,
+    });
+
+    if (!updated) {
+      throw new NotFoundException('Bemandingsforespørgsel blev ikke fundet');
+    }
+
+    return {
+      updated,
+      notificationUserIds,
+    };
   });
 
-  if (transition.count !== 1) {
-    throw new BadRequestException(
-      'Kun åbne forespørgsler kan annulleres',
+  for (const notificationUserId of result.notificationUserIds) {
+    realtimeGateway.notifyUser(
+      notificationUserId,
+      'notificationsUpdated',
+      {
+        cinemaId: request.cinemaId,
+        staffingRequestId: id,
+        resolved: true,
+      },
     );
   }
-
-  const updated = await prisma.staffingRequest.findUnique({
-    where: { id },
-    include: staffingRequestInclude,
-  });
-
-  if (!updated) {
-    throw new NotFoundException('Bemandingsforespørgsel blev ikke fundet');
-  }
-
-  emitStaffingRequestsUpdate(realtimeGateway, updated.cinemaId);
-  return updated;
+  emitStaffingRequestsUpdate(realtimeGateway, result.updated.cinemaId);
+  return result.updated;
 }

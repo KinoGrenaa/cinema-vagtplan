@@ -4,7 +4,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { assertNoStaffingRequestAcceptConflicts } from './staffing-request-acceptance-conflicts';
 import { createStaffingRequestAcceptedNotifications } from './staffing-request-accepted-notifications';
-import { ensureStaffingRequestActorAccess } from './staffing-request-create-lookups';
+import { resolveStaffingRequestNotifications } from './staffing-request-notification-resolution';
+import {
+  ensureStaffingRequestActorAccess,
+  ensureStaffingRequestUserQualified,
+} from './staffing-request-create-lookups';
 import { findStaffingRequestForUser } from './staffing-request-read-flow';
 import {
   acceptStaffingRequest,
@@ -14,8 +18,10 @@ import {
 
 jest.mock('./staffing-request-acceptance-conflicts');
 jest.mock('./staffing-request-accepted-notifications');
+jest.mock('./staffing-request-notification-resolution');
 jest.mock('./staffing-request-create-lookups', () => ({
   ensureStaffingRequestActorAccess: jest.fn(),
+  ensureStaffingRequestUserQualified: jest.fn(),
 }));
 jest.mock('./staffing-request-read-flow', () => ({
   findStaffingRequestForUser: jest.fn(),
@@ -39,6 +45,7 @@ describe('staffing request status flow', () => {
     cinemaId: 7,
     shiftId: 41,
     targetUserId: null,
+    jobFunctionId: 51,
     status: StaffingRequestStatus.PENDING,
     requestStartTime: new Date('2026-07-22T14:00:00.000Z'),
     requestEndTime: new Date('2026-07-22T20:00:00.000Z'),
@@ -58,37 +65,58 @@ describe('staffing request status flow', () => {
   const realtimeGateway = {
     server: { to },
     notifyCinema: jest.fn(),
+    notifyUser: jest.fn(),
   } as unknown as RealtimeGateway;
 
   beforeEach(() => {
     jest.clearAllMocks();
     (findStaffingRequestForUser as jest.Mock).mockResolvedValue(request);
     (ensureStaffingRequestActorAccess as jest.Mock).mockResolvedValue(undefined);
+    (ensureStaffingRequestUserQualified as jest.Mock).mockResolvedValue(
+      undefined,
+    );
     (assertNoStaffingRequestAcceptConflicts as jest.Mock).mockResolvedValue(
       undefined,
     );
     (createStaffingRequestAcceptedNotifications as jest.Mock).mockResolvedValue(
       undefined,
     );
+    (resolveStaffingRequestNotifications as jest.Mock).mockResolvedValue([
+      11,
+      22,
+    ]);
   });
 
-  it('accepts and assigns a request atomically', async () => {
-    const tx = {
+  function createSuccessTx() {
+    return {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       staffingRequest: {
+        findFirst: jest.fn().mockResolvedValue(request),
         updateMany: jest
           .fn()
           .mockResolvedValueOnce({ count: 1 })
           .mockResolvedValueOnce({ count: 2 }),
+        findMany: jest.fn().mockResolvedValue([
+          { id: 32 },
+          { id: 33 },
+        ]),
         findUnique: jest.fn().mockResolvedValue(updatedRequest),
       },
       shift: {
-        findFirst: jest.fn().mockResolvedValue({ id: 41, userId: null }),
+        findFirst: jest.fn().mockResolvedValue({
+          id: 41,
+          userId: null,
+          startTime: new Date('2026-07-22T14:00:00.000Z'),
+          endTime: new Date('2026-07-22T20:00:00.000Z'),
+        }),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findUnique: jest.fn().mockResolvedValue(assignedShift),
       },
-      user: { findMany: jest.fn() },
-      notification: { createMany: jest.fn() },
     };
+  }
+
+  it('accepts and assigns a request atomically', async () => {
+    const tx = createSuccessTx();
     const prisma = {
       $transaction: jest.fn(async (callback) => callback(tx)),
     } as unknown as PrismaService;
@@ -103,6 +131,15 @@ describe('staffing request status flow', () => {
       }),
     ).resolves.toBe(updatedRequest);
 
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(
+      ensureStaffingRequestUserQualified,
+    ).toHaveBeenCalledWith({
+      prisma: tx,
+      cinemaId: 7,
+      userId: 21,
+      jobFunctionId: 51,
+    });
     expect(tx.staffingRequest.updateMany).toHaveBeenNthCalledWith(1, {
       where: {
         id: 31,
@@ -122,6 +159,9 @@ describe('staffing request status flow', () => {
       },
       data: { userId: 21 },
     });
+    expect(
+      resolveStaffingRequestNotifications,
+    ).toHaveBeenCalledWith(tx, 7, [31, 32, 33]);
     expect(createStaffingRequestAcceptedNotifications).toHaveBeenCalledWith(
       tx,
       7,
@@ -133,15 +173,110 @@ describe('staffing request status flow', () => {
       'shiftsUpdated',
       assignedShift,
     );
+    expect(realtimeGateway.notifyUser).toHaveBeenCalledTimes(2);
     expect(emit).toHaveBeenCalledWith('staffingRequestsUpdated', {
       cinemaId: 7,
     });
   });
 
-  it('rejects a concurrent acceptance before assigning the shift', async () => {
+  it('afviser en medarbejder, der ikke er kvalificeret, inde i den låste transaktion', async () => {
+    (ensureStaffingRequestUserQualified as jest.Mock).mockRejectedValue(
+      new Error('Medarbejderen er ikke kvalificeret til denne jobfunktion'),
+    );
     const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
       staffingRequest: {
-        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        findFirst: jest.fn().mockResolvedValue(request),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback) => callback(tx)),
+    } as unknown as PrismaService;
+
+    await expect(
+      acceptStaffingRequest({
+        prisma,
+        realtimeGateway,
+        user,
+        id: 31,
+        selectedCinemaId: 7,
+      }),
+    ).rejects.toThrow(
+      'Medarbejderen er ikke kvalificeret til denne jobfunktion',
+    );
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(assertNoStaffingRequestAcceptConflicts).not.toHaveBeenCalled();
+  });
+
+  it('afviser en forespørgsel, hvis den koblede vagt er slettet', async () => {
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      staffingRequest: {
+        findFirst: jest.fn().mockResolvedValue(request),
+      },
+      shift: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback) => callback(tx)),
+    } as unknown as PrismaService;
+
+    await expect(
+      acceptStaffingRequest({
+        prisma,
+        realtimeGateway,
+        user,
+        id: 31,
+        selectedCinemaId: 7,
+      }),
+    ).rejects.toThrow(
+      'Bemandingsforespørgslen er ikke længere aktuel, fordi vagten er slettet',
+    );
+  });
+
+  it('afviser en forespørgsel, hvis vagten er blevet manuelt tildelt', async () => {
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      staffingRequest: {
+        findFirst: jest.fn().mockResolvedValue(request),
+        updateMany: jest.fn(),
+      },
+      shift: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 41,
+          userId: 99,
+          startTime: new Date('2026-07-22T14:00:00.000Z'),
+          endTime: new Date('2026-07-22T20:00:00.000Z'),
+        }),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback) => callback(tx)),
+    } as unknown as PrismaService;
+
+    await expect(
+      acceptStaffingRequest({
+        prisma,
+        realtimeGateway,
+        user,
+        id: 31,
+        selectedCinemaId: 7,
+      }),
+    ).rejects.toThrow(
+      'Bemandingsforespørgslen er ikke længere aktuel, fordi vagten allerede er tildelt',
+    );
+
+    expect(tx.staffingRequest.updateMany).not.toHaveBeenCalled();
+    expect(assertNoStaffingRequestAcceptConflicts).not.toHaveBeenCalled();
+  });
+
+  it('afviser en forespørgsel, der blev afsluttet mens accepten ventede på låsen', async () => {
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      staffingRequest: {
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     };
     const prisma = {
@@ -157,34 +292,6 @@ describe('staffing request status flow', () => {
         selectedCinemaId: 7,
       }),
     ).rejects.toThrow(BadRequestException);
-
-    expect(createStaffingRequestAcceptedNotifications).not.toHaveBeenCalled();
-    expect(realtimeGateway.notifyCinema).not.toHaveBeenCalled();
-  });
-
-  it('rejects when another request wins the shift assignment race', async () => {
-    const tx = {
-      staffingRequest: {
-        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      },
-      shift: {
-        findFirst: jest.fn().mockResolvedValue({ id: 41, userId: null }),
-        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
-      },
-    };
-    const prisma = {
-      $transaction: jest.fn(async (callback) => callback(tx)),
-    } as unknown as PrismaService;
-
-    await expect(
-      acceptStaffingRequest({
-        prisma,
-        realtimeGateway,
-        user,
-        id: 31,
-        selectedCinemaId: 7,
-      }),
-    ).rejects.toThrow('Vagten er allerede blevet taget');
   });
 
   it('uses a conditional transition when rejecting', async () => {
@@ -192,11 +299,13 @@ describe('staffing request status flow', () => {
       ...request,
       targetUserId: user.sub,
     });
-    const prisma = {
+    const tx = {
       staffingRequest: {
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
-        findUnique: jest.fn(),
       },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback) => callback(tx)),
     } as unknown as PrismaService;
 
     await expect(
@@ -211,11 +320,13 @@ describe('staffing request status flow', () => {
   });
 
   it('uses a conditional transition when cancelling', async () => {
-    const prisma = {
+    const tx = {
       staffingRequest: {
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
-        findUnique: jest.fn(),
       },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback) => callback(tx)),
     } as unknown as PrismaService;
 
     await expect(

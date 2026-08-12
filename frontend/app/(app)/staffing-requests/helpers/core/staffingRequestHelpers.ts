@@ -143,12 +143,7 @@ export function getRequestJobFunctionName(request: StaffingRequest) {
 }
 
 export function getRequestTitle(request: StaffingRequest) {
-  const typeLabel = getTypeLabel(request.type);
-  const jobFunctionName = getRequestJobFunctionName(request);
-  if (jobFunctionName === typeLabel) {
-    return typeLabel;
-  }
-  return `${typeLabel} · ${jobFunctionName}`;
+  return getRequestJobFunctionName(request);
 }
 
 export function getRequestTimeRange(request: StaffingRequest) {

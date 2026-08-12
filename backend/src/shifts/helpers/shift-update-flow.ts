@@ -39,6 +39,9 @@ import {
 import {
   getShiftUpdateContext,
 } from './shift-update-validation';
+import {
+  resolveOpenShiftLinkedActions,
+} from './shift-linked-actions';
 
 async function acquireShiftUserLocks(
   transaction:
@@ -149,6 +152,22 @@ export async function updateShiftFlow({
             },
           );
 
+        const linkedActions =
+          oldShift.userId !==
+          normalized.userId
+            ? await resolveOpenShiftLinkedActions(
+                transaction,
+                {
+                  cinemaId,
+                  shiftId: id,
+                },
+              )
+            : {
+                tradeIds: [],
+                staffingRequestIds: [],
+                notificationUserIds: [],
+              };
+
         const updated =
           await transaction.shift.updateMany(
             {
@@ -202,6 +221,7 @@ export async function updateShiftFlow({
         return {
           ...context,
           shift,
+          linkedActions,
         };
       },
     );
@@ -237,6 +257,51 @@ export async function updateShiftFlow({
     'shiftsUpdated',
     shift,
   );
+
+  if (
+    result.linkedActions.tradeIds.length >
+    0
+  ) {
+    realtimeGateway.notifyCinema(
+      shift.cinemaId,
+      'shiftTradesUpdated',
+      {
+        shiftId: shift.id,
+        resolved: true,
+      },
+    );
+  }
+
+  if (
+    result.linkedActions.staffingRequestIds
+      .length > 0
+  ) {
+    realtimeGateway.notifyCinema(
+      shift.cinemaId,
+      'staffingRequestsUpdated',
+      {
+        shiftId: shift.id,
+        resolved: true,
+      },
+    );
+  }
+
+  for (
+    const notificationUserId of
+    result.linkedActions
+      .notificationUserIds
+  ) {
+    realtimeGateway.notifyUser(
+      notificationUserId,
+      'notificationsUpdated',
+      {
+        cinemaId:
+          shift.cinemaId,
+        shiftId: shift.id,
+        resolved: true,
+      },
+    );
+  }
 
   if (assignedUserId) {
     await pushService.sendToUserInCinema(

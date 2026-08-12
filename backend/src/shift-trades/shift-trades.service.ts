@@ -1,5 +1,8 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   LeaveStatus,
@@ -72,11 +75,39 @@ export class ShiftTradesService {
       );
     const trades =
       await this.prisma.shiftTrade.findMany({
-        where:
-          getShiftTradeCinemaFilter(
+        where: {
+          ...getShiftTradeCinemaFilter(
             user,
             selectedCinemaId,
           ),
+          OR: [
+            {
+              status: {
+                not:
+                  ShiftTradeStatus.OPEN,
+              },
+            },
+            {
+              status:
+                ShiftTradeStatus.OPEN,
+              shift: {
+                is: {
+                  jobFunction: {
+                    userJobFunctions: {
+                      some: {
+                        cinemaId,
+                        userId:
+                          resolveShiftTradeActorUserId(
+                            user,
+                          ),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
         include:
           shiftTradeInclude,
         orderBy: {
@@ -95,7 +126,8 @@ export class ShiftTradesService {
             ShiftTradeStatus.OPEN ||
           trade.offeredByUserId ===
             userId ||
-          trade.shift.startTime <=
+          !trade.shift ||
+          trade.shift!.startTime <=
             now
         ) {
           return false;
@@ -132,7 +164,7 @@ export class ShiftTradesService {
         Math.min(
           ...acceptableTrades.map(
             (trade) =>
-              trade.shift.startTime.getTime(),
+              trade.shift!.startTime.getTime(),
           ),
         ),
       );
@@ -141,7 +173,7 @@ export class ShiftTradesService {
         Math.max(
           ...acceptableTrades.map(
             (trade) =>
-              trade.shift.endTime.getTime(),
+              trade.shift!.endTime.getTime(),
           ),
         ),
       );
@@ -194,9 +226,9 @@ export class ShiftTradesService {
           approvedLeaveRequests.find(
             (leaveRequest) =>
               leaveRequest.startDate <
-                trade.shift.endTime &&
+                trade.shift!.endTime &&
               leaveRequest.endDate >
-                trade.shift.startTime,
+                trade.shift!.startTime,
           ) ?? null;
 
         return {
@@ -280,8 +312,18 @@ export class ShiftTradesService {
             not: userId,
           },
           shift: {
-            startTime: {
-              gt: new Date(),
+            is: {
+              startTime: {
+                gt: new Date(),
+              },
+              jobFunction: {
+                userJobFunctions: {
+                  some: {
+                    cinemaId,
+                    userId,
+                  },
+                },
+              },
             },
           },
         },
@@ -317,8 +359,18 @@ export class ShiftTradesService {
           targetUserId:
             userId,
           shift: {
-            startTime: {
-              gt: new Date(),
+            is: {
+              startTime: {
+                gt: new Date(),
+              },
+              jobFunction: {
+                userJobFunctions: {
+                  some: {
+                    cinemaId,
+                    userId,
+                  },
+                },
+              },
             },
           },
         },
@@ -356,6 +408,45 @@ export class ShiftTradesService {
         },
       );
 
+    const shift =
+      await this.prisma.shift.findFirst({
+        where: {
+          id: data.shiftId,
+          cinemaId:
+            actorContext.cinemaId,
+        },
+        select: {
+          id: true,
+          userId: true,
+        },
+      });
+
+    if (!shift) {
+      throw new NotFoundException(
+        'Vagten blev ikke fundet i denne biograf',
+      );
+    }
+
+    if (!shift.userId) {
+      throw new BadRequestException(
+        'En ikke-tildelt vagt kan ikke sendes i bytte',
+      );
+    }
+
+    const canManageOtherUsers =
+      actor?.role === 'ADMIN' ||
+      actor?.role === 'MASTER';
+
+    if (
+      shift.userId !==
+        actorContext.userId &&
+      !canManageOtherUsers
+    ) {
+      throw new ForbiddenException(
+        'Du kan kun sende dine egne vagter i bytte',
+      );
+    }
+
     return createShiftTrade(
       {
         prisma:
@@ -370,7 +461,7 @@ export class ShiftTradesService {
       {
         ...data,
         offeredByUserId:
-          actorContext.userId,
+          shift.userId,
         cinemaId:
           actorContext.cinemaId,
       },

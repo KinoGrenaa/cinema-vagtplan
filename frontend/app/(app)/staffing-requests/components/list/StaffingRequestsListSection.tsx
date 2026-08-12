@@ -6,13 +6,11 @@ import {
   formatDateTime,
   getDefaultMessage,
   getFullName,
-  getPriorityStyle,
   getRequestTimeRange,
   getRequestTitle,
   getRequestJobFunctionName,
   getStatusLabel,
   getStatusStyle,
-  getTypeLabel,
 } from "../../helpers/core/staffingRequestHelpers";
 import type {
   StaffingRequest,
@@ -240,31 +238,12 @@ export default function StaffingRequestsListSection({
                   <div className="min-w-0">
                     <div className="flex flex-wrap gap-2">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-bold ${getPriorityStyle(
-                          request.priority,
-                        )}`}
-                      >
-                        PRIORITET{" "}
-                        {
-                          request.priority
-                        }
-                      </span>
-                      <span
                         className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
                           request.status,
                         )}`}
                       >
                         {getStatusLabel(
                           request.status,
-                        )}
-                      </span>
-                      <span
-                        className={`rounded-full border px-3 py-1 text-xs font-bold ${getTypeClasses(
-                          request.type,
-                        )}`}
-                      >
-                        {getTypeLabel(
-                          request.type,
                         )}
                       </span>
                       {request.aiGenerated ? (
@@ -285,10 +264,11 @@ export default function StaffingRequestsListSection({
                       )}
                     </h2>
 
-                    <p className="mt-1 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                      Intern reference #
-                      {request.id}
-                    </p>
+                    {timeRange ? (
+                      <p className="mt-1 text-sm font-semibold text-gray-600 dark:text-gray-300">
+                        {timeRange}
+                      </p>
+                    ) : null}
 
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-700 dark:text-gray-300">
                       {request.message ||
@@ -299,7 +279,7 @@ export default function StaffingRequestsListSection({
                   </div>
                 </div>
 
-                <dl className="mt-6 grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm transition-colors dark:border-gray-800 dark:bg-gray-950/70 sm:grid-cols-2 lg:grid-cols-4">
+                <dl className="mt-6 grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm transition-colors dark:border-gray-800 dark:bg-gray-950/70 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
                     <dt className="font-medium text-gray-500 dark:text-gray-400">
                       Oprettet af
@@ -321,7 +301,7 @@ export default function StaffingRequestsListSection({
                         ? getFullName(
                             request.targetUser,
                           )
-                        : "Alle medarbejdere"}
+                        : "Alle kvalificerede medarbejdere"}
                     </dd>
                   </div>
 
@@ -334,22 +314,6 @@ export default function StaffingRequestsListSection({
                         request.createdAt,
                       )}
                     </dd>
-                  </div>
-
-                  <div>
-                    <dt className="font-medium text-gray-500 dark:text-gray-400">
-                      Vagt / behov
-                    </dt>
-                    <dd className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
-                      {getRequestJobFunctionName(
-                        request,
-                      )}
-                    </dd>
-                    {timeRange ? (
-                      <dd className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                        {timeRange}
-                      </dd>
-                    ) : null}
                   </div>
                 </dl>
 

@@ -54,11 +54,22 @@ export async function createNotificationForStaffingRequest(
     await prisma.user.findMany({
       where: {
         isActive: true,
+        role: {
+          not: 'MASTER',
+        },
         cinemaMemberships: {
           some: {
             cinemaId:
               request.cinemaId,
             isActive: true,
+          },
+        },
+        userJobFunctions: {
+          some: {
+            cinemaId:
+              request.cinemaId,
+            jobFunctionId:
+              request.jobFunctionId,
           },
         },
       },

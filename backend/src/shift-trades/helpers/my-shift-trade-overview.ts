@@ -28,6 +28,10 @@ export const myShiftTradeSelect = {
     select:
       shiftTradeParticipantSelect,
   },
+  shiftStartTimeSnapshot: true,
+  shiftEndTimeSnapshot: true,
+  jobFunctionNameSnapshot: true,
+  jobFunctionColorSnapshot: true,
   shift: {
     select: {
       startTime: true,
@@ -71,11 +75,13 @@ export async function findMyShiftTradeOverview(
         offeredByUserId:
           params.userId,
         shift: {
-          startTime: {
-            lt: range.end,
-          },
-          endTime: {
-            gt: range.start,
+          is: {
+            startTime: {
+              lt: range.end,
+            },
+            endTime: {
+              gt: range.start,
+            },
           },
         },
       },
@@ -107,8 +113,20 @@ export async function findMyShiftTradeOverview(
             params.userId,
         },
         shift: {
-          startTime: {
-            gt: now,
+          is: {
+            startTime: {
+              gt: now,
+            },
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId:
+                    params.cinemaId,
+                  userId:
+                    params.userId,
+                },
+              },
+            },
           },
         },
       },

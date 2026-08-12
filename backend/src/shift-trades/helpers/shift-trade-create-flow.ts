@@ -22,6 +22,9 @@ import {
 import {
   shiftTradeInclude,
 } from './shift-trade-service-helpers';
+import {
+  ensureShiftTradeUserQualified,
+} from './shift-trade-qualification';
 
 type ShiftTradeCreateFlowDeps = {
   prisma: PrismaService;
@@ -133,9 +136,10 @@ export async function createShiftTrade(
     async (tx) => {
       await tx.$queryRaw(
         Prisma.sql`
-          SELECT pg_advisory_xact_lock(
-            53001,
-            ${data.shiftId}
+          SELECT CAST(COUNT(*) AS integer) AS "lockAcquired"
+          FROM pg_advisory_xact_lock(
+            CAST(53001 AS integer),
+            CAST(${data.shiftId} AS integer)
           )
         `,
       );
@@ -150,6 +154,10 @@ export async function createShiftTrade(
             id: true,
             userId: true,
             startTime: true,
+            endTime: true,
+            jobFunctionId: true,
+            jobFunctionNameSnapshot: true,
+            jobFunctionColorSnapshot: true,
           },
         });
 
@@ -164,7 +172,23 @@ export async function createShiftTrade(
         data.offeredByUserId
       ) {
         throw new ForbiddenException(
-          'Du kan kun bytte dine egne vagter',
+          'Vagten er blevet ændret. Genindlæs og prøv igen.',
+        );
+      }
+
+      if (
+        data.targetUserId
+      ) {
+        await ensureShiftTradeUserQualified(
+          tx,
+          {
+            cinemaId:
+              data.cinemaId,
+            userId:
+              data.targetUserId,
+            jobFunctionId:
+              shift.jobFunctionId,
+          },
         );
       }
 
@@ -197,6 +221,16 @@ export async function createShiftTrade(
       return tx.shiftTrade.create({
         data: {
           shiftId: data.shiftId,
+          shiftStartTimeSnapshot:
+            shift.startTime,
+          shiftEndTimeSnapshot:
+            shift.endTime,
+          jobFunctionIdSnapshot:
+            shift.jobFunctionId,
+          jobFunctionNameSnapshot:
+            shift.jobFunctionNameSnapshot,
+          jobFunctionColorSnapshot:
+            shift.jobFunctionColorSnapshot,
           offeredByUserId:
             data.offeredByUserId,
           cinemaId: data.cinemaId,
@@ -225,19 +259,6 @@ export async function createShiftTrade(
       'newDirectShiftTrade',
       trade,
     );
-
-    await notifications.create({
-      userId: trade.targetUserId,
-      cinemaId: trade.cinemaId,
-      title: 'Ny direkte vagt',
-      message:
-        'Du har fået tilbudt en vagt direkte',
-      type: 'SHIFT_DIRECT',
-      linkUrl:
-        getShiftTradeNotificationLink(
-          trade.id,
-        ),
-    });
 
     await push.sendToUserInCinema(
       trade.targetUserId,

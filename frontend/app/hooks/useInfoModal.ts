@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useCallback,
+  useState,
+} from "react";
 
 type InfoModalVariant = "info" | "error" | "success" | "warning";
 
@@ -15,23 +18,38 @@ export function useInfoModal() {
   const [open, setOpen] = useState(false);
   const [config, setConfig] = useState<InfoModalInput | null>(null);
 
-  function show(input: InfoModalInput) {
+  const show = useCallback((input: InfoModalInput) => {
     setConfig(input);
     setOpen(true);
-  }
+  }, []);
 
-  function showError(title: string, description: string) {
-    show({
-      title,
-      description,
-      variant: "error",
-      buttonText: "OK",
-    });
-  }
+  const showError = useCallback(
+    (title: string, description: string) => {
+      show({
+        title,
+        description,
+        variant: "error",
+        buttonText: "OK",
+      });
+    },
+    [show],
+  );
 
-  function close() {
+  const showSuccess = useCallback(
+    (title: string, description: string) => {
+      show({
+        title,
+        description,
+        variant: "success",
+        buttonText: "OK",
+      });
+    },
+    [show],
+  );
+
+  const close = useCallback(() => {
     setOpen(false);
-  }
+  }, []);
 
   return {
     open,
@@ -41,6 +59,7 @@ export function useInfoModal() {
     variant: config?.variant ?? "info",
     show,
     showError,
+    showSuccess,
     close,
   };
 }

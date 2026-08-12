@@ -65,6 +65,14 @@ describe(
           },
           {
             targetUserId: null,
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         ],
         status: 'PENDING',

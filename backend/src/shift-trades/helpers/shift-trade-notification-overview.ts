@@ -13,6 +13,28 @@ import {
 export const SHIFT_TRADE_NOTIFICATION_OVERVIEW_LIMIT =
   50;
 
+function buildQualifiedLiveShiftWhere(
+  userId: number,
+  cinemaId: number,
+  now: Date,
+) {
+  return {
+    is: {
+      startTime: {
+        gt: now,
+      },
+      jobFunction: {
+        userJobFunctions: {
+          some: {
+            cinemaId,
+            userId,
+          },
+        },
+      },
+    },
+  };
+}
+
 export function buildShiftTradeNotificationWhere(
   userId: number,
   cinemaId: number,
@@ -21,11 +43,11 @@ export function buildShiftTradeNotificationWhere(
   return {
     cinemaId,
     status: 'OPEN',
-    shift: {
-      startTime: {
-        gt: now,
-      },
-    },
+    shift: buildQualifiedLiveShiftWhere(
+      userId,
+      cinemaId,
+      now,
+    ),
     OR: [
       {
         type: ShiftTradeType.DIRECT,
@@ -47,14 +69,14 @@ export function buildShiftTradeNotificationCategoryWhere(
   now: Date,
   type: ShiftTradeType,
 ): Prisma.ShiftTradeWhereInput {
-  const base = {
+  const base: Prisma.ShiftTradeWhereInput = {
     cinemaId,
-    status: 'OPEN' as const,
-    shift: {
-      startTime: {
-        gt: now,
-      },
-    },
+    status: 'OPEN',
+    shift: buildQualifiedLiveShiftWhere(
+      userId,
+      cinemaId,
+      now,
+    ),
     type,
   };
 

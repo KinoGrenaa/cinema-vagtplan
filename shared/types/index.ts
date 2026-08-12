@@ -53,6 +53,28 @@ export type JobFunction = {
   timingRule?: JobFunctionTimingRule | null;
 };
 
+export type ShiftActiveTrade = {
+  id: number;
+  type: "POOL" | "DIRECT";
+  targetUserId?: number | null;
+  targetUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  } | null;
+};
+
+export type ShiftActiveStaffingRequest = {
+  id: number;
+  type: "EXTRA_SHIFT" | "EMERGENCY" | "REPLACEMENT" | "OVERTIME";
+  targetUserId?: number | null;
+  targetUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  } | null;
+};
+
 export type Shift = {
   id: number;
   startTime: string;
@@ -62,6 +84,8 @@ export type Shift = {
   jobFunctionId: number;
   user: User;
   jobFunction: JobFunction;
+  trades?: ShiftActiveTrade[];
+  staffingRequests?: ShiftActiveStaffingRequest[];
 };
 
 export type TimeEntry = {

@@ -61,15 +61,28 @@ export function buildOpenShiftTradePageWhere(
   cinemaId: number,
   now: Date,
 ): Prisma.ShiftTradeWhereInput {
+  const qualifiedLiveShift = {
+    is: {
+      startTime: {
+        gt: now,
+      },
+      jobFunction: {
+        userJobFunctions: {
+          some: {
+            cinemaId,
+            userId,
+          },
+        },
+      },
+    },
+  };
+
   return {
     cinemaId,
     status:
       ShiftTradeStatus.OPEN,
-    shift: {
-      startTime: {
-        gt: now,
-      },
-    },
+    shift:
+      qualifiedLiveShift,
     OR: [
       {
         type:
@@ -100,8 +113,18 @@ export function buildOpenShiftTradeCategoryWhere(
       ShiftTradeStatus.OPEN,
     type,
     shift: {
-      startTime: {
-        gt: now,
+      is: {
+        startTime: {
+          gt: now,
+        },
+        jobFunction: {
+          userJobFunctions: {
+            some: {
+              cinemaId,
+              userId,
+            },
+          },
+        },
       },
     },
     ...(beforeId
@@ -201,8 +224,18 @@ export function buildShiftTradeTargetWhere(
         status:
           ShiftTradeStatus.OPEN,
         shift: {
-          startTime: {
-            gt: now,
+          is: {
+            startTime: {
+              gt: now,
+            },
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId,
+                  userId,
+                },
+              },
+            },
           },
         },
         OR: [
@@ -266,6 +299,26 @@ type ShiftTradeWithShift = {
     endTime: Date;
   };
 };
+
+function onlyTradesWithLiveShift<
+  T extends {
+    shift: unknown | null;
+  },
+>(
+  trades: T[],
+) {
+  return trades.filter(
+    (
+      trade,
+    ): trade is T & {
+      shift: Exclude<
+        T['shift'],
+        null
+      >;
+    } =>
+      trade.shift !== null,
+  );
+}
 
 async function addOpenTradeConflicts<
   T extends ShiftTradeWithShift,
@@ -435,7 +488,9 @@ export async function findOpenShiftTradePage(
       prisma,
       userId,
       cinemaId,
-      page.items,
+      onlyTradesWithLiveShift(
+        page.items,
+      ),
     );
 
   return {
@@ -554,8 +609,12 @@ export async function findShiftTradePage(
   const openById =
     new Map(
       [
-        ...directPage.items,
-        ...poolPage.items,
+        ...onlyTradesWithLiveShift(
+          directPage.items,
+        ),
+        ...onlyTradesWithLiveShift(
+          poolPage.items,
+        ),
       ].map(
         (trade) => [
           trade.id,
@@ -567,11 +626,15 @@ export async function findShiftTradePage(
   if (
     target?.status ===
       ShiftTradeStatus.OPEN &&
+    target.shift !== null &&
     !openById.has(target.id)
   ) {
     openById.set(
       target.id,
-      target,
+      {
+        ...target,
+        shift: target.shift,
+      },
     );
   }
 

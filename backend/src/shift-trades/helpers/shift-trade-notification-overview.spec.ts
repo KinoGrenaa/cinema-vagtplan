@@ -31,8 +31,18 @@ describe(
         cinemaId: 7,
         status: 'OPEN',
         shift: {
-          startTime: {
-            gt: now,
+          is: {
+            startTime: {
+              gt: now,
+            },
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         },
         OR: [
@@ -64,8 +74,18 @@ describe(
         cinemaId: 7,
         status: 'OPEN',
         shift: {
-          startTime: {
-            gt: now,
+          is: {
+            startTime: {
+              gt: now,
+            },
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         },
         type: ShiftTradeType.DIRECT,
@@ -83,8 +103,18 @@ describe(
         cinemaId: 7,
         status: 'OPEN',
         shift: {
-          startTime: {
-            gt: now,
+          is: {
+            startTime: {
+              gt: now,
+            },
+            jobFunction: {
+              userJobFunctions: {
+                some: {
+                  cinemaId: 7,
+                  userId: 9,
+                },
+              },
+            },
           },
         },
         type: ShiftTradeType.POOL,

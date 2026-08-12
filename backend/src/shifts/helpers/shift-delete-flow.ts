@@ -13,6 +13,9 @@ import {
   resolveShiftCinemaId,
   shiftResponseInclude,
 } from './shift-service-helpers';
+import {
+  resolveOpenShiftLinkedActions,
+} from './shift-linked-actions';
 
 export async function deleteShiftFlow({
   prisma,
@@ -40,7 +43,7 @@ export async function deleteShiftFlow({
     user,
     selectedCinemaId,
   );
-  const shiftToDelete =
+  const deletionResult =
     await prisma.$transaction(async (tx) => {
       await acquireShiftAdvisoryLock(
         tx,
@@ -63,6 +66,15 @@ export async function deleteShiftFlow({
         );
       }
 
+      const linkedActions =
+        await resolveOpenShiftLinkedActions(
+          tx,
+          {
+            cinemaId,
+            shiftId: id,
+          },
+        );
+
       const deleted =
         await tx.shift.deleteMany({
           where: {
@@ -77,8 +89,16 @@ export async function deleteShiftFlow({
         );
       }
 
-      return shift;
+      return {
+        shift,
+        linkedActions,
+      };
     });
+
+  const {
+    shift: shiftToDelete,
+    linkedActions,
+  } = deletionResult;
 
   await auditLogsService.create({
     action: 'DELETE_SHIFT',
@@ -103,6 +123,48 @@ export async function deleteShiftFlow({
       deleted: true,
     },
   );
+
+  if (linkedActions.tradeIds.length > 0) {
+    realtimeGateway.notifyCinema(
+      shiftToDelete.cinemaId,
+      'shiftTradesUpdated',
+      {
+        shiftId: shiftToDelete.id,
+        resolved: true,
+      },
+    );
+  }
+
+  if (
+    linkedActions.staffingRequestIds
+      .length > 0
+  ) {
+    realtimeGateway.notifyCinema(
+      shiftToDelete.cinemaId,
+      'staffingRequestsUpdated',
+      {
+        shiftId: shiftToDelete.id,
+        resolved: true,
+      },
+    );
+  }
+
+  for (
+    const notificationUserId of
+    linkedActions.notificationUserIds
+  ) {
+    realtimeGateway.notifyUser(
+      notificationUserId,
+      'notificationsUpdated',
+      {
+        cinemaId:
+          shiftToDelete.cinemaId,
+        shiftId:
+          shiftToDelete.id,
+        resolved: true,
+      },
+    );
+  }
 
   if (shiftToDelete.userId) {
     await pushService.sendToUserInCinema(

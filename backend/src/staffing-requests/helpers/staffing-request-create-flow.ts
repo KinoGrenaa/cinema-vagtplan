@@ -12,6 +12,7 @@ import {
 import {
   ensureStaffingRequestActorAccess,
   ensureStaffingRequestTargetUserExists,
+  ensureStaffingRequestUserQualified,
   resolveStaffingRequestShift,
   resolveStaffingRequestJobFunction,
 } from './staffing-request-create-lookups';
@@ -45,11 +46,6 @@ export async function createStaffingRequest({
   );
 
   await ensureStaffingRequestActorAccess({ prisma, user, cinemaId });
-  await ensureStaffingRequestTargetUserExists({
-    prisma,
-    cinemaId,
-    targetUserId: normalizedDto.targetUserId,
-  });
 
   let shift = await resolveStaffingRequestShift({
     prisma,
@@ -66,6 +62,21 @@ export async function createStaffingRequest({
     dto: normalizedDto,
     shift,
   });
+
+  await ensureStaffingRequestTargetUserExists({
+    prisma,
+    cinemaId,
+    targetUserId: normalizedDto.targetUserId,
+  });
+
+  if (normalizedDto.targetUserId) {
+    await ensureStaffingRequestUserQualified({
+      prisma,
+      cinemaId,
+      userId: normalizedDto.targetUserId,
+      jobFunctionId: jobFunction.id,
+    });
+  }
 
   shift = await createUnassignedStaffingShiftIfNeeded({
     prisma,

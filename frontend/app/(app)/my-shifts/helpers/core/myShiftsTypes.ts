@@ -8,6 +8,7 @@ export type User = {
   id: number;
   firstName: string;
   lastName: string;
+  jobFunctionIds?: number[];
 };
 
 export type Shift = {
@@ -16,6 +17,7 @@ export type Shift = {
   endTime: string;
   note?: string | null;
   userId: number;
+  jobFunctionId: number;
   jobFunction: {
     name: string;
     color: string;

@@ -2,7 +2,9 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { ShiftTradeStatus } from '@prisma/client';
+import {
+  ShiftTradeStatus,
+} from '@prisma/client';
 import { NotificationsService } from '../../notifications/notifications.service';
 import {
   getShiftTradeNotificationLink,
@@ -15,7 +17,13 @@ import {
   resolveShiftTradeActorContext,
   ShiftTradeActor,
 } from './shift-trade-accept-validation';
-import { shiftTradeInclude } from './shift-trade-service-helpers';
+import {
+  resolveShiftTradeOfferNotifications,
+} from './shift-trade-notification-resolution';
+import {
+  getShiftTradeDisplayData,
+  shiftTradeInclude,
+} from './shift-trade-service-helpers';
 
 type ShiftTradeRejectFlowDeps = {
   prisma: PrismaService;
@@ -23,6 +31,41 @@ type ShiftTradeRejectFlowDeps = {
   notifications: NotificationsService;
   push: PushService;
 };
+
+function getParticipantName(
+  user:
+    | {
+        firstName?: string | null;
+        lastName?: string | null;
+      }
+    | null
+    | undefined,
+  fallback: string,
+) {
+  const name =
+    `${user?.firstName ?? ''} ${
+      user?.lastName ?? ''
+    }`.trim();
+
+  return name || fallback;
+}
+
+function formatTradeDateTime(
+  value: Date,
+) {
+  return new Intl.DateTimeFormat(
+    'da-DK',
+    {
+      timeZone:
+        'Europe/Copenhagen',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    },
+  ).format(value);
+}
 
 export async function rejectShiftTrade(
   deps: ShiftTradeRejectFlowDeps,
@@ -43,61 +86,80 @@ export async function rejectShiftTrade(
     actor,
   );
 
-  const trade = await prisma.$transaction(
-    async (tx) => {
-      const existingTrade =
-        await tx.shiftTrade.findFirst({
-          where: {
-            id,
-            cinemaId,
-          },
-        });
+  const result =
+    await prisma.$transaction(
+      async (tx) => {
+        const existingTrade =
+          await tx.shiftTrade.findFirst({
+            where: {
+              id,
+              cinemaId,
+            },
+          });
 
-      if (!existingTrade) {
-        throw new NotFoundException(
-          'Vagtbytte blev ikke fundet',
+        if (!existingTrade) {
+          throw new NotFoundException(
+            'Vagtbytte blev ikke fundet',
+          );
+        }
+
+        ensureShiftTradeCanBeRejected(
+          existingTrade,
+          userId,
         );
-      }
 
-      ensureShiftTradeCanBeRejected(
-        existingTrade,
-        userId,
-      );
+        const rejected =
+          await tx.shiftTrade.updateMany({
+            where: {
+              id,
+              cinemaId,
+              status:
+                ShiftTradeStatus.OPEN,
+            },
+            data: {
+              status:
+                ShiftTradeStatus.REJECTED,
+              rejectedByUserId:
+                userId,
+            },
+          });
 
-      const rejected =
-        await tx.shiftTrade.updateMany({
-          where: {
-            id,
+        if (rejected.count !== 1) {
+          throw new ForbiddenException(
+            'Vagtbyttet er ikke længere åbent',
+          );
+        }
+
+        const notificationUserIds =
+          await resolveShiftTradeOfferNotifications(
+            tx,
             cinemaId,
-            status: ShiftTradeStatus.OPEN,
-          },
-          data: {
-            status:
-              ShiftTradeStatus.REJECTED,
-            rejectedByUserId: userId,
-          },
-        });
+            [id],
+          );
 
-      if (rejected.count !== 1) {
-        throw new ForbiddenException(
-          'Vagtbyttet er ikke længere åbent',
-        );
-      }
+        const trade =
+          await tx.shiftTrade.findUnique({
+            where: {
+              id,
+            },
+            include:
+              shiftTradeInclude,
+          });
 
-      return tx.shiftTrade.findUnique({
-        where: {
-          id,
-        },
-        include: shiftTradeInclude,
-      });
-    },
-  );
+        if (!trade) {
+          throw new NotFoundException(
+            'Vagtbytte blev ikke fundet',
+          );
+        }
 
-  if (!trade) {
-    throw new NotFoundException(
-      'Vagtbytte blev ikke fundet',
+        return {
+          trade,
+          notificationUserIds,
+        };
+      },
     );
-  }
+
+  const trade = result.trade;
 
   realtime.notifyCinema(
     trade.cinemaId,
@@ -110,13 +172,49 @@ export async function rejectShiftTrade(
     trade,
   );
 
-  if (trade.offeredByUserId !== userId) {
+  for (
+    const notificationUserId of
+    result.notificationUserIds
+  ) {
+    realtime.notifyUser(
+      notificationUserId,
+      'notificationsUpdated',
+      {
+        cinemaId:
+          trade.cinemaId,
+        shiftTradeId:
+          trade.id,
+        resolved: true,
+      },
+    );
+  }
+
+  if (
+    trade.offeredByUserId !==
+    userId
+  ) {
+    const display =
+      getShiftTradeDisplayData(
+        trade,
+      );
+    const rejectedByName =
+      getParticipantName(
+        trade.rejectedByUser,
+        'En kollega',
+      );
+    const resultMessage =
+      `${rejectedByName} har afvist ${display.jobFunctionName} ` +
+      `${formatTradeDateTime(display.startTime)}–${formatTradeDateTime(display.endTime)}.`;
+
     await notifications.create({
-      userId: trade.offeredByUserId,
-      cinemaId: trade.cinemaId,
-      title: 'Vagt afvist',
+      userId:
+        trade.offeredByUserId,
+      cinemaId:
+        trade.cinemaId,
+      title:
+        'Direkte vagt afvist',
       message:
-        'Din tilbudte vagt blev afvist',
+        resultMessage,
       type: 'SHIFT_REJECTED',
       linkUrl:
         getShiftTradeNotificationLink(
@@ -127,9 +225,10 @@ export async function rejectShiftTrade(
       trade.offeredByUserId,
       trade.cinemaId,
       {
-        title: 'Vagt afvist',
+        title:
+          'Direkte vagt afvist',
         body:
-          'Din tilbudte vagt blev afvist',
+          resultMessage,
         url:
           getShiftTradeNotificationLink(
             trade.id,

@@ -6,6 +6,9 @@ import type { Dispatch, SetStateAction } from "react";
 import {
   formatShiftDate,
   formatShiftTime,
+  getTradeEndTime,
+  getTradeJobFunctionName,
+  getTradeStartTime,
 } from "../../helpers/core/shiftTradeHelpers";
 import type { ShiftTrade } from "../../helpers/core/shiftTradeTypes";
 
@@ -75,11 +78,11 @@ export function useShiftTradeActions({
       }
 
       const offeredBy = `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`;
-      const shiftInfo = `${trade.shift.jobFunction.name} - ${formatShiftDate(
-        trade.shift.startTime,
+      const shiftInfo = `${getTradeJobFunctionName(trade)} - ${formatShiftDate(
+        getTradeStartTime(trade),
       )} kl. ${formatShiftTime(
-        trade.shift.startTime,
-        trade.shift.endTime,
+        getTradeStartTime(trade),
+        getTradeEndTime(trade),
       )}`;
       const approvedLeaveWarning =
         getApprovedLeaveWarning(trade);
@@ -135,11 +138,11 @@ ${shiftInfo}${approvedLeaveWarning}`,
 
   const rejectTrade = useCallback(
     (trade: ShiftTrade) => {
-      const shiftInfo = `${trade.shift.jobFunction.name} - ${formatShiftDate(
-        trade.shift.startTime,
+      const shiftInfo = `${getTradeJobFunctionName(trade)} - ${formatShiftDate(
+        getTradeStartTime(trade),
       )} kl. ${formatShiftTime(
-        trade.shift.startTime,
-        trade.shift.endTime,
+        getTradeStartTime(trade),
+        getTradeEndTime(trade),
       )}`;
 
       confirmModal.confirm({

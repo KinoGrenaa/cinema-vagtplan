@@ -92,6 +92,15 @@ export function buildStaffingRequestVisibilityWhere(
       {
         targetUserId:
           null,
+        jobFunction: {
+          userJobFunctions: {
+            some: {
+              cinemaId,
+              userId:
+                user.sub,
+            },
+          },
+        },
       },
     ],
   };

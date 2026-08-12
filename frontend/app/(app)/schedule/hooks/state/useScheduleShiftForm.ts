@@ -39,49 +39,17 @@ type UseScheduleShiftFormParams = {
 
 const DEFAULT_START_HOUR = 14;
 const DEFAULT_END_HOUR = 22;
-const DEFAULT_DURATION_MINUTES =
-  (DEFAULT_END_HOUR - DEFAULT_START_HOUR) * 60;
-const SNAP_MINUTES = 15;
-const LAST_START_MINUTE = 24 * 60 - SNAP_MINUTES;
 
-function snapCreationMinutes(value: number) {
-  return Math.max(
-    0,
-    Math.min(
-      LAST_START_MINUTE,
-      Math.round(value / SNAP_MINUTES) * SNAP_MINUTES,
-    ),
-  );
-}
-
-function getPresetShiftTimes(
+function getDefaultShiftTimes(
   selectedDate: string,
-  presetStartMinutes?: number,
 ) {
-  if (presetStartMinutes === undefined) {
-    return {
-      startTime: `${selectedDate}T${String(
-        DEFAULT_START_HOUR,
-      ).padStart(2, "0")}:00`,
-      endTime: `${selectedDate}T${String(
-        DEFAULT_END_HOUR,
-      ).padStart(2, "0")}:00`,
-    };
-  }
-
-  const start = new Date(`${selectedDate}T00:00:00`);
-  start.setMinutes(
-    snapCreationMinutes(presetStartMinutes),
-  );
-
-  const end = new Date(start);
-  end.setMinutes(
-    end.getMinutes() + DEFAULT_DURATION_MINUTES,
-  );
-
   return {
-    startTime: toInputDateTime(start.toISOString()),
-    endTime: toInputDateTime(end.toISOString()),
+    startTime: `${selectedDate}T${String(
+      DEFAULT_START_HOUR,
+    ).padStart(2, "0")}:00`,
+    endTime: `${selectedDate}T${String(
+      DEFAULT_END_HOUR,
+    ).padStart(2, "0")}:00`,
   };
 }
 
@@ -134,20 +102,17 @@ export function useScheduleShiftForm({
     }
   }, [jobFunctionId, jobFunctions]);
 
-  function clearForm(
-    presetJobFunctionId = 0,
-    presetStartMinutes?: number,
-  ) {
-    const presetTimes = getPresetShiftTimes(
-      selectedDate,
-      presetStartMinutes,
-    );
+  function clearForm() {
+    const defaultTimes =
+      getDefaultShiftTimes(
+        selectedDate,
+      );
 
     setSelectedShift(null);
     setUserId(0);
-    setJobFunctionId(presetJobFunctionId);
-    setStartTime(presetTimes.startTime);
-    setEndTime(presetTimes.endTime);
+    setJobFunctionId(0);
+    setStartTime(defaultTimes.startTime);
+    setEndTime(defaultTimes.endTime);
     setNote("");
   }
 
@@ -158,19 +123,13 @@ export function useScheduleShiftForm({
     setShowShiftFormModal(false);
   }
 
-  function openCreateShiftModal(
-    presetJobFunctionId = 0,
-    presetStartMinutes?: number,
-  ) {
+  function openCreateShiftModal() {
     if (needsMasterCinemaSelection) {
       showMissingActiveCinemaMessage();
       return;
     }
 
-    clearForm(
-      presetJobFunctionId,
-      presetStartMinutes,
-    );
+    clearForm();
     setShowShiftFormModal(true);
   }
 
@@ -183,12 +142,8 @@ export function useScheduleShiftForm({
     setShowShiftFormModal(false);
   }
 
-  async function handleSubmit(
-    event: FormEvent,
-  ) {
-    event.preventDefault();
-
-    const body = {
+  function getCurrentShiftBody() {
+    return {
       startTime:
         localDateTimeToISOString(startTime),
       endTime:
@@ -197,6 +152,105 @@ export function useScheduleShiftForm({
       userId: userId > 0 ? userId : null,
       jobFunctionId,
     };
+  }
+
+  function getCurrentSelectedShiftSnapshot() {
+    if (!selectedShift) {
+      return null;
+    }
+
+    const body = getCurrentShiftBody();
+    const selectedUser =
+      body.userId === null
+        ? null
+        : users.find(
+            (candidate) => candidate.id === body.userId,
+          ) ?? null;
+
+    return {
+      ...selectedShift,
+      ...body,
+      user: selectedUser,
+    } as Shift;
+  }
+
+  function hasUnsavedSelectedShiftChanges() {
+    if (!selectedShift) {
+      return false;
+    }
+
+    return (
+      toInputDateTime(selectedShift.startTime) !== startTime ||
+      toInputDateTime(selectedShift.endTime) !== endTime ||
+      (selectedShift.note ?? "") !== note ||
+      (getShiftUserId(selectedShift) ?? 0) !== userId
+    );
+  }
+
+  function getShiftUpdateBody(shift: Shift) {
+    return {
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      note: shift.note ?? "",
+      userId: getShiftUserId(shift),
+      jobFunctionId: shift.jobFunctionId,
+    };
+  }
+
+  async function commitSelectedShiftForSecondaryAction() {
+    const shiftSnapshot = getCurrentSelectedShiftSnapshot();
+
+    if (!selectedShift || !shiftSnapshot) {
+      return null;
+    }
+
+    if (!hasUnsavedSelectedShiftChanges()) {
+      return {
+        shift: shiftSnapshot,
+        rollback: null as null | (() => Promise<void>),
+      };
+    }
+
+    const originalShift = selectedShift;
+
+    try {
+      await updateShift(
+        selectedShift.id,
+        getCurrentShiftBody(),
+      );
+      setSelectedShift(shiftSnapshot);
+
+      return {
+        shift: shiftSnapshot,
+        rollback: async () => {
+          await updateShift(
+            originalShift.id,
+            getShiftUpdateBody(originalShift),
+          );
+          setSelectedShift(originalShift);
+        },
+      };
+    } catch (error) {
+      infoDialog.showError(
+        "Vagten kunne ikke opdateres",
+        error instanceof Error
+          ? error.message
+          : "Der opstod en fejl, da vagten skulle gemmes.\nPrøv igen.",
+      );
+      return null;
+    }
+  }
+
+  function prepareSelectedShiftForStaffingRequest() {
+    return getCurrentSelectedShiftSnapshot();
+  }
+
+  async function handleSubmit(
+    event: FormEvent,
+  ) {
+    event.preventDefault();
+
+    const body = getCurrentShiftBody();
 
     try {
       if (selectedShift) {
@@ -267,11 +321,13 @@ export function useScheduleShiftForm({
   }
 
   function handleOfferTrade() {
-    if (!selectedShift) {
+    const shiftSnapshot = getCurrentSelectedShiftSnapshot();
+
+    if (!shiftSnapshot) {
       return;
     }
 
-    if (!getShiftUserId(selectedShift)) {
+    if (userId <= 0) {
       infoDialog.showError(
         "Vagten er ikke tildelt",
         "Vagten skal tildeles en medarbejder, før den kan sendes i byttepuljen.",
@@ -282,18 +338,39 @@ export function useScheduleShiftForm({
     confirmDialog.confirm({
       title: "Send vagt i byttepulje",
       description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen?\n\n${getShiftConfirmText(
-        selectedShift,
+        shiftSnapshot,
       )}`,
       confirmText: "Send i pulje",
       cancelText: "Annuller",
       confirmVariant: "primary",
       onConfirm: async () => {
+        const committed =
+          await commitSelectedShiftForSecondaryAction();
+
+        if (!committed) {
+          return;
+        }
+
         try {
-          await offerShiftTrade(selectedShift);
-          toast.success(
+          await offerShiftTrade(committed.shift);
+          closeShiftFormModal();
+          infoDialog.showSuccess(
             "Vagten er sendt i byttepuljen",
+            getShiftConfirmText(committed.shift),
           );
         } catch (error) {
+          if (committed.rollback) {
+            try {
+              await committed.rollback();
+            } catch {
+              infoDialog.showError(
+                "Vagten kunne ikke gendannes automatisk",
+                "Byttehandlingen fejlede, og den tidligere vagttildeling kunne ikke gendannes automatisk. Genindlæs vagtplanen og kontrollér vagten.",
+              );
+              return;
+            }
+          }
+
           infoDialog.showError(
             "Vagten kunne ikke sendes i byttepuljen",
             error instanceof Error
@@ -326,5 +403,7 @@ export function useScheduleShiftForm({
     handleDelete,
     handleSelectShift,
     handleOfferTrade,
+    prepareSelectedShiftForStaffingRequest,
+    commitSelectedShiftForSecondaryAction,
   };
 }

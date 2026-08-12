@@ -13,6 +13,16 @@ describe(
           id: 11,
           firstName: 'Anna',
           lastName: 'Jensen',
+          userJobFunctions: [
+            {
+              cinemaId: 7,
+              jobFunctionId: 21,
+            },
+            {
+              cinemaId: 8,
+              jobFunctionId: 99,
+            },
+          ],
         },
       ];
       const cinemaSettings = {
@@ -49,7 +59,14 @@ describe(
           },
         ),
       ).resolves.toEqual({
-        users,
+        users: [
+          {
+            id: 11,
+            firstName: 'Anna',
+            lastName: 'Jensen',
+            jobFunctionIds: [21],
+          },
+        ],
         cinemaSettings,
       });
 

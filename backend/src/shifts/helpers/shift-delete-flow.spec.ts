@@ -1,4 +1,13 @@
 import { deleteShiftFlow } from './shift-delete-flow';
+import { resolveOpenShiftLinkedActions } from './shift-linked-actions';
+
+jest.mock('./shift-linked-actions', () => ({
+  resolveOpenShiftLinkedActions: jest.fn().mockResolvedValue({
+    tradeIds: [],
+    staffingRequestIds: [],
+    notificationUserIds: [],
+  }),
+}));
 
 const admin = {
   sub: 2,
@@ -8,6 +17,15 @@ const admin = {
 };
 
 describe('shift delete flow', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (resolveOpenShiftLinkedActions as jest.Mock).mockResolvedValue({
+      tradeIds: [],
+      staffingRequestIds: [],
+      notificationUserIds: [],
+    });
+  });
+
   it('bruger den fælles PostgreSQL-lås med integer-casts før sletning', async () => {
     const shift = {
       id: 91,

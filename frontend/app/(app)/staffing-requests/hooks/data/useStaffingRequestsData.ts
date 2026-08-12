@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -176,6 +177,13 @@ export function useStaffingRequestsData({
     showCompletedRequests,
     setShowCompletedRequests,
   ] = useState(false);
+  const showErrorRef =
+    useRef(showError);
+
+  useEffect(() => {
+    showErrorRef.current =
+      showError;
+  }, [showError]);
 
   const activeCinemaId =
     useMemo(() => {
@@ -437,7 +445,7 @@ export function useStaffingRequestsData({
           setCompletedNextBeforeId(
             null,
           );
-          showError(
+          showErrorRef.current(
             "Kunne ikke hente bemandingsforespørgsler",
             error instanceof Error
               ? error.message
@@ -453,7 +461,6 @@ export function useStaffingRequestsData({
         apiFetch,
         buildPageEndpoint,
         needsMasterCinemaSelection,
-        showError,
       ],
     );
 

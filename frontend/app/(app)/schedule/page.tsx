@@ -10,7 +10,6 @@ import ScheduleShiftFormModal from "./components/shift-form/ScheduleShiftFormMod
 import ScheduleMainContent from "./components/layout/ScheduleMainContent";
 import ScheduleMovieCoverageWarnings from "./components/coverage/ScheduleMovieCoverageWarnings";
 import { useScheduleShiftForm } from "./hooks/state/useScheduleShiftForm";
-import { useScheduleShiftTimelineActions } from "./hooks/actions/useScheduleShiftTimelineActions";
 import { useScheduleStaffingRequest } from "./hooks/actions/useScheduleStaffingRequest";
 import { useScheduleTimeRegistration } from "./hooks/actions/useScheduleTimeRegistration";
 import { useSchedule } from "./hooks/data/useSchedule";
@@ -102,6 +101,7 @@ export default function SchedulePage() {
     setUserId,
     jobFunctionId,
     setJobFunctionId,
+    openCreateShiftModal,
     hideShiftFormModal,
     closeShiftFormModal,
     resetShiftFormForDate,
@@ -109,6 +109,8 @@ export default function SchedulePage() {
     handleDelete,
     handleSelectShift,
     handleOfferTrade,
+    prepareSelectedShiftForStaffingRequest,
+    commitSelectedShiftForSecondaryAction,
   } = useScheduleShiftForm({
     selectedDate,
     users,
@@ -134,13 +136,6 @@ export default function SchedulePage() {
     setSelectedDate(queryDate);
     resetShiftFormForDate(queryDate);
   }, [resetShiftFormForDate]);
-
-  const { handleMoveShift, handleResizeShift } =
-    useScheduleShiftTimelineActions({
-      selectedDate,
-      updateShift,
-      infoDialog,
-    });
 
   const {
     showClockModal,
@@ -218,12 +213,21 @@ export default function SchedulePage() {
     hideShiftFormModal,
     infoDialog,
     createStaffingRequest,
+    commitLinkedShiftDraft:
+      commitSelectedShiftForSecondaryAction,
   });
 
   function handleOpenStaffingRequestForSelectedShift() {
     if (!selectedShift) return;
 
-    openStaffingRequestModal(selectedShift);
+    const shiftForRequest =
+      prepareSelectedShiftForStaffingRequest();
+
+    if (!shiftForRequest) {
+      return;
+    }
+
+    openStaffingRequestModal(shiftForRequest);
   }
 
   useRealtimeShifts({
@@ -301,20 +305,22 @@ export default function SchedulePage() {
               movieShowings={filteredMovieShowings}
               onOpenRegisterTimeModal={openRegisterTimeModal}
               onOpenManualTimeModal={openManualTimeModal}
-              onCreateUnassignedShift={createShift}
+              onOpenCreateShift={() =>
+                openCreateShiftModal()
+              }
               onPreviousDay={() => changeDate(-1)}
               onToday={goToToday}
               onDateChange={goToDate}
               onNextDay={() => changeDate(1)}
               onSelectShift={handleSelectShift}
-              onMoveShift={handleMoveShift}
-              onResizeShift={handleResizeShift}
             />
             <ScheduleShiftFormModal
               open={showShiftFormModal}
               selectedShift={selectedShift}
               users={users}
               jobFunctions={jobFunctions}
+              shifts={shifts}
+              selectedDate={selectedDate}
               startTime={startTime}
               setStartTime={setStartTime}
               endTime={endTime}

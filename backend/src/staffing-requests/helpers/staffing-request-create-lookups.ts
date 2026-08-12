@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AuthUser,
@@ -69,6 +70,36 @@ export async function ensureStaffingRequestTargetUserExists({
   if (!targetUser) {
     throw new NotFoundException(
       'Medarbejderen blev ikke fundet i den aktive biograf',
+    );
+  }
+}
+
+
+export async function ensureStaffingRequestUserQualified({
+  prisma,
+  cinemaId,
+  userId,
+  jobFunctionId,
+}: {
+  prisma: Pick<Prisma.TransactionClient, 'userJobFunction'>;
+  cinemaId: number;
+  userId: number;
+  jobFunctionId: number;
+}) {
+  const qualification = await prisma.userJobFunction.findFirst({
+    where: {
+      cinemaId,
+      userId,
+      jobFunctionId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!qualification) {
+    throw new ForbiddenException(
+      'Medarbejderen er ikke kvalificeret til denne jobfunktion',
     );
   }
 }

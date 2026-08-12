@@ -30,8 +30,6 @@ describe('shift trade relation read shape', () => {
               color: true,
             },
           },
-          jobFunctionNameSnapshot: true,
-          jobFunctionColorSnapshot: true,
         },
       },
       offeredByUser: {

@@ -35,6 +35,11 @@ export type ShiftTrade = {
     User | null;
   acceptedByUser?:
     User | null;
+  shiftStartTimeSnapshot: string;
+  shiftEndTimeSnapshot: string;
+  jobFunctionIdSnapshot: number;
+  jobFunctionNameSnapshot: string;
+  jobFunctionColorSnapshot: string;
   approvedLeaveConflict?:
     ApprovedLeaveConflict | null;
   hasShiftConflict?:
@@ -50,7 +55,7 @@ export type ShiftTrade = {
       color?:
         string | null;
     };
-  };
+  } | null;
 };
 
 export type ShiftTradeCursorPage = {

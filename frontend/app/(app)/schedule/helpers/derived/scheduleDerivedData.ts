@@ -10,7 +10,6 @@ type MovieShowingWithTimeRange = {
   startTime: string | Date;
   endTime: string | Date;
 };
-
 export function getShiftsForTimeRegistration<
   TEntry extends TimeEntryWithShiftReference,
 >(shifts: Shift[], timeEntries: TEntry[], currentUserId: number | null | undefined) {
@@ -19,7 +18,6 @@ export function getShiftsForTimeRegistration<
       .filter((entry) => entry.shiftId && entry.status !== "VOIDED")
       .map((entry) => [entry.shiftId, entry]),
   );
-
   return shifts
     .filter((shift) => getShiftUserId(shift) === currentUserId)
     .map((shift) => ({
@@ -35,7 +33,6 @@ export function getMovieShowingsForDate<TMovie extends MovieShowingWithTimeRange
   const dayStart = new Date(`${selectedDate}T00:00:00`);
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
-
   return movieShowings.filter((movie) => {
     const movieStart = new Date(movie.startTime);
     const movieEnd = new Date(movie.endTime);
@@ -43,13 +40,31 @@ export function getMovieShowingsForDate<TMovie extends MovieShowingWithTimeRange
   });
 }
 
-export function getScheduleStaffingTargetUsers(users: User[]) {
+export function getScheduleStaffingTargetUsers(
+  users: User[],
+  jobFunctionId: number | null | undefined,
+) {
   return users.filter((candidate) => {
     const userWithMeta = candidate as User & {
       isActive?: boolean;
       role?: string;
+      userJobFunctions?: Array<{
+        jobFunctionId: number;
+      }>;
     };
 
-    return userWithMeta.isActive !== false && userWithMeta.role !== "MASTER";
+    if (userWithMeta.isActive === false || userWithMeta.role === "MASTER") {
+      return false;
+    }
+
+    if (!jobFunctionId || jobFunctionId <= 0) {
+      return false;
+    }
+
+    return (
+      userWithMeta.userJobFunctions?.some(
+        (qualification) => qualification.jobFunctionId === jobFunctionId,
+      ) ?? false
+    );
   });
 }

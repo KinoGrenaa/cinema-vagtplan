@@ -9,6 +9,9 @@ import {
   resolveShiftTradeActorContext,
   ShiftTradeActor,
 } from './shift-trade-accept-validation';
+import {
+  resolveShiftTradeOfferNotifications,
+} from './shift-trade-notification-resolution';
 import { shiftTradeInclude } from './shift-trade-service-helpers';
 
 type ShiftTradeCancelFlowDeps = {
@@ -33,80 +36,116 @@ export async function cancelShiftTrade(
     actor,
   );
 
-  const trade = await prisma.$transaction(
-    async (tx) => {
-      const existingTrade =
-        await tx.shiftTrade.findFirst({
-          where: {
-            id,
+  const result =
+    await prisma.$transaction(
+      async (tx) => {
+        const existingTrade =
+          await tx.shiftTrade.findFirst({
+            where: {
+              id,
+              cinemaId,
+            },
+          });
+
+        if (!existingTrade) {
+          throw new NotFoundException(
+            'Vagtbytte blev ikke fundet',
+          );
+        }
+
+        if (
+          existingTrade.offeredByUserId !==
+          userId
+        ) {
+          throw new ForbiddenException(
+            'Du kan kun annullere dine egne vagtbytter',
+          );
+        }
+
+        if (
+          existingTrade.status !==
+          ShiftTradeStatus.OPEN
+        ) {
+          throw new ForbiddenException(
+            'Vagtbyttet er ikke længere åbent',
+          );
+        }
+
+        const cancelled =
+          await tx.shiftTrade.updateMany({
+            where: {
+              id,
+              cinemaId,
+              offeredByUserId:
+                userId,
+              status:
+                ShiftTradeStatus.OPEN,
+            },
+            data: {
+              status:
+                ShiftTradeStatus.CANCELLED,
+            },
+          });
+
+        if (
+          cancelled.count !== 1
+        ) {
+          throw new ForbiddenException(
+            'Vagtbyttet er ikke længere åbent',
+          );
+        }
+
+        const notificationUserIds =
+          await resolveShiftTradeOfferNotifications(
+            tx,
             cinemaId,
-          },
-        });
+            [id],
+          );
 
-      if (!existingTrade) {
-        throw new NotFoundException(
-          'Vagtbytte blev ikke fundet',
-        );
-      }
+        const trade =
+          await tx.shiftTrade.findUnique({
+            where: {
+              id,
+            },
+            include:
+              shiftTradeInclude,
+          });
 
-      if (
-        existingTrade.offeredByUserId !==
-        userId
-      ) {
-        throw new ForbiddenException(
-          'Du kan kun annullere dine egne vagtbytter',
-        );
-      }
+        if (!trade) {
+          throw new NotFoundException(
+            'Vagtbytte blev ikke fundet',
+          );
+        }
 
-      if (
-        existingTrade.status !==
-        ShiftTradeStatus.OPEN
-      ) {
-        throw new ForbiddenException(
-          'Vagtbyttet er ikke længere åbent',
-        );
-      }
+        return {
+          trade,
+          notificationUserIds,
+        };
+      },
+    );
 
-      const cancelled =
-        await tx.shiftTrade.updateMany({
-          where: {
-            id,
-            cinemaId,
-            offeredByUserId: userId,
-            status: ShiftTradeStatus.OPEN,
-          },
-          data: {
-            status:
-              ShiftTradeStatus.CANCELLED,
-          },
-        });
-
-      if (cancelled.count !== 1) {
-        throw new ForbiddenException(
-          'Vagtbyttet er ikke længere åbent',
-        );
-      }
-
-      return tx.shiftTrade.findUnique({
-        where: {
-          id,
-        },
-        include: shiftTradeInclude,
-      });
-    },
-  );
-
-  if (!trade) {
-    throw new NotFoundException(
-      'Vagtbytte blev ikke fundet',
+  for (
+    const notificationUserId of
+    result.notificationUserIds
+  ) {
+    realtime.notifyUser(
+      notificationUserId,
+      'notificationsUpdated',
+      {
+        cinemaId:
+          result.trade.cinemaId,
+        shiftTradeId:
+          result.trade.id,
+        resolved: true,
+      },
     );
   }
 
   realtime.notifyCinema(
-    trade.cinemaId,
+    result.trade.cinemaId,
     'shiftTradesUpdated',
-    trade,
+    result.trade,
   );
 
-  return trade;
+  return result.trade;
 }

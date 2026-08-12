@@ -1,9 +1,8 @@
 import {
   BadRequestException,
-  NotFoundException,
 } from '@nestjs/common';
 
-import { PrismaService } from '../../prisma/prisma.service';
+import type { Prisma } from '@prisma/client';
 import { checkShiftConflicts } from '../../shifts/helpers/shift-conflict-checks';
 
 type StaffingRequestAcceptCandidate = {
@@ -14,7 +13,7 @@ type StaffingRequestAcceptCandidate = {
 };
 
 export async function assertNoStaffingRequestAcceptConflicts(
-  prisma: PrismaService,
+  prisma: Pick<Prisma.TransactionClient, 'shift' | 'leaveRequest'>,
   request: StaffingRequestAcceptCandidate,
   userId: number,
 ) {
@@ -34,8 +33,8 @@ export async function assertNoStaffingRequestAcceptConflicts(
     : null;
 
   if (request.shiftId && !requestShift) {
-    throw new NotFoundException(
-      'Vagt blev ikke fundet',
+    throw new BadRequestException(
+      'Bemandingsforespørgslen er ikke længere aktuel',
     );
   }
 

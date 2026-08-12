@@ -1,3 +1,5 @@
+import type { ShiftTrade } from "./shiftTradeTypes";
+
 export function formatShiftDate(value: string) {
   return new Date(value).toLocaleDateString("da-DK", {
     weekday: "long",
@@ -19,4 +21,17 @@ export function formatShiftTime(startTime: string, endTime: string) {
   });
 
   return `${start} - ${end}`;
+}
+
+
+export function getTradeStartTime(trade: ShiftTrade) {
+  return trade.shift?.startTime ?? trade.shiftStartTimeSnapshot;
+}
+
+export function getTradeEndTime(trade: ShiftTrade) {
+  return trade.shift?.endTime ?? trade.shiftEndTimeSnapshot;
+}
+
+export function getTradeJobFunctionName(trade: ShiftTrade) {
+  return trade.shift?.jobFunction?.name ?? trade.jobFunctionNameSnapshot ?? "Vagt";
 }
