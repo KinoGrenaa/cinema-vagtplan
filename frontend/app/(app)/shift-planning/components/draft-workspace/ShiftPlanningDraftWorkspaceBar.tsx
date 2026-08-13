@@ -275,7 +275,7 @@ export default function ShiftPlanningDraftWorkspaceBar({
               className="mt-2 block w-full rounded-xl border border-violet-300 bg-white px-3 py-2.5 text-sm font-semibold text-gray-950 outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-600/20 dark:border-violet-800 dark:bg-gray-950 dark:text-white"
               disabled={draftsLoading || busy}
             >
-              <option value="">Ingen kladde valgt</option>
+              <option value="">Faktisk vagtplan · skrivebeskyttet</option>
               {openDrafts.map((draft) => (
                 <option key={String(draft.id)} value={String(draft.id)}>
                   {formatDraftFallback(draft, year, month)}
@@ -284,7 +284,7 @@ export default function ShiftPlanningDraftWorkspaceBar({
             </select>
             <p className="mt-2 text-sm text-violet-800 dark:text-violet-200">
               {!selectedDraft
-                ? "Kalenderen viser kun den faktiske vagtplan. Vælg eller opret en kladde for at planlægge ændringer."
+                ? "Du ser den faktiske vagtplan i skrivebeskyttet visning. Vælg en åben kladde eller opret en ny for at ændre uger og dage."
                 : dirty
                   ? "Du arbejder stadig i den valgte kladde. Ændringerne er endnu ikke gemt."
                   : editable

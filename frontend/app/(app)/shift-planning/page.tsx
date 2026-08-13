@@ -1833,7 +1833,7 @@ export default function ShiftPlanningPage() {
                   </h2>
                   <p className="mx-auto mt-1 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
                     {selectedDraftId === null
-                      ? "Du ser den faktiske vagtplan. Vælg eller opret en kladde for at planlægge ændringer."
+                      ? "Du ser den faktiske vagtplan i skrivebeskyttet visning. Vælg eller opret en kladde for at ændre uger og dage."
                       : "Klik på en dato for at vælge skabelon, markere lukket dag eller tilføje en intern note."}
                   </p>
                 </div>
@@ -1852,10 +1852,7 @@ export default function ShiftPlanningPage() {
                   >
                     Denne måned
                   </button>
-                  {savedDrafts.some(
-                    (draft) =>
-                      String(draft.status ?? "").toUpperCase() === "DRAFT",
-                  ) && (
+                  {selectedDraftIsEditable && (
                     <button
                       type="button"
                       onClick={() =>
@@ -1876,6 +1873,7 @@ export default function ShiftPlanningPage() {
                       Erstat månedens vagter
                     </button>
                   )}
+                  {selectedDraftIsEditable && (
                   <button
                     type="button"
                     onClick={() =>
@@ -1895,6 +1893,7 @@ export default function ShiftPlanningPage() {
                   >
                     Fjern månedens vagter
                   </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => changeMonth(1)}
@@ -2183,10 +2182,21 @@ export default function ShiftPlanningPage() {
                 </h2>
                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                   {selectedDraftId === null
-                    ? "Du ser den faktiske vagtplan for denne dato. Vælg eller opret en kladde for at ændre planlægningen."
+                    ? "Du ser den faktiske vagtplan for denne dato."
                     : "Vælg hvilken vagtsskabelon der skal bruges på denne dato. Aktive vagter oprettes først i en senere fase."}
                 </p>
-              {(selectedDay.scheduledShiftCount ?? 0) > 0 && (
+                {!selectedDraftIsEditable && (
+                  <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900 dark:border-violet-900/70 dark:bg-violet-950/30 dark:text-violet-100">
+                    <p className="font-bold">
+                      Skrivebeskyttet visning
+                    </p>
+                    <p className="mt-1">
+                      Vælg en åben kladde eller opret en ny for at ændre planlægningsdag, skabelon og intern note.
+                    </p>
+                  </div>
+                )}
+              {selectedDraftIsEditable &&
+                (selectedDay.scheduledShiftCount ?? 0) > 0 && (
                 <>
                 {!draftDirty &&
                   savedDrafts.some(
@@ -2344,15 +2354,17 @@ export default function ShiftPlanningPage() {
                     className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-100 dark:hover:bg-gray-800"
                     disabled={saving}
                   >
-                    Annuller
+                    {selectedDraftIsEditable ? "Annuller" : "Luk"}
                   </button>
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                    disabled={saving || !selectedDraftIsEditable}
-                  >
-                    {saving ? "Gemmer..." : "Gem dag"}
-                  </button>
+                  {selectedDraftIsEditable && (
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                      disabled={saving}
+                    >
+                      {saving ? "Gemmer..." : "Gem dag"}
+                    </button>
+                  )}
                 </div>
               </form>
             </div>

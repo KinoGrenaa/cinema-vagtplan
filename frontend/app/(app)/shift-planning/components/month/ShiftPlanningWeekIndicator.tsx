@@ -110,7 +110,7 @@ export default function ShiftPlanningWeekIndicator({
         </div>
         </div>
       )}
-      {scheduledShiftCount > 0 && (
+      {editable && scheduledShiftCount > 0 && (
         <div
           className={`mt-2 grid gap-1.5 ${
             canReplacePlannedShifts ? "grid-cols-2" : "grid-cols-1"
