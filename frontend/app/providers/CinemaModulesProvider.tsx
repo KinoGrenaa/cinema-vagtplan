@@ -50,7 +50,8 @@ const CinemaModulesContext =
   );
 const moduleRouteRules: Array<{
   prefix: string;
-  moduleKey: CinemaModuleKey;
+  moduleKey?: CinemaModuleKey;
+  moduleKeysAny?: CinemaModuleKey[];
 }> = [
   {
     prefix:
@@ -99,13 +100,11 @@ const moduleRouteRules: Array<{
     moduleKey: "LEAVE",
   },
   {
-    prefix: "/staffing-requests",
-    moduleKey:
-      "STAFFING_REQUESTS",
-  },
-  {
     prefix: "/shift-trades",
-    moduleKey: "SHIFT_TRADES",
+    moduleKeysAny: [
+      "SHIFT_TRADES",
+      "STAFFING_REQUESTS",
+    ],
   },
   {
     prefix: "/messages",
@@ -139,15 +138,28 @@ function pathMatches(
 export function getModuleForPathname(
   pathname: string,
 ) {
-  return (
+  const rule =
     moduleRouteRules.find(
-      (rule) =>
+      (candidate) =>
         pathMatches(
           pathname,
-          rule.prefix,
+          candidate.prefix,
         ),
-    )?.moduleKey ?? null
-  );
+    );
+
+  if (!rule) {
+    return null;
+  }
+
+  if (
+    rule.moduleKeysAny?.length
+  ) {
+    return rule.moduleKeysAny;
+  }
+
+  return rule.moduleKey
+    ? [rule.moduleKey]
+    : null;
 }
 
 function getSelectedMasterCinemaId() {
@@ -413,10 +425,10 @@ export function CinemaModuleRouteGate({
     hasCinemaContext,
     isModuleEnabled,
   } = useCinemaModules();
-  const requiredModule =
+  const requiredModules =
     getModuleForPathname(pathname);
 
-  if (!requiredModule) {
+  if (!requiredModules) {
     return <>{children}</>;
   }
   if (loading) {
@@ -428,9 +440,17 @@ export function CinemaModuleRouteGate({
       </main>
     );
   }
+  const hasRequiredModule =
+    requiredModules.some(
+      (moduleKey) =>
+        isModuleEnabled(
+          moduleKey,
+        ),
+    );
+
   if (
     hasCinemaContext &&
-    !isModuleEnabled(requiredModule)
+    !hasRequiredModule
   ) {
     return (
       <main className="min-h-screen bg-gray-100 p-6 text-gray-900 dark:bg-gray-950 dark:text-gray-100">

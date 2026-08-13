@@ -55,8 +55,12 @@ export default function AppMenu() {
     Partial<Record<MenuGroupId, boolean>>
   >({});
 
-  const totalTradeCount = poolCount + directCount;
-  const scheduleBadgeCount = totalTradeCount + staffingRequestCount;
+  const availableShiftCount =
+    poolCount +
+    directCount +
+    staffingRequestCount;
+  const scheduleBadgeCount =
+    availableShiftCount;
   const totalMenuBadgeCount =
     scheduleBadgeCount +
     unreadMessages +
@@ -93,20 +97,16 @@ export default function AppMenu() {
         {
           href: "/my-shifts",
           label: "Mine vagter",
-          badge: directCount,
           moduleKey: "SCHEDULE",
         },
         {
           href: "/shift-trades",
-          label: "Vagtpulje",
-          badge: poolCount,
-          moduleKey: "SHIFT_TRADES",
-        },
-        {
-          href: "/staffing-requests",
-          label: "Bemanding",
-          badge: staffingRequestCount,
-          moduleKey: "STAFFING_REQUESTS",
+          label: "Ledige vagter",
+          badge: availableShiftCount,
+          moduleKeysAny: [
+            "SHIFT_TRADES",
+            "STAFFING_REQUESTS",
+          ],
         },
       ],
     },
@@ -323,7 +323,6 @@ export default function AppMenu() {
 
   function toggleGroup(groupId: MenuGroupId) {
     setOpenGroups((current) => ({
-      ...current,
       [groupId]: !current[groupId],
     }));
   }
@@ -355,7 +354,7 @@ export default function AppMenu() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative rounded-2xl border border-gray-800 bg-black p-3 text-white shadow-xl transition hover:scale-105 hover:bg-gray-800 active:scale-100 active:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-700 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:active:bg-gray-300 dark:focus-visible:ring-gray-300 dark:focus-visible:ring-offset-gray-950"
+        className="fixed left-4 top-4 z-30 rounded-2xl border border-gray-800 bg-black p-3 text-white shadow-xl transition hover:scale-105 hover:bg-gray-800 active:scale-100 active:bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-700 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:active:bg-gray-300 dark:focus-visible:ring-gray-300 dark:focus-visible:ring-offset-gray-950"
         aria-label="Åbn menu"
       >
         <Menu size={22} />
@@ -374,11 +373,11 @@ export default function AppMenu() {
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-full w-80 max-w-[85vw] flex-col border-r border-gray-200 bg-white shadow-2xl transition-transform duration-200 dark:border-gray-800 dark:bg-gray-950 ${
+        className={`fixed left-0 top-2 z-50 flex max-h-[calc(100dvh-1rem)] w-80 max-w-[85vw] flex-col overflow-hidden rounded-r-2xl border border-l-0 border-gray-200 bg-white shadow-2xl transition-transform duration-200 dark:border-gray-800 dark:bg-gray-950 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-start justify-between border-b border-gray-200 p-5 dark:border-gray-800">
+        <div className="flex shrink-0 items-start justify-between border-b border-gray-200 p-5 dark:border-gray-800">
           <div>
             <h2 className="text-lg font-bold text-gray-950 dark:text-white">
               Cinema Vagtplan
@@ -410,7 +409,7 @@ export default function AppMenu() {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto p-4">
+        <nav className="min-h-0 space-y-2 overflow-y-auto p-4">
           {visibleNavItems.map((item) => {
             const hasChildren = Boolean(item.children?.length);
             const active = item.href === activeHref;
@@ -504,7 +503,7 @@ export default function AppMenu() {
           })}
         </nav>
 
-        <div className="border-t border-gray-200 p-4 dark:border-gray-800">
+        <div className="shrink-0 border-t border-gray-200 p-4 dark:border-gray-800">
           <button
             type="button"
             onClick={logout}

@@ -181,7 +181,14 @@ export async function acceptStaffingRequest({
       );
     }
 
-    let assignedShift: unknown = null;
+    let assignedShift:
+      | {
+          user: {
+            firstName: string;
+            lastName: string;
+          } | null;
+        }
+      | null = null;
     const relatedRequestIds = [id];
 
     if (request.shiftId) {
@@ -256,11 +263,17 @@ export async function acceptStaffingRequest({
       );
 
     if (assignedShift) {
+      const acceptedByName =
+        assignedShift.user
+          ? `${assignedShift.user.firstName} ${assignedShift.user.lastName}`.trim() ||
+            user.email
+          : user.email;
+
       await createStaffingRequestAcceptedNotifications(
         tx,
         request.cinemaId,
         id,
-        user.email,
+        acceptedByName,
       );
     }
 

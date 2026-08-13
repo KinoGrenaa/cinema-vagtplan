@@ -3,44 +3,20 @@ import type {
 } from "../../helpers/core/shiftTradeTarget";
 
 type Props = {
-  state:
-    ShiftTradeTargetState;
+  state: ShiftTradeTargetState;
   tradeId: number | null;
   onClear: () => void;
 };
 
 function getNotice(
   state: ShiftTradeTargetState,
-  tradeId: number | null,
 ) {
-  if (state === "loading") {
-    return {
-      title:
-        "Finder vagtbyttet",
-      description:
-        "Vagtbyttet fra notifikationen bliver hentet.",
-      tone:
-        "border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-100",
-    };
-  }
-
-  if (state === "found") {
-    return {
-      title:
-        "Vagtbyttet er fremhævet",
-      description:
-        "Vagtbyttet er fundet og fremhævet i visningen.",
-      tone:
-        "border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-100",
-    };
-  }
-
   if (state === "missing") {
     return {
       title:
         "Vagtbyttet blev ikke fundet",
       description:
-        "Vagtbyttet er ikke tilgængeligt i den aktive biograf. Det kan være udløbet, fjernet eller tilhøre en anden biograf.",
+        "Vagtbyttet er ikke tilg\u00e6ngeligt i den aktive biograf. Det kan v\u00e6re udl\u00f8bet, fjernet eller tilh\u00f8re en anden biograf.",
       tone:
         "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100",
     };
@@ -50,7 +26,7 @@ function getNotice(
     title:
       "Linket til vagtbyttet er ugyldigt",
     description:
-      "Vagtbytte-ID’et i adressen skal være et positivt heltal.",
+      "Vagtbytte-ID'et i adressen skal v\u00e6re et positivt heltal.",
     tone:
       "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100",
   };
@@ -58,18 +34,18 @@ function getNotice(
 
 export default function ShiftTradeTargetNotice({
   state,
-  tradeId,
   onClear,
 }: Props) {
-  if (state === "idle") {
+  if (
+    state === "idle" ||
+    state === "loading" ||
+    state === "found"
+  ) {
     return null;
   }
 
   const notice =
-    getNotice(
-      state,
-      tradeId,
-    );
+    getNotice(state);
 
   return (
     <div

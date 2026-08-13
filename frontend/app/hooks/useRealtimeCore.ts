@@ -162,6 +162,53 @@ function closeSharedSocket() {
   sharedSocketKey = null;
 }
 
+const REALTIME_ROOM_REJOIN_DELAYS_MS = [
+  0,
+  250,
+  1000,
+] as const;
+
+function joinRealtimeRooms(
+  socket: Socket,
+  params: {
+    user: RealtimeUser;
+    cinemaId: number | null;
+  },
+) {
+  const joinRooms = () => {
+    if (!socket.connected) {
+      return;
+    }
+
+    if (params.cinemaId) {
+      socket.emit(
+        "joinCinema",
+        params.cinemaId,
+      );
+    }
+
+    socket.emit(
+      "joinUser",
+      params.user.id,
+    );
+  };
+
+  for (
+    const delay of
+      REALTIME_ROOM_REJOIN_DELAYS_MS
+  ) {
+    if (delay === 0) {
+      joinRooms();
+      continue;
+    }
+
+    window.setTimeout(
+      joinRooms,
+      delay,
+    );
+  }
+}
+
 function acquireSharedSocket(params: {
   token: string;
   user: RealtimeUser;
@@ -205,16 +252,9 @@ function acquireSharedSocket(params: {
         socket.id,
       );
 
-      if (params.cinemaId) {
-        socket.emit(
-          "joinCinema",
-          params.cinemaId,
-        );
-      }
-
-      socket.emit(
-        "joinUser",
-        params.user.id,
+      joinRealtimeRooms(
+        socket,
+        params,
       );
     });
 
@@ -223,6 +263,13 @@ function acquireSharedSocket(params: {
         "Realtime disconnected",
       );
     });
+  }
+
+  if (sharedSocket.connected) {
+    joinRealtimeRooms(
+      sharedSocket,
+      params,
+    );
   }
 
   sharedConsumerCount += 1;

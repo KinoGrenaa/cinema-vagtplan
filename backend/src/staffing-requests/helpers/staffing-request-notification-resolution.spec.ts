@@ -19,6 +19,8 @@ describe(
           ],
         ),
       ).toEqual([
+        '/shift-trades?requestId=31',
+        '/shift-trades?requestId=32',
         '/staffing-requests?requestId=31',
         '/staffing-requests?requestId=32',
       ]);
@@ -65,6 +67,8 @@ describe(
           'STAFFING_REQUEST',
         linkUrl: {
           in: [
+            '/shift-trades?requestId=31',
+            '/shift-trades?requestId=32',
             '/staffing-requests?requestId=31',
             '/staffing-requests?requestId=32',
           ],

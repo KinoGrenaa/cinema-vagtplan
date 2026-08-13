@@ -42,7 +42,7 @@ export function getStaffingRequestNotificationLink(
   requestId: number,
 ) {
   return (
-    '/staffing-requests?requestId=' +
+    '/shift-trades?requestId=' +
     requirePositiveId(
       requestId,
       'Forespørgsels-ID',

@@ -25,6 +25,7 @@ import ShiftTradesHeader from "./components/layout/ShiftTradesHeader";
 import ShiftTradeTargetNotice from "./components/layout/ShiftTradeTargetNotice";
 import ShiftTradesHistorySection from "./components/list/ShiftTradesHistorySection";
 import ShiftTradesOpenSection from "./components/list/ShiftTradesOpenSection";
+import ShiftTradesStaffingSection from "./components/staffing/ShiftTradesStaffingSection";
 import {
   parseShiftTradeTarget,
   type ShiftTradeTargetState,
@@ -289,6 +290,12 @@ export default function ShiftTradesPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <ShiftTradesHeader
             message={message}
+            fromNotification={Boolean(
+              tradeTarget.tradeId ||
+                searchParams.get(
+                  "requestId",
+                ),
+            )}
           />
 
           <ShiftTradeTargetNotice
@@ -300,6 +307,8 @@ export default function ShiftTradesPage() {
               clearTradeTarget
             }
           />
+
+          <ShiftTradesStaffingSection />
 
           <ShiftTradesOpenSection
             title="Direkte tilbud"

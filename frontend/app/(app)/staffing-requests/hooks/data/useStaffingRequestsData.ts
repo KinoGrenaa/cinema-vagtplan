@@ -7,6 +7,10 @@ import {
 } from "react";
 
 import {
+  useRealtimeShifts,
+} from "@/app/hooks/useRealtimeShifts";
+
+import {
   appendCinemaId,
   getCurrentUserId,
   getSelectedMasterCinemaId,
@@ -577,6 +581,15 @@ export function useStaffingRequestsData({
       pendingCount,
       showError,
     ]);
+
+  useRealtimeShifts({
+    onStaffingRequestsUpdated:
+      () =>
+        void fetchRequests(
+          false,
+        ),
+    enableToasts: false,
+  });
 
   useEffect(() => {
     if (!user) {

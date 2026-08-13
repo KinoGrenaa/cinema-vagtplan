@@ -35,7 +35,7 @@ export async function createStaffingRequestAcceptedNotifications(
     StaffingNotificationPrisma,
   cinemaId: number,
   requestId: number,
-  acceptedByEmail: string,
+  acceptedByName: string,
 ) {
   const admins =
     await prisma.user.findMany({
@@ -59,7 +59,7 @@ export async function createStaffingRequestAcceptedNotifications(
       title:
         'Bemandingsforespørgsel accepteret',
       message:
-        `${acceptedByEmail} accepterede ` +
+        `${acceptedByName} accepterede ` +
         `bemandingsforespørgsel #${requestId}`,
       type: 'STAFFING_ACCEPTED',
       linkUrl:

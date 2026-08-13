@@ -33,7 +33,7 @@ describe(
           31,
         ),
       ).toBe(
-        '/staffing-requests?requestId=31',
+        '/shift-trades?requestId=31',
       );
     });
 

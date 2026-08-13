@@ -12,7 +12,7 @@ type StaffingNotificationPrisma =
     'notification'
   >;
 
-export function getStaffingRequestNotificationLinks(
+function getValidRequestIds(
   requestIds: number[],
 ) {
   return Array.from(
@@ -25,11 +25,30 @@ export function getStaffingRequestNotificationLinks(
           requestId > 0,
       ),
     ),
-  ).map((requestId) =>
-    getStaffingRequestNotificationLink(
-      requestId,
-    ),
   );
+}
+
+export function getStaffingRequestNotificationLinks(
+  requestIds: number[],
+) {
+  const validRequestIds =
+    getValidRequestIds(
+      requestIds,
+    );
+
+  return [
+    ...validRequestIds.map(
+      (requestId) =>
+        getStaffingRequestNotificationLink(
+          requestId,
+        ),
+    ),
+    ...validRequestIds.map(
+      (requestId) =>
+        '/staffing-requests?requestId=' +
+        requestId,
+    ),
+  ];
 }
 
 export async function resolveStaffingRequestNotifications(

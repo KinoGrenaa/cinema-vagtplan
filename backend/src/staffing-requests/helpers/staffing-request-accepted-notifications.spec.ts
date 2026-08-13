@@ -91,7 +91,7 @@ describe(
             type:
               'STAFFING_ACCEPTED',
             linkUrl:
-              '/staffing-requests?requestId=31',
+              '/shift-trades?requestId=31',
           },
           {
             cinemaId: 7,
@@ -103,7 +103,7 @@ describe(
             type:
               'STAFFING_ACCEPTED',
             linkUrl:
-              '/staffing-requests?requestId=31',
+              '/shift-trades?requestId=31',
           },
         ],
       });

@@ -69,7 +69,7 @@ describe('staffing request create notifications', () => {
           userId: 21,
           type: 'STAFFING_REQUEST',
           linkUrl:
-            '/staffing-requests?requestId=31',
+            '/shift-trades?requestId=31',
         }),
       ],
     });
