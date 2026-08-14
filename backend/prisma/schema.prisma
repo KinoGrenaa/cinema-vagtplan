@@ -236,6 +236,7 @@ model Cinema {
   aiEnabled                         Boolean                       @default(false)
   shiftPlanningDrafts               ShiftPlanningDraft[]
   shiftPlanningDraftItems           ShiftPlanningDraftItem[]
+  shiftPlanningDraftDays            ShiftPlanningDraftDay[]
   moduleSettings                    CinemaModuleSetting[]
 }
 
@@ -488,6 +489,7 @@ model ScheduleTemplate {
   monthPlanDays           MonthPlanDay[]
   shiftPlanningDrafts     ShiftPlanningDraft[]
   shiftPlanningDraftItems ShiftPlanningDraftItem[]
+  shiftPlanningDraftDays  ShiftPlanningDraftDay[]
 
   @@index([cinemaId])
   @@index([isActive])
@@ -596,6 +598,7 @@ model ShiftPlanningDraft {
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @default(now()) @updatedAt
   items              ShiftPlanningDraftItem[]
+  days               ShiftPlanningDraftDay[]
   scheduleTemplate   ScheduleTemplate?        @relation(fields: [scheduleTemplateId], references: [id])
   scheduleTemplateId Int?
 
@@ -605,6 +608,27 @@ model ShiftPlanningDraft {
   @@index([createdAt])
 }
 
+model ShiftPlanningDraftDay {
+  id                 Int                @id @default(autoincrement())
+  cinemaId           Int
+  cinema             Cinema             @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  draftId            Int
+  draft              ShiftPlanningDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  date               DateTime
+  isActive           Boolean            @default(true)
+  scheduleTemplateId Int?
+  scheduleTemplate   ScheduleTemplate?  @relation(fields: [scheduleTemplateId], references: [id], onDelete: SetNull)
+  note               String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @default(now()) @updatedAt
+
+  @@unique([draftId, date])
+  @@index([cinemaId])
+  @@index([draftId])
+  @@index([date])
+  @@index([scheduleTemplateId])
+  @@index([isActive])
+}
 model ShiftPlanningDraftItem {
   id                    Int                          @id @default(autoincrement())
   cinemaId              Int

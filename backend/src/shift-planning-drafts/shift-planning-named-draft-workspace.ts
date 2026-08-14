@@ -70,6 +70,236 @@ function monthBounds(year: number, month: number) {
   };
 }
 
+type DraftDaySnapshotClient = Pick<
+  PrismaService,
+  'monthPlanDay' | 'shiftPlanningDraftDay'
+>;
+
+type DraftDaySnapshotInput = {
+  draftId: number;
+  cinemaId: number;
+  year: number;
+  month: number;
+};
+
+function buildMonthDates(
+  year: number,
+  month: number,
+) {
+  const dates: Date[] = [];
+
+  for (let day = 1; ; day += 1) {
+    const date = new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        day,
+      ),
+    );
+
+    if (
+      date.getUTCMonth() !==
+      month - 1
+    ) {
+      break;
+    }
+
+    dates.push(date);
+  }
+
+  return dates;
+}
+
+function draftDayDateKey(
+  date: Date,
+) {
+  return date.toISOString();
+}
+
+async function createBlankDraftDaySnapshot(
+  prisma: DraftDaySnapshotClient,
+  input: DraftDaySnapshotInput,
+) {
+  const dates =
+    buildMonthDates(
+      input.year,
+      input.month,
+    );
+
+  const result =
+    await prisma.shiftPlanningDraftDay.createMany({
+      data: dates.map(
+        (date) => ({
+          cinemaId:
+            input.cinemaId,
+          draftId:
+            input.draftId,
+          date,
+          isActive: true,
+          scheduleTemplateId:
+            null,
+          note: null,
+        }),
+      ),
+    });
+
+  return result.count;
+}
+
+async function replaceDraftDaySnapshotFromWorkspace(
+  prisma: DraftDaySnapshotClient,
+  input: DraftDaySnapshotInput,
+) {
+  const { start, end } =
+    monthBounds(
+      input.year,
+      input.month,
+    );
+
+  const workspaceDays =
+    await prisma.monthPlanDay.findMany({
+      where: {
+        cinemaId:
+          input.cinemaId,
+        date: {
+          gte: start,
+          lt: end,
+        },
+      },
+      select: {
+        date: true,
+        isActive: true,
+        scheduleTemplateId: true,
+        note: true,
+      },
+    });
+
+  const workspaceByDate =
+    new Map(
+      workspaceDays.map(
+        (day) => [
+          draftDayDateKey(
+            day.date,
+          ),
+          day,
+        ],
+      ),
+    );
+
+  await prisma.shiftPlanningDraftDay.deleteMany({
+    where: {
+      draftId:
+        input.draftId,
+      cinemaId:
+        input.cinemaId,
+    },
+  });
+
+  const dates =
+    buildMonthDates(
+      input.year,
+      input.month,
+    );
+
+  const result =
+    await prisma.shiftPlanningDraftDay.createMany({
+      data: dates.map(
+        (date) => {
+          const workspaceDay =
+            workspaceByDate.get(
+              draftDayDateKey(
+                date,
+              ),
+            );
+
+          return {
+            cinemaId:
+              input.cinemaId,
+            draftId:
+              input.draftId,
+            date,
+            isActive:
+              workspaceDay
+                ?.isActive ??
+              true,
+            scheduleTemplateId:
+              workspaceDay
+                ?.scheduleTemplateId ??
+              null,
+            note:
+              workspaceDay
+                ?.note ??
+              null,
+          };
+        },
+      ),
+    });
+
+  return result.count;
+}
+
+async function restoreDraftDaySnapshotToWorkspace(
+  prisma: DraftDaySnapshotClient,
+  input: Pick<
+    DraftDaySnapshotInput,
+    'draftId' | 'cinemaId'
+  >,
+) {
+  const snapshotDays =
+    await prisma.shiftPlanningDraftDay.findMany({
+      where: {
+        draftId:
+          input.draftId,
+        cinemaId:
+          input.cinemaId,
+      },
+      select: {
+        date: true,
+        isActive: true,
+        scheduleTemplateId: true,
+        note: true,
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+
+  for (const day of snapshotDays) {
+    await prisma.monthPlanDay.upsert({
+      where: {
+        cinemaId_date: {
+          cinemaId:
+            input.cinemaId,
+          date:
+            day.date,
+        },
+      },
+      update: {
+        isActive:
+          day.isActive,
+        scheduleTemplateId:
+          day.scheduleTemplateId,
+        note:
+          day.note,
+      },
+      create: {
+        cinemaId:
+          input.cinemaId,
+        date:
+          day.date,
+        isActive:
+          day.isActive,
+        scheduleTemplateId:
+          day.scheduleTemplateId,
+        note:
+          day.note,
+      },
+    });
+  }
+
+  return snapshotDays.length;
+}
+
 function requireEditableDraft(draft: DraftRow | undefined) {
   if (!draft) {
     throw new ShiftPlanningNamedDraftNotFoundError();
@@ -164,6 +394,20 @@ export async function saveNamedShiftPlanningDraft(
       })),
     });
 
+    await replaceDraftDaySnapshotFromWorkspace(
+      tx,
+      {
+        draftId:
+          draft.id,
+        cinemaId:
+          input.cinemaId,
+        year:
+          input.year,
+        month:
+          input.month,
+      },
+    );
+
     return {
       ...draft,
       itemCount: generated.items.length,
@@ -176,110 +420,130 @@ export async function createEmptyNamedShiftPlanningDraft(
   prisma: PrismaService,
   input: CreateEmptyNamedDraftInput,
 ) {
-  const rows = await prisma.$queryRaw<DraftRow[]>(Prisma.sql`
-    INSERT INTO "ShiftPlanningDraft" (
-      "cinemaId",
-      year,
-      month,
-      status,
-      source,
-      note,
-      warnings,
-      "createdByUserId"
-    )
-    VALUES (
-      ${input.cinemaId},
-      ${input.year},
-      ${input.month},
-      'DRAFT',
-      'MONTH_PLAN',
-      ${input.name},
-      '[]'::jsonb,
-      ${input.actorUserId}
-    )
-    RETURNING
-      id,
-      "cinemaId",
-      year,
-      month,
-      status,
-      note,
-      "createdAt",
-      "updatedAt"
-  `);
+  return prisma.$transaction(
+    async (tx) => {
+      const rows =
+        await tx.$queryRaw<DraftRow[]>(Prisma.sql`
+          INSERT INTO "ShiftPlanningDraft" (
+            "cinemaId",
+            year,
+            month,
+            status,
+            source,
+            note,
+            warnings,
+            "createdByUserId"
+          )
+          VALUES (
+            ${input.cinemaId},
+            ${input.year},
+            ${input.month},
+            'DRAFT',
+            'MONTH_PLAN',
+            ${input.name},
+            '[]'::jsonb,
+            ${input.actorUserId}
+          )
+          RETURNING
+            id,
+            "cinemaId",
+            year,
+            month,
+            status,
+            note,
+            "createdAt",
+            "updatedAt"
+        `);
 
-  const draft = rows[0];
-  if (!draft) {
-    throw new ShiftPlanningNamedDraftNotFoundError();
-  }
+      const draft =
+        rows[0];
 
-  return { ...draft, itemCount: 0, warningCount: 0 };
+      if (!draft) {
+        throw new ShiftPlanningNamedDraftNotFoundError();
+      }
+
+      await createBlankDraftDaySnapshot(
+        tx,
+        {
+          draftId:
+            draft.id,
+          cinemaId:
+            draft.cinemaId,
+          year:
+            draft.year,
+          month:
+            draft.month,
+        },
+      );
+
+      return {
+        ...draft,
+        itemCount: 0,
+        warningCount: 0,
+      };
+    },
+  );
 }
 
 export async function openNamedShiftPlanningDraftWorkspace(
   prisma: PrismaService,
   input: ExistingNamedDraftInput,
 ) {
-  const draft = await findEditableDraft(prisma, input);
-  const { start, end } = monthBounds(draft.year, draft.month);
+  const draft =
+    await findEditableDraft(
+      prisma,
+      input,
+    );
 
-  return prisma.$transaction(async (tx) => {
-    const lockedRows = await tx.$queryRaw<DraftRow[]>(Prisma.sql`
-      SELECT
-        id,
-        "cinemaId",
-        year,
-        month,
-        status,
-        note,
-        "createdAt",
-        "updatedAt"
-      FROM "ShiftPlanningDraft"
-      WHERE id = ${input.draftId}
-        AND "cinemaId" = ${input.cinemaId}
-      FOR UPDATE
-    `);
-    requireEditableDraft(lockedRows[0]);
+  return prisma.$transaction(
+    async (tx) => {
+      const lockedRows =
+        await tx.$queryRaw<DraftRow[]>(Prisma.sql`
+          SELECT
+            id,
+            "cinemaId",
+            year,
+            month,
+            status,
+            note,
+            "createdAt",
+            "updatedAt"
+          FROM "ShiftPlanningDraft"
+          WHERE id = ${input.draftId}
+            AND "cinemaId" = ${input.cinemaId}
+          FOR UPDATE
+        `);
 
-    const clearedDayCount = await tx.$executeRaw(Prisma.sql`
-      UPDATE "MonthPlanDay"
-      SET
-        "scheduleTemplateId" = NULL,
-        "updatedAt" = NOW()
-      WHERE "cinemaId" = ${input.cinemaId}
-        AND date >= ${start}
-        AND date < ${end}
-    `);
+      requireEditableDraft(
+        lockedRows[0],
+      );
 
-    const restoredTemplateDayCount = await tx.$executeRaw(Prisma.sql`
-      UPDATE "MonthPlanDay" month_day
-      SET
-        "scheduleTemplateId" = source_item."scheduleTemplateId",
-        "updatedAt" = NOW()
-      FROM (
-        SELECT
-          date,
-          MAX("scheduleTemplateId") AS "scheduleTemplateId"
-        FROM "ShiftPlanningDraftItem"
-        WHERE "draftId" = ${input.draftId}
-          AND "cinemaId" = ${input.cinemaId}
-          AND "scheduleTemplateId" IS NOT NULL
-        GROUP BY date
-      ) source_item
-      WHERE month_day."cinemaId" = ${input.cinemaId}
-        AND month_day.date = source_item.date
-        AND month_day.date >= ${start}
-        AND month_day.date < ${end}
-    `);
+      const restoredDayCount =
+        await restoreDraftDaySnapshotToWorkspace(
+          tx,
+          {
+            draftId:
+              draft.id,
+            cinemaId:
+              draft.cinemaId,
+          },
+        );
 
-    return {
-      draftId: draft.id,
-      year: draft.year,
-      month: draft.month,
-      clearedDayCount: Number(clearedDayCount),
-      restoredTemplateDayCount: Number(restoredTemplateDayCount),
-    };
-  });
+      return {
+        draftId:
+          draft.id,
+        year:
+          draft.year,
+        month:
+          draft.month,
+        restoredDayCount,
+        clearedDayCount:
+          restoredDayCount,
+        restoredTemplateDayCount:
+          restoredDayCount,
+      };
+    },
+  );
 }
 
 export async function updateNamedShiftPlanningDraft(
@@ -344,6 +608,20 @@ export async function updateNamedShiftPlanningDraft(
       });
     }
 
+    await replaceDraftDaySnapshotFromWorkspace(
+      tx,
+      {
+        draftId:
+          input.draftId,
+        cinemaId:
+          input.cinemaId,
+        year:
+          draft.year,
+        month:
+          draft.month,
+      },
+    );
+
     await tx.$executeRaw(Prisma.sql`
       UPDATE "ShiftPlanningDraft"
       SET
@@ -366,97 +644,144 @@ export async function copyNamedShiftPlanningDraft(
   input: CopyNamedDraftInput,
 ) {
   return prisma.$transaction(async (tx) => {
-    const copiedDraftRows = await tx.$queryRaw<DraftRow[]>(Prisma.sql`
-      INSERT INTO "ShiftPlanningDraft" (
-        "cinemaId",
-        year,
-        month,
-        status,
-        source,
-        note,
-        warnings,
-        "createdByUserId"
-      )
-      SELECT
-        source_draft."cinemaId",
-        source_draft.year,
-        source_draft.month,
-        'DRAFT',
-        source_draft.source,
-        ${input.name},
-        source_draft.warnings,
-        ${input.actorUserId}
-      FROM "ShiftPlanningDraft" source_draft
-      WHERE source_draft.id = ${input.sourceDraftId}
-        AND source_draft."cinemaId" = ${input.cinemaId}
-      RETURNING
-        id,
-        "cinemaId",
-        year,
-        month,
-        status,
-        note,
-        "createdAt",
-        "updatedAt"
-    `);
+    const copiedDraftRows =
+      await tx.$queryRaw<DraftRow[]>(Prisma.sql`
+        INSERT INTO "ShiftPlanningDraft" (
+          "cinemaId",
+          year,
+          month,
+          status,
+          source,
+          note,
+          warnings,
+          "createdByUserId"
+        )
+        SELECT
+          source_draft."cinemaId",
+          source_draft.year,
+          source_draft.month,
+          'DRAFT',
+          source_draft.source,
+          ${input.name},
+          source_draft.warnings,
+          ${input.actorUserId}
+        FROM "ShiftPlanningDraft" source_draft
+        WHERE source_draft.id = ${input.sourceDraftId}
+          AND source_draft."cinemaId" = ${input.cinemaId}
+        RETURNING
+          id,
+          "cinemaId",
+          year,
+          month,
+          status,
+          note,
+          "createdAt",
+          "updatedAt"
+      `);
 
-    const copiedDraft = copiedDraftRows[0];
+    const copiedDraft =
+      copiedDraftRows[0];
+
     if (!copiedDraft) {
       throw new ShiftPlanningNamedDraftNotFoundError();
     }
 
-    const itemCount = await tx.$executeRaw(Prisma.sql`
-      INSERT INTO "ShiftPlanningDraftItem" (
-        "cinemaId",
-        "draftId",
-        date,
-        "monthPlanDayId",
-        "scheduleTemplateId",
-        "scheduleTemplateDayId",
-        "templateJobFunctionId",
-        "jobFunctionId",
-        "userId",
-        "requiredIndex",
-        status,
-        "plannedStartMinute",
-        "plannedEndMinute",
-        "startTime",
-        "endTime",
-        "warningCode",
-        "warningMessage",
-        metadata
-      )
-      SELECT
-        source_item."cinemaId",
-        ${copiedDraft.id},
-        source_item.date,
-        source_item."monthPlanDayId",
-        source_item."scheduleTemplateId",
-        source_item."scheduleTemplateDayId",
-        source_item."templateJobFunctionId",
-        source_item."jobFunctionId",
-        source_item."userId",
-        source_item."requiredIndex",
-        'DRAFT',
-        source_item."plannedStartMinute",
-        source_item."plannedEndMinute",
-        source_item."startTime",
-        source_item."endTime",
-        source_item."warningCode",
-        source_item."warningMessage",
-        source_item.metadata
-      FROM "ShiftPlanningDraftItem" source_item
-      WHERE source_item."draftId" = ${input.sourceDraftId}
-        AND source_item."cinemaId" = ${input.cinemaId}
-    `);
+    const itemCount =
+      await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "ShiftPlanningDraftItem" (
+          "cinemaId",
+          "draftId",
+          date,
+          "monthPlanDayId",
+          "scheduleTemplateId",
+          "scheduleTemplateDayId",
+          "templateJobFunctionId",
+          "jobFunctionId",
+          "userId",
+          "requiredIndex",
+          status,
+          "plannedStartMinute",
+          "plannedEndMinute",
+          "startTime",
+          "endTime",
+          "warningCode",
+          "warningMessage",
+          metadata
+        )
+        SELECT
+          source_item."cinemaId",
+          ${copiedDraft.id},
+          source_item.date,
+          source_item."monthPlanDayId",
+          source_item."scheduleTemplateId",
+          source_item."scheduleTemplateDayId",
+          source_item."templateJobFunctionId",
+          source_item."jobFunctionId",
+          source_item."userId",
+          source_item."requiredIndex",
+          'DRAFT',
+          source_item."plannedStartMinute",
+          source_item."plannedEndMinute",
+          source_item."startTime",
+          source_item."endTime",
+          source_item."warningCode",
+          source_item."warningMessage",
+          source_item.metadata
+        FROM "ShiftPlanningDraftItem" source_item
+        WHERE source_item."draftId" = ${input.sourceDraftId}
+          AND source_item."cinemaId" = ${input.cinemaId}
+      `);
 
     if (itemCount === 0) {
       throw new EmptyShiftPlanningNamedDraftError();
     }
 
+    const sourceDays =
+      await tx.shiftPlanningDraftDay.findMany({
+        where: {
+          draftId:
+            input.sourceDraftId,
+          cinemaId:
+            input.cinemaId,
+        },
+        select: {
+          date: true,
+          isActive: true,
+          scheduleTemplateId: true,
+          note: true,
+        },
+        orderBy: {
+          date: 'asc',
+        },
+      });
+
+    if (sourceDays.length > 0) {
+      await tx.shiftPlanningDraftDay.createMany({
+        data: sourceDays.map(
+          (day) => ({
+            cinemaId:
+              input.cinemaId,
+            draftId:
+              copiedDraft.id,
+            date:
+              day.date,
+            isActive:
+              day.isActive,
+            scheduleTemplateId:
+              day.scheduleTemplateId,
+            note:
+              day.note,
+          }),
+        ),
+      });
+    }
+
     return {
       ...copiedDraft,
-      itemCount: Number(itemCount),
+      itemCount:
+        Number(itemCount),
+      dayCount:
+        sourceDays.length,
     };
   });
 }

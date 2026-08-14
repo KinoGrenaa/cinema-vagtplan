@@ -26,9 +26,8 @@ services:
     depends_on:
       - database
     volumes:
-      - ./backend:/app
+      - ./backend/dist:/app/dist:ro
       - backend_dist:/app/runtime-dist
-      - /app/node_modules
   backend-build:
     build:
       context: ./backend

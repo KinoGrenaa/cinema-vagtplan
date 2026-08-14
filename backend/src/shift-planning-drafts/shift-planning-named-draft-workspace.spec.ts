@@ -16,12 +16,21 @@ const draftRow = {
   month: 8,
   status: 'DRAFT',
   note: 'August',
-  createdAt: new Date('2026-08-06T06:00:00.000Z'),
-  updatedAt: new Date('2026-08-06T06:00:00.000Z'),
+  createdAt:
+    new Date(
+      '2026-08-06T06:00:00.000Z',
+    ),
+  updatedAt:
+    new Date(
+      '2026-08-06T06:00:00.000Z',
+    ),
 };
 
 const generatedItem = {
-  date: new Date('2026-08-10T00:00:00.000Z'),
+  date:
+    new Date(
+      '2026-08-10T00:00:00.000Z',
+    ),
   monthPlanDayId: 10,
   scheduleTemplateId: 2,
   scheduleTemplateDayId: 20,
@@ -33,244 +42,753 @@ const generatedItem = {
   plannedEndMinute: 1290,
   warningCode: null,
   warningMessage: null,
-  metadata: { dateKey: '2026-08-10' },
+  metadata: {
+    dateKey: '2026-08-10',
+  },
 };
 
-describe('saveNamedShiftPlanningDraft', () => {
-  it('gemmer en navngivet kladde uden at erstatte andre kladder', async () => {
-    const create = jest.fn().mockResolvedValue(draftRow);
-    const createMany = jest.fn().mockResolvedValue({ count: 1 });
-    const transactionClient = {
-      shiftPlanningDraft: { create },
-      shiftPlanningDraftItem: { createMany },
-    };
-    const prisma = {
-      $transaction: jest.fn(async (callback) => callback(transactionClient)),
-    } as any;
-    const buildMonthData = jest.fn().mockResolvedValue({
-      warnings: [],
-      items: [generatedItem],
-    });
+const workspaceDay = {
+  date:
+    new Date(
+      '2026-08-27T00:00:00.000Z',
+    ),
+  isActive: true,
+  scheduleTemplateId: 2,
+  note: 'Testnote 27/8',
+};
 
-    const result = await saveNamedShiftPlanningDraft(
-      prisma,
-      {
-        cinemaId: 1,
-        year: 2026,
-        month: 8,
-        name: 'August',
-        actorUserId: 7,
+function snapshotMocks() {
+  return {
+    monthPlanDay: {
+      findMany:
+        jest.fn().mockResolvedValue([
+          workspaceDay,
+        ]),
+      upsert:
+        jest.fn().mockResolvedValue(
+          undefined,
+        ),
+    },
+    shiftPlanningDraftDay: {
+      findMany:
+        jest.fn().mockResolvedValue([
+          workspaceDay,
+        ]),
+      deleteMany:
+        jest.fn().mockResolvedValue({
+          count: 31,
+        }),
+      createMany:
+        jest.fn().mockResolvedValue({
+          count: 31,
+        }),
+    },
+  };
+}
+
+describe(
+  'saveNamedShiftPlanningDraft',
+  () => {
+    it(
+      'gemmer vagtposter og dagsnapshot atomisk',
+      async () => {
+        const create =
+          jest.fn().mockResolvedValue(
+            draftRow,
+          );
+
+        const createMany =
+          jest.fn().mockResolvedValue({
+            count: 1,
+          });
+
+        const snapshots =
+          snapshotMocks();
+
+        const transactionClient = {
+          shiftPlanningDraft: {
+            create,
+          },
+          shiftPlanningDraftItem: {
+            createMany,
+          },
+          ...snapshots,
+        };
+
+        const prisma = {
+          $transaction:
+            jest.fn(
+              async (callback) =>
+                callback(
+                  transactionClient,
+                ),
+            ),
+        } as any;
+
+        const buildMonthData =
+          jest.fn().mockResolvedValue({
+            warnings: [],
+            items: [
+              generatedItem,
+            ],
+          });
+
+        const result =
+          await saveNamedShiftPlanningDraft(
+            prisma,
+            {
+              cinemaId: 1,
+              year: 2026,
+              month: 8,
+              name: 'August',
+              actorUserId: 7,
+            },
+            buildMonthData,
+          );
+
+        expect(result.id).toBe(41);
+        expect(result.itemCount)
+          .toBe(1);
+
+        expect(createMany)
+          .toHaveBeenCalledTimes(1);
+
+        expect(
+          snapshots.monthPlanDay
+            .findMany,
+        ).toHaveBeenCalledTimes(1);
+
+        expect(
+          snapshots
+            .shiftPlanningDraftDay
+            .deleteMany,
+        ).toHaveBeenCalledWith({
+          where: {
+            draftId: 41,
+            cinemaId: 1,
+          },
+        });
+
+        expect(
+          snapshots
+            .shiftPlanningDraftDay
+            .createMany,
+        ).toHaveBeenCalledTimes(1);
       },
-      buildMonthData,
     );
 
-    expect(result.id).toBe(41);
-    expect(result.itemCount).toBe(1);
-    expect(createMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: [expect.objectContaining({ draftId: 41, status: 'DRAFT' })],
-      }),
+    it(
+      'afviser det gamle gem-endpoint ved tomt arbejdsforslag',
+      async () => {
+        const prisma = {
+          $transaction:
+            jest.fn(),
+        } as any;
+
+        const buildMonthData =
+          jest.fn().mockResolvedValue({
+            warnings: [],
+            items: [],
+          });
+
+        await expect(
+          saveNamedShiftPlanningDraft(
+            prisma,
+            {
+              cinemaId: 1,
+              year: 2026,
+              month: 8,
+              name: 'Tom kladde',
+              actorUserId: 7,
+            },
+            buildMonthData,
+          ),
+        ).rejects.toBeInstanceOf(
+          EmptyShiftPlanningNamedDraftError,
+        );
+
+        expect(
+          prisma.$transaction,
+        ).not.toHaveBeenCalled();
+      },
     );
-  });
+  },
+);
 
-  it('afviser at gemme et tomt arbejdsforslag via det gamle gem-endpoint', async () => {
-    const prisma = { $transaction: jest.fn() } as any;
-    const buildMonthData = jest.fn().mockResolvedValue({ warnings: [], items: [] });
+describe(
+  'createEmptyNamedShiftPlanningDraft',
+  () => {
+    it(
+      'opretter en tom kladde med blankt dagsnapshot',
+      async () => {
+        const queryRaw =
+          jest.fn().mockResolvedValue([
+            draftRow,
+          ]);
 
-    await expect(
-      saveNamedShiftPlanningDraft(
-        prisma,
-        {
-          cinemaId: 1,
-          year: 2026,
-          month: 8,
-          name: 'Tom kladde',
-          actorUserId: 7,
-        },
-        buildMonthData,
-      ),
-    ).rejects.toBeInstanceOf(EmptyShiftPlanningNamedDraftError);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-  });
-});
+        const snapshotCreateMany =
+          jest.fn().mockResolvedValue({
+            count: 31,
+          });
 
-describe('createEmptyNamedShiftPlanningDraft', () => {
-  it('opretter en tom, navngivet og åben kladde', async () => {
-    const queryRaw = jest.fn().mockResolvedValue([draftRow]);
-    const prisma = { $queryRaw: queryRaw } as any;
+        const transactionClient = {
+          $queryRaw:
+            queryRaw,
+          shiftPlanningDraftDay: {
+            createMany:
+              snapshotCreateMany,
+          },
+        };
 
-    const result = await createEmptyNamedShiftPlanningDraft(prisma, {
-      cinemaId: 1,
-      year: 2026,
-      month: 8,
-      name: 'August',
-      actorUserId: 7,
-    });
+        const prisma = {
+          $transaction:
+            jest.fn(
+              async (callback) =>
+                callback(
+                  transactionClient,
+                ),
+            ),
+        } as any;
 
-    expect(result).toEqual({ ...draftRow, itemCount: 0, warningCount: 0 });
-    const sql = queryRaw.mock.calls[0][0] as { strings: string[] };
-    expect(sql.strings.join(' ')).toContain("'DRAFT'");
-    expect(sql.strings.join(' ')).not.toContain('scheduleTemplateId');
-  });
-});
+        const result =
+          await createEmptyNamedShiftPlanningDraft(
+            prisma,
+            {
+              cinemaId: 1,
+              year: 2026,
+              month: 8,
+              name: 'August',
+              actorUserId: 7,
+            },
+          );
 
-describe('openNamedShiftPlanningDraftWorkspace', () => {
-  it('indlæser kladdens skabeloner som redigerbart månedsarbejdsområde', async () => {
-    const outerQueryRaw = jest.fn().mockResolvedValue([draftRow]);
-    const transactionQueryRaw = jest.fn().mockResolvedValue([draftRow]);
-    const executeRaw = jest.fn().mockResolvedValueOnce(31).mockResolvedValueOnce(14);
-    const transactionClient = {
-      $queryRaw: transactionQueryRaw,
-      $executeRaw: executeRaw,
+        expect(result).toEqual({
+          ...draftRow,
+          itemCount: 0,
+          warningCount: 0,
+        });
+
+        expect(
+          snapshotCreateMany,
+        ).toHaveBeenCalledTimes(1);
+
+        const data =
+          snapshotCreateMany
+            .mock.calls[0][0]
+            .data;
+
+        expect(data)
+          .toHaveLength(31);
+
+        expect(data[0])
+          .toEqual(
+            expect.objectContaining({
+              draftId: 41,
+              cinemaId: 1,
+              isActive: true,
+              scheduleTemplateId:
+                null,
+              note: null,
+            }),
+          );
+      },
+    );
+  },
+);
+
+describe(
+  'openNamedShiftPlanningDraftWorkspace',
+  () => {
+    it(
+      'gendanner aktiv-status, skabelon og note',
+      async () => {
+        const outerQueryRaw =
+          jest.fn().mockResolvedValue([
+            draftRow,
+          ]);
+
+        const transactionQueryRaw =
+          jest.fn().mockResolvedValue([
+            draftRow,
+          ]);
+
+        const snapshotFindMany =
+          jest.fn().mockResolvedValue([
+            {
+              date:
+                new Date(
+                  '2026-08-27T00:00:00.000Z',
+                ),
+              isActive: false,
+              scheduleTemplateId:
+                null,
+              note:
+                'Gemt note',
+            },
+          ]);
+
+        const upsert =
+          jest.fn().mockResolvedValue(
+            undefined,
+          );
+
+        const transactionClient = {
+          $queryRaw:
+            transactionQueryRaw,
+          shiftPlanningDraftDay: {
+            findMany:
+              snapshotFindMany,
+          },
+          monthPlanDay: {
+            upsert,
+          },
+        };
+
+        const prisma = {
+          $queryRaw:
+            outerQueryRaw,
+          $transaction:
+            jest.fn(
+              async (callback) =>
+                callback(
+                  transactionClient,
+                ),
+            ),
+        } as any;
+
+        const result =
+          await openNamedShiftPlanningDraftWorkspace(
+            prisma,
+            {
+              draftId: 41,
+              cinemaId: 1,
+            },
+          );
+
+        expect(result)
+          .toEqual(
+            expect.objectContaining({
+              draftId: 41,
+              restoredDayCount: 1,
+            }),
+          );
+
+        expect(upsert)
+          .toHaveBeenCalledWith({
+            where: {
+              cinemaId_date: {
+                cinemaId: 1,
+                date:
+                  new Date(
+                    '2026-08-27T00:00:00.000Z',
+                  ),
+              },
+            },
+            update: {
+              isActive: false,
+              scheduleTemplateId:
+                null,
+              note:
+                'Gemt note',
+            },
+            create: {
+              cinemaId: 1,
+              date:
+                new Date(
+                  '2026-08-27T00:00:00.000Z',
+                ),
+              isActive: false,
+              scheduleTemplateId:
+                null,
+              note:
+                'Gemt note',
+            },
+          });
+      },
+    );
+
+    it(
+      'afviser en historisk kladde',
+      async () => {
+        const prisma = {
+          $queryRaw:
+            jest.fn().mockResolvedValue([
+              {
+                ...draftRow,
+                status:
+                  'SUPERSEDED',
+              },
+            ]),
+          $transaction:
+            jest.fn(),
+        } as any;
+
+        await expect(
+          openNamedShiftPlanningDraftWorkspace(
+            prisma,
+            {
+              draftId: 41,
+              cinemaId: 1,
+            },
+          ),
+        ).rejects.toBeInstanceOf(
+          ShiftPlanningNamedDraftNotEditableError,
+        );
+
+        expect(
+          prisma.$transaction,
+        ).not.toHaveBeenCalled();
+      },
+    );
+  },
+);
+
+describe(
+  'updateNamedShiftPlanningDraft',
+  () => {
+    it(
+      'gemmer arbejdsforslag og komplet dagsnapshot',
+      async () => {
+        const outerQueryRaw =
+          jest.fn().mockResolvedValue([
+            draftRow,
+          ]);
+
+        const transactionQueryRaw =
+          jest.fn().mockResolvedValue([
+            draftRow,
+          ]);
+
+        const deleteMany =
+          jest.fn().mockResolvedValue({
+            count: 1,
+          });
+
+        const createMany =
+          jest.fn().mockResolvedValue({
+            count: 1,
+          });
+
+        const executeRaw =
+          jest.fn().mockResolvedValue(
+            1,
+          );
+
+        const snapshots =
+          snapshotMocks();
+
+        const transactionClient = {
+          $queryRaw:
+            transactionQueryRaw,
+          $executeRaw:
+            executeRaw,
+          shiftPlanningDraftItem: {
+            deleteMany,
+            createMany,
+          },
+          ...snapshots,
+        };
+
+        const prisma = {
+          $queryRaw:
+            outerQueryRaw,
+          $transaction:
+            jest.fn(
+              async (callback) =>
+                callback(
+                  transactionClient,
+                ),
+            ),
+        } as any;
+
+        const buildMonthData =
+          jest.fn().mockResolvedValue({
+            warnings: [
+              {
+                code: 'TEST',
+                message: 'Test',
+              },
+            ],
+            items: [
+              generatedItem,
+            ],
+          });
+
+        const result =
+          await updateNamedShiftPlanningDraft(
+            prisma,
+            {
+              draftId: 41,
+              cinemaId: 1,
+            },
+            buildMonthData,
+          );
+
+        expect(result.itemCount)
+          .toBe(1);
+
+        expect(deleteMany)
+          .toHaveBeenCalledWith({
+            where: {
+              draftId: 41,
+              cinemaId: 1,
+            },
+          });
+
+        expect(createMany)
+          .toHaveBeenCalledTimes(1);
+
+        expect(
+          snapshots
+            .shiftPlanningDraftDay
+            .deleteMany,
+        ).toHaveBeenCalledTimes(1);
+
+        expect(
+          snapshots
+            .shiftPlanningDraftDay
+            .createMany,
+        ).toHaveBeenCalledTimes(1);
+
+        expect(executeRaw)
+          .toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it(
+      'tillader at en ?ben kladde gemmes uden forslag',
+      async () => {
+        const outerQueryRaw =
+          jest.fn().mockResolvedValue([
+            draftRow,
+          ]);
+
+        const transactionQueryRaw =
+          jest.fn().mockResolvedValue([
+            draftRow,
+          ]);
+
+        const snapshots =
+          snapshotMocks();
+
+        const transactionClient = {
+          $queryRaw:
+            transactionQueryRaw,
+          $executeRaw:
+            jest.fn()
+              .mockResolvedValue(1),
+          shiftPlanningDraftItem: {
+            deleteMany:
+              jest.fn()
+                .mockResolvedValue({
+                  count: 2,
+                }),
+            createMany:
+              jest.fn(),
+          },
+          ...snapshots,
+        };
+
+        const prisma = {
+          $queryRaw:
+            outerQueryRaw,
+          $transaction:
+            jest.fn(
+              async (callback) =>
+                callback(
+                  transactionClient,
+                ),
+            ),
+        } as any;
+
+        const buildMonthData =
+          jest.fn().mockResolvedValue({
+            warnings: [],
+            items: [],
+          });
+
+        const result =
+          await updateNamedShiftPlanningDraft(
+            prisma,
+            {
+              draftId: 41,
+              cinemaId: 1,
+            },
+            buildMonthData,
+          );
+
+        expect(result.itemCount)
+          .toBe(0);
+
+        expect(
+          transactionClient
+            .shiftPlanningDraftItem
+            .createMany,
+        ).not.toHaveBeenCalled();
+
+        expect(
+          snapshots
+            .shiftPlanningDraftDay
+            .createMany,
+        ).toHaveBeenCalledTimes(1);
+      },
+    );
+  },
+);
+
+describe(
+  'copyNamedShiftPlanningDraft',
+  () => {
+    const copiedDraft = {
+      ...draftRow,
+      id: 52,
+      note:
+        'August - kopi',
     };
-    const prisma = {
-      $queryRaw: outerQueryRaw,
-      $transaction: jest.fn(async (callback) => callback(transactionClient)),
-    } as any;
 
-    const result = await openNamedShiftPlanningDraftWorkspace(prisma, {
-      draftId: 41,
-      cinemaId: 1,
-    });
+    it(
+      'kopierer vagtposter og dagsnapshot atomisk',
+      async () => {
+        const queryRaw =
+          jest.fn().mockResolvedValue([
+            copiedDraft,
+          ]);
 
-    expect(result).toEqual(
-      expect.objectContaining({
-        draftId: 41,
-        clearedDayCount: 31,
-        restoredTemplateDayCount: 14,
-      }),
+        const executeRaw =
+          jest.fn().mockResolvedValue(
+            30,
+          );
+
+        const snapshotFindMany =
+          jest.fn().mockResolvedValue([
+            {
+              date:
+                new Date(
+                  '2026-08-27T00:00:00.000Z',
+                ),
+              isActive: false,
+              scheduleTemplateId:
+                7,
+              note:
+                'Kopieret note',
+            },
+          ]);
+
+        const snapshotCreateMany =
+          jest.fn().mockResolvedValue({
+            count: 1,
+          });
+
+        const transactionClient = {
+          $queryRaw:
+            queryRaw,
+          $executeRaw:
+            executeRaw,
+          shiftPlanningDraftDay: {
+            findMany:
+              snapshotFindMany,
+            createMany:
+              snapshotCreateMany,
+          },
+        };
+
+        const prisma = {
+          $transaction:
+            jest.fn(
+              async (callback) =>
+                callback(
+                  transactionClient,
+                ),
+            ),
+        } as any;
+
+        const result =
+          await copyNamedShiftPlanningDraft(
+            prisma,
+            {
+              sourceDraftId: 41,
+              cinemaId: 1,
+              name:
+                'August - kopi',
+              actorUserId: 7,
+            },
+          );
+
+        expect(result).toEqual({
+          ...copiedDraft,
+          itemCount: 30,
+          dayCount: 1,
+        });
+
+        expect(
+          snapshotCreateMany,
+        ).toHaveBeenCalledWith({
+          data: [
+            {
+              cinemaId: 1,
+              draftId: 52,
+              date:
+                new Date(
+                  '2026-08-27T00:00:00.000Z',
+                ),
+              isActive: false,
+              scheduleTemplateId:
+                7,
+              note:
+                'Kopieret note',
+            },
+          ],
+        });
+      },
     );
-    expect(executeRaw).toHaveBeenCalledTimes(2);
-    const restoreSql = executeRaw.mock.calls[1][0] as { strings: string[] };
-    expect(restoreSql.strings.join(' ')).toContain('ShiftPlanningDraftItem');
-    expect(restoreSql.strings.join(' ')).toContain('scheduleTemplateId');
-  });
 
-  it('afviser en historisk kladde som redigerbart arbejdsområde', async () => {
-    const prisma = {
-      $queryRaw: jest.fn().mockResolvedValue([{ ...draftRow, status: 'SUPERSEDED' }]),
-      $transaction: jest.fn(),
-    } as any;
+    it(
+      'afviser en ukendt kladde',
+      async () => {
+        const transactionClient = {
+          $queryRaw:
+            jest.fn()
+              .mockResolvedValue([]),
+          $executeRaw:
+            jest.fn(),
+          shiftPlanningDraftDay: {
+            findMany:
+              jest.fn(),
+            createMany:
+              jest.fn(),
+          },
+        };
 
-    await expect(
-      openNamedShiftPlanningDraftWorkspace(prisma, {
-        draftId: 41,
-        cinemaId: 1,
-      }),
-    ).rejects.toBeInstanceOf(ShiftPlanningNamedDraftNotEditableError);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-  });
-});
+        const prisma = {
+          $transaction:
+            jest.fn(
+              async (callback) =>
+                callback(
+                  transactionClient,
+                ),
+            ),
+        } as any;
 
-describe('updateNamedShiftPlanningDraft', () => {
-  it('erstatter kladdens poster med det aktuelle månedsarbejdsområde', async () => {
-    const outerQueryRaw = jest.fn().mockResolvedValue([draftRow]);
-    const transactionQueryRaw = jest.fn().mockResolvedValue([draftRow]);
-    const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
-    const createMany = jest.fn().mockResolvedValue({ count: 1 });
-    const executeRaw = jest.fn().mockResolvedValue(1);
-    const transactionClient = {
-      $queryRaw: transactionQueryRaw,
-      $executeRaw: executeRaw,
-      shiftPlanningDraftItem: { deleteMany, createMany },
-    };
-    const prisma = {
-      $queryRaw: outerQueryRaw,
-      $transaction: jest.fn(async (callback) => callback(transactionClient)),
-    } as any;
-    const buildMonthData = jest.fn().mockResolvedValue({
-      warnings: [{ code: 'TEST', message: 'Test' }],
-      items: [generatedItem],
-    });
+        await expect(
+          copyNamedShiftPlanningDraft(
+            prisma,
+            {
+              sourceDraftId:
+                999,
+              cinemaId: 1,
+              name: 'Kopi',
+              actorUserId: 7,
+            },
+          ),
+        ).rejects.toBeInstanceOf(
+          ShiftPlanningNamedDraftNotFoundError,
+        );
 
-    const result = await updateNamedShiftPlanningDraft(
-      prisma,
-      { draftId: 41, cinemaId: 1 },
-      buildMonthData,
+        expect(
+          transactionClient
+            .$executeRaw,
+        ).not.toHaveBeenCalled();
+      },
     );
-
-    expect(result.itemCount).toBe(1);
-    expect(deleteMany).toHaveBeenCalledWith({
-      where: { draftId: 41, cinemaId: 1 },
-    });
-    expect(createMany).toHaveBeenCalledTimes(1);
-    expect(executeRaw).toHaveBeenCalledTimes(1);
-  });
-
-  it('tillader at en åben kladde gemmes uden forslag', async () => {
-    const outerQueryRaw = jest.fn().mockResolvedValue([draftRow]);
-    const transactionQueryRaw = jest.fn().mockResolvedValue([draftRow]);
-    const deleteMany = jest.fn().mockResolvedValue({ count: 2 });
-    const createMany = jest.fn();
-    const executeRaw = jest.fn().mockResolvedValue(1);
-    const transactionClient = {
-      $queryRaw: transactionQueryRaw,
-      $executeRaw: executeRaw,
-      shiftPlanningDraftItem: { deleteMany, createMany },
-    };
-    const prisma = {
-      $queryRaw: outerQueryRaw,
-      $transaction: jest.fn(async (callback) => callback(transactionClient)),
-    } as any;
-    const buildMonthData = jest.fn().mockResolvedValue({ warnings: [], items: [] });
-
-    const result = await updateNamedShiftPlanningDraft(
-      prisma,
-      { draftId: 41, cinemaId: 1 },
-      buildMonthData,
-    );
-
-    expect(result.itemCount).toBe(0);
-    expect(createMany).not.toHaveBeenCalled();
-  });
-});
-
-describe('copyNamedShiftPlanningDraft', () => {
-  const copiedDraft = { ...draftRow, id: 52, note: 'August – kopi' };
-
-  it('kopierer kladden atomisk med databasens egne snapshotværdier', async () => {
-    const queryRaw = jest.fn().mockResolvedValue([copiedDraft]);
-    const executeRaw = jest.fn().mockResolvedValue(30);
-    const transactionClient = { $queryRaw: queryRaw, $executeRaw: executeRaw };
-    const prisma = {
-      $transaction: jest.fn(async (callback) => callback(transactionClient)),
-    } as any;
-
-    const result = await copyNamedShiftPlanningDraft(prisma, {
-      sourceDraftId: 41,
-      cinemaId: 1,
-      name: 'August – kopi',
-      actorUserId: 7,
-    });
-
-    expect(result).toEqual({ ...copiedDraft, itemCount: 30 });
-    const draftInsertSql = queryRaw.mock.calls[0][0] as { strings: string[] };
-    const itemInsertSql = executeRaw.mock.calls[0][0] as { strings: string[] };
-    expect(draftInsertSql.strings.join(' ')).not.toContain(
-      'source_draft."scheduleTemplateId"',
-    );
-    expect(itemInsertSql.strings.join(' ')).toContain(
-      'source_item."scheduleTemplateId"',
-    );
-  });
-
-  it('afviser en kladde fra en anden biograf eller et ukendt id', async () => {
-    const transactionClient = {
-      $queryRaw: jest.fn().mockResolvedValue([]),
-      $executeRaw: jest.fn(),
-    };
-    const prisma = {
-      $transaction: jest.fn(async (callback) => callback(transactionClient)),
-    } as any;
-
-    await expect(
-      copyNamedShiftPlanningDraft(prisma, {
-        sourceDraftId: 999,
-        cinemaId: 1,
-        name: 'Kopi',
-        actorUserId: 7,
-      }),
-    ).rejects.toBeInstanceOf(ShiftPlanningNamedDraftNotFoundError);
-    expect(transactionClient.$executeRaw).not.toHaveBeenCalled();
-  });
-});
+  },
+);

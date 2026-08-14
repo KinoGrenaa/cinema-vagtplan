@@ -83,6 +83,7 @@ export default function ShiftPlanningDraftWorkspaceBar({
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCopyDialog, setShowCopyDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showCreateShiftsDialog, setShowCreateShiftsDialog] = useState(false);
   const [createShiftsError, setCreateShiftsError] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -143,7 +144,14 @@ export default function ShiftPlanningDraftWorkspaceBar({
                 : `${readyCount} vagter er klar til oprettelse.`;
 
   useEffect(() => {
-    if (!showCreateDialog && !showCopyDialog && !showDeleteDialog) return;
+    if (
+      !showCreateDialog &&
+      !showCopyDialog &&
+      !showDeleteDialog &&
+      !showSaveDialog
+    ) {
+      return;
+    }
 
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
@@ -153,7 +161,12 @@ export default function ShiftPlanningDraftWorkspaceBar({
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     };
-  }, [showCopyDialog, showCreateDialog, showDeleteDialog]);
+  }, [
+    showCopyDialog,
+    showCreateDialog,
+    showDeleteDialog,
+    showSaveDialog,
+  ]);
 
   const createDraft = async () => {
     const name = draftName.trim();
@@ -178,6 +191,7 @@ export default function ShiftPlanningDraftWorkspaceBar({
     try {
       setDialogError(null);
       await onSaveChanges();
+      setShowSaveDialog(false);
     } catch (error) {
       setDialogError(
         error instanceof Error ? error.message : "Ændringerne kunne ikke gemmes.",
@@ -272,7 +286,7 @@ export default function ShiftPlanningDraftWorkspaceBar({
                   void onSelectDraft(draftId);
                 }
               }}
-              className="mt-2 block w-full rounded-xl border border-violet-300 bg-white px-3 py-2.5 text-sm font-semibold text-gray-950 outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-600/20 dark:border-violet-800 dark:bg-gray-950 dark:text-white"
+              className="mt-2 block w-full max-w-2xl rounded-xl border border-violet-300 bg-white px-3 py-2.5 text-sm font-semibold text-gray-950 outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-600/20 dark:border-violet-800 dark:bg-gray-950 dark:text-white"
               disabled={draftsLoading || busy}
             >
               <option value="">Faktisk vagtplan · skrivebeskyttet</option>
@@ -310,7 +324,10 @@ export default function ShiftPlanningDraftWorkspaceBar({
               <>
                 <button
                   type="button"
-                  onClick={() => void saveChanges()}
+                  onClick={() => {
+                    setDialogError(null);
+                    setShowSaveDialog(true);
+                  }}
                   disabled={!dirty || busy}
                   className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-200 disabled:text-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:bg-emerald-950 dark:disabled:text-emerald-500"
                 >
@@ -433,6 +450,72 @@ export default function ShiftPlanningDraftWorkspaceBar({
           setCreateShiftsError(null);
         }}
       />
+
+      {showSaveDialog && selectedDraft && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="shift-planning-save-dialog-title"
+        >
+          <div className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-800 dark:bg-gray-900">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-700 dark:text-emerald-300">
+              {"Gem kladde"}
+            </p>
+
+            <h3
+              id="shift-planning-save-dialog-title"
+              className="mt-2 text-xl font-extrabold text-gray-950 dark:text-white"
+            >
+              {"Gem ændringer i kladden?"}
+            </h3>
+
+            <p className="mt-4 text-sm leading-6 text-gray-600 dark:text-gray-300">
+              {"Er du sikker på, at du vil gemme ændringerne i kladden "}
+              <span className="font-bold text-gray-950 dark:text-white">
+                {selectedDraftName}
+              </span>
+              {"?"}
+            </p>
+
+            <p className="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+              {"Den faktiske vagtplan bliver ikke ændret."}
+            </p>
+
+            {dialogError && (
+              <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                {dialogError}
+              </p>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  if (busy) return;
+                  setShowSaveDialog(false);
+                  setDialogError(null);
+                }}
+                disabled={busy}
+                className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                {"Annuller"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void saveChanges()}
+                disabled={busy}
+                className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+              >
+                {busy
+                  ? "Gemmer…"
+                  : "Ja, gem ændringer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreateDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-4">
