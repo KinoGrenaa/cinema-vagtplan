@@ -22,11 +22,39 @@ import type {
   TimeEntry,
 } from "../../types";
 
+type TimeApprovalModalFilters = {
+  showPending: boolean;
+  showNeedsChanges: boolean;
+  showApproved: boolean;
+  showVoided: boolean;
+  showPlannedEntries: boolean;
+  showManualEntries: boolean;
+  onlyWithDeviations: boolean;
+  onlyWithNotes: boolean;
+  dateFrom: string;
+  dateTo: string;
+};
+
+const DEFAULT_MODAL_FILTERS:
+  TimeApprovalModalFilters = {
+    showPending: true,
+    showNeedsChanges: true,
+    showApproved: false,
+    showVoided: false,
+    showPlannedEntries: true,
+    showManualEntries: true,
+    onlyWithDeviations: false,
+    onlyWithNotes: false,
+    dateFrom: "",
+    dateTo: "",
+  };
+
 export function useTimeApprovalFilters(
   entries: TimeEntry[],
 ) {
   const searchParams =
     useSearchParams();
+
   const entryTarget =
     parseTimeApprovalEntryTarget(
       searchParams.get(
@@ -36,60 +64,43 @@ export function useTimeApprovalFilters(
 
   const [
     showFilterModal,
-    setShowFilterModal,
-  ] = useState(false);
+    setFilterModalOpen,
+  ] =
+    useState(false);
+
   const [
     employeeSearch,
     setEmployeeSearch,
-  ] = useState("");
+  ] =
+    useState("");
+
   const [
-    showPending,
-    setShowPending,
-  ] = useState(true);
+    activeModalFilters,
+    setActiveModalFilters,
+  ] =
+    useState<TimeApprovalModalFilters>(
+      DEFAULT_MODAL_FILTERS,
+    );
+
   const [
-    showNeedsChanges,
-    setShowNeedsChanges,
-  ] = useState(true);
-  const [
-    showApproved,
-    setShowApproved,
-  ] = useState(false);
-  const [
-    showVoided,
-    setShowVoided,
-  ] = useState(false);
-  const [
-    showPlannedEntries,
-    setShowPlannedEntries,
-  ] = useState(true);
-  const [
-    showManualEntries,
-    setShowManualEntries,
-  ] = useState(true);
-  const [
-    onlyWithDeviations,
-    setOnlyWithDeviations,
-  ] = useState(false);
-  const [
-    onlyWithNotes,
-    setOnlyWithNotes,
-  ] = useState(false);
-  const [
-    dateFrom,
-    setDateFrom,
-  ] = useState("");
-  const [
-    dateTo,
-    setDateTo,
-  ] = useState("");
+    draftModalFilters,
+    setDraftModalFilters,
+  ] =
+    useState<TimeApprovalModalFilters>(
+      DEFAULT_MODAL_FILTERS,
+    );
+
   const [
     expandedEntryIds,
     setExpandedEntryIds,
-  ] = useState<number[]>([]);
+  ] =
+    useState<number[]>([]);
+
   const [
     expandedUserIds,
     setExpandedUserIds,
-  ] = useState<string[]>([]);
+  ] =
+    useState<string[]>([]);
 
   useEffect(() => {
     if (!entryTarget.entryId) {
@@ -135,15 +146,172 @@ export function useTimeApprovalFilters(
     entryTarget.entryId,
   ]);
 
+  function setShowFilterModal(
+    open: boolean,
+  ) {
+    if (open) {
+      setDraftModalFilters(
+        activeModalFilters,
+      );
+
+      setFilterModalOpen(
+        true,
+      );
+
+      return;
+    }
+
+    setDraftModalFilters(
+      activeModalFilters,
+    );
+
+    setFilterModalOpen(
+      false,
+    );
+  }
+
+  function applyFilters() {
+    setActiveModalFilters(
+      draftModalFilters,
+    );
+
+    setFilterModalOpen(
+      false,
+    );
+  }
+
+  function resetFilters() {
+    setDraftModalFilters(
+      DEFAULT_MODAL_FILTERS,
+    );
+  }
+
+  function setShowPending(
+    value: boolean,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        showPending: value,
+      }),
+    );
+  }
+
+  function setShowNeedsChanges(
+    value: boolean,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        showNeedsChanges:
+          value,
+      }),
+    );
+  }
+
+  function setShowApproved(
+    value: boolean,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        showApproved: value,
+      }),
+    );
+  }
+
+  function setShowVoided(
+    value: boolean,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        showVoided: value,
+      }),
+    );
+  }
+
+  function setShowPlannedEntries(
+    value: boolean,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        showPlannedEntries:
+          value,
+      }),
+    );
+  }
+
+  function setShowManualEntries(
+    value: boolean,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        showManualEntries:
+          value,
+      }),
+    );
+  }
+
+  function setOnlyWithDeviations(
+    value: boolean,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        onlyWithDeviations:
+          value,
+      }),
+    );
+  }
+
+  function setOnlyWithNotes(
+    value: boolean,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        onlyWithNotes: value,
+      }),
+    );
+  }
+
+  function setDateFrom(
+    value: string,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        dateFrom: value,
+      }),
+    );
+  }
+
+  function setDateTo(
+    value: string,
+  ) {
+    setDraftModalFilters(
+      (current) => ({
+        ...current,
+        dateTo: value,
+      }),
+    );
+  }
+
   const toggleEntryDetails = (
     entryId: number,
   ) => {
     setExpandedEntryIds(
       (current) =>
-        current.includes(entryId)
+        current.includes(
+          entryId,
+        )
           ? current.filter(
               (id) =>
-                id !== entryId,
+                id !==
+                entryId,
             )
           : [
               ...current,
@@ -157,10 +325,13 @@ export function useTimeApprovalFilters(
   ) => {
     setExpandedUserIds(
       (current) =>
-        current.includes(userId)
+        current.includes(
+          userId,
+        )
           ? current.filter(
               (id) =>
-                id !== userId,
+                id !==
+                userId,
             )
           : [
               ...current,
@@ -169,18 +340,13 @@ export function useTimeApprovalFilters(
     );
   };
 
+  /*
+   * Only the applied values are allowed
+   * to affect the visible entry list.
+   */
   const filters = {
     employeeSearch,
-    showPending,
-    showNeedsChanges,
-    showApproved,
-    showVoided,
-    showPlannedEntries,
-    showManualEntries,
-    onlyWithDeviations,
-    onlyWithNotes,
-    dateFrom,
-    dateTo,
+    ...activeModalFilters,
   };
 
   const filteredEntries =
@@ -188,6 +354,7 @@ export function useTimeApprovalFilters(
       entries,
       filters,
     );
+
   const visibleEntries =
     includeTargetedTimeEntry(
       entries,
@@ -206,20 +373,9 @@ export function useTimeApprovalFilters(
     );
 
   const activeFilterCount =
-    getActiveFilterCount(filters);
-
-  function resetFilters() {
-    setShowPending(true);
-    setShowNeedsChanges(true);
-    setShowApproved(false);
-    setShowVoided(false);
-    setShowPlannedEntries(true);
-    setShowManualEntries(true);
-    setOnlyWithDeviations(false);
-    setOnlyWithNotes(false);
-    setDateFrom("");
-    setDateTo("");
-  }
+    getActiveFilterCount(
+      filters,
+    );
 
   const groupedEntries =
     getGroupedEntries(
@@ -229,39 +385,68 @@ export function useTimeApprovalFilters(
   return {
     showFilterModal,
     setShowFilterModal,
+
     employeeSearch,
     setEmployeeSearch,
-    showPending,
+
+    showPending:
+      draftModalFilters.showPending,
     setShowPending,
-    showNeedsChanges,
+
+    showNeedsChanges:
+      draftModalFilters.showNeedsChanges,
     setShowNeedsChanges,
-    showApproved,
+
+    showApproved:
+      draftModalFilters.showApproved,
     setShowApproved,
-    showVoided,
+
+    showVoided:
+      draftModalFilters.showVoided,
     setShowVoided,
-    showPlannedEntries,
+
+    showPlannedEntries:
+      draftModalFilters.showPlannedEntries,
     setShowPlannedEntries,
-    showManualEntries,
+
+    showManualEntries:
+      draftModalFilters.showManualEntries,
     setShowManualEntries,
-    onlyWithDeviations,
+
+    onlyWithDeviations:
+      draftModalFilters.onlyWithDeviations,
     setOnlyWithDeviations,
-    onlyWithNotes,
+
+    onlyWithNotes:
+      draftModalFilters.onlyWithNotes,
     setOnlyWithNotes,
-    dateFrom,
+
+    dateFrom:
+      draftModalFilters.dateFrom,
     setDateFrom,
-    dateTo,
+
+    dateTo:
+      draftModalFilters.dateTo,
     setDateTo,
+
     expandedEntryIds,
     expandedUserIds,
+
     toggleEntryDetails,
     toggleUserGroup,
+
     visibleEntries,
+
     pendingCount,
     approvedCount,
     needsChangesCount,
     voidedCount,
+
     activeFilterCount,
+
+    applyFilters,
     resetFilters,
+
     groupedEntries,
   };
 }

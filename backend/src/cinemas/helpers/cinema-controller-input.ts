@@ -246,6 +246,27 @@ export function normalizeCinemaSettingsBody(
         1440,
         'Tolerance for udstempling skal være mellem 0 og 1440 minutter',
       ),
+    automaticTimeRegistrationEnabled:
+      normalizeOptionalBoolean(
+        body.automaticTimeRegistrationEnabled,
+        'automaticTimeRegistrationEnabled',
+      ),
+    automaticTimeRegistrationMethod:
+      normalizeOptionalEnum(
+        body.automaticTimeRegistrationMethod,
+        new Set([
+          'PLANNED_SHIFT',
+          'FIXED_MINUTES',
+        ]),
+        'Metode for automatisk tidsregistrering skal v\u00e6re gyldig',
+      ) as UpdateCinemaSettingsData['automaticTimeRegistrationMethod'],
+    automaticTimeRegistrationMinutes:
+      normalizeOptionalInteger(
+        body.automaticTimeRegistrationMinutes,
+        0,
+        1440,
+        'Automatisk arbejdstid skal v\u00e6re mellem 0 og 1440 minutter',
+      ),
     dailyOvertimeThreshold: normalizeOptionalThreshold(
       body.dailyOvertimeThreshold,
       24,

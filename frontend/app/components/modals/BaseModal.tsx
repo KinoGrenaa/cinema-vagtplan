@@ -1,7 +1,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  useEffect,
+} from "react";
+import type {
+  ReactNode,
+} from "react";
 
 type BaseModalProps = {
   open: boolean;
@@ -18,6 +23,11 @@ const widthClasses = {
   xl: "max-w-5xl",
 };
 
+let bodyScrollLockCount = 0;
+
+let originalBodyOverflow = "";
+let originalBodyPaddingRight = "";
+
 export default function BaseModal({
   open,
   title,
@@ -25,7 +35,70 @@ export default function BaseModal({
   onClose,
   width = "md",
 }: BaseModalProps) {
-  if (!open) return null;
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (
+      bodyScrollLockCount === 0
+    ) {
+      originalBodyOverflow =
+        document.body.style.overflow;
+
+      originalBodyPaddingRight =
+        document.body.style.paddingRight;
+
+      const scrollbarWidth =
+        window.innerWidth -
+        document.documentElement.clientWidth;
+
+      document.body.style.overflow =
+        "hidden";
+
+      if (scrollbarWidth > 0) {
+        const currentPaddingRight =
+          Number.parseFloat(
+            window
+              .getComputedStyle(
+                document.body,
+              )
+              .paddingRight,
+          ) || 0;
+
+        document.body.style.paddingRight =
+          currentPaddingRight +
+          scrollbarWidth +
+          "px";
+      }
+    }
+
+    bodyScrollLockCount += 1;
+
+    return () => {
+      bodyScrollLockCount =
+        Math.max(
+          0,
+          bodyScrollLockCount - 1,
+        );
+
+      if (
+        bodyScrollLockCount === 0
+      ) {
+        document.body.style.overflow =
+          originalBodyOverflow;
+
+        document.body.style.paddingRight =
+          originalBodyPaddingRight;
+      }
+    };
+  }, [
+    open,
+  ]);
+
+  if (!open) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">

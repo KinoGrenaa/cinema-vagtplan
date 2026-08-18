@@ -116,11 +116,6 @@ export default function AppMenu() {
       badge: leaveRequestCount,
       children: [
         {
-          href: "/clock",
-          label: "Registrér tid",
-          moduleKey: "TIME_TRACKING",
-        },
-        {
           href: "/my-time",
           label: "Mine timer",
           moduleKey: "TIME_TRACKING",

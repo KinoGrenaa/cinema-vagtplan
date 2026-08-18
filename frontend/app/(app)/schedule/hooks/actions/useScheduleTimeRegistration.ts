@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  getTodayLocalDate,
   localDateTimeToISOString,
   toInputDateTime,
 } from "@/app/utils/dateTime";
@@ -83,9 +84,26 @@ export function useScheduleTimeRegistration({
   const [manualNote, setManualNote] = useState("");
 
   const shiftsForTimeRegistration = useMemo(
-    () => getShiftsForTimeRegistration(shifts, timeEntries, currentUserId),
-    [currentUserId, shifts, timeEntries],
+    () =>
+      getShiftsForTimeRegistration(
+        shifts,
+        timeEntries,
+        currentUserId,
+      ).filter(({ timeEntry }) => !timeEntry),
+    [
+      currentUserId,
+      shifts,
+      timeEntries,
+    ],
   );
+
+  const canRegisterTime =
+    selectedDate ===
+      getTodayLocalDate() &&
+    (
+      Boolean(openTimeEntry) ||
+      shiftsForTimeRegistration.length > 0
+    );
 
   const selectedClockShift = shifts.find((shift) => shift.id === clockShiftId);
 
@@ -238,6 +256,17 @@ export function useScheduleTimeRegistration({
       return;
     }
 
+    if (
+      selectedDate !==
+      getTodayLocalDate()
+    ) {
+      infoDialog.showError(
+        "Tidsregistrering er kun for i dag",
+        "Clock ind og Clock ud kan kun registreres p? dags dato.",
+      );
+      return;
+    }
+
     setClockNote("");
 
     if (openTimeEntry?.shiftId) {
@@ -361,6 +390,7 @@ export function useScheduleTimeRegistration({
     setManualNote,
     selectedClockShift,
     shiftsForTimeRegistration,
+    canRegisterTime,
     submitManualTime,
     handleRegisterClockIn,
     handleRegisterClockOut,

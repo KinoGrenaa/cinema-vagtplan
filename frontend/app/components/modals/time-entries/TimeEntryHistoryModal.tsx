@@ -169,6 +169,10 @@ function actionTitle(
   switch (action) {
     case "CREATED":
       return "Registrering oprettet";
+    case "AUTO_CREATED":
+      return "Automatisk tidsregistrering";
+    case "AUTO_CLOCK_OUT":
+      return "Fyraften automatisk udfyldt";
     case "UPDATED":
       return "Registrering rettet";
     case "APPROVED":
@@ -191,7 +195,10 @@ function actorLabel(
 ) {
   switch (action) {
     case "CREATED":
+    case "AUTO_CREATED":
       return "Oprettet af";
+    case "AUTO_CLOCK_OUT":
+      return "Udfyldt af";
     case "UPDATED":
       return "Rettet af";
     case "APPROVED":
@@ -307,7 +314,9 @@ export default function TimeEntryHistoryModal({
     sortedRevisions.find(
       (revision) =>
         revision.action ===
-        "CREATED",
+          "CREATED" ||
+        revision.action ===
+          "AUTO_CREATED",
     );
   const latestRevision =
     sortedRevisions[
@@ -404,7 +413,9 @@ export default function TimeEntryHistoryModal({
                 (revision) => {
                   const isCreated =
                     revision.action ===
-                    "CREATED";
+                      "CREATED" ||
+                    revision.action ===
+                      "AUTO_CREATED";
                   const message =
                     realMessage(
                       revision,

@@ -4,7 +4,9 @@ import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { ensureTimeEntryEditable } from './time-entry-access';
 import { ensureTimeEntryCreationPeriodWritable } from './time-entry-creation-payroll-access';
 import {
+  ensureClockInShiftOnCopenhagenToday,
   ensureClockOutAfterClockIn,
+  ensureTimeEntryActionOnCopenhagenToday,
   parseOptionalTimeEntryDate,
 } from './time-entry-date-helpers';
 import {
@@ -57,6 +59,11 @@ export async function clockInTimeEntry(params: {
     'Ugyldig mødetid',
   );
 
+  ensureTimeEntryActionOnCopenhagenToday(
+    clockIn,
+    'M\u00f8detid kan kun registreres p\u00e5 dags dato',
+  );
+
   const result = await prisma.$transaction(
     async (tx) => {
       const txPrisma =
@@ -83,6 +90,10 @@ export async function clockInTimeEntry(params: {
           cinemaId: data.cinemaId,
           clockIn,
         },
+      );
+
+      ensureClockInShiftOnCopenhagenToday(
+        shift,
       );
 
       await ensureTimeEntryCreationPeriodWritable(
@@ -177,6 +188,11 @@ export async function clockOutTimeEntry(params: {
   const clockOut = parseOptionalTimeEntryDate(
     data?.clockOut,
     'Ugyldig fyraften',
+  );
+
+  ensureTimeEntryActionOnCopenhagenToday(
+    clockOut,
+    'Fyraften kan kun registreres p\u00e5 dags dato',
   );
 
   ensureClockOutAfterClockIn(

@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -19,6 +20,11 @@ export type UpdateCinemaSettingsData = {
   requireNoteForClockInDeviation?: boolean;
   requireNoteForClockOutDeviation?: boolean;
   requireNoteForManualEntry?: boolean;
+  automaticTimeRegistrationEnabled?: boolean;
+  automaticTimeRegistrationMethod?:
+    | 'PLANNED_SHIFT'
+    | 'FIXED_MINUTES';
+  automaticTimeRegistrationMinutes?: number;
   payrollOvertimeEnabled?: boolean;
   plannedOvertimeEnabled?: boolean;
   dailyOvertimeEnabled?: boolean;
@@ -53,6 +59,9 @@ function setDefinedCinemaSettings(
     'requireNoteForClockInDeviation',
     'requireNoteForClockOutDeviation',
     'requireNoteForManualEntry',
+    'automaticTimeRegistrationEnabled',
+    'automaticTimeRegistrationMethod',
+    'automaticTimeRegistrationMinutes',
     'payrollOvertimeEnabled',
     'plannedOvertimeEnabled',
     'dailyOvertimeEnabled',
@@ -86,6 +95,7 @@ export async function updateCinemaSettings(
     data?.name === undefined
       ? undefined
       : normalizeCinemaName(data.name);
+
   const nextLogoUrl =
     data?.logoUrl === undefined
       ? undefined
@@ -123,17 +133,178 @@ export async function updateCinemaSettings(
         updateData.logoUrl = nextLogoUrl;
       }
 
+      const nextAutomaticEnabled =
+        data.automaticTimeRegistrationEnabled ??
+        cinema.automaticTimeRegistrationEnabled;
+
+      const nextAutomaticMethod =
+        data.automaticTimeRegistrationMethod ??
+        cinema.automaticTimeRegistrationMethod;
+
+      const nextAutomaticMinutes =
+        data.automaticTimeRegistrationMinutes ??
+        cinema.automaticTimeRegistrationMinutes;
+
+      if (
+        nextAutomaticEnabled &&
+        nextAutomaticMethod ===
+          'FIXED_MINUTES' &&
+        (
+          !Number.isInteger(
+            nextAutomaticMinutes,
+          ) ||
+          nextAutomaticMinutes <= 0
+        )
+      ) {
+        throw new BadRequestException(
+          'Angiv et gyldigt antal minutter til automatisk tidsregistrering',
+        );
+      }
+
+      const enabledChanged =
+        data.automaticTimeRegistrationEnabled !==
+          undefined &&
+        nextAutomaticEnabled !==
+          cinema.automaticTimeRegistrationEnabled;
+
+      const configurationChanged =
+        nextAutomaticMethod !==
+          cinema.automaticTimeRegistrationMethod ||
+        nextAutomaticMinutes !==
+          cinema.automaticTimeRegistrationMinutes;
+
+      let automaticTimeRegistrationMethodValidFrom:
+        Date | null | undefined;
+
       setDefinedCinemaSettings(
         updateData,
         data,
       );
 
-      return transaction.cinema.update({
-        where: {
-          id: cinema.id,
-        },
-        data: updateData,
-      });
+      if (enabledChanged) {
+        const effectiveAt =
+          new Date();
+
+        if (nextAutomaticEnabled) {
+          updateData.automaticTimeRegistrationActiveFrom =
+            effectiveAt;
+
+          await transaction
+            .cinemaAutomaticTimeRegistrationVersion
+            .updateMany({
+              where: {
+                cinemaId:
+                  cinema.id,
+                validTo:
+                  null,
+              },
+              data: {
+                validTo:
+                  effectiveAt,
+              },
+            });
+
+          await transaction
+            .cinemaAutomaticTimeRegistrationVersion
+            .create({
+              data: {
+                cinemaId:
+                  cinema.id,
+                method:
+                  nextAutomaticMethod,
+                minutes:
+                  nextAutomaticMinutes,
+                validFrom:
+                  effectiveAt,
+              },
+            });
+
+          automaticTimeRegistrationMethodValidFrom =
+            effectiveAt;
+        } else {
+          updateData.automaticTimeRegistrationActiveFrom =
+            null;
+
+          await transaction
+            .cinemaAutomaticTimeRegistrationVersion
+            .updateMany({
+              where: {
+                cinemaId:
+                  cinema.id,
+                validTo:
+                  null,
+              },
+              data: {
+                validTo:
+                  effectiveAt,
+              },
+            });
+
+          automaticTimeRegistrationMethodValidFrom =
+            null;
+        }
+      } else if (
+        nextAutomaticEnabled &&
+        configurationChanged
+      ) {
+        const effectiveAt =
+          new Date();
+
+        await transaction
+          .cinemaAutomaticTimeRegistrationVersion
+          .updateMany({
+            where: {
+              cinemaId:
+                cinema.id,
+              validTo:
+                null,
+            },
+            data: {
+              validTo:
+                effectiveAt,
+            },
+          });
+
+        await transaction
+          .cinemaAutomaticTimeRegistrationVersion
+          .create({
+            data: {
+              cinemaId:
+                cinema.id,
+              method:
+                nextAutomaticMethod,
+              minutes:
+                nextAutomaticMinutes,
+              validFrom:
+                effectiveAt,
+            },
+          });
+
+        automaticTimeRegistrationMethodValidFrom =
+          effectiveAt;
+      }
+
+      const updatedCinema =
+        await transaction.cinema.update({
+          where: {
+            id:
+              cinema.id,
+          },
+          data:
+            updateData,
+        });
+
+      if (
+        automaticTimeRegistrationMethodValidFrom ===
+        undefined
+      ) {
+        return updatedCinema;
+      }
+
+      return {
+        ...updatedCinema,
+        automaticTimeRegistrationMethodValidFrom,
+      };
     },
   );
 }

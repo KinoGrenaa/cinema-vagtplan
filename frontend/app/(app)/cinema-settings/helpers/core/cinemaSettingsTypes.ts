@@ -7,6 +7,10 @@ export type PayrollPayoutRule =
   | "LAST_WEEKDAY_OF_MONTH"
   | "FIXED_DAY_OF_MONTH";
 
+export type AutomaticTimeRegistrationMethod =
+  | "PLANNED_SHIFT"
+  | "FIXED_MINUTES";
+
 export type Cinema = {
   id: number;
   name: string;
@@ -14,6 +18,11 @@ export type Cinema = {
   allowShiftTradePool: boolean;
   allowShiftTradeDirect: boolean;
   aiEnabled: boolean;
+  automaticTimeRegistrationEnabled: boolean;
+  automaticTimeRegistrationMethod: AutomaticTimeRegistrationMethod;
+  automaticTimeRegistrationMinutes: number;
+  automaticTimeRegistrationActiveFrom: string | null;
+  automaticTimeRegistrationMethodValidFrom: string | null;
   clockInDeviationToleranceMinutes: number;
   clockOutDeviationToleranceMinutes: number;
   requireNoteForClockInDeviation: boolean;
@@ -39,6 +48,9 @@ export type CinemaSettingsUpdate = Partial<
     | "allowShiftTradePool"
     | "allowShiftTradeDirect"
     | "aiEnabled"
+    | "automaticTimeRegistrationEnabled"
+    | "automaticTimeRegistrationMethod"
+    | "automaticTimeRegistrationMinutes"
     | "clockInDeviationToleranceMinutes"
     | "clockOutDeviationToleranceMinutes"
     | "requireNoteForClockInDeviation"
@@ -74,6 +86,12 @@ export const CINEMA_DEFAULTS = {
   allowShiftTradePool: false,
   allowShiftTradeDirect: false,
   aiEnabled: false,
+  automaticTimeRegistrationEnabled: false,
+  automaticTimeRegistrationMethod:
+    "PLANNED_SHIFT" as AutomaticTimeRegistrationMethod,
+  automaticTimeRegistrationMinutes: 0,
+  automaticTimeRegistrationActiveFrom: null as string | null,
+  automaticTimeRegistrationMethodValidFrom: null as string | null,
   clockInDeviationToleranceMinutes: 0,
   clockOutDeviationToleranceMinutes: 0,
   requireNoteForClockInDeviation: true,
@@ -103,6 +121,12 @@ const PAYROLL_PAYOUT_RULES = new Set<PayrollPayoutRule>([
   "LAST_WEEKDAY_OF_MONTH",
   "FIXED_DAY_OF_MONTH",
 ]);
+
+const AUTOMATIC_TIME_REGISTRATION_METHODS =
+  new Set<AutomaticTimeRegistrationMethod>([
+    "PLANNED_SHIFT",
+    "FIXED_MINUTES",
+  ]);
 
 function normalizeBoolean(value: unknown, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
@@ -216,6 +240,33 @@ export function normalizeCinemaSettings(value: unknown): Cinema {
       source.aiEnabled,
       CINEMA_DEFAULTS.aiEnabled,
     ),
+    automaticTimeRegistrationEnabled:
+      normalizeBoolean(
+        source.automaticTimeRegistrationEnabled,
+        CINEMA_DEFAULTS.automaticTimeRegistrationEnabled,
+      ),
+    automaticTimeRegistrationMethod:
+      typeof source.automaticTimeRegistrationMethod === "string" &&
+      AUTOMATIC_TIME_REGISTRATION_METHODS.has(
+        source.automaticTimeRegistrationMethod as AutomaticTimeRegistrationMethod,
+      )
+        ? source.automaticTimeRegistrationMethod as AutomaticTimeRegistrationMethod
+        : CINEMA_DEFAULTS.automaticTimeRegistrationMethod,
+    automaticTimeRegistrationMinutes:
+      normalizeInteger(
+        source.automaticTimeRegistrationMinutes,
+        CINEMA_DEFAULTS.automaticTimeRegistrationMinutes,
+        0,
+        1440,
+      ),
+    automaticTimeRegistrationActiveFrom:
+      typeof source.automaticTimeRegistrationActiveFrom === "string"
+        ? source.automaticTimeRegistrationActiveFrom
+        : null,
+    automaticTimeRegistrationMethodValidFrom:
+      typeof source.automaticTimeRegistrationMethodValidFrom === "string"
+        ? source.automaticTimeRegistrationMethodValidFrom
+        : null,
     clockInDeviationToleranceMinutes: normalizeInteger(
       source.clockInDeviationToleranceMinutes,
       CINEMA_DEFAULTS.clockInDeviationToleranceMinutes,
@@ -303,6 +354,7 @@ export function normalizeCinemaSettingsUpdate(
       | "allowShiftTradePool"
       | "allowShiftTradeDirect"
       | "aiEnabled"
+      | "automaticTimeRegistrationEnabled"
         | "requireNoteForClockInDeviation"
       | "requireNoteForClockOutDeviation"
       | "requireNoteForManualEntry"
@@ -315,6 +367,7 @@ export function normalizeCinemaSettingsUpdate(
     "allowShiftTradePool",
     "allowShiftTradeDirect",
     "aiEnabled",
+    "automaticTimeRegistrationEnabled",
     "requireNoteForClockInDeviation",
     "requireNoteForClockOutDeviation",
     "requireNoteForManualEntry",
@@ -328,6 +381,27 @@ export function normalizeCinemaSettingsUpdate(
     if (field in value && typeof value[field] === "boolean") {
       result[field] = value[field] as never;
     }
+  }
+
+  if (
+    "automaticTimeRegistrationMethod" in value &&
+    value.automaticTimeRegistrationMethod &&
+    AUTOMATIC_TIME_REGISTRATION_METHODS.has(
+      value.automaticTimeRegistrationMethod,
+    )
+  ) {
+    result.automaticTimeRegistrationMethod =
+      value.automaticTimeRegistrationMethod;
+  }
+
+  if ("automaticTimeRegistrationMinutes" in value) {
+    result.automaticTimeRegistrationMinutes =
+      normalizeInteger(
+        value.automaticTimeRegistrationMinutes,
+        CINEMA_DEFAULTS.automaticTimeRegistrationMinutes,
+        0,
+        1440,
+      );
   }
 
   if ("clockInDeviationToleranceMinutes" in value) {

@@ -1,4 +1,5 @@
 "use client";
+import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
 
 import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
@@ -58,24 +59,34 @@ export default function MyTimeEditModal({
         </p>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-            <span className="mb-1 block">Mødetid</span>
-            <input
-              type="datetime-local"
+          <div className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+            <span className="mb-1 block">
+              {"M\u00f8detid"}
+            </span>
+
+            <ProjectDateTimePicker
               value={editClockIn}
-              onChange={(event) => onClockInChange(event.target.value)}
-              className={inputClass}
+              onChange={onClockInChange}
+              clearable
+              ariaLabel={
+                "V\u00e6lg m\u00f8dedato og tid"
+              }
             />
-          </label>
-          <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-            <span className="mb-1 block">Fyraften</span>
-            <input
-              type="datetime-local"
+          </div>
+          <div className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+            <span className="mb-1 block">
+              Fyraften
+            </span>
+
+            <ProjectDateTimePicker
               value={editClockOut}
-              onChange={(event) => onClockOutChange(event.target.value)}
-              className={inputClass}
+              onChange={onClockOutChange}
+              clearable
+              ariaLabel={
+                "V\u00e6lg fyraftensdato og tid"
+              }
             />
-          </label>
+          </div>
           <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
             <span className="mb-1 block">Mødetidsnote</span>
             <textarea

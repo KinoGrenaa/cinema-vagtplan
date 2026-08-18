@@ -4,6 +4,8 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
+import ProjectTimePicker from "@/app/components/date/ProjectTimePicker";
 import { toInputDateTime } from "@/app/utils/dateTime";
 import { useScheduleJobFunctionTimingPreview } from "../../hooks/data/useScheduleJobFunctionTimingPreview";
 import {
@@ -59,16 +61,6 @@ const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 const helpTextClass = "mt-1 text-xs text-gray-500 dark:text-gray-400";
-
-function openDateTimePicker(id: string) {
-  const input = document.getElementById(id) as HTMLInputElement | null;
-
-  if (input?.showPicker) {
-    input.showPicker();
-  } else {
-    input?.focus();
-  }
-}
 
 function getLeaveUserId(leaveRequest: LeaveRequest): number | null {
   if (typeof leaveRequest.userId === "number") {
@@ -180,6 +172,193 @@ function getDateTimeValue(value: string): number | null {
   return dateTimeValue;
 }
 
+function getDatePart(
+  value: string,
+) {
+  if (
+    !value ||
+    !value.includes("T")
+  ) {
+    return "";
+  }
+
+  return value.slice(
+    0,
+    10,
+  );
+}
+
+function getTimePart(
+  value: string,
+) {
+  if (
+    !value ||
+    !value.includes("T")
+  ) {
+    return "";
+  }
+
+  return value.slice(
+    11,
+    16,
+  );
+}
+
+function combineDateAndTime(
+  date: string,
+  time: string,
+) {
+  if (
+    !date ||
+    !time
+  ) {
+    return "";
+  }
+
+  return (
+    date +
+    "T" +
+    time
+  );
+}
+
+function parseCalendarDate(
+  value: string,
+) {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})$/.exec(
+      value,
+    );
+
+  if (!match) {
+    return null;
+  }
+
+  return new Date(
+    Date.UTC(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]),
+    ),
+  );
+}
+
+function addCalendarDays(
+  value: string,
+  days: number,
+) {
+  const date =
+    parseCalendarDate(
+      value,
+    );
+
+  if (!date) {
+    return value;
+  }
+
+  date.setUTCDate(
+    date.getUTCDate() +
+      days,
+  );
+
+  const year =
+    String(
+      date.getUTCFullYear(),
+    );
+
+  const month =
+    String(
+      date.getUTCMonth() + 1,
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      date.getUTCDate(),
+    ).padStart(2, "0");
+
+  return (
+    year +
+    "-" +
+    month +
+    "-" +
+    day
+  );
+}
+
+function getCalendarDayOffset(
+  startDate: string,
+  endDate: string,
+) {
+  const start =
+    parseCalendarDate(
+      startDate,
+    );
+
+  const end =
+    parseCalendarDate(
+      endDate,
+    );
+
+  if (
+    !start ||
+    !end
+  ) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.round(
+      (
+        end.getTime() -
+        start.getTime()
+      ) /
+        (
+          24 *
+          60 *
+          60 *
+          1000
+        ),
+    ),
+  );
+}
+
+function moveDateTimeToDate(
+  value: string,
+  date: string,
+) {
+  return combineDateAndTime(
+    date,
+    getTimePart(
+      value,
+    ),
+  );
+}
+
+function formatShiftDateLabel(
+  value: string,
+) {
+  const date =
+    parseCalendarDate(
+      value,
+    );
+
+  if (!date) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "da-DK",
+    {
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(date);
+}
+
 function validateShiftForm({
   startTime,
   endTime,
@@ -222,6 +401,29 @@ function validateShiftForm({
   return errors;
 }
 
+function userHasJobFunction(
+  user: any,
+  jobFunctionId: number,
+) {
+  if (
+    !user ||
+    jobFunctionId <= 0 ||
+    !Array.isArray(
+      user.userJobFunctions,
+    )
+  ) {
+    return false;
+  }
+
+  return user.userJobFunctions.some(
+    (assignment: any) =>
+      Number(
+        assignment?.jobFunctionId,
+      ) ===
+      jobFunctionId,
+  );
+}
+
 export default function ShiftForm({
   users,
   jobFunctions,
@@ -260,7 +462,90 @@ export default function ShiftForm({
       ? "I vagtpuljen"
       : `Direkte tilbud → ${activeTradeTargetName || "kollega"}`
     : null;
+  const qualifiedUsers =
+    useMemo(
+      () => {
+        if (
+          jobFunctionId <= 0
+        ) {
+          return [];
+        }
+
+        return users.filter(
+          (user) =>
+            userHasJobFunction(
+              user,
+              jobFunctionId,
+            ),
+        );
+      },
+      [
+        jobFunctionId,
+        users,
+      ],
+    );
+
+  const employeeOptions =
+    useMemo(
+      () => {
+        if (
+          jobFunctionId <= 0
+        ) {
+          return selectedShift
+            ? users
+            : [];
+        }
+
+        if (
+          !selectedShift ||
+          userId <= 0 ||
+          qualifiedUsers.some(
+            (user) =>
+              user.id === userId,
+          )
+        ) {
+          return qualifiedUsers;
+        }
+
+        const currentUser =
+          users.find(
+            (user) =>
+              user.id === userId,
+          );
+
+        return currentUser
+          ? [
+              currentUser,
+              ...qualifiedUsers,
+            ]
+          : qualifiedUsers;
+      },
+      [
+        jobFunctionId,
+        qualifiedUsers,
+        selectedShift,
+        userId,
+        users,
+      ],
+    );
+
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showMoveDatePicker, setShowMoveDatePicker] = useState(false);
+
+  useEffect(() => {
+    setShowMoveDatePicker(
+      false,
+    );
+  }, [selectedShift?.id]);
+
+  const editingShiftDate =
+    getDatePart(
+      startTime,
+    ) ||
+    getDatePart(
+      endTime,
+    ) ||
+    selectedDate;
   const [timingManuallyAdjusted, setTimingManuallyAdjusted] =
     useState(false);
   const {
@@ -298,7 +583,8 @@ export default function ShiftForm({
   useEffect(() => {
     if (
       selectedShift ||
-      !timingPreview
+      !timingPreview ||
+      timingManuallyAdjusted
     ) {
       return;
     }
@@ -313,13 +599,61 @@ export default function ShiftForm({
         timingPreview.endTime,
       ),
     );
-    setTimingManuallyAdjusted(false);
   }, [
     selectedShift,
     setEndTime,
     setStartTime,
+    timingManuallyAdjusted,
     timingPreview,
   ]);
+
+  function handleMoveShiftDate(
+    nextDate: string,
+  ) {
+    if (
+      !selectedShift ||
+      !nextDate
+    ) {
+      return;
+    }
+
+    const previousStartDate =
+      getDatePart(
+        startTime,
+      );
+
+    const previousEndDate =
+      getDatePart(
+        endTime,
+      );
+
+    const endDayOffset =
+      getCalendarDayOffset(
+        previousStartDate,
+        previousEndDate,
+      );
+
+    setStartTime(
+      moveDateTimeToDate(
+        startTime,
+        nextDate,
+      ),
+    );
+
+    setEndTime(
+      moveDateTimeToDate(
+        endTime,
+        addCalendarDays(
+          nextDate,
+          endDayOffset,
+        ),
+      ),
+    );
+
+    setShowMoveDatePicker(
+      false,
+    );
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     const errors = validateShiftForm({
@@ -368,156 +702,467 @@ export default function ShiftForm({
         onSubmit={handleSubmit}
         className="grid grid-cols-1 gap-4 md:grid-cols-3"
       >
-        <div>
-          <label className={labelClass}>Start</label>
-          <div className="flex gap-2">
-            <input
-              id="shiftStartTime"
-              type="datetime-local"
-              className={inputClass}
-              value={startTime}
-              onChange={(e) => {
-                setStartTime(e.target.value);
-                if (!selectedShift && timingPreview) {
-                  setTimingManuallyAdjusted(true);
-                }
-              }}
-            />
+        {!selectedShift && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50 md:col-span-3">
+            <div className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Dato for vagten
+            </div>
 
-            <button
-              type="button"
-              onClick={() => openDateTimePicker("shiftStartTime")}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-              title="Vælg starttidspunkt"
-            >
-              📅
-            </button>
+            <div className="mt-1 text-base font-bold capitalize text-gray-950 dark:text-white">
+              {formatShiftDateLabel(
+                selectedDate,
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <label className={labelClass}>Slut</label>
-          <div className="flex gap-2">
-            <input
-              id="shiftEndTime"
-              type="datetime-local"
-              className={inputClass}
-              value={endTime}
-              onChange={(e) => {
-                setEndTime(e.target.value);
-                if (!selectedShift && timingPreview) {
-                  setTimingManuallyAdjusted(true);
-                }
-              }}
-            />
+        {selectedShift && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50 md:col-span-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Dato for vagten
+                </div>
 
-            <button
-              type="button"
-              onClick={() => openDateTimePicker("shiftEndTime")}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-              title="Vælg sluttidspunkt"
-            >
-              📅
-            </button>
+                <div className="mt-1 text-base font-bold capitalize text-gray-950 dark:text-white">
+                  {formatShiftDateLabel(
+                    editingShiftDate,
+                  )}
+                </div>
+              </div>
+
+              {!showMoveDatePicker && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowMoveDatePicker(
+                      true,
+                    )
+                  }
+                  className="self-start rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950 sm:self-auto"
+                >
+                  Flyt til anden dato
+                </button>
+              )}
+            </div>
+
+            {showMoveDatePicker && (
+              <div className="mt-4 max-w-sm rounded-xl border border-blue-200 bg-white p-3 dark:border-blue-900 dark:bg-gray-900">
+                <div className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  {"V\u00e6lg ny dato"}
+                </div>
+
+                <ProjectDatePicker
+                  value={editingShiftDate}
+                  onChange={handleMoveShiftDate}
+                  ariaLabel={
+                    "V\u00e6lg ny dato for vagten"
+                  }
+                />
+
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {"Flytningen gemmes f\u00f8rst, n\u00e5r du trykker Gem \u00e6ndringer."}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowMoveDatePicker(
+                        false,
+                      )
+                    }
+                    className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    Annuller
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         <div>
-          <label className={labelClass}>Note</label>
-          <input
+          <label className={labelClass}>
+            Jobfunktion
+          </label>
+
+          <select
             className={inputClass}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Fx aftenvagt"
-          />
+            value={jobFunctionId}
+            onChange={(event) => {
+              const nextJobFunctionId =
+                Number(
+                  event.target.value,
+                );
+
+              setJobFunctionId(
+                nextJobFunctionId,
+              );
+
+              setTimingManuallyAdjusted(
+                false,
+              );
+
+              if (
+                nextJobFunctionId <= 0
+              ) {
+                setUserId(0);
+                return;
+              }
+
+              if (
+                userId > 0
+              ) {
+                const selectedUser =
+                  users.find(
+                    (user) =>
+                      user.id === userId,
+                  );
+
+                if (
+                  !userHasJobFunction(
+                    selectedUser,
+                    nextJobFunctionId,
+                  )
+                ) {
+                  setUserId(0);
+                }
+              }
+            }}
+            disabled={
+              Boolean(
+                selectedShift,
+              )
+            }
+          >
+            <option value={0}>
+              {"V\u00e6lg jobfunktion"}
+            </option>
+
+            {jobFunctions.map(
+              (jobFunction) => (
+                <option
+                  key={
+                    jobFunction.id
+                  }
+                  value={
+                    jobFunction.id
+                  }
+                >
+                  {
+                    jobFunction.name
+                  }
+                </option>
+              ),
+            )}
+          </select>
+
+          {selectedShift && (
+            <p
+              className={
+                helpTextClass
+              }
+            >
+              {"Jobfunktionen kan ikke \u00e6ndres p\u00e5 en eksisterende vagt. Slet vagten og opret den korrekt i stedet."}
+            </p>
+          )}
         </div>
 
-        <div>
-          <label className={labelClass}>Medarbejder</label>
+        <div className="md:col-span-2">
+          <label className={labelClass}>
+            Medarbejder
+          </label>
+
           <select
             className={inputClass}
             value={userId}
-            onChange={(e) => setUserId(Number(e.target.value))}
+            disabled={
+              !selectedShift &&
+              (
+                jobFunctionId <= 0 ||
+                timingPreviewLoading
+              )
+            }
+            onChange={(event) =>
+              setUserId(
+                Number(
+                  event.target.value,
+                ),
+              )
+            }
           >
-            <option value={0}>Ikke tildelt</option>
+            <option value={0}>
+              {jobFunctionId > 0
+                ? "Ikke tildelt"
+                : "V\u00e6lg jobfunktion f\u00f8rst"}
+            </option>
 
-            {users.map((user) => {
-              const leaveConflict = getUserLeaveConflict(
-                user.id,
-                leaveRequests,
-                startTime,
-                endTime,
-              );
-              const hasApprovedLeave = leaveConflict === "APPROVED";
-              const hasPendingLeave = leaveConflict === "PENDING";
-              const isCurrentSelectedUser = user.id === userId;
-              const displayName = getUserDisplayName(user);
+            {employeeOptions.map(
+              (user) => {
+                const leaveConflict =
+                  getUserLeaveConflict(
+                    user.id,
+                    leaveRequests,
+                    startTime,
+                    endTime,
+                  );
 
-              return (
-                <option
-                  key={user.id}
-                  value={user.id}
-                  disabled={hasApprovedLeave && !isCurrentSelectedUser}
-                  className={
-                    hasApprovedLeave
-                      ? "text-gray-400"
-                      : hasPendingLeave
-                        ? "text-yellow-700"
-                        : undefined
-                  }
-                >
-                  {displayName}
-                  {hasApprovedLeave ? " — godkendt fri" : ""}
-                  {hasPendingLeave ? " — afventer fravær" : ""}
-                </option>
-              );
-            })}
+                const hasApprovedLeave =
+                  leaveConflict ===
+                  "APPROVED";
+
+                const hasPendingLeave =
+                  leaveConflict ===
+                  "PENDING";
+
+                const isCurrentSelectedUser =
+                  user.id ===
+                  userId;
+
+                const displayName =
+                  getUserDisplayName(
+                    user,
+                  );
+
+                return (
+                  <option
+                    key={user.id}
+                    value={user.id}
+                    disabled={
+                      hasApprovedLeave &&
+                      !isCurrentSelectedUser
+                    }
+                    className={
+                      hasApprovedLeave
+                        ? "text-gray-400"
+                        : hasPendingLeave
+                          ? "text-yellow-700"
+                          : undefined
+                    }
+                  >
+                    {displayName}
+                    {hasApprovedLeave
+                      ? " \u2014 godkendt fri"
+                      : ""}
+                    {hasPendingLeave
+                      ? " \u2014 afventer frav\u00e6r"
+                      : ""}
+                  </option>
+                );
+              },
+            )}
           </select>
 
-          {selectedUserLeaveConflict === "APPROVED" && (
+          {!selectedShift &&
+            jobFunctionId > 0 &&
+            !timingPreviewLoading &&
+            qualifiedUsers.length ===
+              0 && (
+              <p
+                className={
+                  helpTextClass
+                }
+              >
+                Ingen aktive medarbejdere er kvalificeret til denne jobfunktion.
+              </p>
+            )}
+
+          {selectedUserLeaveConflict ===
+            "APPROVED" && (
             <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
               Den valgte medarbejder har godkendt fri i dette tidsrum.
             </p>
           )}
 
-          {selectedUserLeaveConflict === "PENDING" && (
+          {selectedUserLeaveConflict ===
+            "PENDING" && (
             <p className="mt-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:border-yellow-900/60 dark:bg-yellow-950/40 dark:text-yellow-200">
-              Den valgte medarbejder har en afventende fraværsansøgning i dette
-              tidsrum.
+              {"Den valgte medarbejder har en afventende frav\u00e6rsans\u00f8gning i dette tidsrum."}
             </p>
           )}
 
-          {leaveRequests.length > 0 && startTime && endTime && (
-            <p className={helpTextClass}>
-              Medarbejdere med godkendt fri markeres i listen og kan ikke
-              vælges.
-            </p>
-          )}
+          {leaveRequests.length >
+            0 &&
+            startTime &&
+            endTime && (
+              <p
+                className={
+                  helpTextClass
+                }
+              >
+                {"Medarbejdere med godkendt fri markeres i listen og kan ikke v\u00e6lges."}
+              </p>
+            )}
         </div>
 
         <div>
-          <label className={labelClass}>Jobfunktion</label>
-          <select
+          <label className={labelClass}>
+            Start
+          </label>
+
+          <ProjectTimePicker
+            value={
+              getTimePart(
+                startTime,
+              )
+            }
+            disabled={
+              !selectedShift &&
+              (
+                jobFunctionId <= 0 ||
+                timingPreviewLoading
+              )
+            }
+            onChange={(nextTime) => {
+              if (
+                selectedShift
+              ) {
+                setStartTime(
+                  combineDateAndTime(
+                    getDatePart(
+                      startTime,
+                    ) ||
+                      editingShiftDate,
+                    nextTime,
+                  ),
+                );
+
+                return;
+              }
+
+              setStartTime(
+                combineDateAndTime(
+                  selectedDate,
+                  nextTime,
+                ),
+              );
+
+              const currentEndTime =
+                getTimePart(
+                  endTime,
+                );
+
+              if (
+                currentEndTime
+              ) {
+                const nextEndDate =
+                  currentEndTime <
+                  nextTime
+                    ? addCalendarDays(
+                        selectedDate,
+                        1,
+                      )
+                    : selectedDate;
+
+                setEndTime(
+                  combineDateAndTime(
+                    nextEndDate,
+                    currentEndTime,
+                  ),
+                );
+              }
+
+              if (
+                timingPreview
+              ) {
+                setTimingManuallyAdjusted(
+                  true,
+                );
+              }
+            }}
+            ariaLabel={
+              "V\u00e6lg starttid"
+            }
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>
+            Slut
+          </label>
+
+          <ProjectTimePicker
+            value={
+              getTimePart(
+                endTime,
+              )
+            }
+            disabled={
+              !selectedShift &&
+              (
+                jobFunctionId <= 0 ||
+                timingPreviewLoading
+              )
+            }
+            onChange={(nextTime) => {
+              if (
+                selectedShift
+              ) {
+                setEndTime(
+                  combineDateAndTime(
+                    getDatePart(
+                      endTime,
+                    ) ||
+                      editingShiftDate,
+                    nextTime,
+                  ),
+                );
+
+                return;
+              }
+
+              const currentStartTime =
+                getTimePart(
+                  startTime,
+                );
+
+              const nextEndDate =
+                currentStartTime &&
+                nextTime <
+                  currentStartTime
+                  ? addCalendarDays(
+                      selectedDate,
+                      1,
+                    )
+                  : selectedDate;
+
+              setEndTime(
+                combineDateAndTime(
+                  nextEndDate,
+                  nextTime,
+                ),
+              );
+
+              if (
+                timingPreview
+              ) {
+                setTimingManuallyAdjusted(
+                  true,
+                );
+              }
+            }}
+            ariaLabel={
+              "V\u00e6lg sluttid"
+            }
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>
+            Note
+          </label>
+
+          <input
             className={inputClass}
-            value={jobFunctionId}
-            onChange={(e) => setJobFunctionId(Number(e.target.value))}
-            disabled={Boolean(selectedShift)}
-          >
-            <option value={0}>Vælg jobfunktion</option>
-
-            {jobFunctions.map((jobFunction) => (
-              <option key={jobFunction.id} value={jobFunction.id}>
-                {jobFunction.name}
-              </option>
-            ))}
-          </select>
-
-          {selectedShift && (
-            <p className={helpTextClass}>
-              Jobfunktionen kan ikke ændres på en eksisterende vagt. Slet
-              vagten og opret den korrekt i stedet.
-            </p>
-          )}
+            value={note}
+            onChange={(event) =>
+              setNote(
+                event.target.value,
+              )
+            }
+            placeholder="Fx aftenvagt"
+          />
         </div>
 
         {!selectedShift &&

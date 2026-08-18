@@ -1,5 +1,6 @@
 import type { FormEventHandler } from "react";
 
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import ProfileInput from "./ProfileInput";
 
 type ProfileEditFormProps = {
@@ -87,12 +88,21 @@ export default function ProfileEditForm({
             value={address}
             onChange={onAddressChange}
           />
-          <ProfileInput
-            label="Fødselsdato"
-            type="date"
-            value={birthDate}
-            onChange={onBirthDateChange}
-          />
+          <div className="space-y-1">
+            <div className="text-sm font-medium">
+              {"F\u00f8dselsdato"}
+            </div>
+            <ProjectDatePicker
+              value={birthDate}
+              onChange={
+                onBirthDateChange
+              }
+              clearable
+              ariaLabel={
+                "V\u00e6lg f\u00f8dselsdato"
+              }
+            />
+          </div>
         </div>
 
         <label className="block space-y-1">

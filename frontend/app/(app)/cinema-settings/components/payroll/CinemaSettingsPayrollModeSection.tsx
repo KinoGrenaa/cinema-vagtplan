@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import { apiFetch } from "@/app/lib/api";
 
 export type PayrollMode = "HOURS_ONLY" | "SIMPLE" | "ADVANCED";
@@ -190,38 +191,20 @@ export default function CinemaSettingsPayrollModeSection({
       </p>
 
       <div className="mt-4 grid gap-4 md:grid-cols-3">
-        <label className="text-sm font-medium">
-          Model
-          <select
-            value={mode}
-            onChange={(event) => {
-              const nextMode = event.target.value as PayrollMode;
-              setMode(nextMode);
-              setImpact(null);
-              onModeChange?.(nextMode);
-            }}
-            disabled={busy}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950"
-          >
-            <option value="HOURS_ONLY">Kun timer</option>
-            <option value="SIMPLE">Simpel løn</option>
-            <option value="ADVANCED">Avanceret løn</option>
-          </select>
-        </label>
-
-        <label className="text-sm font-medium">
-          Gælder fra dato
-          <input
-            type="date"
+        <div className="text-sm font-medium">
+          <div>{"G\u00e6lder fra dato"}</div>
+          <ProjectDatePicker
             value={validFrom}
-            onChange={(event) => {
-              setValidFrom(event.target.value);
+            onChange={(nextValue) => {
+              setValidFrom(nextValue);
               setImpact(null);
             }}
             disabled={busy}
-            className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950"
+            clearable
+            className="mt-2"
+            ariaLabel={"V\u00e6lg dato l\u00f8nmodellen g\u00e6lder fra"}
           />
-        </label>
+        </div>
 
         <label className="text-sm font-medium">
           {reasonRequired

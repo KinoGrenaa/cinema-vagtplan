@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import { apiFetch } from "@/app/lib/api";
 
 type Preview = {
@@ -83,16 +84,20 @@ export default function JobFunctionTimingRulePreview({
         Gem tidsreglen først. Vælg derefter en dato for at se filmgrundlag, fallback og den endelige tid.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-2">
-        <label className="text-sm font-medium text-blue-950 dark:text-blue-100">
-          Dato
-          <input
-            type="date"
+        <div className="text-sm font-medium text-blue-950 dark:text-blue-100">
+          <div>Dato</div>
+          <ProjectDatePicker
             value={date}
-            onChange={(event) => setDate(event.target.value)}
-            disabled={disabled || loading}
-            className="mt-1 block rounded-lg border border-blue-300 bg-white px-3 py-2 text-slate-950 dark:border-blue-800 dark:bg-slate-950 dark:text-white"
+            onChange={setDate}
+            disabled={
+              disabled ||
+              loading
+            }
+            clearable
+            className="mt-1 w-52"
+            ariaLabel={"V\u00e6lg dato til forh\u00e5ndsvisning"}
           />
-        </label>
+        </div>
         <button
           type="button"
           onClick={() => void loadPreview()}

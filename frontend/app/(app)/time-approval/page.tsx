@@ -170,6 +170,7 @@ export default function TimeApprovalPage() {
     needsChangesCount,
     voidedCount,
     activeFilterCount,
+    applyFilters,
     resetFilters,
     groupedEntries,
   } = useTimeApprovalFilters(entries);
@@ -294,7 +295,7 @@ export default function TimeApprovalPage() {
               onlyWithNotes={onlyWithNotes}
               dateFrom={dateFrom}
               dateTo={dateTo}
-              onApply={() => setShowFilterModal(false)}
+              onApply={applyFilters}
               onClose={() => setShowFilterModal(false)}
               onReset={resetFilters}
               onShowPendingChange={setShowPending}

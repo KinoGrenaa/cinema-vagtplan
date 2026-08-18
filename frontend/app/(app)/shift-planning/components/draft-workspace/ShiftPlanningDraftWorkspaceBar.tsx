@@ -579,7 +579,7 @@ export default function ShiftPlanningDraftWorkspaceBar({
               Navngiv kopien
             </h3>
             <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              Kopien får de samme foreslåede vagter og problemer som den valgte kladde. Originalen ændres ikke.
+              Kopien får de samme planlægningsdage, skabeloner, noter og foreslåede vagter som den valgte kladde. Originalen ændres ikke.
             </p>
             <label className="mt-5 block text-sm font-semibold text-gray-800 dark:text-gray-200" htmlFor="shift-planning-copy-draft-name">
               Kladdenavn

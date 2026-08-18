@@ -1,5 +1,5 @@
-import { FormEvent, useRef } from "react";
-import { Calendar } from "lucide-react";
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
+import { FormEvent } from "react";
 
 import BaseModal from "@/app/components/modals/BaseModal";
 import type { LeaveRequestEmployeeOption } from "../../hooks/form/useLeaveRequestEmployeeOptions";
@@ -37,14 +37,6 @@ type LeaveRequestFormModalProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
 };
 
-function openDatePicker(input: HTMLInputElement | null) {
-  if (!input) return;
-
-  input.focus();
-  if (typeof input.showPicker === "function") {
-    input.showPicker();
-  }
-}
 
 export default function LeaveRequestFormModal({
   allDay,
@@ -69,8 +61,6 @@ export default function LeaveRequestFormModal({
   onSetStartTime,
   onSubmit,
 }: LeaveRequestFormModalProps) {
-  const startDateInputRef = useRef<HTMLInputElement | null>(null);
-  const endDateInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <BaseModal
@@ -114,45 +104,21 @@ export default function LeaveRequestFormModal({
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className={labelClass}>Fra dato</label>
-            <div className="relative">
-              <input
-                ref={startDateInputRef}
-                type="date"
-                min={minDate}
-                className={`${inputClass} pr-11 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0`}
-                value={startDate}
-                onChange={(event) => onSetStartDate(event.target.value)}
-              />
-              <button
-                type="button"
-                aria-label="Åbn kalender for fra dato"
-                onClick={() => openDatePicker(startDateInputRef.current)}
-                className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 dark:focus-visible:ring-blue-400"
-              >
-                <Calendar size={18} />
-              </button>
-            </div>
+            <ProjectDatePicker
+              value={startDate}
+              min={minDate}
+              onChange={onSetStartDate}
+              ariaLabel={"V\u00e6lg fra dato"}
+            />
           </div>
           <div>
             <label className={labelClass}>Til dato</label>
-            <div className="relative">
-              <input
-                ref={endDateInputRef}
-                type="date"
-                min={minDate}
-                className={`${inputClass} pr-11 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0`}
-                value={endDate}
-                onChange={(event) => onSetEndDate(event.target.value)}
-              />
-              <button
-                type="button"
-                aria-label="Åbn kalender for til dato"
-                onClick={() => openDatePicker(endDateInputRef.current)}
-                className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-r-xl text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 dark:focus-visible:ring-blue-400"
-              >
-                <Calendar size={18} />
-              </button>
-            </div>
+            <ProjectDatePicker
+              value={endDate}
+              min={minDate}
+              onChange={onSetEndDate}
+              ariaLabel={"V\u00e6lg til dato"}
+            />
           </div>
         </div>
 

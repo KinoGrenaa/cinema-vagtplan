@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
+import ProjectTimePicker from "@/app/components/date/ProjectTimePicker";
 
 import { formatTimeDK, toInputDateTime } from "@/app/utils/dateTime";
 import type { Shift } from "../../../../../../shared/types";
@@ -52,6 +55,37 @@ function getTimeEntryStatusText(status?: TimeEntryStatus | null) {
   return "";
 }
 
+function getClockTime(
+  value: string,
+) {
+  if (
+    !value ||
+    !value.includes("T")
+  ) {
+    return "";
+  }
+
+  return value.slice(11, 16);
+}
+
+function replaceClockTime(
+  value: string,
+  nextTime: string,
+) {
+  if (
+    !value ||
+    !value.includes("T") ||
+    !nextTime
+  ) {
+    return value;
+  }
+
+  return (
+    value.slice(0, 11) +
+    nextTime
+  );
+}
+
 export function TimeRegistrationModal({
   open,
   onClose,
@@ -70,6 +104,80 @@ export function TimeRegistrationModal({
   onRegisterClockIn,
   onRegisterClockOut,
 }: TimeRegistrationModalProps) {
+  const autoSelectedForOpenRef =
+    useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      autoSelectedForOpenRef.current =
+        false;
+      return;
+    }
+
+    /*
+     * Ved en allerede ?ben tidsregistrering
+     * er vi i Clock ud-flowet. Her m? vi ikke
+     * v?lge en ny vagt.
+     */
+    if (
+      openTimeEntry ||
+      autoSelectedForOpenRef.current
+    ) {
+      return;
+    }
+
+    const nextOption =
+      shiftsForTimeRegistration.filter(({ timeEntry }) => !timeEntry)
+        .sort(
+          (
+            left,
+            right,
+          ) =>
+            new Date(
+              left.shift.startTime,
+            ).getTime() -
+            new Date(
+              right.shift.startTime,
+            ).getTime(),
+        )[0];
+
+    if (!nextOption) {
+      return;
+    }
+
+    const shift =
+      nextOption.shift;
+
+    autoSelectedForOpenRef.current =
+      true;
+
+    setClockShiftId(
+      shift.id,
+    );
+
+    setClockInTime(
+      toInputDateTime(
+        shift.startTime,
+      ),
+    );
+
+    setClockOutTime(
+      toInputDateTime(
+        shift.endTime,
+      ),
+    );
+
+    setClockNote("");
+  }, [
+    open,
+    openTimeEntry,
+    shiftsForTimeRegistration,
+    setClockShiftId,
+    setClockInTime,
+    setClockOutTime,
+    setClockNote,
+  ]);
+
   if (!open) return null;
 
   return (
@@ -135,11 +243,23 @@ export function TimeRegistrationModal({
               <label className="block text-sm font-semibold">
                 Faktisk mødetid
               </label>
-              <input
-                type="datetime-local"
-                value={clockInTime}
-                onChange={(event) => setClockInTime(event.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              <ProjectTimePicker
+                value={
+                  getClockTime(
+                    clockInTime,
+                  )
+                }
+                onChange={(nextTime) =>
+                  setClockInTime(
+                    replaceClockTime(
+                      clockInTime,
+                      nextTime,
+                    ),
+                  )
+                }
+                ariaLabel={
+                  "V\u00e6lg faktisk m\u00f8detid"
+                }
               />
               <textarea
                 value={clockNote}
@@ -161,11 +281,23 @@ export function TimeRegistrationModal({
               <label className="block text-sm font-semibold">
                 Faktisk fyraften
               </label>
-              <input
-                type="datetime-local"
-                value={clockOutTime}
-                onChange={(event) => setClockOutTime(event.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              <ProjectTimePicker
+                value={
+                  getClockTime(
+                    clockOutTime,
+                  )
+                }
+                onChange={(nextTime) =>
+                  setClockOutTime(
+                    replaceClockTime(
+                      clockOutTime,
+                      nextTime,
+                    ),
+                  )
+                }
+                ariaLabel={
+                  "V\u00e6lg faktisk fyraften"
+                }
               />
               <textarea
                 value={clockNote}
@@ -219,20 +351,24 @@ export function ManualTimeRegistrationModal({
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-semibold">Mødetid</label>
-            <input
-              type="datetime-local"
+            <ProjectDateTimePicker
               value={clockInTime}
-              onChange={(event) => setClockInTime(event.target.value)}
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              onChange={setClockInTime}
+              clearable
+              ariaLabel={
+                "V\u00e6lg manuel m\u00f8dedato og tid"
+              }
             />
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold">Fyraften</label>
-            <input
-              type="datetime-local"
+            <ProjectDateTimePicker
               value={clockOutTime}
-              onChange={(event) => setClockOutTime(event.target.value)}
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
+              onChange={setClockOutTime}
+              clearable
+              ariaLabel={
+                "V\u00e6lg manuel fyraftensdato og tid"
+              }
             />
           </div>
           <div>

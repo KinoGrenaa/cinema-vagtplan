@@ -1,5 +1,6 @@
 "use client";
 
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import {
   useEffect,
   useState,
@@ -230,17 +231,24 @@ export function UserModal({
             </select>
           </label>
 
-          <Input
-            label="Ansættelsesdato"
-            type="date"
-            value={normalizedUser.hireDate}
-            onChange={(value) =>
-              setUser({
-                ...normalizedUser,
-                hireDate: value,
-              })
-            }
-          />
+          <div className="space-y-1">
+            <div className="text-sm font-medium">
+              {"Ans\u00e6ttelsesdato"}
+            </div>
+            <ProjectDatePicker
+              value={normalizedUser.hireDate}
+              onChange={(value) =>
+                setUser({
+                  ...normalizedUser,
+                  hireDate: value,
+                })
+              }
+              clearable
+              ariaLabel={
+                "V\u00e6lg ans\u00e6ttelsesdato"
+              }
+            />
+          </div>
 
           <Input
             label="Medarbejdernummer"

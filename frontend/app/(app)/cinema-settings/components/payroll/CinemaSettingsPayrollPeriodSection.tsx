@@ -1,4 +1,5 @@
 import type { ChangeEvent, Dispatch, SetStateAction } from "react";
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import {
   clampDay,
   toIsoDate,
@@ -187,26 +188,33 @@ export default function CinemaSettingsPayrollPeriodSection({
         ) : null}
 
         {cinema.payrollPeriodModel === "BIWEEKLY" ? (
-          <label className="mt-5 block text-sm font-medium text-slate-800 dark:text-slate-200">
-            Ankerdato
-            <input
-              type="date"
-              value={cinema.payrollPeriodAnchorDate || ""}
-              disabled={saving}
-              onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                setLocalValue({
-                  payrollPeriodAnchorDate: event.target.value || null,
-                })
+          <div className="mt-5 block text-sm font-medium text-slate-800 dark:text-slate-200">
+            <div>Ankerdato</div>
+            <ProjectDatePicker
+              value={
+                cinema.payrollPeriodAnchorDate ||
+                ""
               }
-              onBlur={() =>
+              disabled={saving}
+              clearable
+              className="mt-2 md:w-72"
+              onChange={(nextValue) => {
+                const nextAnchorDate =
+                  nextValue || null;
+
+                setLocalValue({
+                  payrollPeriodAnchorDate:
+                    nextAnchorDate,
+                });
+
                 void updateCinemaSettings({
                   payrollPeriodAnchorDate:
-                    cinema.payrollPeriodAnchorDate || null,
-                })
-              }
-              className={`${inputClassName} md:w-auto`}
+                    nextAnchorDate,
+                });
+              }}
+              ariaLabel={"V\u00e6lg ankerdato for l\u00f8nperioden"}
             />
-          </label>
+          </div>
         ) : null}
 
         <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">

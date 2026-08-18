@@ -41,13 +41,6 @@ export default function DashboardOverviewSections({
       description: "Arbejd med bemanding, ændringer og publicering.",
     },
     {
-      enabled: moduleAccess.timeTracking,
-      href: "/clock",
-      category: "Tid",
-      title: "Stempel ind eller ud",
-      description: "Åbn tidsuret og registrer din arbejdstid.",
-    },
-    {
       enabled: moduleAccess.leave,
       href: hasAdministrativeAccess
         ? "/leave-approval"

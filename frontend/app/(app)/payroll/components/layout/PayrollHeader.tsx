@@ -1,3 +1,4 @@
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import { formatDateDK } from "@/app/utils/dateTime";
 
 import { describePayrollModel } from "../../utils";
@@ -139,22 +140,22 @@ export default function PayrollHeader({
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Startdato
               </label>
-              <input
-                type="date"
+              <ProjectDatePicker
                 value={startDate}
-                onChange={(event) => onSetStartDate(event.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                onChange={onSetStartDate}
+                clearable
+                ariaLabel={"V\u00e6lg startdato"}
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Slutdato
               </label>
-              <input
-                type="date"
+              <ProjectDatePicker
                 value={endDate}
-                onChange={(event) => onSetEndDate(event.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                onChange={onSetEndDate}
+                clearable
+                ariaLabel={"V\u00e6lg slutdato"}
               />
             </div>
             <div>

@@ -9,6 +9,9 @@ import type {
 } from "../../../../../../shared/types";
 import AiSuggestionsPanel from "../ai/AiSuggestionsPanel";
 import ShiftTimeline from "./ShiftTimeline";
+import type {
+  MovieShowing,
+} from "../movie-program/MovieProgram";
 import type { useScheduleAi } from "../../hooks/ai/useScheduleAi";
 import { ScheduleDateNavigation } from "../layout/ScheduleHeader";
 
@@ -213,6 +216,7 @@ function getApprovedLeaveConflicts(
 type ScheduleShiftsPanelProps = {
   ai: AiScheduleData | null;
   shifts: Shift[];
+  movieShowings: MovieShowing[];
   users: User[];
   leaveRequests: LeaveRequest[];
   selectedDate: string;
@@ -233,6 +237,7 @@ type ScheduleShiftsPanelProps = {
 export default function ScheduleShiftsPanel({
   ai,
   shifts,
+  movieShowings,
   users,
   leaveRequests,
   selectedDate,
@@ -432,11 +437,19 @@ export default function ScheduleShiftsPanel({
       )}
 
       <div className="mt-4">
-        {shifts.length > 0 ? (
+        {shifts.length > 0 ||
+        movieShowings.length > 0 ? (
           <ShiftTimeline
             shifts={shifts}
+            movieShowings={
+              movieShowings
+            }
             selectedDate={selectedDate}
-            onSelectShift={onSelectShift}
+            onSelectShift={
+          canManageShifts
+            ? onSelectShift
+            : undefined
+        }
             onOpenCreateShift={
               canManageShifts &&
               !needsMasterCinemaSelection

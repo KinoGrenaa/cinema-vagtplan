@@ -8,6 +8,7 @@ import {
 } from "next/navigation";
 
 import PayrollAdjustmentHistoryPanel from "../../../../components/time-entries/PayrollAdjustmentHistoryPanel";
+import AutomaticTimeRegistrationNotice from "../../../../components/time-entries/AutomaticTimeRegistrationNotice";
 
 import {
   parseTimeApprovalEntryTarget,
@@ -229,6 +230,12 @@ export default function TimeApprovalEntryCard({
     >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1 space-y-4">
+          <AutomaticTimeRegistrationNotice
+            automaticClockIn={entry.automaticClockIn}
+            automaticClockOut={entry.automaticClockOut}
+            compact
+          />
+
           <div>
             <h3 className="text-lg font-semibold">
               {formatDateTime(
@@ -299,14 +306,17 @@ export default function TimeApprovalEntryCard({
                     entry.id,
                   )
                 }
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
+                aria-expanded={
+                  isExpanded
+                }
+                className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
                   hasDetails
-                    ? "bg-amber-100 text-amber-900 hover:bg-amber-200 focus-visible:ring-amber-500 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/50 dark:focus-visible:ring-amber-400"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 focus-visible:ring-gray-500 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-400"
+                    ? "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 focus-visible:ring-amber-500 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100 dark:hover:bg-amber-950/40 dark:focus-visible:ring-amber-400"
+                    : "border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-500 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:focus-visible:ring-gray-400"
                 }`}
               >
-                {hasDetails
-                  ? "⚠ Vis detaljer"
+                {isExpanded
+                  ? "Skjul detaljer"
                   : "Vis detaljer"}
               </button>
             </div>

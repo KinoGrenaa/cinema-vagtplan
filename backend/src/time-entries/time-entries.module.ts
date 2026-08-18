@@ -9,6 +9,7 @@ import { ScheduleTimeEntriesService } from './schedule-time-entries.service';
 import { TimeApprovalEntriesController } from './time-approval-entries.controller';
 import { TimeEntriesController } from './time-entries.controller';
 import { TimeEntriesService } from './time-entries.service';
+import { TimeEntryAutoFillService } from './time-entry-auto-fill.service';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { TimeEntriesService } from './time-entries.service';
   providers: [
     TimeEntriesService,
     ScheduleTimeEntriesService,
+    TimeEntryAutoFillService,
   ],
 })
 export class TimeEntriesModule {}

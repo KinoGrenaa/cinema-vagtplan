@@ -13,8 +13,8 @@ export type MyTimeStatusFilters = {
 
 export const DEFAULT_STATUS_FILTERS: MyTimeStatusFilters = {
   approved: true,
-  pending: false,
-  needsChanges: false,
+  pending: true,
+  needsChanges: true,
   voided: false,
 };
 

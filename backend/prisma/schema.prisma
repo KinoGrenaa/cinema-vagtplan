@@ -189,6 +189,10 @@ model Cinema {
   requireNoteForClockInDeviation    Boolean                       @default(true)
   requireNoteForClockOutDeviation   Boolean                       @default(true)
   requireNoteForManualEntry         Boolean                       @default(true)
+  automaticTimeRegistrationEnabled    Boolean                       @default(false)
+  automaticTimeRegistrationMethod     String                        @default("PLANNED_SHIFT")
+  automaticTimeRegistrationMinutes    Int                           @default(0)
+  automaticTimeRegistrationActiveFrom DateTime?
   payrollOvertimeEnabled            Boolean                       @default(false)
   plannedOvertimeEnabled            Boolean                       @default(true)
   dailyOvertimeEnabled              Boolean                       @default(false)
@@ -219,6 +223,7 @@ model Cinema {
   shifts                            Shift[]
   messages                          Message[]
   timeEntries                       TimeEntry[]
+  automaticTimeRegistrationVersions CinemaAutomaticTimeRegistrationVersion[]
   notifications                     Notification[]
   pushSubscriptions                 PushSubscription[]
   employeeDocuments                 EmployeeDocument[]
@@ -241,6 +246,20 @@ model Cinema {
 }
 
 
+
+model CinemaAutomaticTimeRegistrationVersion {
+  id        Int      @id @default(autoincrement())
+  cinemaId  Int
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  method    String
+  minutes   Int      @default(0)
+  validFrom DateTime
+  validTo   DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([cinemaId, validFrom, validTo])
+  @@index([cinemaId, validTo])
+}
 
 model CinemaModuleSetting {
   id        Int      @id @default(autoincrement())
@@ -803,6 +822,8 @@ model TimeEntry {
   clockInNote               String?
   clockOutNote              String?
   adminNote                 String?
+  automaticClockIn          Boolean             @default(false)
+  automaticClockOut         Boolean             @default(false)
   userId                    Int
   user                      User                @relation(fields: [userId], references: [id])
   shiftId                   Int?

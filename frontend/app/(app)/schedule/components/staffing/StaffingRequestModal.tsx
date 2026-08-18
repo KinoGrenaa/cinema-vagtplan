@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
 
 import BaseModal from "@/app/components/modals/BaseModal";
 import type { Shift, User, JobFunction } from "../../../../../../shared/types";
@@ -138,20 +139,24 @@ export default function StaffingRequestModal({
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-semibold">Fra</label>
-              <input
-                type="datetime-local"
+              <ProjectDateTimePicker
                 value={startTime}
-                onChange={(event) => onStartTimeChange(event.target.value)}
-                className={fieldClass}
+                onChange={onStartTimeChange}
+                clearable
+                ariaLabel={
+                  "V\u00e6lg startdato og tid"
+                }
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-semibold">Til</label>
-              <input
-                type="datetime-local"
+              <ProjectDateTimePicker
                 value={endTime}
-                onChange={(event) => onEndTimeChange(event.target.value)}
-                className={fieldClass}
+                onChange={onEndTimeChange}
+                clearable
+                ariaLabel={
+                  "V\u00e6lg slutdato og tid"
+                }
               />
             </div>
             <div>

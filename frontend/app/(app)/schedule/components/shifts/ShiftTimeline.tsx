@@ -8,11 +8,18 @@ import {
   useState,
 } from "react";
 import type { Shift } from "../../../../../../shared/types";
+import MovieProgram, {
+  MOVIE_ROW_HEIGHT,
+  getMovieRooms,
+  getVisibleMovieMinutes,
+  type MovieShowing,
+} from "../movie-program/MovieProgram";
 
 type ShiftTimelineProps = {
   shifts: Shift[];
+  movieShowings: MovieShowing[];
   selectedDate: string;
-  onSelectShift: (shift: Shift) => void;
+  onSelectShift?: (shift: Shift) => void;
   onOpenCreateShift?: () => void;
 };
 
@@ -227,62 +234,100 @@ function getVisibleShiftMinutes(
 
 function getTimelineRange(
   shifts: Shift[],
+  movieShowings: MovieShowing[],
   selectedDate: string,
 ): TimelineRange {
-  const visibleRanges = shifts
-    .map((shift) =>
-      getVisibleShiftMinutes(
-        shift,
-        selectedDate,
-      ),
-    )
-    .filter(
-      (
-        range,
-      ): range is {
-        startMinutes: number;
-        endMinutes: number;
-      } => range !== null,
-    );
+  const visibleShiftRanges =
+    shifts
+      .map((shift) =>
+        getVisibleShiftMinutes(
+          shift,
+          selectedDate,
+        ),
+      )
+      .filter(
+        (
+          range,
+        ): range is {
+          startMinutes: number;
+          endMinutes: number;
+        } =>
+          range !== null,
+      );
 
-  if (visibleRanges.length === 0) {
+  const visibleMovieRanges =
+    movieShowings
+      .map((movie) =>
+        getVisibleMovieMinutes(
+          movie,
+          selectedDate,
+        ),
+      )
+      .filter(
+        (
+          range,
+        ): range is {
+          startMinutes: number;
+          endMinutes: number;
+        } =>
+          range !== null,
+      );
+
+  const visibleRanges = [
+    ...visibleShiftRanges,
+    ...visibleMovieRanges,
+  ];
+
+  if (
+    visibleRanges.length === 0
+  ) {
     return {
       startMinutes: 0,
       endMinutes: DAY_MINUTES,
-      durationMinutes: DAY_MINUTES,
+      durationMinutes:
+        DAY_MINUTES,
     };
   }
 
-  const earliestStart = Math.min(
-    ...visibleRanges.map(
-      (range) => range.startMinutes,
-    ),
-  );
-  const latestEnd = Math.max(
-    ...visibleRanges.map(
-      (range) => range.endMinutes,
-    ),
-  );
+  const earliestStart =
+    Math.min(
+      ...visibleRanges.map(
+        (range) =>
+          range.startMinutes,
+      ),
+    );
 
-  const rawStart = Math.max(
-    0,
-    earliestStart - RANGE_PADDING_MINUTES,
-  );
-  const rawEnd = Math.min(
-    DAY_MINUTES,
-    latestEnd + RANGE_PADDING_MINUTES,
-  );
+  const latestEnd =
+    Math.max(
+      ...visibleRanges.map(
+        (range) =>
+          range.endMinutes,
+      ),
+    );
 
-  const startMinutes = rawStart;
-  const endMinutes = rawEnd;
+  const startMinutes =
+    Math.max(
+      0,
+      earliestStart -
+        RANGE_PADDING_MINUTES,
+    );
+
+  const endMinutes =
+    Math.min(
+      DAY_MINUTES,
+      latestEnd +
+        RANGE_PADDING_MINUTES,
+    );
 
   return {
     startMinutes,
     endMinutes,
-    durationMinutes: Math.max(
-      MIN_VISIBLE_SHIFT_MINUTES,
-      endMinutes - startMinutes,
-    ),
+    durationMinutes:
+      Math.max(
+        MIN_VISIBLE_SHIFT_MINUTES,
+        endMinutes -
+          startMinutes,
+      ),
   };
 }
 
@@ -442,6 +487,7 @@ function buildTimeMarks(
 
 function ShiftTimeline({
   shifts,
+  movieShowings,
   selectedDate,
   onSelectShift,
   onOpenCreateShift,
@@ -476,9 +522,14 @@ function ShiftTimeline({
     () =>
       getTimelineRange(
         shifts,
+        movieShowings,
         selectedDate,
       ),
-    [selectedDate, shifts],
+    [
+      movieShowings,
+      selectedDate,
+      shifts,
+    ],
   );
 
   const timelineShifts = useMemo(
@@ -509,13 +560,43 @@ function ShiftTimeline({
       (item) => item.lane + 1,
     ),
   );
-  const dynamicHeight = Math.max(
-    MIN_TIMELINE_HEIGHT,
-    TOP_OFFSET +
+  const shiftAreaHeight =
+    Math.max(
+      SHIFT_HEIGHT,
       laneCount *
-        (SHIFT_HEIGHT + LANE_GAP) +
-      BOTTOM_ACTION_SPACE,
-  );
+          (
+            SHIFT_HEIGHT +
+            LANE_GAP
+          ) -
+        LANE_GAP,
+    );
+
+  const movieRoomCount =
+    getMovieRooms(
+      movieShowings,
+    ).length;
+
+  const actionSpace =
+    onOpenCreateShift
+      ? BOTTOM_ACTION_SPACE
+      : 24;
+
+  const movieTop =
+    TOP_OFFSET +
+    shiftAreaHeight +
+    actionSpace;
+
+  const movieRowsHeight =
+    movieRoomCount *
+    MOVIE_ROW_HEIGHT;
+
+  const dynamicHeight =
+    Math.max(
+      MIN_TIMELINE_HEIGHT,
+      movieTop +
+        movieRowsHeight +
+        12,
+    );
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
@@ -526,10 +607,17 @@ function ShiftTimeline({
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Viser {formatMinutes(
             timelineRange.startMinutes,
-          )}–{formatMinutes(
+          )}?{formatMinutes(
             timelineRange.endMinutes,
-          )} med 1 times luft før og efter dagens vagter, begrænset af
-          døgnets start og slut.
+          )} p? samme tidsakse for{" "}
+          {shifts.length > 0 &&
+          movieShowings.length > 0
+            ? "dagens vagter og film"
+            : shifts.length > 0
+              ? "dagens vagter"
+              : "dagens film"}
+          {". "}
+          {"Tidsudsnittet har 1 times luft omkring dagens indhold."}
         </p>
       </div>
 
@@ -610,9 +698,7 @@ function ShiftTimeline({
               right: 0,
               top: TOP_OFFSET,
               height:
-                dynamicHeight -
-                TOP_OFFSET -
-                BOTTOM_ACTION_SPACE,
+                shiftAreaHeight,
             }}
           >
             {timelineShifts.map(
@@ -629,6 +715,15 @@ function ShiftTimeline({
                 const shiftUserId =
                   getShiftUserId(shift);
 
+                const showOutsideUserLabel =
+                  width < 150;
+
+                const outsideUserLabelOnLeft =
+                  left +
+                    width +
+                    190 >
+                  timelineWidth;
+
                 return (
                   <div
                     key={shift.id}
@@ -640,23 +735,71 @@ function ShiftTimeline({
                       height: SHIFT_HEIGHT,
                     }}
                   >
+                    {showOutsideUserLabel ? (
+                      <div
+                        className={`pointer-events-none absolute top-1/2 z-30 w-max max-w-[180px] -translate-y-1/2 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-gray-950 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-white ${
+                          outsideUserLabelOnLeft
+                            ? "right-full mr-2"
+                            : "left-full ml-2"
+                        }`}
+                      >
+                        <div className="max-w-[160px] truncate text-xs font-black leading-tight">
+                          {shiftUserId
+                            ? getShiftUserName(
+                                shift,
+                              )
+                            : "Ikke tildelt"}
+                        </div>
+
+                        <div className="mt-0.5 max-w-[160px] truncate text-[10px] font-semibold leading-tight opacity-70">
+                          {getShiftJobFunctionName(
+                            shift,
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() =>
-                        onSelectShift(shift)
+                      role={
+                        onSelectShift
+                          ? "button"
+                          : undefined
                       }
-                      onKeyDown={(event) => {
-                        if (
-                          event.key ===
-                            "Enter" ||
-                          event.key === " "
-                        ) {
-                          event.preventDefault();
-                          onSelectShift(shift);
-                        }
-                      }}
-                      className="h-full cursor-pointer overflow-hidden rounded-xl border border-white/50 p-2 text-white shadow-lg transition hover:brightness-95"
+                      tabIndex={
+                        onSelectShift
+                          ? 0
+                          : undefined
+                      }
+                      onClick={
+                        onSelectShift
+                          ? () =>
+                              onSelectShift(
+                                shift,
+                              )
+                          : undefined
+                      }
+                      onKeyDown={
+                        onSelectShift
+                          ? (event) => {
+                              if (
+                                event.key ===
+                                  "Enter" ||
+                                event.key ===
+                                  " "
+                              ) {
+                                event.preventDefault();
+                                onSelectShift(
+                                  shift,
+                                );
+                              }
+                            }
+                          : undefined
+                      }
+                      className={`h-full overflow-hidden rounded-xl border border-white/50 p-2 text-white shadow-lg transition ${
+                        onSelectShift
+                          ? "cursor-pointer hover:brightness-95"
+                          : ""
+                      }`}
                       style={{
                         backgroundColor:
                           getShiftColor(shift),
@@ -712,7 +855,15 @@ function ShiftTimeline({
           </div>
 
           {onOpenCreateShift && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+            <div
+              className="pointer-events-none absolute inset-x-0 flex justify-center"
+              style={{
+                top:
+                  TOP_OFFSET +
+                  shiftAreaHeight +
+                  16,
+              }}
+            >
               <button
                 type="button"
                 onClick={onOpenCreateShift}
@@ -723,6 +874,25 @@ function ShiftTimeline({
               </button>
             </div>
           )}
+
+          <MovieProgram
+            movieShowings={
+              movieShowings
+            }
+            selectedDate={
+              selectedDate
+            }
+            range={
+              timelineRange
+            }
+            top={movieTop}
+            leftLabelWidth={
+              LEFT_LABEL_WIDTH
+            }
+            rowHeight={
+              MOVIE_ROW_HEIGHT
+            }
+          />
         </div>
       </div>
     </div>

@@ -84,10 +84,6 @@ const moduleRouteRules: Array<{
     moduleKey: "TIME_TRACKING",
   },
   {
-    prefix: "/clock",
-    moduleKey: "TIME_TRACKING",
-  },
-  {
     prefix: "/absence-calendar",
     moduleKey: "LEAVE",
   },

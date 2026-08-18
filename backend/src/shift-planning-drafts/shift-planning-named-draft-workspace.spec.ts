@@ -743,6 +743,109 @@ describe(
     );
 
     it(
+      'kopierer også en kladde uden vagtforslag',
+      async () => {
+        const copiedEmptyDraft = {
+          ...draftRow,
+          id: 53,
+          note:
+            'Tom kladde - kopi',
+        };
+
+        const queryRaw =
+          jest.fn().mockResolvedValue([
+            copiedEmptyDraft,
+          ]);
+
+        const executeRaw =
+          jest.fn().mockResolvedValue(
+            0,
+          );
+
+        const snapshotFindMany =
+          jest.fn().mockResolvedValue([
+            {
+              date:
+                new Date(
+                  '2026-08-27T00:00:00.000Z',
+                ),
+              isActive: false,
+              scheduleTemplateId:
+                null,
+              note:
+                'Kun dagsnapshot',
+            },
+          ]);
+
+        const snapshotCreateMany =
+          jest.fn().mockResolvedValue({
+            count: 1,
+          });
+
+        const transactionClient = {
+          $queryRaw:
+            queryRaw,
+          $executeRaw:
+            executeRaw,
+          shiftPlanningDraftDay: {
+            findMany:
+              snapshotFindMany,
+            createMany:
+              snapshotCreateMany,
+          },
+        };
+
+        const prisma = {
+          $transaction:
+            jest.fn(
+              async (callback) =>
+                callback(
+                  transactionClient,
+                ),
+            ),
+        } as any;
+
+        const result =
+          await copyNamedShiftPlanningDraft(
+            prisma,
+            {
+              sourceDraftId: 41,
+              cinemaId: 1,
+              name:
+                'Tom kladde - kopi',
+              actorUserId: 7,
+            },
+          );
+
+        expect(result).toEqual({
+          ...copiedEmptyDraft,
+          itemCount: 0,
+          dayCount: 1,
+        });
+
+        expect(
+          snapshotCreateMany,
+        ).toHaveBeenCalledWith({
+          data: [
+            {
+              cinemaId: 1,
+              draftId: 53,
+              date:
+                new Date(
+                  '2026-08-27T00:00:00.000Z',
+                ),
+              isActive: false,
+              scheduleTemplateId:
+                null,
+              note:
+                'Kun dagsnapshot',
+            },
+          ],
+        });
+      },
+    );
+
+    it(
       'afviser en ukendt kladde',
       async () => {
         const transactionClient = {

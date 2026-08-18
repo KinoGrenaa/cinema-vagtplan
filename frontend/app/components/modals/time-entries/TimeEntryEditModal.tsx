@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
 
 import BaseModal from "../BaseModal";
 
@@ -73,21 +74,25 @@ export default function TimeEntryEditModal({
       <div className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium">Clock ind</label>
-          <input
-            type="datetime-local"
+          <ProjectDateTimePicker
             value={newClockIn}
-            onChange={(event) => setNewClockIn(event.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-800 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
+            onChange={setNewClockIn}
+            clearable
+            ariaLabel={
+              "V\u00e6lg clock ind dato og tid"
+            }
           />
         </div>
 
         <div>
           <label className="mb-1 block text-sm font-medium">Clock ud</label>
-          <input
-            type="datetime-local"
+          <ProjectDateTimePicker
             value={newClockOut}
-            onChange={(event) => setNewClockOut(event.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-3 py-2 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-800 dark:focus:border-blue-400 dark:focus:ring-blue-400/25"
+            onChange={setNewClockOut}
+            clearable
+            ariaLabel={
+              "V\u00e6lg clock ud dato og tid"
+            }
           />
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import { apiFetch } from "@/app/lib/api";
 
 type RuleKind = "TIME_WINDOW" | "WEEKDAY" | "WEEKEND" | "HOLIDAY" | "JOB_FUNCTION";
@@ -837,7 +838,19 @@ export default function CinemaSettingsAdvancedPayRulesSection({ cinemaId }: { ci
             <div>
               <h5 className="font-semibold">Løn og gyldighed</h5>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="text-sm">Gælder fra dato<input className={fieldClass} type="date" value={draftValidFrom} onChange={(event) => { setDraftValidFrom(event.target.value); resetDraftImpact(); }} /></label>
+                <div className="text-sm">
+  <div>{"G\u00e6lder fra dato"}</div>
+  <ProjectDatePicker
+    value={draftValidFrom}
+    onChange={(nextValue) => {
+      setDraftValidFrom(nextValue);
+      resetDraftImpact();
+    }}
+    clearable
+    className="mt-1"
+    ariaLabel={"V\u00e6lg startdato for till\u00e6gsreglen"}
+  />
+</div>
                 <label className="text-sm">Tillæg pr. time<div className="relative"><input className={`${fieldClass} pr-12`} type="number" min="0.01" step="0.01" value={draftValue} onChange={(event) => { setDraftValue(event.target.value); resetDraftImpact(); }} placeholder="0,00" /><span className="pointer-events-none absolute bottom-2 right-3 text-sm text-slate-500">kr.</span></div></label>
                 <label className="text-sm sm:col-span-2">Kan tillægget lægges sammen med andre tillæg?<select className={fieldClass} value={stackingMode} onChange={(event) => { setStackingMode(event.target.value as "STACK" | "EXCLUSIVE"); if (event.target.value === "STACK") setExclusiveGroup(""); resetDraftImpact(); }}><option value="STACK">Ja, læg det sammen med andre tillæg</option><option value="EXCLUSIVE">Nej, brug kun ét tillæg fra denne gruppe</option></select></label>
                 {stackingMode === "EXCLUSIVE" && <><label className="text-sm">Navn på tillægsgruppe<input className={fieldClass} value={exclusiveGroup} onChange={(event) => { setExclusiveGroup(event.target.value); resetDraftImpact(); }} placeholder="Eksempel: Tidstillæg" /></label><label className="text-sm">Prioritet<input className={fieldClass} type="number" step="1" value={priority} onChange={(event) => { setPriority(event.target.value); resetDraftImpact(); }} /></label><p className="text-xs leading-5 text-slate-600 dark:text-slate-300 sm:col-span-2">Højeste prioritet vinder. Regler i samme gruppe må ikke have samme prioritet.</p></>}
@@ -857,7 +870,19 @@ export default function CinemaSettingsAdvancedPayRulesSection({ cinemaId }: { ci
           {error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800 dark:bg-red-950/40 dark:text-red-200">{error}</p>}
           {currentEffectiveVersion?.isEnabled === false && <p className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">Reglen er deaktiveret. Den nye version genaktiverer reglen fra den valgte dato.</p>}
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">Gælder fra dato<input className={fieldClass} type="date" value={validFrom} onChange={(event) => { setValidFrom(event.target.value); setImpact(null); }} /></label>
+            <div className="text-sm">
+  <div>{"G\u00e6lder fra dato"}</div>
+  <ProjectDatePicker
+    value={validFrom}
+    onChange={(nextValue) => {
+      setValidFrom(nextValue);
+      setImpact(null);
+    }}
+    clearable
+    className="mt-1"
+    ariaLabel={"V\u00e6lg dato for den nye version"}
+  />
+</div>
             <label className="text-sm">Beregning<select className={fieldClass} value={calculationType} onChange={(event) => { setCalculationType(event.target.value as CalculationType); setImpact(null); }}><option value="FIXED_PER_HOUR">Fast beløb pr. time</option><option value="PERCENT_OF_BASE">Procent af grundløn</option></select></label>
             <label className="text-sm">{calculationType === "PERCENT_OF_BASE" ? "Procent" : "Beløb pr. time"}<input className={fieldClass} type="number" min="0" step="0.01" value={value} onChange={(event) => { setValue(event.target.value); setImpact(null); }} /></label>
             {selectedRule.ruleKind === "TIME_WINDOW" && <><label className="text-sm">Fra kl.<input className={fieldClass} type="time" value={windowStart} onChange={(event) => { setWindowStart(event.target.value); setImpact(null); }} /></label><label className="text-sm">Til kl.<input className={fieldClass} type="time" value={windowEnd} onChange={(event) => { setWindowEnd(event.target.value); setImpact(null); }} /></label></>}
@@ -876,7 +901,19 @@ export default function CinemaSettingsAdvancedPayRulesSection({ cinemaId }: { ci
         <PayrollModal title={`Deaktiver ${selectedRule.name}`} onClose={closeModal}>
           {error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800 dark:bg-red-950/40 dark:text-red-200">{error}</p>}
           <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">Deaktivering opretter en ny historisk version. Tidligere vagter og afsluttede lønperioder ændres ikke.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-sm">Deaktiver fra dato<input className={fieldClass} type="date" value={deactivationDate} onChange={(event) => { setDeactivationDate(event.target.value); setDeactivationImpact(null); }} /></label><label className="text-sm">{deactivationImpact?.requiresReason ? "Begrundelse for den tidligere deaktiveringsdato" : "Bemærkning (valgfri)"}<input className={fieldClass} value={deactivationReason} onChange={(event) => { setDeactivationReason(event.target.value); setDeactivationImpact(null); }} required={deactivationImpact?.requiresReason ?? false} /></label></div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="text-sm">
+  <div>{"Deaktiver fra dato"}</div>
+  <ProjectDatePicker
+    value={deactivationDate}
+    onChange={(nextValue) => {
+      setDeactivationDate(nextValue);
+      setDeactivationImpact(null);
+    }}
+    clearable
+    className="mt-1"
+    ariaLabel={"V\u00e6lg deaktiveringsdato"}
+  />
+</div><label className="text-sm">{deactivationImpact?.requiresReason ? "Begrundelse for den tidligere deaktiveringsdato" : "Bemærkning (valgfri)"}<input className={fieldClass} value={deactivationReason} onChange={(event) => { setDeactivationReason(event.target.value); setDeactivationImpact(null); }} required={deactivationImpact?.requiresReason ?? false} /></label></div>
           {deactivationImpact && <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm dark:bg-blue-950/40">{deactivationImpact.openEntryCount} åbne, {deactivationImpact.lockedEntryCount} låste og {deactivationImpact.exportedEntryCount} eksporterede registreringer berøres.</p>}
           <div className="mt-6 flex flex-wrap justify-end gap-2"><button type="button" disabled={busy} onClick={closeModal} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-50 dark:border-slate-600">Annuller</button><button type="button" disabled={busy} onClick={() => void previewDeactivation()} className="rounded-lg border border-amber-500 px-4 py-2 text-sm font-semibold disabled:opacity-50">Beregn konsekvens</button><button type="button" disabled={busy || !deactivationImpact} onClick={() => void deactivateRule()} className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Deaktiver regel</button></div>
         </PayrollModal>
@@ -897,7 +934,19 @@ export default function CinemaSettingsAdvancedPayRulesSection({ cinemaId }: { ci
           {error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800 dark:bg-red-950/40 dark:text-red-200">{error}</p>}
           {message && <p className="mb-4 rounded-lg bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/40 dark:text-green-200">{message}</p>}
           <p className="text-sm text-slate-600 dark:text-slate-300">Opret de konkrete datoer, som tillægsregler af typen Særlig dag kan bruge.</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-4"><label className="text-sm">Navn<input className={fieldClass} value={dayName} onChange={(event) => { setDayName(event.target.value); setDayImpact(null); }} /></label><label className="text-sm">Dato<input className={fieldClass} type="date" value={dayDate} onChange={(event) => { setDayDate(event.target.value); setDayImpact(null); }} /></label><label className="text-sm">Type<select className={fieldClass} value={dayType} onChange={(event) => { setDayType(event.target.value as "PUBLIC_HOLIDAY" | "CUSTOM"); setDayImpact(null); }}><option value="PUBLIC_HOLIDAY">Helligdag</option><option value="CUSTOM">Særlig dag</option></select></label><label className="text-sm">{dayImpact?.requiresReason ? "Begrundelse for den tidligere dato" : "Bemærkning (valgfri)"}<input className={fieldClass} value={dayReason} onChange={(event) => { setDayReason(event.target.value); setDayImpact(null); }} required={dayImpact?.requiresReason ?? false} /></label></div>
+          <div className="mt-4 grid gap-3 md:grid-cols-4"><label className="text-sm">Navn<input className={fieldClass} value={dayName} onChange={(event) => { setDayName(event.target.value); setDayImpact(null); }} /></label><div className="text-sm">
+  <div>Dato</div>
+  <ProjectDatePicker
+    value={dayDate}
+    onChange={(nextValue) => {
+      setDayDate(nextValue);
+      setDayImpact(null);
+    }}
+    clearable
+    className="mt-1"
+    ariaLabel={"V\u00e6lg dato for s\u00e6rlig dag"}
+  />
+</div><label className="text-sm">Type<select className={fieldClass} value={dayType} onChange={(event) => { setDayType(event.target.value as "PUBLIC_HOLIDAY" | "CUSTOM"); setDayImpact(null); }}><option value="PUBLIC_HOLIDAY">Helligdag</option><option value="CUSTOM">Særlig dag</option></select></label><label className="text-sm">{dayImpact?.requiresReason ? "Begrundelse for den tidligere dato" : "Bemærkning (valgfri)"}<input className={fieldClass} value={dayReason} onChange={(event) => { setDayReason(event.target.value); setDayImpact(null); }} required={dayImpact?.requiresReason ?? false} /></label></div>
           {dayImpact?.requiresReason && <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">Datoen ligger før i dag. Afsluttede lønperioder ændres ikke; en eventuel forskel håndteres som efterregulering.</p>}
           {dayImpact && <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm dark:bg-blue-950/40">{dayImpact.openEntryCount} åbne, {dayImpact.lockedEntryCount} låste og {dayImpact.exportedEntryCount} eksporterede registreringer berøres.</p>}
           <div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={() => void previewDay()} className="rounded-lg border border-blue-400 px-4 py-2 text-sm font-semibold disabled:opacity-50">Beregn konsekvens</button><button type="button" disabled={busy || !dayImpact} onClick={() => void saveDay()} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Gem særlig dag</button></div>

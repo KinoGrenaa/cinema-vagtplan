@@ -1,4 +1,5 @@
 import PayrollAdjustmentNotice from "../../../../components/time-entries/PayrollAdjustmentNotice";
+import AutomaticTimeRegistrationNotice from "../../../../components/time-entries/AutomaticTimeRegistrationNotice";
 import { formatDateTime } from "../../helpers/core/myTimeDate";
 import { getHours } from "../../helpers/core/myTimeEntries";
 import {
@@ -59,6 +60,11 @@ export default function MyTimeEntryCard({
           {getStatusLabel(entry.status)}
         </span>
       </div>
+
+      <AutomaticTimeRegistrationNotice
+        automaticClockIn={entry.automaticClockIn}
+        automaticClockOut={entry.automaticClockOut}
+      />
 
       <PayrollAdjustmentNotice
         adjustments={entry.payrollAdjustments}

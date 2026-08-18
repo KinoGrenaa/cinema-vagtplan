@@ -5,6 +5,8 @@ export type TimeEntry = {
   clockIn: string;
   clockOut?: string | null;
   status: TimeEntryStatus;
+  automaticClockIn?: boolean;
+  automaticClockOut?: boolean;
   note?: string | null;
   clockInNote?: string | null;
   clockOutNote?: string | null;

@@ -42,7 +42,7 @@ describe('payroll period mutation lock', () => {
       },
       $queryRaw: jest.fn().mockResolvedValue([
         {
-          pg_advisory_xact_lock: null,
+          locked: 1,
         },
       ]),
     };
@@ -105,7 +105,7 @@ describe('payroll period mutation lock', () => {
       },
       $queryRaw: jest.fn().mockResolvedValue([
         {
-          pg_advisory_xact_lock: null,
+          locked: 1,
         },
       ]),
     };
@@ -192,7 +192,7 @@ describe('payroll period mutation lock', () => {
       },
       $queryRaw: jest.fn().mockResolvedValue([
         {
-          pg_advisory_xact_lock: null,
+          locked: 1,
         },
       ]),
     };

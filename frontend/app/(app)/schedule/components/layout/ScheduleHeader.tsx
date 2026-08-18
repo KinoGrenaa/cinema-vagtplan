@@ -1,8 +1,11 @@
 "use client";
 
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
+
 type SchedulePageHeaderProps = {
   aiGenerateDaySchedule?: () => void;
   aiGeneratingDaySchedule: boolean;
+  showRegisterTimeButton: boolean;
   onOpenRegisterTimeModal: () => void;
   onOpenManualTimeModal: () => void;
   disableManualTimeModal: boolean;
@@ -22,6 +25,7 @@ const secondaryButtonClass =
 export function SchedulePageHeader({
   aiGenerateDaySchedule,
   aiGeneratingDaySchedule,
+  showRegisterTimeButton,
   onOpenRegisterTimeModal,
   onOpenManualTimeModal,
   disableManualTimeModal,
@@ -33,9 +37,11 @@ export function SchedulePageHeader({
           <h1 className="text-3xl font-bold text-gray-950 dark:text-white">
             Vagtplan
           </h1>
+
           <p className="mt-1 text-gray-600 dark:text-gray-300">
             Overblik over vagter, bemanding og dagens program
           </p>
+
           {aiGenerateDaySchedule && (
             <div className="mt-4 flex flex-wrap gap-3">
               <button
@@ -53,6 +59,7 @@ export function SchedulePageHeader({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {showRegisterTimeButton ? (
           <button
             type="button"
             onClick={onOpenRegisterTimeModal}
@@ -60,6 +67,8 @@ export function SchedulePageHeader({
           >
             Registrer tid
           </button>
+          ) : null}
+
           <button
             type="button"
             onClick={onOpenManualTimeModal}
@@ -88,8 +97,12 @@ export function ScheduleDateNavigation({
           <div className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
             Dato for vagtplan
           </div>
+
           <div className="text-2xl font-bold text-gray-950 dark:text-white">
-            {selectedDate.split("-").reverse().join("-")}
+            {selectedDate
+              .split("-")
+              .reverse()
+              .join("-")}
           </div>
         </div>
 
@@ -99,8 +112,9 @@ export function ScheduleDateNavigation({
             onClick={onPreviousDay}
             className={secondaryButtonClass}
           >
-            ← Forrige dag
+            {"← Forrige dag"}
           </button>
+
           <button
             type="button"
             onClick={onToday}
@@ -108,22 +122,20 @@ export function ScheduleDateNavigation({
           >
             I dag
           </button>
-          <label className="relative inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-blue-300 bg-blue-50 text-lg text-blue-900 shadow-sm transition hover:bg-blue-100 active:bg-blue-200 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:bg-blue-950 dark:active:bg-blue-900 dark:focus-within:ring-blue-400 dark:focus-within:ring-offset-gray-900">
-            <span aria-hidden="true"></span>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(event) => onDateChange(event.target.value)}
-              className="absolute inset-0 cursor-pointer opacity-0"
-              aria-label="Vælg dato"
-            />
-          </label>
+
+          <ProjectDatePicker
+            value={selectedDate}
+            onChange={onDateChange}
+            variant="icon"
+            ariaLabel={"Vælg dato"}
+          />
+
           <button
             type="button"
             onClick={onNextDay}
             className={secondaryButtonClass}
           >
-            Næste dag →
+            {"Næste dag →"}
           </button>
         </div>
       </div>

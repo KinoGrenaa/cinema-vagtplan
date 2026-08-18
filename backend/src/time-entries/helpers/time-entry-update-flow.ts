@@ -117,6 +117,8 @@ export async function updateOwnTimeEntry(params: {
           clockOutNote:
             updateContext.newClockOutNote,
           status: 'PENDING',
+          automaticClockIn: false,
+          automaticClockOut: false,
         },
         include: getTimeEntryResponseInclude(),
       });

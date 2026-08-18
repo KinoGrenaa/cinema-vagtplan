@@ -1,5 +1,6 @@
 "use client";
 
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import FilterModal from "@/app/components/modals/FilterModal";
 
 import type {
@@ -34,8 +35,6 @@ const optionClass =
 const checkboxClass =
   "mt-0.5 h-4 w-4 rounded border-gray-300 accent-blue-700 dark:border-gray-600 dark:accent-blue-400";
 
-const dateFieldClass =
-  "mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/25";
 
 export default function LeaveApprovalFilterModal({
   open,
@@ -157,47 +156,31 @@ export default function LeaveApprovalFilterModal({
           </h3>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm text-gray-800 dark:text-gray-200">
-              <span className="font-medium">
+            <div className="block text-sm text-gray-800 dark:text-gray-200">
+              <div className="font-medium">
                 Fra dato
-              </span>
-
-              <input
-                type="date"
-                value={
-                  draftStartDateFilter
-                }
-                onChange={(event) =>
-                  onStartDateFilterChange(
-                    event.target.value,
-                  )
-                }
-                className={
-                  dateFieldClass
-                }
+              </div>
+              <ProjectDatePicker
+                value={draftStartDateFilter}
+                onChange={onStartDateFilterChange}
+                clearable
+                className="mt-1"
+                ariaLabel={"V\u00e6lg fra dato"}
               />
-            </label>
+            </div>
 
-            <label className="block text-sm text-gray-800 dark:text-gray-200">
-              <span className="font-medium">
+            <div className="block text-sm text-gray-800 dark:text-gray-200">
+              <div className="font-medium">
                 Til dato
-              </span>
-
-              <input
-                type="date"
-                value={
-                  draftEndDateFilter
-                }
-                onChange={(event) =>
-                  onEndDateFilterChange(
-                    event.target.value,
-                  )
-                }
-                className={
-                  dateFieldClass
-                }
+              </div>
+              <ProjectDatePicker
+                value={draftEndDateFilter}
+                onChange={onEndDateFilterChange}
+                clearable
+                className="mt-1"
+                ariaLabel={"V\u00e6lg til dato"}
               />
-            </label>
+            </div>
           </div>
 
           <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">

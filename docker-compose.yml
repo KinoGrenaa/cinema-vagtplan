@@ -27,6 +27,7 @@ services:
       - database
     volumes:
       - ./backend/dist:/app/dist:ro
+      - ./backend/uploads:/app/uploads
       - backend_dist:/app/runtime-dist
   backend-build:
     build:

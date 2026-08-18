@@ -46,10 +46,13 @@ async function acquirePayrollPeriodAdvisoryLock(
 
   await prisma.$queryRaw(
     Prisma.sql`
-      SELECT pg_advisory_xact_lock(
-        ${cinemaKey},
-        ${periodKey}
-      )
+      SELECT 1::integer AS locked
+      FROM (
+        SELECT pg_advisory_xact_lock(
+          CAST(${cinemaKey} AS integer),
+          CAST(${periodKey} AS integer)
+        )
+      ) AS advisory_lock
     `,
   );
 }

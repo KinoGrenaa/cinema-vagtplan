@@ -1,5 +1,6 @@
 "use client";
 
+import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import FilterModal from "@/app/components/modals/FilterModal";
 
 type TimeApprovalFilterModalProps = {
@@ -67,8 +68,6 @@ function optionClass(
 const checkboxClass =
   "h-4 w-4 rounded border-gray-300 accent-blue-700 dark:border-gray-600 dark:accent-blue-400";
 
-const dateFieldClass =
-  "mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/25";
 
 export default function TimeApprovalFilterModal({
   open,
@@ -317,39 +316,27 @@ export default function TimeApprovalFilterModal({
           </h3>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-200">
               Fra
-
-              <input
-                type="date"
+              <ProjectDatePicker
                 value={dateFrom}
-                onChange={(event) =>
-                  onDateFromChange(
-                    event.target.value,
-                  )
-                }
-                className={
-                  dateFieldClass
-                }
+                onChange={onDateFromChange}
+                clearable
+                className="mt-1"
+                ariaLabel={"V\u00e6lg fra dato"}
               />
-            </label>
+            </div>
 
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-200">
               Til
-
-              <input
-                type="date"
+              <ProjectDatePicker
                 value={dateTo}
-                onChange={(event) =>
-                  onDateToChange(
-                    event.target.value,
-                  )
-                }
-                className={
-                  dateFieldClass
-                }
+                onChange={onDateToChange}
+                clearable
+                className="mt-1"
+                ariaLabel={"V\u00e6lg til dato"}
               />
-            </label>
+            </div>
           </div>
         </section>
       </div>

@@ -160,6 +160,7 @@ export default function SchedulePage() {
     shiftsForTimeRegistration,
     handleRegisterClockIn,
     handleRegisterClockOut,
+    canRegisterTime,
     openRegisterTimeModal,
     openManualTimeModal,
     handleSubmitManualTimeWithoutShift,
@@ -303,6 +304,7 @@ export default function SchedulePage() {
               needsMasterCinemaSelection={needsMasterCinemaSelection}
               leaveRequests={leaveRequests}
               movieShowings={filteredMovieShowings}
+              showRegisterTimeButton={canRegisterTime}
               onOpenRegisterTimeModal={openRegisterTimeModal}
               onOpenManualTimeModal={openManualTimeModal}
               onOpenCreateShift={() =>

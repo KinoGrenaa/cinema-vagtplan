@@ -105,6 +105,20 @@ export async function findCinemaByIdOrThrow(
       where: {
         id,
       },
+      include: {
+        automaticTimeRegistrationVersions: {
+          where: {
+            validTo: null,
+          },
+          orderBy: {
+            validFrom: 'desc',
+          },
+          take: 1,
+          select: {
+            validFrom: true,
+          },
+        },
+      },
     });
 
   if (!cinema) {
@@ -113,5 +127,16 @@ export async function findCinemaByIdOrThrow(
     );
   }
 
-  return cinema;
+  const {
+    automaticTimeRegistrationVersions,
+    ...cinemaData
+  } = cinema;
+
+  return {
+    ...cinemaData,
+    automaticTimeRegistrationMethodValidFrom:
+      automaticTimeRegistrationVersions[0]
+        ?.validFrom ??
+      null,
+  };
 }

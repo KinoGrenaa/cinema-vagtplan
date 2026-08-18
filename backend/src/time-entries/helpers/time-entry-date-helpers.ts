@@ -1,5 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 
+import { getCopenhagenDateKey } from '../../shift-planning-drafts/shift-planning-time-zone';
+
 export function parseRequiredTimeEntryDate(
   value: string,
   invalidMessage: string,
@@ -41,6 +43,40 @@ export function parseNullableTimeEntryDate(
   }
 
   return date;
+}
+
+export function ensureTimeEntryActionOnCopenhagenToday(
+  value: Date,
+  message: string,
+  now: Date = new Date(),
+) {
+  if (
+    getCopenhagenDateKey(value) !==
+    getCopenhagenDateKey(now)
+  ) {
+    throw new BadRequestException(
+      message,
+    );
+  }
+}
+
+export function ensureClockInShiftOnCopenhagenToday(
+  shift: {
+    startTime: Date;
+  } | null,
+  now: Date = new Date(),
+) {
+  if (!shift) {
+    throw new BadRequestException(
+      'Der blev ikke fundet en relevant vagt p\u00e5 dags dato',
+    );
+  }
+
+  ensureTimeEntryActionOnCopenhagenToday(
+    shift.startTime,
+    'Du kan kun registrere m\u00f8detid p\u00e5 vagter p\u00e5 dags dato',
+    now,
+  );
 }
 
 export function ensureClockOutAfterClockIn(

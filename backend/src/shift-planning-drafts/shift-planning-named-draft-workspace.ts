@@ -732,10 +732,6 @@ export async function copyNamedShiftPlanningDraft(
           AND source_item."cinemaId" = ${input.cinemaId}
       `);
 
-    if (itemCount === 0) {
-      throw new EmptyShiftPlanningNamedDraftError();
-    }
-
     const sourceDays =
       await tx.shiftPlanningDraftDay.findMany({
         where: {
