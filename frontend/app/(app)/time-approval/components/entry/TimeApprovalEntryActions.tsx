@@ -51,6 +51,10 @@ export default function TimeApprovalEntryActions({
     entry.status ===
     "APPROVED";
 
+  const isVoided =
+    entry.status ===
+    "VOIDED";
+
   return (
     <div className="flex w-full flex-col gap-3 lg:w-72">
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -99,17 +103,19 @@ export default function TimeApprovalEntryActions({
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={() =>
-            onEdit(entry)
-          }
-          className={
-            secondaryAction
-          }
-        >
-          {"Redig\u00e9r"}
-        </button>
+        {!isVoided && (
+          <button
+            type="button"
+            onClick={() =>
+              onEdit(entry)
+            }
+            className={
+              secondaryAction
+            }
+          >
+            {"Redig\u00e9r"}
+          </button>
+        )}
 
         <button
           type="button"

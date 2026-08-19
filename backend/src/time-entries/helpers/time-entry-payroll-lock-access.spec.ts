@@ -19,6 +19,26 @@ describe('time entry payroll lock access', () => {
   );
 
   it.each(['ADMIN', 'MASTER', 'EMPLOYEE'])(
+    'afviser %s ændring af en afvist registrering',
+    (role) => {
+      expect(() =>
+        ensureTimeEntryEditable(
+          {
+            status: 'VOIDED',
+            payrollLocked: false,
+          },
+          {
+            role,
+          },
+        ),
+      ).toThrow(
+        new BadRequestException(
+          'En afvist tidsregistrering kan ikke redigeres.',
+        ),
+      );
+    },
+  );
+  it.each(['ADMIN', 'MASTER', 'EMPLOYEE'])(
     'kræver genåbning af en LOCKED periode for %s',
     (role) => {
       expect(() =>

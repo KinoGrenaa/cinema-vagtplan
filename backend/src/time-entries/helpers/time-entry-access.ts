@@ -60,6 +60,12 @@ export function ensureTimeEntryEditable(
   entry: any,
   user?: any,
 ) {
+  if (entry.status === 'VOIDED') {
+    throw new BadRequestException(
+      'En afvist tidsregistrering kan ikke redigeres.',
+    );
+  }
+
   if (!entry.payrollLocked) {
     return;
   }
