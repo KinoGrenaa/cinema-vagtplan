@@ -55,6 +55,9 @@ export default function TimeApprovalEntryActions({
     entry.status ===
     "VOIDED";
 
+  const isOpenEntry =
+    !entry.clockOut;
+
   return (
     <div className="flex w-full flex-col gap-3 lg:w-72">
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -79,7 +82,8 @@ export default function TimeApprovalEntryActions({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        {isPending && (
+        {isPending &&
+          !isOpenEntry && (
           <button
             type="button"
             onClick={() =>

@@ -80,7 +80,7 @@ describe('payroll export readiness', () => {
     },
   );
 
-  it('afviser en allerede eksporteret periode', async () => {
+  it('tillader ny eksport af en allerede eksporteret periode', async () => {
     const prisma = {
       payrollPeriod: {
         findFirst: jest.fn().mockResolvedValue({
@@ -97,9 +97,15 @@ describe('payroll export readiness', () => {
         '2026-07-21',
         '2026-08-20',
       ),
-    ).rejects.toThrow(
-      'Lønperioden er allerede eksporteret',
-    );
+    ).resolves.toEqual({
+      periodId: 12,
+      cinemaId: 2,
+      startDateTime: startDate.getTime(),
+      endDateTime: endDate.getTime(),
+      lockedAtTime: lockedAt.getTime(),
+      lockedCalculationRunId: 44,
+      calculationChecksum: 'checksum-44',
+    });
   });
 
   it('kræver samme låste snapshot ved et filtreret medarbejderudtræk', async () => {
@@ -136,6 +142,26 @@ describe('payroll export readiness', () => {
         lockedCalculationRunId: 44,
         calculationChecksum: 'checksum-44',
       }),
+    ).not.toThrow();
+  });
+
+  it('accepterer EXPORTED ved finalisering når det låste snapshot er uændret', () => {
+    expect(() =>
+      ensurePayrollExportLockUnchanged(
+        {
+          ...lockedPeriod,
+          status: 'EXPORTED',
+        },
+        {
+          periodId: 12,
+          cinemaId: 2,
+          startDateTime: startDate.getTime(),
+          endDateTime: endDate.getTime(),
+          lockedAtTime: lockedAt.getTime(),
+          lockedCalculationRunId: 44,
+          calculationChecksum: 'checksum-44',
+        },
+      ),
     ).not.toThrow();
   });
 

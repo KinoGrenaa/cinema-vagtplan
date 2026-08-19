@@ -4,6 +4,7 @@ import {
   Get,
   GoneException,
   Header,
+  Param,
   Post,
   Query,
   Req,
@@ -20,6 +21,7 @@ import {
   normalizePayrollDate,
   normalizePayrollPeriod,
   parsePayrollOptionalBodyId,
+  parsePayrollRequiredId,
   parsePayrollOptionalQueryId,
 } from './helpers/payroll-input';
 
@@ -135,14 +137,22 @@ export class PayrollController {
   }
 
   @Post('period/:id/unlock')
-  unlockPeriod() {
-    throw new GoneException({
-      code: 'CLOSED_PAYROLL_PERIOD_IMMUTABLE',
-      message:
-        'En låst eller eksporteret lønperiode kan ikke genåbnes. Rettelser håndteres som efterregulering.',
-    });
+  unlockPeriod(
+    @Req() req: any,
+    @Param('id') periodId: string,
+    @Body('note') note?: string,
+    @Body('cinemaId') cinemaId?: number | string | null,
+  ) {
+    return this.payrollService.unlockPeriod(
+      req.user,
+      parsePayrollRequiredId(
+        periodId,
+        'Lønperiode skal være et gyldigt ID',
+      ),
+      note,
+      this.parseBodyCinemaId(cinemaId),
+    );
   }
-
   @Post('time-entry/:id/unlock')
   unlockTimeEntry() {
     throw new GoneException({

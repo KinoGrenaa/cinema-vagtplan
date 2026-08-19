@@ -134,9 +134,6 @@ export async function lockPayrollPeriod(
             lockedByUserId: user.sub,
             exportedAt: null,
             exportedByUserId: null,
-            unlockedAt: null,
-            unlockedByUserId: null,
-            unlockNote: null,
           },
         })
       : await tx.payrollPeriod.create({

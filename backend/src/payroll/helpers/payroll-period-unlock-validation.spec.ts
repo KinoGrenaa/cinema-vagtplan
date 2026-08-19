@@ -23,14 +23,21 @@ describe('payroll unlock validation', () => {
     ).toBe('Rettelse efter kontrol');
   });
 
-  it.each(['LOCKED', 'EXPORTED'])(
-    'tillader genåbning af status %s',
-    (status) => {
-      expect(() =>
-        ensurePayrollPeriodCanBeUnlocked(status),
-      ).not.toThrow();
-    },
-  );
+  it('tillader genåbning af en låst lønperiode', () => {
+    expect(() =>
+      ensurePayrollPeriodCanBeUnlocked('LOCKED'),
+    ).not.toThrow();
+  });
+
+  it('afviser genåbning af en eksporteret lønperiode', () => {
+    expect(() =>
+      ensurePayrollPeriodCanBeUnlocked('EXPORTED'),
+    ).toThrow(
+      new BadRequestException(
+        'En eksporteret lønperiode kan ikke genåbnes. Rettelser håndteres som efterregulering.',
+      ),
+    );
+  });
 
   it.each(['OPEN', 'UNLOCKED'])(
     'afviser genåbning af status %s',
@@ -39,7 +46,7 @@ describe('payroll unlock validation', () => {
         ensurePayrollPeriodCanBeUnlocked(status),
       ).toThrow(
         new BadRequestException(
-          'Kun låste eller eksporterede lønperioder kan genåbnes.',
+          'Kun en låst lønperiode kan genåbnes.',
         ),
       );
     },

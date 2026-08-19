@@ -1,10 +1,18 @@
 import type { PayrollPeriodStatusProps } from "../../types";
 import { formatDateTime, formatHours } from "../../utils";
+import {
+  isPayrollReportReady,
+  resolvePayrollPeriodStatus,
+} from "../../helpers/payrollPeriodUi";
 
 import PayrollWarnings from "./PayrollWarnings";
 
 export default function PayrollPeriodStatus({
   period,
+  periodLoading,
+  periodLoadFailed,
+  reportLoading,
+  reportLoadFailed,
   totalHours,
   pendingCount,
   voidedCount,
@@ -17,7 +25,11 @@ export default function PayrollPeriodStatus({
   onOpenExportModal,
   onOpenTimeApproval,
 }: PayrollPeriodStatusProps) {
-  const periodStatus = period?.status ?? "OPEN";
+  const periodStatus = resolvePayrollPeriodStatus(
+    period?.status,
+    periodLoading,
+    periodLoadFailed,
+  );
   const isOpenPeriod =
     periodStatus === "OPEN" || periodStatus === "UNLOCKED";
   const hasWarnings =
@@ -25,17 +37,38 @@ export default function PayrollPeriodStatus({
     voidedCount > 0 ||
     adjustmentCount > 0;
   const unresolvedBlocked = pendingCount > 0;
+  const reportReady =
+    isPayrollReportReady(
+      reportLoading,
+      reportLoadFailed,
+    );
+  const reportUnavailable = !reportReady;
   const exportAllowed =
-    periodStatus === "LOCKED" && !unresolvedBlocked;
-  const exportDisabledReason = unresolvedBlocked
-    ? "Håndtér tidsregistreringerne, før perioden eksporteres."
-    : periodStatus === "EXPORTED"
-      ? "Perioden er allerede eksporteret. Genåbn og lås perioden igen for at oprette en ny eksport."
-      : periodStatus !== "LOCKED"
-        ? "Lås lønperioden, før den eksporteres."
-        : undefined;
+    (periodStatus === "LOCKED" ||
+      periodStatus === "EXPORTED") &&
+    reportReady &&
+    !unresolvedBlocked;
+  const exportDisabledReason = periodLoadFailed
+    ? "Lønperiodens status kunne ikke indlæses."
+    : periodStatus === null
+      ? "Lønperiodens status indlæses."
+      : reportLoadFailed
+        ? "Lønrapporten kunne ikke indlæses."
+        : reportLoading
+          ? "Lønrapporten indlæses."
+          : unresolvedBlocked
+            ? "Håndtér tidsregistreringerne, før perioden eksporteres."
+            : periodStatus !== "LOCKED" &&
+                periodStatus !== "EXPORTED"
+              ? "Lås lønperioden, før den eksporteres."
+              : undefined;
 
   const statusLabel =
+    periodLoadFailed
+      ? "Status utilgængelig"
+      : periodStatus === null
+        ? "Indlæser..."
+        :
     periodStatus === "LOCKED"
       ? "Låst"
       : periodStatus === "EXPORTED"
@@ -43,6 +76,11 @@ export default function PayrollPeriodStatus({
         : "Åben";
 
   const statusClasses =
+    periodLoadFailed
+      ? "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200"
+      : periodStatus === null
+        ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+        :
     periodStatus === "LOCKED"
       ? "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
       : periodStatus === "EXPORTED"
@@ -70,13 +108,13 @@ export default function PayrollPeriodStatus({
             </span>
           </div>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-            {period?.lockedAt && (
+            {!periodLoading && period?.lockedAt && (
               <span>Låst: {formatDateTime(period.lockedAt)}</span>
             )}
-            {period?.exportedAt && (
+            {!periodLoading && period?.exportedAt && (
               <span>Eksporteret: {formatDateTime(period.exportedAt)}</span>
             )}
-            {period?.unlockedAt && (
+            {!periodLoading && period?.unlockedAt && (
               <span>Genåbnet: {formatDateTime(period.unlockedAt)}</span>
             )}
           </div>
@@ -87,11 +125,19 @@ export default function PayrollPeriodStatus({
             <button
               type="button"
               onClick={onLockPeriod}
-              disabled={locking || unresolvedBlocked}
-              title={
+              disabled={
+                locking ||
+                reportUnavailable ||
                 unresolvedBlocked
-                  ? "Håndtér tidsregistreringerne, før perioden låses."
-                  : undefined
+              }
+              title={
+                reportLoadFailed
+                  ? "Lønrapporten kunne ikke indlæses."
+                  : reportLoading
+                    ? "Lønrapporten indlæses."
+                    : unresolvedBlocked
+                      ? "Håndtér tidsregistreringerne, før perioden låses."
+                      : undefined
               }
               className="rounded-xl bg-green-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-800 active:bg-green-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-green-600 dark:hover:bg-green-500 dark:active:bg-green-400 dark:focus-visible:ring-green-400 dark:focus-visible:ring-offset-gray-900"
             >
@@ -99,8 +145,7 @@ export default function PayrollPeriodStatus({
             </button>
           )}
 
-          {(periodStatus === "LOCKED" ||
-            periodStatus === "EXPORTED") && (
+          {periodStatus === "LOCKED" && (
             <button
               type="button"
               onClick={onUnlockPeriod}

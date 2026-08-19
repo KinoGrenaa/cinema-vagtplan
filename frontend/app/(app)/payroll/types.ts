@@ -135,6 +135,10 @@ export type PayrollReportResponse = {
 
 export type PayrollPeriodStatusProps = {
   period: PayrollPeriod | null;
+  periodLoading: boolean;
+  periodLoadFailed: boolean;
+  reportLoading: boolean;
+  reportLoadFailed: boolean;
   totalHours: number;
   pendingCount: number;
   voidedCount: number;

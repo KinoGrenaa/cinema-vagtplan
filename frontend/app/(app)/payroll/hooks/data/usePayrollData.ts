@@ -48,9 +48,15 @@ export function usePayrollData({
   const [voidedCount, setVoidedCount] = useState(0);
   const [adjustmentCount, setAdjustmentCount] = useState(0);
   const [period, setPeriod] = useState<PayrollPeriod | null>(null);
+  const [loadedPeriodKey, setLoadedPeriodKey] =
+    useState<string | null>(null);
+  const [failedPeriodKey, setFailedPeriodKey] =
+    useState<string | null>(null);
+  const periodKey = `${startDate}|${endDate}`;
   const [auditHistory, setAuditHistory] = useState<PayrollAuditHistory[]>([]);
   const [auditHistoryLoading, setAuditHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reportLoadFailed, setReportLoadFailed] = useState(false);
 
   const reportRequestIdRef = useRef(0);
   const periodRequestIdRef = useRef(0);
@@ -95,6 +101,9 @@ export function usePayrollData({
     setVoidedCount(0);
     setAdjustmentCount(0);
     setPeriod(null);
+    setLoadedPeriodKey(null);
+    setFailedPeriodKey(null);
+    setReportLoadFailed(false);
     setLoading(false);
   }
 
@@ -135,6 +144,7 @@ export function usePayrollData({
 
   async function loadReport(requestId: number) {
     try {
+      setReportLoadFailed(false);
       setLoading(true);
       const data = await fetchPayrollReport({
         startDate,
@@ -148,6 +158,7 @@ export function usePayrollData({
       setPendingCount(data.pendingCount);
       setVoidedCount(data.voidedCount);
       setAdjustmentCount(data.adjustmentCount ?? 0);
+      setReportLoadFailed(false);
     } catch (error) {
       if (!isLatestReportRequest(requestId)) return;
 
@@ -155,6 +166,7 @@ export function usePayrollData({
       setPendingCount(0);
       setVoidedCount(0);
       setAdjustmentCount(0);
+      setReportLoadFailed(true);
       onError?.(
         "Kunne ikke hente lønrapport",
         getErrorDescription(
@@ -170,6 +182,10 @@ export function usePayrollData({
   }
 
   async function loadPeriod(requestId: number) {
+    const requestKey = periodKey;
+    setLoadedPeriodKey(null);
+    setFailedPeriodKey(null);
+
     try {
       const data = await fetchPayrollPeriod({
         startDate,
@@ -179,10 +195,14 @@ export function usePayrollData({
       if (!isLatestPeriodRequest(requestId)) return;
 
       setPeriod(data);
+      setLoadedPeriodKey(requestKey);
+      setFailedPeriodKey(null);
     } catch (error) {
       if (!isLatestPeriodRequest(requestId)) return;
 
       setPeriod(null);
+      setLoadedPeriodKey(requestKey);
+      setFailedPeriodKey(requestKey);
       onError?.(
         "Kunne ikke hente lønperiodestatus",
         getErrorDescription(
@@ -323,7 +343,10 @@ export function usePayrollData({
     pendingCount,
     voidedCount,
     adjustmentCount,
+    reportLoadFailed,
     period,
+    periodLoading: !enabled || loadedPeriodKey !== periodKey,
+    periodLoadFailed: enabled && failedPeriodKey === periodKey,
     auditHistory,
     auditHistoryLoading,
     loading,

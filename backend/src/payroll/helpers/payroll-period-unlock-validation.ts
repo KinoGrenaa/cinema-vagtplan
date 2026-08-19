@@ -13,12 +13,18 @@ export function getRequiredPayrollUnlockNote(note?: string) {
 }
 
 export function ensurePayrollPeriodCanBeUnlocked(status: string) {
-  if (status === 'LOCKED' || status === 'EXPORTED') {
+  if (status === 'LOCKED') {
     return;
   }
 
+  if (status === 'EXPORTED') {
+    throw new BadRequestException(
+      'En eksporteret lønperiode kan ikke genåbnes. Rettelser håndteres som efterregulering.',
+    );
+  }
+
   throw new BadRequestException(
-    'Kun låste eller eksporterede lønperioder kan genåbnes.',
+    'Kun en låst lønperiode kan genåbnes.',
   );
 }
 

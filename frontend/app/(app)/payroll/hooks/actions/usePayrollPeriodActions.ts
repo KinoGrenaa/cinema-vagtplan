@@ -4,6 +4,7 @@ import {
   lockPayrollPeriod,
   unlockPayrollPeriod,
 } from "../../services/payrollService";
+import { formatPayrollPeriodDialogDateRange } from "../../helpers/payrollPeriodUi";
 
 type ConfirmDialog = {
   confirm: (options: {
@@ -54,11 +55,16 @@ export function usePayrollPeriodActions({
 }: UsePayrollPeriodActionsOptions) {
   const [locking, setLocking] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const periodDateRange =
+    formatPayrollPeriodDialogDateRange(
+      startDate,
+      endDate,
+    );
 
   function lockPeriod() {
     confirmDialog.confirm({
       title: "Lås lønperiode",
-      description: `Er du sikker på, at du vil låse lønperioden ${startDate} til ${endDate}?`,
+      description: `Er du sikker på, at du vil låse denne lønperiode?\n${periodDateRange}`,
       confirmText: "Lås lønperiode",
       cancelText: "Annuller",
       confirmVariant: "danger",
@@ -90,7 +96,7 @@ export function usePayrollPeriodActions({
 
     inputDialog.prompt({
       title: "Genåbn lønperiode",
-      description: `Skriv en intern note om hvorfor lønperioden ${startDate} til ${endDate} skal genåbnes.`,
+      description: `Skriv en intern note om hvorfor denne lønperiode skal genåbnes.\n${periodDateRange}`,
       label: "Intern note",
       placeholder: "Skriv intern note...",
       confirmText: "Genåbn lønperiode",

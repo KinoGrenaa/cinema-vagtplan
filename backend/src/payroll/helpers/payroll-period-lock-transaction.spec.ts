@@ -152,6 +152,66 @@ describe('payroll period lock transaction', () => {
     );
   });
 
+  it('bevarer genåbningsaudit når en genåbnet periode låses igen', async () => {
+    const previousUnlockedAt = new Date('2026-08-19T06:04:00.000Z');
+    const period = {
+      id: 12,
+      cinemaId: 2,
+      status: 'LOCKED',
+      unlockedAt: previousUnlockedAt,
+      unlockedByUserId: 7,
+      unlockNote: 'Test: genåbner låst periode før eksport',
+    };
+    const tx = {
+      payrollPeriod: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...period,
+          status: 'UNLOCKED',
+        }),
+        update: jest.fn().mockResolvedValue(period),
+        create: jest.fn(),
+      },
+      payrollType: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      timeEntry: {
+        findMany: jest.fn().mockResolvedValue([]),
+        update: jest.fn(),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(
+        async (
+          callback: (
+            transaction: typeof tx,
+          ) => unknown,
+        ) => callback(tx),
+      ),
+    };
+
+    await expect(
+      lockPayrollPeriod(
+        prisma as never,
+        user as never,
+        '2026-07-21',
+        '2026-08-20',
+      ),
+    ).resolves.toBe(period);
+
+    const relockData =
+      tx.payrollPeriod.update.mock.calls[0][0].data;
+    expect(relockData).toEqual(
+      expect.objectContaining({
+        status: 'LOCKED',
+        lockedByUserId: 7,
+      }),
+    );
+    expect(relockData).not.toHaveProperty('unlockedAt');
+    expect(relockData).not.toHaveProperty('unlockedByUserId');
+    expect(relockData).not.toHaveProperty('unlockNote');
+    expect(tx.payrollPeriod.create).not.toHaveBeenCalled();
+  });
+
   it('lader en registreringsfejl afbryde hele transaktionen', async () => {
     const tx = {
       payrollPeriod: {

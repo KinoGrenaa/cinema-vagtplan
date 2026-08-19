@@ -59,7 +59,7 @@ export default function InputModal({
     <BaseModal open={open} title={title} onClose={onCancel}>
       <div className="space-y-4">
         {description && (
-          <p className="text-sm text-gray-600 dark:text-gray-300">
+          <p className="whitespace-pre-line text-sm text-gray-600 dark:text-gray-300">
             {description}
           </p>
         )}

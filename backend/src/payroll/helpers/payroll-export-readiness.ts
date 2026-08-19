@@ -67,14 +67,8 @@ export async function getPayrollExportLockSnapshot(
     );
   }
 
-  if (period.status === 'EXPORTED') {
-    throw new BadRequestException(
-      'Lønperioden er allerede eksporteret. Eventuelle rettelser skal håndteres som efterregulering i en ny åben periode.',
-    );
-  }
-
   if (
-    period.status !== 'LOCKED' ||
+    !['LOCKED', 'EXPORTED'].includes(period.status) ||
     !period.lockedAt ||
     !period.lockedCalculationRunId ||
     !period.lockedCalculationRun
@@ -102,7 +96,7 @@ export function ensurePayrollExportLockUnchanged(
   const matches =
     period?.id === snapshot.periodId &&
     period.cinemaId === snapshot.cinemaId &&
-    period.status === 'LOCKED' &&
+    ['LOCKED', 'EXPORTED'].includes(period.status) &&
     period.lockedAt?.getTime() === snapshot.lockedAtTime &&
     period.startDate.getTime() === snapshot.startDateTime &&
     period.endDate.getTime() === snapshot.endDateTime &&

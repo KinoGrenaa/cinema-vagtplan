@@ -50,7 +50,10 @@ export default function PayrollPageContent({
     payrollAdjustmentEmployees,
     payrollDistributionData,
     pendingCount,
+    reportLoadFailed,
     period,
+    periodLoading,
+    periodLoadFailed,
     refreshPayroll,
     report,
     setEndDate,
@@ -96,6 +99,10 @@ export default function PayrollPageContent({
           />
           <PayrollPeriodStatus
             period={period}
+            periodLoading={periodLoading}
+            periodLoadFailed={periodLoadFailed}
+            reportLoading={loading}
+            reportLoadFailed={reportLoadFailed}
             totalHours={totalHours}
             pendingCount={pendingCount}
             voidedCount={voidedCount}

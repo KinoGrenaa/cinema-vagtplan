@@ -113,6 +113,10 @@ export async function markPayrollPeriodAsExported(
       lockSnapshot,
     );
 
+    if (existingPeriod!.status === 'EXPORTED') {
+      return existingPeriod;
+    }
+
     return tx.payrollPeriod.update({
       where: {
         id: existingPeriod!.id,
@@ -121,9 +125,6 @@ export async function markPayrollPeriodAsExported(
         status: 'EXPORTED',
         exportedAt: now,
         exportedByUserId: user.sub,
-        unlockedAt: null,
-        unlockedByUserId: null,
-        unlockNote: null,
       },
     });
   });

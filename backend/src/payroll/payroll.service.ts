@@ -8,6 +8,7 @@ import {
   resolvePayrollPeriodForDate,
 } from './helpers/payroll-period-queries';
 import { lockPayrollPeriod } from './helpers/payroll-period-lock-flow';
+import { unlockPayrollPeriod } from './helpers/payroll-period-unlock-flow';
 import { getPayrollPeriodWithTimeEntries } from './helpers/payroll-period-read-flow';
 import {
   exportPayrollCsvFlow,
@@ -93,6 +94,20 @@ export class PayrollService {
     );
   }
 
+  async unlockPeriod(
+    user: PayrollAuthUser,
+    periodId: number,
+    note?: string,
+    selectedCinemaId?: number | null,
+  ) {
+    return unlockPayrollPeriod(
+      this.prisma,
+      user,
+      periodId,
+      note,
+      selectedCinemaId,
+    );
+  }
   async exportPayrollCsv(
     user: PayrollAuthUser,
     startDate: string,

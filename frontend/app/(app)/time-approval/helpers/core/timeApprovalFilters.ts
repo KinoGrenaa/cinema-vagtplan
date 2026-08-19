@@ -19,7 +19,7 @@ export function getVisibleEntries(
   filters: TimeApprovalFilters,
 ) {
   return entries.filter((entry) => {
-    if (!entry.clockIn || !entry.clockOut) return false;
+    if (!entry.clockIn) return false;
 
     if (entry.status === "PENDING" && !filters.showPending) return false;
 
@@ -62,17 +62,17 @@ export function getVisibleEntries(
 export function getTimeApprovalStatusCounts(entries: TimeEntry[]) {
   return {
     pendingCount: entries.filter(
-      (entry) => entry.clockIn && entry.clockOut && entry.status === "PENDING",
+      (entry) => entry.clockIn && entry.status === "PENDING",
     ).length,
     approvedCount: entries.filter(
-      (entry) => entry.clockIn && entry.clockOut && entry.status === "APPROVED",
+      (entry) => entry.clockIn && entry.status === "APPROVED",
     ).length,
     needsChangesCount: entries.filter(
       (entry) =>
-        entry.clockIn && entry.clockOut && entry.status === "NEEDS_CHANGES",
+        entry.clockIn && entry.status === "NEEDS_CHANGES",
     ).length,
     voidedCount: entries.filter(
-      (entry) => entry.clockIn && entry.clockOut && entry.status === "VOIDED",
+      (entry) => entry.clockIn && entry.status === "VOIDED",
     ).length,
   };
 }

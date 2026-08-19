@@ -105,13 +105,41 @@ describe('PayrollController input validation', () => {
     );
   });
 
-  it('rejects legacy unlock routes with the immutable-period contract', () => {
-    expect(() => controller.unlockPeriod()).toThrow(GoneException);
-    expect(() => controller.unlockTimeEntry()).toThrow(GoneException);
-    expect(service.unlockPeriod).not.toHaveBeenCalled();
-    expect(service.unlockTimeEntry).not.toHaveBeenCalled();
+  it('normalizes a valid payroll-period reopen request', () => {
+    controller.unlockPeriod(
+      req,
+      '12',
+      'Rettelse efter kontrol',
+      '5',
+    );
+
+    expect(service.unlockPeriod).toHaveBeenCalledWith(
+      req.user,
+      12,
+      'Rettelse efter kontrol',
+      5,
+    );
   });
 
+  it.each(['', '1.5', '1e2', '-1', 'abc', '9007199254740992'])(
+    'rejects invalid payroll-period reopen ID %p',
+    (periodId) => {
+      expect(() =>
+        controller.unlockPeriod(
+          req,
+          periodId,
+          'Rettelse efter kontrol',
+          '5',
+        ),
+      ).toThrow(BadRequestException);
+      expect(service.unlockPeriod).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps individual time-entry unlock immutable', () => {
+    expect(() => controller.unlockTimeEntry()).toThrow(GoneException);
+    expect(service.unlockTimeEntry).not.toHaveBeenCalled();
+  });
   it.each([
     '',
     '1.5',
