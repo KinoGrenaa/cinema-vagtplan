@@ -14,11 +14,15 @@ import {
   parseNullableTimeEntryDate,
   parseRequiredTimeEntryDate,
 } from './time-entry-date-helpers';
-import { ensureRequiredText } from './time-entry-note-helpers';
+import {
+  ensureRequiredText,
+  getTrimmedOptionalNote,
+} from './time-entry-note-helpers';
 
 type OwnTimeEntryUpdateData = {
   clockIn: string;
   clockOut?: string | null;
+  note?: string | null;
   clockInNote?: string | null;
   clockOutNote?: string | null;
 };
@@ -63,8 +67,18 @@ export function getOwnTimeEntryUpdateContext(
     data.clockOut,
     'Ugyldig fyraften',
   );
-  const newClockInNote = data.clockInNote ?? null;
-  const newClockOutNote = data.clockOutNote ?? null;
+  const newNote =
+    data.note === undefined
+      ? existingEntry.note ?? null
+      : getTrimmedOptionalNote(data.note);
+  const newClockInNote =
+    data.clockInNote === undefined
+      ? existingEntry.clockInNote ?? null
+      : getTrimmedOptionalNote(data.clockInNote);
+  const newClockOutNote =
+    data.clockOutNote === undefined
+      ? existingEntry.clockOutNote ?? null
+      : getTrimmedOptionalNote(data.clockOutNote);
 
   ensureClockOutAfterClockIn(newClockIn, newClockOut);
 
@@ -79,6 +93,7 @@ export function getOwnTimeEntryUpdateContext(
 
   ensureOwnTimeEntryDeviationNotes({
     deviation,
+    note: newNote,
     clockInNote: newClockInNote,
     clockOutNote: newClockOutNote,
   });
@@ -87,6 +102,7 @@ export function getOwnTimeEntryUpdateContext(
     existingEntry,
     newClockIn,
     newClockOut,
+    newNote,
     newClockInNote,
     newClockOutNote,
   });
@@ -98,6 +114,7 @@ export function getOwnTimeEntryUpdateContext(
   return {
     newClockIn,
     newClockOut,
+    newNote,
     newClockInNote,
     newClockOutNote,
     changes,

@@ -26,6 +26,7 @@ import { lockTimeEntryUpdatePayrollPeriods } from './time-entry-update-payroll-l
 type OwnTimeEntryUpdateData = {
   clockIn: string;
   clockOut?: string | null;
+  note?: string | null;
   clockInNote?: string | null;
   clockOutNote?: string | null;
 };
@@ -112,6 +113,8 @@ export async function updateOwnTimeEntry(params: {
             updateContext.newClockIn,
           clockOut:
             updateContext.newClockOut,
+          note:
+            updateContext.newNote,
           clockInNote:
             updateContext.newClockInNote,
           clockOutNote:

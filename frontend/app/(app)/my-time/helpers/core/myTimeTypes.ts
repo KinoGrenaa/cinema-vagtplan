@@ -38,6 +38,8 @@ export type TimeEntryRevision = {
   newClockIn?: string | null;
   previousClockOut?: string | null;
   newClockOut?: string | null;
+  previousNote?: string | null;
+  newNote?: string | null;
   previousClockInNote?: string | null;
   newClockInNote?: string | null;
   previousClockOutNote?: string | null;

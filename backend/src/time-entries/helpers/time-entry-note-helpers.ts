@@ -13,6 +13,33 @@ export function getManualEntryNotes(data: ManualEntryNotesInput) {
   };
 }
 
+export function getManualEntryStorageNotes(
+  data: ManualEntryNotesInput,
+  hasShift: boolean,
+) {
+  if (!hasShift) {
+    return {
+      note: getTrimmedOptionalNote(
+        data.note,
+      ),
+      clockInNote: null,
+      clockOutNote: null,
+    };
+  }
+
+  const note = getTrimmedOptionalNote(data.note);
+
+  return {
+    note,
+    clockInNote: getTrimmedOptionalNote(
+      data.clockInNote ?? note,
+    ),
+    clockOutNote: getTrimmedOptionalNote(
+      data.clockOutNote ?? note,
+    ),
+  };
+}
+
 export function getTrimmedOptionalNote(value?: string | null) {
   return value?.trim() || null;
 }

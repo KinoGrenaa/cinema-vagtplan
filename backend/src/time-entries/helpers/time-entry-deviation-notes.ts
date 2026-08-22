@@ -9,6 +9,7 @@ import {
 
 export function ensureManualEntryDeviationNotes(data: {
   deviation: TimeEntryDeviation;
+  note?: string | null;
   clockInNote?: string | null;
   clockOutNote?: string | null;
 }) {
@@ -29,6 +30,24 @@ export function ensureManualEntryDeviationNotes(data: {
   ) {
     throw new BadRequestException(
       'Du skal skrive en fyraftensnote, når fyraften afviger fra vagtplanen',
+    );
+  }
+
+  if (
+    data.deviation.requiresNote &&
+    requiresGeneralDeviationNote(
+      data.deviation,
+    ) &&
+    !hasText(data.note) &&
+    !hasText(data.clockInNote) &&
+    !hasText(data.clockOutNote)
+  ) {
+    throw new BadRequestException(
+      data.deviation.types.includes(
+        'MANUAL_WITHOUT_SHIFT',
+      )
+        ? 'Du skal skrive en note ved manuel registrering uden vagt'
+        : 'Du skal skrive en note, når tiderne afviger fra vagtplanen',
     );
   }
 }
@@ -53,6 +72,7 @@ export function ensureApprovalDeviationNotes(data: {
 
 export function ensureOwnTimeEntryDeviationNotes(data: {
   deviation: TimeEntryDeviation;
+  note?: string | null;
   clockInNote?: string | null;
   clockOutNote?: string | null;
 }) {
@@ -79,6 +99,7 @@ export function ensureOwnTimeEntryDeviationNotes(data: {
   if (
     data.deviation.requiresNote &&
     requiresGeneralDeviationNote(data.deviation) &&
+    !hasText(data.note) &&
     !hasText(data.clockInNote) &&
     !hasText(data.clockOutNote)
   ) {

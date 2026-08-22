@@ -299,6 +299,7 @@ export class TimeEntriesService {
     data: {
       clockIn: string;
       clockOut?: string | null;
+      note?: string | null;
       clockInNote?: string | null;
       clockOutNote?: string | null;
     },

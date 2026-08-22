@@ -64,6 +64,7 @@ export default function MyTimePage() {
     editingEntry,
     editClockIn,
     editClockOut,
+    editNote,
     editClockInNote,
     editClockOutNote,
     savingEdit,
@@ -72,6 +73,7 @@ export default function MyTimePage() {
     saveEdit,
     setEditClockIn,
     setEditClockOut,
+    setEditNote,
     setEditClockInNote,
     setEditClockOutNote,
   } = useMyTimeEdit({
@@ -176,11 +178,13 @@ export default function MyTimePage() {
             editingEntry={editingEntry}
             editClockIn={editClockIn}
             editClockOut={editClockOut}
+            editNote={editNote}
             editClockInNote={editClockInNote}
             editClockOutNote={editClockOutNote}
             savingEdit={savingEdit}
             onClockInChange={setEditClockIn}
             onClockOutChange={setEditClockOut}
+            onNoteChange={setEditNote}
             onClockInNoteChange={setEditClockInNote}
             onClockOutNoteChange={setEditClockOutNote}
             onCloseEdit={closeEdit}

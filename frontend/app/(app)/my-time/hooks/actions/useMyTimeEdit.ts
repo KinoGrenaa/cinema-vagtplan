@@ -8,6 +8,7 @@ import { apiFetch } from "@/app/lib/api";
 
 import { toInputDateTime } from "../../helpers/core/myTimeDate";
 import { getErrorMessage } from "../../helpers/core/myTimeErrors";
+import { getEntrySingleNote } from "../../helpers/core/myTimeNotes";
 import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type ShowError = (title: string, description: string) => void;
@@ -21,6 +22,7 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
+  const [editNote, setEditNote] = useState("");
   const [editClockInNote, setEditClockInNote] = useState("");
   const [editClockOutNote, setEditClockOutNote] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -29,6 +31,7 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
     setEditingEntry(entry);
     setEditClockIn(toInputDateTime(entry.clockIn));
     setEditClockOut(toInputDateTime(entry.clockOut));
+    setEditNote(getEntrySingleNote(entry));
     setEditClockInNote(entry.clockInNote ?? "");
     setEditClockOutNote(entry.clockOutNote ?? "");
   }
@@ -39,6 +42,7 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
     setEditingEntry(null);
     setEditClockIn("");
     setEditClockOut("");
+    setEditNote("");
     setEditClockInNote("");
     setEditClockOutNote("");
   }
@@ -64,6 +68,16 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
       return;
     }
 
+    const notePayload = editingEntry.shift
+      ? {
+          clockInNote: editClockInNote,
+          clockOutNote: editClockOutNote,
+        }
+      : {
+          note:
+            editNote.trim() || null,
+        };
+
     try {
       setSavingEdit(true);
 
@@ -72,8 +86,7 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
         body: JSON.stringify({
           clockIn: parsedClockIn.toISOString(),
           clockOut: parsedClockOut ? parsedClockOut.toISOString() : null,
-          clockInNote: editClockInNote,
-          clockOutNote: editClockOutNote,
+          ...notePayload,
         }),
       });
 
@@ -101,6 +114,7 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
     editingEntry,
     editClockIn,
     editClockOut,
+    editNote,
     editClockInNote,
     editClockOutNote,
     savingEdit,
@@ -109,6 +123,7 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
     saveEdit,
     setEditClockIn,
     setEditClockOut,
+    setEditNote,
     setEditClockInNote,
     setEditClockOutNote,
   };

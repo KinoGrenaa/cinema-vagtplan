@@ -535,6 +535,22 @@ export default function TimeEntryHistoryModal({
                             )}
 
                             {valueChanged(
+                              revision.previousNote,
+                              revision.newNote,
+                            ) && (
+                              <ChangeRow
+                                label="Note / begrundelse"
+                                previousValue={
+                                  revision.previousNote ||
+                                  "-"
+                                }
+                                newValue={
+                                  revision.newNote ||
+                                  "-"
+                                }
+                              />
+                            )}
+                            {valueChanged(
                               revision.previousClockInNote,
                               revision.newClockInNote,
                             ) && (

@@ -342,20 +342,12 @@ export function useScheduleTimeRegistration({
       return;
     }
 
-    if (!manualNote.trim()) {
-      infoDialog.showError(
-        "Note er påkrævet",
-        "Du skal skrive en note ved manuel registrering uden vagt.",
-      );
-      return;
-    }
-
     try {
       await submitManualTimeEntry({
         shiftId: null,
         clockIn: manualClockInTime,
         clockOut: manualClockOutTime,
-        note: manualNote,
+        note: manualNote.trim(),
       });
       toast.success("Manuel tidsregistrering sendt til godkendelse");
       resetManualTimeModal();

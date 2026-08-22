@@ -91,6 +91,83 @@ export default function CinemaSettingsPayrollRulesSection({
         </div>
       </section>
 
+      <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/60">
+        <h3 className="font-semibold text-slate-950 dark:text-white">
+          Notekrav ved tidsregistrering
+        </h3>
+        <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+          Vælg hvornår medarbejderen skal skrive en forklaring til den registrerede tid.
+        </p>
+
+        <div className="mt-4 grid gap-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
+            <input
+              type="checkbox"
+              checked={cinema.requireNoteForManualEntry}
+              disabled={saving}
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                void updateCinemaSettings({
+                  requireNoteForManualEntry: event.target.checked,
+                })
+              }
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
+            />
+            <span>
+              <span className="block font-semibold text-slate-950 dark:text-white">
+                Kræv note ved manuel registrering uden vagt
+              </span>
+              <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
+                Medarbejderen skal forklare arbejdstid, der registreres uden en planlagt vagt.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
+            <input
+              type="checkbox"
+              checked={cinema.requireNoteForClockInDeviation}
+              disabled={saving}
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                void updateCinemaSettings({
+                  requireNoteForClockInDeviation: event.target.checked,
+                })
+              }
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
+            />
+            <span>
+              <span className="block font-semibold text-slate-950 dark:text-white">
+                Kræv note ved afvigende mødetid
+              </span>
+              <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
+                Kræver mødetidsnote, når mødetiden ligger uden for den valgte tolerance.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
+            <input
+              type="checkbox"
+              checked={cinema.requireNoteForClockOutDeviation}
+              disabled={saving}
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                void updateCinemaSettings({
+                  requireNoteForClockOutDeviation: event.target.checked,
+                })
+              }
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
+            />
+            <span>
+              <span className="block font-semibold text-slate-950 dark:text-white">
+                Kræv note ved afvigende fyraften
+              </span>
+              <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
+                Kræver fyraftensnote, når fyraften ligger uden for den valgte tolerance.
+              </span>
+            </span>
+          </label>
+        </div>
+      </section>
+
       <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition-colors dark:border-slate-700 dark:bg-slate-950/60">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>

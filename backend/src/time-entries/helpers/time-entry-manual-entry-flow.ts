@@ -11,7 +11,7 @@ import {
   ensureClockOutAfterClockIn,
   parseRequiredTimeEntryDate,
 } from './time-entry-date-helpers';
-import { getManualEntryNotes } from './time-entry-note-helpers';
+import { getManualEntryStorageNotes } from './time-entry-note-helpers';
 import {
   ensureNoOverlappingManualShift,
   ensureNoOverlappingManualTimeEntry,
@@ -102,8 +102,14 @@ export async function submitManualTimeEntry(params: {
         },
       );
 
-      const { clockInNote, clockOutNote } =
-        getManualEntryNotes(data);
+      const {
+        note,
+        clockInNote,
+        clockOutNote,
+      } = getManualEntryStorageNotes(
+        data,
+        Boolean(shift),
+      );
 
       if (shift) {
         const deviation = analyzeTimeEntryDeviation(
@@ -131,6 +137,34 @@ export async function submitManualTimeEntry(params: {
               'Der er allerede indsendt timer for denne vagt',
           },
         );
+      } else {
+        const cinema =
+          await tx.cinema.findUniqueOrThrow({
+            where: {
+              id: data.cinemaId,
+            },
+            select: {
+              requireNoteForManualEntry: true,
+            },
+          });
+
+        const deviation =
+          analyzeTimeEntryDeviation(
+            {
+              clockIn,
+              clockOut,
+              shift: null,
+              cinema,
+            },
+            cinema,
+          );
+
+        ensureManualEntryDeviationNotes({
+          deviation,
+          note,
+          clockInNote,
+          clockOutNote,
+        });
       }
 
       const entry = await tx.timeEntry.create({
@@ -142,7 +176,7 @@ export async function submitManualTimeEntry(params: {
             shift?.jobFunction?.defaultPayrollExportCodeId || null,
           clockIn,
           clockOut,
-          note: data.note ?? null,
+          note,
           clockInNote,
           clockOutNote,
           status: 'PENDING',

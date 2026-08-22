@@ -7,11 +7,13 @@ type MyTimeEditModalProps = {
   editingEntry: TimeEntry | null;
   editClockIn: string;
   editClockOut: string;
+  editNote: string;
   editClockInNote: string;
   editClockOutNote: string;
   savingEdit: boolean;
   onClockInChange: (value: string) => void;
   onClockOutChange: (value: string) => void;
+  onNoteChange: (value: string) => void;
   onClockInNoteChange: (value: string) => void;
   onClockOutNoteChange: (value: string) => void;
   onClose: () => void;
@@ -28,11 +30,13 @@ export default function MyTimeEditModal({
   editingEntry,
   editClockIn,
   editClockOut,
+  editNote,
   editClockInNote,
   editClockOutNote,
   savingEdit,
   onClockInChange,
   onClockOutChange,
+  onNoteChange,
   onClockInNoteChange,
   onClockOutNoteChange,
   onClose,
@@ -87,26 +91,41 @@ export default function MyTimeEditModal({
               }
             />
           </div>
-          <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-            <span className="mb-1 block">Mødetidsnote</span>
-            <textarea
-              value={editClockInNote}
-              onChange={(event) => onClockInNoteChange(event.target.value)}
-              rows={3}
-              className={inputClass}
-              placeholder="Forklar evt. ændret mødetid"
-            />
-          </label>
-          <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-            <span className="mb-1 block">Fyraftensnote</span>
-            <textarea
-              value={editClockOutNote}
-              onChange={(event) => onClockOutNoteChange(event.target.value)}
-              rows={3}
-              className={inputClass}
-              placeholder="Forklar evt. ændret fyraften"
-            />
-          </label>
+          {!editingEntry.shift ? (
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200 sm:col-span-2">
+              <span className="mb-1 block">Note / begrundelse</span>
+              <textarea
+                value={editNote}
+                onChange={(event) => onNoteChange(event.target.value)}
+                rows={3}
+                className={inputClass}
+                placeholder="Skriv hvorfor timerne er registreret uden planlagt vagt"
+              />
+            </label>
+          ) : (
+            <>
+              <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+                <span className="mb-1 block">Mødetidsnote</span>
+                <textarea
+                  value={editClockInNote}
+                  onChange={(event) => onClockInNoteChange(event.target.value)}
+                  rows={3}
+                  className={inputClass}
+                  placeholder="Forklar evt. ændret mødetid"
+                />
+              </label>
+              <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+                <span className="mb-1 block">Fyraftensnote</span>
+                <textarea
+                  value={editClockOutNote}
+                  onChange={(event) => onClockOutNoteChange(event.target.value)}
+                  rows={3}
+                  className={inputClass}
+                  placeholder="Forklar evt. ændret fyraften"
+                />
+              </label>
+            </>
+          )}
         </div>
 
         <div className="mt-6 flex flex-wrap justify-end gap-2">

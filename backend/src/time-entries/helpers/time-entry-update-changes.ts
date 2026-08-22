@@ -1,6 +1,7 @@
 type TimeEntryUpdateBase = {
   clockIn: Date;
   clockOut: Date | null;
+  note: string | null;
   clockInNote: string | null;
   clockOutNote: string | null;
   adminNote?: string | null;
@@ -11,6 +12,7 @@ type OwnTimeEntryUpdateChangesInput = {
   existingEntry: TimeEntryUpdateBase;
   newClockIn: Date;
   newClockOut: Date | null;
+  newNote: string | null;
   newClockInNote: string | null;
   newClockOutNote: string | null;
 };
@@ -36,6 +38,7 @@ export function getOwnTimeEntryUpdateChanges({
   existingEntry,
   newClockIn,
   newClockOut,
+  newNote,
   newClockInNote,
   newClockOutNote,
 }: OwnTimeEntryUpdateChangesInput) {
@@ -58,6 +61,10 @@ export function getOwnTimeEntryUpdateChanges({
         newClockOut,
       )}`,
     );
+  }
+
+  if ((existingEntry.note ?? '') !== (newNote ?? '')) {
+    changes.push('Note / begrundelse ændret');
   }
 
   if ((existingEntry.clockInNote ?? '') !== (newClockInNote ?? '')) {

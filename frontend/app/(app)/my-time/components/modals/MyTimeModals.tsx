@@ -18,6 +18,8 @@ type MyTimeModalsProps = {
 
   editClockOut: string;
 
+  editNote: string;
+
   editClockInNote: string;
 
   editClockOutNote: string;
@@ -27,6 +29,8 @@ type MyTimeModalsProps = {
   onClockInChange: (value: string) => void;
 
   onClockOutChange: (value: string) => void;
+
+  onNoteChange: (value: string) => void;
 
   onClockInNoteChange: (value: string) => void;
 
@@ -68,6 +72,8 @@ export default function MyTimeModals({
 
   editClockOut,
 
+  editNote,
+
   editClockInNote,
 
   editClockOutNote,
@@ -77,6 +83,8 @@ export default function MyTimeModals({
   onClockInChange,
 
   onClockOutChange,
+
+  onNoteChange,
 
   onClockInNoteChange,
 
@@ -112,11 +120,13 @@ export default function MyTimeModals({
         editingEntry={editingEntry}
         editClockIn={editClockIn}
         editClockOut={editClockOut}
+        editNote={editNote}
         editClockInNote={editClockInNote}
         editClockOutNote={editClockOutNote}
         savingEdit={savingEdit}
         onClockInChange={onClockInChange}
         onClockOutChange={onClockOutChange}
+        onNoteChange={onNoteChange}
         onClockInNoteChange={onClockInNoteChange}
         onClockOutNoteChange={onClockOutNoteChange}
         onClose={onCloseEdit}

@@ -66,10 +66,17 @@ export function shouldShowCreatedNoteAsSingleNote(item: TimeEntryRevision) {
 }
 
 export function shouldShowEntryNoteAsSingleNote(entry: TimeEntry) {
+  if (entry.shift) return false;
+
+  const note = entry.note?.trim() || "";
   const clockInNote = entry.clockInNote?.trim() || "";
   const clockOutNote = entry.clockOutNote?.trim() || "";
 
-  return !entry.shift && clockInNote.length > 0 && clockInNote === clockOutNote;
+  return (
+    note.length > 0 ||
+    (clockInNote.length > 0 &&
+      clockInNote === clockOutNote)
+  );
 }
 
 export function getEntrySingleNote(entry: TimeEntry) {

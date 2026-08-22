@@ -16,10 +16,12 @@ export default function TimeApprovalEntryNotes({
       {hasEmployeeNote && (
         <div className="space-y-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/40">
           {!entry.shift &&
-          entry.clockInNote &&
-          entry.clockInNote === entry.clockOutNote ? (
+          (entry.note ||
+            (entry.clockInNote &&
+              entry.clockInNote === entry.clockOutNote)) ? (
             <div>
-              <span className="font-semibold">Note:</span> {entry.clockInNote}
+              <span className="font-semibold">Note:</span>{" "}
+              {entry.note || entry.clockInNote}
             </div>
           ) : (
             <>
