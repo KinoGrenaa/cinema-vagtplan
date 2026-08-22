@@ -5,14 +5,14 @@ import {
 import test from "node:test";
 
 const rulesSection = readFileSync(
-  "app/(app)/cinema-settings/components/payroll/CinemaSettingsPayrollRulesSection.tsx",
+  "app/(app)/cinema-settings/components/sections/CinemaSettingsTimeEntryRulesSection.tsx",
   "utf8",
 );
 
 test("cinema settings viser de aftalte notekrav til tidsregistrering", () => {
   assert.match(
     rulesSection,
-    /Notekrav ved tidsregistrering/,
+    /Notekrav/,
   );
   assert.match(
     rulesSection,
@@ -20,7 +20,7 @@ test("cinema settings viser de aftalte notekrav til tidsregistrering", () => {
   );
   assert.match(
     rulesSection,
-    /requireNoteForManualEntry: event\.target\.checked/,
+    /requireNoteForManualEntry:[\s\S]*event\.target\.checked/,
   );
   assert.match(
     rulesSection,
@@ -28,7 +28,7 @@ test("cinema settings viser de aftalte notekrav til tidsregistrering", () => {
   );
   assert.match(
     rulesSection,
-    /requireNoteForClockInDeviation: event\.target\.checked/,
+    /requireNoteForClockInDeviation:[\s\S]*event\.target\.checked/,
   );
   assert.match(
     rulesSection,
@@ -36,6 +36,6 @@ test("cinema settings viser de aftalte notekrav til tidsregistrering", () => {
   );
   assert.match(
     rulesSection,
-    /requireNoteForClockOutDeviation: event\.target\.checked/,
+    /requireNoteForClockOutDeviation:[\s\S]*event\.target\.checked/,
   );
 });

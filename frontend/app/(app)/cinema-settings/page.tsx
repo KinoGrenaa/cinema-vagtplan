@@ -2,14 +2,16 @@
 
 import AdminGuard from "@/app/components/access/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
-import CinemaSettingsBrandingSection from "./components/sections/CinemaSettingsBrandingSection";
-import CinemaSettingsFeatureTogglesSection from "./components/sections/CinemaSettingsFeatureTogglesSection";
-import CinemaSettingsLeaveSection from "./components/sections/CinemaSettingsLeaveSection";
-import CinemaSettingsTimeRegistrationSection from "./components/sections/CinemaSettingsTimeRegistrationSection";
 import CinemaSettingsHeaderSection from "./components/layout/CinemaSettingsHeaderSection";
+import CinemaSettingsGroup from "./components/layout/CinemaSettingsGroup";
 import CinemaSettingsLoadingState from "./components/layout/CinemaSettingsLoadingState";
 import CinemaSettingsMasterRequired from "./components/layout/CinemaSettingsMasterRequired";
 import CinemaSettingsPayrollSection from "./components/payroll/CinemaSettingsPayrollSection";
+import CinemaSettingsBrandingSection from "./components/sections/CinemaSettingsBrandingSection";
+import CinemaSettingsFeatureTogglesSection from "./components/sections/CinemaSettingsFeatureTogglesSection";
+import CinemaSettingsLeaveSection from "./components/sections/CinemaSettingsLeaveSection";
+import CinemaSettingsTimeEntryRulesSection from "./components/sections/CinemaSettingsTimeEntryRulesSection";
+import CinemaSettingsTimeRegistrationSection from "./components/sections/CinemaSettingsTimeRegistrationSection";
 import { calculatePeriodExample } from "./helpers/core/cinemaSettingsDateHelpers";
 import { useCinemaSettingsData } from "./hooks/data/useCinemaSettingsData";
 
@@ -55,33 +57,53 @@ export default function CinemaSettingsPage() {
   return (
     <AdminGuard>
       <main className="min-h-screen bg-slate-100 p-4 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100 md:p-8">
-        <div className="mx-auto max-w-4xl space-y-6">
+        <div className="mx-auto max-w-4xl space-y-10">
           <CinemaSettingsHeaderSection cinemaName={cinema.name} />
 
-          <CinemaSettingsBrandingSection
-            cinema={cinema}
-            saving={saving}
-            uploadCinemaLogo={uploadCinemaLogo}
-            removeCinemaLogo={removeCinemaLogo}
-          />
+          <CinemaSettingsGroup
+            title="Biograf og funktioner"
+            description="Biografens visuelle identitet og de funktioner, der kan aktiveres for medarbejderne."
+          >
+            <CinemaSettingsBrandingSection
+              cinema={cinema}
+              saving={saving}
+              uploadCinemaLogo={uploadCinemaLogo}
+              removeCinemaLogo={removeCinemaLogo}
+            />
+            <CinemaSettingsFeatureTogglesSection
+              cinema={cinema}
+              saving={saving}
+              updateCinemaSettings={updateCinemaSettings}
+            />
+          </CinemaSettingsGroup>
 
-          <CinemaSettingsFeatureTogglesSection
-            cinema={cinema}
-            saving={saving}
-            updateCinemaSettings={updateCinemaSettings}
-          />
+          <CinemaSettingsGroup
+            title="Fravær"
+            description="Regler for medarbejdernes fraværsansøgninger."
+          >
+            <CinemaSettingsLeaveSection
+              cinema={cinema}
+              saving={saving}
+              updateCinemaSettings={updateCinemaSettings}
+            />
+          </CinemaSettingsGroup>
 
-          <CinemaSettingsLeaveSection
-            cinema={cinema}
-            saving={saving}
-            updateCinemaSettings={updateCinemaSettings}
-          />
-
-          <CinemaSettingsTimeRegistrationSection
-            cinema={cinema}
-            saving={saving}
-            updateCinemaSettings={updateCinemaSettings}
-          />
+          <CinemaSettingsGroup
+            title="Tidsregistrering"
+            description="Automatik, afvigelser og krav til forklaringer ved registrering af arbejdstid."
+          >
+            <CinemaSettingsTimeRegistrationSection
+              cinema={cinema}
+              saving={saving}
+              updateCinemaSettings={updateCinemaSettings}
+            />
+            <CinemaSettingsTimeEntryRulesSection
+              cinema={cinema}
+              saving={saving}
+              setCinema={setCinema}
+              updateCinemaSettings={updateCinemaSettings}
+            />
+          </CinemaSettingsGroup>
 
           <CinemaSettingsPayrollSection
             cinema={cinema}
