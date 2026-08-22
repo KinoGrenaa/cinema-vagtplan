@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { TimeEntryStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { getShiftWithJobFunctionAndCinemaInclude } from './time-entry-includes';
@@ -58,6 +59,9 @@ export async function ensureNoExistingEntryForShift(
       userId: data.userId,
       shiftId: data.shiftId,
       cinemaId: data.cinemaId,
+      status: {
+        not: TimeEntryStatus.VOIDED,
+      },
     },
   });
 

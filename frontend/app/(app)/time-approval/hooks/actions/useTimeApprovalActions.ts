@@ -790,11 +790,11 @@ export function useTimeApprovalActions({
         const message =
           await readErrorMessage(
             response,
-            "Kunne ikke annullere tidsregistrering",
+            "Kunne ikke afvise tidsregistrering",
           );
 
         infoDialog.showError(
-          "Kunne ikke annullere tidsregistrering",
+          "Kunne ikke afvise tidsregistrering",
           message,
         );
         return false;
@@ -804,16 +804,16 @@ export function useTimeApprovalActions({
       toast.success(
         confirmPayrollAdjustment
           ? "Tidsregistrering afvist og modregning oprettet"
-          : "Tidsregistrering annulleret",
+          : "Tidsregistrering afvist",
       );
       return true;
     } catch (error) {
       infoDialog.showError(
-        "Kunne ikke annullere tidsregistrering",
+        "Kunne ikke afvise tidsregistrering",
         error instanceof Error &&
           error.message
           ? error.message
-          : "Der opstod en fejl, da tidsregistreringen skulle annulleres.\nPrøv igen.",
+          : "Der opstod en fejl, da tidsregistreringen skulle afvises.\nPrøv igen.",
       );
       return false;
     }
@@ -842,7 +842,7 @@ export function useTimeApprovalActions({
         if (!adminNote) {
           infoDialog.showError(
             "Intern note mangler",
-            "Du skal skrive en intern note for annulleringen.",
+            "Du skal skrive en intern note for afvisningen.",
           );
           return;
         }
