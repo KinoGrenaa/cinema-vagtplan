@@ -8,7 +8,8 @@ export type LeaveRequestStatus =
   | "PENDING"
   | "APPROVED"
   | "REJECTED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "EXPIRED";
 
 export type LeaveRequest = {
   id: number;
@@ -16,7 +17,15 @@ export type LeaveRequest = {
   endDate: string;
   reason?: string | null;
   status: LeaveRequestStatus;
+  createdAt?: string;
   user: User;
+  createdByUser?: User | null;
+  cancelledAt?: string | null;
+  cancelledByUser?: User | null;
+  cancellationNote?: string | null;
+  rejectedAt?: string | null;
+  rejectedByUser?: User | null;
+  rejectionNote?: string | null;
 };
 
 export type AbsenceCalendarStatusFilter =

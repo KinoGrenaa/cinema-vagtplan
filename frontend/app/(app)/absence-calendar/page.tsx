@@ -10,13 +10,13 @@ import { useRouter } from "next/navigation";
 import AdminGuard from "@/app/components/access/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 
+import LeaveApprovalSuccessToast from "../leave-approval/components/feedback/LeaveApprovalSuccessToast";
 import AbsenceCalendarGrid from "./components/calendar/AbsenceCalendarGrid";
 import AbsenceCalendarOverview from "./components/calendar/AbsenceCalendarOverview";
 import AbsenceCalendarHeader from "./components/layout/AbsenceCalendarHeader";
 import {
   filterAbsenceRequests,
   getAbsenceCalendarSummary,
-  getTodayDateKey,
 } from "./helpers/core/absenceCalendarHelpers";
 import type { AbsenceCalendarStatusFilter } from "./helpers/core/absenceCalendarTypes";
 import { useAbsenceCalendarData } from "./hooks/data/useAbsenceCalendarData";
@@ -25,17 +25,23 @@ import { useAbsenceCalendarMonth } from "./hooks/ui/useAbsenceCalendarMonth";
 export default function AbsenceCalendarPage() {
   const router = useRouter();
   const {
-    infoDialog,
-    needsMasterCinemaSelection,
-    requests,
-  } = useAbsenceCalendarData();
-  const {
     calendarDays,
     changeMonth,
     goToToday,
     isCurrentMonth,
     selectedMonth,
   } = useAbsenceCalendarMonth();
+  const {
+    dismissSuccessToast,
+    infoDialog,
+    needsMasterCinemaSelection,
+    requests,
+    successToast,
+    updateStatus,
+  } =
+    useAbsenceCalendarData(
+      selectedMonth,
+    );
 
   const [
     searchQuery,
@@ -51,13 +57,15 @@ export default function AbsenceCalendarPage() {
   const [
     selectedDate,
     setSelectedDate,
-  ] = useState<string | null>(
-    getTodayDateKey(),
-  );
+  ] =
+    useState<string | null>(
+      null,
+    );
 
   useEffect(() => {
     if (
-      selectedDate?.startsWith(
+      !selectedDate ||
+      selectedDate.startsWith(
         selectedMonth,
       )
     ) {
@@ -95,9 +103,7 @@ export default function AbsenceCalendarPage() {
 
   function handleToday() {
     goToToday();
-    setSelectedDate(
-      getTodayDateKey(),
-    );
+    setSelectedDate(null);
   }
 
   return (
@@ -128,14 +134,12 @@ export default function AbsenceCalendarPage() {
                 <h2 className="text-xl font-semibold">
                   Ingen aktiv biograf valgt
                 </h2>
-
                 <p className="mt-2 text-sm text-amber-900 dark:text-amber-100/90">
                   Vælg en biograf i
                   MASTER-panelet, før du
                   kan se
                   fraværskalenderen.
                 </p>
-
                 <button
                   type="button"
                   onClick={() =>
@@ -179,12 +183,24 @@ export default function AbsenceCalendarPage() {
                   onSelectDate={
                     setSelectedDate
                   }
+                  onUpdateStatus={
+                    updateStatus
+                  }
                 />
               </>
             )}
           </div>
         </main>
       </AdminGuard>
+
+      <LeaveApprovalSuccessToast
+        message={
+          successToast
+        }
+        onDismiss={
+          dismissSuccessToast
+        }
+      />
 
       <InfoModal
         open={infoDialog.open}

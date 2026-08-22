@@ -62,7 +62,7 @@ export default function AbsenceCalendarHeader({
               onClick={onToday}
               className="mt-1 rounded-md text-sm font-semibold text-blue-700 transition hover:text-blue-900 hover:underline active:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:text-blue-300 dark:hover:text-blue-200 dark:active:text-blue-100 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
             >
-              Gå til denne måned
+              I dag
             </button>
           )}
         </div>

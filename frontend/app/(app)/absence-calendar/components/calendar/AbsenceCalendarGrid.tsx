@@ -1,6 +1,8 @@
+import BaseModal from "@/app/components/modals/BaseModal";
+
+import LeaveApprovalRequestCard from "../../../leave-approval/components/list/LeaveApprovalRequestCard";
 import {
   formatCalendarDate,
-  formatRequestRange,
   formatShortCalendarDate,
   getStatusLabel,
   getStatusStyle,
@@ -9,14 +11,22 @@ import {
   requestIsOnDate,
   sortRequestsForCalendar,
 } from "../../helpers/core/absenceCalendarHelpers";
-import type { LeaveRequest } from "../../helpers/core/absenceCalendarTypes";
+import type {
+  LeaveRequest,
+  LeaveRequestStatus,
+} from "../../helpers/core/absenceCalendarTypes";
 
 type AbsenceCalendarGridProps = {
   calendarDays: Array<string | null>;
   requests: LeaveRequest[];
   selectedDate: string | null;
   onSelectDate: (
-    date: string,
+    date: string | null,
+  ) => void;
+  onUpdateStatus: (
+    requestId: number,
+    status: LeaveRequestStatus,
+    note?: string,
   ) => void;
 };
 
@@ -35,8 +45,10 @@ export default function AbsenceCalendarGrid({
   requests,
   selectedDate,
   onSelectDate,
+  onUpdateStatus,
 }: AbsenceCalendarGridProps) {
   const today = getTodayDateKey();
+
   const selectedRequests =
     selectedDate
       ? sortRequestsForCalendar(
@@ -50,8 +62,15 @@ export default function AbsenceCalendarGrid({
         )
       : [];
 
+  const detailModalOpen =
+    Boolean(
+      selectedDate &&
+        selectedRequests.length >
+          0,
+    );
+
   return (
-    <section className="space-y-4">
+    <section>
       <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950/60">
         <div className="min-w-[980px]">
           <div className="mb-2 grid grid-cols-7 gap-2">
@@ -91,24 +110,45 @@ export default function AbsenceCalendarGrid({
                     ),
                   );
                 const visibleRequests =
-                  dayRequests.slice(0, 3);
+                  dayRequests.slice(
+                    0,
+                    3,
+                  );
                 const additionalCount =
                   dayRequests.length -
                   visibleRequests.length;
                 const isToday =
                   date === today;
                 const isSelected =
-                  date === selectedDate;
+                  date ===
+                    selectedDate &&
+                  dayRequests.length >
+                    0;
 
                 return (
                   <button
                     key={date}
                     type="button"
                     onClick={() =>
-                      onSelectDate(date)
+                      onSelectDate(
+                        dayRequests.length >
+                          0
+                          ? date
+                          : null,
+                      )
                     }
                     aria-pressed={
                       isSelected
+                    }
+                    aria-label={
+                      dayRequests.length >
+                      0
+                        ? `${formatCalendarDate(
+                            date,
+                          )}: åbn ${dayRequests.length} fraværsregistrering${dayRequests.length === 1 ? "" : "er"}`
+                        : formatCalendarDate(
+                            date,
+                          )
                     }
                     className={`min-h-36 rounded-xl border p-2 text-left transition ${
                       isSelected
@@ -130,6 +170,7 @@ export default function AbsenceCalendarGrid({
                           date,
                         )}
                       </span>
+
                       {isToday && (
                         <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">
                           I dag
@@ -188,78 +229,52 @@ export default function AbsenceCalendarGrid({
         </div>
       </div>
 
-      {selectedDate ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-950/60">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-xl font-bold text-gray-950 dark:text-white">
-              {formatCalendarDate(
+      <BaseModal
+        open={
+          detailModalOpen
+        }
+        title={
+          selectedDate
+            ? `Fravær · ${formatCalendarDate(
                 selectedDate,
-              )}
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              {selectedRequests.length ===
-              1
-                ? "1 medarbejder har fravær denne dag."
-                : `${selectedRequests.length} medarbejdere har fravær denne dag.`}
-            </p>
-          </div>
+              )}`
+            : "Fravær"
+        }
+        onClose={() =>
+          onSelectDate(
+            null,
+          )
+        }
+        width="xl"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            {selectedRequests.length ===
+            1
+              ? "1 medarbejder har fravær denne dag."
+              : `${selectedRequests.length} medarbejdere har fravær denne dag.`}
+          </p>
 
-          {selectedRequests.length >
-          0 ? (
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              {selectedRequests.map(
-                (request) => (
-                  <article
-                    key={request.id}
-                    className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-900/50"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <div className="font-bold text-gray-950 dark:text-white">
-                          {getUserName(
-                            request,
-                          )}
-                        </div>
-                        <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                          {formatRequestRange(
-                            request,
-                          )}
-                        </div>
-                      </div>
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-xs font-bold ${getStatusStyle(
-                          request.status,
-                        )}`}
-                      >
-                        {getStatusLabel(
-                          request.status,
-                        )}
-                      </span>
-                    </div>
-
-                    {request.reason && (
-                      <div className="mt-3 whitespace-pre-wrap rounded-lg bg-white p-3 text-sm text-gray-700 dark:bg-gray-950/60 dark:text-gray-200">
-                        {request.reason}
-                      </div>
-                    )}
-                  </article>
-                ),
-              )}
-            </div>
-          ) : (
-            <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-5 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-              Ingen fravær på den valgte
-              dag med de aktuelle filtre.
-            </div>
+          {selectedRequests.map(
+            (request) => (
+              <LeaveApprovalRequestCard
+                key={
+                  request.id
+                }
+                request={
+                  request
+                }
+                focusedRequestId={
+                  null
+                }
+                onUpdateStatus={
+                  onUpdateStatus
+                }
+              />
+            ),
           )}
         </div>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-950/60 dark:text-gray-400">
-          Vælg en dag i kalenderen for at
-          se hele fraværsperioden, årsagen
-          og status.
-        </div>
-      )}
+      </BaseModal>
     </section>
   );
 }
