@@ -168,6 +168,7 @@ export async function clockOutTimeEntry(params: {
   realtimeGateway: RealtimeGateway;
   auditLogsService: AuditLogsService;
   id: number;
+  changedByUserId: number;
   data?: ClockOutData;
 }) {
   const {
@@ -175,6 +176,7 @@ export async function clockOutTimeEntry(params: {
     realtimeGateway,
     auditLogsService,
     id,
+    changedByUserId,
     data,
   } = params;
   const existingEntry =
@@ -221,8 +223,11 @@ export async function clockOutTimeEntry(params: {
   });
 
   await recordClockOutTimeEntryAudit({
+    prisma,
     auditLogsService,
+    existingEntry,
     entry,
+    changedByUserId,
   });
 
   return notifyTimeEntryUpdated(

@@ -173,6 +173,8 @@ function actionTitle(
       return "Automatisk tidsregistrering";
     case "AUTO_CLOCK_OUT":
       return "Fyraften automatisk udfyldt";
+    case "CLOCK_OUT":
+      return "Fyraften registreret";
     case "UPDATED":
       return "Registrering rettet";
     case "APPROVED":
@@ -199,6 +201,8 @@ function actorLabel(
       return "Oprettet af";
     case "AUTO_CLOCK_OUT":
       return "Udfyldt af";
+    case "CLOCK_OUT":
+      return "Registreret af";
     case "UPDATED":
       return "Rettet af";
     case "APPROVED":

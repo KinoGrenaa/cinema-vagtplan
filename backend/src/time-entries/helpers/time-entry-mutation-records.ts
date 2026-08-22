@@ -77,18 +77,33 @@ export async function recordClockInTimeEntryCreated({
 }
 
 export async function recordClockOutTimeEntryAudit({
+  prisma,
   auditLogsService,
+  existingEntry,
   entry,
+  changedByUserId,
 }: {
+  prisma: PrismaService;
   auditLogsService: AuditLogsService;
+  existingEntry: any;
   entry: any;
+  changedByUserId: number;
 }) {
+  await createTimeEntryRevision(prisma, {
+    timeEntryId: entry.id,
+    changedByUserId,
+    action: 'CLOCK_OUT',
+    before: createDetailedTimeEntryRevisionSnapshot(existingEntry),
+    after: createDetailedTimeEntryRevisionSnapshot(entry),
+    reason: null,
+  });
+
   await auditLogsService.create({
     action: 'CLOCK_OUT',
     entityType: 'TimeEntry',
     entityId: entry.id,
     description: 'Medarbejder registrerede fyraften',
-    userId: entry.userId,
+    userId: changedByUserId,
     cinemaId: entry.cinemaId,
   });
 }

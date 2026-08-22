@@ -182,6 +182,8 @@ export class TimeEntriesService {
       auditLogsService:
         this.auditLogsService,
       id,
+      changedByUserId:
+        getTimeEntryActorUserId(user),
       data,
     });
   }
