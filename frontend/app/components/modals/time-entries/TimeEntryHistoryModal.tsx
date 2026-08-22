@@ -25,6 +25,9 @@ export type TimeEntryRevision = {
   previousClockOut?:
     string | null;
   newClockOut?: string | null;
+  previousNote?:
+    string | null;
+  newNote?: string | null;
   previousClockInNote?:
     string | null;
   newClockInNote?:
@@ -459,20 +462,33 @@ export default function TimeEntryHistoryModal({
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         {isCreated ? (
-                          <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
-                            <p className="font-semibold text-gray-600 dark:text-gray-300">
-                              Arbejdstid
-                            </p>
-                            <p className="mt-1 text-gray-950 dark:text-white">
-                              {formatTime(
-                                revision.newClockIn,
-                              )}{" "}
-                              –{" "}
-                              {formatTime(
-                                revision.newClockOut,
+                          <>
+                            <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                              <p className="font-semibold text-gray-600 dark:text-gray-300">
+                                Arbejdstid
+                              </p>
+                              <p className="mt-1 text-gray-950 dark:text-white">
+                                {formatTime(
+                                  revision.newClockIn,
+                                )}{" "}
+                                –{" "}
+                                {formatTime(
+                                  revision.newClockOut,
+                                )}
+                              </p>
+                            </div>
+                            {revision.newNote &&
+                              revision.newNote.trim() && (
+                                <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                                  <p className="font-semibold text-gray-600 dark:text-gray-300">
+                                    Note / begrundelse
+                                  </p>
+                                  <p className="mt-1 whitespace-pre-wrap text-gray-950 dark:text-white">
+                                    {revision.newNote}
+                                  </p>
+                                </div>
                               )}
-                            </p>
-                          </div>
+                          </>
                         ) : (
                           <>
                             {revision.previousStatus !==
