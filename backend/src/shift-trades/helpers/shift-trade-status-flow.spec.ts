@@ -107,6 +107,11 @@ function createAcceptTx(
 
   return {
     $executeRaw: jest.fn().mockResolvedValue(1),
+    timeEntry: {
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(null),
+    },
     shiftTrade: {
       findFirst: jest
         .fn()

@@ -42,6 +42,9 @@ import {
 import {
   resolveOpenShiftLinkedActions,
 } from './shift-linked-actions';
+import {
+  assertShiftHasNoActiveTimeEntry,
+} from './shift-time-entry-lock';
 
 async function acquireShiftUserLocks(
   transaction:
@@ -132,6 +135,14 @@ export async function updateShiftFlow({
             'Vagten blev ikke fundet',
           );
         }
+
+        await assertShiftHasNoActiveTimeEntry(
+          transaction,
+          {
+            cinemaId,
+            shiftId: id,
+          },
+        );
 
         await acquireShiftUserLocks(
           transaction,

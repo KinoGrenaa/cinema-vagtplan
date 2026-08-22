@@ -16,6 +16,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
+  assertShiftHasNoActiveTimeEntry,
+} from '../../shifts/helpers/shift-time-entry-lock';
+import {
   normalizeShiftTradeCreateInput,
   ShiftTradeCreateInput,
 } from './shift-trade-input';
@@ -166,6 +169,16 @@ export async function createShiftTrade(
           'Vagten blev ikke fundet i denne biograf',
         );
       }
+
+      await assertShiftHasNoActiveTimeEntry(
+        tx,
+        {
+          cinemaId: data.cinemaId,
+          shiftId: data.shiftId,
+          message:
+            'Vagten kan ikke sendes i bytte, fordi der findes en tidsregistrering.',
+        },
+      );
 
       if (
         shift.userId !==

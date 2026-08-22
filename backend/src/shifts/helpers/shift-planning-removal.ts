@@ -293,6 +293,7 @@ async function findPlanningShiftRemovalRows(
         SELECT CAST(COUNT(*) AS INTEGER)
         FROM "TimeEntry" te
         WHERE te."shiftId" = s.id
+          AND te.status <> 'VOIDED'
       ) AS "timeEntryCount",
       (
         SELECT CAST(COUNT(*) AS INTEGER)

@@ -60,7 +60,13 @@ export default function ScheduleShiftFormModal({
   return (
     <BaseModal
       open={open}
-      title={selectedShift ? "Rediger vagt" : "Opret vagt"}
+      title={
+        selectedShift?.timeEntries?.length
+          ? "Vis vagt"
+          : selectedShift
+            ? "Rediger vagt"
+            : "Opret vagt"
+      }
       width="xl"
       onClose={onCancel}
     >

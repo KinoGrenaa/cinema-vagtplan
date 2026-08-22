@@ -1,3 +1,4 @@
+import { TimeEntryStatus } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import { getCopenhagenDayRange } from './shift-service-helpers';
 
@@ -22,6 +23,20 @@ export const scheduleShiftSelect = {
   },
   jobFunction: {
     select: { id: true, name: true, color: true, isActive: true },
+  },
+  timeEntries: {
+    where: {
+      status: {
+        not: TimeEntryStatus.VOIDED,
+      },
+    },
+    select: {
+      id: true,
+    },
+    orderBy: {
+      id: 'desc',
+    },
+    take: 1,
   },
   staffingRequests: {
     where: {

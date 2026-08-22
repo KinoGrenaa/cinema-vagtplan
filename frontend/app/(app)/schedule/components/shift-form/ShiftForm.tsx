@@ -61,6 +61,8 @@ const labelClass =
   "mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 const helpTextClass = "mt-1 text-xs text-gray-500 dark:text-gray-400";
+const SHIFT_TIME_ENTRY_LOCK_MESSAGE =
+  "Vagten kan ikke ændres, fordi der findes en tidsregistrering.";
 
 function getLeaveUserId(leaveRequest: LeaveRequest): number | null {
   if (typeof leaveRequest.userId === "number") {
@@ -455,6 +457,9 @@ export default function ShiftForm({
     endTime,
   );
   const activeTrade = selectedShift?.trades?.[0] ?? null;
+  const shiftLockedByTimeEntry = Boolean(
+    selectedShift?.timeEntries?.length,
+  );
   const activeTradeTargetName =
     `${activeTrade?.targetUser?.firstName ?? ""} ${activeTrade?.targetUser?.lastName ?? ""}`.trim();
   const activeTradeLabel = activeTrade
@@ -611,6 +616,7 @@ export default function ShiftForm({
     nextDate: string,
   ) {
     if (
+      shiftLockedByTimeEntry ||
       !selectedShift ||
       !nextDate
     ) {
@@ -656,6 +662,11 @@ export default function ShiftForm({
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (shiftLockedByTimeEntry) {
+      event.preventDefault();
+      return;
+    }
+
     const errors = validateShiftForm({
       startTime,
       endTime,
@@ -679,7 +690,11 @@ export default function ShiftForm({
       {showHeader && (
         <div>
           <h2 className="text-2xl font-bold">
-            {selectedShift ? "Rediger vagt" : "Opret vagt"}
+            {shiftLockedByTimeEntry
+              ? "Vis vagt"
+              : selectedShift
+                ? "Rediger vagt"
+                : "Opret vagt"}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Vælg tidspunkt, medarbejder og jobfunktion for vagten.
@@ -687,6 +702,11 @@ export default function ShiftForm({
         </div>
       )}
 
+      {shiftLockedByTimeEntry && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100">
+          {SHIFT_TIME_ENTRY_LOCK_MESSAGE}
+        </div>
+      )}
       {validationErrors.length > 0 && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
           <p className="font-semibold">Vagten kan ikke gemmes endnu:</p>
@@ -731,7 +751,8 @@ export default function ShiftForm({
                 </div>
               </div>
 
-              {!showMoveDatePicker && (
+              {!shiftLockedByTimeEntry &&
+                !showMoveDatePicker && (
                 <button
                   type="button"
                   onClick={() =>
@@ -746,7 +767,8 @@ export default function ShiftForm({
               )}
             </div>
 
-            {showMoveDatePicker && (
+            {!shiftLockedByTimeEntry &&
+              showMoveDatePicker && (
               <div className="mt-4 max-w-sm rounded-xl border border-blue-200 bg-white p-3 dark:border-blue-900 dark:bg-gray-900">
                 <div className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
                   {"V\u00e6lg ny dato"}
@@ -858,7 +880,8 @@ export default function ShiftForm({
             )}
           </select>
 
-          {selectedShift && (
+          {selectedShift &&
+            !shiftLockedByTimeEntry && (
             <p
               className={
                 helpTextClass
@@ -878,10 +901,13 @@ export default function ShiftForm({
             className={inputClass}
             value={userId}
             disabled={
-              !selectedShift &&
+              shiftLockedByTimeEntry ||
               (
-                jobFunctionId <= 0 ||
-                timingPreviewLoading
+                !selectedShift &&
+                (
+                  jobFunctionId <= 0 ||
+                  timingPreviewLoading
+                )
               )
             }
             onChange={(event) =>
@@ -1008,10 +1034,13 @@ export default function ShiftForm({
               )
             }
             disabled={
-              !selectedShift &&
+              shiftLockedByTimeEntry ||
               (
-                jobFunctionId <= 0 ||
-                timingPreviewLoading
+                !selectedShift &&
+                (
+                  jobFunctionId <= 0 ||
+                  timingPreviewLoading
+                )
               )
             }
             onChange={(nextTime) => {
@@ -1089,10 +1118,13 @@ export default function ShiftForm({
               )
             }
             disabled={
-              !selectedShift &&
+              shiftLockedByTimeEntry ||
               (
-                jobFunctionId <= 0 ||
-                timingPreviewLoading
+                !selectedShift &&
+                (
+                  jobFunctionId <= 0 ||
+                  timingPreviewLoading
+                )
               )
             }
             onChange={(nextTime) => {
@@ -1156,6 +1188,7 @@ export default function ShiftForm({
           <input
             className={inputClass}
             value={note}
+            disabled={shiftLockedByTimeEntry}
             onChange={(event) =>
               setNote(
                 event.target.value,
@@ -1269,9 +1302,12 @@ export default function ShiftForm({
           <button
             type="submit"
             disabled={
-              !selectedShift &&
-              jobFunctionId > 0 &&
-              timingPreviewLoading
+              shiftLockedByTimeEntry ||
+              (
+                !selectedShift &&
+                jobFunctionId > 0 &&
+                timingPreviewLoading
+              )
             }
             className="w-full rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 md:w-auto md:min-w-64"
           >
@@ -1288,23 +1324,26 @@ export default function ShiftForm({
 
       {selectedShift && (
         <div className="flex flex-wrap gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-xl bg-red-600 px-5 py-2 text-white transition hover:bg-red-700"
-          >
-            Slet vagt
-          </button>
+          {!shiftLockedByTimeEntry && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-xl bg-red-600 px-5 py-2 text-white transition hover:bg-red-700"
+            >
+              Slet vagt
+            </button>
+          )}
 
           <button
             type="button"
             onClick={onCancel}
             className="rounded-xl bg-gray-200 px-5 py-2 font-semibold text-gray-900 transition hover:bg-gray-300 active:bg-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-600 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
-            Annuller
+            {shiftLockedByTimeEntry ? "Luk" : "Annuller"}
           </button>
 
-          {userId > 0 && activeTradeLabel ? (
+          {!shiftLockedByTimeEntry &&
+          (userId > 0 && activeTradeLabel ? (
             <span className="inline-flex items-center rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
               {activeTradeLabel}
             </span>
@@ -1316,9 +1355,10 @@ export default function ShiftForm({
             >
               Send i byttepulje
             </button>
-          ) : null}
-
-          {onSendStaffingRequest && userId <= 0 && (
+          ) : null)}
+          {!shiftLockedByTimeEntry &&
+            onSendStaffingRequest &&
+            userId <= 0 && (
             <button
               type="button"
               onClick={onSendStaffingRequest}

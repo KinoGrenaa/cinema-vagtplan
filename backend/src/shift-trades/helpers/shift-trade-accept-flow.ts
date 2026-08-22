@@ -19,6 +19,9 @@ import {
   SHIFT_RECORD_LOCK_NAMESPACE,
 } from '../../shifts/helpers/shift-advisory-lock';
 import {
+  assertShiftHasNoActiveTimeEntry,
+} from '../../shifts/helpers/shift-time-entry-lock';
+import {
   ensureShiftTradeCanBeAccepted,
   resolveShiftTradeActorContext,
   ShiftTradeActor,
@@ -185,6 +188,16 @@ export async function acceptShiftTrade(
             'Vagtbyttet er ikke længere aktuelt, fordi vagten er blevet ændret',
           );
         }
+
+        await assertShiftHasNoActiveTimeEntry(
+          tx,
+          {
+            cinemaId,
+            shiftId: trade.shiftId,
+            message:
+              'Vagten kan ikke overtages, fordi der findes en tidsregistrering.',
+          },
+        );
 
         await ensureShiftTradeUserQualified(
           tx,

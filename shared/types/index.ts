@@ -84,6 +84,7 @@ export type Shift = {
   jobFunctionId: number;
   user: User;
   jobFunction: JobFunction;
+  timeEntries?: Array<{ id: number }>;
   trades?: ShiftActiveTrade[];
   staffingRequests?: ShiftActiveStaffingRequest[];
 };

@@ -53,6 +53,11 @@ describe('shift delete flow', () => {
       $executeRaw: jest
         .fn()
         .mockResolvedValue(1),
+      timeEntry: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue(null),
+      },
       shift: {
         findFirst: jest
           .fn()

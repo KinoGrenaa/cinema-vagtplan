@@ -16,6 +16,9 @@ import {
 import {
   resolveOpenShiftLinkedActions,
 } from './shift-linked-actions';
+import {
+  assertShiftHasNoActiveTimeEntry,
+} from './shift-time-entry-lock';
 
 export async function deleteShiftFlow({
   prisma,
@@ -65,6 +68,14 @@ export async function deleteShiftFlow({
           'Vagten blev ikke fundet',
         );
       }
+
+      await assertShiftHasNoActiveTimeEntry(
+        tx,
+        {
+          cinemaId,
+          shiftId: id,
+        },
+      );
 
       const linkedActions =
         await resolveOpenShiftLinkedActions(

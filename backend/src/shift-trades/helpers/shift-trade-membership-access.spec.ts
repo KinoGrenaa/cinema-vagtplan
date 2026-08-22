@@ -112,6 +112,11 @@ describe(
         $queryRaw: jest
           .fn()
           .mockResolvedValue([]),
+        timeEntry: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue(null),
+        },
         shift: {
           findFirst: jest
             .fn()
