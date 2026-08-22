@@ -19,6 +19,7 @@ import {
   AuthUser,
   requireUserId,
   resolveLeaveCinemaId,
+  validateLeaveRequestMinimumNotice,
 } from './leave-request-service-helpers';
 import { notifyLeaveRequestCreated } from './leave-request-notifications';
 import {
@@ -122,14 +123,35 @@ export async function createLeaveRequestFlow(
     data: normalized,
   });
 
+  const cinemaSettings =
+    await params.prisma.cinema.findUnique({
+      where: {
+        id: target.cinemaId,
+      },
+      select: {
+        leaveRequestMinimumNoticeDays:
+          true,
+      },
+    });
+  if (!cinemaSettings) {
+    throw new BadRequestException(
+      'Biografen blev ikke fundet.',
+    );
+  }
+
+  validateLeaveRequestMinimumNotice(
+    normalized.startDate,
+    cinemaSettings.leaveRequestMinimumNoticeDays,
+  );
+
   const leaveRequest =
     await params.prisma.$transaction(
       async (tx) => {
-        await tx.$queryRaw(
+        await tx.$executeRaw(
           Prisma.sql`
             SELECT pg_advisory_xact_lock(
-              54001,
-              ${target.userId}
+              54001::integer,
+              ${target.userId}::integer
             )
           `,
         );

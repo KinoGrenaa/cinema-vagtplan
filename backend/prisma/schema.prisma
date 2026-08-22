@@ -183,6 +183,7 @@ model Cinema {
   createdAt                         DateTime                      @default(now())
   allowShiftTradePool               Boolean                       @default(false)
   allowShiftTradeDirect             Boolean                       @default(false)
+  leaveRequestMinimumNoticeDays     Int                           @default(1)
   payrollRulesEnabled               Boolean                       @default(false)
   clockInDeviationToleranceMinutes  Int                           @default(0)
   clockOutDeviationToleranceMinutes Int                           @default(0)
@@ -299,6 +300,8 @@ model User {
   shifts                                Shift[]
   leaveRequests                         LeaveRequest[]
   createdLeaveRequests                  LeaveRequest[]                       @relation("LeaveRequestCreatedBy")
+  cancelledLeaveRequests                LeaveRequest[]                       @relation("LeaveRequestCancelledBy")
+  rejectedLeaveRequests                 LeaveRequest[]                       @relation("LeaveRequestRejectedBy")
   userJobFunctions                      UserJobFunction[]                    @relation("UserJobFunctionUser")
   assignedUserJobFunctions              UserJobFunction[]                    @relation("UserJobFunctionAssignedBy")
   scheduleTemplateAssignments           ScheduleTemplateAssignment[]
@@ -749,14 +752,24 @@ model LeaveRequest {
   cinema          Cinema      @relation(fields: [cinemaId], references: [id])
   userId          Int
   user            User        @relation(fields: [userId], references: [id])
-  createdByUserId Int
-  createdByUser   User        @relation("LeaveRequestCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUserId   Int
+  createdByUser     User        @relation("LeaveRequestCreatedBy", fields: [createdByUserId], references: [id])
+  cancelledAt       DateTime?
+  cancelledByUserId Int?
+  cancelledByUser   User?       @relation("LeaveRequestCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  cancellationNote String?
+  rejectedAt       DateTime?
+  rejectedByUserId Int?
+  rejectedByUser   User?       @relation("LeaveRequestRejectedBy", fields: [rejectedByUserId], references: [id], onDelete: SetNull)
+  rejectionNote    String?
 
   @@index([cinemaId, userId, status, startDate, endDate])
   @@index([cinemaId, status, id])
   @@index([cinemaId, userId, status, id])
   @@index([cinemaId, status, startDate, endDate, id])
   @@index([status, startDate, id])
+  @@index([cancelledByUserId])
+  @@index([rejectedByUserId])
 }
 
 model ShiftTrade {

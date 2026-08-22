@@ -1,4 +1,9 @@
 import {
+  useState,
+} from "react";
+
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
+import {
   formatDateDK,
   formatTimeDK,
   formatUtcDateDK,
@@ -22,6 +27,7 @@ type LeaveApprovalRequestCardProps = {
   onUpdateStatus: (
     requestId: number,
     status: LeaveStatus,
+    note?: string,
   ) => void;
 };
 
@@ -323,6 +329,76 @@ export default function LeaveApprovalRequestCard({
     formatUserName(request.user);
   const createdByText =
     formatCreatedBy(request);
+  const [
+    showRejectConfirmation,
+    setShowRejectConfirmation,
+  ] =
+    useState(false);
+  const [
+    showCancelConfirmation,
+    setShowCancelConfirmation,
+  ] =
+    useState(false);
+  const [
+    rejectNote,
+    setRejectNote,
+  ] =
+    useState("");
+  const [
+    cancelNote,
+    setCancelNote,
+  ] =
+    useState("");
+  const cancelledByText =
+    request.cancelledByUser
+      ? formatUserName(
+          request.cancelledByUser,
+        )
+      : "Ukendt (ældre registrering)";
+  const rejectedByText =
+    request.rejectedByUser
+      ? formatUserName(
+          request.rejectedByUser,
+        )
+      : "Ukendt (ældre registrering)";
+  const rejectDescription =
+    [
+      "Du er ved at afvise denne fraværsansøgning:",
+      "",
+      employeeName,
+      formatLeavePeriod(
+        request.startDate,
+        request.endDate,
+      ),
+      `Årsag: ${formatLeaveReason(
+        request.reason,
+      )}`,
+      "",
+      "Er du sikker?",
+    ].join("\n");
+  const cancelConfirmationTitle =
+    request.status ===
+    "APPROVED"
+      ? "Annullér godkendt fravær"
+      : "Annullér fraværsansøgning";
+  const cancelDescription =
+    [
+      request.status ===
+      "APPROVED"
+        ? "Du er ved at annullere dette godkendte fravær:"
+        : "Du er ved at annullere denne fraværsansøgning:",
+      "",
+      employeeName,
+      formatLeavePeriod(
+        request.startDate,
+        request.endDate,
+      ),
+      `Årsag: ${formatLeaveReason(
+        request.reason,
+      )}`,
+      "",
+      "Er du sikker?",
+    ].join("\n");
 
   return (
     <article
@@ -391,6 +467,50 @@ export default function LeaveApprovalRequestCard({
             af {createdByText}
           </p>
 
+          {request.status ===
+            "CANCELLED" && (
+            <div className="mt-1 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+              <p className="font-medium">
+                Annulleret{" "}
+                {request.cancelledAt
+                  ? `${formatRequestCreatedAt(
+                      request.cancelledAt,
+                    )} `
+                  : ""}
+                af{" "}
+                {cancelledByText}
+              </p>
+              {request.cancellationNote && (
+                <p className="whitespace-pre-wrap text-gray-600 dark:text-gray-300">
+                  Bemærkning:{" "}
+                  {request.cancellationNote}
+                </p>
+              )}
+            </div>
+          )}
+
+          {request.status ===
+            "REJECTED" && (
+            <div className="mt-1 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+              <p className="font-medium">
+                Afvist{" "}
+                {request.rejectedAt
+                  ? `${formatRequestCreatedAt(
+                      request.rejectedAt,
+                    )} `
+                  : ""}
+                af{" "}
+                {rejectedByText}
+              </p>
+              {request.rejectionNote && (
+                <p className="whitespace-pre-wrap text-gray-600 dark:text-gray-300">
+                  Bemærkning:{" "}
+                  {request.rejectionNote}
+                </p>
+              )}
+            </div>
+          )}
+
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
             {getStatusDescription(
               request.status,
@@ -417,12 +537,14 @@ export default function LeaveApprovalRequestCard({
 
               <button
                 type="button"
-                onClick={() =>
-                  onUpdateStatus(
-                    request.id,
-                    "REJECTED",
-                  )
-                }
+                onClick={() => {
+                  setRejectNote(
+                    "",
+                  );
+                  setShowRejectConfirmation(
+                    true,
+                  );
+                }}
                 className={`${actionButtonBase} bg-red-700 hover:bg-red-800 active:bg-red-900 focus-visible:ring-red-600 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400 dark:focus-visible:ring-red-400`}
               >
                 Afvis
@@ -436,12 +558,14 @@ export default function LeaveApprovalRequestCard({
               "APPROVED") && (
             <button
               type="button"
-              onClick={() =>
-                onUpdateStatus(
-                  request.id,
-                  "CANCELLED",
-                )
-              }
+              onClick={() => {
+                setCancelNote(
+                  "",
+                );
+                setShowCancelConfirmation(
+                  true,
+                );
+              }}
               className={`${actionButtonBase} bg-red-900 hover:bg-red-950 active:bg-black focus-visible:ring-red-700 dark:bg-red-800 dark:hover:bg-red-700 dark:active:bg-red-600 dark:focus-visible:ring-red-500`}
             >
               {getCancelActionLabel(
@@ -536,6 +660,159 @@ export default function LeaveApprovalRequestCard({
           </div>
         </div>
       </div>
+      <ConfirmModal
+        open={
+          showRejectConfirmation
+        }
+        title="Afvis fraværsansøgning"
+        description={
+          rejectDescription
+        }
+        confirmText="Afvis ansøgning"
+        cancelText="Fortryd"
+        confirmVariant="danger"
+        confirmDisabled={
+          !rejectNote.trim()
+        }
+        onCancel={() => {
+          setShowRejectConfirmation(
+            false,
+          );
+          setRejectNote(
+            "",
+          );
+        }}
+        onConfirm={() => {
+          const note =
+            rejectNote.trim();
+          if (!note) {
+            return;
+          }
+          setShowRejectConfirmation(
+            false,
+          );
+          setRejectNote(
+            "",
+          );
+          onUpdateStatus(
+            request.id,
+            "REJECTED",
+            note,
+          );
+        }}
+      >
+        <div>
+          <label
+            htmlFor={`leave-reject-note-${request.id}`}
+            className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200"
+          >
+            Bemærkning til medarbejderen
+          </label>
+          <textarea
+            id={`leave-reject-note-${request.id}`}
+            value={
+              rejectNote
+            }
+            onChange={(event) =>
+              setRejectNote(
+                event.target.value,
+              )
+            }
+            maxLength={
+              1000
+            }
+            rows={
+              4
+            }
+            autoFocus
+            placeholder="Skriv hvorfor ansøgningen afvises..."
+            className="w-full resize-y rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Obligatorisk · maks. 1000 tegn
+          </p>
+        </div>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={
+          showCancelConfirmation
+        }
+        title={
+          cancelConfirmationTitle
+        }
+        description={
+          cancelDescription
+        }
+        confirmText={
+          getCancelActionLabel(
+            request.status,
+          )
+        }
+        cancelText="Fortryd"
+        confirmVariant="danger"
+        confirmDisabled={
+          !cancelNote.trim()
+        }
+        onCancel={() => {
+          setShowCancelConfirmation(
+            false,
+          );
+          setCancelNote(
+            "",
+          );
+        }}
+        onConfirm={() => {
+          const note =
+            cancelNote.trim();
+          if (!note) {
+            return;
+          }
+          setShowCancelConfirmation(
+            false,
+          );
+          setCancelNote(
+            "",
+          );
+          onUpdateStatus(
+            request.id,
+            "CANCELLED",
+            note,
+          );
+        }}
+      >
+        <div>
+          <label
+            htmlFor={`leave-cancel-note-${request.id}`}
+            className="mb-2 block text-sm font-semibold text-gray-800 dark:text-gray-200"
+          >
+            Bemærkning til medarbejderen
+          </label>
+          <textarea
+            id={`leave-cancel-note-${request.id}`}
+            value={
+              cancelNote
+            }
+            onChange={(event) =>
+              setCancelNote(
+                event.target.value,
+              )
+            }
+            maxLength={
+              1000
+            }
+            rows={
+              4
+            }
+            autoFocus
+            placeholder="Skriv hvorfor fraværet annulleres..."
+            className="w-full resize-y rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Obligatorisk · maks. 1000 tegn
+          </p>
+        </div>
+      </ConfirmModal>
     </article>
   );
 }

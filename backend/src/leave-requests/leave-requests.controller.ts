@@ -212,6 +212,7 @@ export class LeaveRequestsController {
         'Fraværsansøgning skal være et gyldigt ID',
       ),
       body.status,
+      body.note,
       parseOptionalPositiveIntegerQuery(
         cinemaId,
         'Biograf skal være et gyldigt ID',

@@ -1,5 +1,9 @@
 "use client";
 
+import type {
+  ReactNode,
+} from "react";
+
 import BaseModal from "./BaseModal";
 
 type ConfirmModalProps = {
@@ -10,6 +14,8 @@ type ConfirmModalProps = {
   cancelText?: string;
   confirmVariant?: "danger" | "success" | "primary";
   loading?: boolean;
+  confirmDisabled?: boolean;
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -22,6 +28,8 @@ export default function ConfirmModal({
   cancelText,
   confirmVariant = "primary",
   loading = false,
+  confirmDisabled = false,
+  children,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -38,6 +46,7 @@ export default function ConfirmModal({
         <p className="whitespace-pre-line text-gray-600 dark:text-gray-300">
           {description}
         </p>
+        {children}
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           {cancelText && (
             <button
@@ -52,7 +61,10 @@ export default function ConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={loading}
+            disabled={
+              loading ||
+              confirmDisabled
+            }
             className={`rounded-xl px-4 py-2 font-semibold text-white shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-gray-900 ${confirmButtonClass}`}
           >
             {loading ? "Behandler..." : confirmText}

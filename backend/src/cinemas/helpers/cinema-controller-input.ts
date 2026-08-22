@@ -111,6 +111,29 @@ function normalizeOptionalInteger(
   );
 }
 
+function normalizeOptionalNonNegativeInteger(
+  value: unknown,
+  maximum: number,
+  message: string,
+) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (
+    typeof value !== 'number' ||
+    !Number.isSafeInteger(value) ||
+    value < 0 ||
+    value > maximum
+  ) {
+    throw new BadRequestException(
+      message,
+    );
+  }
+
+  return value;
+}
+
 function normalizeOptionalThreshold(
   value: unknown,
   maximum: number,
@@ -232,6 +255,12 @@ export function normalizeCinemaSettingsBody(
                   'Logo-adresse skal være tekst eller tom',
                 );
               })(),
+    leaveRequestMinimumNoticeDays:
+      normalizeOptionalNonNegativeInteger(
+        body.leaveRequestMinimumNoticeDays,
+        3650,
+        'Minimum varsel for fravær skal være mellem 0 og 3650 hele kalenderdage',
+      ),
     clockInDeviationToleranceMinutes:
       normalizeOptionalInteger(
         body.clockInDeviationToleranceMinutes,

@@ -130,6 +130,7 @@ export class LeaveRequestsService {
     user: AuthUser,
     id: number,
     status: LeaveStatus,
+    note?: string,
     selectedCinemaId?:
       number | null,
   ) {
@@ -145,6 +146,7 @@ export class LeaveRequestsService {
       user,
       id,
       status,
+      note,
       selectedCinemaId,
     });
   }

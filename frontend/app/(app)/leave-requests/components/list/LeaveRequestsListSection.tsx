@@ -10,6 +10,11 @@ import {
 } from "lucide-react";
 
 import {
+  formatDateDK,
+  formatTimeDK,
+} from "@/app/utils/dateTime";
+
+import {
   getEmptyReasonText,
   getPeriodText,
   getStatusBadge,
@@ -20,6 +25,67 @@ import {
 import type {
   LeaveRequest,
 } from "../../helpers/core/leaveRequestTypes";
+
+function formatActionTime(
+  value?:
+    string | null,
+) {
+  if (!value) {
+    return "";
+  }
+
+  return `${formatDateDK(
+    value,
+  )} kl. ${formatTimeDK(
+    value,
+  )}`;
+}
+
+function formatCancellationActor(
+  request:
+    LeaveRequest,
+  currentUserId:
+    number | null,
+) {
+  const actor =
+    request.cancelledByUser;
+
+  if (!actor) {
+    return "ukendt (ældre registrering)";
+  }
+
+  if (
+    currentUserId &&
+    actor.id ===
+      currentUserId
+  ) {
+    return "dig";
+  }
+
+  const name =
+    `${actor.firstName ?? ""} ${actor.lastName ?? ""}`.trim();
+
+  return name ||
+    `bruger #${actor.id}`;
+}
+
+function formatRejectionActor(
+  request:
+    LeaveRequest,
+) {
+  const actor =
+    request.rejectedByUser;
+
+  if (!actor) {
+    return "ukendt (ældre registrering)";
+  }
+
+  const name =
+    `${actor.firstName ?? ""} ${actor.lastName ?? ""}`.trim();
+
+  return name ||
+    `bruger #${actor.id}`;
+}
 
 type LeaveRequestGroup = {
   key: string;
@@ -173,7 +239,11 @@ export default function LeaveRequestsListSection({
                     aria-expanded={
                       isExpanded
                     }
-                    className="flex w-full items-center justify-between gap-4 bg-gray-50 p-4 text-left text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-blue-400"
+                    className={`flex w-full items-center justify-between gap-4 bg-gray-50 p-4 text-left text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gray-400 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-gray-500 ${
+                      isExpanded
+                        ? "rounded-t-2xl"
+                        : "rounded-2xl"
+                    }`}
                   >
                     <div>
                       <div className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">
@@ -342,6 +412,53 @@ export default function LeaveRequestsListSection({
                                     request.status,
                                   )}
                                 </div>
+                                {request.status ===
+                                  "CANCELLED" && (
+                                  <div className="mt-1 space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                                    <div>
+                                      Annulleret{" "}
+                                      {request.cancelledAt
+                                        ? `${formatActionTime(
+                                            request.cancelledAt,
+                                          )} `
+                                        : ""}
+                                      af{" "}
+                                      {formatCancellationActor(
+                                        request,
+                                        currentUserId,
+                                      )}
+                                    </div>
+                                    {request.cancellationNote && (
+                                      <div className="whitespace-pre-wrap">
+                                        Bemærkning:{" "}
+                                        {request.cancellationNote}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {request.status ===
+                                  "REJECTED" && (
+                                  <div className="mt-1 space-y-1 text-xs text-gray-600 dark:text-gray-400">
+                                    <div>
+                                      Afvist{" "}
+                                      {request.rejectedAt
+                                        ? `${formatActionTime(
+                                            request.rejectedAt,
+                                          )} `
+                                        : ""}
+                                      af{" "}
+                                      {formatRejectionActor(
+                                        request,
+                                      )}
+                                    </div>
+                                    {request.rejectionNote && (
+                                      <div className="whitespace-pre-wrap">
+                                        Bemærkning:{" "}
+                                        {request.rejectionNote}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </article>

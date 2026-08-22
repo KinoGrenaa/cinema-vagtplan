@@ -231,6 +231,45 @@ export function resolveLeaveCinemaId(
   return sessionCinemaId;
 }
 
+export function validateLeaveRequestMinimumNotice(
+  startDate: Date,
+  minimumNoticeDays: number,
+  referenceDate = new Date(),
+) {
+  if (
+    !Number.isInteger(minimumNoticeDays) ||
+    minimumNoticeDays < 0 ||
+    minimumNoticeDays > 3650
+  ) {
+    throw new BadRequestException(
+      'Biografens minimumsvarsel for fravær er ugyldigt.',
+    );
+  }
+
+  const minimumStart =
+    getCopenhagenDayStart(
+      referenceDate,
+      minimumNoticeDays,
+    );
+
+  if (startDate < minimumStart) {
+    if (minimumNoticeDays === 0) {
+      throw new BadRequestException(
+        'Fravær kan ikke søges tilbage i tiden.',
+      );
+    }
+
+    const dayLabel =
+      minimumNoticeDays === 1
+        ? 'kalenderdag'
+        : 'kalenderdage';
+
+    throw new BadRequestException(
+      `Fravær skal søges mindst ${minimumNoticeDays} ${dayLabel} før start.`,
+    );
+  }
+}
+
 export function validateLeaveRequestDates(
   startDate: Date,
   endDate: Date,
@@ -244,14 +283,6 @@ export function validateLeaveRequestDates(
     );
   }
 
-  if (
-    startDate <
-    getCopenhagenTomorrowStart()
-  ) {
-    throw new BadRequestException(
-      'Du kan ikke anmode om fri i dag eller tilbage i tiden.',
-    );
-  }
 
   if (endDate <= startDate) {
     throw new BadRequestException(

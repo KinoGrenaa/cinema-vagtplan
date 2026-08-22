@@ -20,6 +20,7 @@ import {
   useInfoModal,
 } from "@/app/hooks/useInfoModal";
 
+import LeaveApprovalSuccessToast from "./components/feedback/LeaveApprovalSuccessToast";
 import LeaveApprovalHeader from "./components/layout/LeaveApprovalHeader";
 import LeaveApprovalRequestsSection from "./components/list/LeaveApprovalRequestsSection";
 import LeaveApprovalFilterModal from "./components/modals/LeaveApprovalFilterModal";
@@ -54,6 +55,8 @@ export default function LeaveApprovalPage() {
     loadingMore,
     hasMore,
     needsMasterCinemaSelection,
+    successToast,
+    dismissSuccessToast,
     updateStatus,
     loadMore,
     showFilterModal,
@@ -342,6 +345,15 @@ export default function LeaveApprovalPage() {
           }
           onClose={
             closeFilterModal
+          }
+        />
+
+        <LeaveApprovalSuccessToast
+          message={
+            successToast
+          }
+          onDismiss={
+            dismissSuccessToast
           }
         />
 

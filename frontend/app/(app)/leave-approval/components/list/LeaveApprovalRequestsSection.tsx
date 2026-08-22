@@ -172,7 +172,7 @@ function getStatusSummaryParts(
 }
 
 const groupButtonClass =
-  "flex w-full gap-4 bg-gray-50 p-4 text-left text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-blue-400";
+  "flex w-full gap-4 bg-gray-50 p-4 text-left text-gray-900 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gray-400 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900 dark:focus-visible:ring-gray-500";
 
 export default function LeaveApprovalRequestsSection({
   requests,
@@ -255,7 +255,11 @@ export default function LeaveApprovalRequestsSection({
                     aria-expanded={
                       isExpanded
                     }
-                    className={`${groupButtonClass} items-center justify-between`}
+                    className={`${groupButtonClass} ${
+                      isExpanded
+                        ? "rounded-t-2xl"
+                        : "rounded-2xl"
+                    } items-center justify-between`}
                   >
                     <div>
                       <div className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">
@@ -337,7 +341,11 @@ export default function LeaveApprovalRequestsSection({
                                 aria-expanded={
                                   isDateExpanded
                                 }
-                                className={`${groupButtonClass} flex-col md:flex-row md:items-center md:justify-between`}
+                                className={`${groupButtonClass} ${
+                        isDateExpanded
+                          ? "rounded-t-2xl"
+                          : "rounded-2xl"
+                      } flex-col md:flex-row md:items-center md:justify-between`}
                               >
                                 <div>
                                   <div className="flex items-center gap-2 font-semibold text-gray-950 dark:text-white">

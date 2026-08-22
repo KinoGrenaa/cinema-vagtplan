@@ -14,6 +14,7 @@ export type UpdateCinemaSettingsData = {
   logoUrl?: string | null;
   allowShiftTradePool?: boolean;
   allowShiftTradeDirect?: boolean;
+  leaveRequestMinimumNoticeDays?: number;
   aiEnabled?: boolean;
   clockInDeviationToleranceMinutes?: number;
   clockOutDeviationToleranceMinutes?: number;
@@ -53,6 +54,7 @@ function setDefinedCinemaSettings(
   > = [
     'allowShiftTradePool',
     'allowShiftTradeDirect',
+    'leaveRequestMinimumNoticeDays',
     'aiEnabled',
     'clockInDeviationToleranceMinutes',
     'clockOutDeviationToleranceMinutes',

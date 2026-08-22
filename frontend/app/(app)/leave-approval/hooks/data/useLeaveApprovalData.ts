@@ -129,12 +129,31 @@ const emptyStatusCounts =
     number
   >;
 
+function getStatusSuccessMessage(
+  status:
+    LeaveStatus,
+) {
+  switch (status) {
+    case "APPROVED":
+      return "Fraværsansøgningen er godkendt.";
+    case "REJECTED":
+      return "Fraværsansøgningen er afvist.";
+    case "CANCELLED":
+      return "Fraværsansøgningen er annulleret.";
+    default:
+      return "Fraværsansøgningens status er opdateret.";
+  }
+}
+
 export function useLeaveApprovalData(
   infoDialog:
     InfoDialog,
   focusedRequestId?:
     number | null,
 ) {
+  const showError =
+    infoDialog.showError;
+
   const [
     requests,
     setRequests,
@@ -234,6 +253,34 @@ export function useLeaveApprovalData(
     setExpandedDateGroupKeys,
   ] =
     useState<string[]>([]);
+
+  const [
+    successToast,
+    setSuccessToast,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  useEffect(() => {
+    if (!successToast) {
+      return;
+    }
+
+    const timeoutId =
+      window.setTimeout(
+        () =>
+          setSuccessToast(
+            null,
+          ),
+        4000,
+      );
+
+    return () =>
+      window.clearTimeout(
+        timeoutId,
+      );
+  }, [successToast]);
 
   const activeCinemaId =
     useMemo(() => {
@@ -350,7 +397,7 @@ export function useLeaveApprovalData(
   const fetchRequests =
     useCallback(
       async (
-        showError = true,
+        shouldShowError = true,
       ) => {
         if (!currentUser) {
           return;
@@ -466,8 +513,8 @@ export function useLeaveApprovalData(
           );
           setTotalCount(0);
 
-          if (showError) {
-            infoDialog.showError(
+          if (shouldShowError) {
+            showError(
               "Fraværsansøgninger kunne ikke hentes",
               error instanceof Error
                 ? error.message
@@ -481,7 +528,7 @@ export function useLeaveApprovalData(
       [
         buildPageEndpoint,
         currentUser,
-        infoDialog,
+        showError,
         needsMasterCinemaSelection,
       ],
     );
@@ -553,7 +600,7 @@ export function useLeaveApprovalData(
           ),
         );
       } catch (error) {
-        infoDialog.showError(
+        showError(
           "Ældre fraværsansøgninger kunne ikke hentes",
           error instanceof Error
             ? error.message
@@ -567,7 +614,7 @@ export function useLeaveApprovalData(
     }, [
       buildPageEndpoint,
       hasMore,
-      infoDialog,
+      showError,
       loadingMore,
       nextBeforeId,
       totalCount,
@@ -889,12 +936,17 @@ export function useLeaveApprovalData(
     requestId: number,
     status:
       LeaveStatus,
+    note?: string,
   ) {
+    setSuccessToast(
+      null,
+    );
+
     try {
       if (
         needsMasterCinemaSelection
       ) {
-        infoDialog.showError(
+        showError(
           "Ingen aktiv biograf valgt",
           "Vælg en biograf i MASTER-panelet, før du behandler fravær.",
         );
@@ -917,6 +969,11 @@ export function useLeaveApprovalData(
             body:
               JSON.stringify({
                 status,
+                ...(note
+                  ? {
+                      note,
+                    }
+                  : {}),
               }),
           },
         );
@@ -931,14 +988,26 @@ export function useLeaveApprovalData(
       }
 
       await fetchRequests();
+
+      setSuccessToast(
+        getStatusSuccessMessage(
+          status,
+        ),
+      );
     } catch (error) {
-      infoDialog.showError(
+      showError(
         "Status kunne ikke opdateres",
         error instanceof Error
           ? error.message
           : "Der opstod en fejl.",
       );
     }
+  }
+
+  function dismissSuccessToast() {
+    setSuccessToast(
+      null,
+    );
   }
 
   function openFilterModal() {
@@ -1097,6 +1166,8 @@ export function useLeaveApprovalData(
     hasMore,
     dateRangeStatusCounts,
     needsMasterCinemaSelection,
+    successToast,
+    dismissSuccessToast,
     updateStatus,
     loadMore,
     showFilterModal,

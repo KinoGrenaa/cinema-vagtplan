@@ -4,6 +4,7 @@ import AdminGuard from "@/app/components/access/AdminGuard";
 import InfoModal from "@/app/components/modals/InfoModal";
 import CinemaSettingsBrandingSection from "./components/sections/CinemaSettingsBrandingSection";
 import CinemaSettingsFeatureTogglesSection from "./components/sections/CinemaSettingsFeatureTogglesSection";
+import CinemaSettingsLeaveSection from "./components/sections/CinemaSettingsLeaveSection";
 import CinemaSettingsTimeRegistrationSection from "./components/sections/CinemaSettingsTimeRegistrationSection";
 import CinemaSettingsHeaderSection from "./components/layout/CinemaSettingsHeaderSection";
 import CinemaSettingsLoadingState from "./components/layout/CinemaSettingsLoadingState";
@@ -65,6 +66,12 @@ export default function CinemaSettingsPage() {
           />
 
           <CinemaSettingsFeatureTogglesSection
+            cinema={cinema}
+            saving={saving}
+            updateCinemaSettings={updateCinemaSettings}
+          />
+
+          <CinemaSettingsLeaveSection
             cinema={cinema}
             saving={saving}
             updateCinemaSettings={updateCinemaSettings}

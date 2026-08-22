@@ -22,6 +22,18 @@ export type LeaveRequest = {
     LeaveRequestUser;
   createdByUser?:
     LeaveRequestUser | null;
+  cancelledAt?:
+    string | null;
+  cancelledByUser?:
+    LeaveRequestUser | null;
+  cancellationNote?:
+    string | null;
+  rejectedAt?:
+    string | null;
+  rejectedByUser?:
+    LeaveRequestUser | null;
+  rejectionNote?:
+    string | null;
 };
 
 export type LeaveDisplayDateRange = {

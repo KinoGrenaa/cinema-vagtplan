@@ -22,6 +22,9 @@ import {
   notifyLeaveRequestStatusChanged,
 } from './leave-request-notifications';
 import {
+  normalizeLeaveStatusNote,
+} from './leave-request-status-note';
+import {
   analyzeAbsenceImpact,
   ensureNoOverlappingLeaveRequest,
   ensureNoOverlappingShift,
@@ -38,6 +41,7 @@ export async function updateLeaveRequestStatusFlow(
     user: AuthUser;
     id: number;
     status: LeaveStatus;
+    note?: string;
     selectedCinemaId?: number | null;
   },
 ) {
@@ -59,6 +63,15 @@ export async function updateLeaveRequestStatusFlow(
     params.user,
     params.selectedCinemaId,
   );
+  const isAdmin =
+    params.user.role === 'ADMIN' ||
+    params.user.role === 'MASTER';
+  const statusNote =
+    normalizeLeaveStatusNote({
+      isAdmin,
+      status: params.status,
+      note: params.note,
+    });
 
   await ensureLeaveActorCinemaAccess(
     params.prisma,
@@ -69,11 +82,11 @@ export async function updateLeaveRequestStatusFlow(
   const leaveRequest =
     await params.prisma.$transaction(
       async (tx) => {
-        await tx.$queryRaw(
+        await tx.$executeRaw(
           Prisma.sql`
             SELECT pg_advisory_xact_lock(
-              54002,
-              ${requestId}
+              54002::integer,
+              ${requestId}::integer
             )
           `,
         );
@@ -92,11 +105,11 @@ export async function updateLeaveRequestStatusFlow(
           );
         }
 
-        await tx.$queryRaw(
+        await tx.$executeRaw(
           Prisma.sql`
             SELECT pg_advisory_xact_lock(
-              54001,
-              ${existing.userId}
+              54001::integer,
+              ${existing.userId}::integer
             )
           `,
         );
@@ -104,9 +117,7 @@ export async function updateLeaveRequestStatusFlow(
         ensureLeaveStatusChangeAllowed({
           actorUserId,
           existing,
-          isAdmin:
-            params.user.role === 'ADMIN' ||
-            params.user.role === 'MASTER',
+          isAdmin,
           status: params.status,
         });
 
@@ -143,6 +154,26 @@ export async function updateLeaveRequestStatusFlow(
             },
             data: {
               status: params.status,
+              ...(params.status === 'CANCELLED'
+                ? {
+                    cancelledAt:
+                      new Date(),
+                    cancelledByUserId:
+                      actorUserId,
+                    cancellationNote:
+                      statusNote,
+                  }
+                : {}),
+              ...(params.status === 'REJECTED'
+                ? {
+                    rejectedAt:
+                      new Date(),
+                    rejectedByUserId:
+                      actorUserId,
+                    rejectionNote:
+                      statusNote,
+                  }
+                : {}),
             },
           });
 
@@ -158,6 +189,20 @@ export async function updateLeaveRequestStatusFlow(
           },
           include: {
             user: true,
+            cancelledByUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            rejectedByUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
         });
       },

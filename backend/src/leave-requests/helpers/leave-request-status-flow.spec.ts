@@ -47,7 +47,7 @@ function createPrisma(params?: {
     },
   };
   const tx = {
-    $queryRaw: jest.fn(),
+    $executeRaw: jest.fn(),
     leaveRequest: {
       findFirst: jest
         .fn()
@@ -132,6 +132,10 @@ describe('updateLeaveRequestStatusFlow', () => {
       },
       data: {
         status: 'CANCELLED',
+        cancelledAt:
+          expect.any(Date),
+        cancelledByUserId: 7,
+        cancellationNote: null,
       },
     });
   });

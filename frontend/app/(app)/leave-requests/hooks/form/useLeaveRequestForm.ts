@@ -2,10 +2,14 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { apiFetch } from "@/app/lib/api";
 import {
-  getTomorrowLocalDate,
   localDateTimeToISOString,
 } from "@/app/utils/dateTime";
 import { readErrorMessage } from "../../helpers/core/leaveRequestHelpers";
+import {
+  DEFAULT_LEAVE_REQUEST_MINIMUM_NOTICE_DAYS,
+  getLeaveRequestMinimumDate,
+  normalizeLeaveRequestMinimumNoticeDays,
+} from "../../helpers/core/leaveRequestMinimumNotice";
 
 import type { LeaveRequestEmployeeOption } from "./useLeaveRequestEmployeeOptions";
 
@@ -76,9 +80,26 @@ export function useLeaveRequestForm({
   showError,
   showInfo,
 }: UseLeaveRequestFormOptions) {
-  const minDate = getTomorrowLocalDate();
-  const [startDate, setStartDate] = useState(minDate);
-  const [endDate, setEndDate] = useState(minDate);
+  const defaultMinDate =
+    getLeaveRequestMinimumDate(
+      DEFAULT_LEAVE_REQUEST_MINIMUM_NOTICE_DAYS,
+    );
+  const [
+    minimumNoticeDays,
+    setMinimumNoticeDays,
+  ] =
+    useState<number | null>(
+      null,
+    );
+  const minDate =
+    getLeaveRequestMinimumDate(
+      minimumNoticeDays ??
+        DEFAULT_LEAVE_REQUEST_MINIMUM_NOTICE_DAYS,
+    );
+  const [startDate, setStartDate] =
+    useState(defaultMinDate);
+  const [endDate, setEndDate] =
+    useState(defaultMinDate);
   const [reason, setReason] = useState("");
   const [allDay, setAllDay] = useState(false);
   const [startTime, setStartTime] = useState("08:00");
@@ -91,6 +112,95 @@ export function useLeaveRequestForm({
     () => getPreferredSelectedUserId(employeeOptions, currentUserId),
     [currentUserId, employeeOptions],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!activeCinemaId) {
+      setMinimumNoticeDays(
+        null,
+      );
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setMinimumNoticeDays(
+      null,
+    );
+
+    void (async () => {
+      try {
+        const response =
+          await apiFetch(
+            `/cinemas/${activeCinemaId}`,
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            await readErrorMessage(
+              response,
+              "Fraværsindstillinger kunne ikke hentes.",
+            ),
+          );
+        }
+
+        const cinema =
+          (await response.json()) as {
+            leaveRequestMinimumNoticeDays?:
+              unknown;
+          };
+
+        if (!cancelled) {
+          setMinimumNoticeDays(
+            normalizeLeaveRequestMinimumNoticeDays(
+              cinema.leaveRequestMinimumNoticeDays,
+            ),
+          );
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setMinimumNoticeDays(
+          null,
+        );
+        showError(
+          "Fraværsindstillinger kunne ikke hentes",
+          error instanceof Error
+            ? error.message
+            : "Der opstod en fejl ved hentning af fraværsindstillinger.",
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCinemaId,
+    showError,
+  ]);
+
+  useEffect(() => {
+    if (
+      minimumNoticeDays ===
+      null
+    ) {
+      return;
+    }
+
+    setStartDate(
+      minDate,
+    );
+    setEndDate(
+      minDate,
+    );
+  }, [
+    minDate,
+    minimumNoticeDays,
+  ]);
 
   useEffect(() => {
     if (!canCreateForEmployees) {
@@ -132,6 +242,19 @@ export function useLeaveRequestForm({
 
   function openRequestModal() {
     setSuccess("");
+
+    if (
+      activeCinemaId &&
+      minimumNoticeDays ===
+        null
+    ) {
+      showError(
+        "Fraværsindstillinger indlæses",
+        "Vent et øjeblik, og prøv igen.",
+      );
+      return;
+    }
+
     setShowRequestModal(true);
   }
 
@@ -209,7 +332,10 @@ export function useLeaveRequestForm({
           `Fraværet er oprettet for ${createdForName}. Periode: ${period}. Ansøgningen kan ses og behandles under Fraværsgodkendelse.`,
         );
       } else {
-        setSuccess("Fraværsansøgningen er sendt.");
+        showInfo(
+          "Fraværsansøgning sendt",
+          `Din fraværsansøgning for ${period} er sendt og afventer behandling.`,
+        );
       }
 
       await fetchRequests();

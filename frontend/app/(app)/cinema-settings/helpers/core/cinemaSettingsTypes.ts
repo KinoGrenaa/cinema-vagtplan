@@ -17,6 +17,7 @@ export type Cinema = {
   logoUrl: string | null;
   allowShiftTradePool: boolean;
   allowShiftTradeDirect: boolean;
+  leaveRequestMinimumNoticeDays: number;
   aiEnabled: boolean;
   automaticTimeRegistrationEnabled: boolean;
   automaticTimeRegistrationMethod: AutomaticTimeRegistrationMethod;
@@ -47,6 +48,7 @@ export type CinemaSettingsUpdate = Partial<
     Cinema,
     | "allowShiftTradePool"
     | "allowShiftTradeDirect"
+    | "leaveRequestMinimumNoticeDays"
     | "aiEnabled"
     | "automaticTimeRegistrationEnabled"
     | "automaticTimeRegistrationMethod"
@@ -85,6 +87,7 @@ export const MASTER_SELECTED_CINEMA_LOGO_URL_KEY =
 export const CINEMA_DEFAULTS = {
   allowShiftTradePool: false,
   allowShiftTradeDirect: false,
+  leaveRequestMinimumNoticeDays: 1,
   aiEnabled: false,
   automaticTimeRegistrationEnabled: false,
   automaticTimeRegistrationMethod:
@@ -240,6 +243,13 @@ export function normalizeCinemaSettings(value: unknown): Cinema {
       source.aiEnabled,
       CINEMA_DEFAULTS.aiEnabled,
     ),
+    leaveRequestMinimumNoticeDays:
+      normalizeInteger(
+        source.leaveRequestMinimumNoticeDays,
+        CINEMA_DEFAULTS.leaveRequestMinimumNoticeDays,
+        0,
+        3650,
+      ),
     automaticTimeRegistrationEnabled:
       normalizeBoolean(
         source.automaticTimeRegistrationEnabled,
@@ -381,6 +391,18 @@ export function normalizeCinemaSettingsUpdate(
     if (field in value && typeof value[field] === "boolean") {
       result[field] = value[field] as never;
     }
+  }
+
+  if (
+    "leaveRequestMinimumNoticeDays" in value
+  ) {
+    result.leaveRequestMinimumNoticeDays =
+      normalizeInteger(
+        value.leaveRequestMinimumNoticeDays,
+        CINEMA_DEFAULTS.leaveRequestMinimumNoticeDays,
+        0,
+        3650,
+      );
   }
 
   if (

@@ -1,4 +1,8 @@
 import {
+  useCallback,
+} from "react";
+
+import {
   useInfoModal,
 } from "@/app/hooks/useInfoModal";
 
@@ -22,19 +26,25 @@ export function useLeaveRequestsPage(
   const infoDialog =
     useInfoModal();
 
+  const showError =
+    useCallback(
+      (
+        title: string,
+        description?: string,
+      ) =>
+        infoDialog.showError(
+          title,
+          description ??
+            "",
+        ),
+      [
+        infoDialog.showError,
+      ],
+    );
   const data =
     useLeaveRequestsData({
       focusedRequestId,
-      showError:
-        (
-          title,
-          description,
-        ) =>
-          infoDialog.showError(
-            title,
-            description ??
-              "",
-          ),
+      showError,
     });
 
   const employeeSelection =
@@ -43,16 +53,7 @@ export function useLeaveRequestsPage(
         data.activeCinemaId,
       currentUser:
         data.currentUser,
-      showError:
-        (
-          title,
-          description,
-        ) =>
-          infoDialog.showError(
-            title,
-            description ??
-              "",
-          ),
+      showError,
     });
 
   const form =
@@ -69,29 +70,9 @@ export function useLeaveRequestsPage(
         data.fetchRequests,
       isMasterWithoutOwnCinema:
         data.isMasterWithoutOwnCinema,
-      showError:
-        (
-          title,
-          description,
-        ) =>
-          infoDialog.showError(
-            title,
-            description ??
-              "",
-          ),
+      showError,
       showInfo:
-        (
-          title,
-          description,
-        ) =>
-          infoDialog.show({
-            title,
-            description,
-            variant:
-              "success",
-            buttonText:
-              "OK",
-          }),
+        infoDialog.showSuccess,
     });
 
   const cancel =
@@ -100,16 +81,7 @@ export function useLeaveRequestsPage(
         data.fetchRequests,
       setSuccess:
         form.setSuccess,
-      showError:
-        (
-          title,
-          description,
-        ) =>
-          infoDialog.showError(
-            title,
-            description ??
-              "",
-          ),
+      showError,
     });
 
   return {

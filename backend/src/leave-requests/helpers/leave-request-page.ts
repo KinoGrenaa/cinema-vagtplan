@@ -62,6 +62,20 @@ export type LeaveRequestPageOptions = {
 const leaveRequestInclude = {
   user: true,
   createdByUser: true,
+  cancelledByUser: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+    },
+  },
+  rejectedByUser: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+    },
+  },
 } satisfies Prisma.LeaveRequestInclude;
 
 function getDateTimePart(

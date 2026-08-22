@@ -40,6 +40,24 @@ export type LeaveRequest = {
     firstName: string;
     lastName: string;
   };
+  cancelledAt?:
+    string | null;
+  cancelledByUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  } | null;
+  cancellationNote?:
+    string | null;
+  rejectedAt?:
+    string | null;
+  rejectedByUser?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  } | null;
+  rejectionNote?:
+    string | null;
 };
 
 export type LeaveRequestPageResponse = {

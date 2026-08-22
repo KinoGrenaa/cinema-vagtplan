@@ -177,6 +177,7 @@ describe('LeaveRequestsController', () => {
       req.user,
       8,
       'APPROVED',
+      undefined,
       2,
     );
   });
