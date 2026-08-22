@@ -699,6 +699,7 @@ describe('Release regression routes (e2e)', () => {
         }),
         201,
         'APPROVED',
+        undefined,
         2,
       );
     });
