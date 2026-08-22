@@ -85,6 +85,18 @@ describe('cinema controller input', () => {
     ).toBe('2026-07-21T00:00:00.000Z');
   });
 
+  it('accepts zero deviation tolerances', () => {
+    expect(
+      normalizeCinemaSettingsBody({
+        clockInDeviationToleranceMinutes: 0,
+        clockOutDeviationToleranceMinutes: 0,
+      }),
+    ).toMatchObject({
+      clockInDeviationToleranceMinutes: 0,
+      clockOutDeviationToleranceMinutes: 0,
+    });
+  });
+
   it.each([
     {
       allowShiftTradePool: 'true',

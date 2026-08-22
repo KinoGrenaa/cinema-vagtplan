@@ -82,6 +82,20 @@ describe('query validation', () => {
       ).toBe(Number(value));
     });
 
+    it.each([0, '0'])(
+      'accepts %p when zero is inside the range',
+      (value) => {
+        expect(
+          parseRequiredIntegerInRange(
+            value,
+            0,
+            1440,
+            'Ugyldig tolerance',
+          ),
+        ).toBe(0);
+      },
+    );
+
     it.each([0, 8, '1.5', 'abc'])('rejects %p outside the range', (value) => {
       expect(() =>
         parseRequiredIntegerInRange(value, 1, 7, 'Ugyldig ugedag'),

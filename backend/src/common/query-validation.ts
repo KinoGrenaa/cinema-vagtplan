@@ -59,8 +59,19 @@ export function parseRequiredIntegerInRange(
   maximum: number,
   message: string,
 ) {
-  const parsedValue = parsePositiveInteger(value, message);
-  if (parsedValue < minimum || parsedValue > maximum) {
+  if (
+    (typeof value !== 'string' && typeof value !== 'number') ||
+    (typeof value === 'string' && !/^[0-9]+$/.test(value))
+  ) {
+    throw new BadRequestException(message);
+  }
+
+  const parsedValue = Number(value);
+  if (
+    !Number.isSafeInteger(parsedValue) ||
+    parsedValue < minimum ||
+    parsedValue > maximum
+  ) {
     throw new BadRequestException(message);
   }
 
