@@ -1,10 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
 
-import type {
-  ScheduleTemplateStaffingGap,
-  ScheduleTemplateStaffingGapSummary,
-} from "../../helpers/page/scheduleTemplateStaffingGaps";
-import ScheduleTemplateOpenShiftSummary from "./ScheduleTemplateOpenShiftSummary";
 import ScheduleTemplateSelectedActions from "./ScheduleTemplateSelectedActions";
 import ScheduleTemplateStamdataForm from "./ScheduleTemplateStamdataForm";
 
@@ -23,10 +18,6 @@ type TemplateFormState = {
   sortOrder: string;
 };
 
-type WeekdayOption = {
-  value: number;
-  label: string;
-};
 
 type ScheduleTemplateSelectedHeaderProps = {
   template: ScheduleTemplate;
@@ -35,9 +26,6 @@ type ScheduleTemplateSelectedHeaderProps = {
   editing: boolean;
   saving: boolean;
   copying: boolean;
-  gapSummary: ScheduleTemplateStaffingGapSummary;
-  gaps: ScheduleTemplateStaffingGap[];
-  weekdays: WeekdayOption[];
   onArchive: () => void;
   onReactivate: () => void;
   onCopyTemplate: () => void;
@@ -52,9 +40,6 @@ export default function ScheduleTemplateSelectedHeader({
   editing,
   saving,
   copying,
-  gapSummary,
-  gaps,
-  weekdays,
   onArchive,
   onReactivate,
   onCopyTemplate,
@@ -92,12 +77,6 @@ export default function ScheduleTemplateSelectedHeader({
           justeres.
         </p>
       </div>
-
-      <ScheduleTemplateOpenShiftSummary
-        gapSummary={gapSummary}
-        gaps={gaps}
-        weekdays={weekdays}
-      />
 
       {editing && (
         <ScheduleTemplateStamdataForm

@@ -7,10 +7,6 @@ import ScheduleTemplateWeekdayTabs from "../selected/ScheduleTemplateWeekdayTabs
 
 import { formatWeekday, weekdayOptions } from "../../helpers/page/scheduleTemplatePageHelpers";
 import type {
-  ScheduleTemplateStaffingGap,
-  ScheduleTemplateStaffingGapSummary,
-} from "../../helpers/page/scheduleTemplateStaffingGaps";
-import type {
   DayFormState,
   JobFunction,
   JobFunctionFormState,
@@ -29,8 +25,6 @@ type ScheduleTemplateEditorPanelProps = {
   editingTemplate: boolean;
   savingTemplate: boolean;
   copyingTemplate: boolean;
-  selectedTemplateGapSummary: ScheduleTemplateStaffingGapSummary;
-  selectedTemplateGaps: ScheduleTemplateStaffingGap[];
   selectedWeekday: number;
   onSelectWeekday: (weekday: number) => void;
   selectedDay: TemplateDay | null;
@@ -76,8 +70,6 @@ export default function ScheduleTemplateEditorPanel({
   editingTemplate,
   savingTemplate,
   copyingTemplate,
-  selectedTemplateGapSummary,
-  selectedTemplateGaps,
   selectedWeekday,
   onSelectWeekday,
   selectedDay,
@@ -124,9 +116,6 @@ export default function ScheduleTemplateEditorPanel({
             editing={editingTemplate}
             saving={savingTemplate}
             copying={copyingTemplate}
-            gapSummary={selectedTemplateGapSummary}
-            gaps={selectedTemplateGaps}
-            weekdays={weekdayOptions}
             onArchive={onArchiveSelectedTemplate}
             onReactivate={onReactivateSelectedTemplate}
             onCopyTemplate={onCopyTemplate}

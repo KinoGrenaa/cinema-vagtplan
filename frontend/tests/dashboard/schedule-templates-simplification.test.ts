@@ -284,3 +284,35 @@ test("vagtafsnittet har én enkel overskrift", () => {
     /Uden fast\s+medarbejder bliver\s+vagten åben/,
   );
 });
+
+test("åbne vagter er sekundær status i skabelonredigeringen", () => {
+  const pageContent = read(
+    "app/(app)/schedule-templates/components/layout/ScheduleTemplatesPageContent.tsx",
+  );
+  const selectedHeader = read(
+    "app/(app)/schedule-templates/components/selected/ScheduleTemplateSelectedHeader.tsx",
+  );
+  const list = read(
+    "app/(app)/schedule-templates/components/overview/ScheduleTemplateList.tsx",
+  );
+  const tabs = read(
+    "app/(app)/schedule-templates/components/selected/ScheduleTemplateWeekdayTabs.tsx",
+  );
+
+  assert.doesNotMatch(
+    pageContent,
+    /ScheduleTemplateSummaryCards/,
+  );
+  assert.doesNotMatch(
+    selectedHeader,
+    /ScheduleTemplateOpenShiftSummary/,
+  );
+  assert.match(
+    list,
+    /formatOpenShiftText\(templateGapSummary\.missingShiftCount\)/,
+  );
+  assert.match(
+    tabs,
+    /formatOpenShiftText\(\s*dayGapSummary\.missingShiftCount/,
+  );
+});

@@ -2,7 +2,6 @@ import ScheduleTemplateEditorPanel from "../editor/ScheduleTemplateEditorPanel";
 import ScheduleTemplateList from "../overview/ScheduleTemplateList";
 import ScheduleTemplatesMasterCinemaRequired from "./ScheduleTemplatesMasterCinemaRequired";
 import ScheduleTemplatesPageIntro from "./ScheduleTemplatesPageIntro";
-import ScheduleTemplateSummaryCards from "../overview/ScheduleTemplateSummaryCards";
 
 import type { ScheduleTemplatePageController } from "../../hooks/controllers/useScheduleTemplatePageController";
 
@@ -23,12 +22,6 @@ export default function ScheduleTemplatesPageContent({
 
       {!controller.needsMasterCinemaSelection && (
         <>
-          <ScheduleTemplateSummaryCards
-            totalCount={controller.templates.length}
-            activeCount={controller.activeTemplates}
-            archivedCount={controller.archivedTemplates}
-            openShiftCount={controller.totalStaffingGapSummary.missingShiftCount}
-          />
 
           <section className="grid gap-6 lg:grid-cols-[360px_1fr]">
             <ScheduleTemplateList
@@ -50,8 +43,6 @@ export default function ScheduleTemplatesPageContent({
               editingTemplate={controller.editingTemplate}
               savingTemplate={controller.savingTemplate}
               copyingTemplate={controller.copyingTemplate}
-              selectedTemplateGapSummary={controller.selectedTemplateGapSummary}
-              selectedTemplateGaps={controller.selectedTemplateGaps}
               selectedWeekday={controller.selectedWeekday}
               onSelectWeekday={controller.setSelectedWeekday}
               selectedDay={controller.selectedDay}
