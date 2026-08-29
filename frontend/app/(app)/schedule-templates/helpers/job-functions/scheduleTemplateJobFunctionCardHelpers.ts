@@ -7,6 +7,12 @@ type JobFunction = {
   timingRule?: {
     filmWindowStartMinute: number;
     filmWindowEndMinute: number;
+    startAnchor?: string;
+    startOffsetMinutes?: number;
+    startFixedMinute?: number | null;
+    endAnchor?: string;
+    endOffsetMinutes?: number;
+    endFixedMinute?: number | null;
     roundToQuarter?: boolean;
     roundStartToNearestQuarter: boolean;
     roundEndToNearestQuarter: boolean;
@@ -57,9 +63,18 @@ function minuteToTime(value: number) {
 function formatFilmWindow(jobFunction: JobFunction) {
   const rule = jobFunction.timingRule;
   if (!rule?.isActive) return "Ingen aktiv tidsregel";
-  if (!rule.restrictMovieStartsToWindow) return "Medregner alle filmstarter";
-  const nextDay = rule.filmWindowEndMinute >= 1440 ? " næste dag" : "";
-  return `Medregner filmstarter fra kl. ${minuteToTime(rule.filmWindowStartMinute)} og før kl. ${minuteToTime(rule.filmWindowEndMinute)}${nextDay}`;
+  if (!rule.restrictMovieStartsToWindow) return null;
+
+  const nextDay =
+    rule.filmWindowEndMinute >= 1440
+      ? " næste dag"
+      : "";
+
+  return `Forestillinger ${minuteToTime(
+    rule.filmWindowStartMinute,
+  )}–${minuteToTime(
+    rule.filmWindowEndMinute,
+  )}${nextDay}`;
 }
 
 function formatUserName(user: ScheduleTemplateUser | null | undefined) {
@@ -77,6 +92,116 @@ function getAssignmentUserId(assignment: ScheduleTemplateAssignment) {
   }
 
   return userId;
+}
+
+type SameDayAssignmentNotice = {
+  jobFunctionId: number;
+  jobFunctionName: string;
+  potentialOverlap: boolean;
+};
+
+function getFixedRuleBoundaryMinute(
+  jobFunction: JobFunction,
+  boundary: "start" | "end",
+) {
+  const rule = jobFunction.timingRule;
+  if (!rule?.isActive) return null;
+
+  const anchor =
+    boundary === "start"
+      ? rule.startAnchor
+      : rule.endAnchor;
+  const fixedMinute =
+    boundary === "start"
+      ? rule.startFixedMinute
+      : rule.endFixedMinute;
+  const offset =
+    boundary === "start"
+      ? rule.startOffsetMinutes
+      : rule.endOffsetMinutes;
+
+  if (
+    anchor !== "FIXED_TIME" ||
+    !Number.isFinite(fixedMinute) ||
+    (offset ?? 0) !== 0
+  ) {
+    return null;
+  }
+
+  return Number(fixedMinute);
+}
+
+function mayTemplateJobFunctionsOverlap(
+  left: TemplateJobFunction,
+  right: TemplateJobFunction,
+) {
+  const leftStart =
+    getFixedRuleBoundaryMinute(
+      left.jobFunction,
+      "start",
+    );
+  const leftEnd =
+    getFixedRuleBoundaryMinute(
+      left.jobFunction,
+      "end",
+    );
+  const rightStart =
+    getFixedRuleBoundaryMinute(
+      right.jobFunction,
+      "start",
+    );
+  const rightEnd =
+    getFixedRuleBoundaryMinute(
+      right.jobFunction,
+      "end",
+    );
+
+  if (
+    leftEnd !== null &&
+    rightStart !== null &&
+    leftEnd <= rightStart
+  ) {
+    return false;
+  }
+
+  if (
+    rightEnd !== null &&
+    leftStart !== null &&
+    rightEnd <= leftStart
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function getSameDayAssignmentNotices(
+  item: TemplateJobFunction,
+  sameDayJobFunctions: TemplateJobFunction[],
+  userId: number,
+): SameDayAssignmentNotice[] {
+  return sameDayJobFunctions
+    .filter(
+      (otherItem) =>
+        otherItem.id !== item.id &&
+        (otherItem.assignments ?? []).some(
+          (assignment) =>
+            getAssignmentUserId(
+              assignment,
+            ) === userId,
+        ),
+    )
+    .map((otherItem) => ({
+      jobFunctionId:
+        otherItem.jobFunctionId,
+      jobFunctionName:
+        otherItem.jobFunction.name,
+      potentialOverlap:
+        mayTemplateJobFunctionsOverlap(
+          item,
+          otherItem,
+        ),
+    }));
 }
 
 function getAssignedUserIdSet(item: TemplateJobFunction) {
@@ -109,10 +234,14 @@ export {
   formatOpenShiftText,
   formatUserName,
   getAssignedUserIdSet,
+  getAssignmentUserId,
+  getSameDayAssignmentNotices,
+  mayTemplateJobFunctionsOverlap,
   parseOptionalPositiveInteger,
 };
 
 export type {
+  SameDayAssignmentNotice,
   ScheduleTemplateAssignment,
   ScheduleTemplateUser,
   TemplateJobFunction,

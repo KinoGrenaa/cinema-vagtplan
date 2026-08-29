@@ -37,7 +37,7 @@ export default function ScheduleTemplateJobFunctionForm({
   return (
     <>
       <form
-        className="mt-4 grid gap-3 lg:grid-cols-[1fr_130px_130px]"
+        className="mt-4 grid gap-3 lg:grid-cols-[1fr_130px]"
         onSubmit={onSubmit}
       >
         <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
@@ -80,45 +80,12 @@ export default function ScheduleTemplateJobFunctionForm({
           />
         </label>
 
-        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-          Sortering
-          <input
-            type="number"
-            min="0"
-            value={form.sortOrder}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                sortOrder: event.target.value,
-              }))
-            }
-            className={fieldClass}
-            disabled={saving}
-          />
-        </label>
-
-        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 lg:col-span-3">
-          Note
-          <input
-            value={form.note}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                note: event.target.value,
-              }))
-            }
-            className={fieldClass}
-            placeholder="Valgfri note til jobfunktionen i denne skabelon"
-            disabled={saving}
-          />
-        </label>
-
         <button
           type="submit"
-          className="rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-800 lg:col-span-3 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-blue-950 dark:disabled:text-blue-400"
+          className="rounded-2xl bg-blue-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-800 lg:col-span-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-blue-950 dark:disabled:text-blue-400"
           disabled={saving || jobFunctions.length === 0}
         >
-          {saving ? "Tilføjer..." : "Tilføj jobfunktion"}
+          {saving ? "Tilføjer..." : "Tilføj vagt"}
         </button>
       </form>
 

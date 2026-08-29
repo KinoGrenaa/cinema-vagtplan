@@ -68,7 +68,7 @@ export default function ScheduleTemplateCopyModal({
               Kopiér {sourceTemplate.name}
             </h2>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              Opret en ny vagtsskabelon med samme ugedage, jobfunktioner og
+              Opret en ny vagtsskabelon med samme ugedage, vagter og
               bemanding. Du kan justere kopien bagefter uden at ændre
               originalen.
             </p>

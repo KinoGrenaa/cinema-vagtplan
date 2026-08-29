@@ -72,7 +72,7 @@ export default function ScheduleTemplateList({
         <div>
           <h2 className="text-xl font-black">Vagtsskabeloner</h2>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Vælg en skabelon for at redigere ugedage og jobfunktioner.
+            Vælg en skabelon for at redigere ugedage og vagter.
           </p>
         </div>
         <button

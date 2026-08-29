@@ -7,8 +7,8 @@ export default function ScheduleTemplatesPageIntro() {
       <h1 className="text-3xl font-black">Vagtsskabeloner</h1>
       <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-400">
         Opret de skabeloner, der senere kan vælges på konkrete datoer i
-        vagtplanlægningen. En skabelon består af ugedage, jobfunktioner og faste
-        medarbejdere.
+        vagtplanlægningen. En skabelon består af ugedage, vagter og eventuelle
+        faste medarbejdere.
       </p>
     </div>
   );

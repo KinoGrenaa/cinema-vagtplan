@@ -1,6 +1,8 @@
 import {
   formatUserName,
   getAssignedUserIdSet,
+  getAssignmentUserId,
+  getSameDayAssignmentNotices,
   type ScheduleTemplateAssignment,
   type ScheduleTemplateUser,
   type TemplateJobFunction,
@@ -10,6 +12,7 @@ type ScheduleTemplateJobFunctionAssignmentsProps = {
   item: TemplateJobFunction;
   employees: ScheduleTemplateUser[];
   assignedCount: number;
+  sameDayJobFunctions: TemplateJobFunction[];
   savingAssignmentKey: string | null;
   onAddAssignment: (
     item: TemplateJobFunction,
@@ -28,6 +31,7 @@ export default function ScheduleTemplateJobFunctionAssignments({
   item,
   employees,
   assignedCount,
+  sameDayJobFunctions,
   savingAssignmentKey,
   onAddAssignment,
   onRemoveAssignment,
@@ -41,6 +45,49 @@ export default function ScheduleTemplateJobFunctionAssignments({
           employee.id,
         ),
     );
+
+  function getEmployeeNotice(
+    userId: number,
+  ) {
+    return getSameDayAssignmentNotices(
+      item,
+      sameDayJobFunctions,
+      userId,
+    );
+  }
+
+  function formatEmployeeOption(
+    employee: ScheduleTemplateUser,
+  ) {
+    const notices =
+      getEmployeeNotice(employee.id);
+    if (notices.length === 0) {
+      return formatUserName(employee);
+    }
+
+    const overlaps = notices.filter(
+      (notice) =>
+        notice.potentialOverlap,
+    );
+    const names = (
+      overlaps.length > 0
+        ? overlaps
+        : notices
+    )
+      .map(
+        (notice) =>
+          notice.jobFunctionName,
+      )
+      .join(", ");
+
+    return overlaps.length > 0
+      ? `${formatUserName(
+          employee,
+        )} · ⚠ muligt overlap med ${names}`
+      : `${formatUserName(
+          employee,
+        )} · har også ${names}`;
+  }
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
@@ -67,11 +114,64 @@ export default function ScheduleTemplateJobFunctionAssignments({
                 key={assignment.id}
                 className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-gray-900 transition-colors dark:border-gray-800 dark:bg-gray-950/50 dark:text-gray-100"
               >
-                <span className="text-sm font-semibold">
-                  {formatUserName(
-                    assignment.user,
-                  )}
-                </span>
+                <div className="min-w-0">
+                  <span className="text-sm font-semibold">
+                    {formatUserName(
+                      assignment.user,
+                    )}
+                  </span>
+
+                  {(() => {
+                    const userId =
+                      getAssignmentUserId(
+                        assignment,
+                      );
+                    const notices =
+                      userId === null
+                        ? []
+                        : getEmployeeNotice(
+                            userId,
+                          );
+
+                    if (
+                      notices.length === 0
+                    ) {
+                      return null;
+                    }
+
+                    const overlaps =
+                      notices.filter(
+                        (notice) =>
+                          notice.potentialOverlap,
+                      );
+                    const names = (
+                      overlaps.length > 0
+                        ? overlaps
+                        : notices
+                    )
+                      .map(
+                        (notice) =>
+                          notice.jobFunctionName,
+                      )
+                      .join(", ");
+
+                    return (
+                      <p
+                        className={`mt-1 text-xs font-medium ${
+                          overlaps.length >
+                          0
+                            ? "text-amber-700 dark:text-amber-300"
+                            : "text-blue-700 dark:text-blue-300"
+                        }`}
+                      >
+                        {overlaps.length >
+                        0
+                          ? `Muligt overlap med ${names} ud fra jobfunktionernes tidsregler.`
+                          : `Har også ${names} denne ugedag.`}
+                      </p>
+                    );
+                  })()}
+                </div>
 
                 <button
                   type="button"
@@ -137,13 +237,19 @@ export default function ScheduleTemplateJobFunctionAssignments({
                 key={employee.id}
                 value={employee.id}
               >
-                {formatUserName(
+                {formatEmployeeOption(
                   employee,
                 )}
               </option>
             ),
           )}
         </select>
+
+        <p className="mt-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+          Medarbejdere med en anden vagt samme ugedag kan stadig vælges.
+          ⚠ betyder, at jobfunktionernes tidsregler ikke kan udelukke overlap.
+          De endelige tider afhænger af filmprogrammet.
+        </p>
       </label>
     </div>
   );

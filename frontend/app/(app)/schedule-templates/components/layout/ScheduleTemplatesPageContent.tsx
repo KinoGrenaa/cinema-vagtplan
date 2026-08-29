@@ -57,7 +57,6 @@ export default function ScheduleTemplatesPageContent({
               selectedDay={controller.selectedDay}
               dayForm={controller.dayForm}
               setDayForm={controller.setDayForm}
-              selectedDayGapSummary={controller.selectedDayGapSummary}
               savingDay={controller.savingDay}
               copyingDay={controller.copyingDay}
               jobFunctions={controller.jobFunctions}

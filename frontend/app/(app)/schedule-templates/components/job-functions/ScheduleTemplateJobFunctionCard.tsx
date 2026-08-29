@@ -4,6 +4,7 @@ import ScheduleTemplateJobFunctionSettings from "./ScheduleTemplateJobFunctionSe
 import {
   formatFilmWindow,
   formatOpenShiftText,
+  formatUserName,
   type ScheduleTemplateAssignment,
   type ScheduleTemplateUser,
   type TemplateJobFunction,
@@ -17,6 +18,7 @@ import {
 type ScheduleTemplateJobFunctionCardProps = {
   item: TemplateJobFunction;
   employees: ScheduleTemplateUser[];
+  sameDayJobFunctions: TemplateJobFunction[];
   expanded: boolean;
   savingAssignmentKey: string | null;
   onToggleDetails: (id: number) => void;
@@ -45,6 +47,7 @@ export type {
 export default function ScheduleTemplateJobFunctionCard({
   item,
   employees,
+  sameDayJobFunctions,
   expanded,
   savingAssignmentKey,
   onToggleDetails,
@@ -59,6 +62,15 @@ export default function ScheduleTemplateJobFunctionCard({
     );
   const missingCount =
     getJobFunctionStaffingGap(item);
+  const timingSummary =
+    formatFilmWindow(item.jobFunction);
+  const assignedNames =
+    (item.assignments ?? []).map(
+      (assignment) =>
+        formatUserName(
+          assignment.user,
+        ),
+    );
 
   return (
     <div
@@ -96,16 +108,26 @@ export default function ScheduleTemplateJobFunctionCard({
             )}
           </div>
 
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            {formatFilmWindow(item.jobFunction)}{" "}
-            · {assignedCount}/
-            {item.requiredCount} faste
-            medarbejdere
-          </p>
+          {timingSummary && (
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              {timingSummary}
+            </p>
+          )}
 
-          {item.note && (
-            <p className="mt-2 rounded-2xl border border-gray-200 bg-white p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-              {item.note}
+          {assignedNames.length > 0 ? (
+            <p className="mt-1 text-sm text-gray-800 dark:text-gray-200">
+              <span className="font-semibold">
+                {assignedNames.length === 1
+                  ? "Fast medarbejder:"
+                  : "Faste medarbejdere:"}
+              </span>{" "}
+              <span className="font-bold text-blue-700 dark:text-blue-300">
+                {assignedNames.join(" · ")}
+              </span>
+            </p>
+          ) : (
+            <p className="mt-1 text-sm font-bold text-amber-800 dark:text-amber-300">
+              Ingen fast medarbejder
             </p>
           )}
         </div>
@@ -136,7 +158,7 @@ export default function ScheduleTemplateJobFunctionCard({
         </div>
       </div>
 
-      {missingCount > 0 && (
+      {expanded && missingCount > 0 && (
         <div className="mt-3 rounded-2xl border border-amber-300 bg-amber-100 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-100">
           <p className="font-black">
             Åben vagt fra skabelonen
@@ -161,6 +183,9 @@ export default function ScheduleTemplateJobFunctionCard({
             employees={employees}
             assignedCount={
               assignedCount
+            }
+            sameDayJobFunctions={
+              sameDayJobFunctions
             }
             savingAssignmentKey={
               savingAssignmentKey

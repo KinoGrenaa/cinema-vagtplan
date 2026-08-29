@@ -39,9 +39,6 @@ export default function ScheduleTemplateOpenShiftSummary({
             medarbejderne kan ønske dem som åbne vagter.
           </p>
         </div>
-        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-900 dark:bg-amber-900/60 dark:text-amber-50">
-          {gapSummary.jobFunctionCount} jobfunktioner
-        </span>
       </div>
 
       <div className="mt-3 grid gap-2 md:grid-cols-2">

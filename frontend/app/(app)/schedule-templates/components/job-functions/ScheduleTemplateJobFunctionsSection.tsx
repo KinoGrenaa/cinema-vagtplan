@@ -90,7 +90,6 @@ type ScheduleTemplateJobFunctionsSectionProps = {
 };
 
 export default function ScheduleTemplateJobFunctionsSection({
-  weekdayLabel,
   selectedDay,
   jobFunctions,
   employees,
@@ -108,24 +107,17 @@ export default function ScheduleTemplateJobFunctionsSection({
 }: ScheduleTemplateJobFunctionsSectionProps) {
   const templateJobFunctions =
     selectedDay?.jobFunctions ?? [];
-
   return (
     <div className="rounded-3xl border border-gray-200 bg-white p-4 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">
-          Jobfunktioner på{" "}
-          {weekdayLabel.toLowerCase()}
-        </p>
-
         <h3 className="text-xl font-black text-gray-950 dark:text-white">
-          Vagter fra skabelonen
+          Vagter
         </h3>
 
         <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-          Fast medarbejder er
-          frivilligt. Vagter uden fast
-          medarbejder vises som åbne
-          vagter i skabelonen.
+          Det er valgfrit at vælge en
+          fast medarbejder. Uden fast
+          medarbejder bliver vagten åben.
         </p>
       </div>
 
@@ -141,7 +133,7 @@ export default function ScheduleTemplateJobFunctionsSection({
         {templateJobFunctions.length ===
           0 && (
           <p className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950/50 dark:text-gray-300">
-            Der er ingen jobfunktioner
+            Der er ingen vagter
             på denne ugedag endnu.
           </p>
         )}
@@ -152,6 +144,9 @@ export default function ScheduleTemplateJobFunctionsSection({
               key={item.id}
               item={item}
               employees={employees}
+              sameDayJobFunctions={
+                templateJobFunctions
+              }
               expanded={expandedJobFunctionIds.has(
                 item.id,
               )}

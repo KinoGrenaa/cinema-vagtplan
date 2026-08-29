@@ -92,7 +92,9 @@ export default function ScheduleTemplateWeekdayTabs({
             <p className="text-xs text-gray-600 dark:text-gray-300">
               {day?.jobFunctions
                 ?.length ?? 0}{" "}
-              jobfunktioner
+              {(day?.jobFunctions?.length ?? 0) === 1
+                ? "vagt"
+                : "vagter"}
             </p>
 
             {dayGapSummary.missingShiftCount >

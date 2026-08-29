@@ -36,7 +36,6 @@ type ScheduleTemplateEditorPanelProps = {
   selectedDay: TemplateDay | null;
   dayForm: DayFormState;
   setDayForm: Dispatch<SetStateAction<DayFormState>>;
-  selectedDayGapSummary: ScheduleTemplateStaffingGapSummary;
   savingDay: boolean;
   copyingDay: boolean;
   jobFunctions: JobFunction[];
@@ -84,7 +83,6 @@ export default function ScheduleTemplateEditorPanel({
   selectedDay,
   dayForm,
   setDayForm,
-  selectedDayGapSummary,
   savingDay,
   copyingDay,
   jobFunctions,
@@ -113,7 +111,7 @@ export default function ScheduleTemplateEditorPanel({
       {!selectedTemplate && (
         <p className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-950 dark:text-gray-400">
           Opret eller vælg en vagtsskabelon for at redigere ugedage og
-          jobfunktioner.
+          vagter.
         </p>
       )}
 
@@ -148,7 +146,6 @@ export default function ScheduleTemplateEditorPanel({
             hasSelectedDay={Boolean(selectedDay)}
             form={dayForm}
             setForm={setDayForm}
-            gapSummary={selectedDayGapSummary}
             saving={savingDay}
             copying={copyingDay}
             onSave={onSaveDay}

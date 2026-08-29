@@ -25,7 +25,7 @@ export default function ScheduleTemplateJobFunctionSettings({
         Indstillinger
       </p>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 max-w-xs">
         <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
           Antal vagter
 
@@ -71,74 +71,6 @@ export default function ScheduleTemplateJobFunctionSettings({
               }
             }}
             className={fieldClass}
-          />
-        </label>
-
-        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-          Sortering
-
-          <input
-            key={`sort-${item.id}-${item.sortOrder}`}
-            type="number"
-            min="0"
-            defaultValue={
-              item.sortOrder
-            }
-            onBlur={(event) => {
-              const value =
-                parseOptionalPositiveInteger(
-                  event.currentTarget
-                    .value,
-                  item.sortOrder,
-                );
-
-              if (value === null) {
-                event.currentTarget.value =
-                  String(
-                    item.sortOrder,
-                  );
-                return;
-              }
-
-              if (
-                value !==
-                item.sortOrder
-              ) {
-                onUpdateJobFunction(
-                  item,
-                  {
-                    sortOrder: value,
-                  },
-                );
-              }
-            }}
-            className={fieldClass}
-          />
-        </label>
-
-        <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 sm:col-span-2">
-          Note
-
-          <textarea
-            key={`note-${item.id}-${item.note ?? ""}`}
-            defaultValue={
-              item.note ?? ""
-            }
-            onBlur={(event) => {
-              const value =
-                event.currentTarget.value.trim() ||
-                null;
-
-              if (
-                value !== item.note
-              ) {
-                onUpdateJobFunction(
-                  item,
-                  { note: value },
-                );
-              }
-            }}
-            className={`${fieldClass} min-h-20`}
           />
         </label>
       </div>

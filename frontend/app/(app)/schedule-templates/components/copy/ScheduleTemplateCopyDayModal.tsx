@@ -50,7 +50,7 @@ export default function ScheduleTemplateCopyDayModal({
               Kopiér {formatCopyDayWeekday(sourceWeekday).toLowerCase()}
             </h2>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              Modtagerdage ryddes først og får derefter samme jobfunktioner og
+              Modtagerdage ryddes først og får derefter samme vagter og
               faste medarbejdere.
             </p>
             <ScheduleTemplateCopyDaySummary
