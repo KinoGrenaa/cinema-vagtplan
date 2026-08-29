@@ -33,26 +33,26 @@ export default function MyTimeHeader({
   onCurrentPayrollPeriod,
   onNextPayrollPeriod,
 }: MyTimeHeaderProps) {
+  const showFilterSummary =
+    statusFilterSummary !== "Godkendte, Afventer, Skal rettes";
+
   return (
-    <header className="mb-6 rounded-2xl border border-gray-200 bg-white p-5 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+    <header className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-950 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-950 dark:text-white">
             Mine timer
           </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-300">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             Se dine indberettede og godkendte timer.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
-              Viser: {statusFilterSummary}
-            </span>
-            {needsChangesCount > 0 && (
-              <span className="rounded-full border border-orange-300 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-100">
-                {needsChangesCount} kræver handling
+          {showFilterSummary && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
+                Viser: {statusFilterSummary}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -78,8 +78,8 @@ export default function MyTimeHeader({
         </div>
       </div>
 
-      <section className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/50">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-800">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Lønperiode

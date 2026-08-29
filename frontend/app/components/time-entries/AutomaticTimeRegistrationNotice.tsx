@@ -2,12 +2,14 @@ type AutomaticTimeRegistrationNoticeProps = {
   automaticClockIn?: boolean;
   automaticClockOut?: boolean;
   compact?: boolean;
+  inline?: boolean;
 };
 
 export default function AutomaticTimeRegistrationNotice({
   automaticClockIn,
   automaticClockOut,
   compact = false,
+  inline = false,
 }: AutomaticTimeRegistrationNoticeProps) {
   if (
     !automaticClockIn &&
@@ -18,19 +20,29 @@ export default function AutomaticTimeRegistrationNotice({
 
   let description =
     "Systemet har udfyldt denne tidsregistrering automatisk.";
-
   if (
     automaticClockIn &&
     automaticClockOut
   ) {
     description =
-      "M\u00f8detid og fyraften er automatisk udfyldt ud fra biografens indstillinger.";
+      "Mødetid og fyraften er automatisk udfyldt ud fra biografens indstillinger.";
   } else if (automaticClockIn) {
     description =
-      "M\u00f8detiden er automatisk udfyldt ud fra biografens indstillinger.";
+      "Mødetiden er automatisk udfyldt ud fra biografens indstillinger.";
   } else if (automaticClockOut) {
     description =
       "Fyraften er automatisk udfyldt ud fra biografens indstillinger.";
+  }
+
+  if (inline) {
+    return (
+      <p
+        role="status"
+        className="text-xs font-medium text-blue-700 dark:text-blue-300"
+      >
+        {description}
+      </p>
+    );
   }
 
   return (

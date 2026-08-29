@@ -92,7 +92,7 @@ export default function MyTimeDayGroupsSection({
               onClick={() => onToggleDayGroup(group.dayKey)}
               aria-expanded={isExpanded}
               aria-controls={panelId}
-              className="flex w-full flex-col gap-3 bg-gray-50 p-5 text-left transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:bg-gray-950/50 dark:hover:bg-gray-800/70 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 md:flex-row md:items-center md:justify-between"
+              className={`flex w-full flex-col gap-3 bg-gray-50 p-5 text-left transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:bg-gray-950/50 dark:hover:bg-gray-800/70 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 md:flex-row md:items-center md:justify-between ${isExpanded ? "rounded-t-2xl" : "rounded-2xl"}`}
             >
               <div>
                 <h2 className="text-lg font-bold text-gray-950 dark:text-white">

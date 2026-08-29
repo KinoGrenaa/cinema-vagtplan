@@ -1,6 +1,5 @@
 import PayrollAdjustmentNotice from "../../../../components/time-entries/PayrollAdjustmentNotice";
 import AutomaticTimeRegistrationNotice from "../../../../components/time-entries/AutomaticTimeRegistrationNotice";
-import { formatDateTime } from "../../helpers/core/myTimeDate";
 import { getHours } from "../../helpers/core/myTimeEntries";
 import {
   getEntrySingleNote,
@@ -34,122 +33,185 @@ function getStatusBadgeClass(status: TimeEntry["status"]) {
   return "border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-200";
 }
 
+function formatTime(value?: string | null) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return date.toLocaleTimeString("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatShortDate(value?: string | null) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return date.toLocaleDateString("da-DK", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function isSameLocalDay(
+  firstValue?: string | null,
+  secondValue?: string | null,
+) {
+  if (!firstValue || !secondValue) {
+    return true;
+  }
+
+  const first = new Date(firstValue);
+  const second = new Date(secondValue);
+
+  if (
+    Number.isNaN(first.getTime()) ||
+    Number.isNaN(second.getTime())
+  ) {
+    return true;
+  }
+
+  return (
+    first.getFullYear() === second.getFullYear() &&
+    first.getMonth() === second.getMonth() &&
+    first.getDate() === second.getDate()
+  );
+}
+
+function formatEntryTimeRange(entry: TimeEntry) {
+  const start = formatTime(entry.clockIn);
+
+  if (!entry.clockOut) {
+    return `${start} → Ikke registreret · ${getHours(entry)}`;
+  }
+
+  const endDate =
+    isSameLocalDay(entry.clockIn, entry.clockOut)
+      ? ""
+      : ` (${formatShortDate(entry.clockOut)})`;
+
+  return `${start} → ${formatTime(entry.clockOut)}${endDate} · ${getHours(entry)}`;
+}
+
 export default function MyTimeEntryCard({
   entry,
   onEdit,
   onHistory,
 }: MyTimeEntryCardProps) {
+  const hasNotes = Boolean(
+    entry.note ||
+      entry.clockInNote ||
+      entry.clockOutNote ||
+      entry.adminNote,
+  );
+  const hasAutomaticTime =
+    entry.automaticClockIn || entry.automaticClockOut;
+
   return (
     <article
-      className={`rounded-2xl border p-4 shadow-sm transition-colors ${getStatusClass(entry.status)}`}
+      className={`rounded-xl border p-3 shadow-sm transition-colors ${getStatusClass(entry.status)}`}
     >
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h3 className="text-lg font-bold text-gray-950 dark:text-white">
-            {entry.shift?.jobFunction?.name ||
-              entry.payrollType?.name ||
-              "Timeregistrering"}
-          </h3>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {formatDateTime(entry.clockIn)}
-          </p>
-        </div>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="min-w-0 text-base font-bold text-gray-950 dark:text-white">
+          {entry.shift?.jobFunction?.name ||
+            entry.payrollType?.name ||
+            "Timeregistrering"}
+        </h3>
+
         <span
-          className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(entry.status)}`}
+          className={`w-fit shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusBadgeClass(entry.status)}`}
         >
           {getStatusLabel(entry.status)}
         </span>
       </div>
 
-      <AutomaticTimeRegistrationNotice
-        automaticClockIn={entry.automaticClockIn}
-        automaticClockOut={entry.automaticClockOut}
-      />
+      <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {formatEntryTimeRange(entry)}
+        </p>
+
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onHistory(entry)}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
+          >
+            Historik
+          </button>
+
+          {entry.status !== "APPROVED" &&
+            entry.status !== "VOIDED" && (
+              <button
+                type="button"
+                onClick={() => onEdit(entry)}
+                className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
+              >
+                Redigér
+              </button>
+            )}
+        </div>
+      </div>
+
+      {hasAutomaticTime && (
+        <div className="mt-2">
+          <AutomaticTimeRegistrationNotice
+            automaticClockIn={entry.automaticClockIn}
+            automaticClockOut={entry.automaticClockOut}
+            inline
+          />
+        </div>
+      )}
 
       <PayrollAdjustmentNotice
         adjustments={entry.payrollAdjustments}
         audience="employee"
       />
 
-      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Mødetid
-          </dt>
-          <dd className="mt-1 font-medium text-gray-950 dark:text-white">
-            {formatDateTime(entry.clockIn)}
-          </dd>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Fyraften
-          </dt>
-          <dd className="mt-1 font-medium text-gray-950 dark:text-white">
-            {entry.clockOut
-              ? formatDateTime(entry.clockOut)
-              : "Ikke registreret"}
-          </dd>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Timer
-          </dt>
-          <dd className="mt-1 font-medium text-gray-950 dark:text-white">
-            {getHours(entry)}
-          </dd>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-3 dark:border-gray-800 dark:bg-gray-950/50">
-          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Status
-          </dt>
-          <dd className="mt-1 font-medium text-gray-950 dark:text-white">
-            {getStatusLabel(entry.status)}
-          </dd>
-        </div>
-      </dl>
-
-      {(entry.note ||
-        entry.clockInNote ||
-        entry.clockOutNote ||
-        entry.adminNote) && (
-        <div className="mt-4 space-y-3 rounded-xl border border-gray-200 bg-white/80 p-4 text-sm dark:border-gray-800 dark:bg-gray-950/50">
+      {hasNotes && (
+        <div className="mt-2 space-y-1.5 text-sm">
           {shouldShowEntryNoteAsSingleNote(entry) ? (
-            <div>
-              <p className="font-semibold text-gray-800 dark:text-gray-200">
-                Note
-              </p>
-              <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                {getEntrySingleNote(entry)}
-              </p>
-            </div>
+            <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+              <span className="font-semibold text-gray-800 dark:text-gray-200">
+                Note:
+              </span>{" "}
+              {getEntrySingleNote(entry)}
+            </p>
           ) : (
             <>
               {entry.clockInNote && (
-                <div>
-                  <p className="font-semibold text-gray-800 dark:text-gray-200">
-                    Mødetidsnote
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                    {entry.clockInNote}
-                  </p>
-                </div>
+                <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    Mødetidsnote:
+                  </span>{" "}
+                  {entry.clockInNote}
+                </p>
               )}
+
               {entry.clockOutNote && (
-                <div>
-                  <p className="font-semibold text-gray-800 dark:text-gray-200">
-                    Fyraftensnote
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                    {entry.clockOutNote}
-                  </p>
-                </div>
+                <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    Fyraftensnote:
+                  </span>{" "}
+                  {entry.clockOutNote}
+                </p>
               )}
             </>
           )}
 
           {entry.adminNote && (
             <div
-              className={`rounded-xl border p-3 ${
+              className={`rounded-lg border p-2.5 ${
                 entry.status === "NEEDS_CHANGES"
                   ? "border-orange-300 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/40"
                   : "border-blue-200 bg-blue-50 dark:border-blue-900/70 dark:bg-blue-950/30"
@@ -175,30 +237,12 @@ export default function MyTimeEntryCard({
       )}
 
       {entry.status === "NEEDS_CHANGES" && (
-        <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm font-medium text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
+        <div className="mt-2 rounded-lg border border-orange-300 bg-orange-50 p-2.5 text-sm font-medium text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
           Denne tidsregistrering er sendt retur til rettelse og skal opdateres,
           før den kan godkendes.
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => onHistory(entry)}
-          className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
-        >
-          Historik
-        </button>
-        {entry.status !== "APPROVED" && entry.status !== "VOIDED" && (
-          <button
-            type="button"
-            onClick={() => onEdit(entry)}
-            className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
-          >
-            Redigér
-          </button>
-        )}
-      </div>
     </article>
   );
 }

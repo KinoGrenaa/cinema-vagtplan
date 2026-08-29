@@ -16,41 +16,35 @@ export default function MyTimeSummaryCards({
   return (
     <section
       aria-label="Overblik over mine timer"
-      className="mb-6 grid gap-4 md:grid-cols-3"
+      className="mb-4 grid overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm md:grid-cols-3 dark:border-gray-800 dark:bg-gray-900"
     >
-      <article className="rounded-2xl border border-green-200 bg-green-50 p-5 text-gray-900 shadow-sm transition-colors dark:border-green-900/70 dark:bg-green-950/25 dark:text-gray-100">
-        <p className="text-sm font-semibold text-green-800 dark:text-green-300">
-          Godkendte timer
+      <article className="border-b border-green-200 bg-green-50/70 p-4 text-gray-900 md:border-b-0 md:border-r dark:border-green-900/70 dark:bg-green-950/20 dark:text-gray-100">
+        <p className="text-xs font-semibold uppercase tracking-wide text-green-800 dark:text-green-300">
+          Godkendt
         </p>
-        <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">
+        <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-white">
           {formatHoursDuration(approvedHours)}
-        </p>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Tæller med i løngrundlaget.
         </p>
       </article>
 
-      <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-gray-900 shadow-sm transition-colors dark:border-amber-900/70 dark:bg-amber-950/25 dark:text-gray-100">
-        <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-          Afventer godkendelse
+      <article className="border-b border-amber-200 bg-amber-50/70 p-4 text-gray-900 md:border-b-0 md:border-r dark:border-amber-900/70 dark:bg-amber-950/20 dark:text-gray-100">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+          Afventer
         </p>
-        <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">
+        <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-white">
           {formatHoursDuration(pendingHours)}
-        </p>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Ikke med i løn før godkendelse.
         </p>
       </article>
 
       <article
-        className={`rounded-2xl border p-5 text-gray-900 shadow-sm transition-colors dark:text-gray-100 ${
+        className={`p-4 text-gray-900 dark:text-gray-100 ${
           needsChangesCount > 0
-            ? "border-orange-300 bg-orange-50 ring-1 ring-orange-200 dark:border-orange-800 dark:bg-orange-950/30 dark:ring-orange-900/60"
-            : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+            ? "bg-orange-50 dark:bg-orange-950/25"
+            : "bg-white dark:bg-gray-900"
         }`}
       >
         <p
-          className={`text-sm font-semibold ${
+          className={`text-xs font-semibold uppercase tracking-wide ${
             needsChangesCount > 0
               ? "text-orange-800 dark:text-orange-300"
               : "text-gray-600 dark:text-gray-400"
@@ -58,27 +52,26 @@ export default function MyTimeSummaryCards({
         >
           Kræver handling
         </p>
-        <p
-          className={`mt-2 text-3xl font-bold ${
-            needsChangesCount > 0
-              ? "text-orange-900 dark:text-orange-200"
-              : "text-gray-950 dark:text-white"
-          }`}
-        >
-          {needsChangesCount}
-        </p>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Registreringer sendt retur til rettelse.
-        </p>
-        {needsChangesCount > 0 && (
-          <button
-            type="button"
-            onClick={onShowNeedsChangesEntries}
-            className="mt-4 rounded-xl bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-orange-700 active:bg-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:bg-orange-500 dark:text-gray-950 dark:hover:bg-orange-400 dark:active:bg-orange-300 dark:focus-visible:ring-orange-400 dark:focus-visible:ring-offset-gray-900"
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <p
+            className={`text-2xl font-bold ${
+              needsChangesCount > 0
+                ? "text-orange-900 dark:text-orange-200"
+                : "text-gray-950 dark:text-white"
+            }`}
           >
-            Vis registreringer
-          </button>
-        )}
+            {needsChangesCount}
+          </p>
+          {needsChangesCount > 0 && (
+            <button
+              type="button"
+              onClick={onShowNeedsChangesEntries}
+              className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-orange-700 active:bg-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 dark:bg-orange-500 dark:text-gray-950 dark:hover:bg-orange-400 dark:active:bg-orange-300 dark:focus-visible:ring-orange-400 dark:focus-visible:ring-offset-gray-900"
+            >
+              Vis
+            </button>
+          )}
+        </div>
       </article>
     </section>
   );
