@@ -186,6 +186,11 @@ async function installApiMocks(page: Page, options: MockOptions = {}) {
       return;
     }
 
+    if (pathname === "/time-entries/open") {
+      await fulfillJson(route, 404, { message: "Ingen åben tidsregistrering" });
+      return;
+    }
+
     if (pathname === "/auth/default-cinema-options") {
       await fulfillJson(route, 200, activeCinemaOptions(overviewMode, loginUser));
       return;
@@ -309,8 +314,15 @@ test("ADMIN logger ind på én biograf, ser startsiden og kan logge ud", async (
   await page.getByRole("button", { name: "Log ind" }).click();
 
   await waitForPath(page, "/home");
-  await expect(page.getByRole("heading", { name: "Din startside" })).toBeVisible();
-  await expect(page.getByText("Kino Grenaa · Administrator")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Min dag" })).toBeVisible();
+  await expect(
+    page.getByText("Aktiv biograf: Kino Grenaa", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("main")
+      .getByRole("link", { name: "Driftsoverblik" }),
+  ).toBeVisible();
   expect(
     calls.some(
       (call) =>
@@ -412,7 +424,7 @@ test("medarbejdermenu skjuler administrative områder", async ({ page }) => {
   const calls = await installApiMocks(page, { loginUser: employee });
   await setAuthenticatedState(page, employee);
   await page.goto("/home");
-  await expect(page.getByRole("heading", { name: "Din startside" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Min dag" })).toBeVisible();
   await waitForModules(calls);
 
   await openMenu(page);
@@ -430,7 +442,7 @@ test("ADMIN-menu viser administration men ikke MASTER-funktioner", async ({ page
   const calls = await installApiMocks(page, { loginUser: admin });
   await setAuthenticatedState(page, admin);
   await page.goto("/home");
-  await expect(page.getByRole("heading", { name: "Din startside" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Min dag" })).toBeVisible();
   await waitForModules(calls);
 
   await openMenu(page);

@@ -13,6 +13,21 @@ export type CinemaStartShift = {
   };
 };
 
+export type CinemaStartOpenTimeEntry = {
+  id: number;
+  clockIn: string;
+  clockOut?: string | null;
+  shiftId?: number | null;
+  shift?: {
+    id: number;
+    startTime: string;
+    endTime: string;
+    jobFunction?: {
+      name: string;
+    };
+  } | null;
+};
+
 export type CinemaStartAttentionItem = {
   type:
     | "UNSTAFFED_UPCOMING_SHIFTS"
@@ -68,15 +83,18 @@ async function readApiError(
 ) {
   try {
     const data = await response.json();
+
     if (typeof data?.message === "string" && data.message.trim()) {
       return data.message;
     }
+
     if (Array.isArray(data?.message) && data.message.length > 0) {
       return data.message.join("\n");
     }
   } catch {
     // Brug fallback, hvis serverens svar ikke er JSON.
   }
+
   return fallback;
 }
 
@@ -84,6 +102,7 @@ export async function fetchCinemaStartOverview() {
   const response = await apiFetch(
     "/auth/cinema-start-overview",
   );
+
   if (!response.ok) {
     throw new Error(
       await readApiError(
@@ -94,6 +113,7 @@ export async function fetchCinemaStartOverview() {
   }
 
   const overview = (await response.json()) as CinemaStartOverview;
+
   return {
     ...overview,
     cinemas: (overview.cinemas ?? []).map((cinema) => ({
@@ -105,13 +125,45 @@ export async function fetchCinemaStartOverview() {
   };
 }
 
+export async function fetchCinemaStartOpenTimeEntry(
+  userId: number,
+) {
+  const response = await apiFetch(
+    `/time-entries/open?userId=${userId}`,
+  );
+
+  if (response.status === 404 || response.status === 204) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(
+        response,
+        "Din åbne tidsregistrering kunne ikke hentes.",
+      ),
+    );
+  }
+
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return null;
+  }
+
+  return JSON.parse(text) as CinemaStartOpenTimeEntry;
+}
+
 export function getCinemaLogoSrc(logoUrl: string | null) {
   if (!logoUrl) return null;
+
   if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
     return logoUrl;
   }
+
   const apiUrl =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
   return logoUrl.startsWith("/")
     ? `${apiUrl}${logoUrl}`
     : `${apiUrl}/${logoUrl}`;
@@ -125,6 +177,7 @@ export function getAuthenticatedStartPath(
   overview: CinemaStartOverview,
 ) {
   if (overview.mode === "MASTER") return "/dashboard";
+
   return overview.mode === "MULTI_CINEMA"
     ? "/select-cinema"
     : "/home";
