@@ -11,6 +11,7 @@ import {
   normalizeJobFunctionName,
   parseOptionalSortOrder,
   parseRequiredPositiveId,
+  userJobFunctionInclude,
   withJobFunctionCinemaLock,
   type AuthUser,
 } from './job-function-service-helpers';
@@ -31,6 +32,10 @@ const admin: AuthUser = {
 };
 
 describe('job function service helpers', () => {
+  it('includes the profile image when reading assigned users', () => {
+    expect(userJobFunctionInclude.user.select.profileImage).toBe(true);
+  });
+
   it('allows master and administrator roles', () => {
     expect(() =>
       ensureJobFunctionAdmin(master),

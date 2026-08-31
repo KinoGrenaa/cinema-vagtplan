@@ -141,6 +141,7 @@ export const userJobFunctionInclude = {
       firstName: true,
       lastName: true,
       email: true,
+      profileImage: true,
       role: true,
       isActive: true,
     },

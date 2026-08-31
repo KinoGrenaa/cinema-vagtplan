@@ -22,7 +22,6 @@ export type JobFunctionTimingAnchor =
   | "LAST_MOVIE_START"
   | "LAST_MOVIE_END"
   | "FIXED_TIME";
-
 export type JobFunctionTimingRule = {
   id: number;
   cinemaId: number;
@@ -52,7 +51,6 @@ export type JobFunctionTimingRule = {
     cinemaId: number;
   };
 };
-
 export type JobFunction = {
   id: number;
   cinemaId: number;
@@ -73,17 +71,16 @@ export type JobFunction = {
     shifts?: number;
   };
 };
-
 export type User = {
   id: number;
   firstName: string;
   lastName: string;
   email: string;
+  profileImage?: string | null;
   role: "MASTER" | "ADMIN" | "EMPLOYEE";
   isActive?: boolean;
   cinemaId?: number | null;
 };
-
 export type UserJobFunction = {
   id: number;
   cinemaId: number;

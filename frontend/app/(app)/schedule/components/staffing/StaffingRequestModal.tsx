@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import type { FormEvent } from "react";
 import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
 
+import EmployeeAvatar from "@/app/components/employees/EmployeeAvatar";
+import EmployeePickerModal from "@/app/components/employees/EmployeePickerModal";
 import BaseModal from "@/app/components/modals/BaseModal";
 import type { Shift, User, JobFunction } from "../../../../../../shared/types";
 
@@ -13,7 +16,6 @@ export type StaffingRequestType =
   | "OVERTIME";
 
 export type StaffingTargetMode = "ALL" | "USER";
-
 const STAFFING_REQUEST_TYPES: {
   value: StaffingRequestType;
   label: string;
@@ -31,10 +33,8 @@ const STAFFING_PRIORITIES = [
   { value: 4, label: "Meget høj" },
   { value: 5, label: "Akut" },
 ];
-
 const fieldClass =
   "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
-
 type StaffingRequestModalProps = {
   open: boolean;
   onClose: () => void;
@@ -64,7 +64,6 @@ type StaffingRequestModalProps = {
   getShiftOptionText: (shift: Shift) => string;
   getUserDisplayName: (user: User) => string;
 };
-
 export default function StaffingRequestModal({
   open,
   onClose,
@@ -94,19 +93,27 @@ export default function StaffingRequestModal({
   getShiftOptionText,
   getUserDisplayName,
 }: StaffingRequestModalProps) {
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
+  const selectedTargetUser =
+    staffingTargetUsers.find((user) => user.id === targetUserId) ?? null;
+
+  function handleClose() {
+    setEmployeePickerOpen(false);
+    onClose();
+  }
+
   return (
     <BaseModal
       open={open}
       title="Send bemandingsforespørgsel"
       width="xl"
-      onClose={onClose}
+      onClose={handleClose}
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900 dark:border-purple-900/60 dark:bg-purple-950/30 dark:text-purple-100">
           Send en forespørgsel fra vagtplanen. Svarene håndteres i
           bemandingsindbakken.
         </div>
-
         {!selectedShift && (
           <div>
             <label className="mb-1 block text-sm font-semibold">
@@ -134,7 +141,6 @@ export default function StaffingRequestModal({
             </select>
           </div>
         )}
-
         {!selectedShift && (
           <div className="grid gap-4 md:grid-cols-3">
             <div>
@@ -143,9 +149,7 @@ export default function StaffingRequestModal({
                 value={startTime}
                 onChange={onStartTimeChange}
                 clearable
-                ariaLabel={
-                  "V\u00e6lg startdato og tid"
-                }
+                ariaLabel={"Vælg startdato og tid"}
               />
             </div>
             <div>
@@ -154,9 +158,7 @@ export default function StaffingRequestModal({
                 value={endTime}
                 onChange={onEndTimeChange}
                 clearable
-                ariaLabel={
-                  "V\u00e6lg slutdato og tid"
-                }
+                ariaLabel={"Vælg slutdato og tid"}
               />
             </div>
             <div>
@@ -180,45 +182,60 @@ export default function StaffingRequestModal({
             </div>
           </div>
         )}
-
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-semibold">Målgruppe</label>
             <select
               value={targetMode}
-              onChange={(event) =>
-                onTargetModeChange(event.target.value as StaffingTargetMode)
-              }
+              onChange={(event) => {
+                const nextMode = event.target.value as StaffingTargetMode;
+                onTargetModeChange(nextMode);
+                if (nextMode !== "USER") {
+                  setEmployeePickerOpen(false);
+                }
+              }}
               className={fieldClass}
             >
               <option value="ALL">Alle kvalificerede medarbejdere</option>
               <option value="USER">Bestemt kvalificeret medarbejder</option>
             </select>
           </div>
-
           {targetMode === "USER" && (
             <div>
               <label className="mb-1 block text-sm font-semibold">
                 Medarbejder
               </label>
-              <select
-                value={targetUserId}
-                onChange={(event) =>
-                  onTargetUserIdChange(Number(event.target.value))
-                }
-                className={fieldClass}
-              >
-                <option value={0}>Vælg medarbejder</option>
-                {staffingTargetUsers.map((targetUser) => (
-                  <option key={targetUser.id} value={targetUser.id}>
-                    {getUserDisplayName(targetUser)}
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+                  {selectedTargetUser ? (
+                    <div className="flex min-w-0 items-center gap-3">
+                      <EmployeeAvatar
+                        name={getUserDisplayName(selectedTargetUser)}
+                        profileImage={selectedTargetUser.profileImage}
+                        className="!h-8 !w-8 !text-xs"
+                      />
+                      <span className="min-w-0 truncate font-semibold">
+                        {getUserDisplayName(selectedTargetUser)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="block truncate font-semibold">
+                      Ingen medarbejder valgt
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEmployeePickerOpen(true)}
+                  disabled={staffingTargetUsers.length === 0}
+                  className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950"
+                >
+                  {selectedTargetUser ? "Skift" : "Vælg medarbejder"}
+                </button>
+              </div>
             </div>
           )}
         </div>
-
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-semibold">Type</label>
@@ -236,7 +253,6 @@ export default function StaffingRequestModal({
               ))}
             </select>
           </div>
-
           <div>
             <label className="mb-1 block text-sm font-semibold">Prioritet</label>
             <select
@@ -252,7 +268,6 @@ export default function StaffingRequestModal({
             </select>
           </div>
         </div>
-
         <div>
           <label className="mb-1 block text-sm font-semibold">Besked</label>
           <textarea
@@ -262,11 +277,10 @@ export default function StaffingRequestModal({
             placeholder="Skriv hvad medarbejderne skal tage stilling til"
           />
         </div>
-
         <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded-xl bg-gray-200 px-5 py-2 font-semibold text-gray-900 transition hover:bg-gray-300 active:bg-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:active:bg-gray-600 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
           >
             Annuller
@@ -279,6 +293,24 @@ export default function StaffingRequestModal({
           </button>
         </div>
       </form>
+      <EmployeePickerModal
+        open={open && targetMode === "USER" && employeePickerOpen}
+        title="Vælg medarbejder"
+        description="Vælg den kvalificerede medarbejder, forespørgslen skal sendes til."
+        options={staffingTargetUsers.map((user) => ({
+          id: user.id,
+          name: getUserDisplayName(user),
+          profileImage: user.profileImage ?? null,
+          detail: user.email,
+        }))}
+        selectedEmployeeId={selectedTargetUser?.id ?? null}
+        confirmLabel="Vælg medarbejder"
+        emptyText="Ingen kvalificerede medarbejdere kan vælges."
+        onClose={() => setEmployeePickerOpen(false)}
+        onConfirm={(employeeId) => {
+          onTargetUserIdChange(employeeId);
+        }}
+      />
     </BaseModal>
   );
 }

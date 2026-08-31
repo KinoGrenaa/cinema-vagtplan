@@ -2,6 +2,7 @@ export type User = {
   id: number;
   firstName: string;
   lastName: string;
+  profileImage?: string | null;
   role?: string;
 };
 

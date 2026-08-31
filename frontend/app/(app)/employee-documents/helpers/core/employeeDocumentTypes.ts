@@ -10,6 +10,7 @@ export type User = {
   id: number;
   firstName: string;
   lastName: string;
+  profileImage?: string | null;
   role: string;
 };
 
@@ -27,7 +28,6 @@ export type EmployeeDocumentCategory =
   | "IMAGE"
   | "OFFICE"
   | "OTHER";
-
 export type EmployeeDocumentTypeFilter =
   | "ALL"
   | EmployeeDocumentCategory;

@@ -1,3 +1,4 @@
+import EmployeeAvatar from "@/app/components/employees/EmployeeAvatar";
 import { formatUserName } from "../../helpers/page/jobFunctionHelpers";
 import type { UserJobFunction } from "../../helpers/types/jobFunctionTypes";
 
@@ -14,18 +15,24 @@ export default function JobFunctionEmployeeAssignmentRow({
 }: JobFunctionEmployeeAssignmentRowProps) {
   return (
     <div className="flex flex-col gap-3 bg-white p-4 dark:bg-gray-950/50 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="font-semibold text-gray-950 dark:text-white">
-          {formatUserName(assignment.user)}
-        </p>
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          {assignment.user.email}
-        </p>
-        {assignment.assignedByUser && (
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Tildelt af {formatUserName(assignment.assignedByUser)}
+      <div className="flex min-w-0 items-center gap-3">
+        <EmployeeAvatar
+          name={formatUserName(assignment.user)}
+          profileImage={assignment.user.profileImage}
+        />
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-gray-950 dark:text-white">
+            {formatUserName(assignment.user)}
           </p>
-        )}
+          <p className="truncate text-sm text-gray-600 dark:text-gray-300">
+            {assignment.user.email}
+          </p>
+          {assignment.assignedByUser && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Tildelt af {formatUserName(assignment.assignedByUser)}
+            </p>
+          )}
+        </div>
       </div>
       <button
         type="button"

@@ -1,3 +1,7 @@
+import { useState } from "react";
+
+import EmployeeAvatar from "@/app/components/employees/EmployeeAvatar";
+import EmployeePickerModal from "@/app/components/employees/EmployeePickerModal";
 import { formatUserName } from "../../helpers/page/jobFunctionHelpers";
 
 import type { User } from "../../helpers/types/jobFunctionTypes";
@@ -10,7 +14,6 @@ type JobFunctionEmployeeAssignmentControlsProps = {
   onAssignSelectedUser: () => void;
   onSelectedUserIdChange: (userId: string) => void;
 };
-
 export default function JobFunctionEmployeeAssignmentControls({
   assignmentSaving,
   availableUsers,
@@ -19,6 +22,10 @@ export default function JobFunctionEmployeeAssignmentControls({
   onAssignSelectedUser,
   onSelectedUserIdChange,
 }: JobFunctionEmployeeAssignmentControlsProps) {
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
+  const selectedUser =
+    availableUsers.find((user) => String(user.id) === selectedUserId) ?? null;
+
   if (!isActive) {
     return (
       <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
@@ -34,23 +41,34 @@ export default function JobFunctionEmployeeAssignmentControls({
         Tilføj medarbejder
       </label>
       <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-        <select
-          value={selectedUserId}
-          onChange={(event) => onSelectedUserIdChange(event.target.value)}
-          className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus-visible:ring-blue-400"
+        <div className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+          {selectedUser ? (
+            <div className="flex min-w-0 items-center gap-3">
+              <EmployeeAvatar
+                name={formatUserName(selectedUser)}
+                profileImage={selectedUser.profileImage}
+                className="!h-8 !w-8 !text-xs"
+              />
+              <span className="min-w-0 truncate font-semibold">
+                {formatUserName(selectedUser)} · {selectedUser.email}
+              </span>
+            </div>
+          ) : (
+            <span className="block truncate font-semibold">
+              {availableUsers.length === 0
+                ? "Alle aktive medarbejdere er tilføjet"
+                : "Ingen medarbejder valgt"}
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setEmployeePickerOpen(true)}
+          className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950"
           disabled={assignmentSaving || availableUsers.length === 0}
         >
-          <option value="">
-            {availableUsers.length === 0
-              ? "Alle aktive medarbejdere er tilføjet"
-              : "Vælg medarbejder"}
-          </option>
-          {availableUsers.map((user) => (
-            <option key={user.id} value={user.id}>
-              {formatUserName(user)} · {user.email}
-            </option>
-          ))}
-        </select>
+          {selectedUser ? "Skift" : "Vælg medarbejder"}
+        </button>
         <button
           type="button"
           onClick={onAssignSelectedUser}
@@ -62,6 +80,24 @@ export default function JobFunctionEmployeeAssignmentControls({
           {assignmentSaving ? "Tilføjer..." : "Tilføj"}
         </button>
       </div>
+      <EmployeePickerModal
+        open={employeePickerOpen}
+        title="Vælg medarbejder"
+        description="Vælg den medarbejder, der skal have jobfunktionen."
+        options={availableUsers.map((user) => ({
+          id: user.id,
+          name: formatUserName(user),
+          profileImage: user.profileImage ?? null,
+          detail: user.email,
+        }))}
+        selectedEmployeeId={selectedUser?.id ?? null}
+        confirmLabel="Vælg medarbejder"
+        emptyText="Ingen medarbejdere kan tilføjes."
+        onClose={() => setEmployeePickerOpen(false)}
+        onConfirm={(employeeId) => {
+          onSelectedUserIdChange(String(employeeId));
+        }}
+      />
     </div>
   );
 }

@@ -1,11 +1,14 @@
+import { useState } from "react";
 import type { DragEvent, FormEvent, KeyboardEvent } from "react";
+
+import EmployeeAvatar from "@/app/components/employees/EmployeeAvatar";
+import EmployeePickerModal from "@/app/components/employees/EmployeePickerModal";
 import {
   getEmployeeName,
   getSuggestedDocumentTitle,
   sortEmployees,
 } from "../../helpers/core/employeeDocumentHelpers";
 import type { User } from "../../helpers/core/employeeDocumentTypes";
-
 type EmployeeDocumentUploadFormProps = {
   users: User[];
   selectedUserId: number | null;
@@ -21,7 +24,6 @@ type EmployeeDocumentUploadFormProps = {
 
 const acceptedFileTypes =
   ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.png,.jpg,.jpeg,.gif,.webp";
-
 export default function EmployeeDocumentUploadForm({
   users,
   selectedUserId,
@@ -35,6 +37,9 @@ export default function EmployeeDocumentUploadForm({
   onSubmit,
 }: EmployeeDocumentUploadFormProps) {
   const sortedUsers = sortEmployees(users);
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
+  const selectedEmployee =
+    sortedUsers.find((user) => user.id === selectedUserId) ?? null;
   const formDisabled = needsMasterCinemaSelection;
   const canSubmit =
     !uploading &&
@@ -42,7 +47,6 @@ export default function EmployeeDocumentUploadForm({
     Boolean(selectedUserId) &&
     Boolean(title.trim()) &&
     Boolean(file);
-
   function selectFile(nextFile: File | null) {
     setFile(nextFile);
 
@@ -60,7 +64,6 @@ export default function EmployeeDocumentUploadForm({
 
     selectFile(event.dataTransfer.files?.[0] ?? null);
   }
-
   function handleDropZoneKeyDown(event: KeyboardEvent<HTMLLabelElement>) {
     if (formDisabled || (event.key !== "Enter" && event.key !== " ")) {
       return;
@@ -69,7 +72,6 @@ export default function EmployeeDocumentUploadForm({
     event.preventDefault();
     event.currentTarget.click();
   }
-
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 md:p-6">
       <div className="mb-5">
@@ -83,34 +85,40 @@ export default function EmployeeDocumentUploadForm({
           Dokumentet tilknyttes den valgte medarbejder og den aktive biograf.
         </p>
       </div>
-
       <form onSubmit={onSubmit} className="grid gap-4 lg:grid-cols-2">
-        <label className="block">
+        <div>
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
             Medarbejder
           </span>
-          <select
-            value={selectedUserId ?? ""}
-            onChange={(event) => {
-              const nextUserId = Number(event.target.value);
-              setSelectedUserId(
-                Number.isInteger(nextUserId) && nextUserId > 0
-                  ? nextUserId
-                  : null,
-              );
-            }}
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 shadow-sm outline-none transition hover:border-gray-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/25 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:border-gray-600 dark:focus-visible:border-blue-400 dark:focus-visible:ring-blue-400/30 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
-            disabled={formDisabled || users.length === 0}
-          >
-            <option value="">Vælg medarbejder</option>
-            {sortedUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {getEmployeeName(user)}
-              </option>
-            ))}
-          </select>
-        </label>
-
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <div className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+              {selectedEmployee ? (
+                <div className="flex min-w-0 items-center gap-3">
+                  <EmployeeAvatar
+                    name={getEmployeeName(selectedEmployee)}
+                    profileImage={selectedEmployee.profileImage}
+                    className="!h-8 !w-8 !text-xs"
+                  />
+                  <span className="min-w-0 truncate font-semibold">
+                    {getEmployeeName(selectedEmployee)}
+                  </span>
+                </div>
+              ) : (
+                <span className="block truncate font-semibold">
+                  Ingen medarbejder valgt
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setEmployeePickerOpen(true)}
+              disabled={formDisabled || sortedUsers.length === 0}
+              className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950"
+            >
+              {selectedEmployee ? "Skift" : "Vælg medarbejder"}
+            </button>
+          </div>
+        </div>
         <label className="block">
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
             Dokumenttitel
@@ -124,7 +132,6 @@ export default function EmployeeDocumentUploadForm({
             maxLength={150}
           />
         </label>
-
         <div className="lg:col-span-2">
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
             Fil
@@ -150,7 +157,6 @@ export default function EmployeeDocumentUploadForm({
             <span className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               PDF, billeder og almindelige Office-dokumenter
             </span>
-
             {file && (
               <button
                 type="button"
@@ -165,7 +171,6 @@ export default function EmployeeDocumentUploadForm({
               </button>
             )}
           </label>
-
           <input
             key={file ? `selected-${file.name}` : "empty"}
             id="employee-document-file"
@@ -176,7 +181,6 @@ export default function EmployeeDocumentUploadForm({
             disabled={formDisabled}
           />
         </div>
-
         <button
           type="submit"
           disabled={!canSubmit}
@@ -185,6 +189,23 @@ export default function EmployeeDocumentUploadForm({
           {uploading ? "Uploader..." : "Upload dokument"}
         </button>
       </form>
+      <EmployeePickerModal
+        open={employeePickerOpen}
+        title="Vælg medarbejder"
+        description="Vælg den medarbejder, dokumentet skal tilknyttes."
+        options={sortedUsers.map((user) => ({
+          id: user.id,
+          name: getEmployeeName(user),
+          profileImage: user.profileImage ?? null,
+        }))}
+        selectedEmployeeId={selectedEmployee?.id ?? null}
+        confirmLabel="Vælg medarbejder"
+        emptyText="Ingen medarbejdere kan vælges."
+        onClose={() => setEmployeePickerOpen(false)}
+        onConfirm={(employeeId) => {
+          setSelectedUserId(employeeId);
+        }}
+      />
     </section>
   );
 }

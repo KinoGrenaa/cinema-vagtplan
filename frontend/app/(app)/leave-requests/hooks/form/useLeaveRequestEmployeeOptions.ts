@@ -12,13 +12,14 @@ type UserOptionSource = {
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
+  profileImage?: string | null;
   role: "MASTER" | "ADMIN" | "EMPLOYEE";
   isActive?: boolean;
 };
-
 export type LeaveRequestEmployeeOption = {
   id: number;
   label: string;
+  profileImage?: string | null;
 };
 
 type UseLeaveRequestEmployeeOptionsOptions = {
@@ -31,7 +32,6 @@ function formatUserOption(user: UserOptionSource) {
   const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
   return fullName || user.email || `Bruger #${user.id}`;
 }
-
 function buildUsersEndpoint(
   currentUser: LeaveRequestCurrentUser | null,
   activeCinemaId: number | null,
@@ -54,7 +54,6 @@ function buildUsersEndpoint(
 
   return null;
 }
-
 export function useLeaveRequestEmployeeOptions({
   activeCinemaId,
   currentUser,
@@ -69,7 +68,6 @@ export function useLeaveRequestEmployeeOptions({
   useEffect(() => {
     showErrorRef.current = showError;
   }, [showError]);
-
   useEffect(() => {
     async function fetchUsers() {
       const endpoint = buildUsersEndpoint(currentUser, activeCinemaId);
@@ -88,7 +86,6 @@ export function useLeaveRequestEmployeeOptions({
             await readErrorMessage(response, "Medarbejdere kunne ikke hentes."),
           );
         }
-
         const data = await response.json();
         setUsers(Array.isArray(data) ? data : []);
       } catch (error) {
@@ -104,7 +101,6 @@ export function useLeaveRequestEmployeeOptions({
 
     void fetchUsers();
   }, [activeCinemaId, canCreateForEmployees, currentUser]);
-
   const employeeOptions = useMemo(
     () =>
       users
@@ -112,6 +108,7 @@ export function useLeaveRequestEmployeeOptions({
         .map((user) => ({
           id: user.id,
           label: formatUserOption(user),
+          profileImage: user.profileImage ?? null,
         }))
         .sort((left, right) => left.label.localeCompare(right.label, "da-DK")),
     [users],
