@@ -1,4 +1,10 @@
+"use client";
+
+import { useState } from "react";
+
 import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
+import EmployeeAvatar from "@/app/components/employees/EmployeeAvatar";
+import EmployeePickerModal from "@/app/components/employees/EmployeePickerModal";
 import { formatDateDK } from "@/app/utils/dateTime";
 
 import { describePayrollModel } from "../../utils";
@@ -7,7 +13,15 @@ type PayrollHeaderUser = {
   id: number | string;
   firstName?: string | null;
   lastName?: string | null;
+  email?: string | null;
+  profileImage?: string | null;
 };
+
+function getPayrollUserName(user: PayrollHeaderUser) {
+  const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+
+  return fullName || user.email || `Medarbejder #${user.id}`;
+}
 
 type PayrollHeaderProps = {
   adjustmentCount: number;
@@ -30,7 +44,7 @@ type PayrollHeaderProps = {
 };
 
 const secondaryButtonClass =
-  "rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900";
+  "rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900";
 
 const primaryButtonClass =
   "rounded-xl bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900";
@@ -54,6 +68,23 @@ export default function PayrollHeader({
   onSetUserId,
   onToggleAdvancedFilters,
 }: PayrollHeaderProps) {
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
+
+  const selectedUser =
+    users.find((user) => String(user.id) === userId) ?? null;
+  const selectedUserName = selectedUser
+    ? getPayrollUserName(selectedUser)
+    : null;
+
+  const employeeOptions = users
+    .map((user) => ({
+      id: Number(user.id),
+      name: getPayrollUserName(user),
+      profileImage: user.profileImage ?? null,
+      detail: user.email ?? undefined,
+    }))
+    .filter((user) => Number.isInteger(user.id) && user.id > 0);
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -135,6 +166,7 @@ export default function PayrollHeader({
               medarbejder.
             </p>
           </div>
+
           <div className="grid gap-4 md:grid-cols-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -147,6 +179,7 @@ export default function PayrollHeader({
                 ariaLabel={"V\u00e6lg startdato"}
               />
             </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Slutdato
@@ -158,23 +191,53 @@ export default function PayrollHeader({
                 ariaLabel={"V\u00e6lg slutdato"}
               />
             </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Medarbejder
               </label>
-              <select
-                value={userId}
-                onChange={(event) => onSetUserId(event.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-              >
-                <option value="">Alle medarbejdere</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.firstName} {user.lastName}
-                  </option>
-                ))}
-              </select>
+
+              <div className="flex items-stretch gap-2">
+                <div className="flex min-w-0 flex-1 items-center rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+                  {selectedUser && selectedUserName ? (
+                    <div className="flex min-w-0 items-center gap-2">
+                      <EmployeeAvatar
+                        name={selectedUserName}
+                        profileImage={selectedUser.profileImage}
+                        className="!h-8 !w-8 !text-xs"
+                      />
+                      <span className="min-w-0 truncate font-semibold">
+                        {selectedUserName}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="truncate font-semibold">
+                      Alle medarbejdere
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setEmployeePickerOpen(true)}
+                  disabled={employeeOptions.length === 0}
+                  className={secondaryButtonClass}
+                >
+                  {selectedUser ? "Skift" : "Vælg"}
+                </button>
+              </div>
+
+              {selectedUser && (
+                <button
+                  type="button"
+                  onClick={() => onSetUserId("")}
+                  className="mt-2 text-xs font-semibold text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300"
+                >
+                  Vis alle medarbejdere
+                </button>
+              )}
             </div>
+
             <div className="flex items-end">
               <button
                 type="button"
@@ -188,6 +251,22 @@ export default function PayrollHeader({
           </div>
         </div>
       )}
+
+      <EmployeePickerModal
+        open={employeePickerOpen}
+        title="Vælg medarbejder"
+        description="Vælg den medarbejder, lønrapporten skal filtreres til."
+        options={employeeOptions}
+        selectedEmployeeId={
+          selectedUser ? Number(selectedUser.id) : null
+        }
+        confirmLabel="Vælg medarbejder"
+        emptyText="Ingen medarbejdere kan vælges."
+        onClose={() => setEmployeePickerOpen(false)}
+        onConfirm={(employeeId) => {
+          onSetUserId(String(employeeId));
+        }}
+      />
     </section>
   );
 }
