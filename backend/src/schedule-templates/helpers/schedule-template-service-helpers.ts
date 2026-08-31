@@ -119,6 +119,11 @@ export const scheduleTemplateInclude: Prisma.ScheduleTemplateInclude =
             jobFunction: {
               include: {
                 timingRule: true,
+                userJobFunctions: {
+                  select: {
+                    userId: true,
+                  },
+                },
                 _count: {
                   select: {
                     userJobFunctions: true,
@@ -175,6 +180,11 @@ export const scheduleTemplateDayInclude: Prisma.ScheduleTemplateDayInclude =
         jobFunction: {
           include: {
             timingRule: true,
+            userJobFunctions: {
+              select: {
+                userId: true,
+              },
+            },
             _count: {
               select: {
                 userJobFunctions: true,
@@ -219,6 +229,11 @@ export const scheduleTemplateJobFunctionInclude: Prisma.ScheduleTemplateJobFunct
     jobFunction: {
       include: {
         timingRule: true,
+        userJobFunctions: {
+          select: {
+            userId: true,
+          },
+        },
         _count: {
           select: {
             userJobFunctions: true,

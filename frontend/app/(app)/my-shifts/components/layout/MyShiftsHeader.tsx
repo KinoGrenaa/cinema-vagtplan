@@ -14,7 +14,7 @@ export default function MyShiftsHeader({
           Mine vagter
         </h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Oversigt over dine vagter pr. måned.
+          Se dine planlagte vagter.
         </p>
       </header>
 

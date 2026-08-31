@@ -576,30 +576,6 @@ export function useMyShiftsData({
       shifts,
     ]);
 
-  const totalHours =
-    useMemo(
-      () =>
-        myMonthShifts.reduce(
-          (
-            total,
-            shift,
-          ) =>
-            total +
-            (
-              new Date(
-                shift.endTime,
-              ).getTime() -
-              new Date(
-                shift.startTime,
-              ).getTime()
-            ) /
-              1000 /
-              60 /
-              60,
-          0,
-        ),
-      [myMonthShifts],
-    );
 
   function changeMonth(
     direction: number,
@@ -634,7 +610,6 @@ export function useMyShiftsData({
     getOpenTradeForShift,
     directTradesForMe,
     myMonthShifts,
-    totalHours,
     changeMonth,
   };
 }

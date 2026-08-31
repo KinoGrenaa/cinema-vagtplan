@@ -52,11 +52,11 @@ test("samme medarbejder kan vælges på flere vagter samme ugedag med visuel adv
   );
   assert.match(
     assignments,
-    /har også/,
+    /har også/i,
   );
   assert.match(
     assignments,
-    /muligt overlap/,
+    /muligt overlap/i,
   );
   assert.match(
     assignments,
@@ -314,5 +314,16 @@ test("åbne vagter er sekundær status i skabelonredigeringen", () => {
   assert.match(
     tabs,
     /formatOpenShiftText\(\s*dayGapSummary\.missingShiftCount/,
+  );
+});
+
+test("schedule templates viser kun medarbejdere med den konkrete jobfunktion", () => {
+  assert.match(
+    assignments,
+    /item\.jobFunction\s*\.userJobFunctions/,
+  );
+  assert.match(
+    assignments,
+    /qualifiedUserIds\.has\(\s*employee\.id/,
   );
 });

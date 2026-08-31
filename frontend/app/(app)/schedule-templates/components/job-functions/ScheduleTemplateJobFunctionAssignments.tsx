@@ -1,3 +1,9 @@
+"use client";
+
+import { useState } from "react";
+
+import EmployeePickerModal from "@/app/components/employees/EmployeePickerModal";
+
 import {
   formatUserName,
   getAssignedUserIdSet,
@@ -24,9 +30,6 @@ type ScheduleTemplateJobFunctionAssignmentsProps = {
   ) => void | Promise<void>;
 };
 
-const selectClass =
-  "mt-1 w-full rounded-2xl border border-gray-300 bg-white p-3 text-gray-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400/25 dark:disabled:bg-gray-800 dark:disabled:text-gray-500";
-
 export default function ScheduleTemplateJobFunctionAssignments({
   item,
   employees,
@@ -36,11 +39,27 @@ export default function ScheduleTemplateJobFunctionAssignments({
   onAddAssignment,
   onRemoveAssignment,
 }: ScheduleTemplateJobFunctionAssignmentsProps) {
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
+
   const assignedUserIds =
     getAssignedUserIdSet(item);
+  const qualifiedUserIds =
+    new Set(
+      (
+        item.jobFunction
+          .userJobFunctions ??
+        []
+      ).map(
+        (assignment) =>
+          assignment.userId,
+      ),
+    );
   const availableEmployees =
     employees.filter(
       (employee) =>
+        qualifiedUserIds.has(
+          employee.id,
+        ) &&
         !assignedUserIds.has(
           employee.id,
         ),
@@ -56,19 +75,16 @@ export default function ScheduleTemplateJobFunctionAssignments({
     );
   }
 
-  function formatEmployeeOption(
+  function getEmployeePickerOption(
     employee: ScheduleTemplateUser,
   ) {
     const notices =
       getEmployeeNotice(employee.id);
-    if (notices.length === 0) {
-      return formatUserName(employee);
-    }
-
-    const overlaps = notices.filter(
-      (notice) =>
-        notice.potentialOverlap,
-    );
+    const overlaps =
+      notices.filter(
+        (notice) =>
+          notice.potentialOverlap,
+      );
     const names = (
       overlaps.length > 0
         ? overlaps
@@ -80,15 +96,29 @@ export default function ScheduleTemplateJobFunctionAssignments({
       )
       .join(", ");
 
-    return overlaps.length > 0
-      ? `${formatUserName(
+    return {
+      id: employee.id,
+      name:
+        formatUserName(
           employee,
-        )} · ⚠ muligt overlap med ${names}`
-      : `${formatUserName(
-          employee,
-        )} · har også ${names}`;
+        ),
+      profileImage:
+        employee.profileImage ??
+        null,
+      warning:
+        overlaps.length > 0
+          ? `Muligt overlap med ${names} ud fra jobfunktionernes tidsregler.`
+          : notices.length > 0
+            ? `Har også ${names} denne ugedag.`
+            : undefined,
+      warningTone:
+        overlaps.length > 0
+          ? "warning" as const
+          : notices.length > 0
+            ? "info" as const
+            : undefined,
+    };
   }
-
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-100">
       <p className="font-black text-gray-950 dark:text-white">
@@ -198,23 +228,18 @@ export default function ScheduleTemplateJobFunctionAssignments({
         )}
       </div>
 
-      <label className="mt-3 block text-sm font-semibold text-gray-800 dark:text-gray-200">
-        Tilføj fast medarbejder
+      <div className="mt-3">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          Tilføj fast medarbejder
+        </p>
 
-        <select
-          defaultValue=""
-          onChange={(event) => {
-            const selectedValue =
-              event.target.value;
-
-            event.currentTarget.value =
-              "";
-            onAddAssignment(
-              item,
-              selectedValue,
-            );
-          }}
-          className={selectClass}
+        <button
+          type="button"
+          onClick={() =>
+            setEmployeePickerOpen(
+              true,
+            )
+          }
           disabled={
             savingAssignmentKey ===
               `${item.id}:add` ||
@@ -223,34 +248,49 @@ export default function ScheduleTemplateJobFunctionAssignments({
             assignedCount >=
               item.requiredCount
           }
+          className="mt-2 w-full rounded-xl border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-500 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950 dark:disabled:border-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
         >
-          <option value="">
-            {assignedCount >=
-            item.requiredCount
-              ? "Alle vagter har fast medarbejder"
+          {assignedCount >=
+          item.requiredCount
+            ? "Alle vagter har fast medarbejder"
+            : availableEmployees.length ===
+                0
+              ? "Ingen flere medarbejdere kan tilføjes"
               : "Vælg medarbejder"}
-          </option>
-
-          {availableEmployees.map(
-            (employee) => (
-              <option
-                key={employee.id}
-                value={employee.id}
-              >
-                {formatEmployeeOption(
-                  employee,
-                )}
-              </option>
-            ),
-          )}
-        </select>
+        </button>
 
         <p className="mt-2 text-xs font-normal text-gray-500 dark:text-gray-400">
           Medarbejdere med en anden vagt samme ugedag kan stadig vælges.
-          ⚠ betyder, at jobfunktionernes tidsregler ikke kan udelukke overlap.
+          Muligt overlap vurderes ud fra jobfunktionernes tidsregler.
           De endelige tider afhænger af filmprogrammet.
         </p>
-      </label>
+
+        <EmployeePickerModal
+          open={
+            employeePickerOpen
+          }
+          title="Tilføj fast medarbejder"
+          description="Søg blandt de medarbejdere, der kan vælges til denne skabelonvagt."
+          options={availableEmployees.map(
+            getEmployeePickerOption,
+          )}
+          confirmLabel="Tilføj medarbejder"
+          emptyText="Ingen flere medarbejdere kan tilføjes."
+          onClose={() =>
+            setEmployeePickerOpen(
+              false,
+            )
+          }
+          onConfirm={async (
+            employeeId,
+          ) => {
+            await onAddAssignment(
+              item,
+              employeeId,
+            );
+          }}
+        />
+      </div>
     </div>
   );
 }

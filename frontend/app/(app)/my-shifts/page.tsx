@@ -67,7 +67,6 @@ export default function MyShiftsPage() {
     getOpenTradeForShift,
     directTradesForMe,
     myMonthShifts,
-    totalHours,
     changeMonth,
   } = useMyShiftsData({
     infoDialog,
@@ -190,19 +189,6 @@ export default function MyShiftsPage() {
               }
             />
 
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900">
-              <h2 className="text-xl font-bold text-gray-950 dark:text-gray-100">
-                Samlet timer
-              </h2>
-              <p className="mt-2 text-4xl font-bold text-blue-700 dark:text-blue-400">
-                {totalHours.toFixed(
-                  2,
-                )}
-              </p>
-              <p className="text-gray-600 dark:text-gray-400">
-                timer i valgt måned
-              </p>
-            </section>
 
             <MyShiftsListSection
               myMonthShifts={

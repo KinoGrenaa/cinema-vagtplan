@@ -10,6 +10,7 @@ export const myShiftsColleagueSelect = {
   id: true,
   firstName: true,
   lastName: true,
+  profileImage: true,
   userJobFunctions: {
     select: {
       cinemaId: true,
@@ -93,6 +94,7 @@ export async function findMyShiftsStaticData(
         id: membership.user.id,
         firstName: membership.user.firstName,
         lastName: membership.user.lastName,
+        profileImage: membership.user.profileImage,
         jobFunctionIds: membership.user.userJobFunctions
           .filter((qualification) => qualification.cinemaId === params.cinemaId)
           .map((qualification) => qualification.jobFunctionId),

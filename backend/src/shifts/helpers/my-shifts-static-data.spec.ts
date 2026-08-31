@@ -13,6 +13,7 @@ describe(
           id: 11,
           firstName: 'Anna',
           lastName: 'Jensen',
+          profileImage: '/uploads/profiles/anna.jpg',
           userJobFunctions: [
             {
               cinemaId: 7,
@@ -64,6 +65,7 @@ describe(
             id: 11,
             firstName: 'Anna',
             lastName: 'Jensen',
+            profileImage: '/uploads/profiles/anna.jpg',
             jobFunctionIds: [21],
           },
         ],

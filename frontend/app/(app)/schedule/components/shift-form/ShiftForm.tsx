@@ -4,6 +4,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import EmployeePickerModal from "@/app/components/employees/EmployeePickerModal";
 import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import ProjectTimePicker from "@/app/components/date/ProjectTimePicker";
 import { toInputDateTime } from "@/app/utils/dateTime";
@@ -536,6 +537,7 @@ export default function ShiftForm({
 
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showMoveDatePicker, setShowMoveDatePicker] = useState(false);
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
 
   useEffect(() => {
     setShowMoveDatePicker(
@@ -611,6 +613,65 @@ export default function ShiftForm({
     timingManuallyAdjusted,
     timingPreview,
   ]);
+
+  const selectedEmployee =
+    users.find(
+      (user) =>
+        user.id === userId,
+    ) ?? null;
+  const employeePickerDisabled =
+    shiftLockedByTimeEntry ||
+    (
+      !selectedShift &&
+      (
+        jobFunctionId <= 0 ||
+        timingPreviewLoading
+      )
+    );
+  const employeePickerOptions =
+    employeeOptions.map(
+      (user) => {
+        const leaveConflict =
+          getUserLeaveConflict(
+            user.id,
+            leaveRequests,
+            startTime,
+            endTime,
+          );
+        const hasApprovedLeave =
+          leaveConflict ===
+          "APPROVED";
+        const hasPendingLeave =
+          leaveConflict ===
+          "PENDING";
+        const isCurrentSelectedUser =
+          user.id === userId;
+
+        return {
+          id: user.id,
+          name:
+            getUserDisplayName(
+              user,
+            ),
+          profileImage:
+            user.profileImage ??
+            null,
+          warning: hasApprovedLeave
+            ? "Godkendt fri i vagtens tidsrum"
+            : hasPendingLeave
+              ? "Afventende fraværsansøgning i vagtens tidsrum"
+              : undefined,
+          warningTone: hasApprovedLeave
+            ? "danger" as const
+            : hasPendingLeave
+              ? "warning" as const
+              : undefined,
+          disabled:
+            hasApprovedLeave &&
+            !isCurrentSelectedUser,
+        };
+      },
+    );
 
   function handleMoveShiftDate(
     nextDate: string,
@@ -897,89 +958,49 @@ export default function ShiftForm({
             Medarbejder
           </label>
 
-          <select
-            className={inputClass}
-            value={userId}
-            disabled={
-              shiftLockedByTimeEntry ||
-              (
-                !selectedShift &&
-                (
-                  jobFunctionId <= 0 ||
-                  timingPreviewLoading
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+              <span className="block truncate font-semibold">
+                {selectedEmployee
+                  ? getUserDisplayName(
+                      selectedEmployee,
+                    )
+                  : jobFunctionId > 0
+                    ? "Ikke tildelt"
+                    : "Vælg jobfunktion først"}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setEmployeePickerOpen(
+                  true,
                 )
-              )
-            }
-            onChange={(event) =>
-              setUserId(
-                Number(
-                  event.target.value,
-                ),
-              )
-            }
-          >
-            <option value={0}>
-              {jobFunctionId > 0
-                ? "Ikke tildelt"
-                : "V\u00e6lg jobfunktion f\u00f8rst"}
-            </option>
+              }
+              disabled={
+                employeePickerDisabled
+              }
+              className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950"
+            >
+              {userId > 0
+                ? "Skift medarbejder"
+                : "Vælg medarbejder"}
+            </button>
 
-            {employeeOptions.map(
-              (user) => {
-                const leaveConflict =
-                  getUserLeaveConflict(
-                    user.id,
-                    leaveRequests,
-                    startTime,
-                    endTime,
-                  );
-
-                const hasApprovedLeave =
-                  leaveConflict ===
-                  "APPROVED";
-
-                const hasPendingLeave =
-                  leaveConflict ===
-                  "PENDING";
-
-                const isCurrentSelectedUser =
-                  user.id ===
-                  userId;
-
-                const displayName =
-                  getUserDisplayName(
-                    user,
-                  );
-
-                return (
-                  <option
-                    key={user.id}
-                    value={user.id}
-                    disabled={
-                      hasApprovedLeave &&
-                      !isCurrentSelectedUser
-                    }
-                    className={
-                      hasApprovedLeave
-                        ? "text-gray-400"
-                        : hasPendingLeave
-                          ? "text-yellow-700"
-                          : undefined
-                    }
-                  >
-                    {displayName}
-                    {hasApprovedLeave
-                      ? " \u2014 godkendt fri"
-                      : ""}
-                    {hasPendingLeave
-                      ? " \u2014 afventer frav\u00e6r"
-                      : ""}
-                  </option>
-                );
-              },
+            {userId > 0 &&
+              !shiftLockedByTimeEntry && (
+              <button
+                type="button"
+                onClick={() =>
+                  setUserId(0)
+                }
+                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                Fjern tildeling
+              </button>
             )}
-          </select>
-
+          </div>
           {!selectedShift &&
             jobFunctionId > 0 &&
             !timingPreviewLoading &&
@@ -1321,6 +1342,39 @@ export default function ShiftForm({
           </button>
         </div>
       </form>
+
+      <EmployeePickerModal
+        open={employeePickerOpen}
+        title={
+          userId > 0
+            ? "Skift medarbejder"
+            : "Vælg medarbejder"
+        }
+        description="Kun medarbejdere, der er kvalificeret til jobfunktionen, vises. Fravær vises direkte i listen."
+        options={
+          employeePickerOptions
+        }
+        selectedEmployeeId={
+          userId > 0
+            ? userId
+            : null
+        }
+        confirmLabel="Vælg medarbejder"
+        emptyText="Ingen aktive medarbejdere er kvalificeret til denne jobfunktion."
+        onClose={() =>
+          setEmployeePickerOpen(
+            false,
+          )
+        }
+        onConfirm={(
+          employeeId,
+        ) => {
+          setUserId(
+            employeeId,
+          );
+        }}
+      />
+
 
       {selectedShift && (
         <div className="flex flex-wrap gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">

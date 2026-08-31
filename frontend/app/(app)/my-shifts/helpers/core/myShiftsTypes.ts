@@ -8,6 +8,7 @@ export type User = {
   id: number;
   firstName: string;
   lastName: string;
+  profileImage?: string | null;
   jobFunctionIds?: number[];
 };
 

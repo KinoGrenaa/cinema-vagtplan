@@ -4,6 +4,7 @@ type JobFunction = {
   description: string | null;
   color: string;
   isActive: boolean;
+  userJobFunctions?: Array<{ userId: number }>;
   timingRule?: {
     filmWindowStartMinute: number;
     filmWindowEndMinute: number;
@@ -26,6 +27,7 @@ type ScheduleTemplateUser = {
   firstName: string | null;
   lastName: string | null;
   email: string;
+  profileImage?: string | null;
   role?: "MASTER" | "ADMIN" | "EMPLOYEE";
   isActive?: boolean;
 };
