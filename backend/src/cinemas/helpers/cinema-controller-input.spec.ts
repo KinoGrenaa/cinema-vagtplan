@@ -57,6 +57,9 @@ describe('cinema controller input', () => {
     const result = normalizeCinemaSettingsBody({
       name: '  Kino Syd  ',
       allowShiftTradePool: true,
+      staffingLoadWarningEnabled: true,
+      staffingLoadWarningMinSoldSeats: 175,
+      staffingLoadWarningMaxTicketsPerEmployee: 55,
       clockInDeviationToleranceMinutes: '15',
       dailyOvertimeThreshold: 8.5,
       weeklyOvertimeThreshold: 37,
@@ -71,6 +74,9 @@ describe('cinema controller input', () => {
     expect(result).toMatchObject({
       name: 'Kino Syd',
       allowShiftTradePool: true,
+      staffingLoadWarningEnabled: true,
+      staffingLoadWarningMinSoldSeats: 175,
+      staffingLoadWarningMaxTicketsPerEmployee: 55,
       clockInDeviationToleranceMinutes: 15,
       dailyOvertimeThreshold: 8.5,
       weeklyOvertimeThreshold: 37,
@@ -100,6 +106,15 @@ describe('cinema controller input', () => {
   it.each([
     {
       allowShiftTradePool: 'true',
+    },
+    {
+      staffingLoadWarningEnabled: 'true',
+    },
+    {
+      staffingLoadWarningMinSoldSeats: -1,
+    },
+    {
+      staffingLoadWarningMaxTicketsPerEmployee: 0,
     },
     {
       clockInDeviationToleranceMinutes: '1e2',

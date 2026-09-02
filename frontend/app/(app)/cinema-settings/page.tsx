@@ -10,6 +10,7 @@ import CinemaSettingsPayrollSection from "./components/payroll/CinemaSettingsPay
 import CinemaSettingsBrandingSection from "./components/sections/CinemaSettingsBrandingSection";
 import CinemaSettingsFeatureTogglesSection from "./components/sections/CinemaSettingsFeatureTogglesSection";
 import CinemaSettingsLeaveSection from "./components/sections/CinemaSettingsLeaveSection";
+import CinemaSettingsStaffingWarningsSection from "./components/sections/CinemaSettingsStaffingWarningsSection";
 import CinemaSettingsTimeEntryRulesSection from "./components/sections/CinemaSettingsTimeEntryRulesSection";
 import CinemaSettingsTimeRegistrationSection from "./components/sections/CinemaSettingsTimeRegistrationSection";
 import { calculatePeriodExample } from "./helpers/core/cinemaSettingsDateHelpers";
@@ -82,6 +83,17 @@ export default function CinemaSettingsPage() {
             description="Regler for medarbejdernes fraværsansøgninger."
           >
             <CinemaSettingsLeaveSection
+              cinema={cinema}
+              saving={saving}
+              updateCinemaSettings={updateCinemaSettings}
+            />
+          </CinemaSettingsGroup>
+
+          <CinemaSettingsGroup
+            title="Bemanding og drift"
+            description="Regler for driftsadvarsler og hvornår bemandingen skal fremhæves."
+          >
+            <CinemaSettingsStaffingWarningsSection
               cinema={cinema}
               saving={saving}
               updateCinemaSettings={updateCinemaSettings}

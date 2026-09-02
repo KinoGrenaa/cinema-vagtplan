@@ -240,6 +240,11 @@ model Cinema {
   staffingRequests                  StaffingRequest[]
   payrollAdjustments                PayrollAdjustment[]
   aiEnabled                         Boolean                       @default(false)
+  staffingLoadWarningEnabled        Boolean                       @default(false)
+  staffingLoadWarningMinSoldSeats   Int                           @default(150)
+  staffingLoadWarningMaxTicketsPerEmployee Int                    @default(60)
+  staffingLoadWarningVersion        Int                           @default(1)
+  dashboardWarningDecisions         DashboardWarningDecision[]
   shiftPlanningDrafts               ShiftPlanningDraft[]
   shiftPlanningDraftItems           ShiftPlanningDraftItem[]
   shiftPlanningDraftDays            ShiftPlanningDraftDay[]
@@ -290,6 +295,7 @@ model User {
   skills                                String?
   notes                                 String?
   theme                                 String                               @default("light")
+  dashboardHorizonDays                  Int                                  @default(10)
   role                                  Role                                 @default(EMPLOYEE)
   createdAt                             DateTime                             @default(now())
   isActive                              Boolean                              @default(true)
@@ -329,6 +335,7 @@ model User {
   createdSpecialDays                    CinemaSpecialDay[]                   @relation("CinemaSpecialDayCreatedBy")
   createdPayrollCalculationRuns         PayrollCalculationRun[]              @relation("PayrollCalculationRunCreatedBy")
   staffingAiProfile                     StaffingAiProfile?
+  dashboardWarningDecisions             DashboardWarningDecision[]           @relation("DashboardWarningDecisionUser")
   createdShiftPlanningDrafts            ShiftPlanningDraft[]                 @relation("ShiftPlanningDraftCreatedBy")
   shiftPlanningDraftItems               ShiftPlanningDraftItem[]
 
@@ -916,6 +923,35 @@ model AuditLog {
   user        User?    @relation(fields: [userId], references: [id])
   cinemaId    Int?
   cinema      Cinema?  @relation(fields: [cinemaId], references: [id])
+}
+
+enum DashboardWarningType {
+  UNASSIGNED_SHIFT
+  STAFFING_LOAD
+}
+
+enum DashboardWarningDecisionAction {
+  IGNORED
+  REOPENED
+}
+
+model DashboardWarningDecision {
+  id             Int                            @id @default(autoincrement())
+  cinemaId       Int
+  cinema         Cinema                         @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  warningKey     String
+  warningType    DashboardWarningType
+  localDate      String
+  action         DashboardWarningDecisionAction
+  note           String?
+  warningLabel   String
+  warningDetails String?
+  createdAt      DateTime                       @default(now())
+  userId         Int
+  user           User                           @relation("DashboardWarningDecisionUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([cinemaId, localDate, createdAt, id])
+  @@index([cinemaId, warningKey, createdAt, id])
 }
 
 model PayrollPeriod {

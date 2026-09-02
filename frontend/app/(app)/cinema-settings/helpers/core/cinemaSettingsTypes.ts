@@ -19,6 +19,10 @@ export type Cinema = {
   allowShiftTradeDirect: boolean;
   leaveRequestMinimumNoticeDays: number;
   aiEnabled: boolean;
+  staffingLoadWarningEnabled: boolean;
+  staffingLoadWarningMinSoldSeats: number;
+  staffingLoadWarningMaxTicketsPerEmployee: number;
+  staffingLoadWarningVersion: number;
   automaticTimeRegistrationEnabled: boolean;
   automaticTimeRegistrationMethod: AutomaticTimeRegistrationMethod;
   automaticTimeRegistrationMinutes: number;
@@ -50,6 +54,9 @@ export type CinemaSettingsUpdate = Partial<
     | "allowShiftTradeDirect"
     | "leaveRequestMinimumNoticeDays"
     | "aiEnabled"
+    | "staffingLoadWarningEnabled"
+    | "staffingLoadWarningMinSoldSeats"
+    | "staffingLoadWarningMaxTicketsPerEmployee"
     | "automaticTimeRegistrationEnabled"
     | "automaticTimeRegistrationMethod"
     | "automaticTimeRegistrationMinutes"
@@ -89,6 +96,10 @@ export const CINEMA_DEFAULTS = {
   allowShiftTradeDirect: false,
   leaveRequestMinimumNoticeDays: 1,
   aiEnabled: false,
+  staffingLoadWarningEnabled: false,
+  staffingLoadWarningMinSoldSeats: 150,
+  staffingLoadWarningMaxTicketsPerEmployee: 60,
+  staffingLoadWarningVersion: 1,
   automaticTimeRegistrationEnabled: false,
   automaticTimeRegistrationMethod:
     "PLANNED_SHIFT" as AutomaticTimeRegistrationMethod,
@@ -243,6 +254,28 @@ export function normalizeCinemaSettings(value: unknown): Cinema {
       source.aiEnabled,
       CINEMA_DEFAULTS.aiEnabled,
     ),
+    staffingLoadWarningEnabled: normalizeBoolean(
+      source.staffingLoadWarningEnabled,
+      CINEMA_DEFAULTS.staffingLoadWarningEnabled,
+    ),
+    staffingLoadWarningMinSoldSeats: normalizeInteger(
+      source.staffingLoadWarningMinSoldSeats,
+      CINEMA_DEFAULTS.staffingLoadWarningMinSoldSeats,
+      0,
+      100000,
+    ),
+    staffingLoadWarningMaxTicketsPerEmployee: normalizeInteger(
+      source.staffingLoadWarningMaxTicketsPerEmployee,
+      CINEMA_DEFAULTS.staffingLoadWarningMaxTicketsPerEmployee,
+      1,
+      100000,
+    ),
+    staffingLoadWarningVersion: normalizeInteger(
+      source.staffingLoadWarningVersion,
+      CINEMA_DEFAULTS.staffingLoadWarningVersion,
+      1,
+      Number.MAX_SAFE_INTEGER,
+    ),
     leaveRequestMinimumNoticeDays:
       normalizeInteger(
         source.leaveRequestMinimumNoticeDays,
@@ -364,6 +397,7 @@ export function normalizeCinemaSettingsUpdate(
       | "allowShiftTradePool"
       | "allowShiftTradeDirect"
       | "aiEnabled"
+      | "staffingLoadWarningEnabled"
       | "automaticTimeRegistrationEnabled"
         | "requireNoteForClockInDeviation"
       | "requireNoteForClockOutDeviation"
@@ -377,6 +411,7 @@ export function normalizeCinemaSettingsUpdate(
     "allowShiftTradePool",
     "allowShiftTradeDirect",
     "aiEnabled",
+    "staffingLoadWarningEnabled",
     "automaticTimeRegistrationEnabled",
     "requireNoteForClockInDeviation",
     "requireNoteForClockOutDeviation",
@@ -391,6 +426,24 @@ export function normalizeCinemaSettingsUpdate(
     if (field in value && typeof value[field] === "boolean") {
       result[field] = value[field] as never;
     }
+  }
+
+  if ("staffingLoadWarningMinSoldSeats" in value) {
+    result.staffingLoadWarningMinSoldSeats = normalizeInteger(
+      value.staffingLoadWarningMinSoldSeats,
+      CINEMA_DEFAULTS.staffingLoadWarningMinSoldSeats,
+      0,
+      100000,
+    );
+  }
+
+  if ("staffingLoadWarningMaxTicketsPerEmployee" in value) {
+    result.staffingLoadWarningMaxTicketsPerEmployee = normalizeInteger(
+      value.staffingLoadWarningMaxTicketsPerEmployee,
+      CINEMA_DEFAULTS.staffingLoadWarningMaxTicketsPerEmployee,
+      1,
+      100000,
+    );
   }
 
   if (

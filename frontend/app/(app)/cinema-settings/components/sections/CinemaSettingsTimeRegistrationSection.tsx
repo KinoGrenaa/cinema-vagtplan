@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 
+import CinemaSettingsSwitch from "../layout/CinemaSettingsSwitch";
 import type {
   AutomaticTimeRegistrationMethod,
   Cinema,
@@ -223,30 +224,15 @@ export default function CinemaSettingsTimeRegistrationSection({
           </p>
         </div>
 
-        <button
-          type="button"
-          aria-pressed={enabled}
+        <CinemaSettingsSwitch
+          checked={enabled}
           disabled={saving}
-          onClick={() => {
-            setEnabled(
-              (current) =>
-                !current,
-            );
-
-            setValidationError(
-              null,
-            );
+          ariaLabel="Aktivér automatisk tidsregistrering"
+          onChange={(event) => {
+            setEnabled(event.target.checked);
+            setValidationError(null);
           }}
-          className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
-            enabled
-              ? "bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
-              : "bg-slate-600 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
-          }`}
-        >
-          {enabled
-            ? "Aktiveret"
-            : "Deaktiveret"}
-        </button>
+        />
       </div>
 
       {enabled && (

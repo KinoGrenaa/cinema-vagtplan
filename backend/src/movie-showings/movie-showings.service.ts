@@ -1,3 +1,4 @@
+import { findMovieShowingsForRange } from './helpers/movie-showing-range-read';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -63,5 +64,29 @@ export class MovieShowingsService {
         },
       ],
     });
+  }
+
+
+  async findRange(
+    options: {
+      startDate: string;
+      endDate: string;
+      user: MovieShowingsRequestUser;
+      selectedCinemaId?: number | null;
+    },
+  ) {
+    const cinemaId =
+      await resolveMovieShowingsCinemaId(
+        this.prisma,
+        options.user,
+        options.selectedCinemaId,
+      );
+
+    return findMovieShowingsForRange(
+      this.prisma,
+      cinemaId,
+      options.startDate,
+      options.endDate,
+    );
   }
 }

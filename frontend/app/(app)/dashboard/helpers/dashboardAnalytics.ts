@@ -51,29 +51,8 @@ export function calculateSeatLoadPercent(movies: MovieShowing[]) {
 
 export function calculateStaffingWarnings(
   shifts: Shift[],
-  movies: MovieShowing[],
 ) {
   const warnings: string[] = [];
-
-  const todaysShiftCount = shifts.length;
-
-  const totalSoldSeats = movies.reduce(
-    (sum, movie) => sum + movie.soldSeats,
-    0,
-  );
-
-  const averageLoad =
-    todaysShiftCount > 0 ? totalSoldSeats / todaysShiftCount : totalSoldSeats;
-
-  if (todaysShiftCount <= 2 && totalSoldSeats >= 150) {
-    warnings.push(
-      "Høj biografbelastning men meget få medarbejdere på arbejde.",
-    );
-  }
-
-  if (averageLoad >= 60) {
-    warnings.push("Høj belastning pr medarbejder registreret i dag.");
-  }
 
   const overtimeRisk = shifts.some((shift) => {
     const start = new Date(shift.startTime);

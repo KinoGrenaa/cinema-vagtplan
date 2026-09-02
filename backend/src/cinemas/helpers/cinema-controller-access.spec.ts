@@ -2,6 +2,7 @@ import { ForbiddenException } from '@nestjs/common';
 import {
   ensureCinemaManageAccess,
   ensureCinemaMaster,
+  ensureCinemaOperationalAdminAccess,
   ensureCinemaReadAccess,
   type CinemaControllerUser,
 } from './cinema-controller-access';
@@ -101,4 +102,23 @@ describe('cinema controller access', () => {
       ),
     ).toThrow(ForbiddenException);
   });
+  it('allows only administrators and master to handle operational warnings', () => {
+    expect(() =>
+      ensureCinemaOperationalAdminAccess(admin, 7),
+    ).not.toThrow();
+    expect(() =>
+      ensureCinemaOperationalAdminAccess(master, 7),
+    ).not.toThrow();
+    expect(() =>
+      ensureCinemaOperationalAdminAccess(
+        {
+          ...admin,
+          role: 'EMPLOYEE',
+          canManageCinemaSettings: true,
+        },
+        7,
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
 });

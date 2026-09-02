@@ -1,3 +1,4 @@
+import { findScheduleShiftsForRange } from './helpers/schedule-shift-range-read';
 import {
   Injectable,
 } from '@nestjs/common';
@@ -353,5 +354,32 @@ export class ShiftsService {
       id,
       selectedCinemaId,
     });
+  }
+
+
+  async findRange(
+    user: AuthUser,
+    startDate: string,
+    endDate: string,
+    selectedCinemaId?: number | null,
+  ) {
+    const cinemaId =
+      resolveShiftCinemaId(
+        user,
+        selectedCinemaId,
+      );
+
+    await ensureShiftActorHasCinemaAccess(
+      this.prisma,
+      user,
+      cinemaId,
+    );
+
+    return findScheduleShiftsForRange(
+      this.prisma,
+      cinemaId,
+      startDate,
+      endDate,
+    );
   }
 }

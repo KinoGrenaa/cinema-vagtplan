@@ -1,3 +1,4 @@
+import { normalizeDashboardHorizonDays } from './helpers/user-dashboard-preference';
 import {
   BadRequestException,
   Body,
@@ -434,6 +435,35 @@ export class UsersController {
     return this.usersService.updateTheme(
       userId,
       normalizeUserTheme(body?.theme),
+    );
+  }
+
+
+  @UseGuards(JwtGuard)
+  @Get('me/dashboard-horizon')
+  getOwnDashboardHorizon(
+    @Req() req: any,
+  ) {
+    return this.usersService.findDashboardHorizonPreference(
+      getAuthenticatedUserId(
+        req.user?.sub ?? req.user?.id,
+      ),
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch('me/dashboard-horizon')
+  updateOwnDashboardHorizon(
+    @Req() req: any,
+    @Body() body: { days?: unknown },
+  ) {
+    return this.usersService.updateDashboardHorizonPreference(
+      getAuthenticatedUserId(
+        req.user?.sub ?? req.user?.id,
+      ),
+      normalizeDashboardHorizonDays(
+        body?.days,
+      ),
     );
   }
 }

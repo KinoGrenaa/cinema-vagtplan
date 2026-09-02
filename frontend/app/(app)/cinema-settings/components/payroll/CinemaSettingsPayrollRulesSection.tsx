@@ -5,6 +5,7 @@ import CinemaSettingsPayrollModeSection, {
   type PayrollMode,
 } from "./CinemaSettingsPayrollModeSection";
 import CinemaSettingsAdvancedPayRulesSection from "./CinemaSettingsAdvancedPayRulesSection";
+import CinemaSettingsSwitch from "../layout/CinemaSettingsSwitch";
 import type {
   Cinema,
   CinemaSettingsUpdate,
@@ -79,85 +80,81 @@ export default function CinemaSettingsPayrollRulesSection({
               Aktiverer overtidsregler i løneksport.
             </p>
           </div>
-          <button
-            type="button"
-            aria-pressed={cinema.payrollOvertimeEnabled}
-            onClick={() =>
+          <CinemaSettingsSwitch
+            checked={cinema.payrollOvertimeEnabled}
+            disabled={saving}
+            ariaLabel="Brug overarbejdsregler"
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
               void updateCinemaSettings({
-                payrollOvertimeEnabled: !cinema.payrollOvertimeEnabled,
+                payrollOvertimeEnabled: event.target.checked,
               })
             }
-            disabled={saving}
-            className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-950 ${
-              cinema.payrollOvertimeEnabled
-                ? "bg-blue-700 hover:bg-blue-800 active:bg-blue-900 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400"
-                : "bg-gray-600 hover:bg-gray-700 active:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-500"
-            }`}
-          >
-            {cinema.payrollOvertimeEnabled ? "Aktiveret" : "Deaktiveret"}
-          </button>
+          />
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-3">
-          <label className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
-            <span className="font-semibold text-slate-950 dark:text-white">
-              Planlagt overtid
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+            <span>
+              <span className="font-semibold text-slate-950 dark:text-white">
+                Planlagt overtid
+              </span>
+              <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
+                Over planlagt vagt.
+              </span>
             </span>
-            <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
-              Over planlagt vagt.
-            </span>
-            <input
-              type="checkbox"
+            <CinemaSettingsSwitch
               checked={cinema.plannedOvertimeEnabled}
               disabled={saving}
+              ariaLabel="Planlagt overtid"
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
                 void updateCinemaSettings({
                   plannedOvertimeEnabled: event.target.checked,
                 })
               }
-              className="mt-4 h-5 w-5 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
             />
-          </label>
+          </div>
 
-          <label className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
-            <span className="font-semibold text-slate-950 dark:text-white">
-              Daglig overtid
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+            <span>
+              <span className="font-semibold text-slate-950 dark:text-white">
+                Daglig overtid
+              </span>
+              <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
+                Mere end X timer pr. dag.
+              </span>
             </span>
-            <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
-              Mere end X timer pr. dag.
-            </span>
-            <input
-              type="checkbox"
+            <CinemaSettingsSwitch
               checked={cinema.dailyOvertimeEnabled}
               disabled={saving}
+              ariaLabel="Daglig overtid"
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
                 void updateCinemaSettings({
                   dailyOvertimeEnabled: event.target.checked,
                 })
               }
-              className="mt-4 h-5 w-5 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
             />
-          </label>
+          </div>
 
-          <label className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
-            <span className="font-semibold text-slate-950 dark:text-white">
-              Ugentlig overtid
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+            <span>
+              <span className="font-semibold text-slate-950 dark:text-white">
+                Ugentlig overtid
+              </span>
+              <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
+                Mere end X timer pr. uge.
+              </span>
             </span>
-            <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">
-              Mere end X timer pr. uge.
-            </span>
-            <input
-              type="checkbox"
+            <CinemaSettingsSwitch
               checked={cinema.weeklyOvertimeEnabled}
               disabled={saving}
+              ariaLabel="Ugentlig overtid"
               onChange={(event: ChangeEvent<HTMLInputElement>) =>
                 void updateCinemaSettings({
                   weeklyOvertimeEnabled: event.target.checked,
                 })
               }
-              className="mt-4 h-5 w-5 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
             />
-          </label>
+          </div>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">

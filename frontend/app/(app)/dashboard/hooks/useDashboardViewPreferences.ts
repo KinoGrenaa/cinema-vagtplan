@@ -11,7 +11,7 @@ import {
   type DashboardViewMode,
 } from "../helpers/dashboardWorkspace";
 
-const DEFAULT_VIEW_MODE: DashboardViewMode = "complete";
+const DEFAULT_VIEW_MODE: DashboardViewMode = "operations";
 
 function readStoredViewMode(): DashboardViewMode | null {
   try {

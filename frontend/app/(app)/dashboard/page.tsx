@@ -13,6 +13,7 @@ import DashboardPrintSummary from "./components/layout/DashboardPrintSummary";
 import DashboardSectionHeading from "./components/layout/DashboardSectionHeading";
 import DashboardSnapshotActions from "./components/layout/DashboardSnapshotActions";
 import DashboardWorkspaceNavigation from "./components/layout/DashboardWorkspaceNavigation";
+import DashboardOperationsOverview from "./components/operations/DashboardOperationsOverview";
 import OperationsStatus from "./components/operations/OperationsStatus";
 import DashboardOverviewSections from "./components/overview/DashboardOverviewSections";
 import DashboardPriorityActions from "./components/overview/DashboardPriorityActions";
@@ -158,6 +159,35 @@ export default function DashboardPage() {
     sourceStatus,
     moduleAccess,
   });
+
+  if (dashboardView.isOperationsView) {
+    return (
+      <DashboardOperationsOverview
+        date={getTodayLocalDate()}
+        liveOperationsStatus={liveOperationsStatus}
+        sourceSummary={sourceSummary}
+        sourceStatus={sourceStatus}
+        todayPlannedHours={todayPlannedHours}
+        shiftCount={shifts.length}
+        movieCount={movies.length}
+        soldSeatsToday={soldSeatsToday}
+        seatLoadPercent={seatLoadPercent}
+        pendingLeaveRequests={pendingLeaveRequests}
+        openShiftTrades={openShiftTrades}
+        staffingWarningsCount={staffingWarnings.length}
+        moduleAccess={moduleAccess}
+        hasAdministrativeAccess={hasAdministrativeAccess}
+        isRefreshing={refreshing}
+        lastUpdatedAt={lastUpdatedAt}
+        autoRefreshEnabled={autoRefresh.autoRefreshEnabled}
+        autoRefreshState={autoRefresh.state}
+        errorMessage={errorMessage}
+        onRefresh={reloadDashboard}
+        onAutoRefreshChange={autoRefresh.setAutoRefreshEnabled}
+        onShowComplete={() => dashboardView.setViewMode("complete")}
+      />
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">

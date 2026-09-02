@@ -6,6 +6,7 @@ import type {
   SetStateAction,
 } from "react";
 
+import CinemaSettingsSwitch from "../layout/CinemaSettingsSwitch";
 import type {
   Cinema,
   CinemaSettingsUpdate,
@@ -157,21 +158,7 @@ export default function CinemaSettingsTimeEntryRulesSection({
           </p>
 
           <div className="mt-4 grid gap-3">
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
-              <input
-                type="checkbox"
-                checked={cinema.requireNoteForManualEntry}
-                disabled={saving}
-                onChange={(
-                  event: ChangeEvent<HTMLInputElement>,
-                ) =>
-                  void updateCinemaSettings({
-                    requireNoteForManualEntry:
-                      event.target.checked,
-                  })
-                }
-                className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
-              />
+            <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 transition dark:border-slate-700 dark:bg-slate-900">
               <span>
                 <span className="block font-semibold text-slate-950 dark:text-white">
                   Kræv note ved manuel registrering uden vagt
@@ -180,23 +167,22 @@ export default function CinemaSettingsTimeEntryRulesSection({
                   Medarbejderen skal forklare arbejdstid, der registreres uden en planlagt vagt.
                 </span>
               </span>
-            </label>
-
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
-              <input
-                type="checkbox"
-                checked={cinema.requireNoteForClockInDeviation}
+              <CinemaSettingsSwitch
+                checked={cinema.requireNoteForManualEntry}
                 disabled={saving}
+                ariaLabel="Kræv note ved manuel registrering uden vagt"
                 onChange={(
                   event: ChangeEvent<HTMLInputElement>,
                 ) =>
                   void updateCinemaSettings({
-                    requireNoteForClockInDeviation:
+                    requireNoteForManualEntry:
                       event.target.checked,
                   })
                 }
-                className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
               />
+            </div>
+
+            <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 transition dark:border-slate-700 dark:bg-slate-900">
               <span>
                 <span className="block font-semibold text-slate-950 dark:text-white">
                   Kræv note ved afvigende mødetid
@@ -205,23 +191,22 @@ export default function CinemaSettingsTimeEntryRulesSection({
                   Kræver mødetidsnote, når mødetiden ligger uden for den valgte tolerance.
                 </span>
               </span>
-            </label>
-
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/20">
-              <input
-                type="checkbox"
-                checked={cinema.requireNoteForClockOutDeviation}
+              <CinemaSettingsSwitch
+                checked={cinema.requireNoteForClockInDeviation}
                 disabled={saving}
+                ariaLabel="Kræv note ved afvigende mødetid"
                 onChange={(
                   event: ChangeEvent<HTMLInputElement>,
                 ) =>
                   void updateCinemaSettings({
-                    requireNoteForClockOutDeviation:
+                    requireNoteForClockInDeviation:
                       event.target.checked,
                   })
                 }
-                className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-950"
               />
+            </div>
+
+            <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 transition dark:border-slate-700 dark:bg-slate-900">
               <span>
                 <span className="block font-semibold text-slate-950 dark:text-white">
                   Kræv note ved afvigende fyraften
@@ -230,7 +215,20 @@ export default function CinemaSettingsTimeEntryRulesSection({
                   Kræver fyraftensnote, når fyraften ligger uden for den valgte tolerance.
                 </span>
               </span>
-            </label>
+              <CinemaSettingsSwitch
+                checked={cinema.requireNoteForClockOutDeviation}
+                disabled={saving}
+                ariaLabel="Kræv note ved afvigende fyraften"
+                onChange={(
+                  event: ChangeEvent<HTMLInputElement>,
+                ) =>
+                  void updateCinemaSettings({
+                    requireNoteForClockOutDeviation:
+                      event.target.checked,
+                  })
+                }
+              />
+            </div>
           </div>
         </section>
       </div>

@@ -32,4 +32,25 @@ export class MovieShowingsController {
         ),
     });
   }
+
+
+  @UseGuards(JwtGuard)
+  @Get('range')
+  getMovieShowingRange(
+    @Req() req: any,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.movieShowingsService.findRange({
+      startDate,
+      endDate,
+      user: req.user,
+      selectedCinemaId:
+        parseOptionalPositiveIntegerQuery(
+          cinemaId,
+          'Biograf skal være et gyldigt ID',
+        ),
+    });
+  }
 }

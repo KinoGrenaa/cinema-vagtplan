@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -21,6 +22,7 @@ import { validateUploadedImageFile } from '../common/file-validation/image-file-
 import {
   ensureCinemaManageAccess,
   ensureCinemaMaster,
+  ensureCinemaOperationalAdminAccess,
   ensureCinemaReadAccess,
   type CinemaControllerUser,
 } from './helpers/cinema-controller-access';
@@ -30,6 +32,10 @@ import {
   parseCinemaControllerId,
 } from './helpers/cinema-controller-input';
 import { CinemasService } from './cinemas.service';
+import {
+  normalizeDashboardWarningDecisionBody,
+  normalizeDashboardWarningRange,
+} from './helpers/cinema-dashboard-warning-input';
 
 const cinemaLogoExtensionByMime: Record<
   string,
@@ -240,6 +246,50 @@ export class CinemasController {
     return this.cinemasService.updateLogo(
       cinemaId,
       null,
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Get(':id/dashboard-warning-decisions')
+  findDashboardWarningDecisions(
+    @Param('id') id: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Req() req: any,
+  ) {
+    const user = req.user as CinemaControllerUser;
+    const cinemaId = parseCinemaControllerId(id);
+
+    ensureCinemaReadAccess(user, cinemaId);
+
+    const range = normalizeDashboardWarningRange(
+      startDate,
+      endDate,
+    );
+
+    return this.cinemasService.findDashboardWarningDecisions(
+      cinemaId,
+      range.startDate,
+      range.endDate,
+    );
+  }
+
+  @UseGuards(JwtGuard)
+  @Post(':id/dashboard-warning-decisions')
+  recordDashboardWarningDecision(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() req: any,
+  ) {
+    const user = req.user as CinemaControllerUser;
+    const cinemaId = parseCinemaControllerId(id);
+
+    ensureCinemaOperationalAdminAccess(user, cinemaId);
+
+    return this.cinemasService.recordDashboardWarningDecision(
+      cinemaId,
+      user.sub,
+      normalizeDashboardWarningDecisionBody(body),
     );
   }
 

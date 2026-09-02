@@ -13,6 +13,11 @@ import {
   updateCinemaSettings,
 } from './helpers/cinema-settings-flow';
 import { updateCinemaLogo } from './helpers/cinema-logo-flow';
+import {
+  findDashboardWarningDecisions,
+  recordDashboardWarningDecision,
+} from './helpers/cinema-dashboard-warning-flow';
+import type { DashboardWarningDecisionInput } from './helpers/cinema-dashboard-warning-input';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -37,5 +42,30 @@ export class CinemasService {
 
   async updateLogo(id: number, logoUrl: string | null) {
     return updateCinemaLogo(this.prisma, id, logoUrl);
+  }
+  async findDashboardWarningDecisions(
+    cinemaId: number,
+    startDate: string,
+    endDate: string,
+  ) {
+    return findDashboardWarningDecisions(
+      this.prisma,
+      cinemaId,
+      startDate,
+      endDate,
+    );
+  }
+
+  async recordDashboardWarningDecision(
+    cinemaId: number,
+    userId: number,
+    data: DashboardWarningDecisionInput,
+  ) {
+    return recordDashboardWarningDecision(
+      this.prisma,
+      cinemaId,
+      userId,
+      data,
+    );
   }
 }

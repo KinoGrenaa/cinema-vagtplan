@@ -10,7 +10,7 @@ export type Shift = {
   id: number;
   startTime: string;
   endTime: string;
-  userId: number;
+  userId: number | null;
   user?: {
     firstName: string;
     lastName: string;

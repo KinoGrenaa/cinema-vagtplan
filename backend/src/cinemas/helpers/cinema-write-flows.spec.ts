@@ -149,6 +149,49 @@ describe('cinema write flows', () => {
     });
   });
 
+  it('increments the warning-rule version when load-warning settings change', async () => {
+    const updated = {
+      id: 7,
+      staffingLoadWarningEnabled: true,
+      staffingLoadWarningVersion: 4,
+    };
+    const transaction = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      cinema: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 7,
+          name: 'Kino Nord',
+          staffingLoadWarningEnabled: false,
+          staffingLoadWarningMinSoldSeats: 150,
+          staffingLoadWarningMaxTicketsPerEmployee: 60,
+          automaticTimeRegistrationEnabled: false,
+          automaticTimeRegistrationMethod: 'PLANNED_SHIFT',
+          automaticTimeRegistrationMinutes: 0,
+        }),
+        update: jest.fn().mockResolvedValue(updated),
+      },
+    };
+    const prisma = createTransactionalPrisma(transaction);
+
+    await expect(
+      updateCinemaSettings(prisma as never, 7, {
+        staffingLoadWarningEnabled: true,
+        staffingLoadWarningMinSoldSeats: 180,
+        staffingLoadWarningMaxTicketsPerEmployee: 50,
+      }),
+    ).resolves.toEqual(updated);
+
+    expect(transaction.cinema.update).toHaveBeenCalledWith({
+      where: { id: 7 },
+      data: {
+        staffingLoadWarningEnabled: true,
+        staffingLoadWarningMinSoldSeats: 180,
+        staffingLoadWarningMaxTicketsPerEmployee: 50,
+        staffingLoadWarningVersion: { increment: 1 },
+      },
+    });
+  });
+
   it('updates only a managed local logo URL', async () => {
     const updated = {
       id: 7,

@@ -9,6 +9,7 @@ const BOOLEAN_FIELDS = [
   'allowShiftTradePool',
   'allowShiftTradeDirect',
   'aiEnabled',
+  'staffingLoadWarningEnabled',
   'requireNoteForClockInDeviation',
   'requireNoteForClockOutDeviation',
   'requireNoteForManualEntry',
@@ -260,6 +261,19 @@ export function normalizeCinemaSettingsBody(
         body.leaveRequestMinimumNoticeDays,
         3650,
         'Minimum varsel for fravær skal være mellem 0 og 3650 hele kalenderdage',
+      ),
+    staffingLoadWarningMinSoldSeats:
+      normalizeOptionalNonNegativeInteger(
+        body.staffingLoadWarningMinSoldSeats,
+        100000,
+        'Minimum solgte billetter for belastningsadvarsel skal være mellem 0 og 100000',
+      ),
+    staffingLoadWarningMaxTicketsPerEmployee:
+      normalizeOptionalInteger(
+        body.staffingLoadWarningMaxTicketsPerEmployee,
+        1,
+        100000,
+        'Maksimum billetter pr. medarbejder skal være mellem 1 og 100000',
       ),
     clockInDeviationToleranceMinutes:
       normalizeOptionalInteger(

@@ -16,6 +16,9 @@ export type UpdateCinemaSettingsData = {
   allowShiftTradeDirect?: boolean;
   leaveRequestMinimumNoticeDays?: number;
   aiEnabled?: boolean;
+  staffingLoadWarningEnabled?: boolean;
+  staffingLoadWarningMinSoldSeats?: number;
+  staffingLoadWarningMaxTicketsPerEmployee?: number;
   clockInDeviationToleranceMinutes?: number;
   clockOutDeviationToleranceMinutes?: number;
   requireNoteForClockInDeviation?: boolean;
@@ -56,6 +59,9 @@ function setDefinedCinemaSettings(
     'allowShiftTradeDirect',
     'leaveRequestMinimumNoticeDays',
     'aiEnabled',
+    'staffingLoadWarningEnabled',
+    'staffingLoadWarningMinSoldSeats',
+    'staffingLoadWarningMaxTicketsPerEmployee',
     'clockInDeviationToleranceMinutes',
     'clockOutDeviationToleranceMinutes',
     'requireNoteForClockInDeviation',
@@ -182,6 +188,23 @@ export async function updateCinemaSettings(
         updateData,
         data,
       );
+
+      const staffingLoadWarningChanged =
+        (data.staffingLoadWarningEnabled !== undefined &&
+          data.staffingLoadWarningEnabled !==
+            cinema.staffingLoadWarningEnabled) ||
+        (data.staffingLoadWarningMinSoldSeats !== undefined &&
+          data.staffingLoadWarningMinSoldSeats !==
+            cinema.staffingLoadWarningMinSoldSeats) ||
+        (data.staffingLoadWarningMaxTicketsPerEmployee !== undefined &&
+          data.staffingLoadWarningMaxTicketsPerEmployee !==
+            cinema.staffingLoadWarningMaxTicketsPerEmployee);
+
+      if (staffingLoadWarningChanged) {
+        updateData.staffingLoadWarningVersion = {
+          increment: 1,
+        };
+      }
 
       if (enabledChanged) {
         const effectiveAt =

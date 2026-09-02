@@ -1,3 +1,4 @@
+import { findDashboardHorizonPreference, updateDashboardHorizonPreference } from './helpers/user-dashboard-preference';
 import { Injectable } from '@nestjs/common';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -212,6 +213,27 @@ export class UsersService {
       this.prisma,
       id,
       theme,
+    );
+  }
+
+
+  async findDashboardHorizonPreference(
+    id: number,
+  ) {
+    return findDashboardHorizonPreference(
+      this.prisma,
+      id,
+    );
+  }
+
+  async updateDashboardHorizonPreference(
+    id: number,
+    dashboardHorizonDays: number,
+  ) {
+    return updateDashboardHorizonPreference(
+      this.prisma,
+      id,
+      dashboardHorizonDays,
     );
   }
 }

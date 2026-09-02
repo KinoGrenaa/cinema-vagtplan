@@ -449,8 +449,8 @@ export function useDashboard(
     [movies],
   );
   const staffingWarnings = useMemo(
-    () => calculateStaffingWarnings(shifts, movies),
-    [movies, shifts],
+    () => calculateStaffingWarnings(shifts),
+    [shifts],
   );
   const operationsHealth = useMemo(
     () => calculateOperationsHealth(shifts, movies),

@@ -213,4 +213,24 @@ export class ShiftsController {
       ),
     );
   }
+
+
+  @UseGuards(JwtGuard)
+  @Get('range')
+  getShiftRange(
+    @Req() req: any,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.shiftsService.findRange(
+      req.user,
+      startDate,
+      endDate,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
 }

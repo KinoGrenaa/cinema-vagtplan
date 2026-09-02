@@ -250,14 +250,6 @@ export default function PersonalHomePage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {overview && overview.activeCinemaCount > 1 ? (
-                <Link
-                  href="/select-cinema"
-                  className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
-                >
-                  Skift biograf
-                </Link>
-              ) : null}
 
               {activeCinema.role === "ADMIN" ? (
                 <Link

@@ -58,3 +58,20 @@ export function ensureCinemaManageAccess(
     );
   }
 }
+
+export function ensureCinemaOperationalAdminAccess(
+  user: CinemaControllerUser,
+  cinemaId: number,
+) {
+  if (user.role === 'MASTER') {
+    return;
+  }
+
+  ensureCinemaReadAccess(user, cinemaId);
+
+  if (user.role !== 'ADMIN') {
+    throw new ForbiddenException(
+      'Kun administratorer kan håndtere driftsadvarsler',
+    );
+  }
+}
