@@ -14,6 +14,11 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+export type ProjectTimePickerMinuteStep =
+  | 1
+  | 5
+  | 15;
+
 type ProjectTimePickerProps = {
   value: string;
   onChange: (value: string) => void;
@@ -21,6 +26,7 @@ type ProjectTimePickerProps = {
   max?: string;
   disabled?: boolean;
   clearable?: boolean;
+  minuteStep?: ProjectTimePickerMinuteStep;
   ariaLabel?: string;
   className?: string;
 };
@@ -120,6 +126,57 @@ function minutesToTime(
   );
 }
 
+function normalizeMinuteStep(
+  value: ProjectTimePickerMinuteStep,
+) {
+  return value === 5 || value === 15
+    ? value
+    : 1;
+}
+
+function roundTimeToStep(
+  value: string,
+  minuteStep: ProjectTimePickerMinuteStep,
+) {
+  const minutes =
+    timeToMinutes(value);
+
+  if (minutes === null) {
+    return value;
+  }
+
+  const step =
+    normalizeMinuteStep(
+      minuteStep,
+    );
+
+  return minutesToTime(
+    Math.round(
+      minutes / step,
+    ) * step,
+  );
+}
+
+function isOnMinuteStep(
+  value: string,
+  minuteStep: ProjectTimePickerMinuteStep,
+) {
+  const minutes =
+    timeToMinutes(value);
+
+  if (minutes === null) {
+    return false;
+  }
+
+  return (
+    minutes %
+      normalizeMinuteStep(
+        minuteStep,
+      ) ===
+    0
+  );
+}
+
 function nowTime() {
   const now =
     new Date();
@@ -164,10 +221,16 @@ export default function ProjectTimePicker({
   max,
   disabled = false,
   clearable = false,
+  minuteStep = 1,
   ariaLabel =
     "V\u00e6lg klokkesl\u00e6t",
   className = "",
 }: ProjectTimePickerProps) {
+  const normalizedMinuteStep =
+    normalizeMinuteStep(
+      minuteStep,
+    );
+
   const rootRef =
     useRef<HTMLDivElement>(null);
 
@@ -191,8 +254,11 @@ export default function ProjectTimePicker({
     setCandidate,
   ] =
     useState(
-      normalizeTime(value) ??
-        nowTime(),
+      roundTimeToStep(
+        normalizeTime(value) ??
+          nowTime(),
+        normalizedMinuteStep,
+      ),
     );
 
   const [
@@ -212,10 +278,16 @@ export default function ProjectTimePicker({
 
     if (normalized) {
       setCandidate(
-        normalized,
+        roundTimeToStep(
+          normalized,
+          normalizedMinuteStep,
+        ),
       );
     }
-  }, [value]);
+  }, [
+    normalizedMinuteStep,
+    value,
+  ]);
 
   const updatePosition =
     useCallback(() => {
@@ -622,6 +694,10 @@ export default function ProjectTimePicker({
         normalized,
         min,
         max,
+      ) &&
+      isOnMinuteStep(
+        normalized,
+        normalizedMinuteStep,
       )
     ) {
       onChange(
@@ -663,25 +739,32 @@ export default function ProjectTimePicker({
       normalizeTime(
         textValue,
       );
+    const rounded =
+      normalized
+        ? roundTimeToStep(
+            normalized,
+            normalizedMinuteStep,
+          )
+        : null;
 
     if (
-      normalized &&
+      rounded &&
       isAllowed(
-        normalized,
+        rounded,
         min,
         max,
       )
     ) {
       setTextValue(
-        normalized,
+        rounded,
       );
 
       onChange(
-        normalized,
+        rounded,
       );
 
       setCandidate(
-        normalized,
+        rounded,
       );
 
       return;
@@ -710,7 +793,10 @@ export default function ProjectTimePicker({
 
   function useNow() {
     const next =
-      nowTime();
+      roundTimeToStep(
+        nowTime(),
+        normalizedMinuteStep,
+      );
 
     if (
       !isAllowed(
@@ -818,9 +904,15 @@ export default function ProjectTimePicker({
                     <button
                       type="button"
                       onClick={() =>
-                        changeCandidate(-1)
+                        changeCandidate(
+                          -normalizedMinuteStep,
+                        )
                       }
-                      aria-label="Et minut tilbage"
+                      aria-label={`${normalizedMinuteStep} ${
+                        normalizedMinuteStep === 1
+                          ? "minut"
+                          : "minutter"
+                      } tilbage`}
                       className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 text-gray-800 transition hover:bg-gray-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:hover:text-blue-300"
                     >
                       <Minus className="h-4 w-4" />
@@ -833,9 +925,15 @@ export default function ProjectTimePicker({
                     <button
                       type="button"
                       onClick={() =>
-                        changeCandidate(1)
+                        changeCandidate(
+                          normalizedMinuteStep,
+                        )
                       }
-                      aria-label="Et minut frem"
+                      aria-label={`${normalizedMinuteStep} ${
+                        normalizedMinuteStep === 1
+                          ? "minut"
+                          : "minutter"
+                      } frem`}
                       className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 text-gray-800 transition hover:bg-gray-100 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:hover:text-blue-300"
                     >
                       <Plus className="h-4 w-4" />
@@ -922,8 +1020,11 @@ export default function ProjectTimePicker({
         onClick={() => {
           if (!open) {
             setCandidate(
-              normalizeTime(value) ??
-                nowTime(),
+              roundTimeToStep(
+                normalizeTime(value) ??
+                  nowTime(),
+                normalizedMinuteStep,
+              ),
             );
 
             updatePosition();

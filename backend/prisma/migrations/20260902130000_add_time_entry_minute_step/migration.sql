@@ -1,0 +1,2 @@
+ALTER TABLE "Cinema"
+ADD COLUMN "timeEntryMinuteStep" INTEGER NOT NULL DEFAULT 1;

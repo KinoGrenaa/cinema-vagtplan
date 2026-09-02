@@ -82,10 +82,52 @@ export default function CinemaSettingsTimeEntryRulesSection({
         Registreringsregler
       </h3>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-        Bestem hvilke afvigelser der accepteres, og hvornår medarbejderen skal skrive en forklaring.
+        Bestem hvor præcist medarbejderen kan registrere tid, hvilke afvigelser der accepteres, og hvornår der skal skrives en forklaring.
       </p>
 
       <div className="mt-6 space-y-5">
+        <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/60">
+          <h4 className="font-semibold text-slate-950 dark:text-white">
+            Registreringspræcision
+          </h4>
+          <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+            Bestem hvilke minutter medarbejderen kan bruge ved tidsregistrering og rettelse.
+          </p>
+          <label className="mt-4 block max-w-sm text-sm font-medium text-slate-800 dark:text-slate-200">
+            Interval
+            <select
+              value={cinema.timeEntryMinuteStep}
+              disabled={saving}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+
+                if (
+                  value !== 1 &&
+                  value !== 5 &&
+                  value !== 15
+                ) {
+                  return;
+                }
+
+                setLocalValue({
+                  timeEntryMinuteStep: value,
+                });
+
+                void updateCinemaSettings({
+                  timeEntryMinuteStep: value,
+                });
+              }}
+              className={inputClassName}
+            >
+              <option value={1}>1 minut</option>
+              <option value={5}>5 minutter</option>
+              <option value={15}>15 minutter</option>
+            </select>
+          </label>
+          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+            Ved 15 minutter bruges hele kvarterer: 00, 15, 30 eller 45.
+          </p>
+        </section>
         <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/60">
           <h4 className="font-semibold text-slate-950 dark:text-white">
             Afvigelsestolerance

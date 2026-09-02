@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
+import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 
 import BaseModal from "../BaseModal";
 
 type Props = {
   open: boolean;
+  minuteStep: TimeEntryMinuteStep;
   clockIn: string;
   clockOut?: string | null;
   jobFunctionName?: string | null;
@@ -70,6 +72,7 @@ function formatSummaryRange(
 
 export default function TimeEntryEditModal({
   open,
+  minuteStep,
   clockIn,
   clockOut,
   jobFunctionName,
@@ -158,6 +161,7 @@ export default function TimeEntryEditModal({
         <div>
           <label className="mb-1 block text-sm font-medium">Mødetid</label>
           <ProjectDateTimePicker
+            minuteStep={minuteStep}
             value={newClockIn}
             onChange={setNewClockIn}
             clearable
@@ -168,6 +172,7 @@ export default function TimeEntryEditModal({
         <div>
           <label className="mb-1 block text-sm font-medium">Fyraften</label>
           <ProjectDateTimePicker
+            minuteStep={minuteStep}
             value={newClockOut}
             onChange={setNewClockOut}
             clearable

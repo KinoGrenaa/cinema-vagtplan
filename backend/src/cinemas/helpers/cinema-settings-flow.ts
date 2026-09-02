@@ -24,6 +24,7 @@ export type UpdateCinemaSettingsData = {
   requireNoteForClockInDeviation?: boolean;
   requireNoteForClockOutDeviation?: boolean;
   requireNoteForManualEntry?: boolean;
+  timeEntryMinuteStep?: number;
   automaticTimeRegistrationEnabled?: boolean;
   automaticTimeRegistrationMethod?:
     | 'PLANNED_SHIFT'
@@ -67,6 +68,7 @@ function setDefinedCinemaSettings(
     'requireNoteForClockInDeviation',
     'requireNoteForClockOutDeviation',
     'requireNoteForManualEntry',
+    'timeEntryMinuteStep',
     'automaticTimeRegistrationEnabled',
     'automaticTimeRegistrationMethod',
     'automaticTimeRegistrationMinutes',

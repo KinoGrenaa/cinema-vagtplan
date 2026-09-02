@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
+import { useTimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 import { useAuth } from "@/app/providers/AuthProvider";
 
 import MyTimeDayGroupsSection from "./components/list/MyTimeDayGroupsSection";
@@ -27,6 +28,10 @@ export default function MyTimePage() {
   const { expandedDayKeys, resetExpandedDayKeys, toggleDayGroup } =
     useMyTimeDayGroupsExpansion();
   const isGlobalMaster = user?.role === "MASTER" && !user?.cinemaId;
+  const timeEntryMinuteStep =
+    useTimeEntryMinuteStep(
+      user?.cinemaId ?? null,
+    );
   const dataFetchDisabled = authLoading || Boolean(isGlobalMaster);
   const {
     statusFilters,
@@ -176,6 +181,7 @@ export default function MyTimePage() {
           />
           <MyTimeModals
             editingEntry={editingEntry}
+            timeEntryMinuteStep={timeEntryMinuteStep}
             editClockIn={editClockIn}
             editClockOut={editClockOut}
             editNote={editNote}

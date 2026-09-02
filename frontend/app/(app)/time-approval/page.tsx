@@ -19,6 +19,7 @@ import TimeEntryHistoryModal from "@/app/components/modals/time-entries/TimeEntr
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { useInputModal } from "@/app/hooks/useInputModal";
+import { useTimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 import { useAuth } from "@/app/providers/AuthProvider";
 import TimeApprovalFilterModal from "./components/filters/TimeApprovalFilterModal";
 import TimeApprovalContent from "./components/layout/TimeApprovalContent";
@@ -77,6 +78,22 @@ export default function TimeApprovalPage() {
 
   const needsMasterCinemaSelection =
     user?.role === "MASTER" && !user.cinemaId && !selectedMasterCinemaId;
+
+  const activeCinemaId =
+    user?.role === "MASTER" &&
+    !user.cinemaId
+      ? selectedMasterCinemaId
+        ? Number(
+            selectedMasterCinemaId,
+          )
+        : null
+      : user?.cinemaId ??
+        null;
+
+  const timeEntryMinuteStep =
+    useTimeEntryMinuteStep(
+      activeCinemaId,
+    );
 
   const inputDialog = useInputModal();
   const infoDialog = useInfoModal();
@@ -276,6 +293,7 @@ export default function TimeApprovalPage() {
                 plannedStartTime={editEntry.shift?.startTime ?? null}
                 plannedEndTime={editEntry.shift?.endTime ?? null}
                 deviationMessages={editEntry.deviation?.messages ?? []}
+                minuteStep={timeEntryMinuteStep}
                 loading={savingEdit}
                 onClose={() => setEditEntry(null)}
                 onSave={saveEdit}

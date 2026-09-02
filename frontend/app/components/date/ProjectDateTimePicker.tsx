@@ -6,7 +6,9 @@ import {
 } from "react";
 
 import ProjectDatePicker from "./ProjectDatePicker";
-import ProjectTimePicker from "./ProjectTimePicker";
+import ProjectTimePicker, {
+  type ProjectTimePickerMinuteStep,
+} from "./ProjectTimePicker";
 
 type ProjectDateTimePickerProps = {
   value: string;
@@ -15,6 +17,7 @@ type ProjectDateTimePickerProps = {
   clearable?: boolean;
   min?: string;
   max?: string;
+  minuteStep?: ProjectTimePickerMinuteStep;
   ariaLabel?: string;
   className?: string;
 };
@@ -55,6 +58,7 @@ export default function ProjectDateTimePicker({
   clearable = false,
   min,
   max,
+  minuteStep = 1,
   ariaLabel = "V\u00e6lg dato og tidspunkt",
   className = "",
 }: ProjectDateTimePickerProps) {
@@ -199,6 +203,7 @@ export default function ProjectDateTimePicker({
         max={maxTime}
         disabled={disabled}
         clearable={clearable}
+        minuteStep={minuteStep}
         onChange={handleTimeChange}
         ariaLabel={"V\u00e6lg klokkesl\u00e6t"}
       />

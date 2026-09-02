@@ -10,6 +10,10 @@ export type PayrollPayoutRule =
 export type AutomaticTimeRegistrationMethod =
   | "PLANNED_SHIFT"
   | "FIXED_MINUTES";
+export type TimeEntryMinuteStep =
+  | 1
+  | 5
+  | 15;
 
 export type Cinema = {
   id: number;
@@ -33,6 +37,7 @@ export type Cinema = {
   requireNoteForClockInDeviation: boolean;
   requireNoteForClockOutDeviation: boolean;
   requireNoteForManualEntry: boolean;
+  timeEntryMinuteStep: TimeEntryMinuteStep;
   payrollOvertimeEnabled: boolean;
   plannedOvertimeEnabled: boolean;
   dailyOvertimeEnabled: boolean;
@@ -65,6 +70,7 @@ export type CinemaSettingsUpdate = Partial<
     | "requireNoteForClockInDeviation"
     | "requireNoteForClockOutDeviation"
     | "requireNoteForManualEntry"
+    | "timeEntryMinuteStep"
     | "payrollOvertimeEnabled"
     | "plannedOvertimeEnabled"
     | "dailyOvertimeEnabled"
@@ -111,6 +117,7 @@ export const CINEMA_DEFAULTS = {
   requireNoteForClockInDeviation: true,
   requireNoteForClockOutDeviation: true,
   requireNoteForManualEntry: true,
+  timeEntryMinuteStep: 1 as TimeEntryMinuteStep,
   payrollOvertimeEnabled: false,
   plannedOvertimeEnabled: true,
   dailyOvertimeEnabled: false,
@@ -171,6 +178,19 @@ function normalizeInteger(
   return Math.round(
     normalizeNumber(value, fallback, minimum, maximum),
   );
+}
+
+function normalizeTimeEntryMinuteStep(
+  value: unknown,
+): TimeEntryMinuteStep {
+  if (
+    value === 5 ||
+    value === 15
+  ) {
+    return value;
+  }
+
+  return 1;
 }
 
 function normalizeAnchorDate(value: unknown) {
@@ -334,6 +354,10 @@ export function normalizeCinemaSettings(value: unknown): Cinema {
       source.requireNoteForManualEntry,
       CINEMA_DEFAULTS.requireNoteForManualEntry,
     ),
+    timeEntryMinuteStep:
+      normalizeTimeEntryMinuteStep(
+        source.timeEntryMinuteStep,
+      ),
     payrollOvertimeEnabled: normalizeBoolean(
       source.payrollOvertimeEnabled,
       CINEMA_DEFAULTS.payrollOvertimeEnabled,
@@ -476,6 +500,13 @@ export function normalizeCinemaSettingsUpdate(
         CINEMA_DEFAULTS.automaticTimeRegistrationMinutes,
         0,
         1440,
+      );
+  }
+
+  if ("timeEntryMinuteStep" in value) {
+    result.timeEntryMinuteStep =
+      normalizeTimeEntryMinuteStep(
+        value.timeEntryMinuteStep,
       );
   }
 

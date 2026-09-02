@@ -1,4 +1,5 @@
 import TimeEntryHistoryModal from "@/app/components/modals/time-entries/TimeEntryHistoryModal";
+import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 
 import type { MyTimeStatusFilters } from "../../helpers/core/myTimeStatus";
 
@@ -13,6 +14,8 @@ import MyTimeFilterModal from "./MyTimeFilterModal";
 
 type MyTimeModalsProps = {
   editingEntry: TimeEntry | null;
+
+  timeEntryMinuteStep: TimeEntryMinuteStep;
 
   editClockIn: string;
 
@@ -68,6 +71,8 @@ type MyTimeModalsProps = {
 export default function MyTimeModals({
   editingEntry,
 
+  timeEntryMinuteStep,
+
   editClockIn,
 
   editClockOut,
@@ -118,6 +123,7 @@ export default function MyTimeModals({
     <>
       <MyTimeEditModal
         editingEntry={editingEntry}
+        minuteStep={timeEntryMinuteStep}
         editClockIn={editClockIn}
         editClockOut={editClockOut}
         editNote={editNote}

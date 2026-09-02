@@ -112,6 +112,26 @@ function normalizeOptionalInteger(
   );
 }
 
+function normalizeOptionalTimeEntryMinuteStep(
+  value: unknown,
+) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (
+    value !== 1 &&
+    value !== 5 &&
+    value !== 15
+  ) {
+    throw new BadRequestException(
+      'Registreringspræcision skal være 1, 5 eller 15 minutter',
+    );
+  }
+
+  return value;
+}
+
 function normalizeOptionalNonNegativeInteger(
   value: unknown,
   maximum: number,
@@ -288,6 +308,10 @@ export function normalizeCinemaSettingsBody(
         0,
         1440,
         'Tolerance for udstempling skal være mellem 0 og 1440 minutter',
+      ),
+    timeEntryMinuteStep:
+      normalizeOptionalTimeEntryMinuteStep(
+        body.timeEntryMinuteStep,
       ),
     automaticTimeRegistrationEnabled:
       normalizeOptionalBoolean(

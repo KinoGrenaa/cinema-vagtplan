@@ -30,6 +30,7 @@ import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
 import { useConfirm } from "@/app/hooks/useConfirm";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
+import { useTimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 
 export default function SchedulePage() {
   const confirmDialog = useConfirm();
@@ -44,6 +45,7 @@ export default function SchedulePage() {
     loading,
     canManageShifts,
     needsMasterCinemaSelection,
+    activeCinemaId,
     shifts,
     users,
     jobFunctions,
@@ -61,6 +63,11 @@ export default function SchedulePage() {
   } = useSchedule(selectedDate, {
     onError: infoDialog.showError,
   });
+
+  const timeEntryMinuteStep =
+    useTimeEntryMinuteStep(
+      activeCinemaId,
+    );
 
   const {
     leaveRequests,
@@ -375,6 +382,7 @@ export default function SchedulePage() {
             />
             <TimeRegistrationModal
               open={showClockModal}
+              minuteStep={timeEntryMinuteStep}
               onClose={resetClockModal}
               openTimeEntry={openTimeEntry}
               clockShiftId={clockShiftId}
@@ -393,6 +401,7 @@ export default function SchedulePage() {
             />
             <ManualTimeRegistrationModal
               open={showManualTimeModal}
+              minuteStep={timeEntryMinuteStep}
               onClose={resetManualTimeModal}
               clockInTime={manualClockInTime}
               setClockInTime={setManualClockInTime}

@@ -1341,6 +1341,7 @@ export function useSchedule(
     loading,
     canManageShifts,
     needsMasterCinemaSelection,
+    activeCinemaId,
 
     shifts,
     users,

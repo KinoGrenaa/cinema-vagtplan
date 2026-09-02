@@ -25,7 +25,7 @@ export default function CinemaSettingsBrandingSection({
         Branding
       </h2>
       <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-        Upload biografens logo. Logoet vises for MASTER, når biografen er
+        Upload biografens logo. Logoet vises i systemet, når biografen er
         valgt som aktiv biograf.
       </p>
 

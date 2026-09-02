@@ -1,10 +1,12 @@
 "use client";
 import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
+import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 
 import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type MyTimeEditModalProps = {
   editingEntry: TimeEntry | null;
+  minuteStep: TimeEntryMinuteStep;
   editClockIn: string;
   editClockOut: string;
   editNote: string;
@@ -48,6 +50,7 @@ function formatReturnMessageActor(
 
 export default function MyTimeEditModal({
   editingEntry,
+  minuteStep,
   editClockIn,
   editClockOut,
   editNote,
@@ -104,6 +107,7 @@ export default function MyTimeEditModal({
             </span>
 
             <ProjectDateTimePicker
+              minuteStep={minuteStep}
               value={editClockIn}
               onChange={onClockInChange}
               clearable
@@ -118,6 +122,7 @@ export default function MyTimeEditModal({
             </span>
 
             <ProjectDateTimePicker
+              minuteStep={minuteStep}
               value={editClockOut}
               onChange={onClockOutChange}
               clearable

@@ -190,6 +190,7 @@ model Cinema {
   requireNoteForClockInDeviation    Boolean                       @default(true)
   requireNoteForClockOutDeviation   Boolean                       @default(true)
   requireNoteForManualEntry         Boolean                       @default(true)
+  timeEntryMinuteStep              Int                           @default(1)
   automaticTimeRegistrationEnabled    Boolean                       @default(false)
   automaticTimeRegistrationMethod     String                        @default("PLANNED_SHIFT")
   automaticTimeRegistrationMinutes    Int                           @default(0)

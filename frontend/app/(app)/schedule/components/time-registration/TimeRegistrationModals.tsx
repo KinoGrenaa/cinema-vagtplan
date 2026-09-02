@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
 import ProjectTimePicker from "@/app/components/date/ProjectTimePicker";
 
@@ -19,6 +20,7 @@ type ShiftTimeRegistrationOption = {
 
 type TimeRegistrationModalProps = {
   open: boolean;
+  minuteStep: TimeEntryMinuteStep;
   onClose: () => void;
   openTimeEntry: unknown | null;
   clockShiftId: number | null;
@@ -38,6 +40,7 @@ type TimeRegistrationModalProps = {
 
 type ManualTimeRegistrationModalProps = {
   open: boolean;
+  minuteStep: TimeEntryMinuteStep;
   onClose: () => void;
   clockInTime: string;
   setClockInTime: Dispatch<SetStateAction<string>>;
@@ -88,6 +91,7 @@ function replaceClockTime(
 
 export function TimeRegistrationModal({
   open,
+  minuteStep,
   onClose,
   openTimeEntry,
   clockShiftId,
@@ -244,6 +248,7 @@ export function TimeRegistrationModal({
                 Faktisk mødetid
               </label>
               <ProjectTimePicker
+                minuteStep={minuteStep}
                 value={
                   getClockTime(
                     clockInTime,
@@ -282,6 +287,7 @@ export function TimeRegistrationModal({
                 Faktisk fyraften
               </label>
               <ProjectTimePicker
+                minuteStep={minuteStep}
                 value={
                   getClockTime(
                     clockOutTime,
@@ -321,6 +327,7 @@ export function TimeRegistrationModal({
 
 export function ManualTimeRegistrationModal({
   open,
+  minuteStep,
   onClose,
   clockInTime,
   setClockInTime,
@@ -352,6 +359,7 @@ export function ManualTimeRegistrationModal({
           <div>
             <label className="mb-1 block text-sm font-semibold">Mødetid</label>
             <ProjectDateTimePicker
+              minuteStep={minuteStep}
               value={clockInTime}
               onChange={setClockInTime}
               clearable
@@ -363,6 +371,7 @@ export function ManualTimeRegistrationModal({
           <div>
             <label className="mb-1 block text-sm font-semibold">Fyraften</label>
             <ProjectDateTimePicker
+              minuteStep={minuteStep}
               value={clockOutTime}
               onChange={setClockOutTime}
               clearable
