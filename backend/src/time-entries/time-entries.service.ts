@@ -19,6 +19,7 @@ import {
   clockOutTimeEntry,
 } from './helpers/time-entry-clock-flow';
 import { submitManualTimeEntry } from './helpers/time-entry-manual-entry-flow';
+import { countNeedsChangesTimeEntries } from './helpers/time-entry-needs-changes-count';
 import {
   findAllVisibleTimeEntries,
   findOpenTimeEntry,
@@ -62,6 +63,32 @@ export class TimeEntriesService {
       selectedCinemaId: target.cinemaId,
     });
   }
+  async countNeedsChangesForUser(
+    user: any,
+    selectedCinemaId?: number | null,
+  ) {
+    const target = await this.resolveTimeEntryTarget(
+      user,
+      {
+        requestedUserId:
+          getTimeEntryActorUserId(user),
+        requestedCinemaId:
+          selectedCinemaId ?? undefined,
+      },
+    );
+
+    const count =
+      await countNeedsChangesTimeEntries(
+        this.prisma,
+        {
+          userId: target.userId,
+          cinemaId: target.cinemaId,
+        },
+      );
+
+    return { count };
+  }
+
 
   async findAll(
     user: any,

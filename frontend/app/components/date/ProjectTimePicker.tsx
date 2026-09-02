@@ -899,18 +899,6 @@ export default function ProjectTimePicker({
         value={textValue}
         disabled={disabled}
         placeholder="--:--"
-        onFocus={(event) => {
-          if (
-            /^\d{2}:\d{2}$/.test(
-              event.currentTarget.value,
-            )
-          ) {
-            event.currentTarget.setSelectionRange(
-              0,
-              2,
-            );
-          }
-        }}
         onClick={(event) => {
           selectTimeSegment(
             event.currentTarget,

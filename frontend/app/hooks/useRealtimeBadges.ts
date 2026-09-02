@@ -70,6 +70,10 @@ export function useRealtimeBadges() {
     leaveRequestCount,
     setLeaveRequestCount,
   ] = useState(0);
+  const [
+    timeEntryActionCount,
+    setTimeEntryActionCount,
+  ] = useState(0);
   const refreshVersionRef =
     useRef(0);
 
@@ -93,6 +97,12 @@ export function useRealtimeBadges() {
     !modulesLoading &&
     hasCinemaContext &&
     isModuleEnabled("LEAVE");
+  const timeTrackingEnabled =
+    !modulesLoading &&
+    hasCinemaContext &&
+    isModuleEnabled(
+      "TIME_TRACKING",
+    );
 
   const resetBadges = useCallback(
     () => {
@@ -102,6 +112,7 @@ export function useRealtimeBadges() {
       setNotificationCount(0);
       setStaffingRequestCount(0);
       setLeaveRequestCount(0);
+      setTimeEntryActionCount(0);
     },
     [],
   );
@@ -187,6 +198,7 @@ export function useRealtimeBadges() {
           notificationsData,
           staffingData,
           leaveRequestsData,
+                  timeEntryActionData,
         ] = await Promise.all([
           loadJson(
             shiftTradesEnabled,
@@ -217,6 +229,11 @@ export function useRealtimeBadges() {
             leaveEnabled,
             `/leave-requests${masterCinemaQuery}`,
             [],
+          ),
+          loadJson(
+            timeTrackingEnabled,
+            `/time-entries/me-action-required-count${masterCinemaQuery}`,
+            { count: 0 },
           ),
         ]);
 
@@ -251,6 +268,11 @@ export function useRealtimeBadges() {
             leaveRequestsData,
           ),
         );
+        setTimeEntryActionCount(
+          getCount(
+            timeEntryActionData,
+          ),
+        );
       } catch {
         if (
           refreshVersion !==
@@ -271,6 +293,7 @@ export function useRealtimeBadges() {
       resetBadges,
       shiftTradesEnabled,
       staffingRequestsEnabled,
+      timeTrackingEnabled,
       token,
       user,
     ]);
@@ -302,6 +325,10 @@ export function useRealtimeBadges() {
       leaveEnabled
         ? refreshBadges
         : undefined,
+    onTimeEntry:
+      timeTrackingEnabled
+        ? refreshBadges
+        : undefined,
   });
 
   return {
@@ -325,6 +352,10 @@ export function useRealtimeBadges() {
     leaveRequestCount:
       leaveEnabled
         ? leaveRequestCount
+        : 0,
+    timeEntryActionCount:
+      timeTrackingEnabled
+        ? timeEntryActionCount
         : 0,
     refreshBadges,
   };

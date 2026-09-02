@@ -48,6 +48,9 @@ export type TimeEntry = {
   clockInNote?: string | null;
   clockOutNote?: string | null;
   adminNote?: string | null;
+  revisions?: {
+    newAdminNote?: string | null;
+  }[];
   user: {
     firstName: string;
     lastName: string;

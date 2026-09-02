@@ -21,6 +21,7 @@ import {
   getAdminTimeEntryUpdateContext,
   getOwnTimeEntryUpdateContext,
 } from './time-entry-update-helpers';
+import { resolveOwnTimeEntryAdminNote } from './time-entry-own-admin-note';
 import { lockTimeEntryUpdatePayrollPeriods } from './time-entry-update-payroll-lock';
 
 type OwnTimeEntryUpdateData = {
@@ -119,6 +120,10 @@ export async function updateOwnTimeEntry(params: {
             updateContext.newClockInNote,
           clockOutNote:
             updateContext.newClockOutNote,
+          adminNote:
+            resolveOwnTimeEntryAdminNote(
+              existingEntry,
+            ),
           status: 'PENDING',
           automaticClockIn: false,
           automaticClockOut: false,

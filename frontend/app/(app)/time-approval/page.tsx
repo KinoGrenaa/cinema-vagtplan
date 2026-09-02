@@ -272,6 +272,10 @@ export default function TimeApprovalPage() {
                 open={!!editEntry}
                 clockIn={editEntry.clockIn}
                 clockOut={editEntry.clockOut}
+                jobFunctionName={editEntry.shift?.jobFunction?.name ?? null}
+                plannedStartTime={editEntry.shift?.startTime ?? null}
+                plannedEndTime={editEntry.shift?.endTime ?? null}
+                deviationMessages={editEntry.deviation?.messages ?? []}
                 loading={savingEdit}
                 onClose={() => setEditEntry(null)}
                 onSave={saveEdit}

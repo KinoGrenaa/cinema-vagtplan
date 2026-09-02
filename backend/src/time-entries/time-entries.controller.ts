@@ -82,7 +82,22 @@ export class TimeEntriesController {
       req.user.sub,
       req.user,
     );
+  }  @UseGuards(JwtGuard)
+  @Get('me-action-required-count')
+  countMyActionRequiredEntries(
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.timeEntriesService.countNeedsChangesForUser(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
   }
+
+
 
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('ADMIN', 'MASTER')

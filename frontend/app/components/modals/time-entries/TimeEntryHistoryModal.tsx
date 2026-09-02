@@ -250,13 +250,35 @@ function realMessage(
 
   if (
     revision.action ===
+      "UPDATED"
+  ) {
+    if (
+      revision.previousStatus ===
+        "NEEDS_CHANGES" &&
+      revision.newStatus ===
+        "PENDING"
+    ) {
+      return null;
+    }
+
+    return {
+      title:
+        "Note om rettelsen",
+      text: message,
+      variant: "warning" as const,
+    };
+  }
+
+  if (
+    revision.action ===
       "NEEDS_CHANGES" ||
     revision.action ===
       "SENT_BACK"
   ) {
     return {
-      title:
-        "Besked fra godkender",
+      title: `Besked fra ${formatUser(
+        revision.changedByUser,
+      )}`,
       text: message,
       variant: "warning" as const,
     };

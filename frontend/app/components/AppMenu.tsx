@@ -47,6 +47,7 @@ export default function AppMenu() {
     notificationCount,
     staffingRequestCount,
     leaveRequestCount,
+    timeEntryActionCount,
   } = useRealtimeBadges();
   const { user, logout, isAdmin, isMaster } = useAuth();
   const { isModuleEnabled } = useCinemaModules();
@@ -61,11 +62,14 @@ export default function AppMenu() {
     staffingRequestCount;
   const scheduleBadgeCount =
     availableShiftCount;
+  const timeAndLeaveBadgeCount =
+    leaveRequestCount +
+    timeEntryActionCount;
   const totalMenuBadgeCount =
     scheduleBadgeCount +
     unreadMessages +
     notificationCount +
-    leaveRequestCount;
+    timeAndLeaveBadgeCount;
 
   const navItems: NavItem[] = [
     {
@@ -113,11 +117,12 @@ export default function AppMenu() {
     {
       id: "time-and-leave",
       label: "Tid & fravær",
-      badge: leaveRequestCount,
+      badge: timeAndLeaveBadgeCount,
       children: [
         {
           href: "/my-time",
           label: "Mine timer",
+          badge: timeEntryActionCount,
           moduleKey: "TIME_TRACKING",
         },
         {

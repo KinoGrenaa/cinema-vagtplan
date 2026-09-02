@@ -60,6 +60,15 @@ const payrollAdjustmentsInclude = {
   },
 } as const;
 
+const latestNeedsChangesRevisionOrderBy = [
+  {
+    createdAt: "desc" as const,
+  },
+  {
+    id: "desc" as const,
+  },
+];
+
 export function getTimeEntryResponseInclude() {
   return {
     user: true,
@@ -91,6 +100,25 @@ export function getTimeEntryResponseInclude() {
     },
     payrollAdjustments:
       payrollAdjustmentsInclude,
+    revisions: {
+      where: {
+        newStatus: "NEEDS_CHANGES",
+      },
+      orderBy:
+        latestNeedsChangesRevisionOrderBy,
+      take: 1,
+      select: {
+        newAdminNote: true,
+        changedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    },
   } as const;
 }
 

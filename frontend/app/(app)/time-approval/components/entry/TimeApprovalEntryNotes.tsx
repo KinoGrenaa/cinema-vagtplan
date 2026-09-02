@@ -10,6 +10,16 @@ export default function TimeApprovalEntryNotes({
   const hasEmployeeNote = Boolean(
     entry.clockInNote || entry.clockOutNote || entry.note,
   );
+  const currentAdminNote =
+    entry.adminNote?.trim();
+  const latestReturnMessage =
+    entry.revisions?.[0]?.newAdminNote?.trim();
+  const showAdminNote = Boolean(
+    currentAdminNote &&
+      (entry.status === "NEEDS_CHANGES" ||
+        !latestReturnMessage ||
+        currentAdminNote !== latestReturnMessage),
+  );
 
   return (
     <>
@@ -47,9 +57,14 @@ export default function TimeApprovalEntryNotes({
           )}
         </div>
       )}
-      {entry.adminNote && (
+      {showAdminNote && entry.adminNote && (
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950/40">
-          <span className="font-semibold">Admin note:</span> {entry.adminNote}
+          <span className="font-semibold">
+            {entry.status === "NEEDS_CHANGES"
+              ? "Besked til medarbejderen:"
+              : "Note om rettelsen:"}
+          </span>{" "}
+          {entry.adminNote}
         </div>
       )}
     </>

@@ -9,6 +9,10 @@ type Props = {
   open: boolean;
   clockIn: string;
   clockOut?: string | null;
+  jobFunctionName?: string | null;
+  plannedStartTime?: string | null;
+  plannedEndTime?: string | null;
+  deviationMessages?: string[];
   loading?: boolean;
   onClose: () => void;
   onSave: (data: {
@@ -20,7 +24,6 @@ type Props = {
 
 function toInputDateTime(value?: string | null) {
   if (!value) return "";
-
   const date = new Date(value);
   const offset = date.getTimezoneOffset();
 
@@ -29,10 +32,50 @@ function toInputDateTime(value?: string | null) {
     .slice(0, 16);
 }
 
+const summaryDateFormatter = new Intl.DateTimeFormat("da-DK", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "Europe/Copenhagen",
+});
+
+const summaryTimeFormatter = new Intl.DateTimeFormat("da-DK", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "Europe/Copenhagen",
+});
+
+function formatSummaryDateTime(value?: string | null) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return `${summaryDateFormatter.format(date)} kl. ${summaryTimeFormatter
+    .format(date)
+    .replace(".", ":")}`;
+}
+
+function formatSummaryRange(
+  start?: string | null,
+  end?: string | null,
+) {
+  if (!start) return "-";
+
+  return `${formatSummaryDateTime(start)} – ${
+    end ? formatSummaryDateTime(end) : "åben"
+  }`;
+}
+
 export default function TimeEntryEditModal({
   open,
   clockIn,
   clockOut,
+  jobFunctionName,
+  plannedStartTime,
+  plannedEndTime,
+  deviationMessages = [],
   loading = false,
   onClose,
   onSave,
@@ -53,7 +96,7 @@ export default function TimeEntryEditModal({
 
   async function handleSave() {
     if (!adminNote.trim()) {
-      setError("Intern note er påkrævet");
+      setError("Note om rettelsen er påkrævet");
       return;
     }
 
@@ -72,34 +115,73 @@ export default function TimeEntryEditModal({
       width="md"
     >
       <div className="space-y-4">
+        {(jobFunctionName || plannedStartTime || plannedEndTime) && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-950/40">
+            {jobFunctionName && (
+              <div className="mb-3 text-sm font-bold text-gray-950 dark:text-white">
+                {jobFunctionName}
+              </div>
+            )}
+
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Planlagt
+                </div>
+                <div className="mt-1 font-medium text-gray-900 dark:text-gray-100">
+                  {plannedStartTime && plannedEndTime
+                    ? formatSummaryRange(plannedStartTime, plannedEndTime)
+                    : "Ingen planlagt vagt"}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Registreret før rettelse
+                </div>
+                <div className="mt-1 font-medium text-gray-900 dark:text-gray-100">
+                  {formatSummaryRange(clockIn, clockOut)}
+                </div>
+              </div>
+            </div>
+
+            {deviationMessages.length > 0 && (
+              <div className="mt-3 border-t border-gray-200 pt-3 text-sm text-orange-800 dark:border-gray-800 dark:text-orange-200">
+                {deviationMessages.map((message, index) => (
+                  <div key={`edit-deviation-${index}`}>{message}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div>
-          <label className="mb-1 block text-sm font-medium">Clock ind</label>
+          <label className="mb-1 block text-sm font-medium">Mødetid</label>
           <ProjectDateTimePicker
             value={newClockIn}
             onChange={setNewClockIn}
             clearable
-            ariaLabel={
-              "V\u00e6lg clock ind dato og tid"
-            }
+            ariaLabel="Vælg mødetid dato og tid"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Clock ud</label>
+          <label className="mb-1 block text-sm font-medium">Fyraften</label>
           <ProjectDateTimePicker
             value={newClockOut}
             onChange={setNewClockOut}
             clearable
-            ariaLabel={
-              "V\u00e6lg clock ud dato og tid"
-            }
+            ariaLabel="Vælg fyraften dato og tid"
           />
         </div>
 
         <div>
           <label className="mb-1 block text-sm font-medium">
-            Intern note om rettelsen
+            Note om rettelsen
           </label>
+          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+            Noten er påkrævet og gemmes i registreringens historik.
+          </p>
           <textarea
             value={adminNote}
             onChange={(event) => setAdminNote(event.target.value)}

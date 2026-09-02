@@ -89,6 +89,20 @@ function isSameLocalDay(
   );
 }
 
+function formatReturnMessageActor(entry: TimeEntry) {
+  const actor =
+    entry.revisions?.[0]?.changedByUser;
+
+  if (!actor) {
+    return "administrationen";
+  }
+
+  const fullName =
+    `${actor.firstName || ""} ${actor.lastName || ""}`.trim();
+
+  return fullName || actor.email || "administrationen";
+}
+
 function formatEntryTimeRange(entry: TimeEntry) {
   const start = formatTime(entry.clockIn);
 
@@ -209,7 +223,10 @@ export default function MyTimeEntryCard({
             </>
           )}
 
-          {entry.adminNote && (
+          {entry.adminNote &&
+            (entry.status === "NEEDS_CHANGES" ||
+              entry.adminNote.trim() !==
+                entry.revisions?.[0]?.newAdminNote?.trim()) && (
             <div
               className={`rounded-lg border p-2.5 ${
                 entry.status === "NEEDS_CHANGES"
@@ -225,7 +242,7 @@ export default function MyTimeEntryCard({
                 }`}
               >
                 {entry.status === "NEEDS_CHANGES"
-                  ? "Besked fra administrationen"
+                  ? `Besked fra ${formatReturnMessageActor(entry)}`
                   : "Note fra administrationen"}
               </p>
               <p className="mt-1 whitespace-pre-wrap text-gray-700 dark:text-gray-300">

@@ -26,6 +26,26 @@ const inputClass =
 const focusClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
 
+function formatReturnMessageActor(
+  entry: TimeEntry,
+) {
+  const actor =
+    entry.revisions?.[0]?.changedByUser;
+
+  if (!actor) {
+    return "administrationen";
+  }
+
+  const fullName =
+    `${actor.firstName || ""} ${actor.lastName || ""}`.trim();
+
+  return (
+    fullName ||
+    actor.email ||
+    "administrationen"
+  );
+}
+
 export default function MyTimeEditModal({
   editingEntry,
   editClockIn,
@@ -61,6 +81,21 @@ export default function MyTimeEditModal({
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Du kan kun rette timer, der ikke er godkendt endnu.
         </p>
+
+        {editingEntry.status === "NEEDS_CHANGES" &&
+          editingEntry.adminNote && (
+            <div className="mt-4 rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm text-orange-950 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-100">
+              <p className="font-semibold">
+                Besked fra{" "}
+                {formatReturnMessageActor(
+                  editingEntry,
+                )}
+              </p>
+              <p className="mt-1">
+                {editingEntry.adminNote}
+              </p>
+            </div>
+          )}
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="block text-sm font-medium text-gray-800 dark:text-gray-200">

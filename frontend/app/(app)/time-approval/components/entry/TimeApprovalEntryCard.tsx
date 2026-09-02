@@ -1,25 +1,13 @@
 "use client";
 
-import {
-  useEffect,
-} from "react";
-import {
-  useSearchParams,
-} from "next/navigation";
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 import PayrollAdjustmentHistoryPanel from "../../../../components/time-entries/PayrollAdjustmentHistoryPanel";
 import AutomaticTimeRegistrationNotice from "../../../../components/time-entries/AutomaticTimeRegistrationNotice";
-
-import {
-  parseTimeApprovalEntryTarget,
-} from "../../helpers/core/timeApprovalEntryTarget";
-import type {
-  PayrollExportContext,
-  TimeEntry,
-} from "../../types";
-import {
-  formatDateTime,
-} from "../../utils";
+import { parseTimeApprovalEntryTarget } from "../../helpers/core/timeApprovalEntryTarget";
+import type { PayrollExportContext, TimeEntry } from "../../types";
+import { getStatusClass, getStatusLabel } from "../../utils";
 import DeviationPanel from "./DeviationPanel";
 import TimeApprovalEntryActions from "./TimeApprovalEntryActions";
 import TimeApprovalEntryNotes from "./TimeApprovalEntryNotes";
@@ -27,71 +15,107 @@ import TimeApprovalEntryNotes from "./TimeApprovalEntryNotes";
 type Props = {
   entry: TimeEntry;
   isExpanded: boolean;
-  onToggleDetails:
-    (entryId: number) => void;
-  onEdit:
-    (entry: TimeEntry) => void;
-  onOpenHistory:
-    (entry: TimeEntry) => void;
-  onApprove:
-    (entry: TimeEntry) => void;
-  onUnapprove:
-    (entry: TimeEntry) => void;
-  onSendBackForChanges:
-    (entryId: number) => void;
-  onVoid:
-    (entry: TimeEntry) => void;
+  onToggleDetails: (entryId: number) => void;
+  onEdit: (entry: TimeEntry) => void;
+  onOpenHistory: (entry: TimeEntry) => void;
+  onApprove: (entry: TimeEntry) => void;
+  onUnapprove: (entry: TimeEntry) => void;
+  onSendBackForChanges: (entryId: number) => void;
+  onVoid: (entry: TimeEntry) => void;
 };
 
-const payrollPeriodFormatter =
-  new Intl.DateTimeFormat(
-    "da-DK",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      timeZone:
-        "Europe/Copenhagen",
-    },
-  );
+const payrollPeriodFormatter = new Intl.DateTimeFormat("da-DK", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "Europe/Copenhagen",
+});
 
-function getHours(entry: TimeEntry) {
-  if (!entry.clockOut) {
-    return "-";
-  }
+const compactDateFormatter = new Intl.DateTimeFormat("da-DK", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Europe/Copenhagen",
+});
 
-  const start =
-    new Date(entry.clockIn);
-  const end =
-    new Date(entry.clockOut);
-  const hours =
-    (end.getTime() -
-      start.getTime()) /
-    1000 /
-    60 /
-    60;
+const compactTimeFormatter = new Intl.DateTimeFormat("da-DK", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "Europe/Copenhagen",
+});
 
-  return hours.toFixed(2);
-}
+const compactDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "Europe/Copenhagen",
+});
 
-function formatPayrollPeriod(
-  period: {
-    startDate: string;
-    endDate: string;
-  },
-) {
+const summaryPrimaryAction =
+  "inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:active:bg-emerald-400 dark:focus-visible:ring-emerald-400 dark:focus-visible:ring-offset-gray-900";
+
+const summaryWarningAction =
+  "inline-flex min-h-9 items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 active:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100 dark:hover:bg-amber-950/60 dark:active:bg-amber-900/60 dark:focus-visible:ring-amber-400 dark:focus-visible:ring-offset-gray-900";
+
+const summaryToggleAction =
+  "inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-offset-gray-900";
+
+function formatPayrollPeriod(period: { startDate: string; endDate: string }) {
   return `${payrollPeriodFormatter.format(
     new Date(period.startDate),
-  )} – ${payrollPeriodFormatter.format(
-    new Date(period.endDate),
-  )}`;
+  )} – ${payrollPeriodFormatter.format(new Date(period.endDate))}`;
+}
+
+function formatCompactDate(value: string) {
+  return compactDateFormatter.format(new Date(value));
+}
+
+function formatCompactTime(value?: string | null) {
+  if (!value) return null;
+  return compactTimeFormatter.format(new Date(value)).replace(".", ":");
+}
+
+function getCompactTimeRange(entry: TimeEntry) {
+  const start = formatCompactTime(entry.clockIn) ?? "-";
+
+  if (!entry.clockOut) {
+    return `${start}–åben`;
+  }
+
+  const end = formatCompactTime(entry.clockOut) ?? "-";
+  const startDate = compactDateKeyFormatter.format(new Date(entry.clockIn));
+  const endDate = compactDateKeyFormatter.format(new Date(entry.clockOut));
+  const overnight = startDate !== endDate ? " (+1 dag)" : "";
+
+  return `${start}–${end}${overnight}`;
+}
+
+function getDurationLabel(entry: TimeEntry) {
+  if (!entry.clockOut) {
+    return "Åben registrering";
+  }
+
+  const minutes = Math.max(
+    0,
+    Math.round(
+      (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) /
+        60000,
+    ),
+  );
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+
+  if (hours === 0) {
+    return `${rest} min.`;
+  }
+
+  return `${hours} t. ${String(rest).padStart(2, "0")} min.`;
 }
 
 function PayrollExportWarning({
   context,
 }: {
-  context:
-    PayrollExportContext;
+  context: PayrollExportContext;
 }) {
   return (
     <div
@@ -102,7 +126,6 @@ function PayrollExportWarning({
         <span className="rounded-full bg-amber-200 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-950 dark:bg-amber-800 dark:text-amber-50">
           Eksporteret lønperiode
         </span>
-
         {context.hasPendingAdjustment && (
           <span className="rounded-full border border-amber-400 px-2.5 py-1 text-xs font-semibold dark:border-amber-700">
             Efterregulering findes
@@ -111,31 +134,37 @@ function PayrollExportWarning({
       </div>
 
       <p className="mt-3 text-sm font-semibold">
-        Registreringen indgår i
-        lønperioden{" "}
-        {formatPayrollPeriod(
-          context.originalPayrollPeriod,
-        )}
-        .
+        Registreringen indgår i lønperioden{" "}
+        {formatPayrollPeriod(context.originalPayrollPeriod)}.
       </p>
-
       <p className="mt-1 text-sm">
-        Godkendelse, rettelse,
-        fjernelse af godkendelse eller
-        afvisning kræver en ekstra
-        bekræftelse. Forskellen føres
-        som efterregulering.
+        Godkendelse, rettelse, fjernelse af godkendelse eller afvisning kræver
+        en ekstra bekræftelse. Forskellen føres som efterregulering.
       </p>
 
       {context.adjustmentPayrollPeriod && (
         <p className="mt-2 text-xs font-medium">
           Efterreguleres i:{" "}
-          {formatPayrollPeriod(
-            context.adjustmentPayrollPeriod,
-          )}
+          {formatPayrollPeriod(context.adjustmentPayrollPeriod)}
         </p>
       )}
     </div>
+  );
+}
+
+function SummaryBadge({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${className}`}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -150,205 +179,184 @@ export default function TimeApprovalEntryCard({
   onSendBackForChanges,
   onVoid,
 }: Props) {
-  const searchParams =
-    useSearchParams();
-  const entryTarget =
-    parseTimeApprovalEntryTarget(
-      searchParams.get(
-        "entryId",
-      ),
-    );
-  const isFocused =
-    entryTarget.entryId ===
-    entry.id;
+  const searchParams = useSearchParams();
+  const entryTarget = parseTimeApprovalEntryTarget(searchParams.get("entryId"));
+  const isFocused = entryTarget.entryId === entry.id;
 
   useEffect(() => {
-    if (!isFocused) {
-      return;
-    }
+    if (!isFocused) return;
 
-    const timeoutId =
-      window.setTimeout(() => {
-        const element =
-          document.getElementById(
-            `time-entry-${entry.id}`,
-          );
+    const timeoutId = window.setTimeout(() => {
+      const element = document.getElementById(`time-entry-${entry.id}`);
+      if (!element) return;
 
-        if (!element) {
-          return;
-        }
+      element.focus({ preventScroll: true });
 
-        element.focus({
-          preventScroll: true,
-        });
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
 
-        const reduceMotion =
-          window.matchMedia(
-            "(prefers-reduced-motion: reduce)",
-          ).matches;
-
-        element.scrollIntoView({
-          behavior: reduceMotion
-            ? "auto"
-            : "smooth",
-          block: "center",
-        });
-      }, 100);
+      element.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    }, 100);
 
     return () => {
-      window.clearTimeout(
-        timeoutId,
-      );
+      window.clearTimeout(timeoutId);
     };
-  }, [
-    entry.id,
-    isFocused,
-  ]);
+  }, [entry.id, isFocused]);
 
-  const hasDetails = Boolean(
-    entry.deviation?.hasDeviation ||
-      entry.clockInNote ||
-      entry.clockOutNote ||
-      entry.note ||
-      entry.adminNote,
+  const isPending = entry.status === "PENDING";
+  const isApproved = entry.status === "APPROVED";
+  const isManual = !entry.shift;
+  const hasDeviation = Boolean(entry.shift && entry.deviation?.hasDeviation);
+  const isAutomatic = Boolean(entry.automaticClockIn || entry.automaticClockOut);
+  const hasNote = Boolean(
+    entry.clockInNote || entry.clockOutNote || entry.note || entry.adminNote,
   );
+  const requiresNote = Boolean(entry.shift && entry.deviation?.requiresNote);
+  const isOpenEntry = !entry.clockOut;
 
   return (
     <div
       id={`time-entry-${entry.id}`}
       tabIndex={-1}
-      aria-label={
+      aria-label={isFocused ? "Fremhævet tidsregistrering" : undefined}
+      className={`overflow-hidden rounded-xl border bg-white shadow-sm outline-none transition-colors dark:bg-gray-900 ${
         isFocused
-          ? "Fremhævet tidsregistrering"
-          : undefined
-      }
-      className={`rounded-2xl border bg-white p-6 shadow-sm outline-none transition-colors dark:bg-gray-900 ${
-        isFocused
-          ? "border-blue-500 ring-4 ring-blue-500/60 ring-offset-4 ring-offset-white dark:border-blue-400 dark:ring-blue-400/60 dark:ring-offset-gray-950"
+          ? "border-blue-500 ring-2 ring-inset ring-blue-500/70 dark:border-blue-400 dark:ring-blue-400/70"
           : "border-gray-200 dark:border-gray-800"
       }`}
     >
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 flex-1 space-y-4">
-          <AutomaticTimeRegistrationNotice
-            automaticClockIn={entry.automaticClockIn}
-            automaticClockOut={entry.automaticClockOut}
-            compact
-          />
-
+      <div className="flex flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center">
+        <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-[8rem_minmax(10rem,1fr)_minmax(0,1.4fr)] md:items-center">
           <div>
-            <h3 className="text-lg font-semibold">
-              {formatDateTime(
-                entry.clockIn,
-              )}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {entry.shift
-                ?.jobFunction?.name ||
-                "Manuel registrering"}
-            </p>
+            <div className="text-sm font-bold text-gray-950 dark:text-white">
+              {formatCompactDate(entry.clockIn)}
+            </div>
+            <div className="mt-0.5 text-sm font-medium text-gray-600 dark:text-gray-300">
+              {getCompactTimeRange(entry)}
+            </div>
           </div>
 
-          {entry.payrollExportContext && (
-            <PayrollExportWarning
-              context={
-                entry.payrollExportContext
-              }
-            />
-          )}
-
-          <PayrollAdjustmentHistoryPanel
-            items={
-              entry.payrollAdjustmentHistory
-            }
-          />
-
-          <div className="grid gap-2 text-sm">
-            <div>
-              <span className="font-semibold">
-                Jobfunktion:
-              </span>{" "}
-              {entry.shift
-                ?.jobFunction?.name ||
-                "-"}
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-gray-950 dark:text-white">
+              {entry.shift?.jobFunction?.name || "Manuel registrering"}
             </div>
-
-            <div>
-              <span className="font-semibold">
-                Mødt:
-              </span>{" "}
-              {formatDateTime(
-                entry.clockIn,
-              )}
+            <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {getDurationLabel(entry)}
             </div>
+          </div>
 
-            <div>
-              <span className="font-semibold">
-                Gået hjem:
-              </span>{" "}
-              {formatDateTime(
-                entry.clockOut,
-              )}
-            </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <SummaryBadge className={getStatusClass(entry.status)}>
+              {getStatusLabel(entry.status)}
+            </SummaryBadge>
 
-            <div>
-              <span className="font-semibold">
-                Timer:
-              </span>{" "}
-              {getHours(entry)}
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() =>
-                  onToggleDetails(
-                    entry.id,
-                  )
-                }
-                aria-expanded={
-                  isExpanded
-                }
-                className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
-                  hasDetails
-                    ? "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 focus-visible:ring-amber-500 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100 dark:hover:bg-amber-950/40 dark:focus-visible:ring-amber-400"
-                    : "border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-500 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 dark:focus-visible:ring-gray-400"
-                }`}
-              >
-                {isExpanded
-                  ? "Skjul detaljer"
-                  : "Vis detaljer"}
-              </button>
-            </div>
-
-            {isExpanded && (
-              <DeviationPanel
-                entry={entry}
-              />
+            {isManual && (
+              <SummaryBadge className="bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
+                Manuel
+              </SummaryBadge>
             )}
 
-            <TimeApprovalEntryNotes
-              entry={entry}
-            />
+            {hasDeviation && (
+              <SummaryBadge className="bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
+                Afvigelse
+              </SummaryBadge>
+            )}
+
+            {isAutomatic && (
+              <SummaryBadge className="bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+                Automatisk udfyldt
+              </SummaryBadge>
+            )}
+
+            {hasNote && (
+              <SummaryBadge className="bg-blue-50 text-blue-700 dark:bg-blue-950/25 dark:text-blue-200">
+                Note
+              </SummaryBadge>
+            )}
+
+            {requiresNote && (
+              <SummaryBadge className="bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200">
+                Kræver note
+              </SummaryBadge>
+            )}
+
+            {entry.payrollExportContext && (
+              <SummaryBadge className="bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                Eksporteret periode
+              </SummaryBadge>
+            )}
           </div>
         </div>
 
-        <TimeApprovalEntryActions
-          entry={entry}
-          onEdit={onEdit}
-          onOpenHistory={
-            onOpenHistory
-          }
-          onApprove={onApprove}
-          onUnapprove={
-            onUnapprove
-          }
-          onSendBackForChanges={
-            onSendBackForChanges
-          }
-          onVoid={onVoid}
-        />
+        <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+          {isPending && !isOpenEntry && (
+            <button
+              type="button"
+              onClick={() => onApprove(entry)}
+              className={summaryPrimaryAction}
+            >
+              Godkend
+            </button>
+          )}
+
+          {isApproved && (
+            <button
+              type="button"
+              onClick={() => onUnapprove(entry)}
+              className={summaryWarningAction}
+            >
+              Fjern godkendelse
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => onToggleDetails(entry.id)}
+            aria-expanded={isExpanded}
+            className={summaryToggleAction}
+          >
+            {isExpanded ? "Skjul" : "Vis"}
+            <span aria-hidden="true">{isExpanded ? "▲" : "▼"}</span>
+          </button>
+        </div>
       </div>
+
+      {isExpanded && (
+        <div className="border-t border-gray-200 bg-gray-50/60 px-4 py-4 dark:border-gray-800 dark:bg-gray-950/25">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="min-w-0 space-y-3">
+              <AutomaticTimeRegistrationNotice
+                automaticClockIn={entry.automaticClockIn}
+                automaticClockOut={entry.automaticClockOut}
+                compact
+              />
+
+              {entry.payrollExportContext && (
+                <PayrollExportWarning context={entry.payrollExportContext} />
+              )}
+
+              <PayrollAdjustmentHistoryPanel
+                items={entry.payrollAdjustmentHistory}
+              />
+
+              <DeviationPanel entry={entry} />
+              <TimeApprovalEntryNotes entry={entry} />
+            </div>
+
+            <TimeApprovalEntryActions
+              entry={entry}
+              onEdit={onEdit}
+              onOpenHistory={onOpenHistory}
+              onSendBackForChanges={onSendBackForChanges}
+              onVoid={onVoid}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
