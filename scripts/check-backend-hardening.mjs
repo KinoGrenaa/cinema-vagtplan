@@ -24,7 +24,7 @@ const expectedExcelJsOverrides = {
 const expectedSecurityOverrides = {
   "body-parser": "2.3.0",
   multer: "2.2.0",
-  qs: "6.15.3",
+  qs: "6.16.0",
   tmp: "0.2.7",
   ws: "8.21.1",
 };
@@ -89,7 +89,7 @@ export function findForbiddenRuntimePackages(lock) {
       problems.push(`${name}@${version} (${lockPath})`);
     } else if (name === "multer" && compareVersions(version, "2.2.0") < 0) {
       problems.push(`${name}@${version} (${lockPath})`);
-    } else if (name === "qs" && compareVersions(version, "6.15.3") < 0) {
+    } else if (name === "qs" && compareVersions(version, "6.16.0") < 0) {
       problems.push(`${name}@${version} (${lockPath})`);
     } else if (name === "tmp" && compareVersions(version, "0.2.6") < 0) {
       problems.push(`${name}@${version} (${lockPath})`);
