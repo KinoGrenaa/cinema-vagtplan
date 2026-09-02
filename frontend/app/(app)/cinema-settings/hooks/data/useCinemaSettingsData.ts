@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useInfoModal } from "@/app/hooks/useInfoModal";
 import { apiFetch } from "@/app/lib/api";
 import {
@@ -13,6 +14,9 @@ import type {
 } from "../../helpers/core/cinemaSettingsTypes";
 import { syncMasterSelectedCinemaStorage } from "../../helpers/core/cinemaSettingsBrandingHelpers";
 import { readErrorMessage } from "../../helpers/core/cinemaSettingsRequestHelpers";
+
+const CINEMA_SETTINGS_SAVE_TOAST_ID =
+  "cinema-settings-save";
 
 export function useCinemaSettingsData() {
   const infoDialog = useInfoModal();
@@ -108,6 +112,14 @@ export function useCinemaSettingsData() {
       setSaving(true);
       setMessage("");
 
+      toast.loading(
+        "Gemmer ændringer…",
+        {
+          id:
+            CINEMA_SETTINGS_SAVE_TOAST_ID,
+        },
+      );
+
       const response = await apiFetch(`/cinemas/${cinema.id}`, {
         method: "PATCH",
         body: JSON.stringify(safeChanges),
@@ -128,6 +140,14 @@ export function useCinemaSettingsData() {
       setCinema(nextCinema);
       syncMasterSelectedCinemaStorage(nextCinema);
       setMessage("Biografindstillinger gemt.");
+
+      toast.success(
+        "Gemt",
+        {
+          id:
+            CINEMA_SETTINGS_SAVE_TOAST_ID,
+        },
+      );
     } catch (error) {
       const description =
         error instanceof Error
@@ -135,6 +155,9 @@ export function useCinemaSettingsData() {
           : "Kunne ikke gemme indstillinger.";
 
       setMessage("");
+      toast.dismiss(
+        CINEMA_SETTINGS_SAVE_TOAST_ID,
+      );
       infoDialog.showError("Indstillinger kunne ikke gemmes", description);
     } finally {
       setSaving(false);

@@ -22,7 +22,6 @@ export default function CinemaSettingsPage() {
     setCinema,
     loading,
     saving,
-    message,
     infoDialog,
     updateCinemaSettings,
     uploadCinemaLogo,
@@ -123,7 +122,6 @@ export default function CinemaSettingsPage() {
             setCinema={setCinema}
             updateCinemaSettings={updateCinemaSettings}
             periodExample={periodExample}
-            message={message}
           />
         </div>
       </main>
