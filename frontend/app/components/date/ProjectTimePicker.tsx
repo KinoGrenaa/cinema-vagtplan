@@ -27,6 +27,7 @@ type ProjectTimePickerProps = {
   disabled?: boolean;
   clearable?: boolean;
   minuteStep?: ProjectTimePickerMinuteStep;
+  pickerOnly?: boolean;
   ariaLabel?: string;
   className?: string;
 };
@@ -222,6 +223,7 @@ export default function ProjectTimePicker({
   disabled = false,
   clearable = false,
   minuteStep = 1,
+  pickerOnly = false,
   ariaLabel =
     "V\u00e6lg klokkesl\u00e6t",
   className = "",
@@ -996,8 +998,23 @@ export default function ProjectTimePicker({
         inputMode="numeric"
         value={textValue}
         disabled={disabled}
+        readOnly={pickerOnly}
         placeholder="--:--"
         onClick={(event) => {
+          if (pickerOnly) {
+            setCandidate(
+              roundTimeToStep(
+                normalizeTime(value) ??
+                  nowTime(),
+                normalizedMinuteStep,
+              ),
+            );
+
+            updatePosition();
+            setOpen(true);
+            return;
+          }
+
           selectTimeSegment(
             event.currentTarget,
             event.currentTarget.selectionStart,

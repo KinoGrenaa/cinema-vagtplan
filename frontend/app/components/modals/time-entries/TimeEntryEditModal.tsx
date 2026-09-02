@@ -162,9 +162,9 @@ export default function TimeEntryEditModal({
           <label className="mb-1 block text-sm font-medium">Mødetid</label>
           <ProjectDateTimePicker
             minuteStep={minuteStep}
+            pickerOnly
             value={newClockIn}
             onChange={setNewClockIn}
-            clearable
             ariaLabel="Vælg mødetid dato og tid"
           />
         </div>
@@ -173,9 +173,9 @@ export default function TimeEntryEditModal({
           <label className="mb-1 block text-sm font-medium">Fyraften</label>
           <ProjectDateTimePicker
             minuteStep={minuteStep}
+            pickerOnly
             value={newClockOut}
             onChange={setNewClockOut}
-            clearable
             ariaLabel="Vælg fyraften dato og tid"
           />
         </div>

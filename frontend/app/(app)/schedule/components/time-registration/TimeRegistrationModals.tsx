@@ -249,6 +249,7 @@ export function TimeRegistrationModal({
               </label>
               <ProjectTimePicker
                 minuteStep={minuteStep}
+                pickerOnly
                 value={
                   getClockTime(
                     clockInTime,
@@ -288,6 +289,7 @@ export function TimeRegistrationModal({
               </label>
               <ProjectTimePicker
                 minuteStep={minuteStep}
+                pickerOnly
                 value={
                   getClockTime(
                     clockOutTime,
@@ -360,9 +362,9 @@ export function ManualTimeRegistrationModal({
             <label className="mb-1 block text-sm font-semibold">Mødetid</label>
             <ProjectDateTimePicker
               minuteStep={minuteStep}
+              pickerOnly
               value={clockInTime}
               onChange={setClockInTime}
-              clearable
               ariaLabel={
                 "V\u00e6lg manuel m\u00f8dedato og tid"
               }
@@ -372,9 +374,9 @@ export function ManualTimeRegistrationModal({
             <label className="mb-1 block text-sm font-semibold">Fyraften</label>
             <ProjectDateTimePicker
               minuteStep={minuteStep}
+              pickerOnly
               value={clockOutTime}
               onChange={setClockOutTime}
-              clearable
               ariaLabel={
                 "V\u00e6lg manuel fyraftensdato og tid"
               }

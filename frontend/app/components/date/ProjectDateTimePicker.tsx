@@ -18,6 +18,7 @@ type ProjectDateTimePickerProps = {
   min?: string;
   max?: string;
   minuteStep?: ProjectTimePickerMinuteStep;
+  pickerOnly?: boolean;
   ariaLabel?: string;
   className?: string;
 };
@@ -59,6 +60,7 @@ export default function ProjectDateTimePicker({
   min,
   max,
   minuteStep = 1,
+  pickerOnly = false,
   ariaLabel = "V\u00e6lg dato og tidspunkt",
   className = "",
 }: ProjectDateTimePickerProps) {
@@ -204,6 +206,7 @@ export default function ProjectDateTimePicker({
         disabled={disabled}
         clearable={clearable}
         minuteStep={minuteStep}
+        pickerOnly={pickerOnly}
         onChange={handleTimeChange}
         ariaLabel={"V\u00e6lg klokkesl\u00e6t"}
       />

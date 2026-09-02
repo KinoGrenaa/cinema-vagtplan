@@ -15,7 +15,7 @@ test("klik i fælles klokkeslætsfelt markerer det segment brugeren faktisk klik
 
   assert.match(
     picker,
-    /onClick=\{\(event\) => \{\s*selectTimeSegment\(\s*event\.currentTarget,\s*event\.currentTarget\.selectionStart,\s*\);\s*\}\}/,
+    /onClick=\{\(event\) => \{[\s\S]*?if \(pickerOnly\) \{[\s\S]*?setOpen\(true\);[\s\S]*?return;[\s\S]*?selectTimeSegment\(\s*event\.currentTarget,\s*event\.currentTarget\.selectionStart,\s*\);[\s\S]*?\}\}/,
   );
 
   assert.match(

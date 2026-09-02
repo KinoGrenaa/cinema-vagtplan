@@ -108,9 +108,9 @@ export default function MyTimeEditModal({
 
             <ProjectDateTimePicker
               minuteStep={minuteStep}
+              pickerOnly
               value={editClockIn}
               onChange={onClockInChange}
-              clearable
               ariaLabel={
                 "V\u00e6lg m\u00f8dedato og tid"
               }
@@ -123,9 +123,9 @@ export default function MyTimeEditModal({
 
             <ProjectDateTimePicker
               minuteStep={minuteStep}
+              pickerOnly
               value={editClockOut}
               onChange={onClockOutChange}
-              clearable
               ariaLabel={
                 "V\u00e6lg fyraftensdato og tid"
               }
