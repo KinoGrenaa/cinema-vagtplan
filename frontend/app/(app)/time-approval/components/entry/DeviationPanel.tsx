@@ -29,28 +29,28 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
   return (
     <div
       className={`rounded-xl border p-3 text-sm ${
-        deviation.hasDeviation
-          ? "border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/40"
-          : "border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950/40"
+        isManualEntry
+          ? "border-blue-300 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30"
+          : deviation.hasDeviation
+            ? "border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/40"
+            : "border-green-300 bg-green-50 dark:border-green-900 dark:bg-green-950/40"
       }`}
     >
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="font-semibold">
           {isManualEntry ? "Manuel registrering" : "Afvigelsesanalyse"}
         </span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-            deviation.hasDeviation
-              ? "bg-orange-200 text-orange-900 dark:bg-orange-900 dark:text-orange-100"
-              : "bg-green-200 text-green-900 dark:bg-green-900 dark:text-green-100"
-          }`}
-        >
-          {isManualEntry
-            ? "Manuel registrering"
-            : deviation.hasDeviation
-              ? "Afvigelse"
-              : "OK"}
-        </span>
+        {!isManualEntry && (
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              deviation.hasDeviation
+                ? "bg-orange-200 text-orange-900 dark:bg-orange-900 dark:text-orange-100"
+                : "bg-green-200 text-green-900 dark:bg-green-900 dark:text-green-100"
+            }`}
+          >
+            {deviation.hasDeviation ? "Afvigelse" : "OK"}
+          </span>
+        )}
         {!isManualEntry && deviation.requiresNote && (
           <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-semibold text-red-900 dark:bg-red-900 dark:text-red-100">
             Kræver note
