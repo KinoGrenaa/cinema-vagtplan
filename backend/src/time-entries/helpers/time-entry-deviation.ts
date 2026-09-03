@@ -5,6 +5,7 @@ import type {
   TimeEntryDeviationType,
 } from './time-entry-deviation-types';
 import { minutesBetween } from './time-entry-deviation-utils';
+import { roundDateToTimeEntryMinuteStep } from './time-entry-planned-rounding';
 
 export type {
   TimeEntryDeviation,
@@ -37,21 +38,45 @@ export function analyzeTimeEntryDeviation(
     requireNoteForClockInDeviation,
     requireNoteForClockOutDeviation,
     requireNoteForManualEntry,
+    timeEntryMinuteStep,
   } = resolveTimeEntryDeviationSettings(entry, settings);
+
+  const plannedStartTime = shift
+    ? roundDateToTimeEntryMinuteStep(
+        shift.startTime,
+        timeEntryMinuteStep,
+      )
+    : null;
+
+  const plannedEndTime = shift
+    ? roundDateToTimeEntryMinuteStep(
+        shift.endTime,
+        timeEntryMinuteStep,
+      )
+    : null;
 
   if (!entry.clockOut) {
     return {
       hasDeviation: true,
       requiresNote: false,
       types: ['OPEN_ENTRY'],
-      plannedMinutes: shift
-        ? minutesBetween(shift.startTime, shift.endTime)
-        : null,
+      plannedMinutes:
+        plannedStartTime &&
+        plannedEndTime
+          ? minutesBetween(
+              plannedStartTime,
+              plannedEndTime,
+            )
+          : null,
       registeredMinutes: null,
       differenceMinutes: null,
-      clockInDeviationMinutes: shift
-        ? minutesBetween(shift.startTime, entry.clockIn)
-        : null,
+      clockInDeviationMinutes:
+        plannedStartTime
+          ? minutesBetween(
+              plannedStartTime,
+              entry.clockIn,
+            )
+          : null,
       clockOutDeviationMinutes: null,
       messages: ['Tidsregistreringen er stadig åben'],
     };
@@ -71,11 +96,29 @@ export function analyzeTimeEntryDeviation(
     };
   }
 
-  const plannedMinutes = minutesBetween(shift.startTime, shift.endTime);
-  const registeredMinutes = minutesBetween(entry.clockIn, entry.clockOut);
-  const differenceMinutes = registeredMinutes - plannedMinutes;
-  const clockInDeviationMinutes = minutesBetween(shift.startTime, entry.clockIn);
-  const clockOutDeviationMinutes = minutesBetween(shift.endTime, entry.clockOut);
+  const plannedMinutes =
+    minutesBetween(
+      plannedStartTime!,
+      plannedEndTime!,
+    );
+  const registeredMinutes =
+    minutesBetween(
+      entry.clockIn,
+      entry.clockOut,
+    );
+  const differenceMinutes =
+    registeredMinutes -
+    plannedMinutes;
+  const clockInDeviationMinutes =
+    minutesBetween(
+      plannedStartTime!,
+      entry.clockIn,
+    );
+  const clockOutDeviationMinutes =
+    minutesBetween(
+      plannedEndTime!,
+      entry.clockOut,
+    );
 
   if (clockInDeviationMinutes > clockInTolerance) {
     types.push('LATE_CLOCK_IN');
@@ -157,5 +200,6 @@ export function getCinemaDeviationSelect() {
     requireNoteForClockInDeviation: true,
     requireNoteForClockOutDeviation: true,
     requireNoteForManualEntry: true,
+    timeEntryMinuteStep: true,
   };
 }

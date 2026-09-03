@@ -173,6 +173,7 @@ export default function SchedulePage() {
     handleSubmitManualTimeWithoutShift,
   } = useScheduleTimeRegistration({
     selectedDate,
+    minuteStep: timeEntryMinuteStep,
     shifts,
     timeEntries,
     currentUser,

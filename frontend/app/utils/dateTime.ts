@@ -159,6 +159,60 @@ export function toInputDateTime(value: string) {
     .toISOString()
     .slice(0, 16);
 }
+
+export function roundLocalDateTimeToMinuteStep(
+  value: string,
+  minuteStep: number,
+) {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(
+      value,
+    );
+
+  if (!match) {
+    return value;
+  }
+
+  const [, yearText, monthText, dayText, hourText, minuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const step = minuteStep === 5 || minuteStep === 15 ? minuteStep : 1;
+
+  const original = new Date(
+    Date.UTC(year, month - 1, day, hour, minute),
+  );
+
+  if (
+    original.getUTCFullYear() !== year ||
+    original.getUTCMonth() !== month - 1 ||
+    original.getUTCDate() !== day ||
+    original.getUTCHours() !== hour ||
+    original.getUTCMinutes() !== minute
+  ) {
+    return value;
+  }
+
+  const rounded = new Date(
+    Math.round(original.getTime() / (step * 60 * 1000)) *
+      step *
+      60 *
+      1000,
+  );
+
+  return [
+    String(rounded.getUTCFullYear()).padStart(4, "0"),
+    String(rounded.getUTCMonth() + 1).padStart(2, "0"),
+    String(rounded.getUTCDate()).padStart(2, "0"),
+  ].join("-") +
+    "T" +
+    [
+      String(rounded.getUTCHours()).padStart(2, "0"),
+      String(rounded.getUTCMinutes()).padStart(2, "0"),
+    ].join(":");
+}
 export function formatUtcDateDK(date: Date | string) {
   const value = new Date(date);
 

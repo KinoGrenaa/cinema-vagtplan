@@ -1,3 +1,5 @@
+import { roundDateToTimeEntryMinuteStep } from '../../time-entries/helpers/time-entry-planned-rounding';
+
 export type TimeEntryDeviationType =
   | 'NONE'
   | 'OPEN_ENTRY'
@@ -48,18 +50,45 @@ export function analyzePayrollTimeEntryDeviation(
   const messages: string[] = [];
   const types: TimeEntryDeviationType[] = [];
   const shift = entry.shift;
+  const timeEntryMinuteStep =
+    entry.cinema?.timeEntryMinuteStep;
+
+  const plannedStartTime = shift
+    ? roundDateToTimeEntryMinuteStep(
+        shift.startTime,
+        timeEntryMinuteStep,
+      )
+    : null;
+
+  const plannedEndTime = shift
+    ? roundDateToTimeEntryMinuteStep(
+        shift.endTime,
+        timeEntryMinuteStep,
+      )
+    : null;
 
   if (!entry.clockOut) {
     return {
       hasDeviation: true,
       requiresNote: false,
       types: ['OPEN_ENTRY'],
-      plannedMinutes: shift ? minutesBetween(shift.startTime, shift.endTime) : null,
+      plannedMinutes:
+        plannedStartTime &&
+        plannedEndTime
+          ? minutesBetween(
+              plannedStartTime,
+              plannedEndTime,
+            )
+          : null,
       registeredMinutes: null,
       differenceMinutes: null,
-      clockInDeviationMinutes: shift
-        ? minutesBetween(shift.startTime, entry.clockIn)
-        : null,
+      clockInDeviationMinutes:
+        plannedStartTime
+          ? minutesBetween(
+              plannedStartTime,
+              entry.clockIn,
+            )
+          : null,
       clockOutDeviationMinutes: null,
       messages: ['Tidsregistreringen er stadig åben'],
     };
@@ -79,11 +108,29 @@ export function analyzePayrollTimeEntryDeviation(
     };
   }
 
-  const plannedMinutes = minutesBetween(shift.startTime, shift.endTime);
-  const registeredMinutes = minutesBetween(entry.clockIn, entry.clockOut);
-  const differenceMinutes = registeredMinutes - plannedMinutes;
-  const clockInDeviationMinutes = minutesBetween(shift.startTime, entry.clockIn);
-  const clockOutDeviationMinutes = minutesBetween(shift.endTime, entry.clockOut);
+  const plannedMinutes =
+    minutesBetween(
+      plannedStartTime!,
+      plannedEndTime!,
+    );
+  const registeredMinutes =
+    minutesBetween(
+      entry.clockIn,
+      entry.clockOut,
+    );
+  const differenceMinutes =
+    registeredMinutes -
+    plannedMinutes;
+  const clockInDeviationMinutes =
+    minutesBetween(
+      plannedStartTime!,
+      entry.clockIn,
+    );
+  const clockOutDeviationMinutes =
+    minutesBetween(
+      plannedEndTime!,
+      entry.clockOut,
+    );
 
   if (clockInDeviationMinutes > deviationGraceMinutes) {
     types.push('LATE_CLOCK_IN');

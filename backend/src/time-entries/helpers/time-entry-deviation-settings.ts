@@ -1,4 +1,5 @@
 import type { TimeEntryDeviationSettings } from './time-entry-deviation-types';
+import { resolveTimeEntryMinuteStep } from './time-entry-planned-rounding';
 
 const DEFAULT_DEVIATION_GRACE_MINUTES = 5;
 
@@ -31,5 +32,11 @@ export function resolveTimeEntryDeviationSettings(
       settings?.requireNoteForManualEntry ??
       entry.cinema?.requireNoteForManualEntry ??
       true,
+
+    timeEntryMinuteStep:
+      resolveTimeEntryMinuteStep(
+        settings?.timeEntryMinuteStep ??
+          entry.cinema?.timeEntryMinuteStep,
+      ),
   };
 }

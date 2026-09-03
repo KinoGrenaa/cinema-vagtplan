@@ -26,4 +26,5 @@ export type TimeEntryDeviationSettings = {
   requireNoteForClockInDeviation?: boolean | null;
   requireNoteForClockOutDeviation?: boolean | null;
   requireNoteForManualEntry?: boolean | null;
+  timeEntryMinuteStep?: number | null;
 };

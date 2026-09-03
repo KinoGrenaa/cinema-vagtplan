@@ -105,6 +105,11 @@ export async function buildPayrollReportData(
     include: {
       user: payrollUserInclude,
       payrollType: true,
+      cinema: {
+        select: {
+          timeEntryMinuteStep: true,
+        },
+      },
       shift: {
         include: {
           jobFunction: {

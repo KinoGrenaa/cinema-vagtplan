@@ -3,8 +3,10 @@ import { toast } from "sonner";
 import {
   getTodayLocalDate,
   localDateTimeToISOString,
+  roundLocalDateTimeToMinuteStep,
   toInputDateTime,
 } from "@/app/utils/dateTime";
+import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 import type { Shift } from "../../../../../../shared/types";
 import { getShiftsForTimeRegistration } from "../../helpers/derived/scheduleDerivedData";
 
@@ -36,6 +38,7 @@ type SubmitManualTimeEntry = (payload: {
 
 type UseScheduleTimeRegistrationOptions = {
   selectedDate: string;
+  minuteStep: TimeEntryMinuteStep;
   shifts: Shift[];
   timeEntries: TimeEntriesForRegistration;
   currentUser: unknown;
@@ -57,6 +60,7 @@ const requireNoteOnTimeDeviation = true;
 
 export function useScheduleTimeRegistration({
   selectedDate,
+  minuteStep,
   shifts,
   timeEntries,
   currentUser,
@@ -107,6 +111,15 @@ export function useScheduleTimeRegistration({
 
   const selectedClockShift = shifts.find((shift) => shift.id === clockShiftId);
 
+  function plannedRegistrationTime(
+    value: string,
+  ) {
+    return roundLocalDateTimeToMinuteStep(
+      toInputDateTime(value),
+      minuteStep,
+    );
+  }
+
   function resetClockModal() {
     setShowClockModal(false);
     setClockShiftId(null);
@@ -132,8 +145,14 @@ export function useScheduleTimeRegistration({
       return;
     }
 
-    const plannedStart = toInputDateTime(shift.startTime);
-    const plannedEnd = toInputDateTime(shift.endTime);
+    const plannedStart =
+      plannedRegistrationTime(
+        shift.startTime,
+      );
+    const plannedEnd =
+      plannedRegistrationTime(
+        shift.endTime,
+      );
     const hasDeviation =
       localDateTimeToISOString(plannedStart) !==
         localDateTimeToISOString(clockInTime) ||
@@ -176,7 +195,10 @@ export function useScheduleTimeRegistration({
       return;
     }
 
-    const plannedStart = toInputDateTime(selectedClockShift.startTime);
+    const plannedStart =
+      plannedRegistrationTime(
+        selectedClockShift.startTime,
+      );
     const hasDeviation =
       localDateTimeToISOString(plannedStart) !==
       localDateTimeToISOString(clockInTime);
@@ -223,7 +245,10 @@ export function useScheduleTimeRegistration({
       return;
     }
 
-    const plannedEnd = toInputDateTime(shift.endTime);
+    const plannedEnd =
+      plannedRegistrationTime(
+        shift.endTime,
+      );
     const hasDeviation =
       localDateTimeToISOString(plannedEnd) !==
       localDateTimeToISOString(clockOutTime);
@@ -273,11 +298,20 @@ export function useScheduleTimeRegistration({
       setClockShiftId(openTimeEntry.shiftId);
       setClockInTime(toInputDateTime(openTimeEntry.clockIn));
       if (openTimeEntry.shift?.endTime) {
-        const value = toInputDateTime(openTimeEntry.shift.endTime);
+        const value =
+          plannedRegistrationTime(
+            openTimeEntry.shift.endTime,
+          );
         setClockOutTime(value);
       } else {
         const shift = shifts.find((s) => s.id === openTimeEntry.shiftId);
-        setClockOutTime(shift ? toInputDateTime(shift.endTime) : "");
+        setClockOutTime(
+          shift
+            ? plannedRegistrationTime(
+                shift.endTime,
+              )
+            : "",
+        );
       }
       setShowClockModal(true);
       return;

@@ -6,7 +6,11 @@ import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
 import ProjectTimePicker from "@/app/components/date/ProjectTimePicker";
 
-import { formatTimeDK, toInputDateTime } from "@/app/utils/dateTime";
+import {
+  formatTimeDK,
+  roundLocalDateTimeToMinuteStep,
+  toInputDateTime,
+} from "@/app/utils/dateTime";
 import type { Shift } from "../../../../../../shared/types";
 
 type TimeEntryStatus = "APPROVED" | "PENDING" | "NEEDS_CHANGES" | string;
@@ -89,6 +93,64 @@ function replaceClockTime(
   );
 }
 
+function getPlannedRoundingMessage(
+  label: "mødetid" | "fyraften",
+  plannedValue: string,
+  roundedValue: string,
+  minuteStep: TimeEntryMinuteStep,
+) {
+  if (
+    minuteStep === 1 ||
+    !plannedValue ||
+    !roundedValue ||
+    plannedValue === roundedValue
+  ) {
+    return null;
+  }
+
+  const plannedTime =
+    getClockTime(
+      plannedValue,
+    );
+
+  const roundedTime =
+    getClockTime(
+      roundedValue,
+    );
+
+  if (
+    !plannedTime ||
+    !roundedTime
+  ) {
+    return null;
+  }
+
+  const crossesDate =
+    plannedValue.slice(
+      0,
+      10,
+    ) !==
+    roundedValue.slice(
+      0,
+      10,
+    );
+
+  return (
+    "Planlagt " +
+    label +
+    " " +
+    plannedTime +
+    " afrundes til " +
+    roundedTime +
+    (crossesDate
+      ? " næste dag"
+      : "") +
+    " efter biografens " +
+    minuteStep +
+    "-minutters registreringsregel."
+  );
+}
+
 export function TimeRegistrationModal({
   open,
   minuteStep,
@@ -160,14 +222,20 @@ export function TimeRegistrationModal({
     );
 
     setClockInTime(
-      toInputDateTime(
-        shift.startTime,
+      roundLocalDateTimeToMinuteStep(
+        toInputDateTime(
+          shift.startTime,
+        ),
+        minuteStep,
       ),
     );
 
     setClockOutTime(
-      toInputDateTime(
-        shift.endTime,
+      roundLocalDateTimeToMinuteStep(
+        toInputDateTime(
+          shift.endTime,
+        ),
+        minuteStep,
       ),
     );
 
@@ -175,12 +243,59 @@ export function TimeRegistrationModal({
   }, [
     open,
     openTimeEntry,
+    minuteStep,
     shiftsForTimeRegistration,
     setClockShiftId,
     setClockInTime,
     setClockOutTime,
     setClockNote,
   ]);
+
+  const plannedClockInTime =
+    selectedClockShift
+      ? toInputDateTime(
+          selectedClockShift.startTime,
+        )
+      : "";
+
+  const roundedPlannedClockInTime =
+    plannedClockInTime
+      ? roundLocalDateTimeToMinuteStep(
+          plannedClockInTime,
+          minuteStep,
+        )
+      : "";
+
+  const plannedClockOutTime =
+    selectedClockShift
+      ? toInputDateTime(
+          selectedClockShift.endTime,
+        )
+      : "";
+
+  const roundedPlannedClockOutTime =
+    plannedClockOutTime
+      ? roundLocalDateTimeToMinuteStep(
+          plannedClockOutTime,
+          minuteStep,
+        )
+      : "";
+
+  const clockInRoundingMessage =
+    getPlannedRoundingMessage(
+      "mødetid",
+      plannedClockInTime,
+      roundedPlannedClockInTime,
+      minuteStep,
+    );
+
+  const clockOutRoundingMessage =
+    getPlannedRoundingMessage(
+      "fyraften",
+      plannedClockOutTime,
+      roundedPlannedClockOutTime,
+      minuteStep,
+    );
 
   if (!open) return null;
 
@@ -205,8 +320,22 @@ export function TimeRegistrationModal({
                   (candidate) => candidate.id === shiftId,
                 );
                 if (!shift) return;
-                setClockInTime(toInputDateTime(shift.startTime));
-                setClockOutTime(toInputDateTime(shift.endTime));
+                setClockInTime(
+                  roundLocalDateTimeToMinuteStep(
+                    toInputDateTime(
+                      shift.startTime,
+                    ),
+                    minuteStep,
+                  ),
+                );
+                setClockOutTime(
+                  roundLocalDateTimeToMinuteStep(
+                    toInputDateTime(
+                      shift.endTime,
+                    ),
+                    minuteStep,
+                  ),
+                );
                 setClockNote("");
               }}
               className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
@@ -267,6 +396,12 @@ export function TimeRegistrationModal({
                   "V\u00e6lg faktisk m\u00f8detid"
                 }
               />
+              {clockInRoundingMessage ? (
+                <p className="text-xs leading-5 text-blue-700 dark:text-blue-300">
+                  {clockInRoundingMessage}
+                </p>
+              ) : null}
+
               <textarea
                 value={clockNote}
                 onChange={(event) => setClockNote(event.target.value)}
@@ -307,6 +442,12 @@ export function TimeRegistrationModal({
                   "V\u00e6lg faktisk fyraften"
                 }
               />
+              {clockOutRoundingMessage ? (
+                <p className="text-xs leading-5 text-blue-700 dark:text-blue-300">
+                  {clockOutRoundingMessage}
+                </p>
+              ) : null}
+
               <textarea
                 value={clockNote}
                 onChange={(event) => setClockNote(event.target.value)}
