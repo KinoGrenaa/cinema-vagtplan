@@ -32,8 +32,16 @@ export function useMyTimeEdit({ onSaved, onError }: UseMyTimeEditOptions) {
     setEditClockIn(toInputDateTime(entry.clockIn));
     setEditClockOut(toInputDateTime(entry.clockOut));
     setEditNote(getEntrySingleNote(entry));
-    setEditClockInNote(entry.clockInNote ?? "");
-    setEditClockOutNote(entry.clockOutNote ?? "");
+    setEditClockInNote(
+      entry.shift
+        ? ""
+        : entry.clockInNote ?? "",
+    );
+    setEditClockOutNote(
+      entry.shift
+        ? ""
+        : entry.clockOutNote ?? "",
+    );
   }
 
   function closeEdit() {

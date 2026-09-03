@@ -15,6 +15,7 @@ import {
   parseRequiredTimeEntryDate,
 } from './time-entry-date-helpers';
 import {
+  buildCombinedClockOutNote,
   ensureRequiredText,
   getTrimmedOptionalNote,
 } from './time-entry-note-helpers';
@@ -67,10 +68,6 @@ export function getOwnTimeEntryUpdateContext(
     data.clockOut,
     'Ugyldig fyraften',
   );
-  const newNote =
-    data.note === undefined
-      ? existingEntry.note ?? null
-      : getTrimmedOptionalNote(data.note);
   const newClockInNote =
     data.clockInNote === undefined
       ? existingEntry.clockInNote ?? null
@@ -79,6 +76,15 @@ export function getOwnTimeEntryUpdateContext(
     data.clockOutNote === undefined
       ? existingEntry.clockOutNote ?? null
       : getTrimmedOptionalNote(data.clockOutNote);
+  const newNote =
+    data.note !== undefined
+      ? getTrimmedOptionalNote(data.note)
+      : existingEntry.shift
+        ? buildCombinedClockOutNote(
+            newClockInNote,
+            newClockOutNote,
+          ) || null
+        : existingEntry.note ?? null;
 
   ensureClockOutAfterClockIn(newClockIn, newClockOut);
 

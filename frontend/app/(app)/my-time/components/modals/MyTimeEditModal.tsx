@@ -28,6 +28,43 @@ const inputClass =
 const focusClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
 
+const plannedComparisonTimeFormatter =
+  new Intl.DateTimeFormat(
+    "da-DK",
+    {
+      timeZone: "Europe/Copenhagen",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    },
+  );
+
+function formatPlannedComparisonTime(
+  value: string | undefined,
+  minuteStep: TimeEntryMinuteStep,
+) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  const stepMilliseconds =
+    minuteStep * 60 * 1000;
+  const roundedTimestamp =
+    Math.round(
+      date.getTime() /
+        stepMilliseconds,
+    ) *
+    stepMilliseconds;
+
+  return plannedComparisonTimeFormatter.format(
+    new Date(roundedTimestamp),
+  );
+}
+
 function formatReturnMessageActor(
   entry: TimeEntry,
 ) {
@@ -100,6 +137,35 @@ export default function MyTimeEditModal({
             </div>
           )}
 
+        {editingEntry.shift?.startTime &&
+          editingEntry.shift?.endTime && (
+            <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+              <p className="font-semibold">
+                Planlagt vagt
+              </p>
+              <p className="mt-1 text-lg font-bold">
+                {formatPlannedComparisonTime(
+                  editingEntry.shift.startTime,
+                  minuteStep,
+                )}{" "}
+                –
+                {" "}
+                {formatPlannedComparisonTime(
+                  editingEntry.shift.endTime,
+                  minuteStep,
+                )}
+              </p>
+              {editingEntry.shift.jobFunction
+                ?.name && (
+                <p className="mt-0.5 text-xs text-blue-700 dark:text-blue-300">
+                  {
+                    editingEntry.shift
+                      .jobFunction.name
+                  }
+                </p>
+              )}
+            </div>
+          )}
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="block text-sm font-medium text-gray-800 dark:text-gray-200">
             <span className="mb-1 block">

@@ -24,6 +24,8 @@ export type TimeEntry = {
     name: string;
   } | null;
   shift?: {
+    startTime?: string;
+    endTime?: string;
     jobFunction?: {
       name: string;
     } | null;
