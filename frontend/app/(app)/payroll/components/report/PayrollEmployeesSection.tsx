@@ -2,6 +2,8 @@
 
 import type { ComponentProps } from "react";
 
+import { formatDateDK } from "@/app/utils/dateTime";
+
 import PayrollEmployeeSummaryTable from "./PayrollEmployeeSummaryTable";
 import { formatDateTime, formatHours } from "../../utils";
 
@@ -112,8 +114,7 @@ export default function PayrollEmployeesSection({
                             <th className="p-2">Fyraften</th>
                             <th className="p-2 text-right">Timer</th>
                             <th className="p-2">Jobfunktion</th>
-                            <th className="p-2">Eksportkode</th>
-                            <th className="p-2">Navn</th>
+                            <th className="p-2">Løntype</th>
                             <th className="p-2">Afvigelse</th>
                             <th className="p-2">Låst</th>
                           </tr>
@@ -124,7 +125,9 @@ export default function PayrollEmployeesSection({
                               key={entry.id || `${employee.userId}-${index}`}
                               className="border-b border-gray-200 last:border-0 dark:border-gray-800"
                             >
-                              <td className="p-2">{entry.date}</td>
+                              <td className="p-2">
+                                {formatDateDK(entry.date)}
+                              </td>
                               <td className="p-2">
                                 {formatDateTime(entry.clockIn)}
                               </td>
@@ -134,9 +137,11 @@ export default function PayrollEmployeesSection({
                               <td className="p-2 text-right font-medium">
                                 {formatHours(entry.hours)}
                               </td>
-                              <td className="p-2">{entry.jobFunction}</td>
                               <td className="p-2">
-                                {entry.payrollCode || "-"}
+                                {entry.jobFunction &&
+                                entry.jobFunction !== "-"
+                                  ? entry.jobFunction
+                                  : "Manuel registrering"}
                               </td>
                               <td className="p-2">
                                 {entry.payrollName || "-"}
