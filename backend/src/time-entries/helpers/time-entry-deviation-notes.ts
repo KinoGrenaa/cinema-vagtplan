@@ -65,7 +65,11 @@ export function ensureApprovalDeviationNotes(data: {
     !hasText(data.note)
   ) {
     throw new BadRequestException(
-      'Tidsregistreringen har afvigelser og kræver en medarbejder-note før godkendelse',
+      data.deviation.types.includes(
+        'MANUAL_WITHOUT_SHIFT',
+      )
+        ? 'Den manuelle tidsregistrering kræver en medarbejder-note før godkendelse'
+        : 'Tidsregistreringen har afvigelser og kræver en medarbejder-note før godkendelse',
     );
   }
 }
@@ -104,7 +108,11 @@ export function ensureOwnTimeEntryDeviationNotes(data: {
     !hasText(data.clockOutNote)
   ) {
     throw new BadRequestException(
-      'Du skal skrive en note, når tiderne afviger fra vagtplanen',
+      data.deviation.types.includes(
+        'MANUAL_WITHOUT_SHIFT',
+      )
+        ? 'Du skal skrive en note ved manuel registrering uden vagt'
+        : 'Du skal skrive en note, når tiderne afviger fra vagtplanen',
     );
   }
 }

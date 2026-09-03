@@ -49,12 +49,15 @@ export default function TimeApprovalEntryNotes({
               )}
             </>
           )}
-          {!entry.clockInNote && !entry.clockOutNote && entry.note && (
-            <div>
-              <span className="font-semibold">Medarbejder note:</span>{" "}
-              {entry.note}
-            </div>
-          )}
+          {entry.shift &&
+            !entry.clockInNote &&
+            !entry.clockOutNote &&
+            entry.note && (
+              <div>
+                <span className="font-semibold">Medarbejder note:</span>{" "}
+                {entry.note}
+              </div>
+            )}
         </div>
       )}
       {showAdminNote && entry.adminNote && (

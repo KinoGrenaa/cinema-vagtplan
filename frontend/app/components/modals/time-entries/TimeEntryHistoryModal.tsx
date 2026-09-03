@@ -157,7 +157,7 @@ function statusLabel(
     case "APPROVED":
       return "Godkendt";
     case "NEEDS_CHANGES":
-      return "Kræver handling";
+      return "Skal rettes";
     case "VOIDED":
       return "Afvist";
     default:
