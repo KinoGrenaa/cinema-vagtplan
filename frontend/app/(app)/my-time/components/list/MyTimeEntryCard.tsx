@@ -23,7 +23,7 @@ function getStatusBadgeClass(status: TimeEntry["status"]) {
   }
 
   if (status === "NEEDS_CHANGES") {
-    return "border-orange-300 bg-orange-100 text-orange-900 dark:border-orange-800 dark:bg-orange-950/70 dark:text-orange-200";
+    return "border-orange-600 bg-orange-600 text-white dark:border-orange-500 dark:bg-orange-500 dark:text-gray-950";
   }
 
   if (status === "VOIDED") {

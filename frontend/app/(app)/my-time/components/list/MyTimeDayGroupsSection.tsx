@@ -30,7 +30,7 @@ function getSummaryPartClass(part: string) {
   }
 
   if (part.startsWith("Kræver handling:")) {
-    return `${baseClass} border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-200`;
+    return `${baseClass} border-orange-600 bg-orange-600 text-white dark:border-orange-500 dark:bg-orange-500 dark:text-gray-950`;
   }
 
   if (part.startsWith("Afvist/annulleret:")) {
