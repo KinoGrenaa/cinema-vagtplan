@@ -1,3 +1,8 @@
+import {
+  MANUAL_ENTRY_PAYROLL_CODE,
+  MANUAL_ENTRY_PAYROLL_NAME,
+} from '../../payroll-types/helpers/payroll-type-system';
+
 export type PayrollData = {
   payrollCode: string;
   exportCode: string;
@@ -12,7 +17,6 @@ export type PayrollExportSegment = {
 
 export function resolvePayrollData(timeEntry: any): PayrollData {
   const directPayrollType = timeEntry.payrollType;
-
   if (directPayrollType) {
     return {
       payrollCode: directPayrollType.payrollCode,
@@ -22,7 +26,6 @@ export function resolvePayrollData(timeEntry: any): PayrollData {
   }
 
   const jobFunctionExportCode = timeEntry.shift?.jobFunction?.defaultPayrollExportCode;
-
   if (jobFunctionExportCode) {
     return {
       payrollCode: jobFunctionExportCode.payrollCode,
@@ -31,7 +34,18 @@ export function resolvePayrollData(timeEntry: any): PayrollData {
     };
   }
 
-  const fallbackName = timeEntry.shift?.jobFunctionNameSnapshot || timeEntry.shift?.jobFunction?.name || 'Standard';
+  if (!timeEntry.shift) {
+    return {
+      payrollCode: MANUAL_ENTRY_PAYROLL_CODE,
+      exportCode: MANUAL_ENTRY_PAYROLL_CODE,
+      payrollName: MANUAL_ENTRY_PAYROLL_NAME,
+    };
+  }
+
+  const fallbackName =
+    timeEntry.shift?.jobFunctionNameSnapshot ||
+    timeEntry.shift?.jobFunction?.name ||
+    'Vagt';
 
   return {
     payrollCode: fallbackName.toUpperCase(),

@@ -372,8 +372,8 @@ export async function withPayrollTypeCinemaLock<T>(
     async (transaction) => {
       await transaction.$executeRaw`
         SELECT pg_advisory_xact_lock(
-          ${PAYROLL_TYPE_LOCK_NAMESPACE},
-          ${cinemaId}
+          CAST(${PAYROLL_TYPE_LOCK_NAMESPACE} AS integer),
+          CAST(${cinemaId} AS integer)
         )
       `;
 

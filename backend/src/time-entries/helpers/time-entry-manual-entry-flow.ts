@@ -1,4 +1,7 @@
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
+import {
+  ensureManualEntryPayrollType,
+} from '../../payroll-types/helpers/payroll-type-system';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { ensureTimeEntryCreationPeriodWritable } from './time-entry-creation-payroll-access';
@@ -45,6 +48,7 @@ export async function submitManualTimeEntry(params: {
     auditLogsService,
     data,
   } = params;
+
   const clockIn = parseRequiredTimeEntryDate(
     data.clockIn,
     'Ugyldig mødetid eller fyraften',
@@ -53,8 +57,15 @@ export async function submitManualTimeEntry(params: {
     data.clockOut,
     'Ugyldig mødetid eller fyraften',
   );
-
   ensureClockOutAfterClockIn(clockIn, clockOut);
+
+  const manualEntryPayrollType =
+    data.shiftId
+      ? null
+      : await ensureManualEntryPayrollType(
+          prisma,
+          data.cinemaId,
+        );
 
   const result = await prisma.$transaction(
     async (tx) => {
@@ -73,7 +84,6 @@ export async function submitManualTimeEntry(params: {
         data.userId,
         'Du kan kun indsende timer for dine egne vagter',
       );
-
       await ensureTimeEntryCreationPeriodWritable(
         tx,
         {
@@ -82,7 +92,6 @@ export async function submitManualTimeEntry(params: {
             shift?.startTime ?? clockIn,
         },
       );
-
       await ensureNoOverlappingManualTimeEntry(
         txPrisma,
         {
@@ -126,7 +135,6 @@ export async function submitManualTimeEntry(params: {
           clockInNote,
           clockOutNote,
         });
-
         await ensureNoExistingEntryForShift(
           txPrisma,
           {
@@ -147,7 +155,6 @@ export async function submitManualTimeEntry(params: {
               requireNoteForManualEntry: true,
             },
           });
-
         const deviation =
           analyzeTimeEntryDeviation(
             {
@@ -173,7 +180,9 @@ export async function submitManualTimeEntry(params: {
           cinemaId: data.cinemaId,
           shiftId: shift?.id || null,
           payrollTypeId:
-            shift?.jobFunction?.defaultPayrollExportCodeId || null,
+            shift?.jobFunction?.defaultPayrollExportCodeId ??
+            manualEntryPayrollType?.id ??
+            null,
           clockIn,
           clockOut,
           note,

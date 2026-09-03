@@ -245,6 +245,29 @@ describe('payroll type access and input', () => {
     expect(
       transaction.$executeRaw,
     ).toHaveBeenCalledTimes(1);
+
+    const [
+      lockTemplate,
+      lockNamespace,
+      lockCinemaId,
+    ] =
+      transaction.$executeRaw.mock.calls[0];
+
+    expect(
+      Array.from(lockTemplate).join(""),
+    ).toContain(
+      "CAST(",
+    );
+    expect(
+      Array.from(lockTemplate).join(""),
+    ).toContain(
+      "AS integer",
+    );
+    expect(lockNamespace).toBe(
+      1_348_797_556,
+    );
+    expect(lockCinemaId).toBe(7);
+
     expect(action).toHaveBeenCalledWith(
       transaction,
     );

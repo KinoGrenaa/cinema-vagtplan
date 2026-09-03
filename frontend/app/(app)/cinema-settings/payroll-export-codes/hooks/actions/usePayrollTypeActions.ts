@@ -95,7 +95,6 @@ export function usePayrollTypeActions({
           await readErrorMessage(response, "Kunne ikke opdatere eksportkode"),
         );
       }
-
       await fetchPayrollTypes();
     } catch (error) {
       showError(
@@ -113,7 +112,6 @@ export function usePayrollTypeActions({
           isDefault: true,
         }),
       });
-
       if (!response.ok) {
         throw new Error(
           await readErrorMessage(response, "Kunne ikke vælge standardeksportkode"),
@@ -125,6 +123,45 @@ export function usePayrollTypeActions({
       showError(
         "Kunne ikke vælge standardeksportkode",
         getErrorMessage(error, "Standardeksportkode kunne ikke vælges. Prøv igen."),
+      );
+    }
+  }
+
+  async function updateSystemExportCode(
+    payrollType: PayrollType,
+    nextExportCode: string,
+  ) {
+    try {
+      const response = await apiFetch(
+        `/payroll-types/${payrollType.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            exportCode: nextExportCode,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(
+            response,
+            "Kunne ikke gemme eksportkode til manuel registrering",
+          ),
+        );
+      }
+
+      await fetchPayrollTypes();
+      toast.success(
+        "Eksportkode til manuel registrering gemt",
+      );
+    } catch (error) {
+      showError(
+        "Kunne ikke gemme eksportkode",
+        getErrorMessage(
+          error,
+          "Eksportkoden til manuel registrering kunne ikke gemmes. Prøv igen.",
+        ),
       );
     }
   }
@@ -141,7 +178,6 @@ export function usePayrollTypeActions({
           const response = await apiFetch(`/payroll-types/${id}`, {
             method: "DELETE",
           });
-
           if (!response.ok) {
             throw new Error(
               await readErrorMessage(response, "Kunne ikke slette eksportkode"),
@@ -179,5 +215,6 @@ export function usePayrollTypeActions({
     setName,
     setPayrollCode,
     toggleActive,
+    updateSystemExportCode,
   };
 }

@@ -5,6 +5,9 @@ import {
   ensurePayrollTypeAdmin,
   getRequiredPayrollTypeCinemaId,
 } from './payroll-type-access';
+import {
+  ensureManualEntryPayrollType,
+} from './payroll-type-system';
 
 export async function findPayrollTypes(
   prisma: PrismaService,
@@ -14,6 +17,11 @@ export async function findPayrollTypes(
   ensurePayrollTypeAdmin(user);
 
   const cinemaId = getRequiredPayrollTypeCinemaId(user, selectedCinemaId);
+
+  await ensureManualEntryPayrollType(
+    prisma,
+    cinemaId,
+  );
 
   return prisma.payrollType.findMany({
     where: {

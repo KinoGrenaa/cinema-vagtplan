@@ -18,6 +18,9 @@ type PayrollTypeCreateFormProps = {
   onCreate: () => void;
 };
 
+const fieldClassName =
+  "rounded-xl border border-gray-300 bg-white p-3 text-gray-900 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500";
+
 export function PayrollTypeCreateForm({
   name,
   setName,
@@ -36,38 +39,40 @@ export function PayrollTypeCreateForm({
   onCreate,
 }: PayrollTypeCreateFormProps) {
   return (
-    <section className="rounded-2xl bg-white p-6 shadow">
-      <h2 className="mb-4 text-2xl font-bold">Opret eksportkode</h2>
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
+        Opret eksportkode
+      </h2>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <input
           type="text"
           placeholder="Navn"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="rounded-xl border p-3"
+          className={fieldClassName}
         />
         <input
           type="text"
           placeholder="Lønkode"
           value={payrollCode}
           onChange={(event) => setPayrollCode(event.target.value)}
-          className="rounded-xl border p-3"
+          className={fieldClassName}
         />
         <input
           type="text"
           placeholder="Eksportkode"
           value={exportCode}
           onChange={(event) => setExportCode(event.target.value)}
-          className="rounded-xl border p-3"
+          className={fieldClassName}
         />
         <input
           type="text"
           placeholder="Beskrivelse"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          className="rounded-xl border p-3"
+          className={fieldClassName}
         />
-        <label className="flex items-center gap-3 rounded-xl border p-3">
+        <label className="flex items-center gap-3 rounded-xl border border-gray-300 bg-white p-3 dark:border-gray-700 dark:bg-gray-950">
           <span className="text-sm font-medium">Farve</span>
           <input
             type="color"
@@ -76,7 +81,7 @@ export function PayrollTypeCreateForm({
             className="h-10 w-16"
           />
         </label>
-        <label className="flex items-center gap-3 rounded-xl border p-3">
+        <label className="flex items-center gap-3 rounded-xl border border-gray-300 bg-white p-3 dark:border-gray-700 dark:bg-gray-950">
           <input
             type="checkbox"
             checked={isDefault}
@@ -88,12 +93,12 @@ export function PayrollTypeCreateForm({
       <button
         onClick={onCreate}
         disabled={saving || !name || !payrollCode}
-        className="mt-6 rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400"
+        className="mt-6 rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
       >
         {saving ? "Gemmer..." : "Opret eksportkode"}
       </button>
       {message && (
-        <div className="mt-4 rounded-xl bg-gray-100 p-4 text-sm">
+        <div className="mt-4 rounded-xl bg-gray-100 p-4 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
           {message}
         </div>
       )}

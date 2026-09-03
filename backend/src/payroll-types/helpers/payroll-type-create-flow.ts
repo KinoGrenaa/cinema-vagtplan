@@ -13,6 +13,9 @@ import {
   type AuthUser,
   type PayrollTypeCreateData,
 } from './payroll-type-access';
+import {
+  ensureUserManagedPayrollTypeCode,
+} from './payroll-type-system';
 
 export async function createPayrollType(
   prisma: PrismaService,
@@ -20,7 +23,6 @@ export async function createPayrollType(
   data: PayrollTypeCreateData,
 ) {
   ensurePayrollTypeAdmin(user);
-
   const cinemaId =
     getRequiredPayrollTypeCinemaId(
       user,
@@ -33,6 +35,10 @@ export async function createPayrollType(
     normalizePayrollTypeCode(
       data?.payrollCode,
     );
+  ensureUserManagedPayrollTypeCode(
+    payrollCode,
+  );
+
   const exportCode =
     normalizeOptionalExportCode(
       data?.exportCode,

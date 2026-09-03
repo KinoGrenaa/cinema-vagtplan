@@ -19,6 +19,12 @@ import {
   type CinemaContextValue,
   type PayrollTypeUpdateData,
 } from './payroll-type-access';
+import {
+  ensureManualEntryPayrollTypeRemovable,
+  ensureManualEntryPayrollTypeUpdateAllowed,
+  ensureUserManagedPayrollTypeCode,
+  isManualEntryPayrollType,
+} from './payroll-type-system';
 
 export async function updatePayrollType(
   prisma: PrismaService,
@@ -28,7 +34,6 @@ export async function updatePayrollType(
   selectedCinemaId?: CinemaContextValue,
 ) {
   ensurePayrollTypeAdmin(user);
-
   const cinemaId =
     getRequiredPayrollTypeCinemaId(
       user,
@@ -75,6 +80,20 @@ export async function updatePayrollType(
           id,
           cinemaId,
         );
+
+      ensureManualEntryPayrollTypeUpdateAllowed(
+        existing,
+        data,
+      );
+
+      if (
+        payrollCode !== undefined &&
+        !isManualEntryPayrollType(existing)
+      ) {
+        ensureUserManagedPayrollTypeCode(
+          payrollCode,
+        );
+      }
 
       if (
         payrollCode !== undefined &&
@@ -176,6 +195,10 @@ export async function removePayrollType(
           id,
           cinemaId,
         );
+
+      ensureManualEntryPayrollTypeRemovable(
+        existing,
+      );
 
       await ensurePayrollTypeUnused(
         transaction,

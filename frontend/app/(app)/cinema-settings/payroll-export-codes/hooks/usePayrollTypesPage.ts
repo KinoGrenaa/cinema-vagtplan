@@ -13,7 +13,6 @@ export function usePayrollTypesPage() {
   const data = usePayrollTypesData({
     showError: infoDialog.showError,
   });
-
   const actions = usePayrollTypeActions({
     confirm: confirmDialog.confirm,
     fetchPayrollTypes: data.fetchPayrollTypes,
@@ -42,6 +41,7 @@ export function usePayrollTypesPage() {
     createPayrollType: actions.createPayrollType,
     toggleActive: actions.toggleActive,
     setDefault: actions.setDefault,
+    updateSystemExportCode: actions.updateSystemExportCode,
     removePayrollType: actions.removePayrollType,
   };
 }

@@ -3,6 +3,7 @@
 import AdminGuard from "@/app/components/access/AdminGuard";
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
+
 import { PayrollTypeCreateForm } from "./components/form/PayrollTypeCreateForm";
 import { PayrollTypesHeader } from "./components/layout/PayrollTypesHeader";
 import { PayrollTypesTable } from "./components/list/PayrollTypesTable";
@@ -31,12 +32,13 @@ export default function PayrollTypesPage() {
     createPayrollType,
     toggleActive,
     setDefault,
+    updateSystemExportCode,
     removePayrollType,
   } = usePayrollTypesPage();
 
   return (
     <AdminGuard>
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 md:p-8">
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:p-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <PayrollTypesHeader />
           <PayrollTypeCreateForm
@@ -61,10 +63,12 @@ export default function PayrollTypesPage() {
             loading={loading}
             onToggleActive={toggleActive}
             onSetDefault={setDefault}
+            onUpdateSystemExportCode={updateSystemExportCode}
             onRemovePayrollType={removePayrollType}
           />
         </div>
       </main>
+
       <ConfirmModal
         open={confirmDialog.open}
         title={confirmDialog.title}
