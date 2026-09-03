@@ -147,7 +147,13 @@ export default function PayrollEmployeesSection({
                                 {entry.payrollName || "-"}
                               </td>
                               <td className="p-2">
-                                {entry.deviation?.hasDeviation ? (
+                                {entry.deviation?.types.includes(
+                                  "MANUAL_WITHOUT_SHIFT",
+                                ) ? (
+                                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                    Ikke relevant
+                                  </span>
+                                ) : entry.deviation?.hasDeviation ? (
                                   <div className="space-y-1 text-xs font-medium text-amber-700 dark:text-amber-400">
                                     {entry.deviation.messages.length > 0 ? (
                                       entry.deviation.messages.map(

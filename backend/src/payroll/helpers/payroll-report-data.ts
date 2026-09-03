@@ -107,6 +107,7 @@ export async function buildPayrollReportData(
       payrollType: true,
       cinema: {
         select: {
+          requireNoteForManualEntry: true,
           timeEntryMinuteStep: true,
         },
       },

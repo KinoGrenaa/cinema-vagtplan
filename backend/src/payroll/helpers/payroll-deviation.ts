@@ -96,8 +96,10 @@ export function analyzePayrollTimeEntryDeviation(
 
   if (!shift) {
     return {
-      hasDeviation: true,
-      requiresNote: true,
+      hasDeviation: false,
+      requiresNote:
+        entry.cinema?.requireNoteForManualEntry ??
+        true,
       types: ['MANUAL_WITHOUT_SHIFT'],
       plannedMinutes: null,
       registeredMinutes: minutesBetween(entry.clockIn, entry.clockOut),

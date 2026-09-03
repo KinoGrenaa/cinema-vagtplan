@@ -84,7 +84,7 @@ export function analyzeTimeEntryDeviation(
 
   if (!shift) {
     return {
-      hasDeviation: true,
+      hasDeviation: false,
       requiresNote: requireNoteForManualEntry,
       types: ['MANUAL_WITHOUT_SHIFT'],
       plannedMinutes: null,

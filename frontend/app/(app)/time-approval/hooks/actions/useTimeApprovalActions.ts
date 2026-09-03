@@ -428,6 +428,7 @@ export function useTimeApprovalActions({
           "Timeregistrering godkendt som efterregulering",
         );
       } else if (
+        entry.shift &&
         entry.deviation
           ?.hasDeviation
       ) {
