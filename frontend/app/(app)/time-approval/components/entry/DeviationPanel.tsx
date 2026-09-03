@@ -1,5 +1,9 @@
 import type { TimeEntry } from "../../types";
-import { formatDateTime, formatMinutes } from "../../utils";
+import {
+  formatDateTime,
+  formatDurationMinutes,
+  formatMinutes,
+} from "../../utils";
 
 export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
   const deviation = entry.deviation;
@@ -84,18 +88,25 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
 
       {!isManualEntry && (
         <div className="mt-3 grid gap-1 text-xs opacity-80 sm:grid-cols-2">
-          <div>Planlagt tid: {formatMinutes(deviation.plannedMinutes)}</div>
           <div>
-            Registreret tid: {formatMinutes(deviation.registeredMinutes)}
+            Planlagt arbejdstid:{" "}
+            {formatDurationMinutes(deviation.plannedMinutes)}
+          </div>
+          <div>
+            Registreret arbejdstid:{" "}
+            {formatDurationMinutes(deviation.registeredMinutes)}
           </div>
           <div>Difference: {formatMinutes(deviation.differenceMinutes)}</div>
-          <div>
-            Mødetidsafvigelse:{" "}
-            {formatMinutes(deviation.clockInDeviationMinutes)}
-          </div>
-          <div>
-            Fyraftensafvigelse:{" "}
-            {formatMinutes(deviation.clockOutDeviationMinutes)}
+          <div className="flex flex-wrap items-center gap-x-2">
+            <span>
+              Mødetidsafvigelse:{" "}
+              {formatMinutes(deviation.clockInDeviationMinutes)}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>
+              Fyraftensafvigelse:{" "}
+              {formatMinutes(deviation.clockOutDeviationMinutes)}
+            </span>
           </div>
         </div>
       )}

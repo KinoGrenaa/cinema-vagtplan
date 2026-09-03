@@ -53,6 +53,24 @@ export function formatMinutes(value: number | null | undefined) {
   return `${sign}${value} min`;
 }
 
+export function formatDurationMinutes(
+  value: number | null | undefined,
+) {
+  if (value === null || value === undefined) return "-";
+
+  const roundedMinutes = Math.round(value);
+  const sign = roundedMinutes < 0 ? "-" : "";
+  const totalMinutes = Math.abs(roundedMinutes);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${sign}${minutes} min`;
+  }
+
+  return `${sign}${hours} t ${String(minutes).padStart(2, "0")} min`;
+}
+
 export async function readErrorMessage(response: Response, fallback: string) {
   try {
     const text = await response.text();
