@@ -55,11 +55,13 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
             {deviation.hasDeviation ? "Afvigelse" : "OK"}
           </span>
         )}
-        {!isManualEntry && deviation.requiresNote && (
-          <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-semibold text-red-900 dark:bg-red-900 dark:text-red-100">
-            Kræver note
-          </span>
-        )}
+        {!isManualEntry &&
+          deviation.requiresNote &&
+          !(entry.clockInNote || entry.clockOutNote || entry.note) && (
+            <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-semibold text-red-900 dark:bg-red-900 dark:text-red-100">
+              Mangler note
+            </span>
+          )}
       </div>
 
       <div className="grid gap-1">

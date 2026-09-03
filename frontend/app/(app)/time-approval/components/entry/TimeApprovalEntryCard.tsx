@@ -212,10 +212,17 @@ export default function TimeApprovalEntryCard({
   const isManual = !entry.shift;
   const hasDeviation = Boolean(entry.shift && entry.deviation?.hasDeviation);
   const isAutomatic = Boolean(entry.automaticClockIn || entry.automaticClockOut);
-  const hasNote = Boolean(
-    entry.clockInNote || entry.clockOutNote || entry.note || entry.adminNote,
+  const hasEmployeeNote = Boolean(
+    entry.clockInNote || entry.clockOutNote || entry.note,
   );
-  const requiresNote = Boolean(entry.shift && entry.deviation?.requiresNote);
+  const hasNote = Boolean(
+    hasEmployeeNote || entry.adminNote,
+  );
+  const missingRequiredNote = Boolean(
+    entry.shift &&
+      entry.deviation?.requiresNote &&
+      !hasEmployeeNote,
+  );
   const isOpenEntry = !entry.clockOut;
 
   return (
@@ -278,9 +285,9 @@ export default function TimeApprovalEntryCard({
               </SummaryBadge>
             )}
 
-            {requiresNote && (
+            {missingRequiredNote && (
               <SummaryBadge className="bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200">
-                Kræver note
+                Mangler note
               </SummaryBadge>
             )}
 
