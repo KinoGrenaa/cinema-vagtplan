@@ -57,19 +57,21 @@ export function ensureApprovalDeviationNotes(data: {
   clockInNote?: string | null;
   clockOutNote?: string | null;
   note?: string | null;
+  adminNote?: string | null;
 }) {
   if (
     data.deviation.requiresNote &&
     !hasText(data.clockInNote) &&
     !hasText(data.clockOutNote) &&
-    !hasText(data.note)
+    !hasText(data.note) &&
+    !hasText(data.adminNote)
   ) {
     throw new BadRequestException(
       data.deviation.types.includes(
         'MANUAL_WITHOUT_SHIFT',
       )
-        ? 'Den manuelle tidsregistrering kræver en medarbejder-note før godkendelse'
-        : 'Tidsregistreringen har afvigelser og kræver en medarbejder-note før godkendelse',
+        ? 'Den manuelle tidsregistrering kræver en medarbejder- eller admin-note før godkendelse'
+        : 'Tidsregistreringen har afvigelser og kræver en medarbejder- eller admin-note før godkendelse',
     );
   }
 }

@@ -15,7 +15,7 @@ const panel = readFileSync(
 );
 
 test(
-  "oversigtsrækken viser Mangler note kun når en påkrævet medarbejdernote faktisk mangler",
+  "oversigtsrækken viser Mangler note kun når både medarbejder- og adminnote mangler",
   () => {
     assert.match(
       card,
@@ -24,7 +24,7 @@ test(
 
     assert.match(
       card,
-      /const missingRequiredNote = Boolean\([\s\S]*entry\.deviation\?\.requiresNote[\s\S]*!hasEmployeeNote[\s\S]*\)/,
+      /const missingRequiredNote = Boolean\([\s\S]*entry\.deviation\?\.requiresNote[\s\S]*!hasNote[\s\S]*\)/,
     );
 
     assert.match(
@@ -40,11 +40,11 @@ test(
 );
 
 test(
-  "afvigelsespanelet viser ikke manglende-note badge når medarbejdernoten findes",
+  "afvigelsespanelet viser ikke Mangler note når medarbejder- eller adminnote findes",
   () => {
     assert.match(
       panel,
-      /!isManualEntry &&[\s\S]*deviation\.requiresNote &&[\s\S]*!\(entry\.clockInNote \|\| entry\.clockOutNote \|\| entry\.note\)/,
+      /!isManualEntry &&[\s\S]*deviation\.requiresNote &&[\s\S]*entry\.clockInNote[\s\S]*entry\.clockOutNote[\s\S]*entry\.note[\s\S]*entry\.adminNote/,
     );
 
     assert.match(

@@ -119,6 +119,7 @@ export function ensureTimeEntryCanBeApproved(
     clockInNote: existingEntry.clockInNote,
     clockOutNote: existingEntry.clockOutNote,
     note: existingEntry.note,
+    adminNote: existingEntry.adminNote,
   });
 }
 

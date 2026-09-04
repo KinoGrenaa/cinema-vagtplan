@@ -221,7 +221,7 @@ export default function TimeApprovalEntryCard({
   const missingRequiredNote = Boolean(
     entry.shift &&
       entry.deviation?.requiresNote &&
-      !hasEmployeeNote,
+      !hasNote,
   );
   const isOpenEntry = !entry.clockOut;
 

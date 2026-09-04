@@ -57,7 +57,12 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
         )}
         {!isManualEntry &&
           deviation.requiresNote &&
-          !(entry.clockInNote || entry.clockOutNote || entry.note) && (
+          !(
+            entry.clockInNote ||
+            entry.clockOutNote ||
+            entry.note ||
+            entry.adminNote
+          ) && (
             <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-semibold text-red-900 dark:bg-red-900 dark:text-red-100">
               Mangler note
             </span>

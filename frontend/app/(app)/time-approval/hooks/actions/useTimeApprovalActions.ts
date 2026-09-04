@@ -233,12 +233,18 @@ export function useTimeApprovalActions({
       return;
     }
 
-    const hasChanges =
+    const hasTimeChanges =
       data.clockIn !==
         editEntry.clockIn ||
       (data.clockOut ?? null) !==
         (editEntry.clockOut ??
           null);
+    const hasAdminNoteChange =
+      data.adminNote.trim() !==
+        (editEntry.adminNote ?? "").trim();
+    const hasChanges =
+      hasTimeChanges ||
+      hasAdminNoteChange;
 
     if (!hasChanges) {
       errorDialog.confirm({
@@ -276,23 +282,42 @@ export function useTimeApprovalActions({
           : "-"
       }`;
 
+    const isNoteOnlyChange =
+      !hasTimeChanges &&
+      hasAdminNoteChange;
+
     errorDialog.confirm({
-      title: "Bekræft rettelse",
-      description: [
-        "Du er ved at rette en tidsregistrering.",
-        "",
-        "Medarbejder:",
-        employeeName,
-        "",
-        "Tidligere registrering:",
-        oldTime,
-        "",
-        "Ny registrering:",
-        newTime,
-        "",
-        "Ændringen gemmes i historikken.",
-      ].join("\n"),
-      confirmText: "Gem rettelse",
+      title: isNoteOnlyChange
+        ? "Bekræft admin-note"
+        : "Bekræft rettelse",
+      description: isNoteOnlyChange
+        ? [
+            "Du er ved at gemme en admin-note til tidsregistreringen.",
+            "",
+            "Medarbejder:",
+            employeeName,
+            "",
+            "Tiderne ændres ikke.",
+            "",
+            "Noten gemmes i historikken og kan opfylde notekravet ved godkendelse.",
+          ].join("\n")
+        : [
+            "Du er ved at rette en tidsregistrering.",
+            "",
+            "Medarbejder:",
+            employeeName,
+            "",
+            "Tidligere registrering:",
+            oldTime,
+            "",
+            "Ny registrering:",
+            newTime,
+            "",
+            "Ændringen gemmes i historikken.",
+          ].join("\n"),
+      confirmText: isNoteOnlyChange
+        ? "Gem note"
+        : "Gem rettelse",
       cancelText: "Annuller",
       confirmVariant: "primary",
       onConfirm: async () => {
