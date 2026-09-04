@@ -233,6 +233,74 @@ function valueChanged(
   );
 }
 
+function normalizeHistoryNote(
+  value?: string | null,
+) {
+  return value?.trim() || "";
+}
+
+function buildDerivedClockNote(
+  clockInNote?: string | null,
+  clockOutNote?: string | null,
+) {
+  const meetingNote =
+    normalizeHistoryNote(
+      clockInNote,
+    );
+  const finishNote =
+    normalizeHistoryNote(
+      clockOutNote,
+    );
+
+  return [
+    meetingNote || null,
+    finishNote
+      ? `Fyraften: ${finishNote}`
+      : null,
+  ]
+    .filter(
+      (note): note is string =>
+        Boolean(note),
+    )
+    .join("\n\n");
+}
+
+function isDerivedClockNoteChange(
+  revision:
+    TimeEntryRevision,
+) {
+  const specificNoteChanged =
+    valueChanged(
+      revision.previousClockInNote,
+      revision.newClockInNote,
+    ) ||
+    valueChanged(
+      revision.previousClockOutNote,
+      revision.newClockOutNote,
+    );
+
+  if (!specificNoteChanged) {
+    return false;
+  }
+
+  return (
+    normalizeHistoryNote(
+      revision.previousNote,
+    ) ===
+      buildDerivedClockNote(
+        revision.previousClockInNote,
+        revision.previousClockOutNote,
+      ) &&
+    normalizeHistoryNote(
+      revision.newNote,
+    ) ===
+      buildDerivedClockNote(
+        revision.newClockInNote,
+        revision.newClockOutNote,
+      )
+  );
+}
+
 function realMessage(
   revision:
     TimeEntryRevision,
@@ -297,6 +365,17 @@ function realMessage(
   }
 
   return null;
+}
+
+function revisionStartsExpanded(
+  action:
+    TimeEntryRevisionAction,
+) {
+  return (
+    action === "NEEDS_CHANGES" ||
+    action === "SENT_BACK" ||
+    action === "VOIDED"
+  );
 }
 
 function ChangeRow({
@@ -449,15 +528,22 @@ export default function TimeEntryHistoryModal({
                     realMessage(
                       revision,
                     );
+                  const startsExpanded =
+                    revisionStartsExpanded(
+                      revision.action,
+                    );
 
                   return (
-                    <article
+                    <details
                       key={
                         revision.id
                       }
-                      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900"
+                      open={
+                        startsExpanded
+                      }
+                      className="group overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <summary className="flex cursor-pointer list-none flex-col gap-2 p-4 outline-none transition hover:bg-gray-50 focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-blue-500/20 dark:hover:bg-gray-800/60 dark:focus-visible:ring-blue-400/25 [&::-webkit-details-marker]:hidden sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="font-semibold text-gray-950 dark:text-white">
                             {actionTitle(
@@ -475,158 +561,180 @@ export default function TimeEntryHistoryModal({
                           </p>
                         </div>
 
-                        <time className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                          {formatDateTime(
-                            revision.createdAt,
-                          )}
-                        </time>
-                      </div>
+                        <div className="flex items-center gap-3 sm:ml-4">
+                          <time className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            {formatDateTime(
+                              revision.createdAt,
+                            )}
+                          </time>
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {isCreated ? (
-                          <>
-                            <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
-                              <p className="font-semibold text-gray-600 dark:text-gray-300">
-                                Arbejdstid
-                              </p>
-                              <p className="mt-1 text-gray-950 dark:text-white">
-                                {formatTime(
-                                  revision.newClockIn,
-                                )}{" "}
-                                –{" "}
-                                {formatTime(
-                                  revision.newClockOut,
+                          <span className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                            <span className="group-open:hidden">
+                              Vis detaljer
+                            </span>
+                            <span className="hidden group-open:inline">
+                              Skjul detaljer
+                            </span>
+                            <span
+                              aria-hidden="true"
+                              className="text-sm transition-transform group-open:rotate-180"
+                            >
+                              ▾
+                            </span>
+                          </span>
+                        </div>
+                      </summary>
+
+                      <div className="border-t border-gray-200 px-4 pb-4 dark:border-gray-700">
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          {isCreated ? (
+                            <>
+                              <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                                <p className="font-semibold text-gray-600 dark:text-gray-300">
+                                  Arbejdstid
+                                </p>
+                                <p className="mt-1 text-gray-950 dark:text-white">
+                                  {formatTime(
+                                    revision.newClockIn,
+                                  )}{" "}
+                                  –{" "}
+                                  {formatTime(
+                                    revision.newClockOut,
+                                  )}
+                                </p>
+                              </div>
+                              {revision.newNote &&
+                                revision.newNote.trim() && (
+                                  <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                                    <p className="font-semibold text-gray-600 dark:text-gray-300">
+                                      Note / begrundelse
+                                    </p>
+                                    <p className="mt-1 whitespace-pre-wrap text-gray-950 dark:text-white">
+                                      {revision.newNote}
+                                    </p>
+                                  </div>
                                 )}
-                              </p>
-                            </div>
-                            {revision.newNote &&
-                              revision.newNote.trim() && (
-                                <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
-                                  <p className="font-semibold text-gray-600 dark:text-gray-300">
-                                    Note / begrundelse
-                                  </p>
-                                  <p className="mt-1 whitespace-pre-wrap text-gray-950 dark:text-white">
-                                    {revision.newNote}
-                                  </p>
-                                </div>
+                            </>
+                          ) : (
+                            <>
+                              {revision.previousStatus !==
+                                revision.newStatus && (
+                                <ChangeRow
+                                  label="Status"
+                                  previousValue={statusLabel(
+                                    revision.previousStatus,
+                                  )}
+                                  newValue={statusLabel(
+                                    revision.newStatus,
+                                  )}
+                                />
                               )}
-                          </>
-                        ) : (
-                          <>
-                            {revision.previousStatus !==
-                              revision.newStatus && (
-                              <ChangeRow
-                                label="Status"
-                                previousValue={statusLabel(
-                                  revision.previousStatus,
-                                )}
-                                newValue={statusLabel(
-                                  revision.newStatus,
-                                )}
-                              />
-                            )}
 
-                            {valueChanged(
-                              revision.previousClockIn,
-                              revision.newClockIn,
-                            ) && (
-                              <ChangeRow
-                                label="Mødetid"
-                                previousValue={formatTime(
-                                  revision.previousClockIn,
-                                )}
-                                newValue={formatTime(
-                                  revision.newClockIn,
-                                )}
-                              />
-                            )}
+                              {valueChanged(
+                                revision.previousClockIn,
+                                revision.newClockIn,
+                              ) && (
+                                <ChangeRow
+                                  label="Mødetid"
+                                  previousValue={formatTime(
+                                    revision.previousClockIn,
+                                  )}
+                                  newValue={formatTime(
+                                    revision.newClockIn,
+                                  )}
+                                />
+                              )}
 
-                            {valueChanged(
-                              revision.previousClockOut,
-                              revision.newClockOut,
-                            ) && (
-                              <ChangeRow
-                                label="Fyraften"
-                                previousValue={formatTime(
-                                  revision.previousClockOut,
-                                )}
-                                newValue={formatTime(
-                                  revision.newClockOut,
-                                )}
-                              />
-                            )}
+                              {valueChanged(
+                                revision.previousClockOut,
+                                revision.newClockOut,
+                              ) && (
+                                <ChangeRow
+                                  label="Fyraften"
+                                  previousValue={formatTime(
+                                    revision.previousClockOut,
+                                  )}
+                                  newValue={formatTime(
+                                    revision.newClockOut,
+                                  )}
+                                />
+                              )}
 
-                            {valueChanged(
-                              revision.previousNote,
-                              revision.newNote,
-                            ) && (
-                              <ChangeRow
-                                label="Note / begrundelse"
-                                previousValue={
-                                  revision.previousNote ||
-                                  "-"
-                                }
-                                newValue={
-                                  revision.newNote ||
-                                  "-"
-                                }
-                              />
-                            )}
-                            {valueChanged(
-                              revision.previousClockInNote,
-                              revision.newClockInNote,
-                            ) && (
-                              <ChangeRow
-                                label="Note ved indstempling"
-                                previousValue={
-                                  revision.previousClockInNote ||
-                                  "-"
-                                }
-                                newValue={
-                                  revision.newClockInNote ||
-                                  "-"
-                                }
-                              />
-                            )}
+                              {valueChanged(
+                                revision.previousNote,
+                                revision.newNote,
+                              ) &&
+                                !isDerivedClockNoteChange(
+                                  revision,
+                                ) && (
+                                <ChangeRow
+                                  label="Note / begrundelse"
+                                  previousValue={
+                                    revision.previousNote ||
+                                    "-"
+                                  }
+                                  newValue={
+                                    revision.newNote ||
+                                    "-"
+                                  }
+                                />
+                              )}
+                              {valueChanged(
+                                revision.previousClockInNote,
+                                revision.newClockInNote,
+                              ) && (
+                                <ChangeRow
+                                  label="Note ved mødetid"
+                                  previousValue={
+                                    revision.previousClockInNote ||
+                                    "-"
+                                  }
+                                  newValue={
+                                    revision.newClockInNote ||
+                                    "-"
+                                  }
+                                />
+                              )}
 
-                            {valueChanged(
-                              revision.previousClockOutNote,
-                              revision.newClockOutNote,
-                            ) && (
-                              <ChangeRow
-                                label="Note ved udstempling"
-                                previousValue={
-                                  revision.previousClockOutNote ||
-                                  "-"
-                                }
-                                newValue={
-                                  revision.newClockOutNote ||
-                                  "-"
-                                }
-                              />
-                            )}
-                          </>
+                              {valueChanged(
+                                revision.previousClockOutNote,
+                                revision.newClockOutNote,
+                              ) && (
+                                <ChangeRow
+                                  label="Note ved fyraften"
+                                  previousValue={
+                                    revision.previousClockOutNote ||
+                                    "-"
+                                  }
+                                  newValue={
+                                    revision.newClockOutNote ||
+                                    "-"
+                                  }
+                                />
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {message && (
+                          <div
+                            className={`mt-4 rounded-lg border p-3 text-sm ${
+                              message.variant ===
+                              "danger"
+                                ? "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100"
+                                : "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100"
+                            }`}
+                          >
+                            <p className="font-semibold">
+                              {message.title}
+                            </p>
+                            <p className="mt-1 whitespace-pre-wrap">
+                              {message.text}
+                            </p>
+                          </div>
                         )}
                       </div>
-
-                      {message && (
-                        <div
-                          className={`mt-4 rounded-lg border p-3 text-sm ${
-                            message.variant ===
-                            "danger"
-                              ? "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100"
-                              : "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100"
-                          }`}
-                        >
-                          <p className="font-semibold">
-                            {message.title}
-                          </p>
-                          <p className="mt-1 whitespace-pre-wrap">
-                            {message.text}
-                          </p>
-                        </div>
-                      )}
-                    </article>
+                    </details>
                   );
                 },
               )}
