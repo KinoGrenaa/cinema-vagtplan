@@ -52,7 +52,7 @@ const compactDateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
 });
 
 const summaryPrimaryAction =
-  "inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:active:bg-emerald-400 dark:focus-visible:ring-emerald-400 dark:focus-visible:ring-offset-gray-900";
+  "inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:active:bg-emerald-400 dark:focus-visible:ring-emerald-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500";
 
 const summaryWarningAction =
   "inline-flex min-h-9 items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100 active:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100 dark:hover:bg-amber-950/60 dark:active:bg-amber-900/60 dark:focus-visible:ring-amber-400 dark:focus-visible:ring-offset-gray-900";
@@ -304,6 +304,7 @@ export default function TimeApprovalEntryCard({
             <button
               type="button"
               onClick={() => onApprove(entry)}
+              disabled={missingRequiredNote}
               className={summaryPrimaryAction}
             >
               Godkend

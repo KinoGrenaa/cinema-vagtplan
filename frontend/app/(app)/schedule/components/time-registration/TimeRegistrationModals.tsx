@@ -297,6 +297,27 @@ export function TimeRegistrationModal({
       minuteStep,
     );
 
+  const clockInBlockedByMissingNote =
+    Boolean(
+      !openTimeEntry &&
+        clockShiftId &&
+        roundedPlannedClockInTime &&
+        clockInTime &&
+        roundedPlannedClockInTime !==
+          clockInTime &&
+        !clockNote.trim(),
+    );
+
+  const clockOutBlockedByMissingNote =
+    Boolean(
+      openTimeEntry &&
+        roundedPlannedClockOutTime &&
+        clockOutTime &&
+        roundedPlannedClockOutTime !==
+          clockOutTime &&
+        !clockNote.trim(),
+    );
+
   if (!open) return null;
 
   return (
@@ -408,9 +429,15 @@ export function TimeRegistrationModal({
                 className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
                 placeholder="Forklar eventuel ændret mødetid"
               />
+              {clockInBlockedByMissingNote && (
+                <p className="text-xs font-semibold text-orange-700 dark:text-orange-300">
+                  Skriv en note, fordi mødetiden afviger fra den planlagte tid.
+                </p>
+              )}
               <button
                 onClick={onRegisterClockIn}
-                className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
+                disabled={clockInBlockedByMissingNote}
+                className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
               >
                 Registrer mødetid
               </button>
@@ -454,9 +481,15 @@ export function TimeRegistrationModal({
                 className="min-h-24 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950"
                 placeholder="Forklar eventuel ændret fyraften"
               />
+              {clockOutBlockedByMissingNote && (
+                <p className="text-xs font-semibold text-orange-700 dark:text-orange-300">
+                  Skriv en note, fordi fyraften afviger fra den planlagte tid.
+                </p>
+              )}
               <button
                 onClick={onRegisterClockOut}
-                className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
+                disabled={clockOutBlockedByMissingNote}
+                className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
               >
                 Registrer fyraften
               </button>
