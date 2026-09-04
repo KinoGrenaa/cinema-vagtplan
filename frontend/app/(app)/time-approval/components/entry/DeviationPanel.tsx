@@ -2,13 +2,12 @@ import type { TimeEntry } from "../../types";
 import {
   formatDateTime,
   formatDurationMinutes,
-  formatMinutes,
+  formatSignedDurationMinutes,
 } from "../../utils";
 
 export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
   const deviation = entry.deviation;
   const isManualEntry = !entry.shift;
-
   if (!deviation) {
     return (
       <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-800 dark:bg-gray-950/40">
@@ -19,7 +18,6 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
       </div>
     );
   }
-
   const plannedRange =
     entry.shift?.startTime && entry.shift?.endTime
       ? `${formatDateTime(entry.shift.startTime)} - ${formatDateTime(
@@ -29,6 +27,34 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
   const registeredRange = `${formatDateTime(entry.clockIn)} - ${formatDateTime(
     entry.clockOut,
   )}`;
+
+  const formattedDeviationMessages = [
+    deviation.types.some(
+      (type) => type === "EARLY_CLOCK_IN" || type === "LATE_CLOCK_IN",
+    ) && deviation.clockInDeviationMinutes !== null
+      ? `Mødetidsafvigelse: ${formatSignedDurationMinutes(
+          deviation.clockInDeviationMinutes,
+        )}`
+      : null,
+    deviation.types.some(
+      (type) => type === "EARLY_CLOCK_OUT" || type === "LATE_CLOCK_OUT",
+    ) && deviation.clockOutDeviationMinutes !== null
+      ? `Fyraftensafvigelse: ${formatSignedDurationMinutes(
+          deviation.clockOutDeviationMinutes,
+        )}`
+      : null,
+    deviation.types.includes("TIME_DIFFERENCE") &&
+    deviation.differenceMinutes !== null
+      ? `Arbejdstidsafvigelse: ${formatSignedDurationMinutes(
+          deviation.differenceMinutes,
+        )}`
+      : null,
+  ].filter((message): message is string => Boolean(message));
+
+  const deviationMessages =
+    formattedDeviationMessages.length > 0
+      ? formattedDeviationMessages
+      : deviation.messages;
 
   return (
     <div
@@ -68,7 +94,6 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
             </span>
           )}
       </div>
-
       <div className="grid gap-1">
         <div>
           <span className="font-semibold">
@@ -80,19 +105,17 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
           <span className="font-semibold">Registreret:</span> {registeredRange}
         </div>
       </div>
-
       <div className="mt-3 space-y-1">
         {isManualEntry ? (
           <div>ℹ️ Denne tidsregistrering er ikke tilknyttet en planlagt vagt.</div>
         ) : (
-          deviation.messages.map((message, index) => (
+          deviationMessages.map((message, index) => (
             <div key={`${entry.id}-deviation-${index}`}>
               {deviation.hasDeviation ? "⚠️" : "✅"} {message}
             </div>
           ))
         )}
       </div>
-
       {!isManualEntry && (
         <div className="mt-3 grid gap-1 text-xs opacity-80 sm:grid-cols-2">
           <div>
@@ -102,18 +125,6 @@ export default function DeviationPanel({ entry }: { entry: TimeEntry }) {
           <div>
             Registreret arbejdstid:{" "}
             {formatDurationMinutes(deviation.registeredMinutes)}
-          </div>
-          <div>Difference: {formatMinutes(deviation.differenceMinutes)}</div>
-          <div className="flex flex-wrap items-center gap-x-2">
-            <span>
-              Mødetidsafvigelse:{" "}
-              {formatMinutes(deviation.clockInDeviationMinutes)}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>
-              Fyraftensafvigelse:{" "}
-              {formatMinutes(deviation.clockOutDeviationMinutes)}
-            </span>
           </div>
         </div>
       )}

@@ -11,7 +11,6 @@ export function getStatusClass(status: TimeEntryStatus) {
   if (status === "APPROVED") {
     return "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200";
   }
-
   if (status === "NEEDS_CHANGES") {
     return "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200";
   }
@@ -26,7 +25,6 @@ export function formatDateTime(value?: string | null) {
   if (!value) return "-";
 
   const date = new Date(value);
-
   const datePart = new Intl.DateTimeFormat("da-DK", {
     day: "2-digit",
     month: "2-digit",
@@ -45,7 +43,6 @@ export function formatDateTime(value?: string | null) {
 
   return `${datePart}, kl. ${timePart}`;
 }
-
 export function formatMinutes(value: number | null | undefined) {
   if (value === null || value === undefined) return "-";
 
@@ -57,7 +54,6 @@ export function formatDurationMinutes(
   value: number | null | undefined,
 ) {
   if (value === null || value === undefined) return "-";
-
   const roundedMinutes = Math.round(value);
   const sign = roundedMinutes < 0 ? "-" : "";
   const totalMinutes = Math.abs(roundedMinutes);
@@ -71,10 +67,24 @@ export function formatDurationMinutes(
   return `${sign}${hours} t ${String(minutes).padStart(2, "0")} min`;
 }
 
+export function formatSignedDurationMinutes(
+  value: number | null | undefined,
+) {
+  if (value === null || value === undefined) return "-";
+
+  const roundedMinutes = Math.round(value);
+
+  if (roundedMinutes === 0) {
+    return "0 min";
+  }
+
+  const sign = roundedMinutes > 0 ? "+" : "-";
+  return `${sign}${formatDurationMinutes(Math.abs(roundedMinutes))}`;
+}
+
 export async function readErrorMessage(response: Response, fallback: string) {
   try {
     const text = await response.text();
-
     if (!text) return fallback;
 
     try {

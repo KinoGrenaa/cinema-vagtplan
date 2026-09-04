@@ -17,7 +17,7 @@ const utilsSource =
   );
 
 test(
-  "time approval viser samlede arbejdstider som timer og minutter uden plusfortegn",
+  "time approval viser kun planlagt og registreret arbejdstid i statistikblokken",
   () => {
     assert.match(
       panelSource,
@@ -31,42 +31,47 @@ test(
 
     assert.doesNotMatch(
       panelSource,
-      /Planlagt tid:\s*\{formatMinutes\(deviation\.plannedMinutes\)\}/,
+      /Difference:/,
     );
 
     assert.doesNotMatch(
       panelSource,
-      /Registreret tid:\s*\{formatMinutes\(deviation\.registeredMinutes\)\}/,
+      /Mødetidsafvigelse:\s*\{" "\}/,
+    );
+
+    assert.doesNotMatch(
+      panelSource,
+      /Fyraftensafvigelse:\s*\{" "\}/,
     );
   },
 );
 
 test(
-  "varighedsformatet viser hele timer med eksplicitte minutter",
+  "den tydelige afvigelseslinje bruger timer og minutter med fortegn",
   () => {
     assert.match(
       utilsSource,
-      /export function formatDurationMinutes\(/,
+      /export function formatSignedDurationMinutes\(/,
     );
 
     assert.match(
       utilsSource,
-      /\$\{sign\}\$\{hours\} t \$\{String\(minutes\)\.padStart\(2, "0"\)\} min/,
+      /return `\$\{sign\}\$\{formatDurationMinutes\(Math\.abs\(roundedMinutes\)\)\}`/,
     );
 
     assert.match(
       panelSource,
-      /Difference:\s*\{formatMinutes\(deviation\.differenceMinutes\)\}/,
+      /Mødetidsafvigelse: \$\{formatSignedDurationMinutes\(/,
     );
 
     assert.match(
       panelSource,
-      /Mødetidsafvigelse:[\s\S]*Fyraftensafvigelse:/,
+      /Fyraftensafvigelse: \$\{formatSignedDurationMinutes\(/,
     );
 
     assert.match(
       panelSource,
-      /<span aria-hidden="true">·<\/span>/,
+      /deviationMessages\.map\(\(message, index\) => \(/,
     );
   },
 );
