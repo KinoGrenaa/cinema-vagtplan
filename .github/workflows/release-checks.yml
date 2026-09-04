@@ -1,5 +1,4 @@
 name: Release checks
-
 on:
   pull_request:
     branches: [main]
@@ -25,8 +24,9 @@ jobs:
       - run: npm run check:frontend-hardening
       - run: npm run check:frontend-flows
       - run: npm run check:frontend-build-cache
+
   backend:
-    name: Backend tests, audit and runtime image
+    name: Backend tests and audit
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -45,7 +45,23 @@ jobs:
       - run: npm test -- --runInBand
       - run: npm run test:release
       - run: npm run build
-      - run: docker build --target runtime -t cinema-vagtplan-backend:ci .
+
+  backend-runtime:
+    name: Backend runtime image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - name: Build backend runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          target: runtime
+          tags: cinema-vagtplan-backend:ci
+          load: true
+          cache-from: type=gha,scope=backend-runtime
+          cache-to: type=gha,mode=max,scope=backend-runtime
       - name: Verify production-only runtime dependencies and Prisma Client
         run: >-
           docker run --rm --entrypoint node cinema-vagtplan-backend:ci -e
@@ -58,6 +74,7 @@ jobs:
           if(present.length) throw new Error('DevDependencies i runtime-image: '+present.join(', '));
           if(!fs.existsSync('/app/node_modules/.prisma/client')) throw new Error('Genereret Prisma Client mangler');
           console.log('Runtime-afhængigheder, Archiver-adapter og Prisma Client OK.');"
+
   frontend:
     name: Frontend tests, audit and runtime image
     runs-on: ubuntu-latest
@@ -113,6 +130,7 @@ jobs:
           if(process.getuid&&process.getuid()===0) throw new Error('Frontend runtime koerer som root');
           if(process.env.NODE_ENV!=='production') throw new Error('NODE_ENV er ikke production');
           console.log('Frontend standalone runtime-image OK.');"
+
   frontend-flows:
     name: Critical frontend flows
     runs-on: ubuntu-latest
