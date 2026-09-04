@@ -298,8 +298,16 @@ export function collectBackendHardeningProblems(root = repoRoot) {
     problems.push("Releaseflowet maa ikke blokere paa dev-only auditfund; audit:all er en manuel kontrol.");
   }
   const workflow = readFileSync(workflowPath, "utf8");
-  if (!workflow.includes("npm run audit:prod") || !workflow.includes("npm run audit:report")) {
-    problems.push("GitHub Actions skal gate produktionaudit og rapportere samlet audit.");
+  const backendWorkflow =
+    workflow.match(/\n  backend:\n([\s\S]*?)\n  backend-runtime:/)?.[1] ?? "";
+  if (!backendWorkflow.includes("npm ci --no-audit")) {
+    problems.push("Backend-jobbet i GitHub Actions skal installere med npm ci --no-audit.");
+  }
+  if (backendWorkflow.includes("npm run audit:prod")) {
+    problems.push("Backend-jobbet i GitHub Actions maa ikke koere den redundante separate audit:prod.");
+  }
+  if (!backendWorkflow.includes("npm run audit:report")) {
+    problems.push("Backend-jobbet i GitHub Actions skal gate produktionaudit via audit:report og rapportere samlet audit.");
   }
   if (!workflow.includes("npm run test:xlsx-hardening")) {
     problems.push("GitHub Actions skal koere den samlede XLSX-hardening-test.");

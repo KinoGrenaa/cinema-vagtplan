@@ -266,12 +266,21 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   const workflow = readFileSync(paths.workflow, "utf8");
   for (const marker of [
     "npm run check:frontend-hardening",
-    "npm run audit:prod",
-    "npm run audit:report",
     "Build frontend standalone runtime image",
     "Verify minimal non-root frontend runtime image",
   ]) {
     if (!workflow.includes(marker)) problems.push(`GitHub Actions mangler: ${marker}`);
+  }
+  const frontendWorkflow =
+    workflow.match(/\n  frontend:\n([\s\S]*?)\n  frontend-flows:/)?.[1] ?? "";
+  if (!frontendWorkflow.includes("npm ci --no-audit")) {
+    problems.push("Frontend-jobbet i GitHub Actions skal installere med npm ci --no-audit.");
+  }
+  if (frontendWorkflow.includes("npm run audit:prod")) {
+    problems.push("Frontend-jobbet i GitHub Actions maa ikke koere den redundante separate audit:prod.");
+  }
+  if (!frontendWorkflow.includes("npm run audit:report")) {
+    problems.push("Frontend-jobbet i GitHub Actions skal gate produktionaudit via audit:report og rapportere samlet audit.");
   }
   if (!workflow.includes("file: frontend/Dockerfile") && !workflow.includes("-f frontend/Dockerfile")) {
     problems.push("GitHub Actions mangler reference til frontend/Dockerfile.");

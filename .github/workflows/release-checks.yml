@@ -38,8 +38,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm ci
-      - run: npm run audit:prod
+      - run: npm ci --no-audit
       - run: npm run audit:report
       - run: npm run test:xlsx-hardening
       - run: npm test -- --runInBand
@@ -94,9 +93,7 @@ jobs:
           key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.[jt]s', 'frontend/**/*.[jt]sx', 'frontend/**/*.css', 'shared/**/*.[jt]s', 'shared/**/*.[jt]sx') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-
-      - run: npm ci
-        working-directory: frontend
-      - run: npm run audit:prod
+      - run: npm ci --no-audit
         working-directory: frontend
       - run: npm run audit:report
         working-directory: frontend
