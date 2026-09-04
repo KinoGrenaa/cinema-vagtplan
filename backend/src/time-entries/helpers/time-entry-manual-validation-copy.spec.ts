@@ -47,7 +47,7 @@ describe('manual time entry validation copy', () => {
         clockOutNote: null,
       }),
     ).toThrow(
-      'Den manuelle tidsregistrering kræver en medarbejder-note før godkendelse',
+      'Den manuelle tidsregistrering kræver en medarbejder- eller admin-note før godkendelse',
     );
   });
 });
