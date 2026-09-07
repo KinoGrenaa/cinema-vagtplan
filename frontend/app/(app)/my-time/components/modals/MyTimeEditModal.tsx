@@ -2,6 +2,7 @@
 import ProjectDateTimePicker from "@/app/components/date/ProjectDateTimePicker";
 import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
 
+import { formatPlannedComparisonTime } from "../../helpers/core/myTimePlannedComparison";
 import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type MyTimeEditModalProps = {
@@ -27,43 +28,6 @@ const inputClass =
 
 const focusClass =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900";
-
-const plannedComparisonTimeFormatter =
-  new Intl.DateTimeFormat(
-    "da-DK",
-    {
-      timeZone: "Europe/Copenhagen",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    },
-  );
-
-function formatPlannedComparisonTime(
-  value: string | undefined,
-  minuteStep: TimeEntryMinuteStep,
-) {
-  if (!value) return "-";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  const stepMilliseconds =
-    minuteStep * 60 * 1000;
-  const roundedTimestamp =
-    Math.round(
-      date.getTime() /
-        stepMilliseconds,
-    ) *
-    stepMilliseconds;
-
-  return plannedComparisonTimeFormatter.format(
-    new Date(roundedTimestamp),
-  );
-}
 
 function formatReturnMessageActor(
   entry: TimeEntry,

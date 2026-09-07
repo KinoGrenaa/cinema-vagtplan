@@ -16,6 +16,12 @@ const typesSource =
     "utf8",
   );
 
+const plannedComparisonSource =
+  readFileSync(
+    "app/(app)/my-time/helpers/core/myTimePlannedComparison.ts",
+    "utf8",
+  );
+
 test(
   "my-time redigering viser planlagt vagt før de faktiske felter",
   () => {
@@ -59,18 +65,24 @@ test(
   () => {
     assert.ok(
       modalSource.includes(
+        "formatPlannedComparisonTime",
+      ),
+    );
+
+    assert.ok(
+      plannedComparisonSource.includes(
         "minuteStep * 60 * 1000",
       ),
     );
 
     assert.ok(
-      modalSource.includes(
+      plannedComparisonSource.includes(
         "Math.round(",
       ),
     );
 
     assert.ok(
-      modalSource.includes(
+      plannedComparisonSource.includes(
         'timeZone: "Europe/Copenhagen"',
       ),
     );

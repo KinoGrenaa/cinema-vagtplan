@@ -1,3 +1,5 @@
+import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
+
 import PayrollAdjustmentNotice from "../../../../components/time-entries/PayrollAdjustmentNotice";
 import AutomaticTimeRegistrationNotice from "../../../../components/time-entries/AutomaticTimeRegistrationNotice";
 import { getHours } from "../../helpers/core/myTimeEntries";
@@ -9,10 +11,12 @@ import {
   getStatusClass,
   getStatusLabel,
 } from "../../helpers/core/myTimeStatus";
+import { hasPlannedTimeDeviation } from "../../helpers/core/myTimePlannedComparison";
 import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 
 type MyTimeEntryCardProps = {
   entry: TimeEntry;
+  minuteStep: TimeEntryMinuteStep;
   onEdit: (entry: TimeEntry) => void;
   onHistory: (entry: TimeEntry) => void;
 };
@@ -120,6 +124,7 @@ function formatEntryTimeRange(entry: TimeEntry) {
 
 export default function MyTimeEntryCard({
   entry,
+  minuteStep,
   onEdit,
   onHistory,
 }: MyTimeEntryCardProps) {
@@ -131,6 +136,11 @@ export default function MyTimeEntryCard({
   );
   const hasAutomaticTime =
     entry.automaticClockIn || entry.automaticClockOut;
+  const hasDeviation =
+    hasPlannedTimeDeviation(
+      entry,
+      minuteStep,
+    );
 
   return (
     <article
@@ -143,11 +153,18 @@ export default function MyTimeEntryCard({
             "Timeregistrering"}
         </h3>
 
-        <span
-          className={`w-fit shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusBadgeClass(entry.status)}`}
-        >
-          {getStatusLabel(entry.status)}
-        </span>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <span
+            className={`w-fit rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusBadgeClass(entry.status)}`}
+          >
+            {getStatusLabel(entry.status)}
+          </span>
+          {hasDeviation && (
+            <span className="w-fit rounded-full border border-blue-300 bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-900 dark:border-blue-800 dark:bg-blue-950/70 dark:text-blue-200">
+              Afvigelse
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

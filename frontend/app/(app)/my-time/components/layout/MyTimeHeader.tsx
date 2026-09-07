@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { formatDate } from "../../helpers/core/myTimeDate";
 
 type PayrollPeriod = {
@@ -56,10 +58,16 @@ export default function MyTimeHeader({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Link
+            href="/schedule"
+            className={`rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:ring-blue-600 dark:bg-blue-500 dark:text-gray-950 dark:hover:bg-blue-400 dark:focus-visible:ring-blue-400 ${focusClass}`}
+          >
+            Se vagtplan
+          </Link>
           <button
             type="button"
             onClick={onOpenFilterModal}
-            className={`rounded-xl border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-900 transition hover:bg-blue-100 focus-visible:ring-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:bg-blue-950 dark:focus-visible:ring-blue-400 ${focusClass}`}
+            className={`rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 focus-visible:ring-blue-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:focus-visible:ring-blue-400 ${focusClass}`}
           >
             Filter
             {activeStatusFilterCount > 0

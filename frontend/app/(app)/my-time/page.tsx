@@ -174,6 +174,7 @@ export default function MyTimePage() {
             loading={loading}
             visibleEntryCount={visibleEntries.length}
             dayGroups={dayGroups}
+            minuteStep={timeEntryMinuteStep}
             expandedDayKeys={expandedDayKeys}
             onToggleDayGroup={toggleDayGroup}
             onEdit={openEdit}

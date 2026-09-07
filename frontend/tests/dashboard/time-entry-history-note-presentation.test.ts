@@ -110,3 +110,92 @@ test(
   },
 );
 
+test(
+  "oprettelseshistorik skelner mødetid fra færdig arbejdstid",
+  () => {
+    assert.match(
+      modal,
+      /const isMeetingOnlyCreation =/,
+    );
+
+    assert.match(
+      modal,
+      /!revision\.newClockOut/,
+    );
+
+    assert.match(
+      modal,
+      /meetingCreationNote/,
+    );
+
+    assert.match(
+      modal,
+      />\s*Mødetid\s*</,
+    );
+
+    assert.match(
+      modal,
+      />\s*Note ved mødetid\s*</,
+    );
+
+    assert.match(
+      modal,
+      />\s*Arbejdstid\s*</,
+    );
+
+    assert.match(
+      modal,
+      />\s*Note \/ begrundelse\s*</,
+    );
+  },
+);
+
+test(
+  "meeting-only oprettelse hedder Mødetid registreret",
+  () => {
+    assert.match(
+      modal,
+      /function actionTitle\([\s\S]*isMeetingOnlyCreation = false/,
+    );
+
+    assert.match(
+      modal,
+      /case "CREATED":[\s\S]*"Mødetid registreret"[\s\S]*"Registrering oprettet"/,
+    );
+
+    assert.match(
+      modal,
+      /actionTitle\(\s*revision\.action,\s*isMeetingOnlyCreation,?\s*\)/,
+    );
+
+    assert.match(
+      modal,
+      /case "AUTO_CREATED":[\s\S]*"Automatisk tidsregistrering"/,
+    );
+  },
+);
+
+test(
+  "meeting-only oprettelse bruger Registreret af",
+  () => {
+    assert.match(
+      modal,
+      /function actorLabel\([\s\S]*isMeetingOnlyCreation = false/,
+    );
+
+    assert.match(
+      modal,
+      /case "CREATED":[\s\S]*"Registreret af"[\s\S]*"Oprettet af"/,
+    );
+
+    assert.match(
+      modal,
+      /case "AUTO_CREATED":[\s\S]*"Oprettet af"/,
+    );
+
+    assert.match(
+      modal,
+      /actorLabel\(\s*revision\.action,\s*isMeetingOnlyCreation,?\s*\)/,
+    );
+  },
+);

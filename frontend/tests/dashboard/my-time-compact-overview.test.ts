@@ -71,6 +71,12 @@ test("my-time statusoverblik er kompakt uden forklaringstekster", () => {
 const entryCard = read(
   "app/(app)/my-time/components/list/MyTimeEntryCard.tsx",
 );
+const myTimePage = read(
+  "app/(app)/my-time/page.tsx",
+);
+const plannedComparison = read(
+  "app/(app)/my-time/helpers/core/myTimePlannedComparison.ts",
+);
 
 test("my-time registreringskort viser tiden på én kompakt linje", () => {
   assert.match(
@@ -179,5 +185,44 @@ test("my-time dagsrækkens fokusmarkering følger kortets afrundede hjørner", (
   assert.match(
     dayGroups,
     /focus-visible:ring-inset/,
+  );
+});
+
+test("my-time viser afvigelse mod samme afrundede plan som redigering", () => {
+  assert.match(
+    entryCard,
+    /hasPlannedTimeDeviation\(\s*entry,\s*minuteStep,?\s*\)/,
+  );
+  assert.match(
+    entryCard,
+    />\s*Afvigelse\s*</,
+  );
+  assert.match(
+    plannedComparison,
+    /Math\.round\(/,
+  );
+  assert.match(
+    plannedComparison,
+    /minuteStep \* 60 \* 1000/,
+  );
+  assert.match(
+    plannedComparison,
+    /actualClockIn !== plannedClockIn/,
+  );
+  assert.match(
+    plannedComparison,
+    /actualClockOut !== plannedClockOut/,
+  );
+  assert.match(
+    dayGroups,
+    /minuteStep=\{minuteStep\}/,
+  );
+  assert.match(
+    myTimePage,
+    /minuteStep=\{timeEntryMinuteStep\}/,
+  );
+  assert.match(
+    myTimePage,
+    /timeEntryMinuteStep=\{timeEntryMinuteStep\}/,
   );
 });

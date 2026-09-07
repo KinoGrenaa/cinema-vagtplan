@@ -1,3 +1,6 @@
+import type { TimeEntryMinuteStep } from "@/app/hooks/useTimeEntryMinuteStep";
+
+import { hasPlannedTimeDeviation } from "../../helpers/core/myTimePlannedComparison";
 import type { TimeEntry } from "../../helpers/core/myTimeTypes";
 import MyTimeEntryCard from "./MyTimeEntryCard";
 
@@ -12,6 +15,7 @@ type MyTimeDayGroupsSectionProps = {
   loading: boolean;
   visibleEntryCount: number;
   dayGroups: MyTimeDayGroup[];
+  minuteStep: TimeEntryMinuteStep;
   expandedDayKeys: string[];
   onToggleDayGroup: (dayKey: string) => void;
   onEdit: (entry: TimeEntry) => void;
@@ -33,6 +37,10 @@ function getSummaryPartClass(part: string) {
     return `${baseClass} border-orange-600 bg-orange-600 text-white dark:border-orange-500 dark:bg-orange-500 dark:text-gray-950`;
   }
 
+  if (part.startsWith("Afvigelse:")) {
+    return `${baseClass} border-blue-300 bg-blue-100 text-blue-900 dark:border-blue-800 dark:bg-blue-950/70 dark:text-blue-200`;
+  }
+
   if (part.startsWith("Afvist/annulleret:")) {
     return `${baseClass} border-gray-300 bg-gray-100 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200`;
   }
@@ -44,6 +52,7 @@ export default function MyTimeDayGroupsSection({
   loading,
   visibleEntryCount,
   dayGroups,
+  minuteStep,
   expandedDayKeys,
   onToggleDayGroup,
   onEdit,
@@ -80,6 +89,13 @@ export default function MyTimeDayGroupsSection({
     <section aria-label="Timeregistreringer" className="space-y-4">
       {dayGroups.map((group) => {
         const isExpanded = expandedDayKeys.includes(group.dayKey);
+        const deviationCount = group.entries.filter((entry) =>
+          hasPlannedTimeDeviation(entry, minuteStep),
+        ).length;
+        const summaryParts =
+          deviationCount > 0
+            ? [...group.summaryParts, `Afvigelse: ${deviationCount}`]
+            : group.summaryParts;
         const panelId = `my-time-day-${group.dayKey.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 
         return (
@@ -94,19 +110,15 @@ export default function MyTimeDayGroupsSection({
               aria-controls={panelId}
               className={`flex w-full flex-col gap-3 bg-gray-50 p-5 text-left transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 dark:bg-gray-950/50 dark:hover:bg-gray-800/70 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 md:flex-row md:items-center md:justify-between ${isExpanded ? "rounded-t-2xl" : "rounded-2xl"}`}
             >
-              <div>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <h2 className="text-lg font-bold text-gray-950 dark:text-white">
                   {group.label}
                 </h2>
-                {group.summaryParts.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {group.summaryParts.map((part) => (
-                      <span key={part} className={getSummaryPartClass(part)}>
-                        {part}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {summaryParts.map((part) => (
+                  <span key={part} className={getSummaryPartClass(part)}>
+                    {part}
+                  </span>
+                ))}
               </div>
 
               <span className="w-fit rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
@@ -123,6 +135,7 @@ export default function MyTimeDayGroupsSection({
                   <MyTimeEntryCard
                     key={entry.id}
                     entry={entry}
+                    minuteStep={minuteStep}
                     onEdit={onEdit}
                     onHistory={onHistory}
                   />

@@ -168,10 +168,13 @@ function statusLabel(
 function actionTitle(
   action:
     TimeEntryRevisionAction,
+  isMeetingOnlyCreation = false,
 ) {
   switch (action) {
     case "CREATED":
-      return "Registrering oprettet";
+      return isMeetingOnlyCreation
+        ? "Mødetid registreret"
+        : "Registrering oprettet";
     case "AUTO_CREATED":
       return "Automatisk tidsregistrering";
     case "AUTO_CLOCK_OUT":
@@ -197,9 +200,13 @@ function actionTitle(
 function actorLabel(
   action:
     TimeEntryRevisionAction,
+  isMeetingOnlyCreation = false,
 ) {
   switch (action) {
     case "CREATED":
+      return isMeetingOnlyCreation
+        ? "Registreret af"
+        : "Oprettet af";
     case "AUTO_CREATED":
       return "Oprettet af";
     case "AUTO_CLOCK_OUT":
@@ -524,6 +531,21 @@ export default function TimeEntryHistoryModal({
                       "CREATED" ||
                     revision.action ===
                       "AUTO_CREATED";
+                  const isMeetingOnlyCreation =
+                    isCreated &&
+                    Boolean(
+                      revision.newClockIn,
+                    ) &&
+                    !revision.newClockOut;
+                  const meetingCreationNote =
+                    isMeetingOnlyCreation
+                      ? normalizeHistoryNote(
+                          revision.newClockInNote,
+                        ) ||
+                        normalizeHistoryNote(
+                          revision.newNote,
+                        )
+                      : "";
                   const message =
                     realMessage(
                       revision,
@@ -548,11 +570,13 @@ export default function TimeEntryHistoryModal({
                           <p className="font-semibold text-gray-950 dark:text-white">
                             {actionTitle(
                               revision.action,
+                              isMeetingOnlyCreation,
                             )}
                           </p>
                           <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                             {actorLabel(
                               revision.action,
+                              isMeetingOnlyCreation,
                             )}
                             :{" "}
                             {formatUser(
@@ -588,33 +612,58 @@ export default function TimeEntryHistoryModal({
                       <div className="border-t border-gray-200 px-4 pb-4 dark:border-gray-700">
                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
                           {isCreated ? (
-                            <>
-                              <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
-                                <p className="font-semibold text-gray-600 dark:text-gray-300">
-                                  Arbejdstid
-                                </p>
-                                <p className="mt-1 text-gray-950 dark:text-white">
-                                  {formatTime(
-                                    revision.newClockIn,
-                                  )}{" "}
-                                  –{" "}
-                                  {formatTime(
-                                    revision.newClockOut,
-                                  )}
-                                </p>
-                              </div>
-                              {revision.newNote &&
-                                revision.newNote.trim() && (
+                            isMeetingOnlyCreation ? (
+                              <>
+                                <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                                  <p className="font-semibold text-gray-600 dark:text-gray-300">
+                                    Mødetid
+                                  </p>
+                                  <p className="mt-1 text-gray-950 dark:text-white">
+                                    {formatTime(
+                                      revision.newClockIn,
+                                    )}
+                                  </p>
+                                </div>
+                                {meetingCreationNote && (
                                   <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
                                     <p className="font-semibold text-gray-600 dark:text-gray-300">
-                                      Note / begrundelse
+                                      Note ved mødetid
                                     </p>
                                     <p className="mt-1 whitespace-pre-wrap text-gray-950 dark:text-white">
-                                      {revision.newNote}
+                                      {meetingCreationNote}
                                     </p>
                                   </div>
                                 )}
-                            </>
+                              </>
+                            ) : (
+                              <>
+                                <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                                  <p className="font-semibold text-gray-600 dark:text-gray-300">
+                                    Arbejdstid
+                                  </p>
+                                  <p className="mt-1 text-gray-950 dark:text-white">
+                                    {formatTime(
+                                      revision.newClockIn,
+                                    )}{" "}
+                                    –{" "}
+                                    {formatTime(
+                                      revision.newClockOut,
+                                    )}
+                                  </p>
+                                </div>
+                                {revision.newNote &&
+                                  revision.newNote.trim() && (
+                                    <div className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                                      <p className="font-semibold text-gray-600 dark:text-gray-300">
+                                        Note / begrundelse
+                                      </p>
+                                      <p className="mt-1 whitespace-pre-wrap text-gray-950 dark:text-white">
+                                        {revision.newNote}
+                                      </p>
+                                    </div>
+                                  )}
+                              </>
+                            )
                           ) : (
                             <>
                               {revision.previousStatus !==
