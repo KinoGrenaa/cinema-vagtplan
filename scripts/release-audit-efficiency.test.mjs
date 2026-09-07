@@ -49,5 +49,6 @@ test("auditrapporterne bevarer production-audit og samlet audit", () => {
     assert.match(report, /runAudit\(\["--omit=dev"\]\)/);
     assert.match(report, /runAudit\(\[\]\)/);
     assert.match(report, /production\.total !== 0/);
+    assert.match(report, /Promise\.all/);
   }
 });

@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,28 +23,54 @@ export function resolveNpmInvocation(
 
 function runAudit(args) {
   const npmInvocation = resolveNpmInvocation();
-  const result = spawnSync(
-    npmInvocation.command,
-    [...npmInvocation.argsPrefix, "audit", "--json", ...args],
-    {
-      cwd: frontendRoot,
-      encoding: "utf8",
-      shell: false,
-      maxBuffer: 20 * 1024 * 1024,
-    },
-  );
-  if (result.error) throw result.error;
-  const output = result.stdout?.trim();
-  if (!output) {
-    throw new Error(
-      `npm audit returnerede ingen JSON. ${result.stderr?.trim() ?? ""}`.trim(),
+
+  return new Promise((resolveAudit, rejectAudit) => {
+    const child = spawn(
+      npmInvocation.command,
+      [...npmInvocation.argsPrefix, "audit", "--json", ...args],
+      {
+        cwd: frontendRoot,
+        shell: false,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
     );
-  }
-  try {
-    return JSON.parse(output);
-  } catch (error) {
-    throw new Error(`Kunne ikke parse npm audit JSON: ${error.message}`);
-  }
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+
+    child.on("error", rejectAudit);
+    child.on("close", () => {
+      const output = stdout.trim();
+      if (!output) {
+        rejectAudit(
+          new Error(
+            `npm audit returnerede ingen JSON. ${stderr.trim()}`.trim(),
+          ),
+        );
+        return;
+      }
+
+      try {
+        resolveAudit(JSON.parse(output));
+      } catch (error) {
+        rejectAudit(
+          new Error(
+            `Kunne ikke parse npm audit JSON: ${error.message}`,
+          ),
+        );
+      }
+    });
+  });
 }
 
 function counts(report) {
@@ -71,11 +97,16 @@ export function createAuditSummary(productionReport, completeReport) {
   };
 }
 
-export function main() {
+export async function main() {
   try {
+    const [productionReport, completeReport] =
+      await Promise.all([
+        runAudit(["--omit=dev"]),
+        runAudit([]),
+      ]);
     const summary = createAuditSummary(
-      runAudit(["--omit=dev"]),
-      runAudit([]),
+      productionReport,
+      completeReport,
     );
     console.log("Frontend auditrapport:");
     console.log(`- Runtime: ${summary.production.total}`);
@@ -93,5 +124,5 @@ export function main() {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === currentFile) {
-  main();
+  await main();
 }
