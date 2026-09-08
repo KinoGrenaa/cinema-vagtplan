@@ -6,34 +6,61 @@ import {
 } from './message-read-flow';
 import {
   messageInclude,
+  messageMailboxInclude,
   messageParticipantSelect,
 } from './message-shared';
 
 describe('message participant read shape', () => {
-  it('henter kun deltagerfelterne som frontend bruger', () => {
-    expect(messageParticipantSelect).toEqual({
+  it('henter fortsat kun de deltagerfelter som frontend bruger', () => {
+    expect(
+      messageParticipantSelect,
+    ).toEqual({
       id: true,
       firstName: true,
       lastName: true,
     });
-    expect(messageInclude).toEqual({
+    expect(
+      messageInclude,
+    ).toEqual({
       sender: {
-        select: messageParticipantSelect,
+        select:
+          messageParticipantSelect,
       },
       receiver: {
-        select: messageParticipantSelect,
+        select:
+          messageParticipantSelect,
       },
     });
   });
 
-  it('bruger det præcise deltagerselect i den paginerede indbakke', async () => {
+  it('udvider kun læsningen med den aktuelle brugers mailbox-state', () => {
+    expect(
+      messageMailboxInclude(
+        9,
+      ),
+    ).toEqual({
+      ...messageInclude,
+      recipients: {
+        where: {
+          userId: 9,
+        },
+        select: {
+          readAt: true,
+          deletedAt: true,
+        },
+        take: 1,
+      },
+    });
+  });
+
+  it('bruger samtalepaginering i den paginerede indbakke', async () => {
     const prisma = {
+      $queryRaw:
+        jest.fn().mockResolvedValue(
+          [],
+        ),
       message: {
-        findMany:
-          jest.fn().mockResolvedValue(
-            [],
-          ),
-        findFirst: jest.fn(),
+        findMany: jest.fn(),
       },
     };
 
@@ -44,18 +71,16 @@ describe('message participant read shape', () => {
     );
 
     expect(
-      prisma.message.findMany,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        include: messageInclude,
-      }),
+      prisma.$queryRaw,
+    ).toHaveBeenCalledTimes(
+      1,
     );
     expect(
-      prisma.message.findFirst,
+      prisma.message.findMany,
     ).not.toHaveBeenCalled();
   });
 
-  it('bruger samme deltagerselect i notifikationsoversigten', async () => {
+  it('bruger samme mailbox-shape i notifikationsoversigten', async () => {
     const prisma = {
       message: {
         findMany:
@@ -79,7 +104,10 @@ describe('message participant read shape', () => {
       prisma.message.findMany,
     ).toHaveBeenCalledWith(
       expect.objectContaining({
-        include: messageInclude,
+        include:
+          messageMailboxInclude(
+            9,
+          ),
       }),
     );
   });

@@ -1,5 +1,9 @@
 import {
+  ArrayNotEmpty,
+  ArrayUnique,
+  IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -24,6 +28,23 @@ export class CreateMessageDto {
   @Min(1)
   receiverId?: number | null;
 
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  recipientIds?: number[];
+
   @IsBoolean()
   isBroadcast: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  replyToMessageId?: number | null;
+
+  @IsOptional()
+  @IsIn(['REPLY', 'REPLY_ALL'])
+  replyMode?: 'REPLY' | 'REPLY_ALL';
 }

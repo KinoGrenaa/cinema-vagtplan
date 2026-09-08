@@ -3,12 +3,8 @@ import {
   PrismaService,
 } from '../../prisma/prisma.service';
 import {
-  buildArchivedMessageCounts,
-  buildArchivedMessageCountWhere,
   buildArchivedMessagePage,
   buildArchivedMessageWhere,
-  buildInboxMessageTargetWhere,
-  buildInboxMessageWhere,
   buildMessagePage,
   buildSentMessageWhere,
   DEFAULT_MESSAGE_PAGE_SIZE,
@@ -18,7 +14,17 @@ import {
   normalizeMessagePageLimit,
 } from './message-page';
 import {
-  messageInclude,
+  countArchivedReceivedConversations,
+  findArchivedReceivedConversationPageForUser,
+} from './message-archive-conversation-page';
+import {
+  findInboxConversationPageForUser,
+} from './message-inbox-conversation-page';
+import {
+  messageMailboxInclude,
+  messageSentReceiptInclude,
+  presentMessageForUser,
+  presentSentMessageForUser,
 } from './message-shared';
 
 const compatibilityMessageOrderBy: Prisma.MessageOrderByWithRelationInput[] =
@@ -31,29 +37,53 @@ const compatibilityMessageOrderBy: Prisma.MessageOrderByWithRelationInput[] =
     },
   ];
 
+function presentMessagesForUser<
+  T extends Parameters<
+    typeof presentMessageForUser
+  >[0],
+>(
+  rows: T[],
+  userId: number,
+) {
+  return rows.map((row) =>
+    presentMessageForUser(
+      row,
+      userId,
+    ),
+  );
+}
+
 export async function findMessagesForUser(
   prisma: PrismaService,
   userId: number,
   cinemaId: number,
 ) {
-  return prisma.message.findMany({
-    where: {
-      cinemaId,
-      archivedAt: null,
-      recalledAt: null,
-      OR: [
-        {
-          receiverId: userId,
+  const rows =
+    await prisma.message.findMany({
+      where: {
+        cinemaId,
+        recalledAt: null,
+        recipients: {
+          some: {
+            userId,
+            deletedAt: null,
+          },
         },
-        {
-          isBroadcast: true,
-        },
-      ],
-    },
-    include: messageInclude,
-    orderBy: compatibilityMessageOrderBy,
-    take: DEFAULT_MESSAGE_PAGE_SIZE,
-  });
+      },
+      include:
+        messageMailboxInclude(
+          userId,
+        ),
+      orderBy:
+        compatibilityMessageOrderBy,
+      take:
+        DEFAULT_MESSAGE_PAGE_SIZE,
+    });
+
+  return presentMessagesForUser(
+    rows,
+    userId,
+  );
 }
 
 export async function findInboxMessagePageForUser(
@@ -63,45 +93,11 @@ export async function findInboxMessagePageForUser(
   options:
     InboxMessagePageOptions = {},
 ) {
-  const limit =
-    normalizeMessagePageLimit(
-      options.limit,
-    );
-  const [
-    rows,
-    target,
-  ] = await Promise.all([
-    prisma.message.findMany({
-      where:
-        buildInboxMessageWhere(
-          userId,
-          cinemaId,
-          options.beforeId,
-        ),
-      include: messageInclude,
-      orderBy: {
-        id: 'desc',
-      },
-      take: limit + 1,
-    }),
-    options.targetId
-      ? prisma.message.findFirst({
-          where:
-            buildInboxMessageTargetWhere(
-              userId,
-              cinemaId,
-              options.targetId,
-            ),
-          include:
-            messageInclude,
-        })
-      : Promise.resolve(null),
-  ]);
-
-  return buildMessagePage(
-    rows,
-    limit,
-    target,
+  return findInboxConversationPageForUser(
+    prisma,
+    userId,
+    cinemaId,
+    options,
   );
 }
 
@@ -110,16 +106,26 @@ export async function findSentMessagesForUser(
   userId: number,
   cinemaId: number,
 ) {
-  return prisma.message.findMany({
-    where: {
-      cinemaId,
-      senderId: userId,
-      archivedAt: null,
-    },
-    include: messageInclude,
-    orderBy: compatibilityMessageOrderBy,
-    take: DEFAULT_MESSAGE_PAGE_SIZE,
-  });
+  const rows =
+    await prisma.message.findMany({
+      where: {
+        cinemaId,
+        senderId: userId,
+        senderDeletedAt: null,
+      },
+      include:
+        messageSentReceiptInclude,
+      orderBy:
+        compatibilityMessageOrderBy,
+      take:
+        DEFAULT_MESSAGE_PAGE_SIZE,
+    });
+
+  return rows.map((row) =>
+    presentSentMessageForUser(
+      row,
+    ),
+  );
 }
 
 export async function findSentMessagePageForUser(
@@ -141,7 +147,8 @@ export async function findSentMessagePageForUser(
           cinemaId,
           options.beforeId,
         ),
-      include: messageInclude,
+      include:
+        messageSentReceiptInclude,
       orderBy: {
         id: 'desc',
       },
@@ -149,7 +156,11 @@ export async function findSentMessagePageForUser(
     });
 
   return buildMessagePage(
-    rows,
+    rows.map((row) =>
+      presentSentMessageForUser(
+        row,
+      ),
+    ),
     limit,
     null,
   );
@@ -160,29 +171,64 @@ export async function findArchivedMessagesForUser(
   userId: number,
   cinemaId: number,
 ) {
-  return prisma.message.findMany({
-    where: {
-      cinemaId,
-      archivedAt: {
-        not: null,
-      },
-      recalledAt: null,
-      OR: [
-        {
-          receiverId: userId,
-        },
-        {
-          isBroadcast: true,
-        },
-        {
-          senderId: userId,
-        },
-      ],
-    },
-    include: messageInclude,
-    orderBy: compatibilityMessageOrderBy,
-    take: DEFAULT_MESSAGE_PAGE_SIZE,
-  });
+  const now = new Date();
+  const [
+    received,
+    sent,
+  ] = await Promise.all([
+    prisma.message.findMany({
+      where:
+        buildArchivedMessageWhere(
+          userId,
+          cinemaId,
+          'received',
+          undefined,
+          now,
+        ),
+      include:
+        messageMailboxInclude(
+          userId,
+        ),
+      orderBy:
+        compatibilityMessageOrderBy,
+      take:
+        DEFAULT_MESSAGE_PAGE_SIZE,
+    }),
+    prisma.message.findMany({
+      where:
+        buildArchivedMessageWhere(
+          userId,
+          cinemaId,
+          'sent',
+          undefined,
+          now,
+        ),
+      include:
+        messageMailboxInclude(
+          userId,
+        ),
+      orderBy:
+        compatibilityMessageOrderBy,
+      take:
+        DEFAULT_MESSAGE_PAGE_SIZE,
+    }),
+  ]);
+
+  return presentMessagesForUser(
+    [
+      ...received,
+      ...sent,
+    ]
+      .sort(
+        (left, right) =>
+          right.id - left.id,
+      )
+      .slice(
+        0,
+        DEFAULT_MESSAGE_PAGE_SIZE,
+      ),
+    userId,
+  );
 }
 
 export async function findArchivedMessagePageForUser(
@@ -192,50 +238,77 @@ export async function findArchivedMessagePageForUser(
   options:
     ArchivedMessagePageOptions,
 ) {
+  if (
+    options.section ===
+    'received'
+  ) {
+    return findArchivedReceivedConversationPageForUser(
+      prisma,
+      userId,
+      cinemaId,
+      options,
+    );
+  }
+
   const limit =
     normalizeMessagePageLimit(
       options.limit,
     );
+  const now = new Date();
+
   const [
     rows,
-    countGroups,
+    receivedCount,
+    sentCount,
   ] = await Promise.all([
     prisma.message.findMany({
       where:
         buildArchivedMessageWhere(
           userId,
           cinemaId,
-          options.section,
+          'sent',
           options.beforeId,
+          now,
         ),
-      include: messageInclude,
+      include:
+        messageMailboxInclude(
+          userId,
+        ),
       orderBy: {
         id: 'desc',
       },
       take: limit + 1,
     }),
-    prisma.message.groupBy({
-      by: [
-        'senderId',
-      ],
+    countArchivedReceivedConversations(
+      prisma,
+      userId,
+      cinemaId,
+      now,
+    ),
+    prisma.message.count({
       where:
-        buildArchivedMessageCountWhere(
+        buildArchivedMessageWhere(
           userId,
           cinemaId,
+          'sent',
+          undefined,
+          now,
         ),
-      _count: {
-        _all: true,
-      },
     }),
   ]);
 
   return buildArchivedMessagePage(
-    rows,
-    limit,
-    buildArchivedMessageCounts(
-      countGroups,
+    presentMessagesForUser(
+      rows,
       userId,
     ),
+    limit,
+    {
+      received:
+        receivedCount,
+      sent:
+        sentCount,
+    },
   );
 }
 
@@ -244,24 +317,19 @@ export async function getUnreadMessageCount(
   userId: number,
   cinemaId?: number,
 ) {
-  return prisma.message.count({
+  return prisma.messageRecipient.count({
     where: {
-      isRead: false,
-      archivedAt: null,
-      recalledAt: null,
-      ...(cinemaId
-        ? {
-            cinemaId,
-          }
-        : {}),
-      OR: [
-        {
-          receiverId: userId,
-        },
-        {
-          isBroadcast: true,
-        },
-      ],
+      userId,
+      readAt: null,
+      deletedAt: null,
+      message: {
+        recalledAt: null,
+        ...(cinemaId
+          ? {
+              cinemaId,
+            }
+          : {}),
+      },
     },
   });
 }

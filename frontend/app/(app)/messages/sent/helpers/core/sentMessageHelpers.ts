@@ -105,3 +105,100 @@ export function getShortBody(body: string) {
 
   return body.length > 120 ? `${body.slice(0, 120)}...` : body;
 }
+
+export function getReadReceiptSummary(
+  message: Message,
+) {
+  const receipt =
+    message.readReceipt;
+
+  if (!receipt) {
+    return null;
+  }
+
+  if (
+    receipt.totalRecipients ===
+    0
+  ) {
+    return message.isBroadcast
+      ? "Ingen aktuelle modtagere"
+      : "Modtageren er ikke længere aktiv";
+  }
+
+  if (message.receiver) {
+    if (
+      receipt.readCount === 0
+    ) {
+      return "Ikke læst endnu";
+    }
+
+    const reader =
+      receipt.readBy[0];
+
+    return reader
+      ? `Læst af ${getUserName(reader)}`
+      : "Læst";
+  }
+
+  if (receipt.allRead) {
+    return "Læst af alle";
+  }
+
+  if (receipt.readCount === 0) {
+    return "Ingen har læst endnu";
+  }
+
+  return `Læst af ${receipt.readCount} af ${receipt.totalRecipients}`;
+}
+
+export function getReadReceiptBadgeClass(
+  message: Message,
+) {
+  const receipt =
+    message.readReceipt;
+
+  if (
+    !receipt ||
+    receipt.totalRecipients ===
+      0
+  ) {
+    return "border-gray-300 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200";
+  }
+
+  if (receipt.allRead) {
+    return "border-green-200 bg-green-50 text-green-800 dark:border-green-900/70 dark:bg-green-950/40 dark:text-green-300";
+  }
+
+  if (receipt.readCount > 0) {
+    return "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-300";
+  }
+
+  return "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300";
+}
+
+
+export function getSentRecipientLabel(
+  message: Message,
+) {
+  if (message.isBroadcast) {
+    return "Alle";
+  }
+
+  const directRecipient =
+    getUserName(
+      message.receiver,
+    );
+
+  if (directRecipient) {
+    return directRecipient;
+  }
+
+  const count =
+    message.readReceipt
+      ?.totalRecipients ??
+    0;
+
+  return count === 1
+    ? "1 medarbejder"
+    : `${count} medarbejdere`;
+}

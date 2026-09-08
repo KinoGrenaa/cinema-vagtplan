@@ -13,6 +13,10 @@ export type Message = {
   sender?: User | null;
   receiver?: User | null;
   isBroadcast: boolean;
+  conversationId?: string;
+  recipientParticipants?: User[];
+  conversationMessageCount?: number;
+  conversationMessages?: Message[];
 };
 
 export type ArchiveSection = "received" | "sent";

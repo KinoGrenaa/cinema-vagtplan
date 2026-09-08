@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import { toast } from "sonner";
+
 import {
   useRealtimeCore,
 } from "@/app/hooks/useRealtimeCore";
@@ -219,10 +221,10 @@ export function useArchivedMessages({
           );
         } catch (error) {
           showErrorRef.current(
-            "Kunne ikke hente arkiverede beskeder",
+            "Kunne ikke hente slettede beskeder og samtaler",
             error instanceof Error
               ? error.message
-              : "Der opstod en uventet fejl under hentning af arkiverede beskeder.",
+              : "Der opstod en uventet fejl under hentning af slettede beskeder og samtaler.",
           );
           setMessages([]);
           setCounts({
@@ -285,10 +287,10 @@ export function useArchivedMessages({
         );
       } catch (error) {
         showErrorRef.current(
-          "Kunne ikke hente ældre arkiverede beskeder",
+          "Kunne ikke hente ældre slettede beskeder og samtaler",
           error instanceof Error
             ? error.message
-            : "Der opstod en uventet fejl under hentning af ældre arkiverede beskeder.",
+            : "Der opstod en uventet fejl under hentning af ældre slettede beskeder og samtaler.",
         );
       } finally {
         setLoadingMore(false);
@@ -453,6 +455,10 @@ export function useArchivedMessages({
     section:
       ArchiveSection,
   ) {
+    const isConversation =
+      section ===
+      "received";
+
     try {
       setRestoringMessageId(
         messageId,
@@ -468,12 +474,16 @@ export function useArchivedMessages({
 
       if (!response.ok) {
         showErrorRef.current(
-          "Kunne ikke flytte beskeden tilbage",
+          isConversation
+            ? "Kunne ikke flytte samtalen tilbage"
+            : "Kunne ikke flytte beskeden tilbage",
           await readErrorMessage(
             response,
-            `Der opstod en fejl under flytning af beskeden tilbage til ${getRestoreTargetLabel(
-              section,
-            )}.`,
+            isConversation
+              ? "Der opstod en fejl under flytning af samtalen tilbage til indbakken."
+              : `Der opstod en fejl under flytning af beskeden tilbage til ${getRestoreTargetLabel(
+                  section,
+                )}.`,
           ),
         );
         return;
@@ -487,6 +497,7 @@ export function useArchivedMessages({
               messageId,
           ),
       );
+
       setCounts(
         (current) => ({
           ...current,
@@ -499,6 +510,7 @@ export function useArchivedMessages({
             ),
         }),
       );
+
       setExpandedMessageId(
         (currentId) =>
           currentId ===
@@ -506,14 +518,24 @@ export function useArchivedMessages({
             ? null
             : currentId,
       );
+
+      toast.success(
+        isConversation
+          ? "Samtalen er flyttet tilbage til indbakken."
+          : "Beskeden er flyttet tilbage til sendte beskeder.",
+      );
     } catch (error) {
       showErrorRef.current(
-        "Kunne ikke flytte beskeden tilbage",
+        isConversation
+          ? "Kunne ikke flytte samtalen tilbage"
+          : "Kunne ikke flytte beskeden tilbage",
         error instanceof Error
           ? error.message
-          : `Der opstod en uventet fejl under flytning af beskeden tilbage til ${getRestoreTargetLabel(
-              section,
-            )}.`,
+          : isConversation
+            ? "Der opstod en uventet fejl under flytning af samtalen tilbage til indbakken."
+            : `Der opstod en uventet fejl under flytning af beskeden tilbage til ${getRestoreTargetLabel(
+                section,
+              )}.`,
       );
     } finally {
       setRestoringMessageId(
@@ -527,6 +549,9 @@ export function useArchivedMessages({
     section:
       ArchiveSection,
   ) {
+    const isConversation =
+      section ===
+      "received";
     const targetLabel =
       getRestoreTargetLabel(
         section,
@@ -534,9 +559,13 @@ export function useArchivedMessages({
 
     confirmRef.current({
       title:
-        "Flyt besked tilbage",
+        isConversation
+          ? "Flyt samtale tilbage"
+          : "Flyt besked tilbage",
       description:
-        `Vil du flytte "${message.subject}" tilbage til ${targetLabel}?`,
+        isConversation
+          ? `Vil du flytte samtalen "${message.subject}" tilbage til indbakken?`
+          : `Vil du flytte "${message.subject}" tilbage til ${targetLabel}?`,
       confirmText:
         "Flyt tilbage",
       cancelText:
@@ -567,8 +596,8 @@ export function useArchivedMessages({
     );
   const emptyText =
     activeSection === "sent"
-      ? "Du har ingen sendte arkiverede beskeder."
-      : "Du har ingen modtagne arkiverede beskeder.";
+      ? "Du har ingen sendte slettede beskeder."
+      : "Du har ingen modtagne slettede samtaler.";
 
   return {
     pageLoading,

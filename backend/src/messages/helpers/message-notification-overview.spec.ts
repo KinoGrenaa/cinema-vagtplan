@@ -4,13 +4,13 @@ import {
   findUnreadMessagesForNotifications,
 } from './message-notification-overview';
 import {
-  messageInclude,
+  messageMailboxInclude,
 } from './message-shared';
 
 describe(
   'message notification overview',
   () => {
-    it('henter kun brugerens ulæste aktive beskeder i biografen', () => {
+    it('henter kun brugerens ulæste aktive mailbox-kopier i biografen', () => {
       expect(
         buildUnreadMessageNotificationWhere(
           9,
@@ -18,31 +18,39 @@ describe(
         ),
       ).toEqual({
         cinemaId: 7,
-        isRead: false,
-        archivedAt: null,
         recalledAt: null,
-        OR: [
-          {
-            receiverId: 9,
+        recipients: {
+          some: {
+            userId: 9,
+            readAt: null,
+            deletedAt: null,
           },
-          {
-            isBroadcast: true,
-          },
-        ],
+        },
       });
     });
 
     it('returnerer præcis total og højst 50 nyeste beskeder', async () => {
-      const items = [
+      const rawItems = [
         {
           id: 81,
+          senderId: 12,
+          isRead: false,
+          readAt: null,
+          archivedAt: null,
+          senderDeletedAt: null,
+          recipients: [
+            {
+              readAt: null,
+              deletedAt: null,
+            },
+          ],
         },
       ];
       const prisma = {
         message: {
           findMany:
             jest.fn().mockResolvedValue(
-              items,
+              rawItems,
             ),
           count:
             jest.fn().mockResolvedValue(
@@ -58,31 +66,39 @@ describe(
           7,
         ),
       ).resolves.toEqual({
-        items,
+        items: [
+          {
+            id: 81,
+            senderId: 12,
+            isRead: false,
+            readAt: null,
+            archivedAt: null,
+          },
+        ],
         total: 73,
         hasMore: true,
       });
 
       const where = {
         cinemaId: 7,
-        isRead: false,
-        archivedAt: null,
         recalledAt: null,
-        OR: [
-          {
-            receiverId: 9,
+        recipients: {
+          some: {
+            userId: 9,
+            readAt: null,
+            deletedAt: null,
           },
-          {
-            isBroadcast: true,
-          },
-        ],
+        },
       };
 
       expect(
         prisma.message.findMany,
       ).toHaveBeenCalledWith({
         where,
-        include: messageInclude,
+        include:
+          messageMailboxInclude(
+            9,
+          ),
         orderBy: [
           {
             createdAt: 'desc',

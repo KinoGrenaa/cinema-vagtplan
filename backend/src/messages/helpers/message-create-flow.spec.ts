@@ -128,6 +128,6 @@ describe('createMessage', () => {
           senderRole: 'EMPLOYEE',
         },
       ),
-    ).rejects.toThrow('Vælg en modtager eller send til alle.');
+    ).rejects.toThrow('Vælg mindst én modtager eller send til alle.');
   });
 });

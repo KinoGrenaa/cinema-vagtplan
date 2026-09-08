@@ -10,7 +10,13 @@ type SendMessageInput = {
   body: string;
   receiverId?:
     number | null;
+  recipientIds?: number[];
   isBroadcast: boolean;
+  replyToMessageId?:
+    number | null;
+  replyMode?:
+    | "REPLY"
+    | "REPLY_ALL";
 };
 
 export type InboxMessagePage = {
@@ -524,4 +530,26 @@ export async function sendMessage(
       ),
     );
   }
+}
+
+export async function fetchMessageConversation(
+  messageId: number,
+): Promise<
+  import("../types/messages").MessageConversation
+> {
+  const response =
+    await apiFetch(
+      `/messages/${messageId}/conversation`,
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(
+        response,
+        "Kunne ikke hente samtalen",
+      ),
+    );
+  }
+
+  return response.json();
 }

@@ -186,18 +186,18 @@ export default function AppMenu() {
           moduleKey: "MESSAGES",
         },
         {
-          href: "/messages/send",
-          label: "Send besked",
+          href: "/messages/new",
+          label: "Ny besked",
           moduleKey: "MESSAGES",
         },
         {
           href: "/messages/sent",
-          label: "Sendte beskeder",
+          label: "Sendt",
           moduleKey: "MESSAGES",
         },
         {
-          href: "/messages/archive",
-          label: "Arkiv",
+          href: "/messages/deleted",
+          label: "Slettet",
           moduleKey: "MESSAGES",
         },
       ],

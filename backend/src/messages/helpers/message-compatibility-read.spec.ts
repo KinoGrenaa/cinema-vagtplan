@@ -7,14 +7,18 @@ import {
   findSentMessagesForUser,
 } from './message-read-flow';
 import {
-  messageInclude,
+  messageMailboxInclude,
+  messageSentReceiptInclude,
 } from './message-shared';
 
 describe('message compatibility reads', () => {
   function createPrismaMock() {
     return {
       message: {
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany:
+          jest.fn().mockResolvedValue(
+            [],
+          ),
       },
     };
   }
@@ -28,8 +32,9 @@ describe('message compatibility reads', () => {
     },
   ];
 
-  it('begrænser den gamle indbakke til 50 beskeder', async () => {
-    const prisma = createPrismaMock();
+  it('begrænser den kompatible indbakke til 50 beskeder', async () => {
+    const prisma =
+      createPrismaMock();
 
     await findMessagesForUser(
       prisma as never,
@@ -42,25 +47,27 @@ describe('message compatibility reads', () => {
     ).toHaveBeenCalledWith({
       where: {
         cinemaId: 7,
-        archivedAt: null,
         recalledAt: null,
-        OR: [
-          {
-            receiverId: 9,
+        recipients: {
+          some: {
+            userId: 9,
+            deletedAt: null,
           },
-          {
-            isBroadcast: true,
-          },
-        ],
+        },
       },
-      include: messageInclude,
+      include:
+        messageMailboxInclude(
+          9,
+        ),
       orderBy: stableOrder,
-      take: DEFAULT_MESSAGE_PAGE_SIZE,
+      take:
+        DEFAULT_MESSAGE_PAGE_SIZE,
     });
   });
 
-  it('begrænser den gamle sendte liste til 50 beskeder', async () => {
-    const prisma = createPrismaMock();
+  it('begrænser den kompatible sendte liste til 50 beskeder', async () => {
+    const prisma =
+      createPrismaMock();
 
     await findSentMessagesForUser(
       prisma as never,
@@ -74,16 +81,19 @@ describe('message compatibility reads', () => {
       where: {
         cinemaId: 7,
         senderId: 9,
-        archivedAt: null,
+        senderDeletedAt: null,
       },
-      include: messageInclude,
+      include:
+        messageSentReceiptInclude,
       orderBy: stableOrder,
-      take: DEFAULT_MESSAGE_PAGE_SIZE,
+      take:
+        DEFAULT_MESSAGE_PAGE_SIZE,
     });
   });
 
-  it('begrænser det gamle arkiv til 50 beskeder', async () => {
-    const prisma = createPrismaMock();
+  it('begrænser den kompatible slettet-liste til 50 beskeder på tværs af modtaget og sendt', async () => {
+    const prisma =
+      createPrismaMock();
 
     await findArchivedMessagesForUser(
       prisma as never,
@@ -93,28 +103,62 @@ describe('message compatibility reads', () => {
 
     expect(
       prisma.message.findMany,
-    ).toHaveBeenCalledWith({
-      where: {
-        cinemaId: 7,
-        archivedAt: {
-          not: null,
+    ).toHaveBeenCalledTimes(
+      2,
+    );
+
+    expect(
+      prisma.message.findMany,
+    ).toHaveBeenNthCalledWith(
+      1,
+      {
+        where: {
+          cinemaId: 7,
+          recalledAt: null,
+          recipients: {
+            some: {
+              userId: 9,
+              deletedAt: {
+                gt:
+                  expect.any(Date),
+              },
+            },
+          },
         },
-        recalledAt: null,
-        OR: [
-          {
-            receiverId: 9,
-          },
-          {
-            isBroadcast: true,
-          },
-          {
-            senderId: 9,
-          },
-        ],
+        include:
+          messageMailboxInclude(
+            9,
+          ),
+        orderBy:
+          stableOrder,
+        take:
+          DEFAULT_MESSAGE_PAGE_SIZE,
       },
-      include: messageInclude,
-      orderBy: stableOrder,
-      take: DEFAULT_MESSAGE_PAGE_SIZE,
-    });
+    );
+
+    expect(
+      prisma.message.findMany,
+    ).toHaveBeenNthCalledWith(
+      2,
+      {
+        where: {
+          cinemaId: 7,
+          recalledAt: null,
+          senderId: 9,
+          senderDeletedAt: {
+            gt:
+              expect.any(Date),
+          },
+        },
+        include:
+          messageMailboxInclude(
+            9,
+          ),
+        orderBy:
+          stableOrder,
+        take:
+          DEFAULT_MESSAGE_PAGE_SIZE,
+      },
+    );
   });
 });

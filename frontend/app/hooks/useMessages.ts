@@ -45,6 +45,15 @@ function getErrorMessage(
   return fallback;
 }
 
+function getMessageSortTime(
+  message: Message,
+) {
+  return new Date(
+    message.conversationLastActivityAt ??
+      message.createdAt,
+  ).getTime();
+}
+
 function mergeMessages(
   current: Message[],
   incoming: Message[],
@@ -66,12 +75,12 @@ function mergeMessages(
     ...byId.values(),
   ].sort(
     (left, right) =>
-      new Date(
-        right.createdAt,
-      ).getTime() -
-      new Date(
-        left.createdAt,
-      ).getTime(),
+      getMessageSortTime(
+        right,
+      ) -
+      getMessageSortTime(
+        left,
+      ),
   );
 }
 
@@ -109,6 +118,12 @@ export function useMessages(
       null,
     );
 
+  const [
+    targetConversationId,
+    setTargetConversationId,
+  ] = useState<
+    string | null
+  >(null);
   const loadMessages =
     useCallback(
       async (
@@ -131,6 +146,9 @@ export function useMessages(
             );
             setNextBeforeId(
               page.nextBeforeId,
+            );
+            setTargetConversationId(
+              null,
             );
             return;
           }
@@ -159,6 +177,11 @@ export function useMessages(
           setNextBeforeId(
             page.nextBeforeId,
           );
+          setTargetConversationId(
+            page.target
+              ?.conversationId ??
+              null,
+          );
         } catch (error) {
           onError?.(
             getErrorMessage(
@@ -172,6 +195,9 @@ export function useMessages(
           setMessages([]);
           setHasMore(false);
           setNextBeforeId(
+            null,
+          );
+          setTargetConversationId(
             null,
           );
         } finally {
@@ -261,12 +287,12 @@ export function useMessages(
         ...messages,
       ].sort(
         (left, right) =>
-          new Date(
-            right.createdAt,
-          ).getTime() -
-          new Date(
-            left.createdAt,
-          ).getTime(),
+          getMessageSortTime(
+            right,
+          ) -
+          getMessageSortTime(
+            left,
+          ),
       );
     }, [messages]);
 
@@ -299,6 +325,8 @@ export function useMessages(
                         isRead: true,
                         readAt:
                           new Date().toISOString(),
+                        conversationUnreadCount:
+                          0,
                       }
                     : message,
               ),
@@ -382,6 +410,7 @@ export function useMessages(
     hasMore,
     messages,
     sortedMessages,
+    targetConversationId,
     unreadCount,
     loadMessages,
     loadMore,

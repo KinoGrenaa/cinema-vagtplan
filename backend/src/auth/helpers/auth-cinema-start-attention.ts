@@ -411,30 +411,52 @@ export async function findAuthCinemaStartAttention(
       : Promise.resolve([]),
 
     messageCinemaIds.length > 0
-      ? prisma.message.groupBy({
-          by: [
-            'cinemaId',
-          ],
-          where: {
-            cinemaId: {
-              in: messageCinemaIds,
+      ? prisma.messageRecipient
+          .findMany({
+            where: {
+              userId,
+              readAt: null,
+              deletedAt: null,
+              message: {
+                cinemaId: {
+                  in: messageCinemaIds,
+                },
+                recalledAt: null,
+              },
             },
-            isRead: false,
-            archivedAt: null,
-            recalledAt: null,
-            OR: [
-              {
-                receiverId: userId,
+            select: {
+              message: {
+                select: {
+                  cinemaId: true,
+                },
               },
-              {
-                isBroadcast: true,
-              },
-            ],
-          },
-          _count: {
-            _all: true,
-          },
-        })
+            },
+          })
+          .then((rows) => {
+            const counts =
+              new Map<number, number>();
+
+            for (const row of rows) {
+              const cinemaId =
+                row.message.cinemaId;
+              counts.set(
+                cinemaId,
+                (counts.get(cinemaId) ??
+                  0) + 1,
+              );
+            }
+
+            return [
+              ...counts.entries(),
+            ].map(
+              ([cinemaId, count]) => ({
+                cinemaId,
+                _count: {
+                  _all: count,
+                },
+              }),
+            );
+          })
       : Promise.resolve([]),
 
     shiftTradeCinemaIds.length > 0

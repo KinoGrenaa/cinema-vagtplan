@@ -1,168 +1,19 @@
 "use client";
 
-import ConfirmModal from "@/app/components/modals/ConfirmModal";
-import InfoModal from "@/app/components/modals/InfoModal";
 import {
-  useConfirm,
-} from "@/app/hooks/useConfirm";
-import {
-  useInfoModal,
-} from "@/app/hooks/useInfoModal";
+  useEffect,
+} from "react";
 
-import ArchivedMessagesHeader from "./components/layout/ArchivedMessagesHeader";
-import ArchivedMessagesListSection from "./components/list/ArchivedMessagesListSection";
-import {
-  useArchivedMessages,
-} from "./hooks/page/useArchivedMessages";
-
-export default function ArchivedMessagesPage() {
-  const confirmDialog =
-    useConfirm();
-  const errorDialog =
-    useInfoModal();
-  const {
-    pageLoading,
-    loadingMore,
-    hasMore,
-    messageCount,
-    activeSection,
-    receivedCount,
-    sentCount,
-    activeLoadedCount,
-    activeTotalCount,
-    activeSectionLabel,
-    emptyText,
-    groupedMessages,
-    expandedDateKeys,
-    expandedMessageId,
-    restoringMessageId,
-    loadMore,
-    switchSection,
-    toggleDateGroup,
-    toggleMessage,
-    confirmRestoreMessage,
-  } = useArchivedMessages({
-    confirmDialog,
-    errorDialog,
-  });
+export default function LegacyDeletedMessagesRedirect() {
+  useEffect(() => {
+    window.location.replace(
+      `/messages/deleted${window.location.search}${window.location.hash}`,
+    );
+  }, []);
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 md:p-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <ArchivedMessagesHeader />
-
-        <ArchivedMessagesListSection
-          pageLoading={
-            pageLoading
-          }
-          loadingMore={
-            loadingMore
-          }
-          hasMore={hasMore}
-          messageCount={
-            messageCount
-          }
-          activeSection={
-            activeSection
-          }
-          receivedCount={
-            receivedCount
-          }
-          sentCount={
-            sentCount
-          }
-          activeLoadedCount={
-            activeLoadedCount
-          }
-          activeTotalCount={
-            activeTotalCount
-          }
-          activeSectionLabel={
-            activeSectionLabel
-          }
-          emptyText={
-            emptyText
-          }
-          groupedMessages={
-            groupedMessages
-          }
-          expandedDateKeys={
-            expandedDateKeys
-          }
-          expandedMessageId={
-            expandedMessageId
-          }
-          restoringMessageId={
-            restoringMessageId
-          }
-          onLoadMore={
-            loadMore
-          }
-          onSwitchSection={
-            switchSection
-          }
-          onToggleDateGroup={
-            toggleDateGroup
-          }
-          onToggleMessage={
-            toggleMessage
-          }
-          onConfirmRestoreMessage={
-            confirmRestoreMessage
-          }
-        />
-
-        <ConfirmModal
-          open={
-            confirmDialog.open
-          }
-          title={
-            confirmDialog.title
-          }
-          description={
-            confirmDialog.description
-          }
-          confirmText={
-            confirmDialog.confirmText
-          }
-          cancelText={
-            confirmDialog.cancelText
-          }
-          confirmVariant={
-            confirmDialog.confirmVariant
-          }
-          loading={
-            confirmDialog.loading
-          }
-          onConfirm={
-            confirmDialog.handleConfirm
-          }
-          onCancel={
-            confirmDialog.handleCancel
-          }
-        />
-
-        <InfoModal
-          open={
-            errorDialog.open
-          }
-          title={
-            errorDialog.title
-          }
-          description={
-            errorDialog.description
-          }
-          buttonText={
-            errorDialog.buttonText
-          }
-          variant={
-            errorDialog.variant
-          }
-          onClose={
-            errorDialog.close
-          }
-        />
-      </div>
+    <main className="min-h-screen bg-slate-50 p-6 text-slate-600 dark:bg-[#030712] dark:text-slate-300">
+      Åbner Slettet...
     </main>
   );
 }

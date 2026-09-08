@@ -318,6 +318,7 @@ model User {
   targetedTrades                        ShiftTrade[]                         @relation("TargetedTrades")
   sentMessages                          Message[]                            @relation("SentMessages")
   receivedMessages                      Message[]                            @relation("ReceivedMessages")
+  messageRecipients                     MessageRecipient[]
   timeEntries                           TimeEntry[]
   pushSubscriptions                     PushSubscription[]
   documents                             EmployeeDocument[]
@@ -826,10 +827,37 @@ model Message {
   isBroadcast         Boolean   @default(false)
   isRead              Boolean   @default(false)
   archivedAt          DateTime?
+  senderDeletedAt     DateTime?
   recalledAt          DateTime?
   recalledByUserId    Int?
   systemType          String?
   relatedShiftTradeId Int?
+  conversationId      String    @default(uuid())
+  replyToMessageId    Int?
+  replyToMessage      Message?  @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies             Message[] @relation("MessageReplies")
+  recipients          MessageRecipient[]
+
+  @@index([conversationId, createdAt, id])
+  @@index([replyToMessageId])
+}
+
+model MessageRecipient {
+  id        Int       @id @default(autoincrement())
+  messageId Int
+  message   Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt            DateTime?
+  deletedAt         DateTime?
+  receiptExcludedAt DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@unique([messageId, userId])
+  @@index([userId, deletedAt])
+  @@index([userId, readAt])
+  @@index([messageId])
+  @@index([messageId, receiptExcludedAt, readAt])
 }
 
 model TimeEntry {

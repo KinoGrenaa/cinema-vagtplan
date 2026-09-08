@@ -74,6 +74,9 @@ describe('findAuthCinemaStartOverview', () => {
     message: {
       groupBy: jest.Mock;
     };
+    messageRecipient: {
+      findMany: jest.Mock;
+    };
     shiftTrade: {
       groupBy: jest.Mock;
     };
@@ -101,6 +104,9 @@ describe('findAuthCinemaStartOverview', () => {
       },
       message: {
         groupBy: jest.fn().mockResolvedValue([]),
+      },
+      messageRecipient: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
       shiftTrade: {
         groupBy: jest.fn().mockResolvedValue([]),

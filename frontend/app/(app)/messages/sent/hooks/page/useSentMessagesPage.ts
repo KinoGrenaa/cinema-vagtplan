@@ -198,14 +198,14 @@ export function useSentMessagesPage() {
     messageId: number,
   ) {
     confirmDialog.confirm({
-      title: "Arkiver besked",
+      title: "Slet besked",
       description:
-        "Vil du arkivere denne besked?",
-      confirmText: "Arkiver",
+        "Vil du slette denne besked? Du kan flytte den tilbage fra Slettet senere.",
+      confirmText: "Slet",
       cancelText:
         "Annuller",
       confirmVariant:
-        "primary",
+        "danger",
       onConfirm: async () => {
         try {
           await archive(
@@ -222,10 +222,10 @@ export function useSentMessagesPage() {
           }
         } catch (error) {
           showErrorDialog(
-            "Beskeden kunne ikke arkiveres",
+            "Beskeden kunne ikke slettes",
             getErrorMessage(
               error,
-              "Der opstod en fejl, da beskeden skulle arkiveres.\nPrøv igen.",
+              "Der opstod en fejl, da beskeden skulle slettes.\nPrøv igen.",
             ),
           );
         }

@@ -1,5 +1,8 @@
 import {
   formatDateTime,
+  getReadReceiptBadgeClass,
+  getReadReceiptSummary,
+  getSentRecipientLabel,
   getShortBody,
   getUserName,
   type MessageDateGroup,
@@ -16,6 +19,25 @@ type SentMessagesListProps = {
   onToggleMessage: (messageId: number) => void;
   onArchive: (messageId: number) => void;
 };
+
+function formatParticipantNames(
+  participants:
+    | NonNullable<
+        Message["readReceipt"]
+      >["readBy"]
+    | undefined,
+) {
+  if (!participants?.length) {
+    return null;
+  }
+
+  return participants
+    .map((participant) =>
+      getUserName(participant),
+    )
+    .filter(Boolean)
+    .join(", ");
+}
 
 export default function SentMessagesList({
   sortedMessages,
@@ -63,6 +85,7 @@ export default function SentMessagesList({
               <div className="divide-y divide-gray-200 dark:divide-gray-800">
                 {group.messages.map((message) => {
                   const isExpanded = expandedMessageId === message.id;
+                  const receiptSummary = getReadReceiptSummary(message);
 
                   return (
                     <article key={message.id}>
@@ -79,6 +102,15 @@ export default function SentMessagesList({
                                   Sendt til alle
                                 </span>
                               )}
+                              {receiptSummary && (
+                                <span
+                                  className={`rounded-full border px-2 py-1 text-xs font-semibold ${getReadReceiptBadgeClass(
+                                    message,
+                                  )}`}
+                                >
+                                  {receiptSummary}
+                                </span>
+                              )}
                             </div>
 
                             <h2 className="truncate text-lg font-bold text-black dark:text-white">
@@ -87,9 +119,9 @@ export default function SentMessagesList({
 
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                               Til:{" "}
-                              {message.isBroadcast
-                                ? "Alle"
-                                : getUserName(message.receiver) || "Ukendt"}
+                              {getSentRecipientLabel(
+                                message,
+                              )}
                             </p>
 
                             {!isExpanded && (
@@ -113,12 +145,49 @@ export default function SentMessagesList({
                             </div>
                             <div>
                               Til:{" "}
-                              {message.isBroadcast
-                                ? "Alle"
-                                : getUserName(message.receiver) || "Ukendt"}
+                              {getSentRecipientLabel(
+                                message,
+                              )}
                             </div>
                             <div>Sendt: {formatDateTime(message.createdAt)}</div>
                           </div>
+
+                          {message.readReceipt && receiptSummary && (
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
+                              <p className="font-semibold text-gray-950 dark:text-white">
+                                Læsestatus
+                              </p>
+                              <p className="mt-1">
+                                {receiptSummary}
+                              </p>
+
+                              {(!message.receiver ||
+                                message.isBroadcast) &&
+                                message.readReceipt.readBy.length > 0 && (
+                                <p className="mt-2">
+                                  <span className="font-semibold">
+                                    Læst af:
+                                  </span>{" "}
+                                  {formatParticipantNames(
+                                    message.readReceipt.readBy,
+                                  )}
+                                </p>
+                              )}
+
+                              {(!message.receiver ||
+                                message.isBroadcast) &&
+                                message.readReceipt.unreadBy.length > 0 && (
+                                <p className="mt-1">
+                                  <span className="font-semibold">
+                                    Ikke læst af:
+                                  </span>{" "}
+                                  {formatParticipantNames(
+                                    message.readReceipt.unreadBy,
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                          )}
 
                           <div className="whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200">
                             {message.body || "Ingen beskedtekst."}
@@ -130,7 +199,7 @@ export default function SentMessagesList({
                               onClick={() => onArchive(message.id)}
                               className="rounded-xl bg-gray-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-gray-200 dark:text-black dark:hover:bg-white"
                             >
-                              Arkiver
+                              Slet
                             </button>
                           </div>
                         </div>

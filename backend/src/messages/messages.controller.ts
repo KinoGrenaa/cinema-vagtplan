@@ -224,6 +224,28 @@ export class MessagesController {
   }
 
   @UseGuards(JwtGuard)
+  @Get(':id/conversation')
+  getConversation(
+    @Req() req: any,
+    @Param('id')
+    id: string,
+    @Query('cinemaId')
+    cinemaId?: string,
+  ) {
+    return this.messagesService.findConversationForUser(
+      parseRequiredPositiveInteger(
+        id,
+        'Besked skal være et gyldigt ID',
+      ),
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Post()
   createMessage(
     @Req() req: any,

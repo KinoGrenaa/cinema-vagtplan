@@ -1,3 +1,6 @@
+import { getConversationDisplaySubject } from "@/app/utils/messageSubject";
+import ArchivedConversationThread from "./ArchivedConversationThread";
+
 import {
   formatDateTime,
   getArchivedDateLabel,
@@ -83,8 +86,7 @@ export default function ArchivedMessagesListSection({
         role="status"
         aria-live="polite"
       >
-        Henter arkiverede
-        beskeder...
+        Henter slettede beskeder og samtaler...
       </div>
     );
   }
@@ -93,11 +95,10 @@ export default function ArchivedMessagesListSection({
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
         <h2 className="text-xl font-bold text-gray-950 dark:text-white">
-          Intet arkiv endnu
+          Ingen slettede beskeder eller samtaler
         </h2>
         <p className="mt-2">
-          Du har ingen arkiverede
-          beskeder lige nu.
+          Der er ikke noget i Slettet lige nu.
         </p>
       </div>
     );
@@ -141,11 +142,22 @@ export default function ArchivedMessagesListSection({
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-        Viser{" "}
-        {activeLoadedCount} af{" "}
-        {activeTotalCount}{" "}
-        {activeSectionLabel.toLowerCase()}{" "}
-        arkiverede beskeder.
+        {activeSection ===
+        "received" ? (
+          <>
+            Viser{" "}
+            {activeLoadedCount} af{" "}
+            {activeTotalCount}{" "}
+            modtagne slettede samtaler.
+          </>
+        ) : (
+          <>
+            Viser{" "}
+            {activeLoadedCount} af{" "}
+            {activeTotalCount}{" "}
+            sendte slettede beskeder.
+          </>
+        )}
       </div>
 
       {activeTotalCount ===
@@ -188,12 +200,10 @@ export default function ArchivedMessagesListSection({
                     }
                   </div>
                   <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    {
-                      group.messages
-                        .length
-                    }{" "}
-                    beskeder sendt
-                    denne dato
+                    {activeSection ===
+                    "received"
+                      ? `${group.messages.length} ${group.messages.length === 1 ? "samtale" : "samtaler"}`
+                      : `${group.messages.length} ${group.messages.length === 1 ? "besked" : "beskeder"} sendt denne dato`}
                   </div>
                 </div>
                 <span className="w-fit rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-950/70 dark:text-blue-200">
@@ -240,7 +250,7 @@ export default function ArchivedMessagesListSection({
                               <div className="min-w-0">
                                 <div className="mb-2 flex flex-wrap gap-2">
                                   <span className="rounded-full bg-gray-200 px-2 py-1 text-xs font-semibold text-gray-800 dark:bg-gray-700 dark:text-gray-100">
-                                    Arkiveret
+                                    Slettet
                                   </span>
                                   <span
                                     className={`rounded-full px-2 py-1 text-xs font-semibold ${
@@ -265,9 +275,12 @@ export default function ArchivedMessagesListSection({
                                 </div>
 
                                 <h2 className="truncate text-lg font-bold text-gray-950 dark:text-white">
-                                  {
-                                    message.subject
-                                  }
+                                  {activeSection ===
+                                  "received"
+                                    ? getConversationDisplaySubject(
+                                        message.subject,
+                                      )
+                                    : message.subject}
                                 </h2>
                                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                                   {activeSection ===
@@ -297,7 +310,7 @@ export default function ArchivedMessagesListSection({
                               </div>
 
                               <div className="shrink-0 text-sm text-gray-500 dark:text-gray-500 md:text-right">
-                                Arkiveret:{" "}
+                                Slettet:{" "}
                                 {getArchivedDateLabel(
                                   message,
                                 )}
@@ -307,41 +320,54 @@ export default function ArchivedMessagesListSection({
 
                           {isExpanded && (
                             <div className="space-y-4 border-t border-gray-200 bg-gray-50/70 p-5 dark:border-gray-800 dark:bg-gray-950/60">
-                              <div className="grid gap-1 text-sm text-gray-600 dark:text-gray-400">
-                                <div>
-                                  Fra:{" "}
-                                  {getUserName(
-                                    message.sender,
-                                  ) ||
-                                    "System"}
-                                </div>
-                                <div>
-                                  Til:{" "}
-                                  {message.isBroadcast
-                                    ? "Alle"
-                                    : getUserName(
-                                          message.receiver,
-                                        ) ||
-                                      "Dig"}
-                                </div>
-                                <div>
-                                  Sendt:{" "}
-                                  {formatDateTime(
-                                    message.createdAt,
-                                  )}
-                                </div>
-                                <div>
-                                  Arkiveret:{" "}
-                                  {getArchivedDateLabel(
-                                    message,
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="whitespace-pre-wrap rounded-xl border border-gray-200 bg-white p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                                {message.body ||
-                                  "Ingen beskedtekst."}
-                              </div>
+                              {activeSection ===
+                                "received" &&
+                              message
+                                .conversationMessages
+                                ?.length ? (
+                                <ArchivedConversationThread
+                                  message={
+                                    message
+                                  }
+                                />
+                              ) : (
+                                <>
+                                  <div className="grid gap-1 text-sm text-gray-600 dark:text-gray-400">
+                                    <div>
+                                      Fra:{" "}
+                                      {getUserName(
+                                        message.sender,
+                                      ) ||
+                                        "System"}
+                                    </div>
+                                    <div>
+                                      Til:{" "}
+                                      {message.isBroadcast
+                                        ? "Alle"
+                                        : getUserName(
+                                              message.receiver,
+                                            ) ||
+                                          "Dig"}
+                                    </div>
+                                    <div>
+                                      Sendt:{" "}
+                                      {formatDateTime(
+                                        message.createdAt,
+                                      )}
+                                    </div>
+                                    <div>
+                                      Slettet:{" "}
+                                      {getArchivedDateLabel(
+                                        message,
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="whitespace-pre-wrap rounded-xl border border-gray-200 bg-white p-4 text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                                    {message.body ||
+                                      "Ingen beskedtekst."}
+                                  </div>
+                                </>
+                              )}
 
                               <div className="flex justify-end">
                                 <button
@@ -359,7 +385,10 @@ export default function ArchivedMessagesListSection({
                                 >
                                   {isRestoring
                                     ? "Flytter tilbage..."
-                                    : `Flyt tilbage til ${targetLabel}`}
+                                    : activeSection ===
+                                        "received"
+                                      ? "Flyt samtalen tilbage"
+                                      : `Flyt tilbage til ${targetLabel}`}
                                 </button>
                               </div>
                             </div>
@@ -389,7 +418,10 @@ export default function ArchivedMessagesListSection({
           >
             {loadingMore
               ? "Henter..."
-              : `Hent ældre ${activeSectionLabel.toLowerCase()} beskeder`}
+              : activeSection ===
+                  "received"
+                ? "Hent ældre modtagne samtaler"
+                : "Hent ældre sendte beskeder"}
           </button>
         </div>
       )}

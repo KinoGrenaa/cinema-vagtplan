@@ -6,7 +6,8 @@ import {
   PrismaService,
 } from '../../prisma/prisma.service';
 import {
-  messageInclude,
+  messageMailboxInclude,
+  presentMessageForUser,
 } from './message-shared';
 
 export const MESSAGE_NOTIFICATION_OVERVIEW_LIMIT =
@@ -18,17 +19,14 @@ export function buildUnreadMessageNotificationWhere(
 ): Prisma.MessageWhereInput {
   return {
     cinemaId,
-    isRead: false,
-    archivedAt: null,
     recalledAt: null,
-    OR: [
-      {
-        receiverId: userId,
+    recipients: {
+      some: {
+        userId,
+        readAt: null,
+        deletedAt: null,
       },
-      {
-        isBroadcast: true,
-      },
-    ],
+    },
   };
 }
 
@@ -49,7 +47,10 @@ export async function findUnreadMessagesForNotifications(
   ] = await Promise.all([
     prisma.message.findMany({
       where,
-      include: messageInclude,
+      include:
+        messageMailboxInclude(
+          userId,
+        ),
       orderBy: [
         {
           createdAt: 'desc',
@@ -67,7 +68,12 @@ export async function findUnreadMessagesForNotifications(
   ]);
 
   return {
-    items,
+    items: items.map((message) =>
+      presentMessageForUser(
+        message,
+        userId,
+      ),
+    ),
     total,
     hasMore:
       total > items.length,

@@ -50,8 +50,8 @@ describe('findAuthCinemaStartAttention', () => {
     shift: {
       groupBy: jest.Mock;
     };
-    message: {
-      groupBy: jest.Mock;
+    messageRecipient: {
+      findMany: jest.Mock;
     };
     shiftTrade: {
       groupBy: jest.Mock;
@@ -73,8 +73,8 @@ describe('findAuthCinemaStartAttention', () => {
         groupBy:
           jest.fn().mockResolvedValue([]),
       },
-      message: {
-        groupBy:
+      messageRecipient: {
+        findMany:
           jest.fn().mockResolvedValue([]),
       },
       shiftTrade: {
@@ -100,9 +100,22 @@ describe('findAuthCinemaStartAttention', () => {
     prisma.shift.groupBy.mockResolvedValue([
       group(2, 1),
     ]);
-    prisma.message.groupBy.mockResolvedValue([
-      group(1, 2),
-      group(2, 1),
+    prisma.messageRecipient.findMany.mockResolvedValue([
+      {
+        message: {
+          cinemaId: 1,
+        },
+      },
+      {
+        message: {
+          cinemaId: 1,
+        },
+      },
+      {
+        message: {
+          cinemaId: 2,
+        },
+      },
     ]);
     prisma.shiftTrade.groupBy.mockResolvedValue([
       group(1, 2),
@@ -426,7 +439,7 @@ describe('findAuthCinemaStartAttention', () => {
       prisma.shift.groupBy,
     ).not.toHaveBeenCalled();
     expect(
-      prisma.message.groupBy,
+      prisma.messageRecipient.findMany,
     ).not.toHaveBeenCalled();
     expect(
       prisma.shiftTrade.groupBy,
@@ -490,8 +503,11 @@ describe('findAuthCinemaStartAttention', () => {
   });
 
   it('uses an informational state when only unread messages exist', async () => {
-    prisma.message.groupBy.mockResolvedValue([
-      group(1, 4),
+    prisma.messageRecipient.findMany.mockResolvedValue([
+      { message: { cinemaId: 1 } },
+      { message: { cinemaId: 1 } },
+      { message: { cinemaId: 1 } },
+      { message: { cinemaId: 1 } },
     ]);
 
     const result =

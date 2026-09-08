@@ -2,38 +2,99 @@
 
 import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
+import { useAuth } from "@/app/providers/AuthProvider";
 
-import InboxMessagesEmptyState from "./components/list/InboxMessagesEmptyState";
+import InboxConversationDetail from "./components/detail/InboxConversationDetail";
 import InboxMessagesList from "./components/list/InboxMessagesList";
-import InboxMessagesHeader from "./components/layout/InboxMessagesHeader";
 import InboxMessageTargetNotice from "./components/layout/InboxMessageTargetNotice";
-import {
-  useInboxMessagesPage,
-} from "./hooks/page/useInboxMessagesPage";
+import MessagesWorkspaceNav from "./components/layout/MessagesWorkspaceNav";
+import { useInboxMessagesPage } from "./hooks/page/useInboxMessagesPage";
+
+function canUserSendBroadcast(
+  value: unknown,
+) {
+  if (
+    !value ||
+    typeof value !==
+      "object"
+  ) {
+    return false;
+  }
+
+  const user =
+    value as {
+      role?: string;
+      canSendBroadcastMessages?: boolean;
+    };
+
+  return (
+    user.role ===
+      "ADMIN" ||
+    user.role ===
+      "MASTER" ||
+    user.canSendBroadcastMessages ===
+      true
+  );
+}
 
 export default function MessagesPage() {
+  const { user } =
+    useAuth();
+
   const {
     confirmDialog,
     loading,
     loadingMore,
     hasMore,
     sortedMessages,
-    expandedMessageId,
+    expandedConversationId,
     focusedMessageId,
+    focusedConversationId,
+    conversationsById,
+    conversationLoadingId,
     targetState,
     errorDialog,
     loadMore,
     handleOpenMessage,
+    handleReply,
     handleArchive,
     clearMessageTarget,
     closeErrorDialog,
-  } = useInboxMessagesPage();
+  } =
+    useInboxMessagesPage();
+
+  const selectedMessage =
+    sortedMessages.find(
+      (message) =>
+        message.conversationId ===
+        expandedConversationId,
+    ) ?? null;
+
+  const selectedConversation =
+    expandedConversationId
+      ? conversationsById[
+          expandedConversationId
+        ] ?? null
+      : null;
+
+  const unreadCount =
+    sortedMessages.reduce(
+      (
+        total,
+        message,
+      ) =>
+        total +
+        (message
+          .conversationUnreadCount ??
+          (message.isRead
+            ? 0
+            : 1)),
+      0,
+    );
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-950 transition-colors dark:bg-[#030712] dark:text-slate-100 md:p-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <InboxMessagesHeader />
-
+    <main className="min-h-screen bg-slate-50 p-3 text-slate-950 transition-colors dark:bg-[#030712] dark:text-slate-100 md:p-6">
+      <div className="mx-auto max-w-[1500px] space-y-3">
         <InboxMessageTargetNotice
           state={targetState}
           messageId={
@@ -44,69 +105,123 @@ export default function MessagesPage() {
           }
         />
 
-        {loading && (
-          <div
-            className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600 shadow-sm dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-300"
-            role="status"
-            aria-live="polite"
-          >
-            Henter beskeder...
-          </div>
-        )}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700/80 dark:bg-slate-900">
+          <div className="grid lg:grid-cols-[190px_minmax(300px,410px)_minmax(0,1fr)]">
+            <MessagesWorkspaceNav
+              active="inbox"
+              unreadCount={
+                unreadCount
+              }
+            />
 
-        {!loading &&
-          sortedMessages.length ===
-            0 && (
-            <InboxMessagesEmptyState />
-          )}
+            <section className="border-b border-slate-200 dark:border-slate-700/80 lg:border-b-0 lg:border-r">
+              <header className="border-b border-slate-200 px-4 py-4 dark:border-slate-700/80">
+                <h1 className="text-xl font-bold text-slate-950 dark:text-white">
+                  Indbakke
+                </h1>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {sortedMessages.length}{" "}
+                  {sortedMessages.length ===
+                  1
+                    ? "samtale"
+                    : "samtaler"}
+                </p>
+              </header>
 
-        {!loading &&
-          sortedMessages.length >
-            0 && (
-            <>
-              <InboxMessagesList
-                messages={
-                  sortedMessages
-                }
-                expandedMessageId={
-                  expandedMessageId
-                }
-                focusedMessageId={
-                  focusedMessageId
-                }
-                onOpenMessage={
-                  handleOpenMessage
-                }
-                onArchive={
-                  handleArchive
-                }
-              />
-
-              {hasMore && (
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void loadMore()
-                    }
-                    disabled={
-                      loadingMore
-                    }
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:active:bg-slate-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-[#030712] dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+              <div className="max-h-[calc(100dvh-15rem)] overflow-y-auto">
+                {loading && (
+                  <div
+                    className="p-5 text-sm text-slate-500 dark:text-slate-400"
+                    role="status"
+                    aria-live="polite"
                   >
-                    {loadingMore
-                      ? "Henter..."
-                      : "Hent ældre beskeder"}
-                  </button>
-                </div>
+                    Henter samtaler...
+                  </div>
+                )}
+
+                {!loading &&
+                  sortedMessages.length ===
+                    0 && (
+                    <div className="p-6 text-sm text-slate-500 dark:text-slate-400">
+                      Din indbakke er tom.
+                    </div>
+                  )}
+
+                {!loading &&
+                  sortedMessages.length >
+                    0 && (
+                    <InboxMessagesList
+                      messages={
+                        sortedMessages
+                      }
+                      selectedConversationId={
+                        expandedConversationId
+                      }
+                      focusedConversationId={
+                        focusedConversationId
+                      }
+                      onOpenMessage={
+                        handleOpenMessage
+                      }
+                    />
+                  )}
+
+                {hasMore && (
+                  <div className="border-t border-slate-200 p-3 text-center dark:border-slate-700/80">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void loadMore()
+                      }
+                      disabled={
+                        loadingMore
+                      }
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      {loadingMore
+                        ? "Henter..."
+                        : "Hent ældre samtaler"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <InboxConversationDetail
+              message={
+                selectedMessage
+              }
+              conversation={
+                selectedConversation
+              }
+              loading={
+                Boolean(
+                  expandedConversationId &&
+                    conversationLoadingId ===
+                      expandedConversationId,
+                )
+              }
+              canSendBroadcastMessages={canUserSendBroadcast(
+                user,
               )}
-            </>
-          )}
+              onReply={
+                handleReply
+              }
+              onDelete={
+                handleArchive
+              }
+            />
+          </div>
+        </div>
       </div>
 
       <ConfirmModal
-        open={confirmDialog.open}
-        title={confirmDialog.title}
+        open={
+          confirmDialog.open
+        }
+        title={
+          confirmDialog.title
+        }
         description={
           confirmDialog.description
         }
@@ -131,8 +246,12 @@ export default function MessagesPage() {
       />
 
       <InfoModal
-        open={errorDialog.open}
-        title={errorDialog.title}
+        open={
+          errorDialog.open
+        }
+        title={
+          errorDialog.title
+        }
         description={
           errorDialog.description
         }

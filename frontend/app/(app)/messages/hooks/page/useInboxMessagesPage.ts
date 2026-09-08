@@ -6,6 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
+
+import { toast } from "sonner";
 import {
   usePathname,
   useRouter,
@@ -15,6 +17,12 @@ import {
 import {
   useConfirm,
 } from "@/app/hooks/useConfirm";
+import {
+  fetchMessageConversation,
+} from "@/app/services/messagesService";
+import type {
+  MessageConversation,
+} from "@/app/types/messages";
 import {
   useMessages,
 } from "../../../../hooks/useMessages";
@@ -37,10 +45,25 @@ export function useInboxMessagesPage() {
   const searchParams =
     useSearchParams();
   const [
-    expandedMessageId,
-    setExpandedMessageId,
+    expandedConversationId,
+    setExpandedConversationId,
   ] = useState<
-    number | null
+    string | null
+  >(null);
+  const [
+    conversationsById,
+    setConversationsById,
+  ] = useState<
+    Record<
+      string,
+      MessageConversation
+    >
+  >({});
+  const [
+    conversationLoadingId,
+    setConversationLoadingId,
+  ] = useState<
+    string | null
   >(null);
   const [
     errorDialog,
@@ -51,9 +74,10 @@ export function useInboxMessagesPage() {
       title: "",
       description: "",
     });
-  const focusedMessageRef =
-    useRef<number | null>(null);
-
+  const focusedConversationRef =
+    useRef<string | null>(
+      null,
+    );
   const messageTarget =
     parseInboxMessageTarget(
       searchParams.get(
@@ -75,7 +99,6 @@ export function useInboxMessagesPage() {
       },
       [],
     );
-
   const closeErrorDialog =
     useCallback(() => {
       setErrorDialog({
@@ -95,12 +118,12 @@ export function useInboxMessagesPage() {
       },
       [showErrorDialog],
     );
-
   const {
     loading,
     loadingMore,
     hasMore,
     sortedMessages,
+    targetConversationId,
     loadMore,
     markAsRead,
     archive,
@@ -112,6 +135,50 @@ export function useInboxMessagesPage() {
       handleMessagesError,
   });
 
+  const loadConversation =
+    useCallback(
+      async (
+        messageId: number,
+        conversationId: string,
+      ) => {
+        setConversationLoadingId(
+          conversationId,
+        );
+
+        try {
+          const conversation =
+            await fetchMessageConversation(
+              messageId,
+            );
+
+          setConversationsById(
+            (current) => ({
+              ...current,
+              [conversationId]:
+                conversation,
+            }),
+          );
+        } catch (error) {
+          showErrorDialog(
+            "Samtalen kunne ikke hentes",
+            getErrorMessage(
+              error,
+              "Der opstod en fejl, da samtalen skulle hentes.\nPrøv igen.",
+            ),
+          );
+        } finally {
+          setConversationLoadingId(
+            (current) =>
+              current ===
+              conversationId
+                ? null
+                : current,
+          );
+        }
+      },
+      [showErrorDialog],
+    );
+
   const targetState:
     InboxMessageTargetState =
       messageTarget.invalid
@@ -120,10 +187,11 @@ export function useInboxMessagesPage() {
           ? "idle"
           : loading
             ? "loading"
-            : sortedMessages.some(
+            : targetConversationId &&
+                sortedMessages.some(
                   (message) =>
-                    message.id ===
-                    messageTarget.messageId,
+                    message.conversationId ===
+                    targetConversationId,
                 )
               ? "found"
               : "missing";
@@ -131,9 +199,12 @@ export function useInboxMessagesPage() {
   useEffect(() => {
     const messageId =
       messageTarget.messageId;
+    const conversationId =
+      targetConversationId;
 
     if (
       !messageId ||
+      !conversationId ||
       loading
     ) {
       return;
@@ -142,41 +213,41 @@ export function useInboxMessagesPage() {
     const message =
       sortedMessages.find(
         (current) =>
-          current.id ===
-          messageId,
+          current.conversationId ===
+          conversationId,
       );
 
     if (!message) {
-      focusedMessageRef.current =
+      focusedConversationRef.current =
         null;
       return;
     }
 
-    setExpandedMessageId(
-      messageId,
+    setExpandedConversationId(
+      conversationId,
     );
 
     if (!message.isRead) {
       void markAsRead(
-        messageId,
+        message.id,
       );
     }
 
     if (
-      focusedMessageRef.current ===
-      messageId
+      focusedConversationRef.current ===
+      conversationId
     ) {
       return;
     }
 
-    focusedMessageRef.current =
-      messageId;
+    focusedConversationRef.current =
+      conversationId;
 
     const timeoutId =
       window.setTimeout(() => {
         const element =
           document.getElementById(
-            `inbox-message-${messageId}`,
+            `inbox-conversation-${conversationId}`,
           );
 
         if (!element) {
@@ -210,6 +281,73 @@ export function useInboxMessagesPage() {
     markAsRead,
     messageTarget.messageId,
     sortedMessages,
+    targetConversationId,
+  ]);
+
+  useEffect(() => {
+    if (!expandedConversationId) {
+      return;
+    }
+
+    const representative =
+      sortedMessages.find(
+        (message) =>
+          message.conversationId ===
+          expandedConversationId,
+      );
+
+    if (!representative) {
+      setExpandedConversationId(
+        null,
+      );
+      return;
+    }
+
+    void loadConversation(
+      representative.id,
+      expandedConversationId,
+    );
+  }, [
+    expandedConversationId,
+    loadConversation,
+    sortedMessages,
+  ]);
+
+  useEffect(() => {
+    if (
+      loading ||
+      expandedConversationId ||
+      targetConversationId ||
+      sortedMessages.length ===
+        0
+    ) {
+      return;
+    }
+
+    const first =
+      sortedMessages[0];
+    const conversationId =
+      first.conversationId;
+
+    if (!conversationId) {
+      return;
+    }
+
+    setExpandedConversationId(
+      conversationId,
+    );
+
+    if (!first.isRead) {
+      void markAsRead(
+        first.id,
+      );
+    }
+  }, [
+    expandedConversationId,
+    loading,
+    markAsRead,
+    sortedMessages,
+    targetConversationId,
   ]);
 
   const clearMessageTarget =
@@ -235,7 +373,7 @@ export function useInboxMessagesPage() {
         },
       );
 
-      focusedMessageRef.current =
+      focusedConversationRef.current =
         null;
     }, [
       pathname,
@@ -245,7 +383,6 @@ export function useInboxMessagesPage() {
 
   function handleOpenMessage(
     messageId: number,
-    isExpanded: boolean,
   ) {
     const message =
       sortedMessages.find(
@@ -253,34 +390,57 @@ export function useInboxMessagesPage() {
           current.id ===
           messageId,
       );
+    const conversationId =
+      message?.conversationId;
 
-    if (
-      !isExpanded &&
-      message &&
-      !message.isRead
-    ) {
+    if (!conversationId) {
+      return;
+    }
+
+    if (!message.isRead) {
       void markAsRead(
         messageId,
       );
     }
 
-    setExpandedMessageId(
-      isExpanded
-        ? null
-        : messageId,
+    setExpandedConversationId(
+      conversationId,
     );
+  }
+
+  function handleReply(
+    messageId: number,
+    mode:
+      | "REPLY"
+      | "REPLY_ALL",
+  ) {
+    window.location.href =
+      `/messages/new?replyTo=${messageId}&replyMode=${mode}`;
   }
 
   function handleArchive(
     messageId: number,
   ) {
+    const message =
+      sortedMessages.find(
+        (current) =>
+          current.id ===
+          messageId,
+      );
+    const conversationId =
+      message?.conversationId;
+
+    if (!conversationId) {
+      return;
+    }
+
     confirmDialog.confirm({
-      title: "Arkiver besked",
+      title: "Slet samtale",
       description:
-        "Vil du arkivere denne besked? Du kan flytte den tilbage fra arkivet senere.",
-      confirmText: "Arkiver",
+        "Vil du slette hele samtalen? Du kan flytte den tilbage fra Slettet senere.",
+      confirmText: "Slet",
       cancelText: "Annuller",
-      confirmVariant: "primary",
+      confirmVariant: "danger",
       onConfirm: async () => {
         try {
           await archive(
@@ -288,26 +448,42 @@ export function useInboxMessagesPage() {
           );
 
           if (
-            expandedMessageId ===
-            messageId
+            expandedConversationId ===
+            conversationId
           ) {
-            setExpandedMessageId(
+            setExpandedConversationId(
               null,
             );
           }
 
+          setConversationsById(
+            (current) => {
+              const next = {
+                ...current,
+              };
+              delete next[
+                conversationId
+              ];
+              return next;
+            },
+          );
+
           if (
-            messageTarget.messageId ===
-            messageId
+            targetConversationId ===
+            conversationId
           ) {
             clearMessageTarget();
           }
+
+          toast.success(
+            "Samtalen er slettet.",
+          );
         } catch (error) {
           showErrorDialog(
-            "Beskeden kunne ikke arkiveres",
+            "Samtalen kunne ikke slettes",
             getErrorMessage(
               error,
-              "Der opstod en fejl, da beskeden skulle arkiveres.\nPrøv igen.",
+              "Der opstod en fejl, da samtalen skulle slettes.\nPrøv igen.",
             ),
           );
         }
@@ -321,13 +497,18 @@ export function useInboxMessagesPage() {
     loadingMore,
     hasMore,
     sortedMessages,
-    expandedMessageId,
+    expandedConversationId,
     focusedMessageId:
       messageTarget.messageId,
+    focusedConversationId:
+      targetConversationId,
+    conversationsById,
+    conversationLoadingId,
     targetState,
     errorDialog,
     loadMore,
     handleOpenMessage,
+    handleReply,
     handleArchive,
     clearMessageTarget,
     closeErrorDialog,

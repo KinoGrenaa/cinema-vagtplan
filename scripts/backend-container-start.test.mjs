@@ -175,6 +175,6 @@ test("Docker-konfigurationen adskiller buildoutput fra runtime-volume og bevarer
   assert.doesNotMatch(compose, /backend_dist:\/runtime\/backend-dist/);
   assert.match(dockerfile, /RUN npm run build/);
   assert.match(dockerfile, /\/opt\/backend-dist/);
-  assert.equal(packageJson.scripts.build, "nest build");
+  assert.equal(packageJson.scripts.build, "prisma generate && nest build");
   assert.equal(packageJson.scripts["start:container"], "node ./scripts/start-container.mjs");
 });

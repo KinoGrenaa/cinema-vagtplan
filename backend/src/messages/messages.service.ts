@@ -42,6 +42,10 @@ import {
   unarchiveMessageForUser,
 } from './helpers/message-status-flow';
 
+import {
+  findMessageConversationForUser,
+} from './helpers/message-conversation-flow';
+
 @Injectable()
 export class MessagesService {
   constructor(
@@ -77,6 +81,29 @@ export class MessagesService {
         senderCanSendBroadcastMessages:
           context.canSendBroadcastMessages,
       },
+    );
+  }
+
+  async findConversationForUser(
+    id: number,
+    actor: MessageActor,
+    selectedCinemaId?:
+      number | null,
+  ) {
+    const context =
+      await resolveMessageActorContext(
+        this.prisma,
+        actor,
+        selectedCinemaId,
+      );
+
+    return findMessageConversationForUser(
+      this.prisma,
+      context.userId,
+      context.cinemaId,
+      id,
+      context.role,
+      context.canSendBroadcastMessages,
     );
   }
 

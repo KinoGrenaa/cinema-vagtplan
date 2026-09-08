@@ -6,37 +6,54 @@ import {
   findArchivedMessagePageForUser,
 } from './message-read-flow';
 import {
-  messageInclude,
+  getMessageDeletionCutoff,
+} from './message-retention';
+import {
+  messageMailboxInclude,
 } from './message-shared';
 
-describe('message archive counts', () => {
-  it('bygger ét samlet adgangsfilter til arkivtællinger', () => {
+describe('message deleted counts', () => {
+  it('bygger ét samlet adgangsfilter til slettet-tællinger', () => {
+    const now =
+      new Date(
+        '2026-09-07T06:00:00.000Z',
+      );
+    const cutoff =
+      getMessageDeletionCutoff(
+        now,
+      );
+
     expect(
       buildArchivedMessageCountWhere(
         9,
         7,
+        now,
       ),
     ).toEqual({
       cinemaId: 7,
-      archivedAt: {
-        not: null,
-      },
       recalledAt: null,
       OR: [
         {
           senderId: 9,
+          senderDeletedAt: {
+            gt: cutoff,
+          },
         },
         {
-          receiverId: 9,
-        },
-        {
-          isBroadcast: true,
+          recipients: {
+            some: {
+              userId: 9,
+              deletedAt: {
+                gt: cutoff,
+              },
+            },
+          },
         },
       ],
     });
   });
 
-  it('fordeler grupper på sendt og modtaget', () => {
+  it('bevarer den kompatible gruppefordeling for sendt og modtaget', () => {
     expect(
       buildArchivedMessageCounts(
         [
@@ -67,31 +84,40 @@ describe('message archive counts', () => {
     });
   });
 
-  it('bruger én grupperet tælling sammen med sideforespørgslen', async () => {
+  it('bevarer sendte arkivbeskeder enkeltvis men tæller modtagne arkiver som samtaler', async () => {
+    const deletedAt =
+      new Date(
+        '2026-09-01T10:00:00.000Z',
+      );
+
     const prisma = {
+      $queryRaw:
+        jest.fn()
+          .mockResolvedValue([
+            {
+              count: 3,
+            },
+          ]),
       message: {
         findMany:
-          jest.fn().mockResolvedValue([
-            {
-              id: 31,
-            },
-          ]),
-        groupBy:
-          jest.fn().mockResolvedValue([
-            {
-              senderId: 9,
-              _count: {
-                _all: 2,
+          jest.fn()
+            .mockResolvedValue([
+              {
+                id: 31,
+                senderId: 9,
+                isRead: false,
+                readAt: null,
+                archivedAt: null,
+                senderDeletedAt:
+                  deletedAt,
+                recipients: [],
               },
-            },
-            {
-              senderId: 12,
-              _count: {
-                _all: 6,
-              },
-            },
-          ]),
-        count: jest.fn(),
+            ]),
+        count:
+          jest.fn()
+            .mockResolvedValue(
+              2,
+            ),
       },
     };
 
@@ -101,7 +127,7 @@ describe('message archive counts', () => {
         9,
         7,
         {
-          section: 'received',
+          section: 'sent',
           limit: 50,
         },
       ),
@@ -109,12 +135,17 @@ describe('message archive counts', () => {
       items: [
         {
           id: 31,
+          senderId: 9,
+          isRead: false,
+          readAt: null,
+          archivedAt:
+            deletedAt,
         },
       ],
       hasMore: false,
       nextBeforeId: null,
       counts: {
-        received: 6,
+        received: 3,
         sent: 2,
       },
     });
@@ -124,58 +155,32 @@ describe('message archive counts', () => {
     ).toHaveBeenCalledWith({
       where: {
         cinemaId: 7,
-        archivedAt: {
-          not: null,
-        },
         recalledAt: null,
-        senderId: {
-          not: 9,
+        senderId: 9,
+        senderDeletedAt: {
+          gt:
+            expect.any(Date),
         },
-        OR: [
-          {
-            receiverId: 9,
-          },
-          {
-            isBroadcast: true,
-          },
-        ],
       },
-      include: messageInclude,
+      include:
+        messageMailboxInclude(
+          9,
+        ),
       orderBy: {
         id: 'desc',
       },
       take: 51,
     });
+
     expect(
-      prisma.message.groupBy,
-    ).toHaveBeenCalledWith({
-      by: [
-        'senderId',
-      ],
-      where: {
-        cinemaId: 7,
-        archivedAt: {
-          not: null,
-        },
-        recalledAt: null,
-        OR: [
-          {
-            senderId: 9,
-          },
-          {
-            receiverId: 9,
-          },
-          {
-            isBroadcast: true,
-          },
-        ],
-      },
-      _count: {
-        _all: true,
-      },
-    });
+      prisma.$queryRaw,
+    ).toHaveBeenCalledTimes(
+      1,
+    );
     expect(
       prisma.message.count,
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalledTimes(
+      1,
+    );
   });
 });

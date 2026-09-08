@@ -9,6 +9,9 @@ import {
   MAX_MESSAGE_PAGE_SIZE,
   normalizeMessagePageLimit,
 } from './message-page';
+import {
+  getMessageDeletionCutoff,
+} from './message-retention';
 
 describe(
   'message pagination',
@@ -31,7 +34,7 @@ describe(
       );
     });
 
-    it('bygger adgangsfilter til indbakken', () => {
+    it('bygger adgangsfilter til indbakken via brugerens mailbox-state', () => {
       expect(
         buildInboxMessageWhere(
           9,
@@ -40,23 +43,20 @@ describe(
         ),
       ).toEqual({
         cinemaId: 7,
-        archivedAt: null,
         recalledAt: null,
-        OR: [
-          {
-            receiverId: 9,
+        recipients: {
+          some: {
+            userId: 9,
+            deletedAt: null,
           },
-          {
-            isBroadcast: true,
-          },
-        ],
+        },
         id: {
           lt: 50,
         },
       });
     });
 
-    it('bygger målrettet beskedadgang', () => {
+    it('bygger målrettet beskedadgang via brugerens mailbox-state', () => {
       expect(
         buildInboxMessageTargetWhere(
           9,
@@ -65,16 +65,13 @@ describe(
         ),
       ).toEqual({
         cinemaId: 7,
-        archivedAt: null,
         recalledAt: null,
-        OR: [
-          {
-            receiverId: 9,
+        recipients: {
+          some: {
+            userId: 9,
+            deletedAt: null,
           },
-          {
-            isBroadcast: true,
-          },
-        ],
+        },
         id: 31,
       });
     });
@@ -89,58 +86,71 @@ describe(
       ).toEqual({
         cinemaId: 7,
         senderId: 9,
-        archivedAt: null,
+        senderDeletedAt: null,
         id: {
           lt: 50,
         },
       });
     });
 
-    it('bygger adgangsfilter til sendte arkivbeskeder', () => {
+    it('bygger adgangsfilter til sendte slettede beskeder inden for 60 dage', () => {
+      const now =
+        new Date(
+          '2026-09-07T06:00:00.000Z',
+        );
+
       expect(
         buildArchivedMessageWhere(
           9,
           7,
           'sent',
           50,
+          now,
         ),
       ).toEqual({
         cinemaId: 7,
-        archivedAt: {
-          not: null,
-        },
         recalledAt: null,
         senderId: 9,
+        senderDeletedAt: {
+          gt:
+            getMessageDeletionCutoff(
+              now,
+            ),
+        },
         id: {
           lt: 50,
         },
       });
     });
 
-    it('udelukker egne udsendelser fra modtagne arkivbeskeder', () => {
+    it('bygger adgangsfilter til modtagne slettede beskeder pr. bruger', () => {
+      const now =
+        new Date(
+          '2026-09-07T06:00:00.000Z',
+        );
+
       expect(
         buildArchivedMessageWhere(
           9,
           7,
           'received',
+          undefined,
+          now,
         ),
       ).toEqual({
         cinemaId: 7,
-        archivedAt: {
-          not: null,
-        },
         recalledAt: null,
-        senderId: {
-          not: 9,
+        recipients: {
+          some: {
+            userId: 9,
+            deletedAt: {
+              gt:
+                getMessageDeletionCutoff(
+                  now,
+                ),
+            },
+          },
         },
-        OR: [
-          {
-            receiverId: 9,
-          },
-          {
-            isBroadcast: true,
-          },
-        ],
       });
     });
 
@@ -180,7 +190,7 @@ describe(
       });
     });
 
-    it('bygger arkivside med samlede fanetællere', () => {
+    it('bygger slettet-side med samlede fanetællere', () => {
       expect(
         buildArchivedMessagePage(
           [

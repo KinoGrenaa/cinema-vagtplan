@@ -2,6 +2,10 @@ import {
   Prisma,
 } from '@prisma/client';
 
+import {
+  getMessageDeletionCutoff,
+} from './message-retention';
+
 export const DEFAULT_MESSAGE_PAGE_SIZE =
   50;
 export const MAX_MESSAGE_PAGE_SIZE =
@@ -28,6 +32,7 @@ export type ArchivedMessagePageOptions = {
   section:
     ArchiveMessageSection;
 };
+
 export type MessagePageResult<T> = {
   items: T[];
   target: T | null;
@@ -66,6 +71,7 @@ export function normalizeMessagePageLimit(
     MAX_MESSAGE_PAGE_SIZE,
   );
 }
+
 export function buildInboxMessageWhere(
   userId: number,
   cinemaId: number,
@@ -73,16 +79,13 @@ export function buildInboxMessageWhere(
 ): Prisma.MessageWhereInput {
   return {
     cinemaId,
-    archivedAt: null,
     recalledAt: null,
-    OR: [
-      {
-        receiverId: userId,
+    recipients: {
+      some: {
+        userId,
+        deletedAt: null,
       },
-      {
-        isBroadcast: true,
-      },
-    ],
+    },
     ...(beforeId
       ? {
           id: {
@@ -92,6 +95,7 @@ export function buildInboxMessageWhere(
       : {}),
   };
 }
+
 export function buildInboxMessageTargetWhere(
   userId: number,
   cinemaId: number,
@@ -105,6 +109,7 @@ export function buildInboxMessageTargetWhere(
     id: targetId,
   };
 }
+
 export function buildSentMessageWhere(
   userId: number,
   cinemaId: number,
@@ -113,7 +118,7 @@ export function buildSentMessageWhere(
   return {
     cinemaId,
     senderId: userId,
-    archivedAt: null,
+    senderDeletedAt: null,
     ...(beforeId
       ? {
           id: {
@@ -124,33 +129,37 @@ export function buildSentMessageWhere(
   };
 }
 
-function buildArchivedMessageBaseWhere(
+function buildDeletedMessageBaseWhere(
   cinemaId: number,
 ): Prisma.MessageWhereInput {
   return {
     cinemaId,
-    archivedAt: {
-      not: null,
-    },
     recalledAt: null,
   };
 }
+
 export function buildArchivedMessageWhere(
   userId: number,
   cinemaId: number,
   section:
     ArchiveMessageSection,
   beforeId?: number,
+  now: Date = new Date(),
 ): Prisma.MessageWhereInput {
   const base =
-    buildArchivedMessageBaseWhere(
+    buildDeletedMessageBaseWhere(
       cinemaId,
     );
+  const cutoff =
+    getMessageDeletionCutoff(now);
 
   if (section === 'sent') {
     return {
       ...base,
       senderId: userId,
+      senderDeletedAt: {
+        gt: cutoff,
+      },
       ...(beforeId
         ? {
             id: {
@@ -160,19 +169,17 @@ export function buildArchivedMessageWhere(
         : {}),
     };
   }
+
   return {
     ...base,
-    senderId: {
-      not: userId,
+    recipients: {
+      some: {
+        userId,
+        deletedAt: {
+          gt: cutoff,
+        },
+      },
     },
-    OR: [
-      {
-        receiverId: userId,
-      },
-      {
-        isBroadcast: true,
-      },
-    ],
     ...(beforeId
       ? {
           id: {
@@ -186,20 +193,31 @@ export function buildArchivedMessageWhere(
 export function buildArchivedMessageCountWhere(
   userId: number,
   cinemaId: number,
+  now: Date = new Date(),
 ): Prisma.MessageWhereInput {
+  const cutoff =
+    getMessageDeletionCutoff(now);
+
   return {
-    ...buildArchivedMessageBaseWhere(
+    ...buildDeletedMessageBaseWhere(
       cinemaId,
     ),
     OR: [
       {
         senderId: userId,
+        senderDeletedAt: {
+          gt: cutoff,
+        },
       },
       {
-        receiverId: userId,
-      },
-      {
-        isBroadcast: true,
+        recipients: {
+          some: {
+            userId,
+            deletedAt: {
+              gt: cutoff,
+            },
+          },
+        },
       },
     ],
   };
