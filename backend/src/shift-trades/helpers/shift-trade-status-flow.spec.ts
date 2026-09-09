@@ -333,12 +333,20 @@ describe('shift trade status flows', () => {
       notifyCinema: jest.fn(),
       notifyUser: jest.fn(),
     };
+    const notifications = {
+      create: jest.fn().mockResolvedValue(undefined),
+    };
+    const push = {
+      sendToUserInCinema: jest.fn().mockResolvedValue(undefined),
+    };
 
     await expect(
       cancelShiftTrade(
         {
           prisma: prisma as never,
           realtime: realtime as never,
+          notifications: notifications as never,
+          push: push as never,
         },
         12,
         actor,
@@ -355,6 +363,27 @@ describe('shift trade status flows', () => {
     expect(
       realtime.notifyCinema,
     ).toHaveBeenCalled();
+    expect(
+      notifications.create,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 8,
+        cinemaId: 2,
+        title:
+          'Direkte vagttilbud trukket tilbage',
+        type: 'SHIFT_TRADE_CANCELLED',
+      }),
+    );
+    expect(
+      push.sendToUserInCinema,
+    ).toHaveBeenCalledWith(
+      8,
+      2,
+      expect.objectContaining({
+        title:
+          'Direkte vagttilbud trukket tilbage',
+      }),
+    );
   });
 
   it('afviser MASTER ved personlige statusændringer', async () => {

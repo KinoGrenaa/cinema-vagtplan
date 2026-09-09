@@ -26,12 +26,12 @@ test(
 
     assert.match(
       source,
-      /<button\s+type="button"\s+onClick=\{\(\) => onApprove\(entry\)\}\s+disabled=\{missingRequiredNote\}\s+className=\{summaryPrimaryAction\}\s*>\s*Godkend\s*<\/button>/s,
+      /<button\s+type="button"\s+onClick=\{\(\) => onApprove\(entry\)\}\s+disabled=\{missingRequiredNote\}\s+className=\{summaryPrimaryAction\}\s*>\s*Godkend\s*<\/button>/,
     );
 
     assert.doesNotMatch(
       source,
-      /disabled=\{missingRequiredNote\}\s*\{hasNote && \(/s,
+      /disabled=\{missingRequiredNote\}\s*\{hasNote && \(/,
     );
   },
 );

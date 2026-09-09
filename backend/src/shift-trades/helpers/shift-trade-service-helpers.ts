@@ -44,6 +44,9 @@ export const shiftTradeInclude = {
   rejectedByUser: {
     select: shiftTradeParticipantSelect,
   },
+  resolvedByUser: {
+    select: shiftTradeParticipantSelect,
+  },
 } as const;
 
 export function getShiftTradeDisplayData(

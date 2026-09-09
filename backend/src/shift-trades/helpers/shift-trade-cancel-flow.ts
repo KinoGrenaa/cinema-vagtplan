@@ -2,7 +2,15 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { ShiftTradeStatus } from '@prisma/client';
+import {
+  ShiftTradeStatus,
+  ShiftTradeType,
+} from '@prisma/client';
+import { NotificationsService } from '../../notifications/notifications.service';
+import {
+  getShiftTradeNotificationLink,
+} from '../../notifications/helpers/notification-deep-links';
+import { PushService } from '../../push/push.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
@@ -12,11 +20,18 @@ import {
 import {
   resolveShiftTradeOfferNotifications,
 } from './shift-trade-notification-resolution';
-import { shiftTradeInclude } from './shift-trade-service-helpers';
-
+import {
+  formatShiftTradePeriod,
+} from './shift-trade-period';
+import {
+  getShiftTradeDisplayData,
+  shiftTradeInclude,
+} from './shift-trade-service-helpers';
 type ShiftTradeCancelFlowDeps = {
   prisma: PrismaService;
   realtime: RealtimeGateway;
+  notifications: NotificationsService;
+  push: PushService;
 };
 
 export async function cancelShiftTrade(
@@ -27,6 +42,8 @@ export async function cancelShiftTrade(
   const {
     prisma,
     realtime,
+    notifications,
+    push,
   } = deps;
   const {
     userId,
@@ -44,6 +61,14 @@ export async function cancelShiftTrade(
             where: {
               id,
               cinemaId,
+            },
+            include: {
+              shift: {
+                select: {
+                  startTime: true,
+                  endTime: true,
+                },
+              },
             },
           });
 
@@ -84,6 +109,19 @@ export async function cancelShiftTrade(
             data: {
               status:
                 ShiftTradeStatus.CANCELLED,
+              resolvedAt: new Date(),
+              resolvedByUserId:
+                userId,
+              resolutionReason:
+                'WITHDRAWN_BY_OFFERER',
+              ...(existingTrade.shift
+                ? {
+                    shiftStartTimeSnapshot:
+                      existingTrade.shift.startTime,
+                    shiftEndTimeSnapshot:
+                      existingTrade.shift.endTime,
+                  }
+                : {}),
             },
           });
 
@@ -146,6 +184,33 @@ export async function cancelShiftTrade(
     'shiftTradesUpdated',
     result.trade,
   );
+
+  if (
+    result.trade.type === ShiftTradeType.DIRECT &&
+    result.trade.targetUserId
+  ) {
+    const display = getShiftTradeDisplayData(result.trade);
+    const message =
+      `Vagttilbuddet på ${display.jobFunctionName} ${formatShiftTradePeriod(display.startTime, display.endTime)} er blevet trukket tilbage af afsenderen.`;
+    const linkUrl = getShiftTradeNotificationLink(result.trade.id);
+    await notifications.create({
+      userId: result.trade.targetUserId,
+      cinemaId: result.trade.cinemaId,
+      title: 'Direkte vagttilbud trukket tilbage',
+      message,
+      type: 'SHIFT_TRADE_CANCELLED',
+      linkUrl,
+    });
+    await push.sendToUserInCinema(
+      result.trade.targetUserId,
+      result.trade.cinemaId,
+      {
+        title: 'Direkte vagttilbud trukket tilbage',
+        body: message,
+        url: linkUrl,
+      },
+    );
+  }
 
   return result.trade;
 }

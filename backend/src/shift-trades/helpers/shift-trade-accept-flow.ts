@@ -33,6 +33,9 @@ import {
   ensureShiftTradeUserQualified,
 } from './shift-trade-qualification';
 import {
+  formatShiftTradePeriod,
+} from './shift-trade-period';
+import {
   getShiftTradeDisplayData,
   shiftTradeInclude,
 } from './shift-trade-service-helpers';
@@ -62,22 +65,6 @@ function getParticipantName(
   return name || fallback;
 }
 
-function formatTradeDateTime(
-  value: Date,
-) {
-  return new Intl.DateTimeFormat(
-    'da-DK',
-    {
-      timeZone:
-        'Europe/Copenhagen',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    },
-  ).format(value);
-}
 
 export async function acceptShiftTrade(
   deps: ShiftTradeAcceptFlowDeps,
@@ -286,6 +273,15 @@ export async function acceptShiftTrade(
                 ShiftTradeStatus.ACCEPTED,
               acceptedByUserId:
                 userId,
+              resolvedAt: new Date(),
+              resolvedByUserId:
+                userId,
+              resolutionReason:
+                'ACCEPTED',
+              shiftStartTimeSnapshot:
+                shift.startTime,
+              shiftEndTimeSnapshot:
+                shift.endTime,
             },
           });
 
@@ -386,10 +382,9 @@ export async function acceptShiftTrade(
     getParticipantName(
       updatedTrade.acceptedByUser,
       'En kollega',
-    );
-  const resultMessage =
-    `${acceptedByName} har accepteret ${display.jobFunctionName} ` +
-    `${formatTradeDateTime(display.startTime)}–${formatTradeDateTime(display.endTime)}.`;
+    );    const resultMessage =
+      `${acceptedByName} har accepteret ${display.jobFunctionName} ` +
+      `${formatShiftTradePeriod(display.startTime, display.endTime)}.`;
 
   await notifications.create({
     userId:

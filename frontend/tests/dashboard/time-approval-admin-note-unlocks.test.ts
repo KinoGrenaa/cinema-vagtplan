@@ -27,22 +27,22 @@ test(
   () => {
     assert.match(
       actions,
-      /const hasAdminNoteChange =\s*data\.adminNote\.trim\(\) !==\s*\(editEntry\.adminNote \?\? ""\)\.trim\(\);/s,
+      /const hasAdminNoteChange =\s*data\.adminNote\.trim\(\) !==\s*\(editEntry\.adminNote \?\? ""\)\.trim\(\);/,
     );
 
     assert.match(
       actions,
-      /const hasChanges =\s*hasTimeChanges \|\|\s*hasAdminNoteChange;/s,
+      /const hasChanges =\s*hasTimeChanges \|\|\s*hasAdminNoteChange;/,
     );
 
     assert.match(
       actions,
-      /title: isNoteOnlyChange\s*\? "Bekræft admin-note"\s*: "Bekræft rettelse"/s,
+      /title: isNoteOnlyChange\s*\? "Bekræft admin-note"\s*: "Bekræft rettelse"/,
     );
 
     assert.match(
       actions,
-      /confirmText: isNoteOnlyChange\s*\? "Gem note"\s*: "Gem rettelse"/s,
+      /confirmText: isNoteOnlyChange\s*\? "Gem note"\s*: "Gem rettelse"/,
     );
   },
 );
@@ -52,17 +52,17 @@ test(
   () => {
     assert.match(
       card,
-      /const hasNote = Boolean\(\s*hasEmployeeNote \|\| entry\.adminNote,\s*\);/s,
+      /const hasNote = Boolean\(\s*hasEmployeeNote \|\| entry\.adminNote,\s*\);/,
     );
 
     assert.match(
       card,
-      /const missingRequiredNote = Boolean\(\s*entry\.shift &&\s*entry\.deviation\?\.requiresNote &&\s*!hasNote,\s*\);/s,
+      /const missingRequiredNote = Boolean\(\s*entry\.shift &&\s*entry\.deviation\?\.requiresNote &&\s*!hasNote,\s*\);/,
     );
 
     assert.match(
       panel,
-      /deviation\.requiresNote &&[\s\S]*entry\.clockInNote[\s\S]*entry\.clockOutNote[\s\S]*entry\.note[\s\S]*entry\.adminNote/s,
+      /deviation\.requiresNote &&[\s\S]*entry\.clockInNote[\s\S]*entry\.clockOutNote[\s\S]*entry\.note[\s\S]*entry\.adminNote/,
     );
   },
 );

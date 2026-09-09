@@ -21,6 +21,9 @@ import {
   resolveShiftTradeOfferNotifications,
 } from './shift-trade-notification-resolution';
 import {
+  formatShiftTradePeriod,
+} from './shift-trade-period';
+import {
   getShiftTradeDisplayData,
   shiftTradeInclude,
 } from './shift-trade-service-helpers';
@@ -50,22 +53,6 @@ function getParticipantName(
   return name || fallback;
 }
 
-function formatTradeDateTime(
-  value: Date,
-) {
-  return new Intl.DateTimeFormat(
-    'da-DK',
-    {
-      timeZone:
-        'Europe/Copenhagen',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    },
-  ).format(value);
-}
 
 export async function rejectShiftTrade(
   deps: ShiftTradeRejectFlowDeps,
@@ -95,6 +82,14 @@ export async function rejectShiftTrade(
               id,
               cinemaId,
             },
+            include: {
+              shift: {
+                select: {
+                  startTime: true,
+                  endTime: true,
+                },
+              },
+            },
           });
 
         if (!existingTrade) {
@@ -121,6 +116,19 @@ export async function rejectShiftTrade(
                 ShiftTradeStatus.REJECTED,
               rejectedByUserId:
                 userId,
+              resolvedAt: new Date(),
+              resolvedByUserId:
+                userId,
+              resolutionReason:
+                'REJECTED',
+              ...(existingTrade.shift
+                ? {
+                    shiftStartTimeSnapshot:
+                      existingTrade.shift.startTime,
+                    shiftEndTimeSnapshot:
+                      existingTrade.shift.endTime,
+                  }
+                : {}),
             },
           });
 
@@ -204,7 +212,7 @@ export async function rejectShiftTrade(
       );
     const resultMessage =
       `${rejectedByName} har afvist ${display.jobFunctionName} ` +
-      `${formatTradeDateTime(display.startTime)}–${formatTradeDateTime(display.endTime)}.`;
+      `${formatShiftTradePeriod(display.startTime, display.endTime)}.`;
 
     await notifications.create({
       userId:

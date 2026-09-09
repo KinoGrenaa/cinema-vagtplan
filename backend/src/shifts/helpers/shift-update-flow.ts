@@ -2,6 +2,9 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import {
+  ShiftTradeResolutionReason,
+} from '@prisma/client';
 import type {
   Prisma,
 } from '@prisma/client';
@@ -45,6 +48,17 @@ import {
 import {
   assertShiftHasNoActiveTimeEntry,
 } from './shift-time-entry-lock';
+
+function getCopenhagenDateKey(value: Date) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Copenhagen',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).formatToParts(value);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
 
 async function acquireShiftUserLocks(
   transaction:
@@ -163,21 +177,34 @@ export async function updateShiftFlow({
             },
           );
 
-        const linkedActions =
-          oldShift.userId !==
-          normalized.userId
-            ? await resolveOpenShiftLinkedActions(
-                transaction,
-                {
-                  cinemaId,
-                  shiftId: id,
-                },
-              )
-            : {
-                tradeIds: [],
-                staffingRequestIds: [],
-                notificationUserIds: [],
-              };
+        const movedToAnotherDate =
+          getCopenhagenDateKey(oldShift.startTime) !==
+          getCopenhagenDateKey(normalized.startTime);
+        const assignmentChanged =
+          oldShift.userId !== normalized.userId;
+        const resolutionReason = movedToAnotherDate
+          ? ShiftTradeResolutionReason.SHIFT_MOVED
+          : assignmentChanged
+            ? normalized.userId
+              ? ShiftTradeResolutionReason.SHIFT_REASSIGNED
+              : ShiftTradeResolutionReason.SHIFT_UNASSIGNED
+            : null;
+        const linkedActions = resolutionReason
+          ? await resolveOpenShiftLinkedActions(
+              transaction,
+              {
+                cinemaId,
+                shiftId: id,
+                resolvedByUserId: user.sub!,
+                resolutionReason,
+              },
+            )
+          : {
+              tradeIds: [],
+              staffingRequestIds: [],
+              notificationUserIds: [],
+              cancellationNotices: [],
+            };
 
         const updated =
           await transaction.shift.updateMany(
@@ -297,6 +324,17 @@ export async function updateShiftFlow({
     );
   }
 
+  for (const notice of result.linkedActions.cancellationNotices) {
+    await pushService.sendToUserInCinema(
+      notice.userId,
+      shift.cinemaId,
+      {
+        title: notice.title,
+        body: notice.message,
+        url: notice.linkUrl,
+      },
+    );
+  }
   for (
     const notificationUserId of
     result.linkedActions

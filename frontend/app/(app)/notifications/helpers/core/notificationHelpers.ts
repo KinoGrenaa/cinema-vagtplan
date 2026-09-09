@@ -17,7 +17,10 @@ export const notificationTypeLabels: Record<Notification["type"], string> = {
   SHIFT_ASSIGNED: "Ny vagt",
   SHIFT_ACCEPTED: "Vagtbytte accepteret",
   SHIFT_REJECTED: "Vagtbytte afvist",
-  NEW_MESSAGE: "Ny besked",
+
+SHIFT_TRADE_CANCELLED: "Vagttilbud ikke længere aktuelt",
+
+NEW_MESSAGE: "Ny besked",
   TIME_ENTRY: "Tidsregistrering",
   STAFFING_ALERT: "Bemandingsadvarsel",
   STAFFING_REQUEST: "Bemandingsforespørgsel",

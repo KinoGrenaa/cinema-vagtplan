@@ -1,4 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
+import {
+  ShiftTradeResolutionReason,
+} from '@prisma/client';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PushService } from '../../push/push.service';
@@ -83,6 +86,9 @@ export async function deleteShiftFlow({
           {
             cinemaId,
             shiftId: id,
+            resolvedByUserId: user.sub!,
+            resolutionReason:
+              ShiftTradeResolutionReason.SHIFT_DELETED,
           },
         );
 
@@ -160,6 +166,17 @@ export async function deleteShiftFlow({
     );
   }
 
+  for (const notice of linkedActions.cancellationNotices) {
+    await pushService.sendToUserInCinema(
+      notice.userId,
+      shiftToDelete.cinemaId,
+      {
+        title: notice.title,
+        body: notice.message,
+        url: notice.linkUrl,
+      },
+    );
+  }
   for (
     const notificationUserId of
     linkedActions.notificationUserIds

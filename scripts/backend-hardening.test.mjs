@@ -39,6 +39,15 @@ test("runtime-kontrollen afviser de gamle ExcelJS- og Archiver-kaeder", () => {
   assert.ok(!problems.some((value) => value.includes("test-exclude")));
 });
 
+test("runtime-kontrollen afviser Multer 2.2.0", () => {
+  const lock = {
+    packages: {
+      "node_modules/multer": runtime("2.2.0"),
+    },
+  };
+  const problems = findForbiddenRuntimePackages(lock);
+  assert.ok(problems.some((value) => value.startsWith("multer@2.2.0")));
+});
 test("den rettede runtime-kaede accepteres", () => {
   const lock = {
     packages: {

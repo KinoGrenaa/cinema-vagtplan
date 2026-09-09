@@ -44,6 +44,9 @@ describe('shift trade relation read shape', () => {
       rejectedByUser: {
         select: shiftTradeParticipantSelect,
       },
+      resolvedByUser: {
+        select: shiftTradeParticipantSelect,
+      },
     });
   });
 });

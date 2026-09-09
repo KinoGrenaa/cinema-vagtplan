@@ -1,4 +1,5 @@
 import {
+  ShiftTradeResolutionReason,
   ShiftTradeStatus,
   StaffingRequestStatus,
 } from '@prisma/client';
@@ -49,12 +50,16 @@ describe('shift linked actions', () => {
         {
           cinemaId: 7,
           shiftId: 21,
+          resolvedByUserId: 99,
+          resolutionReason:
+            ShiftTradeResolutionReason.SHIFT_REASSIGNED,
         },
       ),
     ).resolves.toEqual({
       tradeIds: [31, 32],
       staffingRequestIds: [41],
       notificationUserIds: [11, 12],
+      cancellationNotices: [],
     });
 
     expect(prisma.shiftTrade.updateMany).toHaveBeenCalledWith({
@@ -65,6 +70,10 @@ describe('shift linked actions', () => {
       },
       data: {
         status: ShiftTradeStatus.CANCELLED,
+        resolvedAt: expect.any(Date),
+        resolvedByUserId: 99,
+        resolutionReason:
+          ShiftTradeResolutionReason.SHIFT_REASSIGNED,
       },
     });
     expect(prisma.staffingRequest.updateMany).toHaveBeenCalledWith({

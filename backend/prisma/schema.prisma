@@ -43,6 +43,16 @@ enum ShiftTradeType {
   DIRECT
 }
 
+enum ShiftTradeResolutionReason {
+  ACCEPTED
+  REJECTED
+  WITHDRAWN_BY_OFFERER
+  SHIFT_REASSIGNED
+  SHIFT_UNASSIGNED
+  SHIFT_DELETED
+  SHIFT_MOVED
+}
+
 enum TimeEntryStatus {
   PENDING
   NEEDS_CHANGES
@@ -316,6 +326,7 @@ model User {
   acceptedTrades                        ShiftTrade[]                         @relation("AcceptedTrades")
   rejectedTrades                        ShiftTrade[]                         @relation("RejectedTrades")
   targetedTrades                        ShiftTrade[]                         @relation("TargetedTrades")
+  resolvedTrades                        ShiftTrade[]                         @relation("ResolvedTrades")
   sentMessages                          Message[]                            @relation("SentMessages")
   receivedMessages                      Message[]                            @relation("ReceivedMessages")
   messageRecipients                     MessageRecipient[]
@@ -801,6 +812,10 @@ model ShiftTrade {
   rejectedByUser   User?            @relation("RejectedTrades", fields: [rejectedByUserId], references: [id])
   targetUserId     Int?
   targetUser       User?            @relation("TargetedTrades", fields: [targetUserId], references: [id])
+  resolvedAt       DateTime?
+  resolvedByUserId Int?
+  resolvedByUser   User?            @relation("ResolvedTrades", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  resolutionReason ShiftTradeResolutionReason?
   cinemaId         Int
   cinema           Cinema           @relation(fields: [cinemaId], references: [id])
   type             ShiftTradeType   @default(POOL)
@@ -810,6 +825,7 @@ model ShiftTrade {
   @@index([cinemaId, status, offeredByUserId, id])
   @@index([cinemaId, status, acceptedByUserId, id])
   @@index([cinemaId, status, targetUserId, id])
+  @@index([resolvedByUserId])
 }
 
 model Message {

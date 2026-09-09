@@ -4,6 +4,7 @@ export type NotificationType =
   | "SHIFT_ASSIGNED"
   | "SHIFT_ACCEPTED"
   | "SHIFT_REJECTED"
+  | "SHIFT_TRADE_CANCELLED"
   | "NEW_MESSAGE"
   | "TIME_ENTRY"
   | "STAFFING_ALERT"

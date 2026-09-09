@@ -11,7 +11,7 @@ const expectedDirectVersions = {
   "@nestjs/platform-socket.io": "11.1.28",
   "@nestjs/websockets": "11.1.28",
   archiver: "file:vendor/archiver-compat",
-  multer: "2.2.0",
+  multer: "2.3.0",
   rxjs: "7.8.2",
 };
 
@@ -23,7 +23,7 @@ const expectedExcelJsOverrides = {
 
 const expectedSecurityOverrides = {
   "body-parser": "2.3.0",
-  multer: "2.2.0",
+  multer: "2.3.0",
   qs: "6.16.0",
   tmp: "0.2.7",
   ws: "8.21.1",
@@ -87,7 +87,7 @@ export function findForbiddenRuntimePackages(lock) {
       problems.push(`${name}@${version} (${lockPath})`);
     } else if (name === "body-parser" && compareVersions(version, "2.3.0") < 0) {
       problems.push(`${name}@${version} (${lockPath})`);
-    } else if (name === "multer" && compareVersions(version, "2.2.0") < 0) {
+    } else if (name === "multer" && compareVersions(version, "2.3.0") < 0) {
       problems.push(`${name}@${version} (${lockPath})`);
     } else if (name === "qs" && compareVersions(version, "6.16.0") < 0) {
       problems.push(`${name}@${version} (${lockPath})`);

@@ -8,6 +8,18 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+function versionAtLeast(version, minimum) {
+  const parse = (value) => value.split(".").slice(0, 3).map((part) => Number.parseInt(part, 10));
+  const left = parse(version);
+  const right = parse(minimum);
+  if (left.some(Number.isNaN) || right.some(Number.isNaN)) return false;
+  for (let index = 0; index < 3; index += 1) {
+    if ((left[index] ?? 0) > (right[index] ?? 0)) return true;
+    if ((left[index] ?? 0) < (right[index] ?? 0)) return false;
+  }
+  return true;
+}
+
 const mojibakePattern = /(?:\u00c3[\u0080-\u00bf\u2026]|\u00c2[\u0080-\u00bf]|\u00e2(?:\u0080|\u20ac)|\ufffd)/u;
 
 function findMojibakeFiles(frontendRoot) {
@@ -77,11 +89,12 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
   const frontendLock = readJson(paths.frontendLock);
   const rootPackage = readJson(paths.rootPackage);
   const expectedRuntimeVersions = {
-    next: "16.2.12",
+    next: "16.3.4",
     engineIoClient: "6.6.5",
     ws: "8.21.0",
     postcss: "8.5.25",
-    sharp: "0.35.3",
+    sharp: "0.35.4",
+    baselineBrowserMapping: "2.11.0",
   };
   if (frontendPackage.dependencies?.next !== expectedRuntimeVersions.next) {
     problems.push(`frontend/package.json skal bruge next ${expectedRuntimeVersions.next}.`);
@@ -128,6 +141,17 @@ export function collectFrontendHardeningProblems(root = repoRoot) {
         `frontend/package-lock.json skal kun indeholde ${packageName} ${expectedVersion}, men fandt ${versions.join(", ") || "ingen version"}.`,
       );
     }
+  }
+  const baselineBrowserMappingVersions = lockedVersions("baseline-browser-mapping");
+  if (
+    baselineBrowserMappingVersions.length === 0 ||
+    baselineBrowserMappingVersions.some(
+      (version) => !versionAtLeast(version, expectedRuntimeVersions.baselineBrowserMapping),
+    )
+  ) {
+    problems.push(
+      `frontend/package-lock.json skal kun indeholde baseline-browser-mapping ${expectedRuntimeVersions.baselineBrowserMapping} eller nyere, men fandt ${baselineBrowserMappingVersions.join(", ") || "ingen version"}.`,
+    );
   }
   if (frontendLock.lockfileVersion !== 3) {
     problems.push(`frontend/package-lock.json skal bruge lockfileVersion 3, men bruger ${frontendLock.lockfileVersion}.`);

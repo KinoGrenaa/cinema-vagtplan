@@ -15,7 +15,7 @@ test(
   () => {
     assert.match(
       source,
-      /placeholder="Forklar eventuel ændret mødetid"\s*\/>\s*\{clockInBlockedByMissingNote && \(\s*<p[^>]*>\s*Skriv en note, fordi mødetiden afviger fra den planlagte tid\.\s*<\/p>\s*\)\}\s*<button\s+onClick=\{onRegisterClockIn\}\s+disabled=\{clockInBlockedByMissingNote\}/s,
+      /placeholder="Forklar eventuel ændret mødetid"\s*\/>\s*\{clockInBlockedByMissingNote && \(\s*<p[^>]*>\s*Skriv en note, fordi mødetiden afviger fra den planlagte tid\.\s*<\/p>\s*\)\}\s*<button\s+onClick=\{onRegisterClockIn\}\s+disabled=\{clockInBlockedByMissingNote\}/,
     );
   },
 );
@@ -25,7 +25,7 @@ test(
   () => {
     assert.match(
       source,
-      /placeholder="Forklar eventuel ændret fyraften"\s*\/>\s*\{clockOutBlockedByMissingNote && \(\s*<p[^>]*>\s*Skriv en note, fordi fyraften afviger fra den planlagte tid\.\s*<\/p>\s*\)\}\s*<button\s+onClick=\{onRegisterClockOut\}\s+disabled=\{clockOutBlockedByMissingNote\}/s,
+      /placeholder="Forklar eventuel ændret fyraften"\s*\/>\s*\{clockOutBlockedByMissingNote && \(\s*<p[^>]*>\s*Skriv en note, fordi fyraften afviger fra den planlagte tid\.\s*<\/p>\s*\)\}\s*<button\s+onClick=\{onRegisterClockOut\}\s+disabled=\{clockOutBlockedByMissingNote\}/,
     );
   },
 );

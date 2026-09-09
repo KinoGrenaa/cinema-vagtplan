@@ -25,13 +25,18 @@ export function formatShiftTime(startTime: string, endTime: string) {
 
 
 export function getTradeStartTime(trade: ShiftTrade) {
-  return trade.shift?.startTime ?? trade.shiftStartTimeSnapshot;
+  return trade.status === "OPEN"
+    ? trade.shift?.startTime ?? trade.shiftStartTimeSnapshot
+    : trade.shiftStartTimeSnapshot;
 }
 
 export function getTradeEndTime(trade: ShiftTrade) {
-  return trade.shift?.endTime ?? trade.shiftEndTimeSnapshot;
+  return trade.status === "OPEN"
+    ? trade.shift?.endTime ?? trade.shiftEndTimeSnapshot
+    : trade.shiftEndTimeSnapshot;
 }
-
 export function getTradeJobFunctionName(trade: ShiftTrade) {
-  return trade.shift?.jobFunction?.name ?? trade.jobFunctionNameSnapshot ?? "Vagt";
+  return trade.status === "OPEN"
+    ? trade.shift?.jobFunction?.name ?? trade.jobFunctionNameSnapshot ?? "Vagt"
+    : trade.jobFunctionNameSnapshot ?? "Vagt";
 }

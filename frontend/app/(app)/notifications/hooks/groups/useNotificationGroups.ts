@@ -101,7 +101,8 @@ export function useNotificationGroups({
       notifications.filter(
         (notification) =>
           notification.type !== "SHIFT_ACCEPTED" &&
-          notification.type !== "SHIFT_REJECTED",
+          notification.type !== "SHIFT_REJECTED" &&
+          notification.type !== "SHIFT_TRADE_CANCELLED",
       ),
     [notifications],
   );
@@ -110,9 +111,9 @@ export function useNotificationGroups({
     () =>
       notifications.filter(
         (notification) =>
-          !notification.isRead &&
-          (notification.type === "SHIFT_ACCEPTED" ||
-            notification.type === "SHIFT_REJECTED"),
+          !notification.isRead &&           (notification.type === "SHIFT_ACCEPTED" ||
+             notification.type === "SHIFT_REJECTED" ||
+             notification.type === "SHIFT_TRADE_CANCELLED"),
       ),
     [notifications],
   );

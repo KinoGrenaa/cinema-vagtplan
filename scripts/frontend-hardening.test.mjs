@@ -48,6 +48,21 @@ function replace(root, relativePath, searchValue, replacement) {
   writeFileSync(path, source.replace(searchValue, replacement), "utf8");
 }
 
+function setLockedPackageVersion(root, packageName, version) {
+  const path = resolve(root, "frontend/package-lock.json");
+  const lock = JSON.parse(readFileSync(path, "utf8"));
+  const suffix = `/node_modules/${packageName}`;
+  let changed = false;
+  for (const [packagePath, metadata] of Object.entries(lock.packages ?? {})) {
+    if (packagePath === `node_modules/${packageName}` || packagePath.endsWith(suffix)) {
+      metadata.version = version;
+      changed = true;
+    }
+  }
+  assert.ok(changed, `frontend/package-lock.json mangler ${packageName}`);
+  writeFileSync(path, JSON.stringify(lock, null, 2) + "\n", "utf8");
+}
+
 test("den aktuelle repository-tilstand opfylder frontend-hardening", () => {
   assert.deepEqual(collectFrontendHardeningProblems(), []);
 });
@@ -79,12 +94,13 @@ test("hardening-kontrollen afviser manglende standalone-output og runtime-bind-m
     assert.ok(problems.some((problem) => /runtime-service maa ikke bind-mounte/.test(problem)));
   });
 });
-test("hardening-kontrollen afviser saarbart Next.js, ws, postcss, sharp og uens Turbopack-root", () => {
+test("hardening-kontrollen afviser saarbart Next.js, ws, postcss, sharp, baseline-browser-mapping og uens Turbopack-root", () => {
   withFixture((root) => {
-    replace(root, "frontend/package.json", '"next": "16.2.12"', '"next": "16.2.6"');
+    replace(root, "frontend/package.json", '"next": "16.3.4"', '"next": "16.2.12"');
     replace(root, "frontend/package.json", '"ws": "8.21.0"', '"ws": "8.18.3"');
     replace(root, "frontend/package.json", '"postcss": "8.5.25"', '"postcss": "8.5.17"');
-    replace(root, "frontend/package.json", '"sharp": "0.35.3"', '"sharp": "0.34.5"');
+    replace(root, "frontend/package.json", '"sharp": "0.35.4"', '"sharp": "0.35.3"');
+    setLockedPackageVersion(root, "baseline-browser-mapping", "2.10.0");
     replace(
       root,
       "frontend/next.config.ts",
@@ -92,10 +108,11 @@ test("hardening-kontrollen afviser saarbart Next.js, ws, postcss, sharp og uens 
       "root: path.resolve(__dirname)",
     );
     const problems = collectFrontendHardeningProblems(root);
-    assert.ok(problems.some((problem) => /next 16\.2\.12/.test(problem)));
+    assert.ok(problems.some((problem) => /next 16\.3\.4/.test(problem)));
     assert.ok(problems.some((problem) => /ws 8\.21\.0/.test(problem)));
     assert.ok(problems.some((problem) => /postcss 8\.5\.25/.test(problem)));
-    assert.ok(problems.some((problem) => /sharp 0\.35\.3/.test(problem)));
+    assert.ok(problems.some((problem) => /sharp 0\.35\.4/.test(problem)));
+    assert.ok(problems.some((problem) => /baseline-browser-mapping 2\.11\.0 eller nyere/.test(problem)));
     assert.ok(problems.some((problem) => /root: path\.resolve/.test(problem)));
   });
 });

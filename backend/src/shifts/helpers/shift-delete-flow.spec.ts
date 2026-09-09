@@ -6,6 +6,7 @@ jest.mock('./shift-linked-actions', () => ({
     tradeIds: [],
     staffingRequestIds: [],
     notificationUserIds: [],
+    cancellationNotices: [],
   }),
 }));
 
@@ -23,6 +24,7 @@ describe('shift delete flow', () => {
       tradeIds: [],
       staffingRequestIds: [],
       notificationUserIds: [],
+    cancellationNotices: [],
     });
   });
 

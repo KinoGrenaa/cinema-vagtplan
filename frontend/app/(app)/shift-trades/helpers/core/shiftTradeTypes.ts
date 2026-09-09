@@ -23,6 +23,17 @@ export type ShiftTrade = {
     | "DIRECT";
   message?:
     string | null;
+  createdAt: string;
+  resolvedAt?: string | null;
+  resolutionReason?:
+    | "ACCEPTED"
+    | "REJECTED"
+    | "WITHDRAWN_BY_OFFERER"
+    | "SHIFT_REASSIGNED"
+    | "SHIFT_UNASSIGNED"
+    | "SHIFT_DELETED"
+    | "SHIFT_MOVED"
+    | null;
   offeredByUserId:
     number;
   acceptedByUserId?:
@@ -34,6 +45,10 @@ export type ShiftTrade = {
   targetUser?:
     User | null;
   acceptedByUser?:
+    User | null;
+  rejectedByUser?:
+    User | null;
+  resolvedByUser?:
     User | null;
   shiftStartTimeSnapshot: string;
   shiftEndTimeSnapshot: string;

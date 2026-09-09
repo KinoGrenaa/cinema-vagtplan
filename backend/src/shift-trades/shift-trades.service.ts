@@ -518,6 +518,10 @@ export class ShiftTradesService {
           this.prisma,
         realtime:
           this.realtime,
+        notifications:
+          this.notifications,
+        push:
+          this.push,
       },
       id,
       actor,
