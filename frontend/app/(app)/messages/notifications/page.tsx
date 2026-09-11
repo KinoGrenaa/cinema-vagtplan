@@ -1,6 +1,6 @@
 "use client";
 
-import NotificationsPage from "../../notifications/page";
+import NotificationsPage from "./NotificationsPage";
 import MessagesWorkspaceNav from "../components/layout/MessagesWorkspaceNav";
 
 export default function MessageNotificationsPage() {

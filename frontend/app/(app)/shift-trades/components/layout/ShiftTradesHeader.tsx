@@ -30,7 +30,7 @@ export default function ShiftTradesHeader({
           <Link
             href={
               fromNotification
-                ? "/notifications"
+                ? "/messages/notifications"
                 : "/dashboard"
             }
             className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"

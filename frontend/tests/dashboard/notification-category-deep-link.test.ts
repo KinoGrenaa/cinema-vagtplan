@@ -34,7 +34,7 @@ test("/home linker system og direkte bytter til korrekt kategori", () => {
 
 test("notifikationsgrupper læser kategori fra URL ved navigation", () => {
   const groups = read(
-    "app/(app)/notifications/hooks/groups/useNotificationGroups.ts",
+    "app/(app)/messages/notifications/hooks/groups/useNotificationGroups.ts",
   );
 
   assert.ok(

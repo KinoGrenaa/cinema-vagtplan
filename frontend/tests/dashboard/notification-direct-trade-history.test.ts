@@ -16,10 +16,10 @@ function read(relativePath: string) {
 
 test("læste direkte byttebeskeder bevares som historik", () => {
   const groups = read(
-    "app/(app)/notifications/hooks/groups/useNotificationGroups.ts",
+    "app/(app)/messages/notifications/hooks/groups/useNotificationGroups.ts",
   );
   const overview = read(
-    "app/(app)/notifications/components/overview/NotificationsOverview.tsx",
+    "app/(app)/messages/notifications/components/overview/NotificationsOverview.tsx",
   );
 
   const directStart =

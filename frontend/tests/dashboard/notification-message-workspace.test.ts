@@ -30,7 +30,7 @@ test("notifikationer ligger i besked-workspacet og ikke under indstillinger", ()
 
 test("notifikationsoversigten duplikerer ikke beskedmodulet", () => {
   const page = read(
-    "app/(app)/notifications/page.tsx",
+    "app/(app)/messages/notifications/NotificationsPage.tsx",
   );
 
   assert.ok(
@@ -40,7 +40,7 @@ test("notifikationsoversigten duplikerer ikke beskedmodulet", () => {
 
 test("notifikationsgrupper og vagtbyttehistorik starter sammenfoldet", () => {
   const groups = read(
-    "app/(app)/notifications/hooks/groups/useNotificationGroups.ts",
+    "app/(app)/messages/notifications/hooks/groups/useNotificationGroups.ts",
   );
   const history = read(
     "app/(app)/shift-trades/components/list/ShiftTradesHistorySection.tsx",
@@ -62,10 +62,10 @@ test("redundant vagtbytte-sluttekst er fjernet og kategori-hover har dedikeret s
     "app/(app)/shift-trades/components/list/ShiftTradesOpenSection.tsx",
   );
   const overview = read(
-    "app/(app)/notifications/components/overview/NotificationsOverview.tsx",
+    "app/(app)/messages/notifications/components/overview/NotificationsOverview.tsx",
   );
   const css = read(
-    "app/(app)/notifications/NotificationsPage.module.css",
+    "app/(app)/messages/notifications/NotificationsPage.module.css",
   );
 
   assert.ok(
@@ -80,8 +80,8 @@ test("redundant vagtbytte-sluttekst er fjernet og kategori-hover har dedikeret s
 });
 
 test("læste notifikationer kan ikke ryddes fra brugerfladen", () => {
-  const page = read("app/(app)/notifications/page.tsx");
-  const header = read("app/(app)/notifications/components/layout/NotificationsHeader.tsx");
+  const page = read("app/(app)/messages/notifications/NotificationsPage.tsx");
+  const header = read("app/(app)/messages/notifications/components/layout/NotificationsHeader.tsx");
   const hook = read("app/hooks/useNotifications.ts");
   const service = read("app/services/notificationsService.ts");
 
@@ -94,13 +94,13 @@ test("læste notifikationer kan ikke ryddes fra brugerfladen", () => {
 
 test("notifikationskategorier har kategori-specifik læst-handling", () => {
   const page = read(
-    "app/(app)/notifications/page.tsx",
+    "app/(app)/messages/notifications/NotificationsPage.tsx",
   );
   const header = read(
-    "app/(app)/notifications/components/layout/NotificationsHeader.tsx",
+    "app/(app)/messages/notifications/components/layout/NotificationsHeader.tsx",
   );
   const groups = read(
-    "app/(app)/notifications/hooks/groups/useNotificationGroups.ts",
+    "app/(app)/messages/notifications/hooks/groups/useNotificationGroups.ts",
   );
   const hook = read(
     "app/hooks/useNotifications.ts",
@@ -109,7 +109,7 @@ test("notifikationskategorier har kategori-specifik læst-handling", () => {
     "app/services/notificationsService.ts",
   );
   const overview = read(
-    "app/(app)/notifications/components/overview/NotificationsOverview.tsx",
+    "app/(app)/messages/notifications/components/overview/NotificationsOverview.tsx",
   );
 
   assert.ok(
@@ -153,13 +153,13 @@ test("notifikationskategorier har kategori-specifik læst-handling", () => {
 
 test("notifikationsheader viser ulæste og kategori-handlingen ligger ved kategorioversigten", () => {
   const header = read(
-    "app/(app)/notifications/components/layout/NotificationsHeader.tsx",
+    "app/(app)/messages/notifications/components/layout/NotificationsHeader.tsx",
   );
   const overview = read(
-    "app/(app)/notifications/components/overview/NotificationsOverview.tsx",
+    "app/(app)/messages/notifications/components/overview/NotificationsOverview.tsx",
   );
   const page = read(
-    "app/(app)/notifications/page.tsx",
+    "app/(app)/messages/notifications/NotificationsPage.tsx",
   );
 
   assert.ok(
