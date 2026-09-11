@@ -41,10 +41,14 @@ type Props = {
     number
   >;
   expandedDateKeys: string[];
-  notificationsCount: number;
-  unreadCount: number;
+  systemNotificationCount: number;
+  systemUnreadCount: number;
+  directResultUnreadCount: number;
   unreadOnly: boolean;
   onToggleUnreadOnly:
+    () => void;
+  hideReadDirectTrades: boolean;
+  onToggleHideReadDirectTrades:
     () => void;
   hasMore: boolean;
   loadingMore: boolean;
@@ -61,6 +65,8 @@ type Props = {
     (
       notificationId: number,
     ) => Promise<unknown>;
+  onMarkCategoryAsRead:
+    () => Promise<void>;
 };
 
 const itemClass =
@@ -120,18 +126,38 @@ export default function NotificationsOverview({
   categories,
   categoryCounts,
   expandedDateKeys,
-  notificationsCount,
-  unreadCount,
+  systemNotificationCount,
+  systemUnreadCount,
+  directResultUnreadCount,
   unreadOnly,
   onToggleUnreadOnly,
+  hideReadDirectTrades,
+  onToggleHideReadDirectTrades,
   hasMore,
   loadingMore,
   onLoadMore,
   onSwitchCategory,
   onToggleDateGroup,
   onMarkNotificationAsRead,
+  onMarkCategoryAsRead,
 }: Props) {
   const router = useRouter();
+
+  const unreadToMark =
+    activeCategory === "system"
+      ? systemUnreadCount
+      : activeCategory ===
+          "directTrades"
+        ? directResultUnreadCount
+        : 0;
+
+  const markButtonLabel =
+    activeCategory === "system"
+      ? "Markér systemnotifikationer som læst"
+      : activeCategory ===
+          "directTrades"
+        ? "Markér byttebeskeder som læst"
+        : null;
 
   async function handleSystemNotification(
     notification: Notification,
@@ -170,6 +196,12 @@ export default function NotificationsOverview({
                     category,
                   )
                 }
+                data-notification-category-card="true"
+                data-active={
+                  isActive
+                    ? "true"
+                    : "false"
+                }
                 aria-pressed={
                   isActive
                 }
@@ -191,20 +223,44 @@ export default function NotificationsOverview({
                     ]
                   }
                 </span>
+                <span className="mt-1 block text-xs font-medium opacity-80">
+                  {category ===
+                  "system"
+                    ? "ulæste"
+                    : category ===
+                        "poolTrades"
+                      ? "åbne vagter"
+                      : "åbne tilbud + ulæste beskeder"}
+                </span>
               </button>
             );
           },
         )}
       </div>
 
-      <p className="mt-5 text-sm text-gray-600 dark:text-gray-300">
-        {activeCategory ===
-        "system"
-          ? unreadOnly
-            ? `Viser ${notificationsCount} hentede ulæste systemnotifikationer · ${unreadCount} ulæste i alt`
-            : `Viser ${notificationsCount} hentede systemnotifikationer · ${unreadCount} ulæste`
-          : `Viser ${activeCount} ${activeCategoryLabel.toLowerCase()}.`}
-      </p>
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          {activeCategory ===
+          "system"
+            ? unreadOnly
+              ? `Viser ${systemNotificationCount} hentede ulæste systemnotifikationer · ${systemUnreadCount} ulæste i alt`
+              : `Viser ${systemNotificationCount} hentede systemnotifikationer · ${systemUnreadCount} ulæste`
+            : `Viser ${activeCount} ${activeCategoryLabel.toLowerCase()}.`}
+        </p>
+
+        {unreadToMark > 0 &&
+          markButtonLabel && (
+            <button
+              type="button"
+              onClick={() =>
+                void onMarkCategoryAsRead()
+              }
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
+            >
+              {markButtonLabel}
+            </button>
+          )}
+      </div>
 
       {activeCategory ===
         "system" && (
@@ -226,6 +282,30 @@ export default function NotificationsOverview({
             {unreadOnly
               ? "Vis alle"
               : "Kun ulæste"}
+          </button>
+        </div>
+      )}
+
+      {activeCategory ===
+        "directTrades" && (
+        <div className="mt-3">
+          <button
+            type="button"
+            aria-pressed={
+              hideReadDirectTrades
+            }
+            onClick={
+              onToggleHideReadDirectTrades
+            }
+            className={`inline-flex min-h-10 items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950 ${
+              hideReadDirectTrades
+                ? "border-blue-700 bg-blue-700 text-white hover:bg-blue-800 active:bg-blue-900 dark:border-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400"
+                : "border-gray-300 bg-white text-gray-800 hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700"
+            }`}
+          >
+            {hideReadDirectTrades
+              ? "Vis alle"
+              : "Skjul læste"}
           </button>
         </div>
       )}
@@ -430,12 +510,18 @@ export default function NotificationsOverview({
                                   item.notification,
                                 )
                               }
-                              className={`${itemClass} bg-blue-50 dark:bg-blue-950/30`}
+                              className={`${itemClass} ${
+                                item.notification.isRead
+                                  ? "bg-white dark:bg-gray-900"
+                                  : "bg-blue-50 dark:bg-blue-950/30"
+                              }`}
                             >
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-blue-700 px-2 py-1 text-xs font-bold text-white dark:bg-blue-500">
-                                  Ny
-                                </span>
+                                {!item.notification.isRead && (
+                                  <span className="rounded-full bg-blue-700 px-2 py-1 text-xs font-bold text-white dark:bg-blue-500">
+                                    Ny
+                                  </span>
+                                )}
                                 <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                   {getNotificationTypeLabel(
                                     item.notification.type,

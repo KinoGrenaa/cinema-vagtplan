@@ -12,6 +12,7 @@ import {
   type CinemaStartShift,
 } from "../../components/cinema/cinemaStartOverview";
 import { useAuth } from "../../providers/AuthProvider";
+import { fetchUnreadNotificationSummary } from "../../services/notificationsService";
 import { getTodayLocalDate } from "../../utils/dateTime";
 
 const dayFormatter = new Intl.DateTimeFormat("da-DK", {
@@ -103,6 +104,14 @@ export default function PersonalHomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [
+    unreadNotificationSummary,
+    setUnreadNotificationSummary,
+  ] = useState({
+    count: 0,
+    systemCount: 0,
+    directTradeResultCount: 0,
+  });
 
   useEffect(() => {
     if (authLoading) return;
@@ -125,8 +134,21 @@ export default function PersonalHomePage() {
     Promise.all([
       fetchCinemaStartOverview(),
       fetchCinemaStartOpenTimeEntry(user.id).catch(() => null),
+      user.cinemaId === null
+        ? Promise.resolve({
+            count: 0,
+            systemCount: 0,
+            directTradeResultCount: 0,
+          })
+        : fetchUnreadNotificationSummary(
+            user.cinemaId,
+          ).catch(() => ({
+            count: 0,
+            systemCount: 0,
+            directTradeResultCount: 0,
+          })),
     ])
-      .then(([data, openEntry]) => {
+      .then(([data, openEntry, unreadNotifications]) => {
         if (cancelled) return;
 
         if (data.mode === "MASTER") {
@@ -145,6 +167,9 @@ export default function PersonalHomePage() {
 
         setOverview(data);
         setOpenTimeEntry(openEntry);
+        setUnreadNotificationSummary(
+          unreadNotifications,
+        );
       })
       .catch((loadError) => {
         if (cancelled) return;
@@ -209,6 +234,39 @@ export default function PersonalHomePage() {
   }
 
   const attentionItems = activeCinema.attention?.items ?? [];
+  const visibleAttentionItems = [
+    ...attentionItems,
+    ...(unreadNotificationSummary.systemCount > 0
+      ? [
+          {
+            type: "UNREAD_SYSTEM_NOTIFICATIONS",
+            severity: "INFORMATIONAL" as const,
+            count:
+              unreadNotificationSummary.systemCount,
+            label:
+              unreadNotificationSummary.systemCount === 1
+                ? "1 ulæst systemnotifikation"
+                : `${unreadNotificationSummary.systemCount} ulæste systemnotifikationer`,
+            linkUrl: "/messages/notifications?category=system",
+          },
+        ]
+      : []),
+    ...(unreadNotificationSummary.directTradeResultCount > 0
+      ? [
+          {
+            type: "UNREAD_DIRECT_TRADE_RESULTS",
+            severity: "INFORMATIONAL" as const,
+            count:
+              unreadNotificationSummary.directTradeResultCount,
+            label:
+              unreadNotificationSummary.directTradeResultCount === 1
+                ? "1 ulæst byttebesked"
+                : `${unreadNotificationSummary.directTradeResultCount} ulæste byttebeskeder`,
+            linkUrl: "/messages/notifications?category=directTrades",
+          },
+        ]
+      : []),
+  ];
   const now = new Date();
   const today = getTodayLocalDate();
   const currentShift =
@@ -361,8 +419,8 @@ export default function PersonalHomePage() {
             </p>
 
             <div className="mt-5 space-y-3">
-              {attentionItems.length > 0 ? (
-                attentionItems.map((item) => (
+              {visibleAttentionItems.length > 0 ? (
+                visibleAttentionItems.map((item) => (
                   <Link
                     key={item.type}
                     href={item.linkUrl}

@@ -65,10 +65,12 @@ export default function AppMenu() {
   const timeAndLeaveBadgeCount =
     leaveRequestCount +
     timeEntryActionCount;
+  const messagesBadgeCount =
+    unreadMessages +
+    notificationCount;
   const totalMenuBadgeCount =
     scheduleBadgeCount +
-    unreadMessages +
-    notificationCount +
+    messagesBadgeCount +
     timeAndLeaveBadgeCount;
 
   const navItems: NavItem[] = [
@@ -176,8 +178,7 @@ export default function AppMenu() {
     {
       id: "messages",
       label: "Beskeder",
-      badge: unreadMessages,
-      moduleKey: "MESSAGES",
+      badge: messagesBadgeCount,
       children: [
         {
           href: "/messages",
@@ -199,6 +200,11 @@ export default function AppMenu() {
           href: "/messages/deleted",
           label: "Slettet",
           moduleKey: "MESSAGES",
+        },
+        {
+          href: "/messages/notifications",
+          label: "Notifikationer",
+          badge: notificationCount,
         },
       ],
     },
@@ -231,7 +237,6 @@ export default function AppMenu() {
     {
       id: "settings",
       label: "Indstillinger",
-      badge: notificationCount,
       children: [
         {
           href: "/profile",
@@ -240,11 +245,6 @@ export default function AppMenu() {
         {
           href: "/settings",
           label: "Brugerindstillinger",
-        },
-        {
-          href: "/notifications",
-          label: "Notifikationer",
-          badge: notificationCount,
         },
       ],
     },

@@ -11,6 +11,16 @@ export type NotificationPage = {
   nextBeforeId: number | null;
 };
 
+export type NotificationReadCategory =
+  | "system"
+  | "directTrades";
+
+export type NotificationUnreadSummary = {
+  count: number;
+  systemCount: number;
+  directTradeResultCount: number;
+};
+
 async function readErrorMessage(
   response: Response,
   fallback: string,
@@ -247,6 +257,43 @@ export async function fetchUnreadNotificationCount(
   );
 }
 
+export async function fetchUnreadNotificationSummary(
+  cinemaId: number,
+): Promise<NotificationUnreadSummary> {
+  const response =
+    await apiFetch(
+      `/notifications/unread-summary?${getCinemaQuery(
+        cinemaId,
+      )}`,
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      await readErrorMessage(
+        response,
+        "Kunne ikke hente ulæste notifikationer pr. kategori",
+      ),
+    );
+  }
+
+  const data =
+    await safeJson<
+      Partial<NotificationUnreadSummary>
+    >(response);
+
+  return {
+    count: Number(
+      data?.count || 0,
+    ),
+    systemCount: Number(
+      data?.systemCount || 0,
+    ),
+    directTradeResultCount: Number(
+      data?.directTradeResultCount || 0,
+    ),
+  };
+}
+
 export async function markNotificationAsRead(
   notificationId: number,
   cinemaId: number,
@@ -271,12 +318,15 @@ export async function markNotificationAsRead(
   }
 }
 
-export async function markAllNotificationsAsRead(
+export async function markNotificationCategoryAsRead(
   cinemaId: number,
-): Promise<void> {
+  category: NotificationReadCategory,
+): Promise<number> {
   const response =
     await apiFetch(
-      `/notifications/read-all?${getCinemaQuery(
+      `/notifications/read-category/${encodeURIComponent(
+        category,
+      )}?${getCinemaQuery(
         cinemaId,
       )}`,
       {
@@ -288,31 +338,7 @@ export async function markAllNotificationsAsRead(
     throw new Error(
       await readErrorMessage(
         response,
-        "Kunne ikke markere alle notifikationer som læst",
-      ),
-    );
-  }
-}
-
-
-export async function clearReadNotifications(
-  cinemaId: number,
-): Promise<number> {
-  const response =
-    await apiFetch(
-      `/notifications/read?${getCinemaQuery(
-        cinemaId,
-      )}`,
-      {
-        method: "DELETE",
-      },
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      await readErrorMessage(
-        response,
-        "Kunne ikke rydde læste notifikationer",
+        "Kunne ikke markere notifikationerne som læst",
       ),
     );
   }

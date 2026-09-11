@@ -10,11 +10,11 @@ import {
   useAuth,
 } from "../providers/AuthProvider";
 import {
-  clearReadNotifications,
   fetchNotificationPage,
-  fetchUnreadNotificationCount,
-  markAllNotificationsAsRead,
+  fetchUnreadNotificationSummary,
   markNotificationAsRead,
+  markNotificationCategoryAsRead,
+  type NotificationReadCategory,
 } from "../services/notificationsService";
 import type {
   Notification,
@@ -133,16 +133,20 @@ export function useNotifications(
     setUnreadCount,
   ] = useState(0);
   const [
+    systemUnreadCount,
+    setSystemUnreadCount,
+  ] = useState(0);
+  const [
+    directResultUnreadCount,
+    setDirectResultUnreadCount,
+  ] = useState(0);
+  const [
     loading,
     setLoading,
   ] = useState(true);
   const [
     loadingMore,
     setLoadingMore,
-  ] = useState(false);
-  const [
-    clearingRead,
-    setClearingRead,
   ] = useState(false);
   const [
     hasMore,
@@ -205,6 +209,8 @@ export function useNotifications(
         ) {
           setNotifications([]);
           setUnreadCount(0);
+          setSystemUnreadCount(0);
+          setDirectResultUnreadCount(0);
           setHasMore(false);
           setNextBeforeId(
             null,
@@ -220,7 +226,7 @@ export function useNotifications(
 
           const [
             page,
-            count,
+            unreadSummary,
           ] =
             await Promise.all([
               fetchNotificationPage(
@@ -229,7 +235,7 @@ export function useNotifications(
                   unreadOnly,
                 },
               ),
-              fetchUnreadNotificationCount(
+              fetchUnreadNotificationSummary(
                 activeCinemaId,
               ),
             ]);
@@ -237,7 +243,15 @@ export function useNotifications(
           setNotifications(
             page.items,
           );
-          setUnreadCount(count);
+          setUnreadCount(
+            unreadSummary.count,
+          );
+          setSystemUnreadCount(
+            unreadSummary.systemCount,
+          );
+          setDirectResultUnreadCount(
+            unreadSummary.directTradeResultCount,
+          );
           setHasMore(
             page.hasMore,
           );
@@ -253,6 +267,8 @@ export function useNotifications(
           );
           setNotifications([]);
           setUnreadCount(0);
+          setSystemUnreadCount(0);
+          setDirectResultUnreadCount(0);
           setHasMore(false);
           setNextBeforeId(
             null,
@@ -398,6 +414,14 @@ export function useNotifications(
             notificationId,
             activeCinemaId,
           );
+          await loadNotifications(
+            false,
+          );
+          window.dispatchEvent(
+            new Event(
+              "notificationBadgesRefresh",
+            ),
+          );
         } catch (error) {
           onError?.(
             getErrorMessage(
@@ -415,49 +439,13 @@ export function useNotifications(
       },
       [
         activeCinemaId,
+        loadNotifications,
         notifications,
         onError,
         unreadCount,
         unreadOnly,
       ],
     );
-
-  const clearRead =
-    useCallback(async () => {
-      if (!activeCinemaId) {
-        return 0;
-      }
-
-      try {
-        setClearingRead(true);
-
-        const count =
-          await clearReadNotifications(
-            activeCinemaId,
-          );
-
-        await loadNotifications(
-          false,
-        );
-
-        return count;
-      } catch (error) {
-        onError?.(
-          getErrorMessage(
-            error,
-            "Der opstod en fejl under oprydning af læste notifikationer.",
-          ),
-        );
-
-        throw error;
-      } finally {
-        setClearingRead(false);
-      }
-    }, [
-      activeCinemaId,
-      loadNotifications,
-      onError,
-    ]);
 
   const toggleUnreadOnly =
     useCallback(() => {
@@ -467,92 +455,66 @@ export function useNotifications(
       );
     }, []);
 
-  const markAllAsRead =
-    useCallback(async () => {
-      if (!activeCinemaId) {
-        return;
-      }
-
-      const previousNotifications =
-        notifications;
-      const previousUnreadCount =
-        unreadCount;
-      const previousHasMore =
-        hasMore;
-      const previousNextBeforeId =
-        nextBeforeId;
-
-      try {
-        setNotifications(
-          (current) =>
-            unreadOnly
-              ? []
-              : current.map(
-                  (
-                    notification,
-                  ) => ({
-                    ...notification,
-                    isRead: true,
-                  }),
-                ),
-        );
-        setUnreadCount(0);
-
-        if (unreadOnly) {
-          setHasMore(false);
-          setNextBeforeId(
-            null,
-          );
+  const markCategoryAsRead =
+    useCallback(
+      async (
+        category:
+          NotificationReadCategory,
+      ) => {
+        if (!activeCinemaId) {
+          return 0;
         }
 
-        await markAllNotificationsAsRead(
-          activeCinemaId,
-        );
-      } catch (error) {
-        onError?.(
-          getErrorMessage(
-            error,
-            "Der opstod en fejl under markering af alle notifikationer som læst.",
-          ),
-        );
-        setNotifications(
-          previousNotifications,
-        );
-        setUnreadCount(
-          previousUnreadCount,
-        );
-        setHasMore(
-          previousHasMore,
-        );
-        setNextBeforeId(
-          previousNextBeforeId,
-        );
-      }
-    }, [
-      activeCinemaId,
-      hasMore,
-      nextBeforeId,
-      notifications,
-      onError,
-      unreadCount,
-      unreadOnly,
-    ]);
+        try {
+          const count =
+            await markNotificationCategoryAsRead(
+              activeCinemaId,
+              category,
+            );
+
+          await loadNotifications(
+            false,
+          );
+          window.dispatchEvent(
+            new Event(
+              "notificationBadgesRefresh",
+            ),
+          );
+
+          return count;
+        } catch (error) {
+          onError?.(
+            getErrorMessage(
+              error,
+              "Der opstod en fejl under markering af notifikationer som læst.",
+            ),
+          );
+
+          throw error;
+        }
+      },
+      [
+        activeCinemaId,
+        loadNotifications,
+        onError,
+      ],
+    );
 
   return {
     loading:
       loading ||
       authLoading,
     loadingMore,
-    clearingRead,
     notifications,
     unreadCount,
+    systemUnreadCount,
+    directResultUnreadCount,
     unreadOnly,
     hasMore,
     loadNotifications,
     loadMore,
-    clearRead,
     toggleUnreadOnly,
     markAsRead,
-    markAllAsRead,
+    markCategoryAsRead,
   };
 }

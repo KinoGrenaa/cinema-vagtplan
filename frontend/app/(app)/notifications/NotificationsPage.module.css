@@ -240,6 +240,42 @@
   color: #94a3b8 !important;
 }
 
+.page :global(button[data-notification-category-card="true"][data-active="true"]) {
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+.page :global(button[data-notification-category-card="true"][data-active="true"]:hover) {
+  background: #1e40af !important;
+  color: #ffffff !important;
+}
+
+.page :global(button[data-notification-category-card="true"][data-active="false"]) {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+.page :global(button[data-notification-category-card="true"][data-active="false"]:hover) {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:global(.dark) .page :global(button[data-notification-category-card="true"][data-active="true"]),
+:global(.dark) .page :global(button[data-notification-category-card="true"][data-active="true"]:hover) {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+:global(.dark) .page :global(button[data-notification-category-card="true"][data-active="false"]) {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+:global(.dark) .page :global(button[data-notification-category-card="true"][data-active="false"]:hover) {
+  background: #334155 !important;
+  color: #f8fafc !important;
+}
+
 @media (max-width: 640px) {
   .page :global(button),
   .page :global(a.block) {

@@ -104,7 +104,7 @@ export default function ShiftTradesOpenSection({
               Viser {trades.length} af{" "}
               {totalCount}
             </p>
-            {hasMore ? (
+            {hasMore && (
               <button
                 type="button"
                 onClick={
@@ -119,10 +119,6 @@ export default function ShiftTradesOpenSection({
                   ? "Henter vagtbytter..."
                   : "Hent flere vagtbytter"}
               </button>
-            ) : (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Alle åbne vagtbytter er vist
-              </span>
             )}
           </div>
         </>

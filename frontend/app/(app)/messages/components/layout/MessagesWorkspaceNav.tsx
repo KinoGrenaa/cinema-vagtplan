@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  Bell,
   Inbox,
   Send,
   SquarePen,
@@ -13,7 +14,8 @@ type MessagesWorkspaceNavProps = {
     | "inbox"
     | "new"
     | "sent"
-    | "deleted";
+    | "deleted"
+    | "notifications";
   unreadCount?: number;
 };
 
@@ -42,6 +44,12 @@ const items = [
     label: "Slettet",
     icon: Trash2,
   },
+  {
+    id: "notifications",
+    href: "/messages/notifications",
+    label: "Notifikationer",
+    icon: Bell,
+  },
 ] as const;
 
 export default function MessagesWorkspaceNav({
@@ -57,7 +65,7 @@ export default function MessagesWorkspaceNav({
       </div>
 
       <nav
-        className="grid grid-cols-4 gap-2 lg:block lg:space-y-1"
+        className="grid grid-cols-5 gap-2 lg:block lg:space-y-1"
         aria-label="Beskedmapper"
       >
         {items.map((item) => {

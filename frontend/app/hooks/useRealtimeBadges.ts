@@ -302,6 +302,25 @@ export function useRealtimeBadges() {
     void refreshBadges();
   }, [refreshBadges]);
 
+  useEffect(() => {
+    const handleNotificationBadgesRefresh =
+      () => {
+        void refreshBadges();
+      };
+
+    window.addEventListener(
+      "notificationBadgesRefresh",
+      handleNotificationBadgesRefresh,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "notificationBadgesRefresh",
+        handleNotificationBadgesRefresh,
+      );
+    };
+  }, [refreshBadges]);
+
   useRealtimeCore({
     onShiftUpdated:
       shiftTradesEnabled

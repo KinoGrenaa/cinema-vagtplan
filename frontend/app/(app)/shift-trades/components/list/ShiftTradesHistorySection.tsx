@@ -140,12 +140,12 @@ export default function ShiftTradesHistorySection({
       </div>
       {groups.length > 0 ? (
         <div className="mt-5 space-y-3">
-          {groups.map(([dateKey, dateTrades], groupIndex) => {
+          {groups.map(([dateKey, dateTrades]) => {
             const containsFocusedTrade = dateTrades.some((trade) => trade.id === focusedTradeId);
             return (
               <details
                 key={dateKey}
-                open={containsFocusedTrade || groupIndex === 0}
+                open={containsFocusedTrade}
                 className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950/60"
               >
                 <summary className="cursor-pointer list-none px-4 py-3 font-semibold text-gray-950 marker:hidden dark:text-white">

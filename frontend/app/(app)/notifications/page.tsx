@@ -6,11 +6,7 @@ import {
   useState,
 } from "react";
 
-import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import InfoModal from "@/app/components/modals/InfoModal";
-import {
-  useConfirm,
-} from "@/app/hooks/useConfirm";
 import {
   useNotifications,
 } from "@/app/hooks/useNotifications";
@@ -28,8 +24,6 @@ import {
 import styles from "./NotificationsPage.module.css";
 
 export default function NotificationsPage() {
-  const confirmDialog =
-    useConfirm();
   const [
     errorDialog,
     setErrorDialog,
@@ -68,15 +62,15 @@ export default function NotificationsPage() {
   const {
     notifications,
     unreadCount,
+    systemUnreadCount,
+    directResultUnreadCount,
     unreadOnly,
     loading:
       notificationsLoading,
     loadingMore,
-    clearingRead,
     hasMore,
     markAsRead,
-    markAllAsRead,
-    clearRead,
+    markCategoryAsRead,
     loadMore,
     toggleUnreadOnly,
   } = useNotifications({
@@ -107,19 +101,23 @@ export default function NotificationsPage() {
     activeGroups,
     activeCategoryLabel,
     activeCount,
+    hideReadDirectTrades,
+    systemNotificationCount,
     switchCategory,
+    toggleHideReadDirectTrades,
     toggleDateGroup,
   } = useNotificationGroups({
     notifications,
     unreadCount,
+    systemUnreadCount,
+    directResultUnreadCount,
     unreadMessages,
     unreadMessageCount,
     directTrades,
     poolTrades,
     directTradeCount,
     poolTradeCount,
-    messagesEnabled:
-      moduleAccess.messages,
+    messagesEnabled: false,
     shiftTradesEnabled:
       moduleAccess.shiftTrades,
   });
@@ -141,27 +139,19 @@ export default function NotificationsPage() {
     );
   }
 
-  async function handleMarkAllNotificationsAsRead() {
-    await markAllAsRead();
+  async function handleMarkActiveCategoryAsRead() {
+    if (
+      activeCategory !== "system" &&
+      activeCategory !== "directTrades"
+    ) {
+      return;
+    }
+
+    await markCategoryAsRead(
+      activeCategory,
+    );
   }
 
-  function handleClearReadNotifications() {
-    confirmDialog.confirm({
-      title:
-        "Ryd læste systemnotifikationer",
-      description:
-        "Alle dine læste systemnotifikationer i den aktive biograf slettes permanent. Ulæste notifikationer og auditloggen berøres ikke.",
-      confirmText:
-        "Ryd læste",
-      cancelText:
-        "Annuller",
-      confirmVariant:
-        "danger",
-      onConfirm: async () => {
-        await clearRead();
-      },
-    });
-  }
 
   const loading =
     authLoading ||
@@ -238,23 +228,8 @@ export default function NotificationsPage() {
     >
       <div className="mx-auto max-w-5xl space-y-6">
         <NotificationsHeader
-          totalCount={
-            totalCount
-          }
-          activeCategory={
-            activeCategory
-          }
           unreadCount={
             unreadCount
-          }
-          clearingRead={
-            clearingRead
-          }
-          onMarkAllNotificationsAsRead={
-            handleMarkAllNotificationsAsRead
-          }
-          onClearReadNotifications={
-            handleClearReadNotifications
           }
         />
         <NotificationsOverview
@@ -279,17 +254,26 @@ export default function NotificationsPage() {
           expandedDateKeys={
             expandedDateKeys
           }
-          notificationsCount={
-            notifications.length
+          systemNotificationCount={
+            systemNotificationCount
           }
-          unreadCount={
-            unreadCount
+          systemUnreadCount={
+            systemUnreadCount
+          }
+          directResultUnreadCount={
+            directResultUnreadCount
           }
           unreadOnly={
             unreadOnly
           }
           onToggleUnreadOnly={
             toggleUnreadOnly
+          }
+          hideReadDirectTrades={
+            hideReadDirectTrades
+          }
+          onToggleHideReadDirectTrades={
+            toggleHideReadDirectTrades
           }
           hasMore={hasMore}
           loadingMore={
@@ -306,6 +290,9 @@ export default function NotificationsPage() {
           }
           onMarkNotificationAsRead={
             handleMarkNotificationAsRead
+          }
+          onMarkCategoryAsRead={
+            handleMarkActiveCategoryAsRead
           }
         />
 
@@ -345,31 +332,6 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      <ConfirmModal
-        open={confirmDialog.open}
-        title={confirmDialog.title}
-        description={
-          confirmDialog.description
-        }
-        confirmText={
-          confirmDialog.confirmText
-        }
-        cancelText={
-          confirmDialog.cancelText
-        }
-        confirmVariant={
-          confirmDialog.confirmVariant
-        }
-        loading={
-          confirmDialog.loading
-        }
-        onConfirm={
-          confirmDialog.handleConfirm
-        }
-        onCancel={
-          confirmDialog.handleCancel
-        }
-      />
       <InfoModal
         open={errorDialog.open}
         title={

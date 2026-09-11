@@ -22,6 +22,8 @@ import type {
 type UseNotificationGroupsParams = {
   notifications: Notification[];
   unreadCount: number;
+  systemUnreadCount: number;
+  directResultUnreadCount: number;
   unreadMessages: Message[];
   unreadMessageCount: number;
   directTrades: ShiftTrade[];
@@ -35,6 +37,8 @@ type UseNotificationGroupsParams = {
 export function useNotificationGroups({
   notifications,
   unreadCount,
+  systemUnreadCount,
+  directResultUnreadCount,
   unreadMessages,
   unreadMessageCount,
   directTrades,
@@ -83,6 +87,33 @@ export function useNotificationGroups({
     ]);
 
   useEffect(() => {
+    const requestedCategory =
+      new URLSearchParams(
+        window.location.search,
+      ).get("category");
+
+    if (
+      requestedCategory !== "system" &&
+      requestedCategory !== "directTrades"
+    ) {
+      return;
+    }
+
+    if (
+      !visibleCategories.includes(
+        requestedCategory,
+      )
+    ) {
+      return;
+    }
+
+    setActiveCategory(
+      requestedCategory,
+    );
+    setExpandedDateKeys([]);
+  }, [visibleCategories]);
+
+  useEffect(() => {
     if (
       !visibleCategories.includes(
         activeCategory,
@@ -100,6 +131,7 @@ export function useNotificationGroups({
     () =>
       notifications.filter(
         (notification) =>
+          notification.type !== "NEW_MESSAGE" &&
           notification.type !== "SHIFT_ACCEPTED" &&
           notification.type !== "SHIFT_REJECTED" &&
           notification.type !== "SHIFT_TRADE_CANCELLED",
@@ -107,16 +139,36 @@ export function useNotificationGroups({
     [notifications],
   );
 
+  const [
+    hideReadDirectTrades,
+    setHideReadDirectTrades,
+  ] = useState(false);
+
   const directResultNotifications = useMemo(
     () =>
       notifications.filter(
         (notification) =>
-          !notification.isRead &&           (notification.type === "SHIFT_ACCEPTED" ||
+          (notification.type === "SHIFT_ACCEPTED" ||
              notification.type === "SHIFT_REJECTED" ||
              notification.type === "SHIFT_TRADE_CANCELLED"),
       ),
     [notifications],
   );
+
+  const visibleDirectResultNotifications =
+    useMemo(
+      () =>
+        hideReadDirectTrades
+          ? directResultNotifications.filter(
+              (notification) =>
+                !notification.isRead,
+            )
+          : directResultNotifications,
+      [
+        directResultNotifications,
+        hideReadDirectTrades,
+      ],
+    );
 
   const systemGroups = useMemo(
     () =>
@@ -147,7 +199,7 @@ export function useNotificationGroups({
           kind: "trade" as const,
           trade,
         })),
-        ...directResultNotifications.map((notification) => ({
+        ...visibleDirectResultNotifications.map((notification) => ({
           kind: "result" as const,
           notification,
         })),
@@ -162,7 +214,10 @@ export function useNotificationGroups({
               item.trade.id.toString()
             : item.notification.createdAt,
       );
-    }, [directResultNotifications, directTrades]);
+    }, [
+      directTrades,
+      visibleDirectResultNotifications,
+    ]);
 
   const poolTradeGroups = useMemo(
     () =>
@@ -202,62 +257,26 @@ export function useNotificationGroups({
     setExpandedDateKeys(
       (current) => {
         const validKeys =
-          activeGroups.map(
-            (group) =>
-              group.dateKey,
+          new Set(
+            activeGroups.map(
+              (group) =>
+                group.dateKey,
+            ),
           );
-
-        if (
-          validKeys.length === 0
-        ) {
-          return [];
-        }
-
-        const currentValidKeys =
-          current.filter(
-            (dateKey) =>
-              validKeys.includes(
-                dateKey,
-              ),
-          );
-        const latestDateKey =
-          validKeys[0];
-        const nextKeys =
-          currentValidKeys.includes(
-            latestDateKey,
-          )
-            ? currentValidKeys
-            : [
-                latestDateKey,
-                ...currentValidKeys,
-              ];
-        const isUnchanged =
-          nextKeys.length ===
-            current.length &&
-          nextKeys.every(
-            (
+        return current.filter(
+          (dateKey) =>
+            validKeys.has(
               dateKey,
-              index,
-            ) =>
-              dateKey ===
-              current[index],
-          );
-
-        return isUnchanged
-          ? current
-          : nextKeys;
+            ),
+        );
       },
     );
   }, [activeGroups]);
 
-  const directResultUnreadCount =
-    directResultNotifications.length;
-  const systemUnreadCount = Math.max(
-    0,
-    unreadCount - directResultUnreadCount,
-  );
   const totalCount =
-    unreadMessageCount +
+    (messagesEnabled
+      ? unreadMessageCount
+      : 0) +
     unreadCount +
     directTradeCount +
     poolTradeCount;
@@ -282,9 +301,14 @@ export function useNotificationGroups({
   const activeCount =
     activeCategory === "system"
       ? systemNotifications.length
-      : categoryCounts[
-          activeCategory
-        ];
+      : activeCategory ===
+          "messages"
+        ? unreadMessages.length
+        : activeCategory ===
+            "directTrades"
+          ? directTrades.length +
+            visibleDirectResultNotifications.length
+          : poolTrades.length;
 
   function switchCategory(
     category: NotificationCategory,
@@ -298,6 +322,13 @@ export function useNotificationGroups({
     }
 
     setActiveCategory(category);
+    setExpandedDateKeys([]);
+  }
+
+  function toggleHideReadDirectTrades() {
+    setHideReadDirectTrades(
+      (current) => !current,
+    );
     setExpandedDateKeys([]);
   }
 
@@ -330,7 +361,11 @@ export function useNotificationGroups({
     activeGroups,
     activeCategoryLabel,
     activeCount,
+    hideReadDirectTrades,
+    systemNotificationCount:
+      systemNotifications.length,
     switchCategory,
+    toggleHideReadDirectTrades,
     toggleDateGroup,
   };
 }

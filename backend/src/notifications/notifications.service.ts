@@ -15,6 +15,11 @@ import {
   normalizeNotificationPageLimit,
   type NotificationPageOptions,
 } from './helpers/notification-page';
+import {
+  buildVisibleNotificationWhere,
+  getNotificationReadCategoryTypeWhere,
+  isNotificationReadCategory,
+} from './helpers/notification-category';
 
 type NotificationActor = {
   sub?: number;
@@ -230,12 +235,14 @@ export class NotificationsService {
 
     const rows =
       await this.prisma.notification.findMany({
-        where:
-          buildNotificationPageWhere(
+        where: {
+          ...buildNotificationPageWhere(
             context.userId,
             context.cinemaId,
             options,
           ),
+          ...buildVisibleNotificationWhere(),
+        },
         orderBy: {
           id: 'desc',
         },
@@ -274,17 +281,94 @@ export class NotificationsService {
     actor: NotificationActor,
     selectedCinemaId?: number | null,
   ) {
+    const summary =
+      await this.unreadSummary(
+        actor,
+        selectedCinemaId,
+      );
+
+    return summary.count;
+  }
+
+  async unreadSummary(
+    actor: NotificationActor,
+    selectedCinemaId?: number | null,
+  ) {
+    const context =
+      await this.resolveNotificationContext(
+        actor,
+        selectedCinemaId,
+      );
+    const [
+      systemCount,
+      directTradeResultCount,
+    ] = await Promise.all([
+      this.prisma.notification.count({
+        where: {
+          userId: context.userId,
+          cinemaId: context.cinemaId,
+          isRead: false,
+          type:
+            getNotificationReadCategoryTypeWhere(
+              'system',
+            ),
+        },
+      }),
+      this.prisma.notification.count({
+        where: {
+          userId: context.userId,
+          cinemaId: context.cinemaId,
+          isRead: false,
+          type:
+            getNotificationReadCategoryTypeWhere(
+              'directTrades',
+            ),
+        },
+      }),
+    ]);
+
+    return {
+      count:
+        systemCount +
+        directTradeResultCount,
+      systemCount,
+      directTradeResultCount,
+    };
+  }
+
+  async markCategoryAsRead(
+    category: unknown,
+    actor: NotificationActor,
+    selectedCinemaId?: number | null,
+  ) {
+    if (
+      !isNotificationReadCategory(
+        category,
+      )
+    ) {
+      throw new BadRequestException(
+        'Notifikationskategori er ugyldig.',
+      );
+    }
+
     const context =
       await this.resolveNotificationContext(
         actor,
         selectedCinemaId,
       );
 
-    return this.prisma.notification.count({
+    return this.prisma.notification.updateMany({
       where: {
         userId: context.userId,
         cinemaId: context.cinemaId,
         isRead: false,
+        type:
+          getNotificationReadCategoryTypeWhere(
+            category,
+          ),
+      },
+      data: {
+        isRead: true,
       },
     });
   }
@@ -362,12 +446,12 @@ export class NotificationsService {
         actor,
         selectedCinemaId,
       );
-
     return this.prisma.notification.updateMany({
       where: {
         userId: context.userId,
         cinemaId: context.cinemaId,
         isRead: false,
+        ...buildVisibleNotificationWhere(),
       },
       data: {
         isRead: true,

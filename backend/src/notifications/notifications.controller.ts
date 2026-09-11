@@ -103,6 +103,20 @@ export class NotificationsController {
   }
 
   @UseGuards(JwtGuard)
+  @Get('unread-summary')
+  unreadSummary(
+    @Req() req: any,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.notificationsService.unreadSummary(
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
+  @UseGuards(JwtGuard)
   @Delete('read')
   clearRead(
     @Req() req: any,
@@ -132,6 +146,22 @@ export class NotificationsController {
     );
   }
 
+  @UseGuards(JwtGuard)
+  @Patch('read-category/:category')
+  markCategoryAsRead(
+    @Req() req: any,
+    @Param('category') category: string,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    return this.notificationsService.markCategoryAsRead(
+      category,
+      req.user,
+      parseOptionalPositiveIntegerQuery(
+        cinemaId,
+        'Biograf skal være et gyldigt ID',
+      ),
+    );
+  }
   @UseGuards(JwtGuard)
   @Patch(':id/read')
   markAsRead(
