@@ -1,6 +1,7 @@
 export type NotificationReadCategory =
   | 'system'
-  | 'directTrades';
+  | 'directTrades'
+  | 'poolTrades';
 
 export const DIRECT_TRADE_RESULT_NOTIFICATION_TYPES = [
   'SHIFT_ACCEPTED',
@@ -8,9 +9,14 @@ export const DIRECT_TRADE_RESULT_NOTIFICATION_TYPES = [
   'SHIFT_TRADE_CANCELLED',
 ];
 
+export const POOL_TRADE_NOTIFICATION_TYPES = [
+  'SHIFT_TRADE',
+];
+
 export const SYSTEM_EXCLUDED_NOTIFICATION_TYPES = [
   'NEW_MESSAGE',
   ...DIRECT_TRADE_RESULT_NOTIFICATION_TYPES,
+  ...POOL_TRADE_NOTIFICATION_TYPES,
 ];
 
 export function isNotificationReadCategory(
@@ -18,24 +24,35 @@ export function isNotificationReadCategory(
 ): value is NotificationReadCategory {
   return (
     value === 'system' ||
-    value === 'directTrades'
+    value === 'directTrades' ||
+    value === 'poolTrades'
   );
 }
 
 export function getNotificationReadCategoryTypeWhere(
   category: NotificationReadCategory,
 ) {
-  return category === 'directTrades'
-    ? {
-        in: [
-          ...DIRECT_TRADE_RESULT_NOTIFICATION_TYPES,
-        ],
-      }
-    : {
-        notIn: [
-          ...SYSTEM_EXCLUDED_NOTIFICATION_TYPES,
-        ],
-      };
+  if (category === 'directTrades') {
+    return {
+      in: [
+        ...DIRECT_TRADE_RESULT_NOTIFICATION_TYPES,
+      ],
+    };
+  }
+
+  if (category === 'poolTrades') {
+    return {
+      in: [
+        ...POOL_TRADE_NOTIFICATION_TYPES,
+      ],
+    };
+  }
+
+  return {
+    notIn: [
+      ...SYSTEM_EXCLUDED_NOTIFICATION_TYPES,
+    ],
+  };
 }
 
 export function buildVisibleNotificationWhere() {
@@ -52,6 +69,7 @@ export function buildVisibleNotificationWhere() {
         type: {
           in: [
             ...DIRECT_TRADE_RESULT_NOTIFICATION_TYPES,
+            ...POOL_TRADE_NOTIFICATION_TYPES,
           ],
         },
       },

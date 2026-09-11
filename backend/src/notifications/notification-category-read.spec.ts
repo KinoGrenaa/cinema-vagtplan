@@ -74,7 +74,7 @@ describe('Notification category read', () => {
       );
   });
 
-  it('udelader beskednotifikationer og læste direkte resultater fra sidevisningen', async () => {
+  it('viser system, direkte resultater og vagtpuljebeskeder uden beskedmodulet', async () => {
     await service.findPageForUser(
       actor,
       3,
@@ -101,7 +101,8 @@ describe('Notification category read', () => {
   it('returnerer præcise ulæste tællere pr. kategori', async () => {
     prisma.notification.count
       .mockResolvedValueOnce(4)
-      .mockResolvedValueOnce(2);
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(3);
 
     await expect(
       service.unreadSummary(
@@ -109,9 +110,10 @@ describe('Notification category read', () => {
         3,
       ),
     ).resolves.toEqual({
-      count: 6,
+      count: 9,
       systemCount: 4,
       directTradeResultCount: 2,
+      poolTradeResultCount: 3,
     });
 
     expect(
@@ -142,6 +144,22 @@ describe('Notification category read', () => {
           type:
             getNotificationReadCategoryTypeWhere(
               'directTrades',
+            ),
+        },
+      },
+    );
+    expect(
+      prisma.notification.count,
+    ).toHaveBeenNthCalledWith(
+      3,
+      {
+        where: {
+          userId: 7,
+          cinemaId: 3,
+          isRead: false,
+          type:
+            getNotificationReadCategoryTypeWhere(
+              'poolTrades',
             ),
         },
       },
@@ -198,10 +216,35 @@ describe('Notification category read', () => {
     });
   });
 
+  it('markerer kun vagtpuljebeskeder som læst', async () => {
+    await service.markCategoryAsRead(
+      'poolTrades',
+      actor,
+      3,
+    );
+
+    expect(
+      prisma.notification.updateMany,
+    ).toHaveBeenCalledWith({
+      where: {
+        userId: 7,
+        cinemaId: 3,
+        isRead: false,
+        type:
+          getNotificationReadCategoryTypeWhere(
+            'poolTrades',
+          ),
+      },
+      data: {
+        isRead: true,
+      },
+    });
+  });
+
   it('afviser ukendt kategori', async () => {
     await expect(
       service.markCategoryAsRead(
-        'poolTrades',
+        'ukendt',
         actor,
         3,
       ),
@@ -219,9 +262,10 @@ describe('Notification category read', () => {
       unreadSummary: jest
         .fn()
         .mockResolvedValue({
-          count: 3,
+          count: 4,
           systemCount: 2,
           directTradeResultCount: 1,
+          poolTradeResultCount: 1,
         }),
       markCategoryAsRead:
         jest.fn(),
@@ -240,21 +284,22 @@ describe('Notification category read', () => {
         '3',
       ),
     ).resolves.toEqual({
-      count: 3,
+      count: 4,
       systemCount: 2,
       directTradeResultCount: 1,
+      poolTradeResultCount: 1,
     });
 
     await controller.markCategoryAsRead(
       req,
-      'directTrades',
+      'poolTrades',
       '3',
     );
 
     expect(
       controllerService.markCategoryAsRead,
     ).toHaveBeenCalledWith(
-      'directTrades',
+      'poolTrades',
       actor,
       3,
     );

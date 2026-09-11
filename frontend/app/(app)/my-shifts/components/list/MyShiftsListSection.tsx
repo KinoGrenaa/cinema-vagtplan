@@ -550,7 +550,7 @@ export default function MyShiftsListSection({
                                       : primaryButtonClass
                                   }
                                 >
-                                  Send til fælles pulje
+                                  Send til vagtpulje
                                 </button>
                               ) : (
                                 <span className="rounded-lg border border-gray-300 bg-gray-100 px-3 py-1.5 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">

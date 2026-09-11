@@ -157,4 +157,92 @@ describe('shift delete flow', () => {
       pushService.sendToUserInCinema,
     ).not.toHaveBeenCalled();
   });
+  it('opretter en systemnotifikation til medarbejderen når admin sletter en tildelt vagt', async () => {
+    const shift = {
+      id: 92,
+      cinemaId: 1,
+      userId: 7,
+      startTime: new Date('2026-09-13T07:00:00.000Z'),
+      endTime: new Date('2026-09-13T15:30:00.000Z'),
+      jobFunctionNameSnapshot: 'A Vagt Weekend',
+      jobFunctionColorSnapshot: '#2563eb',
+      jobFunction: {
+        id: 7,
+        name: 'A Vagt Weekend',
+        color: '#2563eb',
+      },
+      user: {
+        id: 7,
+        firstName: 'Test',
+        lastName: '2 tester',
+      },
+    };
+    const transaction = {
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      timeEntry: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      notification: {
+        create: jest.fn().mockResolvedValue({ id: 501 }),
+      },
+      shift: {
+        findFirst: jest.fn().mockResolvedValue(shift),
+        deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback: (value: typeof transaction) => unknown) =>
+        callback(transaction),
+      ),
+    };
+    const realtimeGateway = {
+      notifyCinema: jest.fn(),
+      notifyUser: jest.fn(),
+    };
+    const pushService = {
+      sendToUserInCinema: jest.fn().mockResolvedValue(undefined),
+    };
+    const auditLogsService = {
+      create: jest.fn().mockResolvedValue(undefined),
+    };
+
+    await deleteShiftFlow({
+      prisma: prisma as never,
+      realtimeGateway: realtimeGateway as never,
+      pushService: pushService as never,
+      auditLogsService: auditLogsService as never,
+      formatShiftTime: () => '13.09.2026 kl. 09.00–17.30',
+      user: admin,
+      id: shift.id,
+    });
+
+    expect(transaction.notification.create).toHaveBeenCalledWith({
+      data: {
+        userId: 7,
+        cinemaId: 1,
+        title: 'Vagt slettet',
+        message: 'A Vagt Weekend - 13.09.2026 kl. 09.00–17.30',
+        type: 'SYSTEM',
+        linkUrl: '/my-shifts',
+      },
+    });
+    expect(realtimeGateway.notifyUser).toHaveBeenCalledWith(
+      7,
+      'notificationsUpdated',
+      expect.objectContaining({
+        cinemaId: 1,
+        shiftId: 92,
+        deleted: true,
+      }),
+    );
+    expect(pushService.sendToUserInCinema).toHaveBeenCalledWith(
+      7,
+      1,
+      expect.objectContaining({
+        title: 'Vagt slettet',
+        url: '/my-shifts',
+      }),
+    );
+  });
+
 });

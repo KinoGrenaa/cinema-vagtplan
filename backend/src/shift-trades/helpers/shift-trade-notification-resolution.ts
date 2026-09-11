@@ -43,7 +43,9 @@ export async function resolveShiftTradeOfferNotifications(
     await prisma.notification.findMany({
       where: {
         cinemaId,
-        type: 'SHIFT_DIRECT',
+        type: {
+          in: ['SHIFT_DIRECT', 'SHIFT_TRADE'],
+        },
         linkUrl: {
           in: linkUrls,
         },
@@ -56,7 +58,9 @@ export async function resolveShiftTradeOfferNotifications(
   await prisma.notification.updateMany({
     where: {
       cinemaId,
-      type: 'SHIFT_DIRECT',
+      type: {
+          in: ['SHIFT_DIRECT', 'SHIFT_TRADE'],
+        },
       linkUrl: {
         in: linkUrls,
       },

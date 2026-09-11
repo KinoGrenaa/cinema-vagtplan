@@ -302,6 +302,7 @@ export class NotificationsService {
     const [
       systemCount,
       directTradeResultCount,
+      poolTradeResultCount,
     ] = await Promise.all([
       this.prisma.notification.count({
         where: {
@@ -325,14 +326,27 @@ export class NotificationsService {
             ),
         },
       }),
+      this.prisma.notification.count({
+        where: {
+          userId: context.userId,
+          cinemaId: context.cinemaId,
+          isRead: false,
+          type:
+            getNotificationReadCategoryTypeWhere(
+              'poolTrades',
+            ),
+        },
+      }),
     ]);
 
     return {
       count:
         systemCount +
-        directTradeResultCount,
+        directTradeResultCount +
+        poolTradeResultCount,
       systemCount,
       directTradeResultCount,
+      poolTradeResultCount,
     };
   }
 

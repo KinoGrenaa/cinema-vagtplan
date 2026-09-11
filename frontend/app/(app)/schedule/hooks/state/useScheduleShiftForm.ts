@@ -251,6 +251,14 @@ export function useScheduleShiftForm({
     event.preventDefault();
 
     const body = getCurrentShiftBody();
+    const wasExistingShift = Boolean(selectedShift);
+    const movedToAnotherDate = selectedShift
+      ? toInputDateTime(selectedShift.startTime).slice(0, 10) !==
+        startTime.slice(0, 10)
+      : false;
+    const assignmentChanged = selectedShift
+      ? (getShiftUserId(selectedShift) ?? 0) !== userId
+      : false;
 
     try {
       if (selectedShift) {
@@ -260,6 +268,16 @@ export function useScheduleShiftForm({
       }
 
       closeShiftFormModal();
+
+      if (!wasExistingShift) {
+        toast.success("Vagten er oprettet");
+      } else if (movedToAnotherDate) {
+        toast.success("Vagten er flyttet");
+      } else if (assignmentChanged) {
+        toast.success("Medarbejderen er skiftet");
+      } else {
+        toast.success("Vagten er opdateret");
+      }
     } catch (error) {
       infoDialog.showError(
         selectedShift
@@ -278,12 +296,28 @@ export function useScheduleShiftForm({
     }
 
     const shiftToDelete = selectedShift;
+    const deleteTrades = (shiftToDelete as any).trades ?? [];
+    const linkedDeleteImpactLabels = [
+      deleteTrades.some((trade: any) => trade.type === "POOL")
+        ? "åbne tilbud i vagtpuljen"
+        : null,
+      deleteTrades.some((trade: any) => trade.type === "DIRECT")
+        ? "åbne direkte vagttilbud"
+        : null,
+      ((shiftToDelete as any).staffingRequests?.length ?? 0) > 0
+        ? "afventende bemandingsforespørgsler"
+        : null,
+    ].filter((value): value is string => Boolean(value));
+    const linkedDeleteWarning =
+      linkedDeleteImpactLabels.length > 0
+        ? `\n\nVagten har ${linkedDeleteImpactLabels.join(" samt ")}. Disse annulleres. Berørte medarbejdere får besked.`
+        : "";
 
     confirmDialog.confirm({
       title: "Slet vagt",
       description: `Er du sikker på, at du vil slette denne vagt?\n\n${getShiftConfirmText(
         shiftToDelete,
-      )}\n\nHandlingen kan ikke fortrydes.`,
+      )}${linkedDeleteWarning}\n\nHandlingen kan ikke fortrydes.`,
       confirmText: "Slet vagt",
       cancelText: "Annuller",
       confirmVariant: "danger",
@@ -330,17 +364,17 @@ export function useScheduleShiftForm({
     if (userId <= 0) {
       infoDialog.showError(
         "Vagten er ikke tildelt",
-        "Vagten skal tildeles en medarbejder, før den kan sendes i byttepuljen.",
+        "Vagten skal tildeles en medarbejder, før den kan sendes i vagtpuljen.",
       );
       return;
     }
 
     confirmDialog.confirm({
-      title: "Send vagt i byttepulje",
+      title: "Send vagt i vagtpulje",
       description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen?\n\n${getShiftConfirmText(
         shiftSnapshot,
       )}`,
-      confirmText: "Send i pulje",
+      confirmText: "Send i vagtpulje",
       cancelText: "Annuller",
       confirmVariant: "primary",
       onConfirm: async () => {
@@ -355,7 +389,7 @@ export function useScheduleShiftForm({
           await offerShiftTrade(committed.shift);
           closeShiftFormModal();
           infoDialog.showSuccess(
-            "Vagten er sendt i byttepuljen",
+            "Vagten er sendt i vagtpuljen",
             getShiftConfirmText(committed.shift),
           );
         } catch (error) {
@@ -372,10 +406,10 @@ export function useScheduleShiftForm({
           }
 
           infoDialog.showError(
-            "Vagten kunne ikke sendes i byttepuljen",
+            "Vagten kunne ikke sendes i vagtpuljen",
             error instanceof Error
               ? error.message
-              : "Der opstod en fejl, da vagten skulle sendes i byttepuljen.\nPrøv igen.",
+              : "Der opstod en fejl, da vagten skulle sendes i vagtpuljen.\nPrøv igen.",
           );
         }
       },

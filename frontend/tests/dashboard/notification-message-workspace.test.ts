@@ -151,7 +151,7 @@ test("notifikationskategorier har kategori-specifik læst-handling", () => {
 });
 
 
-test("notifikationsheader viser ulæste og kategori-handlingen ligger ved kategorioversigten", () => {
+test("notifikationsheader viser samlet opmærksomhed og kategori-handlingen ligger ved kategorioversigten", () => {
   const header = read(
     "app/(app)/messages/notifications/components/layout/NotificationsHeader.tsx",
   );
@@ -163,7 +163,7 @@ test("notifikationsheader viser ulæste og kategori-handlingen ligger ved katego
   );
 
   assert.ok(
-    header.includes("Du har {unreadCount} ulæste"),
+    header.includes("attentionCount"),
   );
   assert.ok(
     !header.includes("aktive"),
@@ -192,7 +192,7 @@ test("notifikationsheader viser ulæste og kategori-handlingen ligger ved katego
   );
 
   assert.ok(
-    page.includes("unreadCount={"),
+    page.includes("attentionCount={"),
   );
   assert.ok(
     page.includes("directResultUnreadCount={"),

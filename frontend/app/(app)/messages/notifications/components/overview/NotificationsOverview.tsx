@@ -11,6 +11,7 @@ import type {
 
 import {
   formatDateTimeDK,
+  formatShiftPeriodDK,
   getCategoryEmptyText,
   getCategoryLabel,
   getNotificationTypeLabel,
@@ -23,8 +24,8 @@ import type {
   DirectTradeNotificationItem,
   Message,
   NotificationCategory,
+  PoolTradeNotificationItem,
   NotificationGroup,
-  ShiftTrade,
 } from "../../helpers/core/notificationTypes";
 
 type Props = {
@@ -44,6 +45,7 @@ type Props = {
   systemNotificationCount: number;
   systemUnreadCount: number;
   directResultUnreadCount: number;
+  poolResultUnreadCount: number;
   unreadOnly: boolean;
   onToggleUnreadOnly:
     () => void;
@@ -129,6 +131,7 @@ export default function NotificationsOverview({
   systemNotificationCount,
   systemUnreadCount,
   directResultUnreadCount,
+  poolResultUnreadCount,
   unreadOnly,
   onToggleUnreadOnly,
   hideReadDirectTrades,
@@ -149,7 +152,10 @@ export default function NotificationsOverview({
       : activeCategory ===
           "directTrades"
         ? directResultUnreadCount
-        : 0;
+        : activeCategory ===
+            "poolTrades"
+          ? poolResultUnreadCount
+          : 0;
 
   const markButtonLabel =
     activeCategory === "system"
@@ -157,7 +163,10 @@ export default function NotificationsOverview({
       : activeCategory ===
           "directTrades"
         ? "Markér byttebeskeder som læst"
-        : null;
+        : activeCategory ===
+            "poolTrades"
+          ? "Markér vagtpuljebeskeder som læst"
+          : null;
 
   async function handleSystemNotification(
     notification: Notification,
@@ -227,10 +236,7 @@ export default function NotificationsOverview({
                   {category ===
                   "system"
                     ? "ulæste"
-                    : category ===
-                        "poolTrades"
-                      ? "åbne vagter"
-                      : "åbne tilbud + ulæste beskeder"}
+                    : "åbne tilbud + ulæste beskeder"}
                 </span>
               </button>
             );
@@ -355,8 +361,10 @@ export default function NotificationsOverview({
                           .length
                       }{" "}
                       {activeCategoryLabel.toLowerCase()}
-                      {activeCategory ===
-                        "system" &&
+                      {(activeCategory ===
+                        "system" ||
+                        activeCategory ===
+                          "poolTrades") &&
                       group.unreadCount
                         ? ` · ${group.unreadCount} ulæste`
                         : ""}
@@ -569,34 +577,73 @@ export default function NotificationsOverview({
                       )}
 
                     {activeCategory === "poolTrades" &&
-                      (group.items as ShiftTrade[]).map((trade) => (
-                        <Link
-                          key={trade.id}
-                          href={`/shift-trades?tradeId=${trade.id}`}
-                          className={itemClass}
-                        >
-                          <span className="rounded-full bg-orange-600 px-2 py-1 text-xs font-bold text-white">
-                            Åben vagt
-                          </span>
-                          <p className="mt-3 font-semibold text-gray-950 dark:text-white">
-                            {trade.shift?.jobFunction?.name ||
-                              trade.jobFunctionNameSnapshot ||
-                              "Vagt"}
-                          </p>
-                          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                            Fra:{" "}
-                            {getUserName(trade.offeredByUser) ||
-                              "Ukendt"}
-                          </p>
-                          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                            {formatDateTimeDK(
-                              trade.shift?.startTime ??
-                                trade.shiftStartTimeSnapshot ??
-                                new Date(0).toISOString(),
-                            )}
-                          </p>
-                        </Link>
-                      ))}
+                      (group.items as PoolTradeNotificationItem[]).map((item) =>
+                        item.kind === "result" ? (
+                          <button
+                            key={`notification-${item.notification.id}`}
+                            type="button"
+                            onClick={() =>
+                              void handleSystemNotification(
+                                item.notification,
+                              )
+                            }
+                            className={`${itemClass} ${
+                              item.notification.isRead
+                                ? "bg-white dark:bg-gray-900"
+                                : "bg-blue-50 dark:bg-blue-950/30"
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              {!item.notification.isRead && (
+                                <span className="rounded-full bg-blue-700 px-2 py-1 text-xs font-bold text-white dark:bg-blue-500">
+                                  Ny
+                                </span>
+                              )}
+                              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Vagtpulje
+                              </span>
+                            </div>
+                            <p className="mt-3 font-semibold text-gray-950 dark:text-white">
+                              {item.notification.title}
+                            </p>
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">
+                              {item.notification.message}
+                            </p>
+                            <NotificationMeta
+                              notification={item.notification}
+                            />
+                          </button>
+                        ) : (
+                          <Link
+                            key={`trade-${item.trade.id}`}
+                            href={`/shift-trades?tradeId=${item.trade.id}`}
+                            className={itemClass}
+                          >
+                            <span className="rounded-full bg-orange-600 px-2 py-1 text-xs font-bold text-white">
+                              Åben vagt
+                            </span>
+                            <p className="mt-3 font-semibold text-gray-950 dark:text-white">
+                              {item.trade.shift?.jobFunction?.name ||
+                                item.trade.jobFunctionNameSnapshot ||
+                                "Vagt"}
+                            </p>
+                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                              Fra:{" "}
+                              {getUserName(item.trade.offeredByUser) ||
+                                "Ukendt"}
+                            </p>
+                            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                              {formatShiftPeriodDK(
+                                item.trade.shift?.startTime ??
+                                  item.trade.shiftStartTimeSnapshot ??
+                                  new Date(0).toISOString(),
+                                item.trade.shift?.endTime ??
+                                  item.trade.shiftEndTimeSnapshot,
+                              )}
+                            </p>
+                          </Link>
+                        ),
+                      )}
                   </div>
                 )}
               </section>

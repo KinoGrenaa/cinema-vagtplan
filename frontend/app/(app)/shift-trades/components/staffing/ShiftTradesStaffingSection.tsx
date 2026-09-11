@@ -351,7 +351,12 @@ export default function ShiftTradesStaffingSection() {
   }
 
   if (
-    needsMasterCinemaSelection
+    needsMasterCinemaSelection ||
+    (
+      !loading &&
+      pendingCount === 0 &&
+      !requestTarget.requestId
+    )
   ) {
     return null;
   }

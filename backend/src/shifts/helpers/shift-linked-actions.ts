@@ -48,6 +48,48 @@ function getReasonCopy(reason: ShiftTradeResolutionReason) {
   }
 }
 
+async function findPoolRecipientUserIds(
+  prisma: Prisma.TransactionClient,
+  params: {
+    cinemaId: number;
+    offeredByUserId: number;
+    jobFunctionId: number | null | undefined;
+  },
+) {
+  if (!params.jobFunctionId) {
+    return [] as number[];
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      id: {
+        not: params.offeredByUserId,
+      },
+      isActive: true,
+      role: {
+        not: 'MASTER',
+      },
+      cinemaMemberships: {
+        some: {
+          cinemaId: params.cinemaId,
+          isActive: true,
+        },
+      },
+      userJobFunctions: {
+        some: {
+          cinemaId: params.cinemaId,
+          jobFunctionId: params.jobFunctionId,
+        },
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return users.map((user) => user.id);
+}
+
 export async function resolveOpenShiftLinkedActions(
   prisma: Prisma.TransactionClient,
   params: {
@@ -67,14 +109,17 @@ export async function resolveOpenShiftLinkedActions(
       select: {
         id: true,
         type: true,
+        offeredByUserId: true,
         targetUserId: true,
         shiftStartTimeSnapshot: true,
         shiftEndTimeSnapshot: true,
+        jobFunctionIdSnapshot: true,
         jobFunctionNameSnapshot: true,
         shift: {
           select: {
             startTime: true,
             endTime: true,
+            jobFunctionId: true,
             jobFunctionNameSnapshot: true,
           },
         },
@@ -133,31 +178,85 @@ export async function resolveOpenShiftLinkedActions(
 
   const cancellationNotices: ShiftLinkedActionCancellationNotice[] = [];
   const reasonCopy = getReasonCopy(params.resolutionReason);
+
   for (const trade of openTrades) {
-    if (trade.type !== ShiftTradeType.DIRECT || !trade.targetUserId) continue;
+    if (
+      trade.type !== ShiftTradeType.DIRECT &&
+      trade.type !== ShiftTradeType.POOL
+    ) {
+      continue;
+    }
+
     const startTime = trade.shift?.startTime ?? trade.shiftStartTimeSnapshot;
     const endTime = trade.shift?.endTime ?? trade.shiftEndTimeSnapshot;
     const jobFunctionName =
       trade.shift?.jobFunctionNameSnapshot ?? trade.jobFunctionNameSnapshot;
+
+    if (!startTime || !endTime || !jobFunctionName) {
+      continue;
+    }
+
     const linkUrl = getShiftTradeNotificationLink(trade.id);
     const message =
       `Vagttilbuddet på ${jobFunctionName} ${formatShiftTradePeriod(startTime, endTime)} er ikke længere aktuelt, fordi ${reasonCopy}.`;
-    await prisma.notification.create({
-      data: {
+
+    if (trade.type === ShiftTradeType.DIRECT && trade.targetUserId) {
+      const title = 'Direkte vagttilbud ikke længere aktuelt';
+      await prisma.notification.create({
+        data: {
+          userId: trade.targetUserId,
+          cinemaId: params.cinemaId,
+          title,
+          message,
+          type: 'SHIFT_TRADE_CANCELLED',
+          isRead: true,
+          linkUrl,
+        },
+      });
+      cancellationNotices.push({
         userId: trade.targetUserId,
-        cinemaId: params.cinemaId,
-        title: 'Direkte vagttilbud ikke længere aktuelt',
+        title,
         message,
-        type: 'SHIFT_TRADE_CANCELLED',
         linkUrl,
+      });
+      continue;
+    }
+
+    if (trade.type !== ShiftTradeType.POOL) {
+      continue;
+    }
+
+    const recipientUserIds = await findPoolRecipientUserIds(
+      prisma,
+      {
+        cinemaId: params.cinemaId,
+        offeredByUserId: trade.offeredByUserId,
+        jobFunctionId:
+          trade.shift?.jobFunctionId ??
+          trade.jobFunctionIdSnapshot,
       },
-    });
-    cancellationNotices.push({
-      userId: trade.targetUserId,
-      title: 'Direkte vagttilbud ikke længere aktuelt',
-      message,
-      linkUrl,
-    });
+    );
+    const title = 'Vagtpuljetilbud ikke længere aktuelt';
+
+    for (const recipientUserId of recipientUserIds) {
+      await prisma.notification.create({
+        data: {
+          userId: recipientUserId,
+          cinemaId: params.cinemaId,
+          title,
+          message,
+          type: 'SHIFT_TRADE',
+          isRead: true,
+          linkUrl,
+        },
+      });
+      cancellationNotices.push({
+        userId: recipientUserId,
+        title,
+        message,
+        linkUrl,
+      });
+    }
   }
 
   return {

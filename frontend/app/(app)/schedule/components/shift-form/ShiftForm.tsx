@@ -1,10 +1,12 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
 import EmployeePickerModal from "@/app/components/employees/EmployeePickerModal";
+import ConfirmModal from "@/app/components/modals/ConfirmModal";
 import ProjectDatePicker from "@/app/components/date/ProjectDatePicker";
 import ProjectTimePicker from "@/app/components/date/ProjectTimePicker";
 import { toInputDateTime } from "@/app/utils/dateTime";
@@ -404,6 +406,18 @@ function validateShiftForm({
   return errors;
 }
 
+function formatDanishList(items: string[]) {
+  if (items.length <= 1) {
+    return items[0] ?? "";
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} og ${items[1]}`;
+  }
+
+  return `${items.slice(0, -1).join(", ")} og ${items.at(-1)}`;
+}
+
 function userHasJobFunction(
   user: any,
   jobFunctionId: number,
@@ -538,11 +552,16 @@ export default function ShiftForm({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showMoveDatePicker, setShowMoveDatePicker] = useState(false);
   const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
+  const [linkedActionWarningOpen, setLinkedActionWarningOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const linkedActionWarningConfirmedRef = useRef(false);
 
   useEffect(() => {
     setShowMoveDatePicker(
       false,
     );
+    setLinkedActionWarningOpen(false);
+    linkedActionWarningConfirmedRef.current = false;
   }, [selectedShift?.id]);
 
   const editingShiftDate =
@@ -553,6 +572,61 @@ export default function ShiftForm({
       endTime,
     ) ||
     selectedDate;
+  const originalShiftDate = selectedShift
+    ? getDatePart(
+        toInputDateTime(
+          selectedShift.startTime,
+        ),
+      )
+    : "";
+  const movedToAnotherDate = Boolean(
+    selectedShift &&
+      originalShiftDate &&
+      editingShiftDate !== originalShiftDate,
+  );
+  const assignmentChanged = Boolean(
+    selectedShift &&
+      Number(selectedShift.userId ?? 0) !== userId,
+  );
+  const hasActivePoolTrade = Boolean(
+    selectedShift?.trades?.some(
+      (trade: any) => trade.type === "POOL",
+    ),
+  );
+  const hasActiveDirectTrade = Boolean(
+    selectedShift?.trades?.some(
+      (trade: any) => trade.type === "DIRECT",
+    ),
+  );
+  const hasActiveStaffingRequest = Boolean(
+    selectedShift?.staffingRequests?.length,
+  );
+  const linkedActionImpactLabels = [
+    hasActivePoolTrade
+      ? "åbne tilbud i vagtpuljen"
+      : null,
+    hasActiveDirectTrade
+      ? "åbne direkte vagttilbud"
+      : null,
+    hasActiveStaffingRequest
+      ? "afventende bemandingsforespørgsler"
+      : null,
+  ].filter(
+    (value): value is string => Boolean(value),
+  );
+  const linkedActionsWillBeCancelled =
+    linkedActionImpactLabels.length > 0 &&
+    (movedToAnotherDate || assignmentChanged);
+  const linkedActionWarningTitle = movedToAnotherDate
+    ? assignmentChanged
+      ? "Gem ændringer til vagten?"
+      : "Flyt vagt til anden dato?"
+    : "Skift medarbejder på vagten?";
+  const linkedActionWarningConfirmText = movedToAnotherDate
+    ? assignmentChanged
+      ? "Gem ændringer"
+      : "Flyt vagt"
+    : "Skift medarbejder";
   const [timingManuallyAdjusted, setTimingManuallyAdjusted] =
     useState(false);
   const {
@@ -743,6 +817,17 @@ export default function ShiftForm({
     }
 
     setValidationErrors([]);
+
+    if (
+      linkedActionsWillBeCancelled &&
+      !linkedActionWarningConfirmedRef.current
+    ) {
+      event.preventDefault();
+      setLinkedActionWarningOpen(true);
+      return;
+    }
+
+    linkedActionWarningConfirmedRef.current = false;
     onSubmit(event);
   }
 
@@ -780,6 +865,7 @@ export default function ShiftForm({
       )}
 
       <form
+        ref={formRef}
         onSubmit={handleSubmit}
         className="grid grid-cols-1 gap-4 md:grid-cols-3"
       >
@@ -1375,6 +1461,26 @@ export default function ShiftForm({
         }}
       />
 
+      <ConfirmModal
+        open={linkedActionWarningOpen}
+        title={linkedActionWarningTitle}
+        description={`Hvis du fortsætter, annulleres ${formatDanishList(
+          linkedActionImpactLabels,
+        )}. Berørte medarbejdere får besked.`}
+        confirmText={linkedActionWarningConfirmText}
+        cancelText="Tilbage"
+        confirmVariant="primary"
+        loading={false}
+        onConfirm={async () => {
+          setLinkedActionWarningOpen(false);
+          linkedActionWarningConfirmedRef.current = true;
+          formRef.current?.requestSubmit();
+        }}
+        onCancel={() => {
+          linkedActionWarningConfirmedRef.current = false;
+          setLinkedActionWarningOpen(false);
+        }}
+      />
 
       {selectedShift && (
         <div className="flex flex-wrap gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
@@ -1407,7 +1513,7 @@ export default function ShiftForm({
               onClick={onOfferTrade}
               className="rounded-xl bg-blue-700 px-5 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
             >
-              Send i byttepulje
+              Send i vagtpulje
             </button>
           ) : null)}
           {!shiftLockedByTimeEntry &&

@@ -107,6 +107,12 @@ function getDateKey(value: string) {
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return [values.year, values.month, values.day].join("-");
 }
+function getHistoryEventTimestamp(trade: ShiftTrade) {
+  const timestamp = Date.parse(
+    trade.resolvedAt ?? trade.createdAt,
+  );
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
 
 export default function ShiftTradesHistorySection({
   trades,
@@ -124,8 +130,22 @@ export default function ShiftTradesHistorySection({
       map.set(key, current);
       return map;
     }, new Map<string, ShiftTrade[]>()),
-  );
-  return (
+  )
+    .map(([dateKey, dateTrades]) => [
+      dateKey,
+      [...dateTrades].sort((left, right) => {
+        const timestampDifference =
+          getHistoryEventTimestamp(right) -
+          getHistoryEventTimestamp(left);
+        return timestampDifference !== 0
+          ? timestampDifference
+          : right.id - left.id;
+      }),
+    ] as const)
+    .sort(([leftDate], [rightDate]) =>
+      rightDate.localeCompare(leftDate),
+    );
+return (
     <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 md:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>

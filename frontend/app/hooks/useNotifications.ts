@@ -141,6 +141,10 @@ export function useNotifications(
     setDirectResultUnreadCount,
   ] = useState(0);
   const [
+    poolResultUnreadCount,
+    setPoolResultUnreadCount,
+  ] = useState(0);
+  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -211,6 +215,7 @@ export function useNotifications(
           setUnreadCount(0);
           setSystemUnreadCount(0);
           setDirectResultUnreadCount(0);
+          setPoolResultUnreadCount(0);
           setHasMore(false);
           setNextBeforeId(
             null,
@@ -252,6 +257,9 @@ export function useNotifications(
           setDirectResultUnreadCount(
             unreadSummary.directTradeResultCount,
           );
+          setPoolResultUnreadCount(
+            unreadSummary.poolTradeResultCount,
+          );
           setHasMore(
             page.hasMore,
           );
@@ -269,6 +277,7 @@ export function useNotifications(
           setUnreadCount(0);
           setSystemUnreadCount(0);
           setDirectResultUnreadCount(0);
+          setPoolResultUnreadCount(0);
           setHasMore(false);
           setNextBeforeId(
             null,
@@ -509,6 +518,7 @@ export function useNotifications(
     unreadCount,
     systemUnreadCount,
     directResultUnreadCount,
+    poolResultUnreadCount,
     unreadOnly,
     hasMore,
     loadNotifications,

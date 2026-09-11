@@ -47,6 +47,16 @@ export type DirectTradeNotificationItem =
       notification: Notification;
     };
 
+export type PoolTradeNotificationItem =
+  | {
+      kind: "trade";
+      trade: ShiftTrade;
+    }
+  | {
+      kind: "result";
+      notification: Notification;
+    };
+
 export type ErrorDialogState = {
   open: boolean;
   title: string;
@@ -70,4 +80,5 @@ export type NotificationGroup =
   | DateGroup<Notification>
   | DateGroup<Message>
   | DateGroup<ShiftTrade>
-  | DateGroup<DirectTradeNotificationItem>;
+  | DateGroup<DirectTradeNotificationItem>
+  | DateGroup<PoolTradeNotificationItem>;

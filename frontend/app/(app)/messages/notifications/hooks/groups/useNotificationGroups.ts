@@ -14,6 +14,7 @@ import {
 } from "../../helpers/core/notificationHelpers";
 import type {
   DirectTradeNotificationItem,
+  PoolTradeNotificationItem,
   Message,
   NotificationCategory,
   ShiftTrade,
@@ -24,6 +25,7 @@ type UseNotificationGroupsParams = {
   unreadCount: number;
   systemUnreadCount: number;
   directResultUnreadCount: number;
+  poolResultUnreadCount: number;
   unreadMessages: Message[];
   unreadMessageCount: number;
   directTrades: ShiftTrade[];
@@ -39,6 +41,7 @@ export function useNotificationGroups({
   unreadCount,
   systemUnreadCount,
   directResultUnreadCount,
+  poolResultUnreadCount,
   unreadMessages,
   unreadMessageCount,
   directTrades,
@@ -94,7 +97,8 @@ export function useNotificationGroups({
 
     if (
       requestedCategory !== "system" &&
-      requestedCategory !== "directTrades"
+      requestedCategory !== "directTrades" &&
+      requestedCategory !== "poolTrades"
     ) {
       return;
     }
@@ -134,7 +138,8 @@ export function useNotificationGroups({
           notification.type !== "NEW_MESSAGE" &&
           notification.type !== "SHIFT_ACCEPTED" &&
           notification.type !== "SHIFT_REJECTED" &&
-          notification.type !== "SHIFT_TRADE_CANCELLED",
+          notification.type !== "SHIFT_TRADE_CANCELLED" &&
+          notification.type !== "SHIFT_TRADE",
       ),
     [notifications],
   );
@@ -169,6 +174,15 @@ export function useNotificationGroups({
         hideReadDirectTrades,
       ],
     );
+
+  const poolResultNotifications = useMemo(
+    () =>
+      notifications.filter(
+        (notification) =>
+          notification.type === "SHIFT_TRADE",
+      ),
+    [notifications],
+  );
 
   const systemGroups = useMemo(
     () =>
@@ -220,15 +234,32 @@ export function useNotificationGroups({
     ]);
 
   const poolTradeGroups = useMemo(
-    () =>
-      groupByDate(
-        poolTrades,
-        (trade) =>
-          trade.shift?.startTime ??
-          trade.shiftStartTimeSnapshot ??
-          trade.id.toString(),
-      ),
-    [poolTrades],
+    () => {
+      const items: PoolTradeNotificationItem[] = [
+        ...poolTrades.map((trade) => ({
+          kind: "trade" as const,
+          trade,
+        })),
+        ...poolResultNotifications.map((notification) => ({
+          kind: "result" as const,
+          notification,
+        })),
+      ];
+
+      return groupByDate(
+        items,
+        (item) =>
+          item.kind === "trade"
+            ? item.trade.shift?.startTime ??
+              item.trade.shiftStartTimeSnapshot ??
+              item.trade.id.toString()
+            : item.notification.createdAt,
+        (item) =>
+          item.kind === "result" &&
+          !item.notification.isRead,
+      );
+    },
+    [poolResultNotifications, poolTrades],
   );
 
   const activeGroups = useMemo(
@@ -291,7 +322,7 @@ export function useNotificationGroups({
     directTrades:
       directTradeCount + directResultUnreadCount,
     poolTrades:
-      poolTradeCount,
+      poolTradeCount + poolResultUnreadCount,
   };
 
   const activeCategoryLabel =
@@ -308,7 +339,8 @@ export function useNotificationGroups({
             "directTrades"
           ? directTrades.length +
             visibleDirectResultNotifications.length
-          : poolTrades.length;
+          : poolTrades.length +
+            poolResultNotifications.length;
 
   function switchCategory(
     category: NotificationCategory,

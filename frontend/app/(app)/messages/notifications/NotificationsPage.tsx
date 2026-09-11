@@ -64,6 +64,7 @@ export default function NotificationsPage() {
     unreadCount,
     systemUnreadCount,
     directResultUnreadCount,
+    poolResultUnreadCount,
     unreadOnly,
     loading:
       notificationsLoading,
@@ -111,6 +112,7 @@ export default function NotificationsPage() {
     unreadCount,
     systemUnreadCount,
     directResultUnreadCount,
+    poolResultUnreadCount,
     unreadMessages,
     unreadMessageCount,
     directTrades,
@@ -142,7 +144,8 @@ export default function NotificationsPage() {
   async function handleMarkActiveCategoryAsRead() {
     if (
       activeCategory !== "system" &&
-      activeCategory !== "directTrades"
+      activeCategory !== "directTrades" &&
+      activeCategory !== "poolTrades"
     ) {
       return;
     }
@@ -228,8 +231,8 @@ export default function NotificationsPage() {
     >
       <div className="mx-auto max-w-5xl space-y-6">
         <NotificationsHeader
-          unreadCount={
-            unreadCount
+          attentionCount={
+            totalCount
           }
         />
         <NotificationsOverview
@@ -262,6 +265,9 @@ export default function NotificationsPage() {
           }
           directResultUnreadCount={
             directResultUnreadCount
+          }
+          poolResultUnreadCount={
+            poolResultUnreadCount
           }
           unreadOnly={
             unreadOnly

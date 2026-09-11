@@ -13,12 +13,14 @@ export type NotificationPage = {
 
 export type NotificationReadCategory =
   | "system"
-  | "directTrades";
+  | "directTrades"
+  | "poolTrades";
 
 export type NotificationUnreadSummary = {
   count: number;
   systemCount: number;
   directTradeResultCount: number;
+  poolTradeResultCount: number;
 };
 
 async function readErrorMessage(
@@ -290,6 +292,9 @@ export async function fetchUnreadNotificationSummary(
     ),
     directTradeResultCount: Number(
       data?.directTradeResultCount || 0,
+    ),
+    poolTradeResultCount: Number(
+      data?.poolTradeResultCount || 0,
     ),
   };
 }

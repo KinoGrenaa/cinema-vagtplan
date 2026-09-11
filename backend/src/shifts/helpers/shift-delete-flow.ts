@@ -92,6 +92,23 @@ export async function deleteShiftFlow({
           },
         );
 
+      if (shift.userId) {
+        await tx.notification.create({
+          data: {
+            userId: shift.userId,
+            cinemaId: shift.cinemaId,
+            title: 'Vagt slettet',
+            message:
+              `${shift.jobFunctionNameSnapshot} - ${formatShiftTime(
+                shift.startTime,
+                shift.endTime,
+              )}`,
+            type: 'SYSTEM',
+            linkUrl: '/my-shifts',
+          },
+        });
+      }
+
       const deleted =
         await tx.shift.deleteMany({
           where: {
@@ -190,6 +207,25 @@ export async function deleteShiftFlow({
         shiftId:
           shiftToDelete.id,
         resolved: true,
+      },
+    );
+  }
+
+  if (
+    shiftToDelete.userId &&
+    !linkedActions.notificationUserIds.includes(
+      shiftToDelete.userId,
+    )
+  ) {
+    realtimeGateway.notifyUser(
+      shiftToDelete.userId,
+      'notificationsUpdated',
+      {
+        cinemaId:
+          shiftToDelete.cinemaId,
+        shiftId:
+          shiftToDelete.id,
+        deleted: true,
       },
     );
   }

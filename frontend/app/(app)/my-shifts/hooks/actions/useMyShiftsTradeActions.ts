@@ -55,7 +55,7 @@ export function useMyShiftsTradeActions({
       description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen? ${getShiftConfirmText(
         shift,
       )}`,
-      confirmText: "Send i pulje",
+      confirmText: "Send i vagtpulje",
       cancelText: "Annuller",
       confirmVariant: "primary",
       onConfirm: async () => {
@@ -71,13 +71,13 @@ export function useMyShiftsTradeActions({
 
         if (!response.ok) {
           infoDialog.showError(
-            "Vagten kunne ikke sendes til puljen",
-            await readErrorMessage(response, "Kunne ikke sende vagten til puljen."),
+            "Vagten kunne ikke sendes til vagtpuljen",
+            await readErrorMessage(response, "Kunne ikke sende vagten til vagtpuljen."),
           );
           return;
         }
 
-        setMessage("Vagten er sendt til fælles pulje.");
+        setMessage("Vagten er sendt til vagtpuljen.");
         await refreshData();
       },
     });

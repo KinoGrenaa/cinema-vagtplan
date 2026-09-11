@@ -12,15 +12,13 @@ import type {
 } from "./notificationTypes";
 
 export const notificationTypeLabels: Record<Notification["type"], string> = {
-  SHIFT_TRADE: "Vagtbytte",
+  SHIFT_TRADE: "Vagtpulje",
   SHIFT_DIRECT: "Direkte vagtbytte",
   SHIFT_ASSIGNED: "Ny vagt",
   SHIFT_ACCEPTED: "Vagtbytte accepteret",
   SHIFT_REJECTED: "Vagtbytte afvist",
-
-SHIFT_TRADE_CANCELLED: "Vagttilbud ikke længere aktuelt",
-
-NEW_MESSAGE: "Ny besked",
+  SHIFT_TRADE_CANCELLED: "Vagttilbud ikke længere aktuelt",
+  NEW_MESSAGE: "Ny besked",
   TIME_ENTRY: "Tidsregistrering",
   STAFFING_ALERT: "Bemandingsadvarsel",
   STAFFING_REQUEST: "Bemandingsforespørgsel",
@@ -112,6 +110,24 @@ export function formatDateTimeDK(value: string) {
   return `${formatDateDK(date)}, kl. ${formatTimeDK(date)}`;
 }
 
+export function formatShiftPeriodDK(
+  startValue: string,
+  endValue?: string | null,
+) {
+  const start = new Date(startValue);
+  const end = endValue ? new Date(endValue) : null;
+
+  if (Number.isNaN(start.getTime())) {
+    return "Ukendt tidspunkt";
+  }
+
+  if (!end || Number.isNaN(end.getTime())) {
+    return `${formatDateDK(start)}, kl. ${formatTimeDK(start)}`;
+  }
+
+  return `${formatDateDK(start)}, kl. ${formatTimeDK(start)}–${formatTimeDK(end)}`;
+}
+
 export function getUserName(user?: User | null) {
   if (!user) return null;
   return `${user.firstName} ${user.lastName}`;
@@ -175,6 +191,6 @@ export function getCategoryEmptyText(category: NotificationCategory) {
     case "directTrades":
       return "Ingen direkte vagtbytter.";
     case "poolTrades":
-      return "Ingen åbne vagter i puljen.";
+      return "Ingen åbne vagter eller vagtpuljebeskeder.";
   }
 }
