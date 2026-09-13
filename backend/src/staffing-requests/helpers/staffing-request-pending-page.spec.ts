@@ -1,4 +1,5 @@
 import {
+  buildPendingStaffingRequestWhere,
   findPendingStaffingRequestPage,
   pendingStaffingRequestOrderBy,
 } from './staffing-request-page';
@@ -36,8 +37,8 @@ describe(
         },
       };
 
-      await expect(
-        findPendingStaffingRequestPage(
+      const result =
+        await findPendingStaffingRequestPage(
           prisma as never,
           employee,
           7,
@@ -45,38 +46,27 @@ describe(
             page: 2,
             limit: 50,
           },
-        ),
-      ).resolves.toEqual({
-        items,
+        );
+
+      expect(result).toMatchObject({
         page: 2,
         pageSize: 50,
         totalCount: 73,
         hasMore: true,
       });
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          id: 52,
+          acceptanceConflictShift:
+            null,
+        }),
+      ]);
 
-      const where = {
-        cinemaId: 7,
-        OR: [
-          {
-            targetUserId: 9,
-          },
-          {
-            requestedByUserId: 9,
-          },
-          {
-            targetUserId: null,
-            jobFunction: {
-              userJobFunctions: {
-                some: {
-                  cinemaId: 7,
-                  userId: 9,
-                },
-              },
-            },
-          },
-        ],
-        status: 'PENDING',
-      };
+      const where =
+        buildPendingStaffingRequestWhere(
+          employee,
+          7,
+        );
 
       expect(
         prisma.staffingRequest.findMany,

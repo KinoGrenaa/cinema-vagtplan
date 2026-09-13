@@ -152,7 +152,31 @@ export function getRequestTimeRange(request: StaffingRequest) {
   if (!startTime || !endTime) {
     return null;
   }
-  return `${formatDateTime(startTime)} → ${formatDateTime(endTime)}`;
+
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return `${formatDateTime(startTime)} → ${formatDateTime(endTime)}`;
+  }
+
+  const startDate = start.toLocaleDateString("da-DK", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const endDate = end.toLocaleDateString("da-DK", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const endClock = end.toLocaleTimeString("da-DK", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return startDate === endDate
+    ? `${formatDateTime(startTime)} → ${endClock}`
+    : `${formatDateTime(startTime)} → ${formatDateTime(endTime)}`;
 }
 
 export function groupStaffingRequests(

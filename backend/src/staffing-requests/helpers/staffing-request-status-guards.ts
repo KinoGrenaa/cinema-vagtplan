@@ -42,13 +42,7 @@ export function assertCanRejectStaffingRequest(
     );
   }
 
-  if (!request.targetUserId) {
-    throw new ForbiddenException(
-      'En forespørgsel til alle medarbejdere kan ikke afvises individuelt.',
-    );
-  }
-
-  if (request.targetUserId !== user.sub) {
+  if (request.targetUserId && request.targetUserId !== user.sub) {
     throw new ForbiddenException('Du kan ikke afvise denne forespørgsel');
   }
 }

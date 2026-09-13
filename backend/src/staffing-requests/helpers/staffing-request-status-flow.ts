@@ -14,8 +14,12 @@ import {
   staffingRequestInclude,
 } from './staffing-request-helpers';
 import { assertNoStaffingRequestAcceptConflicts } from './staffing-request-acceptance-conflicts';
+import { buildStaffingRequestAcceptedData } from './staffing-request-acceptance-transition';
 import { createStaffingRequestAcceptedNotifications } from './staffing-request-accepted-notifications';
-import { resolveStaffingRequestNotifications } from './staffing-request-notification-resolution';
+import {
+  resolveStaffingRequestNotificationForUser,
+  resolveStaffingRequestNotifications,
+} from './staffing-request-notification-resolution';
 import {
   ensureStaffingRequestActorAccess,
   ensureStaffingRequestUserQualified,
@@ -121,6 +125,29 @@ export async function acceptStaffingRequest({
       jobFunctionId: request.jobFunctionId,
     });
 
+    if (!request.targetUserId) {
+      const previousDecline =
+        await tx.staffingRequestDecline.findUnique({
+          where: {
+            staffingRequestId_userId: {
+              staffingRequestId:
+                request.id,
+              userId:
+                user.sub,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+      if (previousDecline) {
+        throw new BadRequestException(
+          'Du har allerede afvist denne bemandingsforespørgsel',
+        );
+      }
+    }
+
     let currentShift:
       | {
           id: number;
@@ -169,10 +196,10 @@ export async function acceptStaffingRequest({
         cinemaId: request.cinemaId,
         status: StaffingRequestStatus.PENDING,
       },
-      data: {
-        status: StaffingRequestStatus.ACCEPTED,
-        acceptedAt: new Date(),
-      },
+      data:
+        buildStaffingRequestAcceptedData(
+          user.sub,
+        ),
     });
 
     if (transition.count !== 1) {
@@ -340,6 +367,112 @@ export async function rejectStaffingRequest({
 
   assertPendingStaffingRequest(request);
   assertCanRejectStaffingRequest(user, request);
+
+  if (!request.targetUserId) {
+    const updated =
+      await prisma.$transaction(
+        async (tx) => {
+          const current =
+            await tx.staffingRequest.findFirst({
+              where: {
+                id,
+                cinemaId:
+                  request.cinemaId,
+                status:
+                  StaffingRequestStatus.PENDING,
+                targetUserId:
+                  null,
+              },
+              select: {
+                id: true,
+                cinemaId: true,
+                jobFunctionId: true,
+              },
+            });
+
+          if (!current) {
+            throw new BadRequestException(
+              'Bemandingsforespørgslen er ikke længere åben',
+            );
+          }
+
+          await ensureStaffingRequestUserQualified({
+            prisma: tx,
+            cinemaId:
+              current.cinemaId,
+            userId:
+              user.sub,
+            jobFunctionId:
+              current.jobFunctionId,
+          });
+
+          await tx.staffingRequestDecline.upsert({
+            where: {
+              staffingRequestId_userId: {
+                staffingRequestId:
+                  current.id,
+                userId:
+                  user.sub,
+              },
+            },
+            update: {
+              userId:
+                user.sub,
+            },
+            create: {
+              staffingRequestId:
+                current.id,
+              userId:
+                user.sub,
+            },
+          });
+
+          await resolveStaffingRequestNotificationForUser(
+            tx,
+            current.cinemaId,
+            current.id,
+            user.sub,
+          );
+
+          const currentWithDeclines =
+            await tx.staffingRequest.findUnique({
+              where: {
+                id:
+                  current.id,
+              },
+              include:
+                staffingRequestInclude,
+            });
+
+          if (!currentWithDeclines) {
+            throw new NotFoundException(
+              'Bemandingsforespørgsel blev ikke fundet',
+            );
+          }
+
+          return currentWithDeclines;
+        },
+      );
+
+    realtimeGateway.notifyUser(
+      user.sub,
+      'notificationsUpdated',
+      {
+        cinemaId:
+          request.cinemaId,
+        staffingRequestId:
+          id,
+        resolved: true,
+      },
+    );
+
+    emitStaffingRequestsUpdate(
+      realtimeGateway,
+      request.cinemaId,
+    );
+
+    return updated;
+  }
 
   const result = await prisma.$transaction(async (tx) => {
     const transition = await tx.staffingRequest.updateMany({

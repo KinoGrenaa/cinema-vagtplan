@@ -36,6 +36,9 @@ import {
   getRequestTimeRange,
   getRequestTitle,
 } from "../../../staffing-requests/helpers/core/staffingRequestHelpers";
+import {
+  getStaffingRequestRejectDialogCopy,
+} from "../../../staffing-requests/helpers/core/staffingRequestPresentation";
 import type {
   StaffingRequest,
 } from "../../../staffing-requests/helpers/core/staffingRequestTypes";
@@ -283,15 +286,15 @@ export default function ShiftTradesStaffingSection() {
 
     confirmDialog.confirm({
       title:
-        "Tag denne vagt?",
+        "Acceptér vagten?",
       description:
-        `Er du sikker på, at du vil tage ${getRequestTitle(request)}?${
+        `Er du sikker på, at du vil acceptere ${getRequestTitle(request)}?${
           timeRange
             ? `\n\n${timeRange}`
             : ""
         }`,
       confirmText:
-        "Tag vagten",
+        "Acceptér vagten",
       cancelText:
         "Annuller",
       confirmVariant:
@@ -306,14 +309,14 @@ export default function ShiftTradesStaffingSection() {
     request:
       StaffingRequest,
   ) {
+    const copy =
+      getStaffingRequestRejectDialogCopy(
+        user?.role,
+        request,
+      );
+
     confirmDialog.confirm({
-      title:
-        "Afvis bemandingsforespørgsel",
-      description:
-        `Vil du afvise ${getRequestTitle(request)}?\n\n` +
-        "Forespørgslen markeres som afvist.",
-      confirmText:
-        "Afvis",
+      ...copy,
       cancelText:
         "Annuller",
       confirmVariant:
@@ -350,15 +353,27 @@ export default function ShiftTradesStaffingSection() {
     });
   }
 
-  if (
-    needsMasterCinemaSelection ||
-    (
-      !loading &&
-      pendingCount === 0 &&
-      !requestTarget.requestId
-    )
-  ) {
+  if (needsMasterCinemaSelection) {
     return null;
+  }
+  if (
+    !loading &&
+    pendingCount === 0 &&
+    !requestTarget.requestId &&
+    !showCompletedRequests
+  ) {
+    if (completedCount === 0) {
+      return null;
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => setShowCompletedRequests(true)}
+        className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
+      >
+        {`Vis behandlede bemandingsforespørgsler (${completedCount})`}
+      </button>
+    );
   }
 
   return (

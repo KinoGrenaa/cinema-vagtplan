@@ -337,6 +337,8 @@ model User {
   auditLogs                             AuditLog[]
   requestedStaffingRequests             StaffingRequest[]                    @relation("RequestedStaffingRequests")
   targetedStaffingRequests              StaffingRequest[]                    @relation("TargetedStaffingRequests")
+  acceptedStaffingRequests              StaffingRequest[]                    @relation("AcceptedStaffingRequests")
+  staffingRequestDeclines              StaffingRequestDecline[]
   payrollAdjustments                    PayrollAdjustment[]                  @relation("PayrollAdjustmentUser")
   createdPayrollAdjustments             PayrollAdjustment[]                  @relation("PayrollAdjustmentCreatedBy")
   payrollAdjustmentRevisions            PayrollAdjustmentRevision[]
@@ -1420,6 +1422,9 @@ model StaffingRequest {
   requestedByUser   User                  @relation("RequestedStaffingRequests", fields: [requestedByUserId], references: [id])
   targetUserId      Int?
   targetUser        User?                 @relation("TargetedStaffingRequests", fields: [targetUserId], references: [id])
+  acceptedByUserId  Int?
+  acceptedByUser    User?                 @relation("AcceptedStaffingRequests", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  declines          StaffingRequestDecline[]
   type              StaffingRequestType
   status            StaffingRequestStatus @default(PENDING)
   priority          Int                   @default(1)
@@ -1438,6 +1443,7 @@ model StaffingRequest {
   @@index([requestStartTime])
   @@index([requestedByUserId])
   @@index([targetUserId])
+  @@index([acceptedByUserId])
   @@index([status])
   @@index([type])
   @@index([createdAt])
@@ -1448,6 +1454,21 @@ model StaffingRequest {
   @@index([cinemaId, shiftId, status, id])
 }
 
+
+
+model StaffingRequestDecline {
+  id                Int             @id @default(autoincrement())
+  staffingRequestId Int
+  staffingRequest   StaffingRequest @relation(fields: [staffingRequestId], references: [id], onDelete: Cascade)
+  userId            Int
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  declinedAt        DateTime        @default(now())
+
+  @@unique([staffingRequestId, userId])
+  @@index([staffingRequestId])
+  @@index([userId])
+  @@index([declinedAt])
+}
 
 model StaffingAiProfile {
   id                      Int       @id @default(autoincrement())

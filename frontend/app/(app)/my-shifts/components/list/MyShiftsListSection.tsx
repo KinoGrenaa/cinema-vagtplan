@@ -491,7 +491,7 @@ export default function MyShiftsListSection({
                       >
                         {isFocused && (
                           <span className="mb-2 inline-flex rounded-full bg-blue-700 px-2.5 py-1 text-xs font-semibold text-white dark:bg-blue-500">
-                            Fra push-notifikation
+                            Fremhævet vagt
                           </span>
                         )}
 

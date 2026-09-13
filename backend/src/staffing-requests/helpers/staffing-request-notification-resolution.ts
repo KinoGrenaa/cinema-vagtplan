@@ -51,6 +51,37 @@ export function getStaffingRequestNotificationLinks(
   ];
 }
 
+export async function resolveStaffingRequestNotificationForUser(
+  prisma: StaffingNotificationPrisma,
+  cinemaId: number,
+  requestId: number,
+  userId: number,
+) {
+  const links =
+    getStaffingRequestNotificationLinks(
+      [requestId],
+    );
+
+  if (links.length === 0) {
+    return;
+  }
+
+  await prisma.notification.updateMany({
+    where: {
+      cinemaId,
+      userId,
+      type: 'STAFFING_REQUEST',
+      linkUrl: {
+        in: links,
+      },
+    },
+    data: {
+      isRead: true,
+      linkUrl: null,
+    },
+  });
+}
+
 export async function resolveStaffingRequestNotifications(
   prisma: StaffingNotificationPrisma,
   cinemaId: number,

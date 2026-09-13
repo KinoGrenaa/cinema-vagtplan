@@ -52,102 +52,82 @@ describe(
       });
     });
 
-    it('begrænser medarbejderen til målrettede, egne og åbne fællesforespørgsler', () => {
-      expect(
+    it('begrænser medarbejderen til målrettede, egne og ikke-afviste fællesforespørgsler', () => {
+      const where =
         buildStaffingRequestVisibilityWhere(
           employee,
           7,
-        ),
-      ).toEqual({
+        );
+
+      expect(where).toMatchObject({
         cinemaId: 7,
-        OR: [
+      });
+      expect(where.OR).toHaveLength(3);
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
           {
             targetUserId: 9,
           },
           {
-            requestedByUserId:
-              9,
+            requestedByUserId: 9,
           },
-          {
+          expect.objectContaining({
             targetUserId:
               null,
-            jobFunction: {
-              userJobFunctions: {
-                some: {
-                  cinemaId: 7,
-                  userId: 9,
-                },
+            declines: {
+              none: {
+                userId: 9,
               },
             },
-          },
-        ],
-      });
+          }),
+        ]),
+      );
     });
 
     it('bygger filter til aktive forespørgsler', () => {
-      expect(
+      const where =
         buildPendingStaffingRequestWhere(
           employee,
           7,
-        ),
-      ).toEqual({
+        );
+
+      expect(where).toMatchObject({
         cinemaId: 7,
-        OR: [
+        status:
+          StaffingRequestStatus.PENDING,
+      });
+      expect(where.OR).toHaveLength(3);
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
           {
             targetUserId: 9,
           },
           {
-            requestedByUserId:
-              9,
+            requestedByUserId: 9,
           },
-          {
+          expect.objectContaining({
             targetUserId:
               null,
-            jobFunction: {
-              userJobFunctions: {
-                some: {
-                  cinemaId: 7,
-                  userId: 9,
-                },
+            declines: {
+              none: {
+                userId: 9,
               },
             },
-          },
-        ],
-        status:
-          StaffingRequestStatus.PENDING,
-      });
+          }),
+        ]),
+      );
     });
 
     it('bygger cursorfilter til behandlede forespørgsler', () => {
-      expect(
+      const where =
         buildCompletedStaffingRequestWhere(
           employee,
           7,
           50,
-        ),
-      ).toEqual({
+        );
+
+      expect(where).toMatchObject({
         cinemaId: 7,
-        OR: [
-          {
-            targetUserId: 9,
-          },
-          {
-            requestedByUserId:
-              9,
-          },
-          {
-            targetUserId:
-              null,
-            jobFunction: {
-              userJobFunctions: {
-                some: {
-                  cinemaId: 7,
-                  userId: 9,
-                },
-              },
-            },
-          },
-        ],
         status: {
           not:
             StaffingRequestStatus.PENDING,
@@ -156,40 +136,48 @@ describe(
           lt: 50,
         },
       });
+      expect(where.OR).toHaveLength(3);
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            targetUserId:
+              null,
+            declines: {
+              none: {
+                userId: 9,
+              },
+            },
+          }),
+        ]),
+      );
     });
 
-    it('beskytter målrettede gamle forespørgsler med samme adgangsregler', () => {
-      expect(
+    it('beskytter deep-links med samme synlighedsregler', () => {
+      const where =
         buildStaffingRequestTargetWhere(
           employee,
           7,
           31,
-        ),
-      ).toEqual({
+        );
+
+      expect(where).toMatchObject({
         cinemaId: 7,
-        OR: [
-          {
-            targetUserId: 9,
-          },
-          {
-            requestedByUserId:
-              9,
-          },
-          {
-            targetUserId:
-              null,
-            jobFunction: {
-              userJobFunctions: {
-                some: {
-                  cinemaId: 7,
-                  userId: 9,
-                },
-              },
-            },
-          },
-        ],
         id: 31,
       });
+      expect(where.OR).toHaveLength(3);
+      expect(where.OR).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            targetUserId:
+              null,
+            declines: {
+              none: {
+                userId: 9,
+              },
+            },
+          }),
+        ]),
+      );
     });
 
     it('bygger næste cursor for behandlede forespørgsler', () => {

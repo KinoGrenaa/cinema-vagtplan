@@ -17,7 +17,7 @@ function getNotice(
     return {
       title: "Finder vagten",
       description:
-        "Vagten fra push-notifikationen bliver hentet.",
+        "Vagten bliver hentet.",
       tone:
         "border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-100",
     };
@@ -27,7 +27,7 @@ function getNotice(
     return {
       title: "Vagten er fremhævet",
       description:
-        `Vagt #${shiftId} vises i den korrekte måned og er scrolllet ind i visningen.`,
+        "Vagten er fremhævet nedenfor.",
       tone:
         "border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-800 dark:bg-blue-950/35 dark:text-blue-100",
     };
@@ -37,7 +37,7 @@ function getNotice(
     return {
       title: "Vagten blev ikke fundet",
       description:
-        `Vagt #${shiftId} er ikke længere tildelt dig i den aktive biograf. Den kan være flyttet eller slettet.`,
+        "Vagten er ikke længere tildelt dig i den aktive biograf. Den kan være flyttet eller slettet.",
       tone:
         "border-red-300 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100",
     };

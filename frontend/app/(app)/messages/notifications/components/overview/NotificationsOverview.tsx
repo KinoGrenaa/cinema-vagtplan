@@ -107,15 +107,15 @@ function NotificationMeta({
         )}
       </span>
 
-      <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-        {inactiveStaffingRequest
-          ? "Ikke længere aktuel"
-          : destination
+      {!inactiveStaffingRequest ? (
+        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+          {destination
             ? "Åbn"
             : notification.isRead
               ? "Læst"
               : "Markér som læst"}
-      </span>
+        </span>
+      ) : null}
     </div>
   );
 }

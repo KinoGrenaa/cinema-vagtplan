@@ -33,11 +33,16 @@ export function useStaffingRequestActions({
           },
         );
         if (!response.ok) {
-          throw new Error(
+          const message =
             await readErrorMessage(
               response,
               "Kunne ikke acceptere bemandingsforespørgsel",
-            ),
+            );
+          throw new Error(
+            message ===
+              "Medarbejderen har allerede en vagt i dette tidsrum"
+              ? "Du har allerede en vagt i dette tidsrum."
+              : message,
           );
         }
         await fetchRequests();

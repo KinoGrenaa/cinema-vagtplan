@@ -108,6 +108,12 @@ export async function findMineStaffingRequests(
               },
             },
           },
+          declines: {
+            none: {
+              userId:
+                user.sub,
+            },
+          },
         },
       ],
     },

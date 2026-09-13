@@ -16,23 +16,6 @@ export type StaffingRequestType =
   | "OVERTIME";
 
 export type StaffingTargetMode = "ALL" | "USER";
-const STAFFING_REQUEST_TYPES: {
-  value: StaffingRequestType;
-  label: string;
-}[] = [
-  { value: "EMERGENCY", label: "Akut" },
-  { value: "EXTRA_SHIFT", label: "Ekstra vagt" },
-  { value: "REPLACEMENT", label: "Erstatning" },
-  { value: "OVERTIME", label: "Overarbejde" },
-];
-
-const STAFFING_PRIORITIES = [
-  { value: 1, label: "Lav" },
-  { value: 2, label: "Normal" },
-  { value: 3, label: "Høj" },
-  { value: 4, label: "Meget høj" },
-  { value: 5, label: "Akut" },
-];
 const fieldClass =
   "w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:focus:border-white dark:focus:ring-white/10";
 type StaffingRequestModalProps = {
@@ -78,10 +61,6 @@ export default function StaffingRequestModal({
   onTargetModeChange,
   targetUserId,
   onTargetUserIdChange,
-  requestType,
-  onRequestTypeChange,
-  priority,
-  onPriorityChange,
   message,
   onMessageChange,
   startTime,
@@ -111,8 +90,8 @@ export default function StaffingRequestModal({
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900 dark:border-purple-900/60 dark:bg-purple-950/30 dark:text-purple-100">
-          Send en forespørgsel fra vagtplanen. Svarene håndteres i
-          bemandingsindbakken.
+          Send en forespørgsel fra vagtplanen. Svarene håndteres under
+          Ledige vagter.
         </div>
         {!selectedShift && (
           <div>
@@ -184,7 +163,7 @@ export default function StaffingRequestModal({
         )}
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-semibold">Målgruppe</label>
+            <label className="mb-1 block text-sm font-semibold">Send til</label>
             <select
               value={targetMode}
               onChange={(event) => {
@@ -236,38 +215,6 @@ export default function StaffingRequestModal({
             </div>
           )}
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-semibold">Type</label>
-            <select
-              value={requestType}
-              onChange={(event) =>
-                onRequestTypeChange(event.target.value as StaffingRequestType)
-              }
-              className={fieldClass}
-            >
-              {STAFFING_REQUEST_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold">Prioritet</label>
-            <select
-              value={priority}
-              onChange={(event) => onPriorityChange(Number(event.target.value))}
-              className={fieldClass}
-            >
-              {STAFFING_PRIORITIES.map((nextPriority) => (
-                <option key={nextPriority.value} value={nextPriority.value}>
-                  {nextPriority.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
         <div>
           <label className="mb-1 block text-sm font-semibold">Besked</label>
           <textarea
@@ -287,7 +234,8 @@ export default function StaffingRequestModal({
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-blue-700 px-5 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900"
+            disabled={targetMode === "USER" && !selectedTargetUser}
+            className="rounded-xl bg-blue-700 px-5 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-800 active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:active:bg-blue-400 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
           >
             Send forespørgsel
           </button>

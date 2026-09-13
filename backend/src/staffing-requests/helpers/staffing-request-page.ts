@@ -8,6 +8,9 @@ import {
   PrismaService,
 } from '../../prisma/prisma.service';
 import {
+  addStaffingAcceptanceConflicts,
+} from './staffing-request-acceptance-preview';
+import {
   AuthUser,
   canManageStaffing,
   resolveStaffingCinemaId,
@@ -99,6 +102,12 @@ export function buildStaffingRequestVisibilityWhere(
               userId:
                 user.sub,
             },
+          },
+        },
+        declines: {
+          none: {
+            userId:
+              user.sub,
           },
         },
       },
@@ -245,8 +254,16 @@ export async function findPendingStaffingRequestPage(
     }),
   ]);
 
+  const itemsWithConflicts =
+    await addStaffingAcceptanceConflicts(
+      prisma,
+      user,
+      items,
+    );
+
   return {
-    items,
+    items:
+      itemsWithConflicts,
     page,
     pageSize: limit,
     totalCount,
@@ -348,8 +365,27 @@ export async function findStaffingRequestPage(
       : Promise.resolve(null),
   ]);
 
+  const pendingWithConflicts =
+    await addStaffingAcceptanceConflicts(
+      prisma,
+      user,
+      pending,
+    );
+  const targetWithConflict =
+    target?.status ===
+    StaffingRequestStatus.PENDING
+      ? (
+          await addStaffingAcceptanceConflicts(
+            prisma,
+            user,
+            [target],
+          )
+        )[0]
+      : target;
+
   return {
-    pending,
+    pending:
+      pendingWithConflicts,
     pendingPage: {
       page: 1,
       pageSize: limit,
@@ -375,6 +411,7 @@ export async function findStaffingRequestPage(
       completed:
         completedCount,
     },
-    target,
+    target:
+      targetWithConflict,
   };
 }

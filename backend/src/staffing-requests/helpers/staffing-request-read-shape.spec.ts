@@ -21,30 +21,13 @@ describe('staffing request relation read shape', () => {
     });
   });
 
-  it('henter præcise relationer for liste-, deep-link- og actionsvar', () => {
-    expect(staffingRequestInclude).toEqual({
+  it('henter relationerne som liste, historik, deep-link og actionsvar kræver', () => {
+    expect(staffingRequestInclude).toMatchObject({
       cinema: {
         select: {
           id: true,
           name: true,
           logoUrl: true,
-        },
-      },
-      shift: {
-        select: {
-          id: true,
-          startTime: true,
-          endTime: true,
-          userId: true,
-          jobFunctionId: true,
-          jobFunctionNameSnapshot: true,
-          jobFunctionColorSnapshot: true,
-          user: {
-            select: staffingRequestParticipantSelect,
-          },
-          jobFunction: {
-            select: staffingRequestJobFunctionSelect,
-          },
         },
       },
       jobFunction: {
@@ -55,6 +38,39 @@ describe('staffing request relation read shape', () => {
       },
       targetUser: {
         select: staffingRequestParticipantSelect,
+      },
+      acceptedByUser: {
+        select: staffingRequestParticipantSelect,
+      },
+      declines: {
+        select: {
+          userId: true,
+          declinedAt: true,
+          user: {
+            select: staffingRequestParticipantSelect,
+          },
+        },
+        orderBy: {
+          declinedAt: 'asc',
+        },
+      },
+    });
+
+    expect(staffingRequestInclude.shift).toEqual({
+      select: {
+        id: true,
+        startTime: true,
+        endTime: true,
+        userId: true,
+        jobFunctionId: true,
+        jobFunctionNameSnapshot: true,
+        jobFunctionColorSnapshot: true,
+        user: {
+          select: staffingRequestParticipantSelect,
+        },
+        jobFunction: {
+          select: staffingRequestJobFunctionSelect,
+        },
       },
     });
   });

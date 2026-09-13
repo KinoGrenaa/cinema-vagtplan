@@ -102,6 +102,9 @@ describe('staffing request status flow', () => {
         ]),
         findUnique: jest.fn().mockResolvedValue(updatedRequest),
       },
+      staffingRequestDecline: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
       shift: {
         findFirst: jest.fn().mockResolvedValue({
           id: 41,
@@ -149,6 +152,7 @@ describe('staffing request status flow', () => {
       data: {
         status: StaffingRequestStatus.ACCEPTED,
         acceptedAt: expect.any(Date),
+        acceptedByUserId: 21,
       },
     });
     expect(tx.shift.updateMany).toHaveBeenCalledWith({
@@ -215,6 +219,9 @@ describe('staffing request status flow', () => {
       staffingRequest: {
         findFirst: jest.fn().mockResolvedValue(request),
       },
+      staffingRequestDecline: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
       shift: {
         findFirst: jest.fn().mockResolvedValue(null),
       },
@@ -242,6 +249,9 @@ describe('staffing request status flow', () => {
       staffingRequest: {
         findFirst: jest.fn().mockResolvedValue(request),
         updateMany: jest.fn(),
+      },
+      staffingRequestDecline: {
+        findUnique: jest.fn().mockResolvedValue(null),
       },
       shift: {
         findFirst: jest.fn().mockResolvedValue({

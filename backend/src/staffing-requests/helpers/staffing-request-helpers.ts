@@ -62,6 +62,21 @@ export const staffingRequestInclude = {
   targetUser: {
     select: staffingRequestParticipantSelect,
   },
+  acceptedByUser: {
+    select: staffingRequestParticipantSelect,
+  },
+  declines: {
+    select: {
+      userId: true,
+      declinedAt: true,
+      user: {
+        select: staffingRequestParticipantSelect,
+      },
+    },
+    orderBy: {
+      declinedAt: 'asc',
+    },
+  },
 } as const;
 
 const STAFFING_REQUEST_MESSAGE_MAX_LENGTH = 1000;

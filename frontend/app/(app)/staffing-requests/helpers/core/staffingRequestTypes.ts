@@ -34,12 +34,26 @@ export type StaffingRequest = {
     string | null;
   acceptedAt?:
     string | null;
+  acceptedByUser?:
+    StaffingRequestUser | null;
   rejectedAt?:
     string | null;
   requestedByUser?:
     StaffingRequestUser | null;
   targetUser?:
     StaffingRequestUser | null;
+  declines?: Array<{
+    userId: number;
+    declinedAt: string;
+    user:
+      StaffingRequestUser;
+  }>;
+  acceptanceConflictShift?: {
+    id: number;
+    startTime: string;
+    endTime: string;
+    title: string;
+  } | null;
   shift?: {
     startTime: string;
     endTime: string;

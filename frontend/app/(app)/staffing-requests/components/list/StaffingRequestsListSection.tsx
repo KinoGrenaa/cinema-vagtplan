@@ -1,4 +1,6 @@
+import Link from "next/link";
 import {
+  Fragment,
   useEffect,
 } from "react";
 
@@ -12,6 +14,12 @@ import {
   getStatusLabel,
   getStatusStyle,
 } from "../../helpers/core/staffingRequestHelpers";
+import {
+  getFirstCompletedStaffingRequestIndex,
+  getStaffingRequestActionState,
+  getStaffingRequestRejectActionLabel,
+  getStaffingRequestHistoryEvents,
+} from "../../helpers/core/staffingRequestPresentation";
 import type {
   StaffingRequest,
 } from "../../helpers/core/staffingRequestTypes";
@@ -91,6 +99,43 @@ function getTypeClasses(
   return "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/70 dark:bg-blue-950/40 dark:text-blue-200";
 }
 
+function formatConflictTimeRange(
+  startValue: string,
+  endValue: string,
+) {
+  const start = new Date(startValue);
+  const end = new Date(endValue);
+
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime())
+  ) {
+    return `${formatDateTime(startValue)} → ${formatDateTime(endValue)}`;
+  }
+
+  const startDate =
+    start.toLocaleDateString("da-DK", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  const endDate =
+    end.toLocaleDateString("da-DK", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  const endClock =
+    end.toLocaleTimeString("da-DK", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  return startDate === endDate
+    ? `${formatDateTime(startValue)} → ${endClock}`
+    : `${formatDateTime(startValue)} → ${formatDateTime(endValue)}`;
+}
+
 export default function StaffingRequestsListSection({
   requests,
   visibleRequests,
@@ -155,6 +200,12 @@ export default function StaffingRequestsListSection({
     );
   }
 
+  const firstCompletedRequestIndex =
+    getFirstCompletedStaffingRequestIndex(
+      visibleRequests,
+      showCompletedRequests,
+    );
+
   return (
     <section
       className="space-y-4"
@@ -172,50 +223,61 @@ export default function StaffingRequestsListSection({
       ) : null}
 
       {visibleRequests.map(
-        (request) => {
-          const targetUserId =
-            request.targetUser
-              ?.id ?? null;
-          const isPending =
-            request.status ===
-            "PENDING";
+        (request, index) => {
+          const acceptanceConflictShift =
+            request.acceptanceConflictShift ??
+            null;
           const isProcessing =
             processingId ===
             request.id;
           const isFocused =
             focusedRequestId ===
             request.id;
-          const canAccept =
-            isPending &&
-            (userRole ===
-              "EMPLOYEE" ||
-              userRole ===
-                "ADMIN") &&
-            currentUserId !==
-              null &&
-            (!targetUserId ||
-              targetUserId ===
-                currentUserId);
-          const canReject =
-            isPending &&
-            (userRole ===
-              "EMPLOYEE" ||
-              userRole ===
-                "ADMIN") &&
-            currentUserId !==
-              null &&
-            targetUserId ===
-              currentUserId;
-          const canCancel =
-            isPending &&
-            isManager;
+          const {
+            isPending,
+            canActAsRecipient,
+            canShowAccept,
+            canAccept,
+            canReject,
+            canCancel,
+          } =
+            getStaffingRequestActionState(
+              request,
+              userRole,
+              currentUserId,
+              isManager,
+            );
+          const historyEvents =
+            getStaffingRequestHistoryEvents(
+              request,
+              isManager,
+            );
           const timeRange =
             getRequestTimeRange(
               request,
             );
 
           return (
-            <article
+            <Fragment
+              key={request.id}
+            >
+              {showCompletedRequests &&
+              completedRequestsCount >
+                0 &&
+              index ===
+                firstCompletedRequestIndex ? (
+                <button
+                  type="button"
+                  onClick={
+                    onToggleCompletedRequests
+                  }
+                  aria-expanded="true"
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
+                >
+                  Skjul behandlede
+                </button>
+              ) : null}
+              <article
               key={request.id}
               id={`staffing-request-${request.id}`}
               tabIndex={-1}
@@ -276,6 +338,28 @@ export default function StaffingRequestsListSection({
                           request.type,
                         )}
                     </p>
+                    {isPending &&
+                    canActAsRecipient &&
+                    acceptanceConflictShift ? (
+                      <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+                        <p className="font-semibold">
+                          Du har allerede en vagt i dette tidsrum.
+                        </p>
+                        <p className="mt-1">
+                          {acceptanceConflictShift.title} ·{" "}
+                          {formatConflictTimeRange(
+                            acceptanceConflictShift.startTime,
+                            acceptanceConflictShift.endTime,
+                          )}
+                        </p>
+                        <Link
+                          href={`/my-shifts?shiftId=${acceptanceConflictShift.id}`}
+                          className="mt-3 inline-flex min-h-10 items-center justify-center rounded-xl border border-amber-400 bg-white px-4 py-2 font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-amber-800 dark:bg-gray-950 dark:text-amber-200 dark:hover:bg-amber-950/60 dark:focus-visible:ring-amber-400 dark:focus-visible:ring-offset-gray-900"
+                        >
+                          Se min vagt
+                        </Link>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -294,7 +378,7 @@ export default function StaffingRequestsListSection({
 
                   <div>
                     <dt className="font-medium text-gray-500 dark:text-gray-400">
-                      Målgruppe
+                      Sendt til
                     </dt>
                     <dd className="mt-1 font-semibold text-gray-900 dark:text-gray-100">
                       {request.targetUser
@@ -316,12 +400,44 @@ export default function StaffingRequestsListSection({
                     </dd>
                   </div>
                 </dl>
+                {historyEvents.length >
+                0 ? (
+                  <div className="mt-4 space-y-1 text-sm font-medium text-gray-600 dark:text-gray-300">
+                    {historyEvents.map(
+                      (event) => (
+                        <p
+                          key={
+                            event.key
+                          }
+                        >
+                          {event.action ===
+                          "ACCEPTED"
+                            ? "Accepteret"
+                            : "Afvist"}
+                          {event.user ? (
+                            <>
+                              {" "}
+                              af{" "}
+                              {getFullName(
+                                event.user,
+                              )}
+                            </>
+                          ) : null}{" "}
+                          ·{" "}
+                          {formatDateTime(
+                            event.occurredAt,
+                          )}
+                        </p>
+                      ),
+                    )}
+                  </div>
+                ) : null}
 
-                {canAccept ||
+                {canShowAccept ||
                 canReject ||
                 canCancel ? (
                   <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    {canAccept ? (
+                    {canShowAccept ? (
                       <button
                         type="button"
                         onClick={() =>
@@ -330,16 +446,14 @@ export default function StaffingRequestsListSection({
                           )
                         }
                         disabled={
-                          isProcessing
+                          isProcessing ||
+                          !canAccept
                         }
                         className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:active:bg-emerald-600 dark:focus-visible:ring-emerald-400 dark:focus-visible:ring-offset-gray-900 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
                       >
                         {isProcessing
                           ? "Behandler..."
-                          : userRole ===
-                              "ADMIN"
-                            ? "Acceptér selv"
-                            : "Acceptér"}
+                          : "Acceptér vagten"}
                       </button>
                     ) : null}
 
@@ -358,7 +472,9 @@ export default function StaffingRequestsListSection({
                       >
                         {isProcessing
                           ? "Behandler..."
-                          : "Afvis"}
+                          : getStaffingRequestRejectActionLabel(
+                              userRole,
+                            )}
                       </button>
                     ) : null}
 
@@ -377,34 +493,49 @@ export default function StaffingRequestsListSection({
                       >
                         {isProcessing
                           ? "Behandler..."
-                          : "Annuller"}
+                          : "Annuller forespørgsel"}
                       </button>
                     ) : null}
                   </div>
                 ) : null}
               </div>
             </article>
+            </Fragment>
           );
         },
       )}
 
+      {showCompletedRequests &&
+      completedRequestsCount > 0 &&
+      firstCompletedRequestIndex ===
+        -1 ? (
+        <button
+          type="button"
+          onClick={
+            onToggleCompletedRequests
+          }
+          aria-expanded="true"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
+        >
+          Skjul behandlede
+        </button>
+      ) : null}
+
       {completedRequestsCount >
       0 ? (
         <div className="space-y-3 pt-2">
-          <button
-            type="button"
-            onClick={
-              onToggleCompletedRequests
-            }
-            aria-expanded={
-              showCompletedRequests
-            }
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
-          >
-            {showCompletedRequests
-              ? "Skjul behandlede"
-              : `Vis behandlede (${completedRequestsCount})`}
-          </button>
+          {!showCompletedRequests ? (
+            <button
+              type="button"
+              onClick={
+                onToggleCompletedRequests
+              }
+              aria-expanded="false"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
+            >
+              {`Vis behandlede (${completedRequestsCount})`}
+            </button>
+          ) : null}
 
           {showCompletedRequests ? (
             <div className="space-y-3">
