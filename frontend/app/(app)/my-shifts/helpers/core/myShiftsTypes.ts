@@ -25,6 +25,18 @@ export type Shift = {
   };
 };
 
+export type ShiftTradePoolResponseSummary = {
+  totalRecipients: number;
+  declinedCount: number;
+  pendingCount: number;
+  declined: Array<{
+    userId: number;
+    declinedAt: string;
+    user: User;
+  }>;
+  pending: User[];
+};
+
 export type ShiftTrade = {
   id: number;
   status: "OPEN" | "ACCEPTED" | "REJECTED" | "CANCELLED";
@@ -34,6 +46,8 @@ export type ShiftTrade = {
   targetUserId?: number | null;
   offeredByUser?: User | null;
   targetUser?: User | null;
+  poolResponseSummary?:
+    ShiftTradePoolResponseSummary | null;
   shift?: {
     startTime: string;
     endTime: string;

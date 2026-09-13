@@ -58,6 +58,11 @@ export function buildShiftTradeNotificationWhere(
         offeredByUserId: {
           not: userId,
         },
+        declines: {
+          none: {
+            userId,
+          },
+        },
       },
     ],
   };
@@ -91,6 +96,11 @@ export function buildShiftTradeNotificationCategoryWhere(
     ...base,
     offeredByUserId: {
       not: userId,
+    },
+    declines: {
+      none: {
+        userId,
+      },
     },
   };
 }

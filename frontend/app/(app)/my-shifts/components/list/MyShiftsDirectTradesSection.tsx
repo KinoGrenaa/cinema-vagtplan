@@ -77,7 +77,7 @@ export default function MyShiftsDirectTradesSection({
                 onClick={() => rejectTrade(trade.id)}
                 className={`${actionButtonBase} bg-red-600 hover:bg-red-700 active:bg-red-800 focus-visible:ring-red-500 dark:bg-red-600 dark:hover:bg-red-500 dark:active:bg-red-400`}
               >
-                Afvis vagt
+                Tak nej
               </button>
             </div>
           </article>

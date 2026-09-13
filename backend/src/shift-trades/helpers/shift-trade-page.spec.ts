@@ -63,17 +63,21 @@ describe(
               ShiftTradeType.DIRECT,
             targetUserId: 9,
           },
-          {
+                    {
             type:
               ShiftTradeType.POOL,
             offeredByUserId: {
               not: 9,
             },
+            declines: {
+              none: {
+                userId: 9,
+              },
+            },
           },
         ],
       });
     });
-
     it('bygger direkte cursorfilter', () => {
       expect(
         buildOpenShiftTradeCategoryWhere(
@@ -140,12 +144,16 @@ describe(
             },
           },
         },
-        offeredByUserId: {
+                offeredByUserId: {
           not: 9,
+        },
+        declines: {
+          none: {
+            userId: 9,
+          },
         },
       });
     });
-
     it('begrænser historik til brugerens deltagelse', () => {
       expect(
         buildShiftTradeHistoryWhere(
@@ -241,6 +249,11 @@ describe(
                   ShiftTradeType.POOL,
                 offeredByUserId: {
                   not: 9,
+                },
+                declines: {
+                  none: {
+                    userId: 9,
+                  },
                 },
               },
             ],

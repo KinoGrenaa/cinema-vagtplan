@@ -95,6 +95,11 @@ export function buildOpenShiftTradePageWhere(
         offeredByUserId: {
           not: userId,
         },
+        declines: {
+          none: {
+            userId,
+          },
+        },
       },
     ],
   };
@@ -151,6 +156,11 @@ export function buildOpenShiftTradeCategoryWhere(
     ...base,
     offeredByUserId: {
       not: userId,
+    },
+    declines: {
+      none: {
+        userId,
+      },
     },
   };
 }
@@ -250,6 +260,11 @@ export function buildShiftTradeTargetWhere(
               ShiftTradeType.POOL,
             offeredByUserId: {
               not: userId,
+            },
+            declines: {
+              none: {
+                userId,
+              },
             },
           },
         ],

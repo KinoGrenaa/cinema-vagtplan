@@ -356,6 +356,9 @@ export default function ShiftTradesPage() {
             onAccept={
               acceptTrade
             }
+            onReject={
+              rejectTrade
+            }
             onLoadMore={
               loadMorePool
             }

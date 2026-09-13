@@ -170,14 +170,15 @@ export function ensureShiftTradeCanBeRejected(
   }
 
   if (
-    trade.type !== ShiftTradeType.DIRECT
+    trade.offeredByUserId === actorUserId
   ) {
     throw new ForbiddenException(
-      'Vagtpuljer kan ikke afvises',
+      'Du kan ikke takke nej til din egen vagt',
     );
   }
 
   if (
+    trade.type === ShiftTradeType.DIRECT &&
     trade.targetUserId !== actorUserId
   ) {
     throw new ForbiddenException(

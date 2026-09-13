@@ -172,7 +172,7 @@ return (
                   <span className="flex items-center justify-between gap-4">
                     <span>{formatShiftDate(getTradeStartTime(dateTrades[0]))}</span>
                     <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {dateTrades.length} {dateTrades.length === 1 ? "hændelse" : "hændelser"}
+                      {dateTrades.length} {dateTrades.length === 1 ? "vagtbytte" : "vagtbytter"}
                     </span>
                   </span>
                 </summary>
@@ -212,6 +212,40 @@ return (
                             {reason && (
                               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{reason}</p>
                             )}
+                            {trade.type === "POOL" &&
+                              trade.declines &&
+                              trade.declines.length > 0 && (
+                                <div className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                                  {trade.declines.map((decline) => {
+                                    const declinedBy =
+                                      getUserName(decline.user) ??
+                                      "En kollega";
+                                    const declinedAt =
+                                      formatEventTime(
+                                        decline.declinedAt,
+                                      );
+
+                                    return (
+                                      <p
+                                        key={
+                                          trade.id +
+                                          "-" +
+                                          decline.userId
+                                        }
+                                      >
+                                        <span className="font-semibold text-gray-800 dark:text-gray-200">
+                                          {declinedBy}
+                                        </span>{" "}
+                                        takkede nej
+                                        {declinedAt
+                                          ? " · " +
+                                            declinedAt
+                                          : ""}
+                                      </p>
+                                    );
+                                  })}
+                                </div>
+                              )}
                           </div>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             Vagt: {formatShiftTime(getTradeStartTime(trade), getTradeEndTime(trade))}

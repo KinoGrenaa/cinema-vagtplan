@@ -40,7 +40,8 @@ test("historik bruger frosne vilkår og grupperer samme vagtdato", () => {
   const compactHistory = compact(history);
   assert.ok(helper.includes('trade.status === "OPEN"'));
   assert.ok(compactHistory.includes("new Map<string, ShiftTrade[]>()"));
-  assert.ok(history.includes("hændelser"));
+  assert.ok(history.includes("vagtbytte"));
+  assert.ok(history.includes("vagtbytter"));
   assert.ok(history.includes("getEventLabel"));
   assert.ok(history.includes("getReasonLabel"));
   assert.ok(history.includes("Fra notifikation"));

@@ -51,17 +51,21 @@ describe(
               ShiftTradeType.DIRECT,
             targetUserId: 9,
           },
-          {
+                    {
             type:
               ShiftTradeType.POOL,
             offeredByUserId: {
               not: 9,
             },
+            declines: {
+              none: {
+                userId: 9,
+              },
+            },
           },
         ],
       });
     });
-
     it('bygger præcise filtre pr. kategori', () => {
       expect(
         buildShiftTradeNotificationCategoryWhere(
@@ -117,13 +121,17 @@ describe(
             },
           },
         },
-        type: ShiftTradeType.POOL,
+                type: ShiftTradeType.POOL,
         offeredByUserId: {
           not: 9,
         },
+        declines: {
+          none: {
+            userId: 9,
+          },
+        },
       });
     });
-
     it('fordeler grupperede totaler', () => {
       expect(
         buildShiftTradeNotificationCounts([

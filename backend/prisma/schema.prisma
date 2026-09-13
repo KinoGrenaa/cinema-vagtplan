@@ -327,6 +327,7 @@ model User {
   rejectedTrades                        ShiftTrade[]                         @relation("RejectedTrades")
   targetedTrades                        ShiftTrade[]                         @relation("TargetedTrades")
   resolvedTrades                        ShiftTrade[]                         @relation("ResolvedTrades")
+  shiftTradeDeclines                    ShiftTradeDecline[]
   sentMessages                          Message[]                            @relation("SentMessages")
   receivedMessages                      Message[]                            @relation("ReceivedMessages")
   messageRecipients                     MessageRecipient[]
@@ -821,6 +822,7 @@ model ShiftTrade {
   cinemaId         Int
   cinema           Cinema           @relation(fields: [cinemaId], references: [id])
   type             ShiftTradeType   @default(POOL)
+  declines         ShiftTradeDecline[]
 
   @@index([shiftId])
   @@index([cinemaId, status, type, id])
@@ -828,6 +830,20 @@ model ShiftTrade {
   @@index([cinemaId, status, acceptedByUserId, id])
   @@index([cinemaId, status, targetUserId, id])
   @@index([resolvedByUserId])
+}
+
+model ShiftTradeDecline {
+  id           Int        @id @default(autoincrement())
+  shiftTradeId Int
+  shiftTrade   ShiftTrade @relation(fields: [shiftTradeId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  declinedAt   DateTime   @default(now())
+
+  @@unique([shiftTradeId, userId])
+  @@index([shiftTradeId])
+  @@index([userId])
+  @@index([declinedAt])
 }
 
 model Message {

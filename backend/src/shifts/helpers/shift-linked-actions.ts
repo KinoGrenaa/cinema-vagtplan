@@ -52,6 +52,7 @@ async function findPoolRecipientUserIds(
   prisma: Prisma.TransactionClient,
   params: {
     cinemaId: number;
+    tradeId: number;
     offeredByUserId: number;
     jobFunctionId: number | null | undefined;
   },
@@ -79,6 +80,11 @@ async function findPoolRecipientUserIds(
         some: {
           cinemaId: params.cinemaId,
           jobFunctionId: params.jobFunctionId,
+        },
+      },
+      shiftTradeDeclines: {
+        none: {
+          shiftTradeId: params.tradeId,
         },
       },
     },
@@ -230,6 +236,7 @@ export async function resolveOpenShiftLinkedActions(
       prisma,
       {
         cinemaId: params.cinemaId,
+        tradeId: trade.id,
         offeredByUserId: trade.offeredByUserId,
         jobFunctionId:
           trade.shift?.jobFunctionId ??

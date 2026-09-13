@@ -311,6 +311,11 @@ export class ShiftTradesService {
           offeredByUserId: {
             not: userId,
           },
+          declines: {
+            none: {
+              userId,
+            },
+          },
           shift: {
             is: {
               startTime: {

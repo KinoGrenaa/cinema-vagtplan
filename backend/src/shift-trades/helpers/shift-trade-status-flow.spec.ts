@@ -274,34 +274,146 @@ describe('shift trade status flows', () => {
     );
   });
 
-  it('forhindrer afvisning af en vagtpulje', async () => {
+    it('gemmer et personligt nej til en vagtpulje uden at lukke den for andre', async () => {
+    const startTime = new Date(
+      Date.now() + 60 * 60 * 1000,
+    );
+    const endTime = new Date(
+      Date.now() + 2 * 60 * 60 * 1000,
+    );
+    const currentTrade = {
+      ...createTrade({
+        type: ShiftTradeType.POOL,
+        targetUserId: null,
+      }),
+      shift: {
+        userId: 4,
+        startTime,
+        endTime,
+        jobFunctionId: 5,
+      },
+    };
+    const updatedTrade = {
+      ...createUpdatedTrade({
+        type: ShiftTradeType.POOL,
+        targetUserId: null,
+        status: ShiftTradeStatus.OPEN,
+      }),
+      shift: {
+        startTime,
+        endTime,
+      },
+    };
     const tx = {
+      $executeRaw: jest
+        .fn()
+        .mockResolvedValue(1),
       shiftTrade: {
         findFirst: jest
           .fn()
-          .mockResolvedValue(
-            createTrade({
-              type: ShiftTradeType.POOL,
-              targetUserId: null,
-            }),
+          .mockResolvedValueOnce(
+            currentTrade,
+          )
+          .mockResolvedValueOnce(
+            currentTrade,
           ),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue(
+            updatedTrade,
+          ),
+      },
+      shiftTradeDecline: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue(null),
+        create: jest
+          .fn()
+          .mockResolvedValue({
+            id: 1,
+          }),
+      },
+      userJobFunction: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({
+            id: 1,
+          }),
+      },
+      user: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({
+            id: 8,
+            firstName: 'Test',
+            lastName: '2 tester',
+          }),
       },
     };
     const prisma = createPrisma(tx);
+    const realtime = {
+      notifyCinema: jest.fn(),
+      notifyUser: jest.fn(),
+    };
+    const notifications = {
+      create: jest
+        .fn()
+        .mockResolvedValue(undefined),
+    };
+    const push = {
+      sendToUserInCinema: jest
+        .fn()
+        .mockResolvedValue(undefined),
+    };
 
     await expect(
       rejectShiftTrade(
         {
           prisma: prisma as never,
-          realtime: {} as never,
-          notifications: {} as never,
-          push: {} as never,
+          realtime: realtime as never,
+          notifications:
+            notifications as never,
+          push: push as never,
         },
         12,
         actor,
       ),
-    ).rejects.toThrow(
-      'Vagtpuljer kan ikke afvises',
+    ).resolves.toBe(updatedTrade);
+
+    expect(
+      tx.shiftTradeDecline.create,
+    ).toHaveBeenCalledWith({
+      data: {
+        shiftTradeId: 12,
+        userId: 8,
+      },
+    });
+    expect(
+      realtime.notifyCinema,
+    ).toHaveBeenCalledWith(
+      2,
+      'shiftTradesUpdated',
+      updatedTrade,
+    );
+    expect(
+      realtime.notifyCinema,
+    ).not.toHaveBeenCalledWith(
+      2,
+      'shiftRejected',
+      expect.anything(),
+    );
+    expect(
+      notifications.create,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 4,
+        cinemaId: 2,
+        title:
+          'Kollega har takket nej til vagt i puljen',
+        type: 'SHIFT_TRADE',
+        linkUrl:
+          '/my-shifts?shiftId=21',
+      }),
     );
   });
 

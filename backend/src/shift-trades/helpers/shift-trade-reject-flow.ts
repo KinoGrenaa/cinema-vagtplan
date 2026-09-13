@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import {
   ShiftTradeStatus,
+  ShiftTradeType,
 } from '@prisma/client';
 import { NotificationsService } from '../../notifications/notifications.service';
 import {
@@ -20,6 +21,13 @@ import {
 import {
   resolveShiftTradeOfferNotifications,
 } from './shift-trade-notification-resolution';
+import {
+  ensureShiftTradeUserQualified,
+} from './shift-trade-qualification';
+import {
+  acquireShiftAdvisoryLock,
+  SHIFT_RECORD_LOCK_NAMESPACE,
+} from '../../shifts/helpers/shift-advisory-lock';
 import {
   formatShiftTradePeriod,
 } from './shift-trade-period';
@@ -85,8 +93,10 @@ export async function rejectShiftTrade(
             include: {
               shift: {
                 select: {
+                  userId: true,
                   startTime: true,
                   endTime: true,
+                  jobFunctionId: true,
                 },
               },
             },
@@ -102,6 +112,156 @@ export async function rejectShiftTrade(
           existingTrade,
           userId,
         );
+
+        if (
+          existingTrade.type ===
+          ShiftTradeType.POOL
+        ) {
+          if (!existingTrade.shiftId) {
+            throw new ForbiddenException(
+              'Vagtbyttet er ikke længere aktuelt',
+            );
+          }
+
+          await acquireShiftAdvisoryLock(
+            tx,
+            SHIFT_RECORD_LOCK_NAMESPACE,
+            existingTrade.shiftId,
+          );
+
+          const currentTrade =
+            await tx.shiftTrade.findFirst({
+              where: {
+                id,
+                cinemaId,
+                status:
+                  ShiftTradeStatus.OPEN,
+              },
+              include: {
+                shift: {
+                  select: {
+                    userId: true,
+                    startTime: true,
+                    endTime: true,
+                    jobFunctionId: true,
+                  },
+                },
+              },
+            });
+
+          if (!currentTrade) {
+            throw new ForbiddenException(
+              'Vagtbyttet er ikke længere åbent',
+            );
+          }
+
+          ensureShiftTradeCanBeRejected(
+            currentTrade,
+            userId,
+          );
+
+          if (
+            !currentTrade.shift ||
+            currentTrade.shift.userId !==
+              currentTrade.offeredByUserId
+          ) {
+            throw new ForbiddenException(
+              'Vagtbyttet er ikke længere aktuelt, fordi vagten er blevet ændret',
+            );
+          }
+
+          if (
+            currentTrade.shift.startTime <=
+            new Date()
+          ) {
+            throw new ForbiddenException(
+              'Vagten er allerede startet',
+            );
+          }
+
+          await ensureShiftTradeUserQualified(
+            tx,
+            {
+              cinemaId,
+              userId,
+              jobFunctionId:
+                currentTrade.shift.jobFunctionId,
+            },
+          );
+
+          const previousDecline =
+            await tx.shiftTradeDecline.findUnique({
+              where: {
+                shiftTradeId_userId: {
+                  shiftTradeId: id,
+                  userId,
+                },
+              },
+              select: {
+                id: true,
+              },
+            });
+
+          if (previousDecline) {
+            throw new ForbiddenException(
+              'Du har allerede takket nej til denne vagt',
+            );
+          }
+
+          try {
+            await tx.shiftTradeDecline.create({
+              data: {
+                shiftTradeId: id,
+                userId,
+              },
+            });
+          } catch (error) {
+            if (
+              (error as { code?: string } | null)
+                ?.code === 'P2002'
+            ) {
+              throw new ForbiddenException(
+                'Du har allerede takket nej til denne vagt',
+              );
+            }
+            throw error;
+          }
+
+          const [trade, declinedByUser] =
+            await Promise.all([
+              tx.shiftTrade.findUnique({
+                where: {
+                  id,
+                },
+                include:
+                  shiftTradeInclude,
+              }),
+              tx.user.findUnique({
+                where: {
+                  id: userId,
+                },
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              }),
+            ]);
+
+          if (!trade) {
+            throw new NotFoundException(
+              'Vagtbytte blev ikke fundet',
+            );
+          }
+
+          return {
+            trade,
+            notificationUserIds:
+              [] as number[],
+            personalPoolDecline: true,
+            declinedByUser,
+          };
+        }
 
         const rejected =
           await tx.shiftTrade.updateMany({
@@ -163,6 +323,8 @@ export async function rejectShiftTrade(
         return {
           trade,
           notificationUserIds,
+          personalPoolDecline: false,
+          declinedByUser: null,
         };
       },
     );
@@ -174,6 +336,51 @@ export async function rejectShiftTrade(
     'shiftTradesUpdated',
     trade,
   );
+
+  if (result.personalPoolDecline) {
+    const display =
+      getShiftTradeDisplayData(
+        trade,
+      );
+    const declinedByName =
+      getParticipantName(
+        result.declinedByUser,
+        'En kollega',
+      );
+    const resultMessage =
+      `${declinedByName} har takket nej til ${display.jobFunctionName} ` +
+      `${formatShiftTradePeriod(display.startTime, display.endTime)}.`;
+    const linkUrl = trade.shiftId
+      ? `/my-shifts?shiftId=${trade.shiftId}`
+      : '/my-shifts';
+
+    await notifications.create({
+      userId:
+        trade.offeredByUserId,
+      cinemaId:
+        trade.cinemaId,
+      title:
+        'Kollega har takket nej til vagt i puljen',
+      message:
+        resultMessage,
+      type: 'SHIFT_TRADE',
+      linkUrl,
+    });
+    await push.sendToUserInCinema(
+      trade.offeredByUserId,
+      trade.cinemaId,
+      {
+        title:
+          'Kollega har takket nej til vagt i puljen',
+        body:
+          resultMessage,
+        url:
+          linkUrl,
+      },
+    );
+    return trade;
+  }
+
   realtime.notifyCinema(
     trade.cinemaId,
     'shiftRejected',

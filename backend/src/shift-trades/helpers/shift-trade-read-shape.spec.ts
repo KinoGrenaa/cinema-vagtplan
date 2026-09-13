@@ -47,6 +47,18 @@ describe('shift trade relation read shape', () => {
       resolvedByUser: {
         select: shiftTradeParticipantSelect,
       },
+      declines: {
+        select: {
+          userId: true,
+          declinedAt: true,
+          user: {
+            select: shiftTradeParticipantSelect,
+          },
+        },
+        orderBy: {
+          declinedAt: 'asc',
+        },
+      },
     });
   });
 });

@@ -465,6 +465,16 @@ export default function MyShiftsListSection({
                         ?.allowShiftTradeDirect ||
                       qualifiedDirectUsers.length ===
                         0;
+                    const poolNeedsAction =
+                      openTrade?.type ===
+                        "POOL" &&
+                      Boolean(
+                        openTrade.poolResponseSummary &&
+                          openTrade.poolResponseSummary.totalRecipients >
+                            0 &&
+                          openTrade.poolResponseSummary.pendingCount ===
+                            0,
+                      );
                     const isFocused =
                       shift.id ===
                       focusedShiftId;
@@ -597,7 +607,10 @@ export default function MyShiftsListSection({
                                       dangerButtonClass
                                     }
                                   >
-                                    Annuller udsendelse
+                                    {openTrade.type ===
+                                    "DIRECT"
+                                      ? "Træk tilbud tilbage"
+                                      : "Annuller udsendelse"}
                                   </button>
                                 )}
                             </div>
@@ -605,15 +618,89 @@ export default function MyShiftsListSection({
                         </div>
 
                         {openTrade && (
-                          <div className="mt-3 ml-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+                          <div
+                            className={
+                              poolNeedsAction
+                                ? "mt-3 ml-4 rounded-lg border border-red-300 bg-red-50 px-3 py-3 text-sm text-red-950 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100"
+                                : "mt-3 ml-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100"
+                            }
+                          >
                             {openTrade.type ===
                               "POOL" && (
-                              <p>
-                                Denne
-                                vagt er
-                                sendt i
-                                vagtpuljen.
-                              </p>
+                              <>
+                                {poolNeedsAction ? (
+                                  <>
+                                    <p className="text-base font-bold text-red-800 dark:text-red-200">
+                                      Vagten er stadig ubemandet
+                                    </p>
+                                    <p className="mt-0.5 font-medium">
+                                      Alle kvalificerede kolleger har takket nej.
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p>
+                                    Denne
+                                    vagt er
+                                    sendt i
+                                    vagtpuljen.
+                                  </p>
+                                )}
+                                {openTrade.poolResponseSummary && (
+                                  <div
+                                    className={
+                                      poolNeedsAction
+                                        ? "mt-2 space-y-0.5 text-xs"
+                                        : "mt-1 space-y-0.5 text-xs"
+                                    }
+                                  >
+                                    {openTrade.poolResponseSummary.totalRecipients ===
+                                    0 ? (
+                                      <p className="font-semibold">
+                                        Ingen andre kvalificerede kolleger kan se vagten.
+                                      </p>
+                                    ) : openTrade.poolResponseSummary.pendingCount >
+                                      0 ? (
+                                      <p>
+                                        <span className="font-semibold">
+                                          Svar:
+                                        </span>{" "}
+                                        {openTrade.poolResponseSummary.declinedCount}{" "}
+                                        har takket nej ·{" "}
+                                        {openTrade.poolResponseSummary.pendingCount}{" "}
+                                        mangler at svare
+                                      </p>
+                                    ) : null}
+                                    {openTrade.poolResponseSummary.declined.length >
+                                      0 && (
+                                      <p>
+                                        <span className="font-semibold">
+                                          Takket nej:
+                                        </span>{" "}
+                                        {openTrade.poolResponseSummary.declined
+                                          .map(
+                                            (item) =>
+                                              `${item.user.firstName} ${item.user.lastName}`.trim(),
+                                          )
+                                          .join(", ")}
+                                      </p>
+                                    )}
+                                    {openTrade.poolResponseSummary.pending.length >
+                                      0 && (
+                                      <p>
+                                        <span className="font-semibold">
+                                          Afventer:
+                                        </span>{" "}
+                                        {openTrade.poolResponseSummary.pending
+                                          .map(
+                                            (user) =>
+                                              `${user.firstName} ${user.lastName}`.trim(),
+                                          )
+                                          .join(", ")}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </>
                             )}
                             {openTrade.type ===
                               "DIRECT" && (

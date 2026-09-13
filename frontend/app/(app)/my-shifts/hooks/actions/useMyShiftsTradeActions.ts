@@ -199,11 +199,11 @@ export function useMyShiftsTradeActions({
     }
 
     confirmDialog.confirm({
-      title: "Afvis vagt",
-      description: `Er du sikker på, at du vil afvise denne vagt? ${getShiftConfirmText(
+      title: "Tak nej til vagten?",
+      description: `Vil du takke nej til denne vagt? ${getShiftConfirmText(
         shift,
       )}`,
-      confirmText: "Afvis",
+      confirmText: "Tak nej",
       cancelText: "Annuller",
       confirmVariant: "danger",
       onConfirm: async () => {
@@ -213,23 +213,56 @@ export function useMyShiftsTradeActions({
 
         if (!response.ok) {
           infoDialog.showError(
-            "Vagten kunne ikke afvises",
-            await readErrorMessage(response, "Kunne ikke afvise vagten."),
+            "Kunne ikke takke nej til vagten",
+            await readErrorMessage(
+              response,
+              "Der opstod en fejl, da du forsøgte at takke nej til vagten.",
+            ),
           );
           return;
         }
 
-        setMessage("Vagten er afvist.");
+        setMessage("Du har takket nej til vagten.");
         await refreshData();
       },
     });
   }
 
   function cancelTrade(tradeId: number) {
+    const trade = shiftTrades.find(
+      (item) => item.id === tradeId,
+    );
+    const shift = trade?.shift ?? null;
+
+    if (!trade || !shift) {
+      infoDialog.showError(
+        "Tilbuddet blev ikke fundet",
+        "Tilbuddet eller vagten kunne ikke findes.\nPrøv at opdatere siden.",
+      );
+      return;
+    }
+
+    const isDirect =
+      trade.type === "DIRECT";
+    const targetName =
+      trade.targetUser
+        ? `${trade.targetUser.firstName} ${trade.targetUser.lastName}`.trim()
+        : "den valgte kollega";
+
     confirmDialog.confirm({
-      title: "Annullér udsendelse",
-      description: "Er du sikker på, at du vil annullere udsendelsen af denne vagt?",
-      confirmText: "Annullér",
+      title: isDirect
+        ? "Træk tilbuddet tilbage?"
+        : "Annullér udsendelse",
+      description: isDirect
+        ? `${getShiftConfirmText(
+            shift,
+          )}\nSendt til ${targetName}\n\nVil du trække dette direkte tilbud tilbage?`
+        : `Er du sikker på, at du vil annullere udsendelsen af denne vagt? ${getShiftConfirmText(
+            shift,
+          )}`,
+      confirmText: isDirect
+        ? "Træk tilbage"
+        : "Annullér",
       cancelText: "Tilbage",
       confirmVariant: "danger",
       onConfirm: async () => {
@@ -239,16 +272,24 @@ export function useMyShiftsTradeActions({
 
         if (!response.ok) {
           infoDialog.showError(
-            "Udsendelsen kunne ikke annulleres",
+            isDirect
+              ? "Kunne ikke trække tilbuddet tilbage"
+              : "Udsendelsen kunne ikke annulleres",
             await readErrorMessage(
               response,
-              "Kunne ikke annullere udsendelsen.",
+              isDirect
+                ? "Kunne ikke trække det direkte tilbud tilbage."
+                : "Kunne ikke annullere udsendelsen.",
             ),
           );
           return;
         }
 
-        setMessage("Udsendelsen er annulleret.");
+        setMessage(
+          isDirect
+            ? "Det direkte tilbud er trukket tilbage."
+            : "Udsendelsen er annulleret.",
+        );
         await refreshData();
       },
     });

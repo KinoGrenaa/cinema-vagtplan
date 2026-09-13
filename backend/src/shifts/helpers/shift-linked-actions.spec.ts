@@ -168,6 +168,11 @@ describe('shift linked actions', () => {
             jobFunctionId: 8,
           },
         },
+        shiftTradeDeclines: {
+          none: {
+            shiftTradeId: 51,
+          },
+        },
       },
       select: { id: true },
     });

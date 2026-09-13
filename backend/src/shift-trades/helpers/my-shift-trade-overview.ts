@@ -12,6 +12,9 @@ import {
 import {
   shiftTradeParticipantSelect,
 } from './shift-trade-service-helpers';
+import {
+  buildShiftTradePoolResponseSummary,
+} from './shift-trade-pool-response-summary';
 
 export const myShiftTradeSelect = {
   id: true,
@@ -30,14 +33,29 @@ export const myShiftTradeSelect = {
   },
   shiftStartTimeSnapshot: true,
   shiftEndTimeSnapshot: true,
+  jobFunctionIdSnapshot: true,
   jobFunctionNameSnapshot: true,
   jobFunctionColorSnapshot: true,
+  declines: {
+    select: {
+      userId: true,
+      declinedAt: true,
+      user: {
+        select:
+          shiftTradeParticipantSelect,
+      },
+    },
+    orderBy: {
+      declinedAt: 'asc',
+    },
+  },
   shift: {
     select: {
       startTime: true,
       endTime: true,
       jobFunction: {
         select: {
+          id: true,
           name: true,
         },
       },
@@ -145,9 +163,113 @@ export async function findMyShiftTradeOverview(
     }),
   ]);
 
+  const poolTrades =
+    offeredTrades.filter(
+      (trade) =>
+        trade.type ===
+        ShiftTradeType.POOL,
+    );
+  const poolJobFunctionIds =
+    [
+      ...new Set(
+        poolTrades.map(
+          (trade) =>
+            trade.shift?.jobFunction
+              ?.id ??
+            trade.jobFunctionIdSnapshot,
+        ),
+      ),
+    ];
+  const qualifiedPoolRecipients =
+    poolJobFunctionIds.length > 0
+      ? await prisma.user.findMany({
+          where: {
+            id: {
+              not:
+                params.userId,
+            },
+            isActive: true,
+            role: {
+              not: 'MASTER',
+            },
+            cinemaMemberships: {
+              some: {
+                cinemaId:
+                  params.cinemaId,
+                isActive: true,
+              },
+            },
+            userJobFunctions: {
+              some: {
+                cinemaId:
+                  params.cinemaId,
+                jobFunctionId: {
+                  in:
+                    poolJobFunctionIds,
+                },
+              },
+            },
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            userJobFunctions: {
+              where: {
+                cinemaId:
+                  params.cinemaId,
+                jobFunctionId: {
+                  in:
+                    poolJobFunctionIds,
+                },
+              },
+              select: {
+                jobFunctionId: true,
+              },
+            },
+          },
+          orderBy: [
+            {
+              firstName: 'asc',
+            },
+            {
+              lastName: 'asc',
+            },
+            {
+              id: 'asc',
+            },
+          ],
+        })
+      : [];
+
   return {
     month: range.month,
-    offeredTrades,
+    offeredTrades:
+      offeredTrades.map(
+        (trade) => {
+          if (
+            trade.type !==
+            ShiftTradeType.POOL
+          ) {
+            return trade;
+          }
+
+          const jobFunctionId =
+            trade.shift?.jobFunction
+              ?.id ??
+            trade.jobFunctionIdSnapshot;
+
+          return {
+            ...trade,
+            poolResponseSummary:
+              buildShiftTradePoolResponseSummary(
+                jobFunctionId,
+                qualifiedPoolRecipients,
+                trade.declines,
+              ),
+          };
+        },
+      ),
     directTrades,
   };
 }

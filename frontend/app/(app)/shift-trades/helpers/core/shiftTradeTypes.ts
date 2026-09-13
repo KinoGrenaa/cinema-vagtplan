@@ -50,6 +50,11 @@ export type ShiftTrade = {
     User | null;
   resolvedByUser?:
     User | null;
+  declines?: Array<{
+    userId: number;
+    declinedAt: string;
+    user: User;
+  }>;
   shiftStartTimeSnapshot: string;
   shiftEndTimeSnapshot: string;
   jobFunctionIdSnapshot: number;

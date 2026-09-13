@@ -140,6 +140,30 @@ export async function acceptShiftTrade(
           userId,
         );
 
+        if (
+          trade.type ===
+          ShiftTradeType.POOL
+        ) {
+          const ownDecline =
+            await tx.shiftTradeDecline.findUnique({
+              where: {
+                shiftTradeId_userId: {
+                  shiftTradeId: id,
+                  userId,
+                },
+              },
+              select: {
+                id: true,
+              },
+            });
+
+          if (ownDecline) {
+            throw new ForbiddenException(
+              'Du har allerede takket nej til denne vagt',
+            );
+          }
+        }
+
         if (!trade.shiftId) {
           throw new ForbiddenException(
             'Vagtbyttet er ikke længere aktuelt',

@@ -147,11 +147,11 @@ ${shiftInfo}${approvedLeaveWarning}`,
       ).replaceAll(" ", "\u00A0")}`;
 
       confirmModal.confirm({
-        title: "Afvis vagt",
-        description: `Er du sikker på, at du vil afvise denne vagt?
+        title: "Tak nej til vagten?",
+        description: `Vil du takke nej til denne vagt?
 
 ${shiftInfo}`,
-        confirmText: "Afvis",
+        confirmText: "Tak nej",
         cancelText: "Annuller",
         confirmVariant: "danger",
         onConfirm: async () => {
@@ -166,14 +166,14 @@ ${shiftInfo}`,
 
           if (!response.ok) {
             infoDialog.showError(
-              "Kunne ikke afvise vagt",
+              "Kunne ikke takke nej til vagten",
               data?.message ||
-                "Vagten kunne ikke afvises. Prøv igen.",
+                "Der opstod en fejl, da du forsøgte at takke nej til vagten. Prøv igen.",
             );
             return;
           }
 
-          setMessage("Vagten er afvist.");
+          setMessage("Du har takket nej til vagten.");
           await fetchTrades();
         },
       });
