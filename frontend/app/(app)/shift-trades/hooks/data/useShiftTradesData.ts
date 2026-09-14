@@ -71,6 +71,22 @@ function mergeTrades(
   );
 }
 
+function isAdditionalHistoryTarget(
+  trade: ShiftTrade | null,
+  userId: number,
+) {
+  return Boolean(
+    trade &&
+      trade.status !== "OPEN" &&
+      trade.offeredByUserId !==
+        userId &&
+      trade.acceptedByUserId !==
+        userId &&
+      trade.targetUserId !==
+        userId,
+  );
+}
+
 function getPageMetadata(
   value:
     | Partial<
@@ -513,7 +529,13 @@ export function useShiftTradesData({
             Number(
               data.history
                 ?.totalCount || 0,
-            ),
+            ) +
+              (isAdditionalHistoryTarget(
+                target,
+                user.id,
+              )
+                ? 1
+                : 0),
           );
           setHistoryHasMore(
             Boolean(
@@ -738,11 +760,14 @@ export function useShiftTradesData({
             ),
         );
         setHistoryTotalCount(
-          Number(
-            data.history
-              ?.totalCount ||
-              historyTotalCount,
-          ),
+          (current) =>
+            Math.max(
+              current,
+              Number(
+                data.history
+                  ?.totalCount || 0,
+              ),
+            ),
         );
         setHistoryHasMore(
           Boolean(

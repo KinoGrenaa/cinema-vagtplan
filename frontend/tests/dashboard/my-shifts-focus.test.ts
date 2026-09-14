@@ -184,6 +184,40 @@ test("my-shifts bruger den fælles søgbare medarbejdervælger til direkte vagt"
   );
 });
 
+test("vagtbyttedialoger viser vagt og kompakt ugedag-dato på hver sin linje", () => {
+  const actions = read(
+    "app/(app)/my-shifts/hooks/actions/useMyShiftsTradeActions.ts",
+  );
+  const helpers = read(
+    "app/(app)/my-shifts/helpers/core/myShiftsHelpers.ts",
+  );
+
+  assert.match(
+    actions,
+    /keepInlineTextTogether\(targetName\)/,
+  );
+  assert.match(
+    actions,
+    /\?\\n\\n\$\{getShiftConfirmText\(/,
+  );
+  assert.match(
+    helpers,
+    /weekday: "long"/,
+  );
+  assert.match(
+    helpers,
+    /formatShiftDate\(/,
+  );
+  assert.match(
+    helpers,
+    /kl\. \$\{formatShiftConfirmTimeRange\(shift\)\}/,
+  );
+  assert.match(
+    helpers,
+    /return `\$\{getShiftJobFunctionName\(shift\)\}\\n\$\{dayDateAndTime\}`/,
+  );
+});
+
 test("my-shifts sender kollegaens profilbillede til medarbejdervælgeren", () => {
   assert.match(
     list,

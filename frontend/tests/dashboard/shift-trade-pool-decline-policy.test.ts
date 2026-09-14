@@ -52,6 +52,55 @@ test("medarbejdersproget er Tak nej og ikke Afvis vagt", () => {
   );
 });
 
+test("acceptdialogen holder hele afsendernavnet samlet", () => {
+  const actions = read(
+    "app/(app)/shift-trades/hooks/actions/useShiftTradeActions.ts",
+  );
+
+  assert.match(
+    actions,
+    /trade\.offeredByUser\.firstName\} \$\{trade\.offeredByUser\.lastName\}/,
+  );
+  assert.match(
+    actions,
+    /\.trim\(\)\s*\.replaceAll\(" ", "\\u00A0"\)/,
+  );
+});
+
+test("accept og Tak nej bruger samme kompakte vagtformat med ugedag", () => {
+  const actions = read(
+    "app/(app)/shift-trades/hooks/actions/useShiftTradeActions.ts",
+  );
+  const helpers = read(
+    "app/(app)/shift-trades/helpers/core/shiftTradeHelpers.ts",
+  );
+
+  assert.match(
+    helpers,
+    /export function formatShiftDialogDate/,
+  );
+  assert.match(
+    helpers,
+    /weekday: "long"/,
+  );
+  assert.match(
+    helpers,
+    /month: "2-digit"/,
+  );
+  assert.match(
+    actions,
+    /formatShiftDialogDate\(/,
+  );
+  assert.match(
+    actions,
+    /getTradeJobFunctionName\(trade\)\}\\n/,
+  );
+  assert.match(
+    actions,
+    /formatShiftDialogTime\(/,
+  );
+});
+
 test("afsenderen kan se hvem der har svaret og hvem der stadig mangler", () => {
   const list = read(
     "app/(app)/my-shifts/components/list/MyShiftsListSection.tsx",

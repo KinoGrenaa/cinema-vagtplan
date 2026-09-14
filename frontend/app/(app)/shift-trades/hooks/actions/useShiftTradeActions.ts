@@ -5,6 +5,8 @@ import type { Dispatch, SetStateAction } from "react";
 
 import {
   formatShiftDate,
+  formatShiftDialogDate,
+  formatShiftDialogTime,
   formatShiftTime,
   getTradeEndTime,
   getTradeJobFunctionName,
@@ -77,14 +79,16 @@ export function useShiftTradeActions({
         return;
       }
 
-      const offeredBy = `${trade.offeredByUser.firstName}\u00A0${trade.offeredByUser.lastName}`;
-      const shiftPeriod = `${formatShiftDate(
+      const offeredBy = `${trade.offeredByUser.firstName} ${trade.offeredByUser.lastName}`
+        .trim()
+        .replaceAll(" ", "\u00A0");
+      const shiftPeriod = `${formatShiftDialogDate(
         getTradeStartTime(trade),
-      )}\u00A0kl.\u00A0${formatShiftTime(
+      )}\u00A0kl.\u00A0${formatShiftDialogTime(
         getTradeStartTime(trade),
         getTradeEndTime(trade),
       ).replaceAll(" ", "\u00A0")}`;
-      const shiftInfo = `${getTradeJobFunctionName(trade)} - ${shiftPeriod}`;
+      const shiftInfo = `${getTradeJobFunctionName(trade)}\n${shiftPeriod}`;
       const approvedLeaveWarning =
         getApprovedLeaveWarning(trade);
 
@@ -139,9 +143,9 @@ ${shiftInfo}${approvedLeaveWarning}`,
 
   const rejectTrade = useCallback(
     (trade: ShiftTrade) => {
-      const shiftInfo = `${getTradeJobFunctionName(trade)} - ${formatShiftDate(
+      const shiftInfo = `${getTradeJobFunctionName(trade)}\n${formatShiftDialogDate(
         getTradeStartTime(trade),
-      )}\u00A0kl.\u00A0${formatShiftTime(
+      )}\u00A0kl.\u00A0${formatShiftDialogTime(
         getTradeStartTime(trade),
         getTradeEndTime(trade),
       ).replaceAll(" ", "\u00A0")}`;

@@ -65,6 +65,46 @@ function getParticipantName(
   return name || fallback;
 }
 
+export function resolveShiftAcceptedRealtimeRecipientIds(params: {
+  type: ShiftTradeType;
+  offeredByUserId: number;
+  acceptedByUserId: number;
+  targetUserId?: number | null;
+  qualifiedPoolUserIds?: number[];
+  declinedUserIds?: number[];
+}) {
+  const declinedUserIds =
+    new Set(params.declinedUserIds ?? []);
+  const candidateUserIds =
+    params.type === ShiftTradeType.DIRECT
+      ? [
+          params.offeredByUserId,
+          params.targetUserId,
+        ]
+      : [
+          params.offeredByUserId,
+          ...(params.qualifiedPoolUserIds ?? []),
+        ];
+
+  return [
+    ...new Set(
+      candidateUserIds.filter(
+        (candidateUserId): candidateUserId is number =>
+          typeof candidateUserId === 'number' &&
+          Number.isInteger(candidateUserId) &&
+          candidateUserId > 0,
+      ),
+    ),
+  ].filter(
+    (recipientUserId) =>
+      recipientUserId !==
+        params.acceptedByUserId &&
+      !declinedUserIds.has(
+        recipientUserId,
+      ),
+  );
+}
+
 
 export async function acceptShiftTrade(
   deps: ShiftTradeAcceptFlowDeps,
@@ -131,7 +171,7 @@ export async function acceptShiftTrade(
 
         if (!trade) {
           throw new ForbiddenException(
-            'Vagtbyttet er ikke længere åbent',
+            'Vagten er ikke længere tilgængelig. Den kan være blevet overtaget eller tilbuddet kan være lukket.',
           );
         }
 
@@ -313,7 +353,7 @@ export async function acceptShiftTrade(
           claimedTrade.count !== 1
         ) {
           throw new ForbiddenException(
-            'Vagtbyttet er ikke længere åbent',
+            'Vagten er ikke længere tilgængelig. Den kan være blevet overtaget eller tilbuddet kan være lukket.',
           );
         }
 
@@ -345,6 +385,61 @@ export async function acceptShiftTrade(
             [id],
           );
 
+        let qualifiedPoolUserIds: number[] = [];
+        let declinedUserIds: number[] = [];
+
+        if (
+          trade.type ===
+          ShiftTradeType.POOL
+        ) {
+          const [
+            qualifiedPoolUsers,
+            poolDeclines,
+          ] = await Promise.all([
+            tx.userJobFunction.findMany({
+              where: {
+                cinemaId,
+                jobFunctionId:
+                  shift.jobFunctionId,
+                user: {
+                  isActive: true,
+                  role: {
+                    not: 'MASTER',
+                  },
+                  cinemaMemberships: {
+                    some: {
+                      cinemaId,
+                      isActive: true,
+                    },
+                  },
+                },
+              },
+              select: {
+                userId: true,
+              },
+            }),
+            tx.shiftTradeDecline.findMany({
+              where: {
+                shiftTradeId: id,
+              },
+              select: {
+                userId: true,
+              },
+            }),
+          ]);
+
+          qualifiedPoolUserIds =
+            qualifiedPoolUsers.map(
+              (qualification) =>
+                qualification.userId,
+            );
+          declinedUserIds =
+            poolDeclines.map(
+              (decline) =>
+                decline.userId,
+            );
+        }
+
         const updatedTrade =
           await tx.shiftTrade.findUnique({
             where: {
@@ -363,6 +458,8 @@ export async function acceptShiftTrade(
         return {
           updatedTrade,
           notificationUserIds,
+          qualifiedPoolUserIds,
+          declinedUserIds,
         };
       },
     );
@@ -375,11 +472,33 @@ export async function acceptShiftTrade(
     'shiftTradesUpdated',
     updatedTrade,
   );
-  realtime.notifyCinema(
-    updatedTrade.cinemaId,
-    'shiftAccepted',
-    updatedTrade,
-  );
+
+  const shiftAcceptedRealtimeRecipientIds =
+    resolveShiftAcceptedRealtimeRecipientIds({
+      type:
+        updatedTrade.type,
+      offeredByUserId:
+        updatedTrade.offeredByUserId,
+      acceptedByUserId:
+        userId,
+      targetUserId:
+        updatedTrade.targetUserId,
+      qualifiedPoolUserIds:
+        result.qualifiedPoolUserIds,
+      declinedUserIds:
+        result.declinedUserIds,
+    });
+
+  for (
+    const recipientUserId of
+    shiftAcceptedRealtimeRecipientIds
+  ) {
+    realtime.notifyUser(
+      recipientUserId,
+      'shiftAccepted',
+      updatedTrade,
+    );
+  }
 
   for (
     const notificationUserId of

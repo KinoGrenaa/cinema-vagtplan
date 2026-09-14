@@ -59,6 +59,24 @@ export function getShiftJobFunctionName(shift: {
   return shift.jobFunction?.name ?? "Ukendt jobfunktion";
 }
 
+export function keepInlineTextTogether(value: string) {
+  return value.trim().replaceAll(" ", "\u00A0");
+}
+
+function formatShiftConfirmWeekday(value: string) {
+  return new Date(value).toLocaleDateString("da-DK", {
+    timeZone: "Europe/Copenhagen",
+    weekday: "long",
+  });
+}
+
+function formatShiftConfirmTimeRange(shift: {
+  startTime: string;
+  endTime: string;
+}) {
+  return formatShiftTimeRange(shift).replace(" - ", "–");
+}
+
 export function getShiftConfirmText(shift: {
   startTime: string;
   endTime: string;
@@ -66,7 +84,11 @@ export function getShiftConfirmText(shift: {
     name: string;
   };
 }) {
-  return `${getShiftJobFunctionName(shift)} ${formatShiftDate(
-    shift.startTime,
-  )} ${formatShiftTimeRange(shift)}`;
+  const dayDateAndTime = keepInlineTextTogether(
+    `${formatShiftConfirmWeekday(shift.startTime)} ${formatShiftDate(
+      shift.startTime,
+    )} kl. ${formatShiftConfirmTimeRange(shift)}`,
+  );
+
+  return `${getShiftJobFunctionName(shift)}\n${dayDateAndTime}`;
 }

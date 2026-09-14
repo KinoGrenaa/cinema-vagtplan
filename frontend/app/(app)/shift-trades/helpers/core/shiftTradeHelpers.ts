@@ -23,6 +23,26 @@ export function formatShiftTime(startTime: string, endTime: string) {
   return `${start} - ${end}`;
 }
 
+export function formatShiftDialogDate(value: string) {
+  const date = new Date(value);
+  const weekday = date.toLocaleDateString("da-DK", {
+    timeZone: "Europe/Copenhagen",
+    weekday: "long",
+  });
+  const numericDate = date.toLocaleDateString("da-DK", {
+    timeZone: "Europe/Copenhagen",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  return `${weekday} ${numericDate}`;
+}
+
+export function formatShiftDialogTime(startTime: string, endTime: string) {
+  return formatShiftTime(startTime, endTime).replace(" - ", "–");
+}
+
 
 export function getTradeStartTime(trade: ShiftTrade) {
   return trade.status === "OPEN"

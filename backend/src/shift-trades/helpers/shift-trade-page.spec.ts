@@ -4,11 +4,14 @@ import {
 } from '@prisma/client';
 
 import {
+  buildClosedShiftTradeNotificationTargetWhere,
   buildOpenShiftTradeCategoryWhere,
   buildOpenShiftTradePageWhere,
   buildShiftTradeCursorPage,
   buildShiftTradeHistoryWhere,
+  buildShiftTradeNotificationTargetAccessWhere,
   buildShiftTradeTargetWhere,
+  findShiftTradePage,
   MAX_SHIFT_TRADE_PAGE_SIZE,
   normalizeShiftTradePageLimit,
 } from './shift-trade-page';
@@ -262,6 +265,37 @@ describe(
       });
     });
 
+    it('afgrænser notification-adgang til bruger, biograf og præcist vagtbytte', () => {
+      expect(
+        buildShiftTradeNotificationTargetAccessWhere(
+          9,
+          7,
+          46,
+        ),
+      ).toEqual({
+        userId: 9,
+        cinemaId: 7,
+        linkUrl:
+          '/shift-trades?tradeId=46',
+      });
+    });
+
+    it('notification-adgang kan kun hente et afsluttet vagtbytte i samme biograf', () => {
+      expect(
+        buildClosedShiftTradeNotificationTargetWhere(
+          7,
+          46,
+        ),
+      ).toEqual({
+        id: 46,
+        cinemaId: 7,
+        status: {
+          not:
+            ShiftTradeStatus.OPEN,
+        },
+      });
+    });
+
     it('bygger cursor og næste side', () => {
       expect(
         buildShiftTradeCursorPage(
@@ -290,6 +324,127 @@ describe(
         hasMore: true,
         nextBeforeId: 11,
       });
+    });
+
+    it('åbner et afsluttet puljetilbud fra brugerens egen notifikation', async () => {
+      const closedTrade = {
+        id: 46,
+        cinemaId: 7,
+        status:
+          ShiftTradeStatus.CANCELLED,
+        type:
+          ShiftTradeType.POOL,
+        shift: null,
+      };
+      const shiftTradeFindFirst =
+        jest
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(
+            closedTrade,
+          );
+      const prisma = {
+        shiftTrade: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([]),
+          count: jest
+            .fn()
+            .mockResolvedValue(0),
+          findFirst:
+            shiftTradeFindFirst,
+        },
+        notification: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue({
+              id: 501,
+            }),
+        },
+      };
+
+      const result =
+        await findShiftTradePage(
+          prisma as never,
+          9,
+          7,
+          {
+            targetId: 46,
+          },
+        );
+
+      expect(
+        prisma.notification.findFirst,
+      ).toHaveBeenCalledWith({
+        where: {
+          userId: 9,
+          cinemaId: 7,
+          linkUrl:
+            '/shift-trades?tradeId=46',
+        },
+        select: {
+          id: true,
+        },
+      });
+      expect(
+        shiftTradeFindFirst,
+      ).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: {
+            id: 46,
+            cinemaId: 7,
+            status: {
+              not:
+                ShiftTradeStatus.OPEN,
+            },
+          },
+        }),
+      );
+      expect(result.target).toEqual({
+        ...closedTrade,
+        hasShiftConflict: false,
+        approvedLeaveConflict: null,
+      });
+    });
+
+    it('giver ikke notification-fallback uden en personlig notifikation', async () => {
+      const shiftTradeFindFirst =
+        jest
+          .fn()
+          .mockResolvedValueOnce(null);
+      const prisma = {
+        shiftTrade: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([]),
+          count: jest
+            .fn()
+            .mockResolvedValue(0),
+          findFirst:
+            shiftTradeFindFirst,
+        },
+        notification: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue(null),
+        },
+      };
+
+      const result =
+        await findShiftTradePage(
+          prisma as never,
+          9,
+          7,
+          {
+            targetId: 46,
+          },
+        );
+
+      expect(result.target).toBeNull();
+      expect(
+        shiftTradeFindFirst,
+      ).toHaveBeenCalledTimes(1);
     });
   },
 );

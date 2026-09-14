@@ -32,6 +32,7 @@ type ShiftTradeEvent = {
   targetUserId?: number | string | null;
   shift?: RealtimeShiftTradeShift | null;
   offeredByUser?: RealtimeShiftTradeUser | null;
+  acceptedByUser?: RealtimeShiftTradeUser | null;
   rejectedByUser?: RealtimeShiftTradeUser | null;
 };
 
@@ -59,6 +60,7 @@ function formatShiftText(trade: ShiftTradeEvent) {
         weekday: "long",
         day: "2-digit",
         month: "2-digit",
+        year: "numeric",
       })
     : "";
 
@@ -67,17 +69,24 @@ function formatShiftText(trade: ShiftTradeEvent) {
       ? `${start.toLocaleTimeString("da-DK", {
           hour: "2-digit",
           minute: "2-digit",
-        })} - ${end.toLocaleTimeString("da-DK", {
+        })}–${end.toLocaleTimeString("da-DK", {
           hour: "2-digit",
           minute: "2-digit",
         })}`
       : "";
 
-  const jobFunction = trade.shift?.jobFunction?.name
-    ? ` (${trade.shift.jobFunction.name})`
-    : "";
+  const jobFunction =
+    trade.shift?.jobFunction?.name ??
+    "Vagt";
 
-  return `${dateText} ${timeText}${jobFunction}`.trim();
+  return [
+    jobFunction,
+    dateText && timeText
+      ? `${dateText} kl. ${timeText}`
+      : dateText || timeText,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export function useRealtimeShifts({
@@ -103,7 +112,25 @@ export function useRealtimeShifts({
         user &&
         !isSameUser(trade.acceptedByUserId, user.id)
       ) {
-        showSuccess(`En vagt er blevet accepteret: ${formatShiftText(trade)}`);
+        if (
+          isSameUser(
+            trade.offeredByUserId,
+            user.id,
+          )
+        ) {
+          const acceptedBy =
+            formatUserName(
+              trade.acceptedByUser,
+            ) ?? "En kollega";
+
+          showSuccess(
+            `${acceptedBy} har accepteret vagten: ${formatShiftText(trade)}`,
+          );
+        } else {
+          showInfo(
+            `Vagten er blevet taget af en anden kollega: ${formatShiftText(trade)}`,
+          );
+        }
       }
     },
     [enableToasts, onShiftTradesUpdated, onShiftsUpdated, user],

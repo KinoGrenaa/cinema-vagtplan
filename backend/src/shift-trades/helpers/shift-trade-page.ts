@@ -6,6 +6,9 @@ import {
 } from '@prisma/client';
 
 import {
+  getShiftTradeNotificationLink,
+} from '../../notifications/helpers/notification-deep-links';
+import {
   PrismaService,
 } from '../../prisma/prisma.service';
 import {
@@ -197,6 +200,35 @@ export function buildShiftTradeHistoryWhere(
           },
         }
       : {}),
+  };
+}
+
+export function buildShiftTradeNotificationTargetAccessWhere(
+  userId: number,
+  cinemaId: number,
+  targetId: number,
+) {
+  return {
+    userId,
+    cinemaId,
+    linkUrl:
+      getShiftTradeNotificationLink(
+        targetId,
+      ),
+  };
+}
+
+export function buildClosedShiftTradeNotificationTargetWhere(
+  cinemaId: number,
+  targetId: number,
+): Prisma.ShiftTradeWhereInput {
+  return {
+    id: targetId,
+    cinemaId,
+    status: {
+      not:
+        ShiftTradeStatus.OPEN,
+    },
   };
 }
 
@@ -611,6 +643,40 @@ export async function findShiftTradePage(
       : Promise.resolve(null),
   ]);
 
+  let resolvedTarget =
+    target;
+
+  if (
+    options.targetId &&
+    !resolvedTarget
+  ) {
+    const notificationAccess =
+      await prisma.notification.findFirst({
+        where:
+          buildShiftTradeNotificationTargetAccessWhere(
+            userId,
+            cinemaId,
+            options.targetId,
+          ),
+        select: {
+          id: true,
+        },
+      });
+
+    if (notificationAccess) {
+      resolvedTarget =
+        await prisma.shiftTrade.findFirst({
+          where:
+            buildClosedShiftTradeNotificationTargetWhere(
+              cinemaId,
+              options.targetId,
+            ),
+          include:
+            shiftTradeInclude,
+        });
+    }
+  }
+
   const directPage =
     buildShiftTradeCursorPage(
       directRows,
@@ -639,16 +705,19 @@ export async function findShiftTradePage(
     );
 
   if (
-    target?.status ===
+    resolvedTarget?.status ===
       ShiftTradeStatus.OPEN &&
-    target.shift !== null &&
-    !openById.has(target.id)
+    resolvedTarget.shift !== null &&
+    !openById.has(
+      resolvedTarget.id,
+    )
   ) {
     openById.set(
-      target.id,
+      resolvedTarget.id,
       {
-        ...target,
-        shift: target.shift,
+        ...resolvedTarget,
+        shift:
+          resolvedTarget.shift,
       },
     );
   }
@@ -722,14 +791,14 @@ export async function findShiftTradePage(
         historyTotalCount,
     },
     target:
-      target?.status ===
+      resolvedTarget?.status ===
       ShiftTradeStatus.OPEN
         ? annotatedOpenById.get(
-            target.id,
+            resolvedTarget.id,
           ) ?? null
-        : target
+        : resolvedTarget
           ? {
-              ...target,
+              ...resolvedTarget,
               hasShiftConflict:
                 false,
               approvedLeaveConflict:

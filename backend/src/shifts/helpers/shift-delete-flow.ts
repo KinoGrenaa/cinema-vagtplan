@@ -104,7 +104,7 @@ export async function deleteShiftFlow({
                 shift.endTime,
               )}`,
             type: 'SYSTEM',
-            linkUrl: '/my-shifts',
+            linkUrl: `/my-shifts?shiftId=${id}`,
           },
         });
       }
@@ -241,7 +241,7 @@ export async function deleteShiftFlow({
             shiftToDelete.startTime,
             shiftToDelete.endTime,
           )}`,
-        url: '/my-shifts',
+        url: `/my-shifts?shiftId=${shiftToDelete.id}`,
       },
     );
   }

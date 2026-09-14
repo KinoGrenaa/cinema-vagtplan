@@ -223,7 +223,7 @@ describe('shift delete flow', () => {
         title: 'Vagt slettet',
         message: 'A Vagt Weekend - 13.09.2026 kl. 09.00–17.30',
         type: 'SYSTEM',
-        linkUrl: '/my-shifts',
+        linkUrl: '/my-shifts?shiftId=92',
       },
     });
     expect(realtimeGateway.notifyUser).toHaveBeenCalledWith(
@@ -240,7 +240,7 @@ describe('shift delete flow', () => {
       1,
       expect.objectContaining({
         title: 'Vagt slettet',
-        url: '/my-shifts',
+        url: '/my-shifts?shiftId=92',
       }),
     );
   });

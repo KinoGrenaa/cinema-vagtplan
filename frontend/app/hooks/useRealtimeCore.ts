@@ -47,6 +47,10 @@ export type RealtimeShiftTradePayload = {
     firstName: string;
     lastName: string;
   } | null;
+  acceptedByUser?: {
+    firstName: string;
+    lastName: string;
+  } | null;
   rejectedByUser?: {
     firstName: string;
     lastName: string;

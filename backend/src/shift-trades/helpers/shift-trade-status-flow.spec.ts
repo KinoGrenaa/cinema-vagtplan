@@ -5,7 +5,10 @@ import {
   ShiftTradeStatus,
   ShiftTradeType,
 } from '@prisma/client';
-import { acceptShiftTrade } from './shift-trade-accept-flow';
+import {
+  acceptShiftTrade,
+  resolveShiftAcceptedRealtimeRecipientIds,
+} from './shift-trade-accept-flow';
 import { cancelShiftTrade } from './shift-trade-cancel-flow';
 import { rejectShiftTrade } from './shift-trade-reject-flow';
 import { resolveShiftTradeOfferNotifications } from './shift-trade-notification-resolution';
@@ -177,6 +180,77 @@ describe('shift trade status flows', () => {
     ).mockResolvedValue([]);
   });
 
+  it('målretter puljeaccept til afsender og stadig relevante kvalificerede kolleger', () => {
+    expect(
+      resolveShiftAcceptedRealtimeRecipientIds({
+        type:
+          ShiftTradeType.POOL,
+        offeredByUserId: 4,
+        acceptedByUserId: 8,
+        qualifiedPoolUserIds: [
+          4,
+          8,
+          9,
+          10,
+          9,
+        ],
+        declinedUserIds: [
+          10,
+        ],
+      }),
+    ).toEqual([
+      4,
+      9,
+    ]);
+  });
+
+  it('målretter direkte accept til afsender men ikke den der selv accepterede', () => {
+    expect(
+      resolveShiftAcceptedRealtimeRecipientIds({
+        type:
+          ShiftTradeType.DIRECT,
+        offeredByUserId: 4,
+        acceptedByUserId: 8,
+        targetUserId: 8,
+      }),
+    ).toEqual([
+      4,
+    ]);
+  });
+
+  it('giver forståelig fejl når en gammel dialog rammer et allerede afsluttet tilbud', async () => {
+    const tx = createAcceptTx();
+    tx.shiftTrade.findFirst =
+      jest
+        .fn()
+        .mockResolvedValueOnce(
+          createTrade({
+            status:
+              ShiftTradeStatus.ACCEPTED,
+          }),
+        );
+    const prisma = createPrisma(tx);
+
+    await expect(
+      acceptShiftTrade(
+        {
+          prisma: prisma as never,
+          realtime: {} as never,
+          notifications: {} as never,
+          push: {} as never,
+        },
+        12,
+        actor,
+      ),
+    ).rejects.toThrow(
+      'Vagten er ikke længere tilgængelig. Den kan være blevet overtaget eller tilbuddet kan være lukket.',
+    );
+
+    expect(
+      tx.$executeRaw,
+    ).not.toHaveBeenCalled();
+  });
+
   it('ruller accept tilbage, når en anden allerede har accepteret', async () => {
     const tx = createAcceptTx({
       claimCount: 0,
@@ -195,7 +269,7 @@ describe('shift trade status flows', () => {
         actor,
       ),
     ).rejects.toThrow(
-      'Vagtbyttet er ikke længere åbent',
+      'Vagten er ikke længere tilgængelig. Den kan være blevet overtaget eller tilbuddet kan være lukket.',
     );
 
     expect(tx.$executeRaw).toHaveBeenCalledTimes(1);

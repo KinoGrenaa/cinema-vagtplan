@@ -135,7 +135,7 @@ export function ensureShiftTradeCanBeAccepted(
     trade.status !== ShiftTradeStatus.OPEN
   ) {
     throw new ForbiddenException(
-      'Vagtbyttet er ikke længere åbent',
+      'Vagten er ikke længere tilgængelig. Den kan være blevet overtaget eller tilbuddet kan være lukket.',
     );
   }
 

@@ -1,4 +1,8 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { useConfirm } from "@/app/hooks/useConfirm";
 import type { useInfoModal } from "@/app/hooks/useInfoModal";
@@ -7,6 +11,7 @@ import { apiFetch } from "@/app/lib/api";
 import {
   getShiftConfirmText,
   hasOwnCinema,
+  keepInlineTextTogether,
   readErrorMessage,
 } from "../../helpers/core/myShiftsHelpers";
 import type {
@@ -26,6 +31,12 @@ type UseMyShiftsTradeActionsOptions = {
   refreshData: () => Promise<void>;
 };
 
+type SentTradeMessageContext = {
+  shiftId: number;
+  type: "POOL" | "DIRECT";
+  targetUserId?: number;
+};
+
 export function useMyShiftsTradeActions({
   currentUser,
   shifts,
@@ -36,6 +47,92 @@ export function useMyShiftsTradeActions({
   refreshData,
 }: UseMyShiftsTradeActionsOptions) {
   const [message, setMessage] = useState("");
+  const [
+    sentTradeMessageContext,
+    setSentTradeMessageContext,
+  ] =
+    useState<SentTradeMessageContext | null>(
+      null,
+    );
+  const trackedContextKeyRef =
+    useRef<string | null>(
+      null,
+    );
+  const matchingOpenTradeWasPresentRef =
+    useRef(false);
+
+  useEffect(() => {
+    if (
+      !sentTradeMessageContext
+    ) {
+      trackedContextKeyRef.current =
+        null;
+      matchingOpenTradeWasPresentRef.current =
+        false;
+      return;
+    }
+
+    const contextKey = [
+      sentTradeMessageContext.type,
+      sentTradeMessageContext.shiftId,
+      sentTradeMessageContext.targetUserId ??
+        "",
+    ].join(":");
+
+    if (
+      trackedContextKeyRef.current !==
+      contextKey
+    ) {
+      trackedContextKeyRef.current =
+        contextKey;
+      matchingOpenTradeWasPresentRef.current =
+        false;
+    }
+
+    const matchingOpenTrade =
+      shiftTrades.some(
+        (trade) =>
+          trade.status ===
+            "OPEN" &&
+          trade.shiftId ===
+            sentTradeMessageContext.shiftId &&
+          trade.type ===
+            sentTradeMessageContext.type &&
+          trade.offeredByUserId ===
+            currentUser?.id &&
+          (sentTradeMessageContext.type !==
+            "DIRECT" ||
+            trade.targetUserId ===
+              sentTradeMessageContext.targetUserId),
+      );
+
+    if (
+      matchingOpenTradeWasPresentRef.current &&
+      !matchingOpenTrade
+    ) {
+      setMessage("");
+      setSentTradeMessageContext(
+        null,
+      );
+      return;
+    }
+
+    matchingOpenTradeWasPresentRef.current =
+      matchingOpenTrade;
+  }, [
+    currentUser?.id,
+    sentTradeMessageContext,
+    shiftTrades,
+  ]);
+
+  function setActionMessage(
+    nextMessage: string,
+  ) {
+    setSentTradeMessageContext(
+      null,
+    );
+    setMessage(nextMessage);
+  }
 
   function sendToPool(shiftId: number) {
     if (!currentUser || !hasOwnCinema(currentUser)) return;
@@ -52,7 +149,7 @@ export function useMyShiftsTradeActions({
 
     confirmDialog.confirm({
       title: "Send vagt i vagtpulje",
-      description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen? ${getShiftConfirmText(
+      description: `Er du sikker på, at du vil sende denne vagt i vagtpuljen?\n\n${getShiftConfirmText(
         shift,
       )}`,
       confirmText: "Send i vagtpulje",
@@ -77,6 +174,10 @@ export function useMyShiftsTradeActions({
           return;
         }
 
+        setSentTradeMessageContext({
+          shiftId,
+          type: "POOL",
+        });
         setMessage("Vagten er sendt til vagtpuljen.");
         await refreshData();
       },
@@ -100,10 +201,12 @@ export function useMyShiftsTradeActions({
     const targetName = targetUser
       ? `${targetUser.firstName} ${targetUser.lastName}`
       : "den valgte kollega";
+    const targetNameForConfirm =
+      keepInlineTextTogether(targetName);
 
     confirmDialog.confirm({
       title: "Send vagt direkte",
-      description: `Er du sikker på, at du vil sende denne vagt direkte til ${targetName}? ${getShiftConfirmText(
+      description: `Er du sikker på, at du vil sende denne vagt direkte til ${targetNameForConfirm}?\n\n${getShiftConfirmText(
         shift,
       )}`,
       confirmText: "Send vagt",
@@ -132,6 +235,11 @@ export function useMyShiftsTradeActions({
           return;
         }
 
+        setSentTradeMessageContext({
+          shiftId,
+          type: "DIRECT",
+          targetUserId,
+        });
         setMessage(`Vagten er sendt direkte til ${targetName}.`);
         await refreshData();
       },
@@ -159,7 +267,7 @@ export function useMyShiftsTradeActions({
 
     confirmDialog.confirm({
       title: "Acceptér vagt",
-      description: `Er du sikker på, at du vil acceptere denne vagt? ${getShiftConfirmText(
+      description: `Er du sikker på, at du vil acceptere denne vagt?\n\n${getShiftConfirmText(
         shift,
       )}`,
       confirmText: "Acceptér",
@@ -181,7 +289,7 @@ export function useMyShiftsTradeActions({
           return;
         }
 
-        setMessage("Vagten er accepteret.");
+        setActionMessage("Vagten er accepteret.");
         await refreshData();
       },
     });
@@ -200,7 +308,7 @@ export function useMyShiftsTradeActions({
 
     confirmDialog.confirm({
       title: "Tak nej til vagten?",
-      description: `Vil du takke nej til denne vagt? ${getShiftConfirmText(
+      description: `Vil du takke nej til denne vagt?\n\n${getShiftConfirmText(
         shift,
       )}`,
       confirmText: "Tak nej",
@@ -222,7 +330,7 @@ export function useMyShiftsTradeActions({
           return;
         }
 
-        setMessage("Du har takket nej til vagten.");
+        setActionMessage("Du har takket nej til vagten.");
         await refreshData();
       },
     });
@@ -248,6 +356,8 @@ export function useMyShiftsTradeActions({
       trade.targetUser
         ? `${trade.targetUser.firstName} ${trade.targetUser.lastName}`.trim()
         : "den valgte kollega";
+    const targetNameForConfirm =
+      keepInlineTextTogether(targetName);
 
     confirmDialog.confirm({
       title: isDirect
@@ -256,8 +366,8 @@ export function useMyShiftsTradeActions({
       description: isDirect
         ? `${getShiftConfirmText(
             shift,
-          )}\nSendt til ${targetName}\n\nVil du trække dette direkte tilbud tilbage?`
-        : `Er du sikker på, at du vil annullere udsendelsen af denne vagt? ${getShiftConfirmText(
+          )}\nSendt til ${targetNameForConfirm}\n\nVil du trække dette direkte tilbud tilbage?`
+        : `Er du sikker på, at du vil annullere udsendelsen af denne vagt?\n\n${getShiftConfirmText(
             shift,
           )}`,
       confirmText: isDirect
@@ -285,7 +395,7 @@ export function useMyShiftsTradeActions({
           return;
         }
 
-        setMessage(
+        setActionMessage(
           isDirect
             ? "Det direkte tilbud er trukket tilbage."
             : "Udsendelsen er annulleret.",

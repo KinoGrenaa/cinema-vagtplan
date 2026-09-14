@@ -508,37 +508,60 @@ export default function ShiftForm({
   const employeeOptions =
     useMemo(
       () => {
+        const originalAssignedUserId =
+          selectedShift
+            ? Number(
+                selectedShift.userId ??
+                  0,
+              )
+            : 0;
+
         if (
           jobFunctionId <= 0
         ) {
           return selectedShift
-            ? users
+            ? users.filter(
+                (user) =>
+                  user.id !==
+                  originalAssignedUserId,
+              )
             : [];
         }
+
+        const selectableQualifiedUsers =
+          selectedShift
+            ? qualifiedUsers.filter(
+                (user) =>
+                  user.id !==
+                  originalAssignedUserId,
+              )
+            : qualifiedUsers;
 
         if (
           !selectedShift ||
           userId <= 0 ||
-          qualifiedUsers.some(
+          selectableQualifiedUsers.some(
             (user) =>
               user.id === userId,
           )
         ) {
-          return qualifiedUsers;
+          return selectableQualifiedUsers;
         }
 
         const currentUser =
           users.find(
             (user) =>
-              user.id === userId,
+              user.id === userId &&
+              user.id !==
+                originalAssignedUserId,
           );
 
         return currentUser
           ? [
               currentUser,
-              ...qualifiedUsers,
+              ...selectableQualifiedUsers,
             ]
-          : qualifiedUsers;
+          : selectableQualifiedUsers;
       },
       [
         jobFunctionId,
@@ -956,76 +979,85 @@ export default function ShiftForm({
             Jobfunktion
           </label>
 
-          <select
-            className={inputClass}
-            value={jobFunctionId}
-            onChange={(event) => {
-              const nextJobFunctionId =
-                Number(
-                  event.target.value,
-                );
-
-              setJobFunctionId(
-                nextJobFunctionId,
-              );
-
-              setTimingManuallyAdjusted(
-                false,
-              );
-
-              if (
-                nextJobFunctionId <= 0
-              ) {
-                setUserId(0);
-                return;
-              }
-
-              if (
-                userId > 0
-              ) {
-                const selectedUser =
-                  users.find(
-                    (user) =>
-                      user.id === userId,
+          {selectedShift ? (
+            <div className="min-w-0 rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+              <span className="block truncate font-semibold">
+                {jobFunctions.find(
+                  (jobFunction) =>
+                    jobFunction.id ===
+                    jobFunctionId,
+                )?.name ??
+                  "Ukendt jobfunktion"}
+              </span>
+            </div>
+          ) : (
+            <select
+              className={inputClass}
+              value={jobFunctionId}
+              onChange={(event) => {
+                const nextJobFunctionId =
+                  Number(
+                    event.target.value,
                   );
 
+                setJobFunctionId(
+                  nextJobFunctionId,
+                );
+
+                setTimingManuallyAdjusted(
+                  false,
+                );
+
                 if (
-                  !userHasJobFunction(
-                    selectedUser,
-                    nextJobFunctionId,
-                  )
+                  nextJobFunctionId <= 0
                 ) {
                   setUserId(0);
+                  return;
                 }
-              }
-            }}
-            disabled={
-              Boolean(
-                selectedShift,
-              )
-            }
-          >
-            <option value={0}>
-              {"V\u00e6lg jobfunktion"}
-            </option>
 
-            {jobFunctions.map(
-              (jobFunction) => (
-                <option
-                  key={
-                    jobFunction.id
+                if (
+                  userId > 0
+                ) {
+                  const selectedUser =
+                    users.find(
+                      (user) =>
+                        user.id ===
+                        userId,
+                    );
+
+                  if (
+                    !userHasJobFunction(
+                      selectedUser,
+                      nextJobFunctionId,
+                    )
+                  ) {
+                    setUserId(0);
                   }
-                  value={
-                    jobFunction.id
-                  }
-                >
-                  {
-                    jobFunction.name
-                  }
-                </option>
-              ),
-            )}
-          </select>
+                }
+              }}
+            >
+              <option value={0}>
+                {"V\u00e6lg jobfunktion"}
+              </option>
+
+              {jobFunctions.map(
+                (jobFunction) => (
+                  <option
+                    key={
+                      jobFunction.id
+                    }
+                    value={
+                      jobFunction.id
+                    }
+                  >
+                    {
+                      jobFunction.name
+                    }
+                  </option>
+                ),
+              )}
+            </select>
+          )}
 
           {selectedShift &&
             !shiftLockedByTimeEntry && (
@@ -1045,7 +1077,13 @@ export default function ShiftForm({
           </label>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100">
+            <div
+              className={
+                selectedShift
+                  ? "min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"
+                  : "min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+              }
+            >
               <span className="block truncate font-semibold">
                 {selectedEmployee
                   ? getUserDisplayName(
@@ -1441,9 +1479,15 @@ export default function ShiftForm({
           employeePickerOptions
         }
         selectedEmployeeId={
-          userId > 0
-            ? userId
-            : null
+          selectedShift &&
+          Number(
+            selectedShift.userId ??
+              0,
+          ) === userId
+            ? null
+            : userId > 0
+              ? userId
+              : null
         }
         confirmLabel="Vælg medarbejder"
         emptyText="Ingen aktive medarbejdere er kvalificeret til denne jobfunktion."
