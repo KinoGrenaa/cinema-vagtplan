@@ -20,7 +20,7 @@ type ShiftTradesHistorySectionProps = {
 };
 function getStatusLabel(status: string) {
   switch (status) {
-    case "ACCEPTED": return "Accepteret";
+    case "ACCEPTED": return "Gennemført";
     case "REJECTED": return "Afvist";
     case "CANCELLED": return "Annulleret";
     case "EXPIRED": return "Udløbet";

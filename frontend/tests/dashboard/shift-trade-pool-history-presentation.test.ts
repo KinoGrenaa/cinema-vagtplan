@@ -49,6 +49,20 @@ test(
 );
 
 test(
+  "accepteret vagtbytte vises som Gennemført badge men bevarer Accepteret som hændelse",
+  () => {
+    assert.match(
+      historySource,
+      /case "ACCEPTED": return "Gennemført";/,
+    );
+    assert.match(
+      historySource,
+      /trade\.status === "ACCEPTED"\s*\? "Accepteret"/,
+    );
+  },
+);
+
+test(
   "vagtbyttets frontendtype bærer afslag med bruger og tidspunkt",
   () => {
     assert.match(
