@@ -47,13 +47,6 @@ function getStatusClasses(
     preview.conflictLevel ===
     "same-work-type"
   ) {
-    return "border-red-300 bg-red-100 text-red-950 dark:border-red-700 dark:bg-red-950/80 dark:text-red-100";
-  }
-
-  if (
-    preview.conflictLevel ===
-    "overlap"
-  ) {
     return "border-amber-300 bg-amber-100 text-amber-950 dark:border-amber-700 dark:bg-amber-950/80 dark:text-amber-100";
   }
 
@@ -105,24 +98,33 @@ export default function ScheduleTimelineCreationGhost({
           </span>
         </div>
 
-        <div
-          className={`absolute left-0 top-full mt-2 min-w-max rounded-lg border px-2.5 py-1.5 text-xs font-bold shadow-lg ${getStatusClasses(
-            preview,
-          )}`}
-        >
-          {status}
-          {preview.crossesMidnight
-            ? " · Slutter næste dag"
-            : ""}
-        </div>
+        {(status ||
+          preview.crossesMidnight) && (
+          <div
+            className={`absolute left-0 top-full mt-2 min-w-max rounded-lg border px-2.5 py-1.5 text-xs font-bold shadow-lg ${getStatusClasses(
+              preview,
+            )}`}
+          >
+            {status}
+            {status &&
+            preview.crossesMidnight
+              ? " · "
+              : ""}
+            {preview.crossesMidnight
+              ? "Slutter næste dag"
+              : ""}
+          </div>
+        )}
       </div>
 
       <span
         className="sr-only"
         aria-live="polite"
       >
-        {label}, {timeLabel}.{" "}
-        {status}.
+        {label}, {timeLabel}.
+        {status
+          ? ` ${status}.`
+          : ""}
         {preview.crossesMidnight
           ? " Vagten slutter næste dag."
           : ""}

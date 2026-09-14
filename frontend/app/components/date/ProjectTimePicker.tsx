@@ -1057,7 +1057,7 @@ export default function ProjectTimePicker({
         }
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="inline-flex min-h-10 w-11 shrink-0 items-center justify-center rounded-r-xl border border-gray-300 bg-white text-gray-600 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
+        className="inline-flex min-h-10 w-11 shrink-0 items-center justify-center rounded-r-xl border border-gray-300 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-800 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
       >
         <Clock3 className="h-4 w-4" />
       </button>

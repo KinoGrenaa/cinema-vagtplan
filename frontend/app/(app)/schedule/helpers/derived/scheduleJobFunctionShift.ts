@@ -343,29 +343,13 @@ export function getJobFunctionTimingPreviewOverlap(
     sameJobFunctionCount > 0
   ) {
     return {
-      level: "error" as const,
-      message:
-        sameJobFunctionCount === 1
-          ? "Overlapper 1 eksisterende vagt med samme jobfunktion"
-          : `Overlapper ${sameJobFunctionCount} eksisterende vagter med samme jobfunktion`,
-    };
-  }
-
-  if (
-    overlapping.length > 0
-  ) {
-    return {
       level: "warning" as const,
       message:
-        overlapping.length === 1
-          ? "Overlapper 1 eksisterende vagt"
-          : `Overlapper ${overlapping.length} eksisterende vagter`,
+        sameJobFunctionCount === 1
+          ? "Der findes allerede 1 vagt med samme jobfunktion i tidsrummet"
+          : `Der findes allerede ${sameJobFunctionCount} vagter med samme jobfunktion i tidsrummet`,
     };
   }
 
-  return {
-    level: "ok" as const,
-    message:
-      "Ingen overlap med eksisterende vagter",
-  };
+  return null;
 }

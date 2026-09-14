@@ -46,6 +46,7 @@ export function useStaffingRequestActions({
           );
         }
         await fetchRequests();
+        return true;
       } catch (error) {
         showError(
           "Bemandingsforespørgslen kunne ikke accepteres",
@@ -53,6 +54,7 @@ export function useStaffingRequestActions({
             ? error.message
             : "Der opstod en fejl, da bemandingsforespørgslen skulle accepteres. Prøv igen.",
         );
+        return false;
       } finally {
         setProcessingId(null);
       }
@@ -79,6 +81,7 @@ export function useStaffingRequestActions({
           );
         }
         await fetchRequests();
+        return true;
       } catch (error) {
         showError(
           "Bemandingsforespørgslen kunne ikke afvises",
@@ -86,6 +89,7 @@ export function useStaffingRequestActions({
             ? error.message
             : "Der opstod en fejl, da bemandingsforespørgslen skulle afvises. Prøv igen.",
         );
+        return false;
       } finally {
         setProcessingId(null);
       }

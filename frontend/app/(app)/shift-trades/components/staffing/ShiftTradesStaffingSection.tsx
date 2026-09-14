@@ -2,8 +2,11 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useState,
 } from "react";
+import { toast } from "sonner";
 import {
   usePathname,
   useRouter,
@@ -84,6 +87,12 @@ export default function ShiftTradesStaffingSection() {
     useConfirm();
   const infoDialog =
     useInfoModal();
+  const [
+    pendingSuccessMessage,
+    setPendingSuccessMessage,
+  ] = useState<string | null>(
+    null,
+  );
   const pathname =
     usePathname();
   const router =
@@ -97,6 +106,25 @@ export default function ShiftTradesStaffingSection() {
         "requestId",
       ),
     );
+
+  useEffect(() => {
+    if (
+      confirmDialog.open ||
+      !pendingSuccessMessage
+    ) {
+      return;
+    }
+
+    toast.success(
+      pendingSuccessMessage,
+    );
+    setPendingSuccessMessage(
+      null,
+    );
+  }, [
+    confirmDialog.open,
+    pendingSuccessMessage,
+  ]);
 
   const {
     activeCinemaId,
@@ -300,8 +328,18 @@ export default function ShiftTradesStaffingSection() {
       confirmVariant:
         "primary",
       onConfirm:
-        () =>
-          acceptRequest(id),
+        async () => {
+          const succeeded =
+            await acceptRequest(
+              id,
+            );
+
+          if (succeeded) {
+            setPendingSuccessMessage(
+              "Vagten er accepteret.",
+            );
+          }
+        },
     });
   }
 
@@ -322,10 +360,18 @@ export default function ShiftTradesStaffingSection() {
       confirmVariant:
         "danger",
       onConfirm:
-        () =>
-          rejectRequest(
-            request.id,
-          ),
+        async () => {
+          const succeeded =
+            await rejectRequest(
+              request.id,
+            );
+
+          if (succeeded) {
+            setPendingSuccessMessage(
+              "Du har takket nej til vagten.",
+            );
+          }
+        },
     });
   }
 

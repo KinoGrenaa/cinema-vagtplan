@@ -15,7 +15,6 @@ export type ScheduleTimelineCreationPreview = {
   crossesMidnight: boolean;
   conflictLevel:
     | "none"
-    | "overlap"
     | "same-work-type";
 };
 
@@ -171,10 +170,7 @@ export function getScheduleTimelineCreationPreview(
       sameJobFunctionOverlapCount >
       0
         ? "same-work-type"
-        : overlappingShifts.length >
-            0
-          ? "overlap"
-          : "none",
+        : "none",
   };
 }
 
@@ -189,18 +185,10 @@ export function getScheduleTimelinePreviewStatus(
     return (
       preview.sameJobFunctionOverlapCount ===
       1
-        ? "Overlapper 1 vagt med samme jobfunktion"
-        : `Overlapper ${preview.sameJobFunctionOverlapCount} vagter med samme jobfunktion`
+        ? "Der findes allerede 1 vagt med samme jobfunktion i tidsrummet"
+        : `Der findes allerede ${preview.sameJobFunctionOverlapCount} vagter med samme jobfunktion i tidsrummet`
     );
   }
 
-  if (preview.overlapCount > 0) {
-    return (
-      preview.overlapCount === 1
-        ? "Overlapper 1 eksisterende vagt"
-        : `Overlapper ${preview.overlapCount} eksisterende vagter`
-    );
-  }
-
-  return "Ingen overlap";
+  return null;
 }
