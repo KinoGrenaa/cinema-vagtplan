@@ -1,4 +1,7 @@
-import { StaffingRequestStatus } from '@prisma/client';
+import {
+  StaffingRequestCancellationReason,
+  StaffingRequestStatus,
+} from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
@@ -58,6 +61,7 @@ export async function assignAcceptedStaffingRequestShift({
 export async function cancelOtherPendingStaffingRequestsForShift(
   prisma: PrismaService,
   request: Pick<AcceptedStaffingRequest, 'id' | 'cinemaId' | 'shiftId'>,
+  cancelledByUserId: number | null = null,
 ) {
   if (!request.shiftId) {
     return;
@@ -74,6 +78,10 @@ export async function cancelOtherPendingStaffingRequestsForShift(
     },
     data: {
       status: StaffingRequestStatus.CANCELLED,
+      cancelledAt: new Date(),
+      cancelledByUserId,
+      cancellationReason:
+        StaffingRequestCancellationReason.OTHER_REQUEST_ACCEPTED,
     },
   });
 }

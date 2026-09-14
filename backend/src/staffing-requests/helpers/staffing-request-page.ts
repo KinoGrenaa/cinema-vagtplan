@@ -134,22 +134,82 @@ export function buildCompletedStaffingRequestWhere(
   cinemaId: number,
   beforeId?: number,
 ): Prisma.StaffingRequestWhereInput {
-  return {
-    ...buildStaffingRequestVisibilityWhere(
-      user,
-      cinemaId,
-    ),
-    status: {
-      not:
-        StaffingRequestStatus.PENDING,
-    },
-    ...(beforeId
+  const cursorWhere =
+    beforeId
       ? {
           id: {
             lt: beforeId,
           },
         }
-      : {}),
+      : {};
+
+  if (canManageStaffing(user)) {
+    return {
+      cinemaId,
+      status: {
+        not:
+          StaffingRequestStatus.PENDING,
+      },
+      ...cursorWhere,
+    };
+  }
+
+  return {
+    cinemaId,
+    OR: [
+      {
+        AND: [
+          {
+            OR: [
+              {
+                targetUserId:
+                  user.sub,
+              },
+              {
+                requestedByUserId:
+                  user.sub,
+              },
+              {
+                targetUserId:
+                  null,
+                jobFunction: {
+                  userJobFunctions: {
+                    some: {
+                      cinemaId,
+                      userId:
+                        user.sub,
+                    },
+                  },
+                },
+                declines: {
+                  none: {
+                    userId:
+                      user.sub,
+                  },
+                },
+              },
+            ],
+          },
+          {
+            status: {
+              not:
+                StaffingRequestStatus.PENDING,
+            },
+          },
+        ],
+      },
+      {
+        targetUserId:
+          null,
+        declines: {
+          some: {
+            userId:
+              user.sub,
+          },
+        },
+      },
+    ],
+    ...cursorWhere,
   };
 }
 

@@ -339,6 +339,7 @@ model User {
   requestedStaffingRequests             StaffingRequest[]                    @relation("RequestedStaffingRequests")
   targetedStaffingRequests              StaffingRequest[]                    @relation("TargetedStaffingRequests")
   acceptedStaffingRequests              StaffingRequest[]                    @relation("AcceptedStaffingRequests")
+  cancelledStaffingRequests             StaffingRequest[]                    @relation("CancelledStaffingRequests")
   staffingRequestDeclines              StaffingRequestDecline[]
   payrollAdjustments                    PayrollAdjustment[]                  @relation("PayrollAdjustmentUser")
   createdPayrollAdjustments             PayrollAdjustment[]                  @relation("PayrollAdjustmentCreatedBy")
@@ -1422,6 +1423,15 @@ enum StaffingRequestStatus {
   CANCELLED
 }
 
+enum StaffingRequestCancellationReason {
+  MANUAL_CANCELLED
+  SHIFT_REASSIGNED
+  SHIFT_UNASSIGNED
+  SHIFT_DELETED
+  SHIFT_MOVED
+  OTHER_REQUEST_ACCEPTED
+}
+
 model StaffingRequest {
   id                Int                   @id @default(autoincrement())
   cinemaId          Int
@@ -1440,6 +1450,8 @@ model StaffingRequest {
   targetUser        User?                 @relation("TargetedStaffingRequests", fields: [targetUserId], references: [id])
   acceptedByUserId  Int?
   acceptedByUser    User?                 @relation("AcceptedStaffingRequests", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+  cancelledByUserId Int?
+  cancelledByUser   User?                 @relation("CancelledStaffingRequests", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
   declines          StaffingRequestDecline[]
   type              StaffingRequestType
   status            StaffingRequestStatus @default(PENDING)
@@ -1449,6 +1461,8 @@ model StaffingRequest {
   expiresAt         DateTime?
   acceptedAt        DateTime?
   rejectedAt        DateTime?
+  cancelledAt       DateTime?
+  cancellationReason StaffingRequestCancellationReason?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
 
@@ -1460,6 +1474,7 @@ model StaffingRequest {
   @@index([requestedByUserId])
   @@index([targetUserId])
   @@index([acceptedByUserId])
+  @@index([cancelledByUserId])
   @@index([status])
   @@index([type])
   @@index([createdAt])

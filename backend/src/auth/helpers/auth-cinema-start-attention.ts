@@ -169,7 +169,7 @@ function buildAttention(
         'bemandingsforespørgsel afventer dit svar',
         'bemandingsforespørgsler afventer dit svar',
       ),
-      linkUrl: '/staffing-requests',
+      linkUrl: '/shift-trades',
     });
   }
 

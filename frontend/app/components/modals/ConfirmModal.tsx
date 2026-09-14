@@ -43,7 +43,7 @@ export default function ConfirmModal({
   return (
     <BaseModal open={open} title={title} onClose={onCancel} width="sm">
       <div className="space-y-6">
-        <p className="whitespace-pre-line text-gray-600 dark:text-gray-300">
+        <p className="whitespace-pre-line text-gray-950 dark:text-gray-100">
           {description}
         </p>
         {children}
@@ -53,7 +53,7 @@ export default function ConfirmModal({
               type="button"
               onClick={onCancel}
               disabled={loading}
-              className="rounded-xl border border-gray-300 bg-white px-4 py-2 font-medium text-gray-800 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
+              className="rounded-xl border border-gray-300 bg-white px-4 py-2 font-medium text-gray-950 transition hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-gray-400 dark:focus-visible:ring-offset-gray-900"
             >
               {cancelText}
             </button>

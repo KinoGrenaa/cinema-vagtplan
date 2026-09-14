@@ -65,6 +65,9 @@ export const staffingRequestInclude = {
   acceptedByUser: {
     select: staffingRequestParticipantSelect,
   },
+  cancelledByUser: {
+    select: staffingRequestParticipantSelect,
+  },
   declines: {
     select: {
       userId: true,

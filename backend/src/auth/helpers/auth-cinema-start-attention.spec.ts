@@ -182,7 +182,7 @@ describe('findAuthCinemaStartAttention', () => {
           count: 1,
           label:
             '1 bemandingsforespørgsel afventer dit svar',
-          linkUrl: '/staffing-requests',
+          linkUrl: '/shift-trades',
         },
         {
           type: 'UNREAD_MESSAGES',
@@ -223,7 +223,7 @@ describe('findAuthCinemaStartAttention', () => {
           count: 4,
           label:
             '4 bemandingsforespørgsler afventer dit svar',
-          linkUrl: '/staffing-requests',
+          linkUrl: '/shift-trades',
         },
         {
           type: 'TIME_APPROVAL',

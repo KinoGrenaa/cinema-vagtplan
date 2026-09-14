@@ -2,6 +2,7 @@ import {
   ShiftTradeResolutionReason,
   ShiftTradeStatus,
   ShiftTradeType,
+  StaffingRequestCancellationReason,
   StaffingRequestStatus,
 } from '@prisma/client';
 
@@ -85,6 +86,10 @@ describe('shift linked actions', () => {
       },
       data: {
         status: StaffingRequestStatus.CANCELLED,
+        cancelledAt: expect.any(Date),
+        cancelledByUserId: 99,
+        cancellationReason:
+          StaffingRequestCancellationReason.SHIFT_REASSIGNED,
       },
     });
     expect(resolveShiftTradeOfferNotifications).toHaveBeenCalledWith(

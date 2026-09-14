@@ -5,6 +5,14 @@ export type StaffingRequestStatus =
   | "EXPIRED"
   | "CANCELLED";
 
+export type StaffingRequestCancellationReason =
+  | "MANUAL_CANCELLED"
+  | "SHIFT_REASSIGNED"
+  | "SHIFT_UNASSIGNED"
+  | "SHIFT_DELETED"
+  | "SHIFT_MOVED"
+  | "OTHER_REQUEST_ACCEPTED";
+
 export type StaffingRequestType =
   | "EXTRA_SHIFT"
   | "EMERGENCY"
@@ -38,6 +46,12 @@ export type StaffingRequest = {
     StaffingRequestUser | null;
   rejectedAt?:
     string | null;
+  cancelledAt?:
+    string | null;
+  cancellationReason?:
+    StaffingRequestCancellationReason | null;
+  cancelledByUser?:
+    StaffingRequestUser | null;
   requestedByUser?:
     StaffingRequestUser | null;
   targetUser?:

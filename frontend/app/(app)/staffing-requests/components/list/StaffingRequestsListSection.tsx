@@ -1,7 +1,8 @@
 import Link from "next/link";
 import {
-  Fragment,
   useEffect,
+  useMemo,
+  useState,
 } from "react";
 
 import {
@@ -15,10 +16,11 @@ import {
   getStatusStyle,
 } from "../../helpers/core/staffingRequestHelpers";
 import {
-  getFirstCompletedStaffingRequestIndex,
   getStaffingRequestActionState,
   getStaffingRequestRejectActionLabel,
   getStaffingRequestHistoryEvents,
+  getStaffingRequestViewerStatus,
+  groupCompletedStaffingRequestsByShiftDate,
 } from "../../helpers/core/staffingRequestPresentation";
 import type {
   StaffingRequest,
@@ -155,6 +157,76 @@ export default function StaffingRequestsListSection({
   onReject,
   onCancel,
 }: Props) {
+  const [
+    expandedCompletedDateKeys,
+    setExpandedCompletedDateKeys,
+  ] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const pendingVisibleRequests =
+    useMemo(
+      () =>
+        visibleRequests.filter(
+          (request) =>
+            getStaffingRequestViewerStatus(
+              request,
+              currentUserId,
+              isManager,
+            ) === "PENDING",
+        ),
+      [
+        currentUserId,
+        isManager,
+        visibleRequests,
+      ],
+    );
+  const completedDateGroups =
+    useMemo(
+      () =>
+        groupCompletedStaffingRequestsByShiftDate(
+          visibleRequests,
+          currentUserId,
+          isManager,
+        ),
+      [
+        currentUserId,
+        isManager,
+        visibleRequests,
+      ],
+    );
+  const hasFocusedCompletedRequest =
+    useMemo(
+      () =>
+        completedDateGroups.some(
+          (group) =>
+            group.requests.some(
+              (request) =>
+                request.id ===
+                focusedRequestId,
+            ),
+        ),
+      [
+        completedDateGroups,
+        focusedRequestId,
+      ],
+    );
+
+  useEffect(() => {
+    if (
+      showCompletedRequests ||
+      hasFocusedCompletedRequest
+    ) {
+      return;
+    }
+
+    setExpandedCompletedDateKeys(
+      new Set(),
+    );
+  }, [
+    hasFocusedCompletedRequest,
+    showCompletedRequests,
+  ]);
+
   useEffect(() => {
     if (!focusedRequestId) {
       return;
@@ -200,30 +272,11 @@ export default function StaffingRequestsListSection({
     );
   }
 
-  const firstCompletedRequestIndex =
-    getFirstCompletedStaffingRequestIndex(
-      visibleRequests,
-      showCompletedRequests,
-    );
 
-  return (
-    <section
-      className="space-y-4"
-      aria-label="Bemandingsforespørgsler"
-    >
-      {visibleRequests.length ===
-      0 ? (
-        <EmptyState
-          text={
-            showCompletedRequests
-              ? "Ingen bemandingsforespørgsler at vise."
-              : "Ingen afventende bemandingsforespørgsler."
-          }
-        />
-      ) : null}
-
-      {visibleRequests.map(
-        (request, index) => {
+  function renderRequest(
+    request:
+      StaffingRequest,
+  ) {
           const acceptanceConflictShift =
             request.acceptanceConflictShift ??
             null;
@@ -247,10 +300,17 @@ export default function StaffingRequestsListSection({
               currentUserId,
               isManager,
             );
+          const viewerStatus =
+            getStaffingRequestViewerStatus(
+              request,
+              currentUserId,
+              isManager,
+            );
           const historyEvents =
             getStaffingRequestHistoryEvents(
               request,
               isManager,
+              currentUserId,
             );
           const timeRange =
             getRequestTimeRange(
@@ -258,25 +318,6 @@ export default function StaffingRequestsListSection({
             );
 
           return (
-            <Fragment
-              key={request.id}
-            >
-              {showCompletedRequests &&
-              completedRequestsCount >
-                0 &&
-              index ===
-                firstCompletedRequestIndex ? (
-                <button
-                  type="button"
-                  onClick={
-                    onToggleCompletedRequests
-                  }
-                  aria-expanded="true"
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-gray-400 hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800 dark:active:bg-gray-700 dark:focus-visible:ring-blue-400 dark:focus-visible:ring-offset-gray-950"
-                >
-                  Skjul behandlede
-                </button>
-              ) : null}
               <article
               key={request.id}
               id={`staffing-request-${request.id}`}
@@ -301,11 +342,11 @@ export default function StaffingRequestsListSection({
                     <div className="flex flex-wrap gap-2">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusStyle(
-                          request.status,
+                          viewerStatus,
                         )}`}
                       >
                         {getStatusLabel(
-                          request.status,
+                          viewerStatus,
                         )}
                       </span>
                       {request.aiGenerated ? (
@@ -405,15 +446,19 @@ export default function StaffingRequestsListSection({
                   <div className="mt-4 space-y-1 text-sm font-medium text-gray-600 dark:text-gray-300">
                     {historyEvents.map(
                       (event) => (
-                        <p
+                        <div
                           key={
                             event.key
                           }
                         >
+                          <p>
                           {event.action ===
                           "ACCEPTED"
                             ? "Accepteret"
-                            : "Afvist"}
+                            : event.action ===
+                                "CANCELLED"
+                              ? "Annulleret"
+                              : "Afvist"}
                           {event.user ? (
                             <>
                               {" "}
@@ -428,6 +473,12 @@ export default function StaffingRequestsListSection({
                             event.occurredAt,
                           )}
                         </p>
+                        {event.detail ? (
+                          <p className="text-gray-500 dark:text-gray-400">
+                            {event.detail}
+                          </p>
+                        ) : null}
+                      </div>
                       ),
                     )}
                   </div>
@@ -500,15 +551,35 @@ export default function StaffingRequestsListSection({
                 ) : null}
               </div>
             </article>
-            </Fragment>
           );
-        },
-      )}
 
+  }
+
+  return (
+    <section
+      className="space-y-4"
+      aria-label="Bemandingsforespørgsler"
+    >
+      {visibleRequests.length ===
+      0 ? (
+        <EmptyState
+          text={
+            showCompletedRequests
+              ? "Ingen bemandingsforespørgsler at vise."
+              : "Ingen afventende bemandingsforespørgsler."
+          }
+        />
+      ) : null}
+
+      {pendingVisibleRequests.map(
+        (request) =>
+          renderRequest(
+            request,
+          ),
+      )}
       {showCompletedRequests &&
-      completedRequestsCount > 0 &&
-      firstCompletedRequestIndex ===
-        -1 ? (
+      completedRequestsCount >
+        0 ? (
         <button
           type="button"
           onClick={
@@ -520,6 +591,106 @@ export default function StaffingRequestsListSection({
           Skjul behandlede
         </button>
       ) : null}
+      {showCompletedRequests ||
+      hasFocusedCompletedRequest
+        ? completedDateGroups.map(
+            (group) => {
+              const isFocusedGroup =
+                group.requests.some(
+                  (request) =>
+                    request.id ===
+                    focusedRequestId,
+                );
+              const isOpen =
+                isFocusedGroup ||
+                expandedCompletedDateKeys.has(
+                  group.dateKey,
+                );
+
+              return (
+                <details
+                  key={
+                    group.dateKey
+                  }
+                  open={isOpen}
+                  onToggle={(
+                    event,
+                  ) => {
+                    const nextOpen =
+                      event
+                        .currentTarget
+                        .open;
+
+                    setExpandedCompletedDateKeys(
+                      (
+                        current,
+                      ) => {
+                        const alreadyOpen =
+                          current.has(
+                            group.dateKey,
+                          );
+
+                        if (
+                          alreadyOpen ===
+                          nextOpen
+                        ) {
+                          return current;
+                        }
+
+                        const next =
+                          new Set(
+                            current,
+                          );
+
+                        if (
+                          nextOpen
+                        ) {
+                          next.add(
+                            group.dateKey,
+                          );
+                        } else {
+                          next.delete(
+                            group.dateKey,
+                          );
+                        }
+
+                        return next;
+                      },
+                    );
+                  }}
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900"
+                >
+                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 [&::-webkit-details-marker]:hidden">
+                    <span className="font-bold text-gray-950 dark:text-white">
+                      {
+                        group.label
+                      }
+                    </span>
+                    <span className="shrink-0 text-sm text-gray-500 dark:text-gray-400">
+                      {group
+                        .requests
+                        .length ===
+                      1
+                        ? "1 forespørgsel"
+                        : `${group.requests.length} forespørgsler`}
+                    </span>
+                  </summary>
+                  <div className="space-y-4 border-t border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-950/40">
+                    {group.requests.map(
+                      (
+                        request,
+                      ) =>
+                        renderRequest(
+                          request,
+                        ),
+                    )}
+                  </div>
+                </details>
+              );
+            },
+          )
+        : null}
+
 
       {completedRequestsCount >
       0 ? (

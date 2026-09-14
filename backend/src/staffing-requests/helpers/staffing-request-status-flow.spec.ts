@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { StaffingRequestStatus } from '@prisma/client';
+import {
+  StaffingRequestCancellationReason,
+  StaffingRequestStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import { assertNoStaffingRequestAcceptConflicts } from './staffing-request-acceptance-conflicts';
@@ -162,6 +165,25 @@ describe('staffing request status flow', () => {
         userId: null,
       },
       data: { userId: 21 },
+    });
+    expect(
+      tx.staffingRequest.updateMany,
+    ).toHaveBeenNthCalledWith(2, {
+      where: {
+        cinemaId: 7,
+        id: {
+          not: 31,
+        },
+        shiftId: 41,
+        status: StaffingRequestStatus.PENDING,
+      },
+      data: {
+        status: StaffingRequestStatus.CANCELLED,
+        cancelledAt: expect.any(Date),
+        cancelledByUserId: 21,
+        cancellationReason:
+          StaffingRequestCancellationReason.OTHER_REQUEST_ACCEPTED,
+      },
     });
     expect(
       resolveStaffingRequestNotifications,
@@ -327,6 +349,51 @@ describe('staffing request status flow', () => {
         selectedCinemaId: 7,
       }),
     ).rejects.toThrow('ikke længere åben');
+  });
+
+  it('gemmer aktør, tidspunkt og årsag ved manuel annullering', async () => {
+    const cancelledRequest = {
+      ...request,
+      status: StaffingRequestStatus.CANCELLED,
+      cancelledAt: new Date('2026-07-20T10:00:00.000Z'),
+      cancelledByUserId: admin.sub,
+      cancellationReason:
+        StaffingRequestCancellationReason.MANUAL_CANCELLED,
+    };
+    const tx = {
+      staffingRequest: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUnique: jest.fn().mockResolvedValue(cancelledRequest),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(async (callback) => callback(tx)),
+    } as unknown as PrismaService;
+
+    await expect(
+      cancelStaffingRequest({
+        prisma,
+        realtimeGateway,
+        user: admin,
+        id: 31,
+        selectedCinemaId: 7,
+      }),
+    ).resolves.toBe(cancelledRequest);
+
+    expect(tx.staffingRequest.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 31,
+        cinemaId: 7,
+        status: StaffingRequestStatus.PENDING,
+      },
+      data: {
+        status: StaffingRequestStatus.CANCELLED,
+        cancelledAt: expect.any(Date),
+        cancelledByUserId: 2,
+        cancellationReason:
+          StaffingRequestCancellationReason.MANUAL_CANCELLED,
+      },
+    });
   });
 
   it('uses a conditional transition when cancelling', async () => {

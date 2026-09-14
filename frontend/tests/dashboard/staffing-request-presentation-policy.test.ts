@@ -7,9 +7,10 @@ import {
   getStaffingRequestRejectActionLabel,
   getStaffingRequestRejectDialogCopy,
   getStaffingRequestHistoryEvents,
+  getStaffingRequestViewerStatus,
 } from "../../app/(app)/staffing-requests/helpers/core/staffingRequestPresentation";
 import {
-  getRequestTimeRange,
+  getRequestDialogTimeRange,
 } from "../../app/(app)/staffing-requests/helpers/core/staffingRequestHelpers";
 import type {
   StaffingRequest,
@@ -58,7 +59,7 @@ test("medarbejderens Tak nej-dialog bygges ud fra data, ikke TSX-layout", () => 
       request,
     );
   const timeRange =
-    getRequestTimeRange(
+    getRequestDialogTimeRange(
       request,
     );
 
@@ -274,6 +275,104 @@ test("afvisningshistorik leverer den direkte modtager og tidspunkt", () => {
   assert.equal(
     events[0]?.occurredAt,
     request.rejectedAt,
+  );
+});
+
+test("medarbejderens eget broadcast-afslag bliver behandlet som Afvist", () => {
+  const request =
+    makeRequest({
+      status:
+        "PENDING",
+      targetUser: null,
+      declines: [
+        {
+          userId: 7,
+          declinedAt:
+            "2026-09-13T08:43:00.000Z",
+          user: {
+            id: 7,
+            firstName:
+              "Test",
+            lastName:
+              "1 tester",
+          },
+        },
+      ],
+    });
+
+  assert.equal(
+    getStaffingRequestViewerStatus(
+      request,
+      7,
+      false,
+    ),
+    "REJECTED",
+  );
+  assert.equal(
+    getStaffingRequestViewerStatus(
+      request,
+      8,
+      false,
+    ),
+    "PENDING",
+  );
+  assert.equal(
+    getStaffingRequestViewerStatus(
+      request,
+      7,
+      true,
+    ),
+    "PENDING",
+  );
+
+  const state =
+    getStaffingRequestActionState(
+      request,
+      "EMPLOYEE",
+      7,
+      false,
+    );
+
+  assert.equal(
+    state.isPending,
+    false,
+  );
+  assert.equal(
+    state.canShowAccept,
+    false,
+  );
+  assert.equal(
+    state.canReject,
+    false,
+  );
+
+  const events =
+    getStaffingRequestHistoryEvents(
+      request,
+      false,
+      7,
+    );
+
+  assert.equal(
+    events.length,
+    1,
+  );
+  assert.equal(
+    events[0]?.action,
+    "REJECTED",
+  );
+  assert.equal(
+    events[0]?.user?.id,
+    7,
+  );
+
+  assert.equal(
+    getStaffingRequestHistoryEvents(
+      request,
+      false,
+      8,
+    ).length,
+    0,
   );
 });
 

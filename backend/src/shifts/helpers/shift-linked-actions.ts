@@ -2,6 +2,7 @@ import {
   ShiftTradeResolutionReason,
   ShiftTradeStatus,
   ShiftTradeType,
+  StaffingRequestCancellationReason,
   StaffingRequestStatus,
 } from '@prisma/client';
 import type {
@@ -33,6 +34,23 @@ export type ResolvedShiftLinkedActions = {
   notificationUserIds: number[];
   cancellationNotices: ShiftLinkedActionCancellationNotice[];
 };
+
+function getStaffingRequestCancellationReason(
+  reason: ShiftTradeResolutionReason,
+): StaffingRequestCancellationReason | null {
+  switch (reason) {
+    case ShiftTradeResolutionReason.SHIFT_REASSIGNED:
+      return StaffingRequestCancellationReason.SHIFT_REASSIGNED;
+    case ShiftTradeResolutionReason.SHIFT_UNASSIGNED:
+      return StaffingRequestCancellationReason.SHIFT_UNASSIGNED;
+    case ShiftTradeResolutionReason.SHIFT_DELETED:
+      return StaffingRequestCancellationReason.SHIFT_DELETED;
+    case ShiftTradeResolutionReason.SHIFT_MOVED:
+      return StaffingRequestCancellationReason.SHIFT_MOVED;
+    default:
+      return null;
+  }
+}
 
 function getReasonCopy(reason: ShiftTradeResolutionReason) {
   switch (reason) {
@@ -173,7 +191,15 @@ export async function resolveOpenShiftLinkedActions(
         id: { in: staffingRequestIds },
         status: StaffingRequestStatus.PENDING,
       },
-      data: { status: StaffingRequestStatus.CANCELLED },
+      data: {
+        status: StaffingRequestStatus.CANCELLED,
+        cancelledAt: resolvedAt,
+        cancelledByUserId: params.resolvedByUserId,
+        cancellationReason:
+          getStaffingRequestCancellationReason(
+            params.resolutionReason,
+          ),
+      },
     });
   }
 

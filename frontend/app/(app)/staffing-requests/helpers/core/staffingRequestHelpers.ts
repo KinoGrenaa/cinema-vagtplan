@@ -147,8 +147,20 @@ export function getRequestTitle(request: StaffingRequest) {
 }
 
 export function getRequestTimeRange(request: StaffingRequest) {
-  const startTime = request.shift?.startTime || request.requestStartTime;
-  const endTime = request.shift?.endTime || request.requestEndTime;
+  const useHistoricalSnapshot =
+    request.status !== "PENDING" &&
+    request.requestStartTime &&
+    request.requestEndTime;
+  const startTime =
+    useHistoricalSnapshot
+      ? request.requestStartTime
+      : request.shift?.startTime ||
+        request.requestStartTime;
+  const endTime =
+    useHistoricalSnapshot
+      ? request.requestEndTime
+      : request.shift?.endTime ||
+        request.requestEndTime;
   if (!startTime || !endTime) {
     return null;
   }
@@ -177,6 +189,111 @@ export function getRequestTimeRange(request: StaffingRequest) {
   return startDate === endDate
     ? `${formatDateTime(startTime)} → ${endClock}`
     : `${formatDateTime(startTime)} → ${formatDateTime(endTime)}`;
+}
+
+export function getRequestDialogTimeRange(
+  request: StaffingRequest,
+) {
+  const useHistoricalSnapshot =
+    request.status !== "PENDING" &&
+    request.requestStartTime &&
+    request.requestEndTime;
+
+  const startTime =
+    useHistoricalSnapshot
+      ? request.requestStartTime
+      : request.shift?.startTime ||
+        request.requestStartTime;
+
+  const endTime =
+    useHistoricalSnapshot
+      ? request.requestEndTime
+      : request.shift?.endTime ||
+        request.requestEndTime;
+
+  if (!startTime || !endTime) {
+    return null;
+  }
+
+  const start =
+    new Date(startTime);
+  const end =
+    new Date(endTime);
+
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime())
+  ) {
+    return getRequestTimeRange(
+      request,
+    );
+  }
+
+  const dateFormatter =
+    new Intl.DateTimeFormat(
+      "da-DK",
+      {
+        timeZone:
+          "Europe/Copenhagen",
+        day:
+          "2-digit",
+        month:
+          "2-digit",
+        year:
+          "numeric",
+      },
+    );
+
+  const timeFormatter =
+    new Intl.DateTimeFormat(
+      "da-DK",
+      {
+        timeZone:
+          "Europe/Copenhagen",
+        hour:
+          "2-digit",
+        minute:
+          "2-digit",
+      },
+    );
+
+  const weekdayFormatter =
+    new Intl.DateTimeFormat(
+      "da-DK",
+      {
+        timeZone:
+          "Europe/Copenhagen",
+        weekday:
+          "long",
+      },
+    );
+
+  const formatDateTimeWithWeekday = (
+    value: Date,
+  ) => {
+    const weekday =
+      weekdayFormatter.format(
+        value,
+      );
+
+    return (
+      weekday.charAt(0).toUpperCase() +
+      weekday.slice(1) +
+      " " +
+      dateFormatter.format(value) +
+      " kl. " +
+      timeFormatter.format(value)
+    );
+  };
+
+  const startDate =
+    dateFormatter.format(start);
+  const endDate =
+    dateFormatter.format(end);
+
+  return startDate === endDate
+    ? `${formatDateTimeWithWeekday(start)} → ${timeFormatter.format(end)}`
+    : `${formatDateTimeWithWeekday(start)} → ${formatDateTimeWithWeekday(end)}`;
 }
 
 export function groupStaffingRequests(

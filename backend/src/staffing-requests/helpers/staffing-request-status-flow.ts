@@ -2,7 +2,10 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { StaffingRequestStatus } from '@prisma/client';
+import {
+  StaffingRequestCancellationReason,
+  StaffingRequestStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
 import {
@@ -278,6 +281,10 @@ export async function acceptStaffingRequest({
         },
         data: {
           status: StaffingRequestStatus.CANCELLED,
+          cancelledAt: new Date(),
+          cancelledByUserId: user.sub,
+          cancellationReason:
+            StaffingRequestCancellationReason.OTHER_REQUEST_ACCEPTED,
         },
       });
     }
@@ -559,6 +566,10 @@ export async function cancelStaffingRequest({
       },
       data: {
         status: StaffingRequestStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledByUserId: user.sub,
+        cancellationReason:
+          StaffingRequestCancellationReason.MANUAL_CANCELLED,
       },
     });
 

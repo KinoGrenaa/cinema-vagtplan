@@ -36,7 +36,7 @@ import {
   type StaffingRequestTargetState,
 } from "../../../staffing-requests/helpers/core/staffingRequestTarget";
 import {
-  getRequestTimeRange,
+  getRequestDialogTimeRange,
   getRequestTitle,
 } from "../../../staffing-requests/helpers/core/staffingRequestHelpers";
 import {
@@ -308,7 +308,7 @@ export default function ShiftTradesStaffingSection() {
     }
 
     const timeRange =
-      getRequestTimeRange(
+      getRequestDialogTimeRange(
         request,
       );
 

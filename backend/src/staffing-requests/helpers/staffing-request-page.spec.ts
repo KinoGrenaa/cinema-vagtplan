@@ -118,7 +118,7 @@ describe(
       );
     });
 
-    it('bygger cursorfilter til behandlede forespørgsler', () => {
+    it('tæller medarbejderens personlige broadcast-afvisning som behandlet', () => {
       const where =
         buildCompletedStaffingRequestWhere(
           employee,
@@ -126,7 +126,70 @@ describe(
           50,
         );
 
-      expect(where).toMatchObject({
+      expect(where).toEqual({
+        cinemaId: 7,
+        OR: [
+          {
+            AND: [
+              {
+                OR: [
+                  {
+                    targetUserId: 9,
+                  },
+                  {
+                    requestedByUserId: 9,
+                  },
+                  {
+                    targetUserId:
+                      null,
+                    jobFunction: {
+                      userJobFunctions: {
+                        some: {
+                          cinemaId: 7,
+                          userId: 9,
+                        },
+                      },
+                    },
+                    declines: {
+                      none: {
+                        userId: 9,
+                      },
+                    },
+                  },
+                ],
+              },
+              {
+                status: {
+                  not:
+                    StaffingRequestStatus.PENDING,
+                },
+              },
+            ],
+          },
+          {
+            targetUserId:
+              null,
+            declines: {
+              some: {
+                userId: 9,
+              },
+            },
+          },
+        ],
+        id: {
+          lt: 50,
+        },
+      });
+    });
+
+    it('holder åbne broadcast-forespørgsler ude af administrators behandlede historik', () => {
+      expect(
+        buildCompletedStaffingRequestWhere(
+          admin,
+          7,
+          50,
+        ),
+      ).toEqual({
         cinemaId: 7,
         status: {
           not:
@@ -136,20 +199,6 @@ describe(
           lt: 50,
         },
       });
-      expect(where.OR).toHaveLength(3);
-      expect(where.OR).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            targetUserId:
-              null,
-            declines: {
-              none: {
-                userId: 9,
-              },
-            },
-          }),
-        ]),
-      );
     });
 
     it('beskytter deep-links med samme synlighedsregler', () => {
