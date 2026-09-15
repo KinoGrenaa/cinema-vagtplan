@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 
 const actions = readFileSync(
-  "app/(app)/staffing-requests/hooks/actions/useStaffingRequestActions.ts",
+  "app/(app)/shift-trades/staffing/hooks/actions/useStaffingRequestActions.ts",
   "utf8",
 );
 const section = readFileSync(

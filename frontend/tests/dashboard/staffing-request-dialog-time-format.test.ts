@@ -6,10 +6,10 @@ import test from "node:test";
 
 import {
   getRequestDialogTimeRange,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestHelpers";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestHelpers";
 import type {
   StaffingRequest,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestTypes";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestTypes";
 
 const staffingSection =
   readFileSync(
@@ -19,7 +19,7 @@ const staffingSection =
 
 const presentation =
   readFileSync(
-    "app/(app)/staffing-requests/helpers/core/staffingRequestPresentation.ts",
+    "app/(app)/shift-trades/staffing/helpers/core/staffingRequestPresentation.ts",
     "utf8",
   );
 

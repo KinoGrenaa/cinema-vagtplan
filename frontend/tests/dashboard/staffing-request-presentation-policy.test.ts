@@ -8,13 +8,13 @@ import {
   getStaffingRequestRejectDialogCopy,
   getStaffingRequestHistoryEvents,
   getStaffingRequestViewerStatus,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestPresentation";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestPresentation";
 import {
   getRequestDialogTimeRange,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestHelpers";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestHelpers";
 import type {
   StaffingRequest,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestTypes";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestTypes";
 
 function makeRequest(
   overrides:

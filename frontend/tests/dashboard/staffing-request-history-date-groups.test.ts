@@ -6,10 +6,10 @@ import {
 
 import {
   groupCompletedStaffingRequestsByShiftDate,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestPresentation";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestPresentation";
 import type {
   StaffingRequest,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestTypes";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestTypes";
 
 function makeRequest(
   id: number,
@@ -108,7 +108,7 @@ test("datoen bestemmes i Europe/Copenhagen og ikke af oprettelsestidspunktet", (
 test("behandlede datogrupper starter foldet sammen og fokuseret notifikation kan åbne sin gruppe", () => {
   const source =
     readFileSync(
-      "app/(app)/staffing-requests/components/list/StaffingRequestsListSection.tsx",
+      "app/(app)/shift-trades/staffing/components/list/StaffingRequestsListSection.tsx",
       "utf8",
     );
 

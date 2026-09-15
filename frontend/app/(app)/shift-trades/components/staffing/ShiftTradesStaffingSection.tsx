@@ -28,32 +28,32 @@ import {
   useAuth,
 } from "@/app/providers/AuthProvider";
 
-import StaffingPendingPaginationControl from "../../../staffing-requests/components/list/StaffingPendingPaginationControl";
-import StaffingRequestsListSection from "../../../staffing-requests/components/list/StaffingRequestsListSection";
-import StaffingRequestTargetNotice from "../../../staffing-requests/components/layout/StaffingRequestTargetNotice";
+import StaffingPendingPaginationControl from "../../staffing/components/list/StaffingPendingPaginationControl";
+import StaffingRequestsListSection from "../../staffing/components/list/StaffingRequestsListSection";
+import StaffingRequestTargetNotice from "../../staffing/components/layout/StaffingRequestTargetNotice";
 import {
   parseStaffingRequestTarget,
   type StaffingRequestTargetState,
-} from "../../../staffing-requests/helpers/core/staffingRequestTarget";
+} from "../../staffing/helpers/core/staffingRequestTarget";
 import {
   getRequestDialogTimeRange,
   getRequestTitle,
-} from "../../../staffing-requests/helpers/core/staffingRequestHelpers";
+} from "../../staffing/helpers/core/staffingRequestHelpers";
 import {
   getStaffingRequestRejectDialogCopy,
-} from "../../../staffing-requests/helpers/core/staffingRequestPresentation";
+} from "../../staffing/helpers/core/staffingRequestPresentation";
 import type {
   StaffingRequest,
-} from "../../../staffing-requests/helpers/core/staffingRequestTypes";
+} from "../../staffing/helpers/core/staffingRequestTypes";
 import {
   useStaffingRequestActions,
-} from "../../../staffing-requests/hooks/actions/useStaffingRequestActions";
+} from "../../staffing/hooks/actions/useStaffingRequestActions";
 import {
   usePendingStaffingRequestPages,
-} from "../../../staffing-requests/hooks/data/usePendingStaffingRequestPages";
+} from "../../staffing/hooks/data/usePendingStaffingRequestPages";
 import {
   useStaffingRequestsData,
-} from "../../../staffing-requests/hooks/data/useStaffingRequestsData";
+} from "../../staffing/hooks/data/useStaffingRequestsData";
 
 function mergeRequests(
   pendingRequests:

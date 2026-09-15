@@ -6,13 +6,13 @@ import {
 
 import {
   getStaffingRequestHistoryEvents,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestPresentation";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestPresentation";
 import {
   getRequestTimeRange,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestHelpers";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestHelpers";
 import type {
   StaffingRequest,
-} from "../../app/(app)/staffing-requests/helpers/core/staffingRequestTypes";
+} from "../../app/(app)/shift-trades/staffing/helpers/core/staffingRequestTypes";
 
 test("annulleret bemandingsforespørgsel viser aktør, tidspunkt og konkret årsag", () => {
   const request = {
@@ -108,7 +108,7 @@ test("andre annulleringsårsager får stabil dansk historiktekst", () => {
 test("historikkortet kan vise Annulleret og årsagsdetaljen", () => {
   const source =
     readFileSync(
-      "app/(app)/staffing-requests/components/list/StaffingRequestsListSection.tsx",
+      "app/(app)/shift-trades/staffing/components/list/StaffingRequestsListSection.tsx",
       "utf8",
     );
 
