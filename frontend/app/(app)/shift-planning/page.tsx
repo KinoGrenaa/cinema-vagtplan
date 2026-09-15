@@ -1852,7 +1852,17 @@ export default function ShiftPlanningPage() {
                   >
                     Denne måned
                   </button>
-                  {selectedDraftIsEditable && (
+                  <button
+                    type="button"
+                    onClick={() => changeMonth(1)}
+                    className="shrink-0 whitespace-nowrap rounded-lg border border-blue-400 bg-blue-950/30 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:border-blue-500 hover:bg-blue-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:border-blue-500 dark:hover:bg-blue-900/60"
+                  >
+                    {"Næste måned →"}
+                  </button>
+                </div>
+              </div>
+              {selectedDraftIsEditable && (
+                <div className="mt-4 flex flex-wrap justify-center gap-2 lg:justify-end">
                     <button
                       type="button"
                       onClick={() =>
@@ -1872,8 +1882,6 @@ export default function ShiftPlanningPage() {
                     >
                       Erstat månedens vagter
                     </button>
-                  )}
-                  {selectedDraftIsEditable && (
                   <button
                     type="button"
                     onClick={() =>
@@ -1893,16 +1901,8 @@ export default function ShiftPlanningPage() {
                   >
                     Fjern månedens vagter
                   </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => changeMonth(1)}
-                    className="shrink-0 whitespace-nowrap rounded-lg border border-blue-400 bg-blue-950/30 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:border-blue-500 hover:bg-blue-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:border-blue-500 dark:hover:bg-blue-900/60"
-                  >
-                    {"Næste måned →"}
-                  </button>
                 </div>
-              </div>
+              )}
             </section>
 
             <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
