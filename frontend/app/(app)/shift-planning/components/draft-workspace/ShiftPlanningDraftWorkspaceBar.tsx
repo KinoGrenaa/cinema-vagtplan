@@ -315,9 +315,9 @@ export default function ShiftPlanningDraftWorkspaceBar({
                 setShowCreateDialog(true);
               }}
               disabled={busy}
-              className="rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:bg-violet-300 dark:bg-violet-600 dark:hover:bg-violet-500 dark:disabled:bg-violet-950 dark:disabled:text-violet-500"
+              className="whitespace-nowrap rounded-lg bg-violet-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-violet-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-violet-300 disabled:shadow-none dark:bg-violet-600 dark:hover:bg-violet-500 dark:disabled:bg-violet-950 dark:disabled:text-violet-500 dark:focus-visible:ring-offset-gray-900"
             >
-              Ny kladde
+              + Ny kladde
             </button>
 
             {selectedDraft && editable && (

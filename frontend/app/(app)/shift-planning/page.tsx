@@ -1837,18 +1837,18 @@ export default function ShiftPlanningPage() {
                       : "Klik på en dato for at vælge skabelon, markere lukket dag eller tilføje en intern note."}
                   </p>
                 </div>
-                <div className="flex flex-wrap justify-center gap-2 lg:justify-end">
+                <div className="flex flex-wrap justify-center gap-2 lg:flex-nowrap lg:justify-end">
                   <button
                     type="button"
                     onClick={() => changeMonth(-1)}
-                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className="shrink-0 whitespace-nowrap rounded-lg border border-blue-400 bg-blue-950/30 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:border-blue-500 hover:bg-blue-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:border-blue-500 dark:hover:bg-blue-900/60"
                   >
-                    Forrige
+                    {"← Forrige måned"}
                   </button>
                   <button
                     type="button"
                     onClick={goToCurrentMonth}
-                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className="shrink-0 whitespace-nowrap rounded-lg border border-gray-500 bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-100 transition hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
                   >
                     Denne måned
                   </button>
@@ -1897,9 +1897,9 @@ export default function ShiftPlanningPage() {
                   <button
                     type="button"
                     onClick={() => changeMonth(1)}
-                    className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className="shrink-0 whitespace-nowrap rounded-lg border border-blue-400 bg-blue-950/30 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:border-blue-500 hover:bg-blue-900/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100 dark:hover:border-blue-500 dark:hover:bg-blue-900/60"
                   >
-                    Næste
+                    {"Næste måned →"}
                   </button>
                 </div>
               </div>
