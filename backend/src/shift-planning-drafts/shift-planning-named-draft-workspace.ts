@@ -44,6 +44,10 @@ type ExistingNamedDraftInput = {
   cinemaId: number;
 };
 
+type RenameNamedDraftInput = ExistingNamedDraftInput & {
+  name: string;
+};
+
 type CreateEmptyNamedDraftInput = SaveNamedDraftInput;
 
 type MonthDataBuilder = typeof buildShiftPlanningMonthData;
@@ -331,6 +335,43 @@ async function findEditableDraft(
   `);
 
   return requireEditableDraft(rows[0]);
+}
+
+export async function renameNamedShiftPlanningDraft(
+  prisma: PrismaService,
+  input: RenameNamedDraftInput,
+) {
+  return prisma.$transaction(async (tx) => {
+    const lockedRows = await tx.$queryRaw<DraftRow[]>(Prisma.sql`
+      SELECT
+        id,
+        "cinemaId",
+        year,
+        month,
+        status,
+        note,
+        "createdAt",
+        "updatedAt"
+      FROM "ShiftPlanningDraft"
+      WHERE id = ${input.draftId}
+        AND "cinemaId" = ${input.cinemaId}
+      FOR UPDATE
+    `);
+    const lockedDraft = requireEditableDraft(lockedRows[0]);
+
+    await tx.$executeRaw(Prisma.sql`
+      UPDATE "ShiftPlanningDraft"
+      SET
+        note = ${input.name},
+        "updatedAt" = NOW()
+      WHERE id = ${input.draftId}
+        AND "cinemaId" = ${input.cinemaId}
+    `);
+
+    return {
+      id: lockedDraft.id,
+    };
+  });
 }
 
 export async function saveNamedShiftPlanningDraft(

@@ -196,6 +196,29 @@ export class ShiftPlanningDraftsController {
     );
   }
   @UseGuards(JwtGuard)
+  @Post(':id/rename')
+  renameNamedDraft(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Query('cinemaId') cinemaId?: string,
+  ) {
+    const normalizedBody = normalizePrepareBody(body);
+    const selectedCinemaId = normalizedBody.cinemaId ?? cinemaId;
+    return this.shiftPlanningDraftsService.renameNamedDraft(
+      req.user,
+      parseRequiredPositiveInteger(
+        id,
+        'Planlægningskladde skal være et gyldigt ID.',
+      ),
+      {
+        name: normalizedBody.name,
+        cinemaId: parseOptionalCinemaId(selectedCinemaId),
+      },
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Post(':id/open')
   openNamedDraftWorkspace(
     @Req() req: any,

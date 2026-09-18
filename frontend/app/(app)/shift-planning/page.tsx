@@ -874,6 +874,52 @@ export default function ShiftPlanningPage() {
     });
   };
 
+  const renameSelectedDraft = async (name: string) => {
+    if (!selectedDraftId || !activeCinemaId) {
+      throw new Error("Vælg en kladde, før den omdøbes.");
+    }
+    if (draftDirty) {
+      throw new Error(
+        "Gem eller fortryd de ikke-gemte ændringer, før kladden omdøbes.",
+      );
+    }
+
+    try {
+      setDraftWorkspaceBusy(true);
+      setDraftWorkspaceError(null);
+      const response = await apiFetch(
+        appendCinemaId(
+          `/shift-planning-drafts/${selectedDraftId}/rename`,
+          activeCinemaId,
+        ),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            cinemaId: activeCinemaId,
+            name,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(
+          await readErrorMessage(response, "Kunne ikke omdøbe kladden"),
+        );
+      }
+
+      setDraftRefreshKey((current) => current + 1);
+      await openDraftWorkspace(selectedDraftId);
+      infoDialogRef.current.show({
+        title: "Kladde omdøbt",
+        description:
+          `Kladden hedder nu “${name}”. Planlægningen og den faktiske vagtplan er ikke ændret.`,
+        variant: "success",
+        buttonText: "OK",
+      });
+    } finally {
+      setDraftWorkspaceBusy(false);
+    }
+  };
+
   const copySelectedDraft = async (name: string) => {
     if (!selectedDraftId || !activeCinemaId) {
       throw new Error("Vælg en kladde, før den kopieres.");
@@ -925,10 +971,6 @@ export default function ShiftPlanningPage() {
     if (!selectedDraftId || !activeCinemaId) {
       throw new Error("Vælg en kladde, før den slettes.");
     }
-    if (draftDirty) {
-      throw new Error("Gem eller fortryd ændringerne, før kladden slettes.");
-    }
-
     try {
       setDraftWorkspaceBusy(true);
       setDraftWorkspaceError(null);
@@ -1965,6 +2007,7 @@ export default function ShiftPlanningPage() {
               onCreateDraft={createNamedDraft}
               onSaveChanges={saveSelectedDraftChanges}
               onDiscardChanges={discardSelectedDraftChanges}
+              onRenameDraft={renameSelectedDraft}
               onCopyDraft={copySelectedDraft}
               onDeleteDraft={deleteSelectedDraft}
               creatingShifts={publishingDraftId === selectedDraftId}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import BaseModal from "@/app/components/modals/BaseModal";
 import ShiftPlanningCreateShiftsDialog from "./ShiftPlanningCreateShiftsDialog";
 import type { ShiftPlanningWorkingPreviewResponse } from "../../helpers/shiftPlanningTypes";
 
@@ -25,8 +26,9 @@ type ShiftPlanningDraftWorkspaceBarProps = {
   month: number;
   onSelectDraft: (draftId: number | null) => void | Promise<void>;
   onCreateDraft: (name: string) => Promise<void>;
-  onSaveChanges: () => Promise<void>;
+  onSaveChanges: (options?: { showConfirmation?: boolean }) => Promise<void>;
   onDiscardChanges: () => Promise<void>;
+  onRenameDraft: (name: string) => Promise<void>;
   onCopyDraft: (name: string) => Promise<void>;
   onDeleteDraft: () => Promise<void>;
   creatingShifts: boolean;
@@ -75,18 +77,27 @@ export default function ShiftPlanningDraftWorkspaceBar({
   onCreateDraft,
   onSaveChanges,
   onDiscardChanges,
+  onRenameDraft,
   onCopyDraft,
   onDeleteDraft,
   creatingShifts,
   onCreateShifts,
 }: ShiftPlanningDraftWorkspaceBarProps) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showDraftActionsDialog, setShowDraftActionsDialog] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showCopyDialog, setShowCopyDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [returnToDraftActionsAfterSave, setReturnToDraftActionsAfterSave] =
+    useState(false);
+  const [draftActionsNotice, setDraftActionsNotice] = useState<string | null>(
+    null,
+  );
   const [showCreateShiftsDialog, setShowCreateShiftsDialog] = useState(false);
   const [createShiftsError, setCreateShiftsError] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
+  const [renameName, setRenameName] = useState("");
   const [copyName, setCopyName] = useState("");
   const [dialogError, setDialogError] = useState<string | null>(null);
 
@@ -101,8 +112,9 @@ export default function ShiftPlanningDraftWorkspaceBar({
     () => drafts.find((draft) => Number(draft.id) === selectedDraftId) ?? null,
     [drafts, selectedDraftId],
   );
+  const canRenameSelected = Boolean(selectedDraft) && editable && !dirty && !busy;
   const canCopySelected = Boolean(selectedDraft) && editable && !dirty && !busy;
-  const canDeleteSelected = Boolean(selectedDraft) && editable && !dirty && !busy;
+  const canDeleteSelected = Boolean(selectedDraft) && editable && !busy;
   const readyCount = toNumber(preview?.summary.readyItemCount);
   const blockedCount = toNumber(preview?.summary.blockedItemCount);
   const warningCount = toNumber(preview?.summary.warningCount);
@@ -190,8 +202,16 @@ export default function ShiftPlanningDraftWorkspaceBar({
   const saveChanges = async () => {
     try {
       setDialogError(null);
-      await onSaveChanges();
+      await onSaveChanges({
+        showConfirmation: !returnToDraftActionsAfterSave,
+      });
       setShowSaveDialog(false);
+
+      if (returnToDraftActionsAfterSave) {
+        setReturnToDraftActionsAfterSave(false);
+        setDraftActionsNotice("Ændringerne er gemt.");
+        setShowDraftActionsDialog(true);
+      }
     } catch (error) {
       setDialogError(
         error instanceof Error ? error.message : "Ændringerne kunne ikke gemmes.",
@@ -208,6 +228,29 @@ export default function ShiftPlanningDraftWorkspaceBar({
         error instanceof Error
           ? error.message
           : "Ændringerne kunne ikke fortrydes.",
+      );
+    }
+  };
+
+  const renameDraft = async () => {
+    const name = renameName.trim();
+    if (!name) {
+      setDialogError("Skriv et navn til kladden.");
+      return;
+    }
+    if (name.length > 80) {
+      setDialogError("Kladdenavnet må højst være 80 tegn.");
+      return;
+    }
+
+    try {
+      setDialogError(null);
+      await onRenameDraft(name);
+      setRenameName("");
+      setShowRenameDialog(false);
+    } catch (error) {
+      setDialogError(
+        error instanceof Error ? error.message : "Kladden kunne ikke omdøbes.",
       );
     }
   };
@@ -320,7 +363,7 @@ export default function ShiftPlanningDraftWorkspaceBar({
               + Ny kladde
             </button>
 
-            {selectedDraft && editable && (
+            {selectedDraft && editable && dirty && (
               <>
                 <button
                   type="button"
@@ -328,50 +371,34 @@ export default function ShiftPlanningDraftWorkspaceBar({
                     setDialogError(null);
                     setShowSaveDialog(true);
                   }}
-                  disabled={!dirty || busy}
+                  disabled={busy}
                   className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-emerald-200 disabled:text-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:bg-emerald-950 dark:disabled:text-emerald-500"
                 >
-                  {busy && dirty ? "Gemmer…" : "Gem ændringer"}
+                  {busy ? "Gemmer…" : "Gem ændringer"}
                 </button>
                 <button
                   type="button"
                   onClick={() => void discardChanges()}
-                  disabled={!dirty || busy}
+                  disabled={busy}
                   className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-800"
                 >
                   Fortryd ændringer
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const sourceName = formatDraftFallback(
-                      selectedDraft,
-                      year,
-                      month,
-                    );
-                    setCopyName(`${sourceName} – kopi`.slice(0, 80));
-                    setDialogError(null);
-                    setShowCopyDialog(true);
-                  }}
-                  disabled={!canCopySelected}
-                  title={dirty ? "Gem eller fortryd ændringerne før kopiering." : undefined}
-                  className="rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-800 dark:bg-gray-950 dark:text-violet-200 dark:hover:bg-violet-950/30"
-                >
-                  Kopiér kladde
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDialogError(null);
-                    setShowDeleteDialog(true);
-                  }}
-                  disabled={!canDeleteSelected}
-                  title={dirty ? "Gem eller fortryd ændringerne før sletning." : undefined}
-                  className="rounded-xl border border-red-300 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-950 dark:text-red-300 dark:hover:bg-red-950/30"
-                >
-                  Slet kladde
-                </button>
               </>
+            )}
+
+            {selectedDraft && editable && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDialogError(null);
+                  setShowDraftActionsDialog(true);
+                }}
+                disabled={busy}
+                className="rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-800 dark:bg-gray-950 dark:text-violet-200 dark:hover:bg-violet-950/30"
+              >
+                Kladdehandlinger
+              </button>
             )}
           </div>
         </div>
@@ -417,23 +444,223 @@ export default function ShiftPlanningDraftWorkspaceBar({
             )}
           </div>
 
-          {selectedDraft && editable && (
+          {canCreateShifts && (
             <button
               type="button"
               onClick={() => {
                 setCreateShiftsError(null);
                 setShowCreateShiftsDialog(true);
               }}
-              disabled={!canCreateShifts}
-              title={canCreateShifts ? undefined : createShiftsHint}
-              className="shrink-0 rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 dark:disabled:bg-blue-950 dark:disabled:text-blue-500 dark:focus-visible:ring-offset-gray-900"
+              className="shrink-0 rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:ring-offset-gray-900"
             >
-              {creatingShifts ? "Opretter vagter…" : "Opret vagter"}
+              {creatingShifts
+                ? "Opretter vagter…"
+                : readyCount === 1
+                  ? "Opret 1 vagt"
+                  : `Opret ${readyCount} vagter`}
             </button>
           )}
         </div>
 
       </section>
+
+      <BaseModal
+        open={showDraftActionsDialog && Boolean(selectedDraft)}
+        title="Kladdehandlinger"
+        onClose={() => {
+          if (busy) return;
+          setShowDraftActionsDialog(false);
+          setDialogError(null);
+          setDraftActionsNotice(null);
+        }}
+        width="sm"
+      >
+        <div className="space-y-4">
+          {draftActionsNotice && (
+            <div
+              role="status"
+              className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100"
+            >
+              {draftActionsNotice}
+            </div>
+          )}
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Handlinger for kladden:{" "}
+            <span className="font-semibold text-gray-950 dark:text-white">
+              {selectedDraftName}
+            </span>
+          </p>
+
+          {dirty && (
+            <div
+              role="status"
+              className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+            >
+              <span className="block font-semibold">
+                Kladden har ikke-gemte ændringer.
+              </span>
+              <span className="mt-1 block">
+                Gem eller fortryd ændringerne, før du omdøber eller kopierer
+                kladden. Kladden kan stadig slettes.
+              </span>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDialogError(null);
+                    setDraftActionsNotice(null);
+                    setReturnToDraftActionsAfterSave(true);
+                    setShowDraftActionsDialog(false);
+                    setShowSaveDialog(true);
+                  }}
+                  disabled={busy}
+                  className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                >
+                  Gem ændringer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDraftActionsDialog(false);
+                    void discardChanges();
+                  }}
+                  disabled={busy}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-800"
+                >
+                  Fortryd ændringer
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setRenameName(selectedDraftName.slice(0, 80));
+                setDialogError(null);
+                setShowDraftActionsDialog(false);
+                setShowRenameDialog(true);
+              }}
+              disabled={!canRenameSelected}
+              className="rounded-2xl border border-blue-300 bg-blue-50 px-4 py-3 text-left transition hover:border-blue-500 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900 dark:bg-blue-950/20 dark:hover:border-blue-700 dark:hover:bg-blue-950/40"
+            >
+              <span className="block font-semibold text-blue-800 dark:text-blue-200">
+                Omdøb kladde
+              </span>
+              <span className="mt-1 block text-sm text-gray-600 dark:text-gray-300">
+                Skift navn uden at ændre planlægningen.
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!selectedDraft) return;
+                setCopyName(`${selectedDraftName} – kopi`.slice(0, 80));
+                setDialogError(null);
+                setShowDraftActionsDialog(false);
+                setShowCopyDialog(true);
+              }}
+              disabled={!canCopySelected}
+              className="rounded-2xl border border-violet-300 bg-violet-50 px-4 py-3 text-left transition hover:border-violet-500 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-800 dark:bg-violet-950/30 dark:hover:border-violet-600 dark:hover:bg-violet-950/60"
+            >
+              <span className="block font-semibold text-violet-800 dark:text-violet-200">
+                Kopiér kladde
+              </span>
+              <span className="mt-1 block text-sm text-gray-600 dark:text-gray-300">
+                Opret en ny kladde med samme planlægning.
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDialogError(null);
+                setShowDraftActionsDialog(false);
+                setShowDeleteDialog(true);
+              }}
+              disabled={!canDeleteSelected}
+              className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-left transition hover:border-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-red-950/20 dark:hover:border-red-700 dark:hover:bg-red-950/40"
+            >
+              <span className="block font-semibold text-red-800 dark:text-red-200">
+                Slet kladde
+              </span>
+              <span className="mt-1 block text-sm text-gray-600 dark:text-gray-300">
+                Slet kun kladden. Den faktiske vagtplan ændres ikke.
+              </span>
+            </button>
+          </div>
+        </div>
+      </BaseModal>
+
+      <BaseModal
+        open={showRenameDialog && Boolean(selectedDraft)}
+        title="Omdøb kladde"
+        onClose={() => {
+          if (busy) return;
+          setShowRenameDialog(false);
+          setDialogError(null);
+        }}
+        width="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Kun kladdens navn ændres. Planlægningen og den faktiske vagtplan
+            påvirkes ikke.
+          </p>
+
+          <div>
+            <label
+              htmlFor="shift-planning-rename-draft-name"
+              className="block text-sm font-semibold text-gray-800 dark:text-gray-200"
+            >
+              Kladdenavn
+            </label>
+            <input
+              id="shift-planning-rename-draft-name"
+              value={renameName}
+              onChange={(event) => setRenameName(event.target.value)}
+              maxLength={80}
+              autoFocus
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+              disabled={busy}
+            />
+          </div>
+
+          {dialogError && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+              {dialogError}
+            </p>
+          )}
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                if (busy) return;
+                setShowRenameDialog(false);
+                setDialogError(null);
+              }}
+              disabled={busy}
+              className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              Annuller
+            </button>
+            <button
+              type="button"
+              onClick={() => void renameDraft()}
+              disabled={
+                busy ||
+                !renameName.trim() ||
+                renameName.trim() === selectedDraftName
+              }
+              className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-500"
+            >
+              {busy ? "Omdøber…" : "Gem nyt navn"}
+            </button>
+          </div>
+        </div>
+      </BaseModal>
 
       <ShiftPlanningCreateShiftsDialog
         open={showCreateShiftsDialog}
@@ -495,6 +722,11 @@ export default function ShiftPlanningDraftWorkspaceBar({
                   if (busy) return;
                   setShowSaveDialog(false);
                   setDialogError(null);
+
+                  if (returnToDraftActionsAfterSave) {
+                    setReturnToDraftActionsAfterSave(false);
+                    setShowDraftActionsDialog(true);
+                  }
                 }}
                 disabled={busy}
                 className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
@@ -629,7 +861,13 @@ export default function ShiftPlanningDraftWorkspaceBar({
             <h3 className="mt-2 text-xl font-extrabold text-gray-950 dark:text-white">
               Slet {formatDraftFallback(selectedDraft, year, month)}?
             </h3>
-            <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+            {dirty && (
+              <p className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                Kladden har ikke-gemte ændringer. Hvis du sletter kladden, går
+                disse ændringer også tabt.
+              </p>
+            )}
+            <p className={`${dirty ? "mt-3" : "mt-4"} text-sm text-gray-600 dark:text-gray-300`}>
               Kun kladden slettes. Eksisterende vagter i vagtplanen påvirkes ikke.
             </p>
             {dialogError && (

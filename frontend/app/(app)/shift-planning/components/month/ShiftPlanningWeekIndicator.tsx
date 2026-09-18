@@ -50,7 +50,7 @@ export default function ShiftPlanningWeekIndicator({
         <p>{activeDays} aktive dage</p>
         {showPlanningLayer ? (
           <>
-            <p>{daysWithTemplate} med skabelon</p>
+            <p>{daysWithTemplate} med skabelon i kladden</p>
             <p>{missingTemplateDays} mangler planlægning</p>
           </>
         ) : (
@@ -65,7 +65,7 @@ export default function ShiftPlanningWeekIndicator({
           className="block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300"
           htmlFor={`week-template-${weekNumber ?? "unknown"}`}
         >
-          Skabelon
+          Skabelon til ugen
         </label>
         <select
           id={`week-template-${weekNumber ?? "unknown"}`}

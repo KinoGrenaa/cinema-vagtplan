@@ -147,7 +147,9 @@ export default function ShiftPlanningDayCard({
     templateJobFunctions.length - MAX_VISIBLE_JOB_FUNCTIONS,
   );
   const templateLabel = day.isActive
-    ? formatTemplateLabel(displayTemplate)
+    ? displayTemplate
+      ? formatTemplateLabel(displayTemplate)
+      : "Ingen valgt"
     : "Lukket / ingen plan";
 
   return (
@@ -288,7 +290,7 @@ export default function ShiftPlanningDayCard({
         {showPlanningLayer && (
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide opacity-75">
-              Skabelon
+              Skabelon i kladden
             </p>
             <p className="line-clamp-2 text-[13px] font-bold" title={templateLabel}>
               {templateLabel}

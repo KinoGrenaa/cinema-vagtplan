@@ -24,6 +24,7 @@ import {
   ShiftPlanningNamedDraftNotEditableError,
   createEmptyNamedShiftPlanningDraft,
   openNamedShiftPlanningDraftWorkspace,
+  renameNamedShiftPlanningDraft,
   updateNamedShiftPlanningDraft,
   ShiftPlanningNamedDraftNotFoundError,
   copyNamedShiftPlanningDraft,
@@ -930,6 +931,32 @@ export class ShiftPlanningDraftsService {
       throw error;
     }
   }
+  async renameNamedDraft(
+    user: AuthUser,
+    draftId: number,
+    data: DraftRequestData,
+  ) {
+    const cinemaId = resolveCinemaId(user, data?.cinemaId);
+    const name = parseRequiredDraftName(data?.name);
+
+    try {
+      const renamedDraft = await renameNamedShiftPlanningDraft(this.prisma, {
+        draftId,
+        cinemaId,
+        name,
+      });
+      return this.findOne(user, renamedDraft.id, String(cinemaId));
+    } catch (error) {
+      if (error instanceof ShiftPlanningNamedDraftNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+      if (error instanceof ShiftPlanningNamedDraftNotEditableError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
   async openNamedDraftWorkspace(
     user: AuthUser,
     draftId: number,
