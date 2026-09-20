@@ -38,14 +38,26 @@ export async function findShiftMonthOverview(
   const endDateExclusive = formatDateKey(nextMonth.year, nextMonth.month, 1);
   const monthStart = getCopenhagenDayRange(startDate).start;
   const monthEnd = getCopenhagenDayRange(endDateExclusive).start;
-  const shifts = await prisma.shift.findMany({
+  const shiftRows = await prisma.shift.findMany({
     where: {
       cinemaId,
       AND: [{ startTime: { lt: monthEnd } }, { endTime: { gt: monthStart } }],
     },
-    select: scheduleShiftSelect,
+    select: {
+      ...scheduleShiftSelect,
+      timingRuleSnapshot: true,
+    },
     orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
   });
+  const shifts = shiftRows.map(({ timingRuleSnapshot, ...shift }) => ({
+    ...shift,
+    isPlanningCreated:
+      Boolean(timingRuleSnapshot) &&
+      typeof timingRuleSnapshot === 'object' &&
+      !Array.isArray(timingRuleSnapshot) &&
+      (timingRuleSnapshot as { source?: unknown }).source ===
+        'SHIFT_PLANNING_DRAFT',
+  }));
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const days: Array<{
     dateKey: string;

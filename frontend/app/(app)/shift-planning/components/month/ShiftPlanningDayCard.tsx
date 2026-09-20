@@ -76,6 +76,24 @@ function getWorkingShiftStatus(item: ShiftPlanningWorkingPreviewItem) {
   }
 
   const reasons = item.blockReasons.join(" ").toLocaleLowerCase("da-DK");
+  const remainingReasons = item.blockReasons.filter(
+    (reason) =>
+      !reason
+        .toLocaleLowerCase("da-DK")
+        .includes("allerede en vagt med samme jobfunktion"),
+  );
+
+  if (
+    item.replacesPlanningCreatedShift &&
+    remainingReasons.length === 0
+  ) {
+    return {
+      label: "Samme som nu",
+      classes:
+        "bg-violet-100 text-violet-800 dark:bg-violet-950/70 dark:text-violet-200",
+    };
+  }
+
   if (reasons.includes("overstået")) {
     return {
       label: "Overstået",
@@ -199,6 +217,7 @@ export default function ShiftPlanningDayCard({
         {scheduledShiftCount > 0 && (
           <div className="rounded-xl border border-blue-200 bg-blue-50/90 p-2 text-blue-950 dark:border-blue-800 dark:bg-blue-950/45 dark:text-blue-100">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+              {showPlanningLayer && "Nuværende vagtplan · "}
               {scheduledShiftCount} {scheduledShiftCount === 1 ? "vagt" : "vagter"}
             </p>
             <div className="mt-1.5 space-y-1">
@@ -237,7 +256,7 @@ export default function ShiftPlanningDayCard({
         {workingPreviewItems.length > 0 && (
           <div className="rounded-xl border border-violet-200 bg-violet-50/90 p-2 text-violet-950 dark:border-violet-800 dark:bg-violet-950/45 dark:text-violet-100">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
-              Arbejdsforslag · {workingPreviewItems.length}{" "}
+              Kladde · {workingPreviewItems.length}{" "}
               {workingPreviewItems.length === 1 ? "vagt" : "vagter"}
             </p>
             <div className="mt-1.5 space-y-1">
@@ -280,7 +299,7 @@ export default function ShiftPlanningDayCard({
                 })}
               {hiddenWorkingShiftCount > 0 && (
                 <p className="font-semibold opacity-80">
-                  +{hiddenWorkingShiftCount} flere forslag
+                  +{hiddenWorkingShiftCount} flere i kladden
                 </p>
               )}
             </div>

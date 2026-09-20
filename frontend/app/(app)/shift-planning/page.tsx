@@ -357,20 +357,66 @@ export default function ShiftPlanningPage() {
   const days = useMemo(
     () =>
       (monthPlan?.days ?? []).map((day) => {
-        const scheduledDay = scheduledShiftDaysByDate.get(
-          getMonthPlanDayDateKey(day),
+        const dateKey = getMonthPlanDayDateKey(day);
+        const scheduledDay = scheduledShiftDaysByDate.get(dateKey);
+        const allScheduledShifts = scheduledDay?.shifts ?? [];
+        const planningCreatedShifts =
+          selectedDraftId === null
+            ? []
+            : allScheduledShifts.filter((shift) => shift.isPlanningCreated);
+        const visibleScheduledShifts = allScheduledShifts;
+        const planningCreatedShiftIdentities = new Set(
+          planningCreatedShifts
+            .map((shift) => {
+              const start = new Date(shift.startTime).getTime();
+              const end = new Date(shift.endTime).getTime();
+              if (
+                shift.jobFunctionId === null ||
+                !Number.isFinite(start) ||
+                !Number.isFinite(end)
+              ) {
+                return null;
+              }
+              return `${shift.jobFunctionId}|${start}|${end}`;
+            })
+            .filter((identity): identity is string => Boolean(identity)),
         );
+        const workingPreviewItems = (
+          workingPreviewItemsByDate.get(dateKey) ?? []
+        ).map((item) => {
+          const start = item.startTime ? new Date(item.startTime).getTime() : NaN;
+          const end = item.endTime ? new Date(item.endTime).getTime() : NaN;
+          const identity =
+            item.jobFunctionId !== null &&
+            Number.isFinite(start) &&
+            Number.isFinite(end)
+              ? `${item.jobFunctionId}|${start}|${end}`
+              : null;
+
+          return identity && planningCreatedShiftIdentities.has(identity)
+            ? { ...item, replacesPlanningCreatedShift: true }
+            : item;
+        });
+
         return {
           ...day,
-          scheduledShifts: scheduledDay?.shifts ?? [],
-          scheduledShiftCount: scheduledDay?.shiftCount ?? 0,
-          scheduledAssignedShiftCount: scheduledDay?.assignedShiftCount ?? 0,
-          scheduledUnassignedShiftCount: scheduledDay?.unassignedShiftCount ?? 0,
-          workingPreviewItems:
-            workingPreviewItemsByDate.get(getMonthPlanDayDateKey(day)) ?? [],
+          scheduledShifts: visibleScheduledShifts,
+          scheduledShiftCount: visibleScheduledShifts.length,
+          scheduledAssignedShiftCount: visibleScheduledShifts.filter(
+            (shift) => shift.userId !== null,
+          ).length,
+          scheduledUnassignedShiftCount: visibleScheduledShifts.filter(
+            (shift) => shift.userId === null,
+          ).length,
+          workingPreviewItems,
         };
       }),
-    [monthPlan, scheduledShiftDaysByDate, workingPreviewItemsByDate],
+    [
+      monthPlan,
+      scheduledShiftDaysByDate,
+      selectedDraftId,
+      workingPreviewItemsByDate,
+    ],
   );
   const leadingBlankCount = getCalendarLeadingBlankCount(year, month);
   const calendarWeeks = useMemo(

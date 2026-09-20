@@ -3,6 +3,7 @@ import {
   EXISTING_SHIFT_BLOCK_REASON,
   getPublicationSafetyInstantRange,
   PAST_DRAFT_ITEM_BLOCK_REASON,
+  partitionPublicationDraftItems,
   type PublicationSafetyDraftItem,
 } from './shift-planning-publication-safety';
 
@@ -100,4 +101,33 @@ describe('shift planning publication safety', () => {
       end: new Date('2026-08-06T21:00:00.000Z'),
     });
   });
+
+  it('holder overståede poster uden for aktive blokeringer og oprettelse', () => {
+    const past = buildItem({ dateKey: '2026-08-04' });
+    const ready = buildItem({ dateKey: '2026-08-05' });
+    const blocked = buildItem({
+      dateKey: '2026-08-05',
+      canBecomeShift: false,
+      blockReasons: ['Reel blokering'],
+    });
+
+    applyPublicationSafetyBlocks(
+      [past, ready, blocked],
+      [],
+      new Date('2026-08-05T08:00:00.000Z'),
+    );
+
+    const partition = partitionPublicationDraftItems([
+      past,
+      ready,
+      blocked,
+    ]);
+
+    expect(partition.pastItems).toEqual([past]);
+    expect(partition.publishableItems).toEqual([ready]);
+    expect(partition.blockedItems).toEqual([blocked]);
+    expect(past.canBecomeShift).toBe(false);
+    expect(past.blockReasons).toContain(PAST_DRAFT_ITEM_BLOCK_REASON);
+  });
+
 });

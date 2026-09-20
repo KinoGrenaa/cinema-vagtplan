@@ -67,6 +67,26 @@ function addBlockReason<T extends PublicationSafetyDraftItem>(
   item.canBecomeShift = false;
 }
 
+export function isPastPublicationDraftItem(
+  item: PublicationSafetyDraftItem,
+) {
+  return item.blockReasons.includes(PAST_DRAFT_ITEM_BLOCK_REASON);
+}
+
+export function partitionPublicationDraftItems<
+  T extends PublicationSafetyDraftItem,
+>(items: T[]) {
+  const pastItems = items.filter(isPastPublicationDraftItem);
+  const currentItems = items.filter((item) => !isPastPublicationDraftItem(item));
+
+  return {
+    pastItems,
+    currentItems,
+    publishableItems: currentItems.filter((item) => item.canBecomeShift),
+    blockedItems: currentItems.filter((item) => !item.canBecomeShift),
+  };
+}
+
 export function getPublicationSafetyInstantRange(
   items: PublicationSafetyDraftItem[],
 ) {

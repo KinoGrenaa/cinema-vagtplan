@@ -15,6 +15,7 @@ import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
 import {
   applyPublicationSafetyBlocks,
   getPublicationSafetyInstantRange,
+  partitionPublicationDraftItems,
   type PublicationSafetyExistingShift,
 } from './shift-planning-publication-safety';
 import {
@@ -553,13 +554,24 @@ export class ShiftPlanningDraftPublicationService {
       }
     }
 
-    const blockedItems = previewItems.filter((item) => !item.canBecomeShift);
+    const {
+      pastItems,
+      publishableItems,
+      blockedItems,
+    } = partitionPublicationDraftItems(previewItems);
     const hasDraftItems = previewItems.length > 0;
+    const hasPublishableItems = publishableItems.length > 0;
     const canPublishLater =
-      isDraftStatus && hasDraftItems && blockedItems.length === 0;
+      isDraftStatus && hasPublishableItems && blockedItems.length === 0;
     const blockingReasons = getUniqueMessages([
       ...(!isDraftStatus ? ['Forslaget er ikke åbent længere.'] : []),
       ...(!hasDraftItems ? ['Kladden indeholder ingen kladdeposter.'] : []),
+      ...(hasDraftItems &&
+      !hasPublishableItems &&
+      blockedItems.length === 0 &&
+      pastItems.length > 0
+        ? ['Kladden indeholder ingen fremtidige vagter, der kan oprettes.']
+        : []),
       ...blockedItems.flatMap((item) => item.blockReasons),
     ]);
 
@@ -575,7 +587,7 @@ export class ShiftPlanningDraftPublicationService {
       summary: {
         canPublishLater,
         itemCount: previewItems.length,
-        publishableItemCount: previewItems.length - blockedItems.length,
+        publishableItemCount: publishableItems.length,
         blockedItemCount: blockedItems.length,
         validationErrorCount: validation.summary.errorCount,
         validationWarningCount: validation.summary.warningCount,
@@ -704,13 +716,21 @@ export class ShiftPlanningDraftPublicationService {
       }
       applyPublicationSafetyBlocks(publishItems, existingShifts);
 
-      const blockedPublishItem = publishItems.find(
-        (item) => !item.canBecomeShift,
-      );
+      const {
+        publishableItems,
+        blockedItems,
+      } = partitionPublicationDraftItems(publishItems);
+
+      const blockedPublishItem = blockedItems[0];
       if (blockedPublishItem) {
         throw new BadRequestException(
           blockedPublishItem.blockReasons[0] ??
             'Ret de markerede punkter, før vagterne oprettes.',
+        );
+      }
+      if (publishableItems.length === 0) {
+        throw new BadRequestException(
+          'Kladden indeholder ingen fremtidige vagter, der kan oprettes.',
         );
       }
 
@@ -718,7 +738,7 @@ export class ShiftPlanningDraftPublicationService {
       const affectedDateKeys = new Set<string>();
       const jobFunctionNames = new Set<string>();
 
-      for (const item of publishItems) {
+      for (const item of publishableItems) {
 
         if (!item.canBecomeShift || !item.startTime || !item.endTime) {
           throw new BadRequestException(

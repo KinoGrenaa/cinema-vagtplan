@@ -131,6 +131,7 @@ export type ShiftMonthOverviewShift = {
   jobFunctionNameSnapshot: string | null;
   jobFunctionColorSnapshot: string | null;
   timingSource: string;
+  isPlanningCreated: boolean;
   user: ShiftMonthOverviewUser | null;
   jobFunction: ShiftMonthOverviewJobFunction | null;
 };
@@ -186,6 +187,7 @@ export type MonthPlanResponse = {
 
 export type ShiftPlanningWorkingPreviewItem = {
   previewItemId: string;
+  replacesPlanningCreatedShift?: boolean;
   dateKey: string;
   monthPlanDayId: number | null;
   scheduleTemplateId: number | null;

@@ -10,6 +10,7 @@ import {
   EXISTING_SHIFT_BLOCK_REASON,
   getPublicationSafetyInstantRange,
   PAST_DRAFT_ITEM_BLOCK_REASON,
+  partitionPublicationDraftItems,
 } from './shift-planning-publication-safety';
 
 type WorkingPreviewWarning = {
@@ -490,8 +491,13 @@ export async function buildShiftPlanningMonthWorkingPreview(
     }
   }
 
-  const readyItemCount = items.filter((item) => item.canBecomeShift).length;
-  const blockedItemCount = items.length - readyItemCount;
+  const {
+    pastItems,
+    publishableItems,
+    blockedItems,
+  } = partitionPublicationDraftItems(items);
+  const readyItemCount = publishableItems.length;
+  const blockedItemCount = blockedItems.length;
 
   return {
     cinemaId,
@@ -507,9 +513,7 @@ export async function buildShiftPlanningMonthWorkingPreview(
       existingShiftCount: items.filter((item) =>
         item.blockReasons.includes(EXISTING_SHIFT_BLOCK_REASON),
       ).length,
-      pastItemCount: items.filter((item) =>
-        item.blockReasons.includes(PAST_DRAFT_ITEM_BLOCK_REASON),
-      ).length,
+      pastItemCount: pastItems.length,
       warningCount: generated.warnings.length,
       hasProblems: blockedItemCount > 0 || generated.warnings.length > 0,
     },

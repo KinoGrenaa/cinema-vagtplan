@@ -13,7 +13,11 @@ describe('findShiftMonthOverview', () => {
         jobFunctionId: 2,
         jobFunctionNameSnapshot: 'A Vagt Hverdag',
         jobFunctionColorSnapshot: '#2563eb',
-        timingSource: 'MANUAL',
+        timingSource: 'JOB_FUNCTION_RULE',
+        timingRuleSnapshot: {
+          source: 'SHIFT_PLANNING_DRAFT',
+          draftId: 10,
+        },
         user: {
           id: 4,
           firstName: 'Anna',
@@ -38,6 +42,7 @@ describe('findShiftMonthOverview', () => {
         jobFunctionNameSnapshot: 'Lukkevagt',
         jobFunctionColorSnapshot: '#f59e0b',
         timingSource: 'MANUAL',
+        timingRuleSnapshot: null,
         user: null,
         jobFunction: {
           id: 3,
@@ -66,6 +71,18 @@ describe('findShiftMonthOverview', () => {
       assignedShiftCount: 0,
       unassignedShiftCount: 1,
     });
+    expect(result.days.find((day) => day.dateKey === '2026-08-05')?.shifts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 1,
+          isPlanningCreated: true,
+        }),
+        expect.objectContaining({
+          id: 2,
+          isPlanningCreated: false,
+        }),
+      ]),
+    );
     expect(prisma.shift.findMany).toHaveBeenCalledTimes(1);
   });
 
