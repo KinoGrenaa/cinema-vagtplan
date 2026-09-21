@@ -1,5 +1,11 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Prisma,
+  ShiftTradeResolutionReason,
+} from '@prisma/client';
 
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { PushService } from '../../push/push.service';
@@ -75,6 +81,8 @@ type RemainingShift = {
   endTime: Date;
 };
 
+import { resolveOpenShiftLinkedActions } from './shift-linked-actions';
+
 type AuthUser = {
   sub?: number;
   id?: number;
@@ -95,6 +103,8 @@ export type PlanningShiftReplacementExistingItem = {
   userName: string | null;
   jobFunctionId: number | null;
   jobFunctionName: string;
+  openShiftTradeCount?: number;
+  pendingStaffingRequestCount?: number;
   canRemove: boolean;
   blockReasons: string[];
 };
@@ -111,6 +121,7 @@ export type PlanningShiftReplacementProposedItem = {
   jobFunctionColor: string | null;
   requiredIndex: number;
   sourceMovieShowingIds: number[];
+  satisfiedByExistingShiftId?: number | null;
   canCreate: boolean;
   blockReasons: string[];
 };
@@ -139,6 +150,7 @@ export type PlanningShiftReplacementPreview = {
     retainedExistingShiftCount: number;
     proposedShiftCount: number;
     creatableShiftCount: number;
+    satisfiedProposedShiftCount: number;
     blockedProposedShiftCount: number;
     ignoredPastProposedShiftCount: number;
     affectedDateCount: number;
@@ -261,23 +273,28 @@ export function buildPlanningShiftReplacementRange(
   };
 }
 
+
+export function getPlanningShiftReplacementExistingBlockReasons(input: {
+  timeEntryCount: number | bigint;
+  shiftTradeCount: number | bigint;
+  staffingRequestCount: number | bigint;
+}) {
+  const blockReasons: string[] = [];
+
+  if (Number(input.timeEntryCount) > 0) {
+    blockReasons.push('Vagten har tidsregistrering og kan ikke erstattes her.');
+  }
+
+  return blockReasons;
+}
+
 function buildExistingItem(
   row: ExistingShiftRow,
   _now: Date,
 ): PlanningShiftReplacementExistingItem {
   const startTime = toDate(row.startTime);
   const endTime = toDate(row.endTime);
-  const blockReasons: string[] = [];
-
-  if (Number(row.timeEntryCount) > 0) {
-    blockReasons.push('Vagten har tidsregistrering og kan ikke erstattes her.');
-  }
-  if (Number(row.shiftTradeCount) > 0) {
-    blockReasons.push('Vagten indgår i en vagtbytteanmodning.');
-  }
-  if (Number(row.staffingRequestCount) > 0) {
-    blockReasons.push('Vagten indgår i en bemandingsforespørgsel.');
-  }
+  const blockReasons = getPlanningShiftReplacementExistingBlockReasons(row);
 
   return {
     shiftId: toRequiredNumber(row.id),
@@ -293,6 +310,8 @@ function buildExistingItem(
     userName: getUserName(row),
     jobFunctionId: toNumber(row.jobFunctionId),
     jobFunctionName: row.jobFunctionNameSnapshot,
+    openShiftTradeCount: Number(row.shiftTradeCount),
+    pendingStaffingRequestCount: Number(row.staffingRequestCount),
     canRemove: blockReasons.length === 0,
     blockReasons: unique(blockReasons),
   };
@@ -429,6 +448,9 @@ export function buildPlanningShiftReplacementPreviewFromItems(
 ): PlanningShiftReplacementPreview {
   const blockedExisting = existingItems.filter((item) => !item.canRemove);
   const blockedProposed = proposedItems.filter((item) => !item.canCreate);
+  const satisfiedProposed = proposedItems.filter(
+    (item) => item.satisfiedByExistingShiftId != null,
+  );
   const blockingReasons = unique([
     ...(existingItems.length === 0
       ? ['Der er ingen fremtidige planlægningsoprettede vagter at erstatte i perioden.']
@@ -462,7 +484,12 @@ export function buildPlanningShiftReplacementPreviewFromItems(
       retainedExistingShiftCount:
         retainedPast.retainedExistingShiftCount ?? 0,
       proposedShiftCount: proposedItems.length,
-      creatableShiftCount: proposedItems.filter((item) => item.canCreate).length,
+      creatableShiftCount: proposedItems.filter(
+        (item) =>
+          item.canCreate &&
+          item.satisfiedByExistingShiftId == null,
+      ).length,
+      satisfiedProposedShiftCount: satisfiedProposed.length,
       blockedProposedShiftCount: blockedProposed.length,
       ignoredPastProposedShiftCount:
         retainedPast.ignoredPastProposedShiftCount ?? 0,
@@ -581,11 +608,13 @@ async function findExistingReplacementRows(
         SELECT CAST(COUNT(*) AS INTEGER)
         FROM "ShiftTrade" st
         WHERE st."shiftId" = s.id
+          AND st.status = 'OPEN'
       ) AS "shiftTradeCount",
       (
         SELECT CAST(COUNT(*) AS INTEGER)
         FROM "StaffingRequest" sr
         WHERE sr."shiftId" = s.id
+          AND sr.status = 'PENDING'
       ) AS "staffingRequestCount"
     FROM "Shift" s
     LEFT JOIN "User" u ON u.id = s."userId"
@@ -604,6 +633,48 @@ async function findExistingReplacementRows(
   }
 
   return prisma.$queryRaw<ExistingShiftRow[]>(baseSql);
+}
+
+
+export function markProposedItemsSatisfiedByRemainingShifts(
+  proposedItems: PlanningShiftReplacementProposedItem[],
+  remainingShifts: RemainingShift[],
+) {
+  for (const item of proposedItems) {
+    if (
+      !item.canCreate ||
+      !item.startTime ||
+      !item.endTime ||
+      item.jobFunctionId === null
+    ) {
+      continue;
+    }
+
+    const matchingShiftIndex = remainingShifts.findIndex(
+      (shift) =>
+        shift.jobFunctionId === item.jobFunctionId &&
+        shift.userId === item.userId &&
+        shift.startTime.getTime() === item.startTime!.getTime() &&
+        shift.endTime.getTime() === item.endTime!.getTime(),
+    );
+
+    if (matchingShiftIndex < 0) {
+      continue;
+    }
+
+    const [matchingShift] = remainingShifts.splice(matchingShiftIndex, 1);
+    item.satisfiedByExistingShiftId = matchingShift.id;
+  }
+
+  return proposedItems;
+}
+
+export function getPlanningShiftReplacementItemsToCreate(
+  proposedItems: PlanningShiftReplacementProposedItem[],
+) {
+  return proposedItems.filter(
+    (item) => item.satisfiedByExistingShiftId == null,
+  );
 }
 
 async function applyUserAndRemainingShiftSafety(
@@ -652,6 +723,11 @@ async function applyUserAndRemainingShiftSafety(
       }));
   }
 
+  markProposedItemsSatisfiedByRemainingShifts(
+    proposedItems,
+    remainingShifts,
+  );
+
   for (const item of proposedItems) {
     if (
       !item.canCreate ||
@@ -659,6 +735,10 @@ async function applyUserAndRemainingShiftSafety(
       !item.endTime ||
       item.jobFunctionId === null
     ) {
+      continue;
+    }
+
+    if (item.satisfiedByExistingShiftId != null) {
       continue;
     }
 
@@ -943,6 +1023,11 @@ export async function replacePlanningShifts(
   );
   const now = input.now ?? new Date();
   const actorUserId = Number(user.sub ?? user.id);
+  if (!Number.isInteger(actorUserId) || actorUserId <= 0) {
+    throw new BadRequestException(
+      'Brugeren mangler et gyldigt ID til erstatningen.',
+    );
+  }
 
   const result = await dependencies.prisma
     .$transaction(
@@ -1033,9 +1118,37 @@ export async function replacePlanningShifts(
         );
         assertPlanningShiftReplacementCanExecute(preview);
 
+        const proposedItemsToCreate =
+          getPlanningShiftReplacementItemsToCreate(preview.proposedItems);
+
         const removedShiftIds = preview.existingItems.map(
           (item) => item.shiftId,
         );
+
+        const linkedActionResults: Array<{
+          shiftId: number;
+          linkedActions: Awaited<
+            ReturnType<typeof resolveOpenShiftLinkedActions>
+          >;
+        }> = [];
+
+        for (const shiftId of removedShiftIds) {
+          const linkedActions = await resolveOpenShiftLinkedActions(
+            tx,
+            {
+              cinemaId: input.cinemaId,
+              shiftId,
+              resolvedByUserId: actorUserId,
+              resolutionReason:
+                ShiftTradeResolutionReason.SHIFT_DELETED,
+            },
+          );
+          linkedActionResults.push({
+            shiftId,
+            linkedActions,
+          });
+        }
+
         const deletedRows = await tx.$queryRaw<
           Array<{ id: number | bigint }>
         >(Prisma.sql`
@@ -1053,7 +1166,7 @@ export async function replacePlanningShifts(
         }
 
         const createdShiftIds: number[] = [];
-        for (const item of preview.proposedItems) {
+        for (const item of proposedItemsToCreate) {
           if (
             !item.canCreate ||
             !item.startTime ||
@@ -1117,7 +1230,7 @@ export async function replacePlanningShifts(
           createdShiftIds.push(createdShiftId);
         }
 
-        if (createdShiftIds.length !== preview.proposedItems.length) {
+        if (createdShiftIds.length !== proposedItemsToCreate.length) {
           throw new BadRequestException(
             'Ikke alle nye vagter blev oprettet. Hele erstatningen er annulleret.',
           );
@@ -1166,6 +1279,7 @@ export async function replacePlanningShifts(
           preview,
           removedShiftIds,
           createdShiftIds,
+          linkedActionResults,
           affectedDateKeys,
           assignedUserIds: Array.from(
             new Set(
@@ -1200,6 +1314,56 @@ export async function replacePlanningShifts(
     createdShiftIds: result.createdShiftIds,
     affectedDateKeys: result.affectedDateKeys,
   });
+
+  for (const linkedActionResult of result.linkedActionResults) {
+    const { shiftId, linkedActions } = linkedActionResult;
+
+    if (linkedActions.tradeIds.length > 0) {
+      dependencies.realtimeGateway.notifyCinema(
+        input.cinemaId,
+        'shiftTradesUpdated',
+        {
+          shiftId,
+          resolved: true,
+        },
+      );
+    }
+
+    if (linkedActions.staffingRequestIds.length > 0) {
+      dependencies.realtimeGateway.notifyCinema(
+        input.cinemaId,
+        'staffingRequestsUpdated',
+        {
+          shiftId,
+          resolved: true,
+        },
+      );
+    }
+
+    for (const notice of linkedActions.cancellationNotices) {
+      await dependencies.pushService.sendToUserInCinema(
+        notice.userId,
+        input.cinemaId,
+        {
+          title: notice.title,
+          body: notice.message,
+          url: notice.linkUrl,
+        },
+      );
+    }
+
+    for (const notificationUserId of linkedActions.notificationUserIds) {
+      dependencies.realtimeGateway.notifyUser(
+        notificationUserId,
+        'notificationsUpdated',
+        {
+          cinemaId: input.cinemaId,
+          shiftId,
+          resolved: true,
+        },
+      );
+    }
+  }
 
   await Promise.allSettled(
     result.assignedUserIds.map((userId) =>

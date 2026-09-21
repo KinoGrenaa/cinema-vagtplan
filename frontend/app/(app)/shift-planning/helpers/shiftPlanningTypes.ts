@@ -187,7 +187,8 @@ export type MonthPlanResponse = {
 
 export type ShiftPlanningWorkingPreviewItem = {
   previewItemId: string;
-  replacesPlanningCreatedShift?: boolean;
+  matchesExistingShift?: boolean;
+  changesPlanningCreatedShift?: boolean;
   dateKey: string;
   monthPlanDayId: number | null;
   scheduleTemplateId: number | null;

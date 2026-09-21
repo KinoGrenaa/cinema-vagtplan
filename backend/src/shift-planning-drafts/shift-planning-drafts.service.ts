@@ -89,6 +89,7 @@ type DraftValidationIssue = {
 type DraftValidationInterval = {
   itemId: number;
   userId: number | null;
+  jobFunctionId: number | null;
   dateKey: string;
   start: Date | null;
   end: Date | null;
@@ -375,11 +376,13 @@ function buildDraftItemInterval(row: any): DraftValidationInterval {
   const dateKey = toIsoDateOnly(date);
   const plannedStartMinute = toNullableNumber(row.plannedStartMinute);
   const plannedEndMinute = toNullableNumber(row.plannedEndMinute);
+  const jobFunctionId = toNullableNumber(row.jobFunctionId);
 
   if (plannedStartMinute === null || plannedEndMinute === null) {
     return {
       itemId: Number(row.id),
       userId: toNullableNumber(row.userId),
+      jobFunctionId,
       dateKey,
       start: null,
       end: null,
@@ -396,6 +399,7 @@ function buildDraftItemInterval(row: any): DraftValidationInterval {
     return {
       itemId: Number(row.id),
       userId: toNullableNumber(row.userId),
+      jobFunctionId,
       dateKey,
       start: null,
       end: null,
@@ -403,6 +407,7 @@ function buildDraftItemInterval(row: any): DraftValidationInterval {
       plannedEndMinute,
     };
   }
+
   const start = buildCopenhagenDateTimeFromMinute(
     date,
     plannedStartMinute,
@@ -415,6 +420,7 @@ function buildDraftItemInterval(row: any): DraftValidationInterval {
   return {
     itemId: Number(row.id),
     userId: toNullableNumber(row.userId),
+    jobFunctionId,
     dateKey,
     start,
     end,
@@ -423,6 +429,34 @@ function buildDraftItemInterval(row: any): DraftValidationInterval {
   };
 }
 
+export function isExactDraftExistingShiftMatch(
+  interval: Pick<
+    DraftValidationInterval,
+    "userId" | "jobFunctionId" | "start" | "end"
+  >,
+  shift: {
+    userId: number | bigint | null;
+    jobFunctionId: number | bigint | null;
+    startTime: Date | string;
+    endTime: Date | string;
+  },
+) {
+  if (
+    interval.userId === null ||
+    interval.jobFunctionId === null ||
+    !interval.start ||
+    !interval.end
+  ) {
+    return false;
+  }
+
+  return (
+    toNullableNumber(shift.userId) === interval.userId &&
+    toNullableNumber(shift.jobFunctionId) === interval.jobFunctionId &&
+    toDate(shift.startTime).getTime() === interval.start.getTime() &&
+    toDate(shift.endTime).getTime() === interval.end.getTime()
+  );
+}
 
 function buildDateTimeFromMinute(dateValue: unknown, minuteValue: unknown) {
   const date = toDate(dateValue);
@@ -801,7 +835,7 @@ export class ShiftPlanningDraftsService {
 
       if (userIds.length > 0) {
         const existingShifts = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-          SELECT id, "userId", "startTime", "endTime"
+          SELECT id, "userId", "jobFunctionId", "startTime", "endTime"
           FROM "Shift"
           WHERE "cinemaId" = ${cinemaId}
             AND "userId" IN (${Prisma.join(userIds)})
@@ -817,6 +851,10 @@ export class ShiftPlanningDraftsService {
 
           for (const shift of existingShifts) {
             if (Number(shift.userId) !== interval.userId) {
+              continue;
+            }
+
+            if (isExactDraftExistingShiftMatch(interval, shift)) {
               continue;
             }
 

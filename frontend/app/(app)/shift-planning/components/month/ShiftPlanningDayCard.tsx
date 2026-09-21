@@ -84,13 +84,25 @@ function getWorkingShiftStatus(item: ShiftPlanningWorkingPreviewItem) {
   );
 
   if (
-    item.replacesPlanningCreatedShift &&
+    item.matchesExistingShift &&
     remainingReasons.length === 0
   ) {
     return {
       label: "Samme som nu",
       classes:
         "bg-violet-100 text-violet-800 dark:bg-violet-950/70 dark:text-violet-200",
+    };
+  }
+
+
+  if (
+    item.changesPlanningCreatedShift &&
+    remainingReasons.length === 0
+  ) {
+    return {
+      label: "Ændres ved Erstat",
+      classes:
+        "bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200",
     };
   }
 

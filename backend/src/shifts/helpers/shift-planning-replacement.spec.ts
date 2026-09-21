@@ -1,12 +1,15 @@
 import {
+  getPlanningShiftReplacementExistingBlockReasons,
   assertPlanningShiftReplacementCanExecute,
-  assertPlanningShiftReplacementConfirmation,
-  buildPlanningShiftReplacementPreviewFromItems,
-  buildPlanningShiftReplacementRange,
-  partitionPlanningShiftReplacementByNow,
-  PLANNING_SHIFT_REPLACEMENT_CONFIRMATION_TEXT,
-  type PlanningShiftReplacementExistingItem,
-  type PlanningShiftReplacementProposedItem,
+    assertPlanningShiftReplacementConfirmation,
+    buildPlanningShiftReplacementPreviewFromItems,
+    buildPlanningShiftReplacementRange,
+    partitionPlanningShiftReplacementByNow,
+    PLANNING_SHIFT_REPLACEMENT_CONFIRMATION_TEXT,
+    type PlanningShiftReplacementExistingItem,
+    type PlanningShiftReplacementProposedItem,
+    getPlanningShiftReplacementItemsToCreate,
+    markProposedItemsSatisfiedByRemainingShifts,
 } from './shift-planning-replacement';
 
 const checkedAt = new Date('2026-08-07T07:00:00.000Z');
@@ -405,6 +408,86 @@ describe('shift planning replacement preview', () => {
     expect(() =>
       assertPlanningShiftReplacementCanExecute(preview),
     ).toThrow('ingen fremtidige planlægningsoprettede vagter');
+  });
+
+
+  it('beholder et præcist matchende tilbageværende skift som allerede opfyldt 1:1', () => {
+    const first = proposed();
+    const second = proposed({ draftItemId: 51 });
+    const remainingShifts = [
+      {
+        id: 900,
+        jobFunctionId: first.jobFunctionId,
+        userId: first.userId,
+        startTime: first.startTime as Date,
+        endTime: first.endTime as Date,
+      },
+    ];
+
+    markProposedItemsSatisfiedByRemainingShifts(
+      [first, second],
+      remainingShifts,
+    );
+
+    expect(first.satisfiedByExistingShiftId).toBe(900);
+    expect(second.satisfiedByExistingShiftId).toBeUndefined();
+    expect(remainingShifts).toEqual([]);
+    expect(
+      getPlanningShiftReplacementItemsToCreate([first, second]),
+    ).toEqual([second]);
+  });
+
+  it('tæller allerede opfyldte kladdeposter som beholdt og ikke som nye vagter', () => {
+    const range = buildPlanningShiftReplacementRange(
+      'DAY',
+      '2026-08-17',
+      2026,
+      8,
+    );
+    const alreadySatisfied = proposed({
+      satisfiedByExistingShiftId: 900,
+    });
+    const preview = buildPlanningShiftReplacementPreviewFromItems(
+      1,
+      7,
+      'Test',
+      range,
+      [existing()],
+      [alreadySatisfied],
+      checkedAt,
+    );
+
+    expect(preview.summary).toMatchObject({
+      proposedShiftCount: 1,
+      creatableShiftCount: 0,
+      satisfiedProposedShiftCount: 1,
+      blockedProposedShiftCount: 0,
+      canReplace: true,
+    });
+    expect(preview.blockingReasons).toEqual([]);
+  });
+
+
+  it('aktive vagtbytter og bemandingsforespørgsler er ikke i sig selv replacement-blokeringer', () => {
+    expect(
+      getPlanningShiftReplacementExistingBlockReasons({
+        timeEntryCount: 0,
+        shiftTradeCount: 3,
+        staffingRequestCount: 2,
+      }),
+    ).toEqual([]);
+  });
+
+  it('tidsregistrering forbliver en reel replacement-blokering', () => {
+    expect(
+      getPlanningShiftReplacementExistingBlockReasons({
+        timeEntryCount: 1,
+        shiftTradeCount: 3,
+        staffingRequestCount: 2,
+      }),
+    ).toContain(
+      'Vagten har tidsregistrering og kan ikke erstattes her.',
+    );
   });
 
 });

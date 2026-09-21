@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 
+import { formatDateKey } from "../../helpers/shiftPlanningHelpers";
+
 export type ShiftPlanningReplacementScope = "DAY" | "WEEK" | "MONTH";
 
 export type ShiftPlanningReplacementDraftOption = {
@@ -16,6 +18,8 @@ export type ShiftPlanningReplacementExistingItem = {
   userName: string | null;
   jobFunctionId: number | null;
   jobFunctionName: string;
+  openShiftTradeCount?: number;
+  pendingStaffingRequestCount?: number;
   canRemove: boolean;
   blockReasons: string[];
 };
@@ -32,6 +36,7 @@ export type ShiftPlanningReplacementProposedItem = {
   jobFunctionColor: string | null;
   requiredIndex: number;
   sourceMovieShowingIds: number[];
+  satisfiedByExistingShiftId?: number | null;
   canCreate: boolean;
   blockReasons: string[];
 };
@@ -55,6 +60,7 @@ export type ShiftPlanningReplacementPreview = {
     retainedExistingShiftCount: number;
     proposedShiftCount: number;
     creatableShiftCount: number;
+    satisfiedProposedShiftCount: number;
     blockedProposedShiftCount: number;
     ignoredPastProposedShiftCount: number;
     affectedDateCount: number;
@@ -133,6 +139,18 @@ export default function ShiftPlanningReplaceShiftsDialog({
   const blockedCount =
     (preview?.summary.blockedExistingShiftCount ?? 0) +
     (preview?.summary.blockedProposedShiftCount ?? 0);
+  const openShiftTradeCount =
+    preview?.existingItems.reduce(
+      (sum, item) => sum + (item.openShiftTradeCount ?? 0),
+      0,
+    ) ?? 0;
+  const pendingStaffingRequestCount =
+    preview?.existingItems.reduce(
+      (sum, item) => sum + (item.pendingStaffingRequestCount ?? 0),
+      0,
+    ) ?? 0;
+  const linkedActionCancellationCount =
+    openShiftTradeCount + pendingStaffingRequestCount;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/75 p-4">
@@ -154,7 +172,8 @@ export default function ShiftPlanningReplaceShiftsDialog({
           </h3>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
             Systemet fjerner kun fremtidige vagter, der er oprettet gennem
-            vagtplanlægningen, og opretter derefter kladdens fremtidige vagter.
+            vagtplanlægningen, og opretter derefter kladdens fremtidige vagter,
+            medmindre en eksisterende vagt allerede matcher kladden præcist.
             Vagter, der allerede er startet, og manuelle vagter bliver stående.
             Begge dele gennemføres samlet eller slet ikke.
           </p>
@@ -224,7 +243,7 @@ export default function ShiftPlanningReplaceShiftsDialog({
 
           {preview && (
             <>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/25">
                   <p className="text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-300">
                     Fjernes
@@ -238,7 +257,15 @@ export default function ShiftPlanningReplaceShiftsDialog({
                     Oprettes
                   </p>
                   <p className="mt-1 text-2xl font-extrabold text-violet-900 dark:text-violet-100">
-                    {preview.summary.proposedShiftCount}
+                    {preview.summary.creatableShiftCount}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/25">
+                  <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                    Allerede korrekt
+                  </p>
+                  <p className="mt-1 text-2xl font-extrabold text-emerald-900 dark:text-emerald-100">
+                    {preview.summary.satisfiedProposedShiftCount}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/25">
@@ -268,10 +295,24 @@ export default function ShiftPlanningReplaceShiftsDialog({
               </div>
 
               <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                Periode: {preview.startDateKey} – {preview.endDateKey} ·{" "}
+                Periode: {formatDateKey(preview.startDateKey)} –{" "}
+                {formatDateKey(preview.endDateKey)} ·{" "}
                 {preview.summary.affectedDateCount} berørte{" "}
                 {preview.summary.affectedDateCount === 1 ? "dato" : "datoer"}
               </p>
+
+              {preview.summary.satisfiedProposedShiftCount > 0 && (
+                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100">
+                  <span className="font-bold">Eksisterende vagter beholdes.</span>{" "}
+                  {preview.summary.satisfiedProposedShiftCount}{" "}
+                  {preview.summary.satisfiedProposedShiftCount === 1
+                    ? "kladdevagt er allerede opfyldt"
+                    : "kladdevagter er allerede opfyldt"}{" "}
+                  af en eksisterende vagt med samme jobfunktion, tider og
+                  medarbejder. Den eksisterende vagt ændres ikke, og der
+                  oprettes ikke en dublet.
+                </div>
+              )}
 
               {(preview.summary.retainedExistingShiftCount > 0 ||
                 preview.summary.ignoredPastProposedShiftCount > 0) && (
@@ -297,6 +338,36 @@ export default function ShiftPlanningReplaceShiftsDialog({
                       over.
                     </>
                   )}
+                </div>
+              )}
+
+              {linkedActionCancellationCount > 0 && (
+                <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                  <span className="font-bold">
+                    Aktive forløb annulleres automatisk.
+                  </span>{" "}
+                  Erstatningen annullerer{" "}
+                  {openShiftTradeCount > 0 && (
+                    <>
+                      {openShiftTradeCount}{" "}
+                      {openShiftTradeCount === 1
+                        ? "åbent vagtbytte"
+                        : "åbne vagtbytter"}
+                    </>
+                  )}
+                  {openShiftTradeCount > 0 &&
+                    pendingStaffingRequestCount > 0 &&
+                    " og "}
+                  {pendingStaffingRequestCount > 0 && (
+                    <>
+                      {pendingStaffingRequestCount}{" "}
+                      {pendingStaffingRequestCount === 1
+                        ? "aktiv bemandingsforespørgsel"
+                        : "aktive bemandingsforespørgsler"}
+                    </>
+                  )}
+                  . Historikken bevares, og medarbejdernes relevante
+                  notifikationer opdateres.
                 </div>
               )}
 
@@ -372,7 +443,7 @@ export default function ShiftPlanningReplaceShiftsDialog({
 
                 <section className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900 dark:bg-violet-950/15">
                   <h4 className="font-extrabold text-violet-900 dark:text-violet-100">
-                    Oprettes fra kladden
+                    Ny plan fra kladden
                   </h4>
                   <div className="mt-3 space-y-2">
                     {preview.proposedItems.length === 0 ? (
@@ -384,9 +455,11 @@ export default function ShiftPlanningReplaceShiftsDialog({
                         <div
                           key={item.draftItemId}
                           className={`rounded-xl border p-3 ${
-                            item.canCreate
-                              ? "border-violet-200 bg-white dark:border-violet-900 dark:bg-gray-950"
-                              : "border-red-500 bg-red-100 dark:border-red-700 dark:bg-red-950/50"
+                            item.satisfiedByExistingShiftId != null
+                              ? "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/25"
+                              : item.canCreate
+                                ? "border-violet-200 bg-white dark:border-violet-900 dark:bg-gray-950"
+                                : "border-red-500 bg-red-100 dark:border-red-700 dark:bg-red-950/50"
                           }`}
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -408,12 +481,18 @@ export default function ShiftPlanningReplaceShiftsDialog({
                             </div>
                             <span
                               className={`rounded-full px-2 py-1 text-xs font-bold ${
-                                item.canCreate
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
-                                  : "bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"
+                                item.satisfiedByExistingShiftId != null
+                                  ? "bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
+                                  : item.canCreate
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                                    : "bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100"
                               }`}
                             >
-                              {item.canCreate ? "Kan oprettes" : "Blokeret"}
+                              {item.satisfiedByExistingShiftId != null
+                                ? "Beholdes"
+                                : item.canCreate
+                                  ? "Kan oprettes"
+                                  : "Blokeret"}
                             </span>
                           </div>
                           {item.blockReasons.length > 0 && (

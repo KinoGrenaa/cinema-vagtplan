@@ -365,38 +365,84 @@ export default function ShiftPlanningPage() {
             ? []
             : allScheduledShifts.filter((shift) => shift.isPlanningCreated);
         const visibleScheduledShifts = allScheduledShifts;
-        const planningCreatedShiftIdentities = new Set(
-          planningCreatedShifts
-            .map((shift) => {
-              const start = new Date(shift.startTime).getTime();
-              const end = new Date(shift.endTime).getTime();
-              if (
-                shift.jobFunctionId === null ||
-                !Number.isFinite(start) ||
-                !Number.isFinite(end)
-              ) {
-                return null;
-              }
-              return `${shift.jobFunctionId}|${start}|${end}`;
-            })
-            .filter((identity): identity is string => Boolean(identity)),
-        );
-        const workingPreviewItems = (
-          workingPreviewItemsByDate.get(dateKey) ?? []
-        ).map((item) => {
-          const start = item.startTime ? new Date(item.startTime).getTime() : NaN;
-          const end = item.endTime ? new Date(item.endTime).getTime() : NaN;
-          const identity =
-            item.jobFunctionId !== null &&
-            Number.isFinite(start) &&
-            Number.isFinite(end)
-              ? `${item.jobFunctionId}|${start}|${end}`
-              : null;
+        const remainingExactScheduledShifts =
+          selectedDraftId === null ? [] : [...allScheduledShifts];
+        const remainingPlanningCreatedShifts = [...planningCreatedShifts];
+        const previewItemsForDay =
+          workingPreviewItemsByDate.get(dateKey) ?? [];
 
-          return identity && planningCreatedShiftIdentities.has(identity)
-            ? { ...item, replacesPlanningCreatedShift: true }
-            : item;
-        });
+        const workingPreviewItemsWithExactMatches = previewItemsForDay.map(
+          (item) => {
+            const itemStart = item.startTime
+              ? new Date(item.startTime).getTime()
+              : NaN;
+            const itemEnd = item.endTime
+              ? new Date(item.endTime).getTime()
+              : NaN;
+
+            const matchingShiftIndex = remainingExactScheduledShifts.findIndex(
+              (shift) =>
+                item.jobFunctionId !== null &&
+                shift.jobFunctionId === item.jobFunctionId &&
+                shift.userId === item.userId &&
+                Number.isFinite(itemStart) &&
+                Number.isFinite(itemEnd) &&
+                new Date(shift.startTime).getTime() === itemStart &&
+                new Date(shift.endTime).getTime() === itemEnd,
+            );
+
+            if (matchingShiftIndex < 0) {
+              return item;
+            }
+
+            const [matchingShift] = remainingExactScheduledShifts.splice(
+              matchingShiftIndex,
+              1,
+            );
+            if (matchingShift.isPlanningCreated) {
+              const planningShiftIndex = remainingPlanningCreatedShifts.findIndex(
+                (shift) => shift.id === matchingShift.id,
+              );
+              if (planningShiftIndex >= 0) {
+                remainingPlanningCreatedShifts.splice(planningShiftIndex, 1);
+              }
+            }
+
+            return { ...item, matchesExistingShift: true };
+          },
+        );
+
+        const workingPreviewItems = workingPreviewItemsWithExactMatches.map(
+          (item) => {
+            if (item.matchesExistingShift) {
+              return item;
+            }
+
+            const itemStart = item.startTime
+              ? new Date(item.startTime).getTime()
+              : NaN;
+            const itemEnd = item.endTime
+              ? new Date(item.endTime).getTime()
+              : NaN;
+
+            const matchingShiftIndex = remainingPlanningCreatedShifts.findIndex(
+              (shift) =>
+                item.jobFunctionId !== null &&
+                shift.jobFunctionId === item.jobFunctionId &&
+                Number.isFinite(itemStart) &&
+                Number.isFinite(itemEnd) &&
+                new Date(shift.startTime).getTime() === itemStart &&
+                new Date(shift.endTime).getTime() === itemEnd,
+            );
+
+            if (matchingShiftIndex < 0) {
+              return item;
+            }
+
+            remainingPlanningCreatedShifts.splice(matchingShiftIndex, 1);
+            return { ...item, changesPlanningCreatedShift: true };
+          },
+        );
 
         return {
           ...day,

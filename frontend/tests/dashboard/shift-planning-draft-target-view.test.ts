@@ -30,14 +30,30 @@ test("kladdevisningen viser den nuværende vagtplan samtidig med målplanen", ()
   assert.match(dayCard, /Kladde ·/);
 });
 
-test("matchende planlægningsvagt markeres som samme som nu i kladden", () => {
-  assert.match(types, /replacesPlanningCreatedShift\?: boolean/);
+test("Samme som nu kræver samme medarbejder og matcher kun én eksisterende vagt", () => {
+  assert.match(types, /matchesExistingShift\?: boolean/);
   assert.match(
     page,
-    /planningCreatedShiftIdentities\.has\(identity\)[\s\S]{0,120}replacesPlanningCreatedShift: true/,
+    /shift\.userId === item\.userId/,
+  );
+  assert.match(
+    page,
+    /remainingPlanningCreatedShifts\.splice\(matchingShiftIndex, 1\)/,
   );
   assert.match(
     dayCard,
-    /item\.replacesPlanningCreatedShift[\s\S]{0,180}label: "Samme som nu"/,
+    /item\.matchesExistingShift[\s\S]{0,180}label: "Samme som nu"/,
+  );
+});
+
+test("ændret medarbejder på samme planlægningsvagt vises som Ændres ved Erstat", () => {
+  assert.match(types, /changesPlanningCreatedShift\?: boolean/);
+  assert.match(
+    page,
+    /workingPreviewItemsWithExactMatches[\s\S]*changesPlanningCreatedShift: true/,
+  );
+  assert.match(
+    dayCard,
+    /item\.changesPlanningCreatedShift[\s\S]{0,180}label: "Ændres ved Erstat"/,
   );
 });
