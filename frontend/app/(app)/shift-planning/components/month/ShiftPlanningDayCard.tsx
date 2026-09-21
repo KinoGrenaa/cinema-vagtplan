@@ -6,6 +6,7 @@ import {
   getTemplateDayForDate,
   getTemplateWeekParityWarning,
   getWeekdayName,
+  isDraftPlanningMissing,
   isToday,
 } from "../../helpers/shiftPlanningHelpers";
 import type {
@@ -137,8 +138,16 @@ export default function ShiftPlanningDayCard({
   onOpen,
 }: ShiftPlanningDayCardProps) {
   const dateKey = getMonthPlanDayDateKey(day);
+  const draftPlanningMissing =
+    showPlanningLayer && isDraftPlanningMissing(day);
   const statusDay = showPlanningLayer
-    ? day
+    ? draftPlanningMissing
+      ? {
+          ...day,
+          scheduledShiftCount: 0,
+          scheduledShifts: [],
+        }
+      : day
     : {
         ...day,
         scheduleTemplateId: null,

@@ -958,6 +958,7 @@ export default function ShiftPlanningPage() {
       throw new Error("Vælg en kladde, før ændringerne fortrydes.");
     }
     await openDraftWorkspace(selectedDraftId);
+    setDraftRefreshKey((current) => current + 1);
     infoDialogRef.current.show({
       title: "Ændringer fortrudt",
       description: "Kladdens senest gemte version vises igen.",

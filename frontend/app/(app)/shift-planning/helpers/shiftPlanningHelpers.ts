@@ -247,7 +247,7 @@ export function getMonthCalendarWeeks(
       (day) => day?.isActive && Boolean(day.scheduleTemplateId),
     ).length;
     const missingTemplateDays = weekDays.filter(
-      (day) => day && isPlanningMissing(day),
+      (day) => day && isDraftPlanningMissing(day),
     ).length;
     weeks.push({
       weekKey: `week-${index / 7}-${firstVisibleDateKey || "unknown"}`,
@@ -340,12 +340,18 @@ export function hasScheduledShifts(day: MonthPlanDay) {
   return (day.scheduledShiftCount ?? day.scheduledShifts?.length ?? 0) > 0;
 }
 
-export function isPlanningMissing(day: MonthPlanDay) {
+export function isDraftPlanningMissing(day: MonthPlanDay) {
   return (
     day.isActive &&
     !day.scheduleTemplateId &&
-    !hasScheduledShifts(day) &&
     !isPastDate(getMonthPlanDayDateKey(day))
+  );
+}
+
+export function isPlanningMissing(day: MonthPlanDay) {
+  return (
+    isDraftPlanningMissing(day) &&
+    !hasScheduledShifts(day)
   );
 }
 
