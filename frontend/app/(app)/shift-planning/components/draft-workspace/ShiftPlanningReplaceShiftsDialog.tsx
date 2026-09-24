@@ -168,7 +168,7 @@ export default function ShiftPlanningReplaceShiftsDialog({
             id="replace-planning-shifts-title"
             className="mt-1 text-xl font-extrabold text-gray-950 dark:text-white"
           >
-            Erstat vagter for {targetLabel}?
+            Gennemse ændringer for {targetLabel}
           </h3>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
             Systemet fjerner kun fremtidige vagter, der er oprettet gennem
@@ -182,7 +182,7 @@ export default function ShiftPlanningReplaceShiftsDialog({
               htmlFor="shift-planning-replacement-draft"
               className="text-xs font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300"
             >
-              Erstat med
+              Kladde
             </label>
             <select
               id="shift-planning-replacement-draft"
@@ -229,7 +229,7 @@ export default function ShiftPlanningReplaceShiftsDialog({
             selectedDraftId === null &&
             draftOptions.length > 0 && (
               <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 text-sm text-violet-900 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-100">
-                <span className="font-bold">Vælg først “Erstat med”.</span>{" "}
+                <span className="font-bold">Vælg først en kladde.</span>{" "}
                 Derefter viser systemet præcis hvilke vagter der fjernes, og
                 hvilke der oprettes.
               </div>
@@ -346,7 +346,7 @@ export default function ShiftPlanningReplaceShiftsDialog({
                   <span className="font-bold">
                     Aktive forløb annulleres automatisk.
                   </span>{" "}
-                  Erstatningen annullerer{" "}
+                  Udgivelsen annullerer{" "}
                   {openShiftTradeCount > 0 && (
                     <>
                       {openShiftTradeCount}{" "}
@@ -374,7 +374,7 @@ export default function ShiftPlanningReplaceShiftsDialog({
               {preview.blockingReasons.length > 0 && (
                 <div className="mt-4 rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/35">
                   <p className="font-bold text-red-900 dark:text-red-100">
-                    Erstatningen kan ikke gennemføres endnu
+                    Ændringerne kan ikke udgives endnu
                   </p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-800 dark:text-red-200">
                     {preview.blockingReasons.map((reason) => (
@@ -527,7 +527,7 @@ export default function ShiftPlanningReplaceShiftsDialog({
             disabled={!canReplace}
             className="rounded-xl bg-violet-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:bg-violet-200 disabled:text-violet-700 dark:bg-violet-600 dark:hover:bg-violet-500 dark:disabled:bg-violet-950 dark:disabled:text-violet-500"
           >
-            {busy ? "Erstatter…" : "Ja, erstat vagter"}
+            {busy ? "Udgiver…" : "Udgiv ændringer"}
           </button>
         </div>
       </div>

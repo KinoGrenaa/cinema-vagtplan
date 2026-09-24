@@ -99,13 +99,13 @@ export default function ShiftPlanningWeekIndicator({
             onClick={() => void onResetWeek()}
             title={
               editable
-                ? "Fjerner skabelonen og de beregnede forslag fra ugens fremtidige dage. Eksisterende vagter påvirkes ikke."
+                ? "Rydder kun planlægningen i kladden for ugens fremtidige dage. Faktiske vagter påvirkes ikke."
                 : "Vælg eller opret en åben kladde først."
             }
             className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-950 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:border-amber-600 dark:hover:bg-amber-950/50 dark:hover:text-amber-100 dark:focus-visible:ring-amber-400 dark:focus-visible:ring-offset-gray-900"
             disabled={!editable || !canReset || saving}
           >
-            Nulstil uge
+            Ryd planlægning
           </button>
         </div>
         </div>
@@ -120,11 +120,11 @@ export default function ShiftPlanningWeekIndicator({
             <button
               type="button"
               onClick={() => void onReplacePlannedShifts()}
-              title="Viser præcis hvilke eksisterende planlægningsvagter der fjernes, og hvilke vagter fra kladden der oprettes."
+              title="Sammenligner kladden med de faktiske vagter for ugen, før ændringer udgives."
               className="whitespace-nowrap rounded-lg border border-violet-300 bg-violet-50 px-2 py-1.5 text-xs font-semibold leading-tight text-violet-800 transition hover:border-violet-500 hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:border-violet-600 dark:hover:bg-violet-950/70 dark:focus-visible:ring-violet-400 dark:focus-visible:ring-offset-gray-900"
               disabled={saving}
             >
-              Erstat
+              Gennemse
             </button>
           )}
           <button
@@ -134,7 +134,7 @@ export default function ShiftPlanningWeekIndicator({
             className="whitespace-nowrap rounded-lg border border-red-300 bg-white px-2 py-1.5 text-xs font-semibold leading-tight text-red-700 transition hover:border-red-500 hover:bg-red-50 hover:text-red-900 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-950 dark:text-red-300 dark:hover:border-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-100 dark:focus-visible:ring-red-400 dark:focus-visible:ring-offset-gray-900"
             disabled={saving}
           >
-            Fjern
+            Fjern faktiske
           </button>
         </div>
       )}

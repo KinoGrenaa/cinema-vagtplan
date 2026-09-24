@@ -12,6 +12,7 @@ import ShiftPlanningWeekIndicator from "./components/month/ShiftPlanningWeekIndi
 import ShiftPlanningDraftWorkspaceBar, {
   type ShiftPlanningNamedDraftSummary,
 } from "./components/draft-workspace/ShiftPlanningDraftWorkspaceBar";
+import ShiftPlanningWorkflowGuide from "./components/workflow/ShiftPlanningWorkflowGuide";
 import ShiftPlanningUnsavedChangesDialog, {
   type ShiftPlanningUnsavedActionKind,
 } from "./components/draft-workspace/ShiftPlanningUnsavedChangesDialog";
@@ -338,6 +339,9 @@ export default function ShiftPlanningPage() {
       : draftDirty
         ? workingPreview
         : selectedDraftPreview;
+  const displayedPreviewLoading =
+    selectedDraftId !== null &&
+    (draftDirty ? workingPreviewLoading : selectedDraftPreviewLoading);
   const workingPreviewItemsByDate = useMemo(() => {
     const map = new Map<string, NonNullable<MonthPlanDay["workingPreviewItems"]>>();
     (displayedPreview?.items ?? []).forEach((item) => {
@@ -1947,8 +1951,7 @@ export default function ShiftPlanningPage() {
             Planlæg vagter
           </h1>
           <p className="mx-auto mt-2 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
-            Læg skabeloner på kalenderen. Forslag, faktiske vagter og
-            problemer vises automatisk på de relevante datoer.
+            Læg skabeloner på kalenderen. Kladdevagter, faktiske vagter og problemer vises automatisk på de relevante datoer.
           </p>
         </section>
 
@@ -1996,48 +1999,7 @@ export default function ShiftPlanningPage() {
                   </button>
                 </div>
               </div>
-              {selectedDraftIsEditable && (
-                <div className="mt-4 flex flex-wrap justify-center gap-2 lg:justify-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void openPlanningShiftReplacement(
-                          "MONTH",
-                          `${year}-${String(month).padStart(2, "0")}-01`,
-                          getMonthName(year, month),
-                        )
-                      }
-                      disabled={
-                        draftDirty ||
-                        planningShiftReplacementLoading ||
-                        planningShiftReplacementBusy
-                      }
-                      title={draftDirty ? "Gem eller fortryd ændringerne i kladden først." : "Vis præcis hvilke månedens planlægningsvagter der fjernes, og hvilke kladdevagter der oprettes."}
-                      className="rounded-xl border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-800 transition hover:border-violet-500 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-200 dark:hover:border-violet-600 dark:hover:bg-violet-950/60"
-                    >
-                      Erstat månedens vagter
-                    </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void openPlanningShiftRemoval(
-                        "MONTH",
-                        `${year}-${String(month).padStart(2, "0")}-01`,
-                        getMonthName(year, month),
-                      )
-                    }
-                    disabled={
-                      (shiftMonthOverview?.totalShiftCount ?? 0) === 0 ||
-                      planningShiftRemovalLoading ||
-                      planningShiftRemovalBusy
-                    }
-                    title="Forhåndsviser fjernelse af månedens faktiske vagter fra vagtplanlægningen. Manuelle vagter røres ikke."
-                    className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-500 hover:bg-red-50 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-950 dark:text-red-300 dark:hover:border-red-700 dark:hover:bg-red-950/40"
-                  >
-                    Fjern månedens vagter
-                  </button>
-                </div>
-              )}
+
             </section>
 
             <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -2051,18 +2013,18 @@ export default function ShiftPlanningPage() {
               </div>
               <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 shadow-sm dark:border-violet-900/70 dark:bg-violet-950/30">
                 <p className="text-xs font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">
-                  Vagter i arbejdsforslaget
+                  Vagter i kladden
                 </p>
                 <p className="mt-2 text-3xl font-bold text-violet-950 dark:text-violet-100">
-                  {displayedPreview?.summary.itemCount ?? 0}
+                  {displayedPreviewLoading ? "…" : (displayedPreview?.summary.itemCount ?? 0)}
                 </p>
               </div>
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm dark:border-emerald-900/70 dark:bg-emerald-950/30">
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                  Klar til oprettelse
+                  Klar
                 </p>
                 <p className="mt-2 text-3xl font-bold text-emerald-950 dark:text-emerald-100">
-                  {displayedPreview?.summary.readyItemCount ?? 0}
+                  {displayedPreviewLoading ? "…" : (displayedPreview?.summary.readyItemCount ?? 0)}
                 </p>
               </div>
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/70 dark:bg-amber-950/30">
@@ -2070,11 +2032,15 @@ export default function ShiftPlanningPage() {
                   Problemer
                 </p>
                 <p className="mt-2 text-3xl font-bold text-amber-950 dark:text-amber-100">
-                  {(displayedPreview?.summary.blockedItemCount ?? 0) +
-                    (displayedPreview?.summary.warningCount ?? 0)}
+                  {displayedPreviewLoading
+                    ? "…"
+                    : (displayedPreview?.summary.blockedItemCount ?? 0) +
+                      (displayedPreview?.summary.warningCount ?? 0)}
                 </p>
               </div>
             </section>
+
+            <ShiftPlanningWorkflowGuide hasSelectedDraft={selectedDraftId !== null} />
 
             <ShiftPlanningDraftWorkspaceBar
               drafts={savedDrafts}
