@@ -24,6 +24,10 @@ type WishEnabledBody = {
   enabled?: unknown;
 };
 
+type AssignWishBody = {
+  userId?: unknown;
+};
+
 function getActorUserId(user: AuthUser) {
   const userId = Number(user.sub ?? user.id);
   if (!Number.isInteger(userId) || userId <= 0) {
@@ -126,6 +130,19 @@ function parseWishEnabledBody(body: unknown) {
   return enabled;
 }
 
+function parseAssignWishUserId(body: unknown) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new BadRequestException('Vælg en medarbejder til vagten.');
+  }
+
+  const userId = Number((body as AssignWishBody).userId);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new BadRequestException('Medarbejderen skal have et gyldigt ID.');
+  }
+
+  return userId;
+}
+
 type WishTimingItem = {
   date: Date | string;
   plannedStartMinute: number | null;
@@ -183,6 +200,20 @@ function assertRoundIsOpen(
 
   if (round.closesAt && round.closesAt.getTime() <= now.getTime()) {
     throw new BadRequestException('Fristen for ønskerunden er udløbet.');
+  }
+}
+
+function assertRoundIsClosed(
+  round: { status: string } | null,
+) {
+  if (!round) {
+    throw new NotFoundException('Ønskerunden blev ikke fundet.');
+  }
+
+  if (String(round.status).toUpperCase() !== 'CLOSED') {
+    throw new BadRequestException(
+      'Luk ønskerunden, før vagterne fordeles.',
+    );
   }
 }
 
@@ -245,6 +276,43 @@ export class ShiftPlanningWishesService {
     if (!qualification) {
       throw new BadRequestException(
         'Du er ikke kvalificeret til denne jobfunktion.',
+      );
+    }
+  }
+
+  private async ensureAssignableWishUser(
+    prisma: Pick<
+      Prisma.TransactionClient,
+      'user' | 'userCinemaMembership' | 'userJobFunction'
+    >,
+    userId: number,
+    cinemaId: number,
+    jobFunctionId: number,
+  ) {
+    const [activeUser, membership, qualification] = await Promise.all([
+      prisma.user.findFirst({
+        where: { id: userId, isActive: true },
+        select: { id: true },
+      }),
+      prisma.userCinemaMembership.findFirst({
+        where: { userId, cinemaId, isActive: true },
+        select: { id: true },
+      }),
+      prisma.userJobFunction.findFirst({
+        where: { userId, cinemaId, jobFunctionId },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!activeUser || !membership) {
+      throw new BadRequestException(
+        'Medarbejderen er ikke længere aktiv i denne biograf.',
+      );
+    }
+
+    if (!qualification) {
+      throw new BadRequestException(
+        'Medarbejderen er ikke længere kvalificeret til denne jobfunktion.',
       );
     }
   }
@@ -596,6 +664,100 @@ export class ShiftPlanningWishesService {
     });
   }
 
+  async assignWish(
+    user: AuthUser,
+    draftId: number,
+    itemId: number,
+    cinemaIdValue?: string,
+    body?: unknown,
+  ) {
+    const cinemaId = resolveAdminCinemaId(user, cinemaIdValue);
+    const selectedUserId = parseAssignWishUserId(body);
+    const now = new Date();
+
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.shiftPlanningDraftItem.findFirst({
+        where: { id: itemId, draftId, cinemaId },
+        select: {
+          id: true,
+          draftId: true,
+          cinemaId: true,
+          userId: true,
+          jobFunctionId: true,
+          date: true,
+          plannedStartMinute: true,
+          draft: { select: { status: true } },
+        },
+      });
+
+      if (!item) {
+        throw new NotFoundException('Kladdevagten blev ikke fundet.');
+      }
+
+      if (String(item.draft.status).toUpperCase() !== 'DRAFT') {
+        throw new BadRequestException(
+          'Planlægningskladden er ikke åben længere.',
+        );
+      }
+
+      if (item.jobFunctionId === null) {
+        throw new BadRequestException(
+          'Vagten mangler en jobfunktion og kan ikke fordeles.',
+        );
+      }
+
+      assertWishItemInFuture(item, now);
+
+      const round = await tx.shiftPlanningWishRound.findUnique({
+        where: { draftId: item.draftId },
+        select: { status: true },
+      });
+
+      assertRoundIsClosed(round);
+
+      const activeWish = await tx.shiftPlanningDraftWish.findFirst({
+        where: {
+          cinemaId,
+          draftItemId: item.id,
+          userId: selectedUserId,
+          withdrawnAt: null,
+        },
+        select: {
+          id: true,
+          userId: true,
+        },
+      });
+
+      if (!activeWish) {
+        throw new BadRequestException(
+          'Medarbejderen har ikke et aktivt ønske på denne vagt.',
+        );
+      }
+
+      await this.ensureAssignableWishUser(
+        tx,
+        selectedUserId,
+        cinemaId,
+        item.jobFunctionId,
+      );
+
+      await tx.shiftPlanningDraftItem.update({
+        where: { id: item.id },
+        data: {
+          userId: selectedUserId,
+          wishEnabled: false,
+        },
+      });
+
+      return {
+        draftId: item.draftId,
+        draftItemId: item.id,
+        userId: selectedUserId,
+        assigned: true,
+      };
+    });
+  }
+
   async withdrawWish(user: AuthUser, itemId: number) {
     const cinemaId = resolveMyCinemaId(user);
     const userId = getActorUserId(user);
@@ -753,6 +915,7 @@ export class ShiftPlanningWishesService {
       ...item,
       wishes: item.wishes.map((wish) => ({
         ...wish,
+        selected: item.userId === wish.userId,
         currentlyEligible:
           wish.withdrawnAt === null &&
           wish.user.isActive &&
@@ -777,6 +940,14 @@ export class ShiftPlanningWishesService {
         ),
         wishedItemCount: overviewItems.filter((item) =>
           item.wishes.some((wish) => wish.withdrawnAt === null),
+        ).length,
+        assignedItemCount: overviewItems.filter(
+          (item) => item.userId !== null,
+        ).length,
+        unassignedWishedItemCount: overviewItems.filter(
+          (item) =>
+            item.userId === null &&
+            item.wishes.some((wish) => wish.withdrawnAt === null),
         ).length,
       },
       items: overviewItems,

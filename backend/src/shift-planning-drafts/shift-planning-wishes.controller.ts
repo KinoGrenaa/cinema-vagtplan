@@ -103,6 +103,30 @@ export class ShiftPlanningWishesController {
   }
 
   @UseGuards(JwtGuard)
+  @Post('drafts/:draftId/items/:itemId/assign')
+  assignWish(
+    @Req() req: any,
+    @Param('draftId') draftId: string,
+    @Param('itemId') itemId: string,
+    @Query('cinemaId') cinemaId: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return this.shiftPlanningWishesService.assignWish(
+      req.user,
+      parseRequiredPositiveInteger(
+        draftId,
+        'Planlægningskladde skal være et gyldigt ID.',
+      ),
+      parseRequiredPositiveInteger(
+        itemId,
+        'Kladdevagt skal være et gyldigt ID.',
+      ),
+      cinemaId,
+      body,
+    );
+  }
+
+  @UseGuards(JwtGuard)
   @Post('drafts/:draftId/items/:itemId/enabled')
   setItemWishEnabled(
     @Req() req: any,
