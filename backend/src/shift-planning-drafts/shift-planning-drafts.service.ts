@@ -1025,6 +1025,17 @@ export class ShiftPlanningDraftsService {
   ) {
     const cinemaId = resolveCinemaId(user, data?.cinemaId);
 
+    const wishRound = await this.prisma.shiftPlanningWishRound.findUnique({
+      where: { draftId },
+      select: { id: true },
+    });
+
+    if (wishRound) {
+      throw new BadRequestException(
+        'Kladden er låst mod genberegning, fordi der er oprettet en ønskerunde.',
+      );
+    }
+
     try {
       const updatedDraft = await updateNamedShiftPlanningDraft(this.prisma, {
         draftId,

@@ -259,6 +259,8 @@ model Cinema {
   shiftPlanningDrafts               ShiftPlanningDraft[]
   shiftPlanningDraftItems           ShiftPlanningDraftItem[]
   shiftPlanningDraftDays            ShiftPlanningDraftDay[]
+  shiftPlanningWishRounds           ShiftPlanningWishRound[]
+  shiftPlanningDraftWishes          ShiftPlanningDraftWish[]
   moduleSettings                    CinemaModuleSetting[]
 }
 
@@ -354,6 +356,9 @@ model User {
   staffingAiProfile                     StaffingAiProfile?
   dashboardWarningDecisions             DashboardWarningDecision[]           @relation("DashboardWarningDecisionUser")
   createdShiftPlanningDrafts            ShiftPlanningDraft[]                 @relation("ShiftPlanningDraftCreatedBy")
+  openedShiftPlanningWishRounds          ShiftPlanningWishRound[]               @relation("ShiftPlanningWishRoundOpenedBy")
+  closedShiftPlanningWishRounds          ShiftPlanningWishRound[]               @relation("ShiftPlanningWishRoundClosedBy")
+  shiftPlanningDraftWishes               ShiftPlanningDraftWish[]
   shiftPlanningDraftItems               ShiftPlanningDraftItem[]
 
   @@index([defaultCinemaId])
@@ -645,6 +650,7 @@ model ShiftPlanningDraft {
   updatedAt          DateTime                 @default(now()) @updatedAt
   items              ShiftPlanningDraftItem[]
   days               ShiftPlanningDraftDay[]
+  wishRound           ShiftPlanningWishRound?
   scheduleTemplate   ScheduleTemplate?        @relation(fields: [scheduleTemplateId], references: [id])
   scheduleTemplateId Int?
 
@@ -694,6 +700,8 @@ model ShiftPlanningDraftItem {
   jobFunction           JobFunction?                 @relation(fields: [jobFunctionId], references: [id], onDelete: SetNull)
   userId                Int?
   user                  User?                        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  wishEnabled           Boolean                      @default(false)
+  wishes                ShiftPlanningDraftWish[]
   requiredIndex         Int                          @default(1)
   status                String                       @default("DRAFT")
   plannedStartMinute    Int?
@@ -1584,4 +1592,44 @@ model SystemErrorLog {
   @@index([cinemaId])
   @@index([userId])
   @@index([correlationId])
+}
+
+
+model ShiftPlanningWishRound {
+  id             Int                @id @default(autoincrement())
+  cinemaId       Int
+  cinema         Cinema             @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  draftId        Int                @unique
+  draft          ShiftPlanningDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  status         String             @default("OPEN")
+  openedAt       DateTime           @default(now())
+  closesAt       DateTime?
+  closedAt       DateTime?
+  openedByUserId Int?
+  openedByUser   User?              @relation("ShiftPlanningWishRoundOpenedBy", fields: [openedByUserId], references: [id], onDelete: SetNull)
+  closedByUserId Int?
+  closedByUser   User?              @relation("ShiftPlanningWishRoundClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([cinemaId, status])
+  @@index([closesAt])
+}
+
+model ShiftPlanningDraftWish {
+  id          Int                    @id @default(autoincrement())
+  cinemaId    Int
+  cinema      Cinema                 @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  draftItemId Int
+  draftItem   ShiftPlanningDraftItem @relation(fields: [draftItemId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  withdrawnAt DateTime?
+
+  @@unique([draftItemId, userId])
+  @@index([cinemaId])
+  @@index([userId, withdrawnAt])
+  @@index([draftItemId, withdrawnAt])
 }

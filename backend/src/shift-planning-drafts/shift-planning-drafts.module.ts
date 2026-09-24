@@ -6,6 +6,8 @@ import { ShiftPlanningDraftsController } from './shift-planning-drafts.controlle
 import { ShiftPlanningDraftPublicationController } from './shift-planning-drafts-publication.controller';
 import { ShiftPlanningDraftsService } from './shift-planning-drafts.service';
 import { ShiftPlanningDraftPublicationService } from './shift-planning-drafts-publication.service';
+import { ShiftPlanningWishesController } from './shift-planning-wishes.controller';
+import { ShiftPlanningWishesService } from './shift-planning-wishes.service';
 
 @Module({
   imports: [
@@ -19,7 +21,12 @@ import { ShiftPlanningDraftPublicationService } from './shift-planning-drafts-pu
   controllers: [
     ShiftPlanningDraftsController,
     ShiftPlanningDraftPublicationController,
+    ShiftPlanningWishesController,
   ],
-  providers: [ShiftPlanningDraftsService, ShiftPlanningDraftPublicationService],
+  providers: [
+    ShiftPlanningDraftsService,
+    ShiftPlanningDraftPublicationService,
+    ShiftPlanningWishesService,
+  ],
 })
 export class ShiftPlanningDraftsModule {}
